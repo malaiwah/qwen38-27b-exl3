@@ -59,6 +59,28 @@ the online overlay's MXFP8 fallback raises for shapes divisible by neither 128
 nor 32, which is exactly this architecture's vision tower. Patch pushed to a fork
 branch, PR opened after behavioural verification on this box.
 
+**v3 held-out re-measurement.** The v2 suite came from exllamav3's calibration
+corpora — the text our own quant was tuned on. Rebuilt the suite from Gutenberg,
+arXiv, Wikipedia (9 languages) and CPython with a shingle contamination scan (0 hits),
+181 contexts / 370,507 positions, 41 real source clusters, analysis/qualification
+partitions, 32 sentinels. Ours moved 0.026231 -> 0.030736, NVFP4 -> 0.094978,
+FP8 -> 0.013126. Advantage over NVFP4 grew to 3.09x (136/136 contexts);
+deficit to FP8 grew to 0.0176. Noise floor measured at exactly 0.000000.
+
+**CUDA graphs landed.** Autotune-priming patch verified end to end: three priming
+lines, decode-only capture, +92 %/+84 %/+98 % decode throughput, now faster than the
+NVFP4 checkpoint, with exact distribution parity against eager (KLD 0.000000).
+[PR #314](https://github.com/local-inference-lab/vllm/pull/314).
+
+**Everything needed to contest our numbers is published** as
+[`malaiwah/qwen38-27b-fidelity-suite-v3`](https://huggingface.co/datasets/malaiwah/qwen38-27b-fidelity-suite-v3):
+tokens, reference and candidate hidden states, the shared LM head, sentinel repeats,
+reports and checksums — recomputable without a GPU.
+
+**Weakest control identified:** replay qualification 6.54e-04 versus the reference
+protocol's 1.23e-06, which sets a ~1e-3 resolution floor and invalidates the
+iteration-1 head-attribution figure until fixed. Top of the iteration-2 list.
+
 ### Next
 
 1. K4 conversion inside the image rootfs (its exllamav3 and prebuilt SM120
