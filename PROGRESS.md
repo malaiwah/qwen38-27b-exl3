@@ -35,6 +35,18 @@ r34 image was pulled with an unprivileged OCI puller and is run through `proot`.
 Both `unsloth/Qwen3.8-27B-NVFP4` and BF16 `Qwen/Qwen3.8-27B` serve and answer
 requests under the official image, at full GPU speed.
 
+**Card review landed** — [docs/07-serving-recommendations.md](docs/07-serving-recommendations.md)
+and [docs/08-upstream-cards-digest.md](docs/08-upstream-cards-digest.md), plus
+`https://recipes.vllm.ai/Qwen/Qwen3.8-27B`. Findings that changed our plan:
+both NVFP4 vendors ship an undocumented FP8 KV-cache scheme (so KLD must pin one
+KV dtype), both deliberately preserve the MTP head (so ours stays BF16 too), the
+native context is 262144 with the 1M override nested under `text_config`, and
+Unsloth's chat-template edits are partly undisclosed (we ship upstream's).
+
+**exllamav3 1.4.2 installed inside the image rootfs** (`5f3c537`), because the
+image's bundled copy is 0.0.43 and has no converter. The CUDA extension is being
+JIT-built for `TORCH_CUDA_ARCH_LIST=12.0` against the image's torch 2.12.0+cu132.
+
 ### Next
 
 1. K4 conversion inside the image rootfs (its exllamav3 and prebuilt SM120

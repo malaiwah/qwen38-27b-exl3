@@ -36,16 +36,16 @@ rest of the recipe.
 | `lm_head` | EXL3 K6, 0.95 GB | 0.95 GB | 0.72 GB NVFP4 → +0.24 GB |
 | `embed_tokens` | BF16, 2.54 GB | 2.54 GB | same |
 | vision tower | BF16, 0.92 GB | BF16, 0.92 GB | same |
-| MTP | EXL3 K6, 0.32 GB | 0.32 GB | 0.85 GB BF16 → −0.53 GB |
+| MTP | BF16, 0.85 GB | BF16, 0.85 GB | same |
 | norms/biases | BF16, 0.05 GB | 0.05 GB | same |
 
 ## Candidate footprints
 
 | recipe | disk | VRAM | vs nvidia 21.92 | vs unsloth 23.42 |
 |---|---:|---:|---:|---:|
-| **A** MLP K4, attn BF16→K6, head K6, MTP K6 | 28.30 | **18.75** | −3.17 | −4.67 |
-| **B** = A + all 64 `down_proj` at K6 | 29.73 | **20.18** | −1.74 | −3.24 |
-| **C** = B + last-8-layer MLP BF16→K6 | 32.76 | 20.54 | −1.38 | −2.88 |
+| **A** MLP K4, attn BF16→K6, head K6, MTP BF16 | 28.83 | **19.28** | −2.64 | −4.14 |
+| **B** = A + all 64 `down_proj` at K6 | 30.26 | **20.71** | −1.21 | −2.71 |
+| **C** = B + last-8-layer MLP BF16→K6 | 33.29 | 21.07 | −0.85 | −2.35 |
 | **D** all-K4 MLP, attention serialized K6 (no online quant) | **19.29** | 19.29 | −2.63 | −4.13 |
 
 Headroom exchange rates, for spending the gap to NVFP4 parity:
@@ -55,7 +55,6 @@ Headroom exchange rates, for spending the gap to NVFP4 parity:
 | one MLP layer, `gate+up+down`, K4 → K6 | +0.067 GB |
 | all 64 `down_proj`, K4 → K6 | +1.426 GB |
 | `lm_head`, K6 → BF16 | +1.589 GB |
-| MTP, K6 → BF16 | +0.53 GB |
 
 **Ship A first.** It is the literal reading of "everything else in K4", is
 3.17 GB under the NVFP4 baseline, and every role is at equal or higher effective
@@ -69,7 +68,7 @@ described in [04-exllamav3-toolchain.md](04-exllamav3-toolchain.md).
 
 ```bash
 python convert.py -i /models/Qwen3.8-27B -o /work/qwen38-k4 -w /work/wd-k4 \
-  -b 4 -hb 6 -mb 6 -vb 16 -cb mcg -d 0
+  -b 4 -hb 6 -mb 4 -vb 16 -cb mcg -d 0
 ```
 
 `-vb 16` builds no vision model at all, so the vision tensors pass through the
@@ -91,3 +90,39 @@ external EXL3 error ladder measured on MoE experts elsewhere in this project
 implies K6 near 4e-4, but that is a different model and a different tensor
 population — it is not evidence for this checkpoint. The claim gets settled by
 the measurement in [05-kld-protocol.md](05-kld-protocol.md), not by arithmetic.
+
+## MTP stays BF16
+
+Reversed after reading the serving guidance: both NVFP4 vendors deliberately
+exclude the MTP head (`ignore: ["mtp*"]` / `re:^mtp.*`), and
+[vLLM's own recipe](https://recipes.vllm.ai/Qwen/Qwen3.8-27B) enables it with
+`--speculative-config '{"method":"mtp","num_speculative_tokens":3}'`. A quantized
+draft head costs acceptance rate on the one component whose entire job is cheap
+agreement with the target, and the EXL3 loader's draft-module handling
+(`exl3_is_draft`) is unverified for this architecture. So the converter's
+`-mb 4` output for the MTP module is discarded and its BF16 weights are spliced
+back alongside attention, and `mtp` goes in the online-overlay `ignore` list so
+it stays BF16 at runtime rather than becoming K6.
+
+Cost: +0.53 GB VRAM against the earlier plan. Recipe A is still 2.64 GB under
+the NVIDIA NVFP4 baseline.
+
+## Inherited serving constraints
+
+From [07-serving-recommendations.md](07-serving-recommendations.md), a derivative
+of this model must keep: the upstream `chat_template.jinja` (unmodified — Unsloth's
+edited copy silently aliases `reasoning_effort='high'` to `xhigh` and drops the
+`No user query found in messages` guard), `tokenizer_config.json` including its
+`chat_template` key, the vision preprocessor configs and mrope handling, vocab
+248320 untied from `lm_head`, `generation_config.json` defaults
+(`temperature 1.0`, `top_p 0.95`, `top_k 20`), and the MTP head.
+
+Two serving facts that change our published recipe:
+
+- Native context is **262144**, extensible to ~1M with
+  `--hf-overrides '{"text_config": {"max_position_embeddings": 1010000}}'` — note
+  the nesting under `text_config` for this model.
+- Both NVFP4 vendors quietly ship an **FP8 KV-cache scheme** in their
+  quantization config while printing no `--kv-cache-dtype` on the card. Our KLD
+  comparison must therefore pin one KV dtype across teacher and every candidate,
+  or the number measures the cache format as much as the weights.
