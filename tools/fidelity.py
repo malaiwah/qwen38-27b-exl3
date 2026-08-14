@@ -153,13 +153,22 @@ def _rpc_install_hook(self):
     if len(cands) != 1:
         raise RuntimeError(f"final norm ambiguous: {[n for n, _ in cands]}")
     name, norm = cands[0]
-    store: dict = {"last": None, "rows": 0}
+    store: dict = {"last": None, "rows": 0, "parts": [], "accumulate": False}
 
     def hook(_m, _i, output):
         t = output[0] if isinstance(output, tuple) else output
-        if t.dim() == 2 and t.shape[0] > store["rows"]:
-            store["rows"] = t.shape[0]
-            store["last"] = t.detach().to("cpu", torch.bfloat16, copy=True)
+        if t.dim() != 2:
+            return output
+        cpu = t.detach().to("cpu", torch.bfloat16, copy=True)
+        if store["accumulate"]:
+            # Contexts longer than max_num_batched_tokens arrive as several prefill
+            # chunks; concatenating in arrival order reconstructs the full sequence.
+            store["parts"].append(cpu)
+            store["rows"] = sum(p.shape[0] for p in store["parts"])
+            store["last"] = torch.cat(store["parts"], dim=0) if len(store["parts"]) > 1 else cpu
+        elif cpu.shape[0] > store["rows"]:
+            store["rows"] = cpu.shape[0]
+            store["last"] = cpu
         return output
 
     norm.register_forward_hook(hook)
@@ -174,7 +183,16 @@ def _rpc_pop_capture(self):
     t = store["last"]
     store["last"] = None
     store["rows"] = 0
+    store["parts"] = []
     return t
+
+
+def _rpc_set_accumulate(self, on: bool):
+    store = getattr(self, "_fid_store", None)
+    if store is not None:
+        store["accumulate"] = bool(on)
+        store["parts"] = []
+    return bool(on)
 
 
 def cmd_capture(args) -> int:
@@ -192,7 +210,8 @@ def cmd_capture(args) -> int:
                   gpu_memory_utilization=args.gpu_memory_utilization,
                   kv_cache_memory_bytes=512 * 1024 * 1024, dtype="bfloat16",
                   kv_cache_dtype=args.kv_cache_dtype, load_format="safetensors",
-                  max_model_len=ctx_len + 64, max_num_batched_tokens=ctx_len,
+                  max_model_len=ctx_len + 64,
+                  max_num_batched_tokens=args.max_batched_tokens or ctx_len,
                   max_num_seqs=1, enable_prefix_caching=False, disable_log_stats=True,
                   enforce_eager=True)
     if args.quantization.lower() not in ("", "auto", "none", "null"):
@@ -203,6 +222,9 @@ def cmd_capture(args) -> int:
 
     hooked = llm.collective_rpc(_rpc_install_hook)
     print(f"hooked {hooked}", flush=True)
+    if args.chunk_accumulate:
+        llm.collective_rpc(_rpc_set_accumulate, args=(True,))
+        print("chunk accumulation enabled for long contexts", flush=True)
 
     params = SamplingParams(max_tokens=1, temperature=0, detokenize=False)
     done = 0
@@ -238,6 +260,30 @@ def cmd_capture(args) -> int:
     (out / "capture-manifest.json").write_text(json.dumps(meta, indent=2))
     print("capture_done " + json.dumps({k: meta[k] for k in ("contexts", "elapsed_sec")}), flush=True)
     return 0
+
+
+def dense_prompt_logprobs(prompt_logprobs: object, npos: int, vocab: int) -> torch.Tensor:
+    """Densify vLLM prompt logprobs to [npos, vocab]; verbatim from the published harness."""
+    dense = torch.empty((npos, vocab), dtype=torch.float32)
+    if hasattr(prompt_logprobs, "start_indices"):
+        for pos in range(npos):
+            start = prompt_logprobs.start_indices[pos + 1]
+            end = prompt_logprobs.end_indices[pos + 1]
+            ids = torch.as_tensor(prompt_logprobs.token_ids[start:end], dtype=torch.long)
+            values = torch.as_tensor(prompt_logprobs.logprobs[start:end], dtype=torch.float32)
+            row = torch.full((vocab,), float("-inf"), dtype=torch.float32)
+            valid = (ids >= 0) & (ids < vocab)
+            row[ids[valid]] = values[valid]
+            dense[pos] = row
+        return dense
+    for pos in range(npos):
+        row = torch.full((vocab,), float("-inf"), dtype=torch.float32)
+        for token_id, logprob in prompt_logprobs[pos + 1].items():
+            token_id = int(token_id)
+            if 0 <= token_id < vocab:
+                row[token_id] = float(logprob.logprob)
+        dense[pos] = row
+    return dense
 
 
 # ----------------------------------------------------------------- replay
@@ -381,6 +427,38 @@ def cmd_replay(args) -> int:
     return 0
 
 
+@torch.inference_mode()
+def qualification_metrics(live_logprobs: torch.Tensor, hidden: torch.Tensor,
+                          head: torch.Tensor, vocab_chunk: int):
+    """KL(live served distribution || distribution replayed from hidden states).
+
+    The live operand is already a normalised log-probability matrix, so it must NOT
+    go through the head; only the replayed operand does. Two passes, as elsewhere:
+    normaliser and argmax first, then the divergence.
+    """
+    rows = hidden.shape[0]
+    dev = hidden.device
+    log_z = torch.full((rows,), -math.inf, dtype=torch.float32, device=dev)
+    rep_top = torch.zeros((rows,), dtype=torch.int64, device=dev)
+    rep_val = torch.full((rows,), -math.inf, dtype=torch.float32, device=dev)
+    for start in range(0, head.shape[0], vocab_chunk):
+        end = min(start + vocab_chunk, head.shape[0])
+        logits = (hidden @ head[start:end].T).float()
+        log_z = torch.logaddexp(log_z, torch.logsumexp(logits, dim=-1))
+        val, idx = logits.max(dim=-1)
+        upd = val > rep_val
+        rep_val = torch.where(upd, val, rep_val)
+        rep_top = torch.where(upd, idx + start, rep_top)
+    live_top = live_logprobs.argmax(dim=-1)
+    kl = torch.zeros(rows, dtype=torch.float64, device=dev)
+    for start in range(0, head.shape[0], vocab_chunk):
+        end = min(start + vocab_chunk, head.shape[0])
+        rep = (hidden @ head[start:end].T).float() - log_z[:, None]
+        liv = live_logprobs[:, start:end]
+        kl += (liv.exp() * (liv - rep)).sum(-1).double()
+    return kl.cpu(), int((live_top == rep_top).sum().item())
+
+
 def cmd_qualify(args) -> int:
     """Live-logit qualification: does hidden-state replay reproduce served logits?
 
@@ -431,12 +509,12 @@ def cmd_qualify(args) -> int:
         live = dense_prompt_logprobs(out.prompt_logprobs, npos, vocab).to(dev)
         with safe_open(str(hp), framework="pt", device="cpu") as f:
             hidden = f.get_tensor("hidden_states").to(dev, torch.bfloat16)
-        kl, js, hits = context_metrics(live, hidden, head, args.vocab_chunk)
+        kl, hits = qualification_metrics(live, hidden, head, args.vocab_chunk)
         rows.append({"index": i, "mean_kld": float(kl.mean()), "max_kld": float(kl.max()),
                      "p999_kld": float(kl.double().quantile(0.999)),
                      "top1_agreement": hits / kl.numel()})
         print("qualify " + json.dumps(rows[-1]), flush=True)
-        del live, hidden, kl, js
+        del live, hidden, kl
 
     if not rows:
         raise SystemExit("no contexts qualified; check --hidden and --filter")
@@ -504,6 +582,10 @@ def main() -> int:
     c.add_argument("--gpu-memory-utilization", type=float, default=0.9)
     c.add_argument("--filter", default="all",
                    help="all | analysis | qualification | sentinel")
+    c.add_argument("--max-batched-tokens", type=int, default=0,
+                   help="prefill chunk size; 0 means one chunk per context")
+    c.add_argument("--chunk-accumulate", action="store_true",
+                   help="concatenate chunked-prefill forwards (needed above one chunk)")
     c.set_defaults(func=cmd_capture)
 
     r = sub.add_parser("replay")

@@ -19,14 +19,17 @@ OUT = Path("/var/tmp/work/charts")
 # ---- measured here: v2 hidden-state-replay protocol, 74 contexts / 151,478 positions
 #      weights = safetensors weight bytes actually resident (decimal GB)
 MEASURED = [
-    # label, weights GB, mean KLD, top-1 %, colour key, annotation offset
+    # label, weights GB, mean KLD, top-1 %, colour key
+    # v3 protocol: held-out corpus, 136 analysis contexts, 278,392 scored positions
     ("Qwen3.8-27B BF16\n(reference)", 55.56, 0.0, 100.00, "ref"),
-    ("Qwen/Qwen3.8-27B-FP8", 30.87, 0.019309, 96.68, "fp8"),
-    ("malaiwah/Qwen3.8-27B-K4\n(this quant)", 19.21, 0.026231, 96.03, "ours"),
-    ("unsloth/Qwen3.8-27B-NVFP4", 23.42, 0.073006, 92.62, "nvfp4"),
+    ("Qwen/Qwen3.8-27B-FP8", 30.87, 0.013126, 96.22, "fp8"),
+    ("malaiwah/Qwen3.8-27B-K4\n(this quant)", 19.21, 0.030736, 94.50, "ours"),
+    ("unsloth/Qwen3.8-27B-NVFP4", 23.42, 0.094978, 90.53, "nvfp4"),
 ]
-# CI bounds for the three quantized points (bootstrap over source clusters)
-CI = {"fp8": (0.008827, 0.031723), "ours": (0.012586, 0.042760), "nvfp4": (0.039730, 0.112180)}
+# CI bounds for the three quantized points (source-cluster bootstrap, v3)
+CI = {"fp8": (0.009807, 0.017087),
+      "ours": (0.022384, 0.040731),
+      "nvfp4": (0.068584, 0.126882)}
 
 # ---- external context: Quesma, Qwen3.6-27B, different model generation and protocol
 #      https://quesma.com/blog/qwen-quantization-quality/
@@ -105,7 +108,7 @@ def draw(theme_name: str) -> None:
     ax.set_xlabel("resident weight footprint (decimal GB)", color=c["fg"], fontsize=10)
     ax.set_ylabel("mean KL divergence from BF16  (log scale, lower is better)",
                   color=c["fg"], fontsize=10)
-    ax.set_title("Distribution fidelity vs memory — 74 contexts, 151,478 scored positions",
+    ax.set_title("Distribution fidelity vs memory — held-out corpus, 136 contexts, 278,392 positions",
                  color=c["fg"], fontsize=11.5, weight="bold", loc="left")
     ax.set_xlim(7, 59)
     ax.set_ylim(2.2e-4, 0.5)
@@ -143,9 +146,10 @@ def draw(theme_name: str) -> None:
     bx.set_ylim(91.5, 100.6)
 
     fig.text(0.005, 0.012,
-             "Measured on 1x RTX PRO 6000 Blackwell, TP1, GG r34 image. Exact full-vocabulary "
-             "two-pass KL(BF16 || candidate) through one shared BF16 LM head, float64, "
-             "source-cluster bootstrap. External series: Qwen3.6-27B, quesma.com/blog/qwen-quantization-quality.",
+             "Measured on 1x RTX PRO 6000 Blackwell, TP1, GG r34 image. Held-out corpus (Gutenberg/arXiv/Wikipedia/CPython, "
+             "0 calibration-contamination hits). Exact full-vocabulary two-pass KL(BF16 || candidate) through one shared "
+             "BF16 LM head, float64, source-cluster bootstrap; runtime-repeat noise floor 0.000000. "
+             "Grey: Qwen3.6-27B external series, quesma.com/blog/qwen-quantization-quality.",
              color=c["muted"], fontsize=7.2)
     fig.tight_layout(rect=(0, 0.03, 1, 1))
     for ext in ("svg", "png"):

@@ -308,3 +308,48 @@ Could not verify from source (state clearly):
    `FULL_DECODE_ONLY`. Read from `gpu_model_runner`/`compilation.py` behaviour, not from an
    executed capture; the negative outcome would be a capture-time fault naming the shape, not
    silent corruption.
+
+
+---
+
+# Measured outcome (this box, 2026-08-14)
+
+Patch installed into the r34 image, served with
+`--compilation-config '{"cudagraph_mode":"FULL_DECODE_ONLY"}'` and
+`VLLM_EXL3_GRAPH_DECODE=1`, no `--enforce-eager`.
+
+All five predicted proof points appeared:
+
+1. `EXL3 graph decode enabled by VLLM_EXL3_GRAPH_DECODE: cudagraph_mode=FULL_DECODE_ONLY captures decode only; priming exl3_gemm for 5 row counts (m=1..16) during weight loading.`
+2. Exactly **three** priming lines, one per shard geometry, as predicted from the
+   checkpoint's 193 EXL3 matrices: `K=5120,N=17408,bits=4,codebook=1`,
+   `K=17408,N=5120,bits=4,codebook=1`, `K=5120,N=248320,bits=6,codebook=2`.
+3. `Capturing CUDA graphs (decode, FULL): 4/4` and **no** mixed prefill-decode bar.
+4. `Graph capturing finished in 2 secs, took 0.06 GiB`.
+5. `enforce_eager=False` in the engine config line, no mode-downgrade warning.
+
+## Throughput
+
+| configuration | C1 | C4 | C8 |
+|---|---:|---:|---:|
+| K4 eager (previous) | 28.77 | 103.47 | 215.84 |
+| **K4 + CUDA graphs** | **55.39** | **190.59** | **428.12** |
+| gain | **+92.5 %** | **+84.2 %** | **+98.4 %** |
+| `unsloth/Qwen3.8-27B-NVFP4` (graphs, Cutlass FP4) | 49.09 | 171.78 | 371.06 |
+| ours vs NVFP4 | **+12.8 %** | **+10.9 %** | **+15.4 %** |
+
+The gain is ~9x larger than the +7.7/+9.0/+11.4 % that graphs buy the BF16 model,
+because eager EXL3 pays per-call dispatch on 193 quantized matmuls where BF16 pays
+cuBLAS once per fused linear. **With graphs this quant is both the smallest and the
+fastest option measured**, and it is 3.1x closer to BF16 than NVFP4.
+
+## Correctness under graphs
+
+| check | result |
+|---|---|
+| text, greedy | `Red, Green, Blue` |
+| vision, 96x96 half-red/half-blue PNG | `red, blue` |
+| coherence, 2-sentence explanation | correct and fluent |
+| **distribution parity vs eager** | **KLD 0.000000, top-1 1.000000** over 32 sentinel contexts |
+
+Graphs change throughput, not numerics. The patch is ready to upstream.

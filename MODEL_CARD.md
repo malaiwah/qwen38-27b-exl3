@@ -38,12 +38,14 @@ for `unsloth/Qwen3.8-27B-NVFP4` on the identical architecture — a
 **2.7 GB smaller** resident footprint with every role at equal or higher
 effective precision than the NVFP4 recipes.
 
-Measured against a BF16 reference across **151,478 full-vocabulary positions in 74
-stratified contexts**: mean KLD **0.026231** versus
-**0.073006** for `unsloth/Qwen3.8-27B-NVFP4`, top-1 agreement
-**96.03 %** versus 92.62 %, and
-**74/74 contexts** closer to BF16 with a bootstrap CI that excludes
-zero — **2.78x closer to BF16 with 4.2 GB less resident weight**. Vision works. Text is coherent. See *Verification* for the receipts.
+Measured on a **held-out** corpus across **278,392 full-vocabulary positions in 136
+stratified contexts**: mean KLD **0.030736** versus **0.094978** for
+`unsloth/Qwen3.8-27B-NVFP4` (3.09x closer to BF16, **136/136 contexts**, CI excludes
+zero) and **0.013126** for `Qwen/Qwen3.8-27B-FP8`, which is genuinely better
+at 61 % more memory. With CUDA graphs enabled it also serves **faster than the NVFP4
+checkpoint** (55.39 vs 49.09 tok/s at C1). Vision works. Every artifact needed to
+recompute these numbers is published as a
+[dataset](https://huggingface.co/datasets/malaiwah/qwen38-27b-fidelity-suite-v3).
 
 ## Why this shape
 
@@ -156,58 +158,46 @@ with `enable_thinking: false` → `Red, Green, Blue` (1.6 s, greedy).
 `2.5e-3` versus `1.1e-3` for `gate_proj` and `1.0e-3` for `in_proj_qkv`. Whole-block
 figures: `rfn ~0.0155`, `sqnr ~36.4 dB`.
 
-### Distribution fidelity, v2 protocol (headline)
+### Distribution fidelity — v3 protocol, held-out corpus
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="assets/fidelity-vs-size-dark.svg">
-  <img alt="Mean KL divergence from BF16 versus resident weight footprint. This quant sits at 19.2 GB / 0.0262 with a bootstrap CI of 0.0126-0.0428; Qwen official FP8 at 30.9 GB / 0.0193; Unsloth NVFP4 at 23.4 GB / 0.0730. Right panel: top-1 agreement with BF16, 96.03 percent for this quant, 96.68 for FP8, 92.62 for NVFP4." src="assets/fidelity-vs-size-light.svg">
+  <img alt="Mean KL divergence from BF16 versus resident weight footprint. This quant at 19.2 GB and 0.0307; Qwen FP8 at 30.9 GB and 0.0131; Unsloth NVFP4 at 23.4 GB and 0.0950. Right panel shows top-1 agreement: 94.50, 96.22 and 90.53 percent respectively." src="assets/fidelity-vs-size-light.svg">
 </picture>
 
-*Left: mean KLD from BF16 against resident weight footprint, log scale, with
-source-cluster bootstrap 95 % intervals; the dashed line is the
-NVFP4-equivalent memory ceiling this recipe holds to. Grey points are the
-independently published Qwen3.6-27B series (different model generation and
-protocol) for scale. Right: greedy-token agreement with BF16.*
+**136 analysis contexts x 2047 positions = 278,392 scored positions** from a corpus
+that no candidate was calibrated on (Gutenberg, arXiv, Wikipedia in 9 languages,
+CPython), verified by a 160-character shingle scan against every exllamav3
+calibration corpus: **0 contaminated contexts**. Exact full-vocabulary two-pass
+`KL(BF16 reference || candidate)` through one shared BF16 LM head, float64
+accumulation, source-cluster bootstrap.
 
+| candidate | weights | mean KLD | bootstrap 95 % CI | median | p99.9 | JSD (bits) | top-1 |
+|---|---|---:|---:|---:|---:|---:|---:|
+| `Qwen/Qwen3.8-27B-FP8` | 30.9 GB | 0.013126 | [0.00981, 0.01709] | 0.002343 | 0.773 | 0.004528 | 96.22 % |
+| **this quant** | **19.2 GB** | **0.030736** | [0.02238, 0.04073] | 0.004218 | 1.758 | 0.010051 | 94.50 % |
+| `unsloth/Qwen3.8-27B-NVFP4` | 23.4 GB | 0.094978 | [0.06858, 0.12688] | 0.012911 | 4.509 | 0.028663 | 90.53 % |
 
+Paired over the same contexts: **-0.064242** versus NVFP4
+(95 % CI [-0.08621, -0.04611], **136/136** contexts ours) and
+**+0.017611** versus FP8 (95 % CI [0.01256, 0.02368], 136/136 contexts FP8).
 
-**74 stratified contexts x 2047 positions = 151,478 scored positions.** Exact
-full-vocabulary two-pass `KL(BF16 reference || candidate)` through one shared BF16
-LM head, float64 accumulation, source-cluster bootstrap. Protocol adopted from
-[Kimi-K3 distribution-fidelity](https://github.com/local-inference-lab/rtx6kpro/blob/master/models/kimi-k3/distribution-fidelity-1024x2048.md);
-harness and receipts in the companion repo. Suite token SHA-256
-`2c943c39...46a915a`.
+**An earlier version of this card reported better numbers on a contaminated suite.**
+The previous corpus was exllamav3's own calibration data — the text this quant was
+tuned on, while the NVFP4 and FP8 candidates were calibrated elsewhere. Re-measuring
+on held-out text moved ours from 0.026231 to 0.030736 (+17 %), NVFP4's from 0.073006
+to 0.094978, and FP8's from 0.019309 to 0.013126 (-32 %). These are the honest
+numbers; the correction is documented in the companion repo.
 
-| candidate | mean KLD | bootstrap 95 % CI | median | p99.9 | JSD (bits) | top-1 agreement | resident |
-|---|---:|---:|---:|---:|---:|---:|---:|
-| **this quant** | **0.026231** | [0.01259, 0.04276] | 0.002608 | 4.567 | 0.005826 | **96.03 %** | 19.21 GB |
-| `Qwen/Qwen3.8-27B-FP8` (8-bit reference point) | 0.019309 | [0.00883, 0.03172] | 0.001994 | 3.676 | 0.004087 | 96.68 % | 30.9 GB |
-| `unsloth/Qwen3.8-27B-NVFP4` | 0.073006 | [0.03973, 0.11218] | 0.009380 | 10.291 | 0.016597 | 92.62 % | 23.42 GB |
+Controls shipped with the dataset: runtime-repeat noise floor **0.000000** across
+three captures of the same runtime (this runtime is bit-deterministic, so every
+difference above is far outside noise); harness self-check 0.000000; CUDA-graph
+parity 0.000000. **Replay qualification is the weak link at 6.54e-04** mean
+`KL(live || replayed)` — 2 % of this candidate's KLD and 4 % of the gap to FP8, so no
+ranking depends on it, but differences below ~1e-3 are not resolvable with these
+artifacts.
 
-Paired over the same 74 contexts: mean difference **-0.046775**
-(95 % CI [-0.07069, -0.02628], excludes zero),
-**74/74 contexts** closer to BF16. That is **2.78x lower mean KLD,
-3.60x lower median, 2.85x lower JSD and +3.4 points of top-1 agreement, with
-4.2 GB less resident weight**.
-
-Honest placement against 8-bit: official `Qwen/Qwen3.8-27B-FP8` measures
-0.019309 — better than this quant by 0.006923
-(95 % CI [0.00314, 0.01167], 68/74 contexts) while holding 30.9 GB of
-weights, i.e. **61 % more memory for 26 % less divergence**. This is the best of the
-sub-22 GB options measured here, not the best overall.
-
-Because both operands replay through the same BF16 head, this measures the
-transformer body (K4 MLP + online-K6 attention); head quantization is factored out
-and reported separately below.
-
-Per-stratum mean KLD (ours vs NVFP4): encyclopedic 0.0067 / 0.0233,
-code 0.0103 / 0.0254,
-technical 0.0106 / 0.0440,
-multilingual 0.0066 / 0.0256,
-short-form 0.0892 / 0.2289.
-Ours wins every stratum.
-
-### Head attribution: the K6 `lm_head` is nearly free
+### Head attribution### Head attribution: the K6 `lm_head` is nearly free
 
 Replaying the identical stored hidden states through the BF16 head and through the
 reconstructed K6 head (exllamav3's own `reconstruct_had_slice`, so it is the exact
@@ -260,26 +250,34 @@ NVFP4 control sits in "noticeable".
 
 Still measuring on the same window and teacher: this checkpoint, overlay off (attention stays BF16 in VRAM).
 
-### Throughput, and the eager-execution tax
+### Throughput — with CUDA graphs
 
-Same GPU, `--max-num-seqs 8`, greedy, `ignore_eos`, 256 output tokens per request,
-one warmup request discarded.
+Same GPU, `--max-num-seqs 8`, greedy, `ignore_eos`, 256 output tokens, warmup discarded.
 
-| candidate | mode | C1 tok/s | C4 tok/s | C8 tok/s | 1-token latency |
-|---|---|---:|---:|---:|---:|
-| **this quant** | EXL3, eager (loader-enforced) | 28.77 | 103.47 | 215.84 | 56 ms |
-| `Qwen/Qwen3.8-27B` BF16 | CUDA graphs | 27.47 | 101.04 | 208.31 | 46 ms |
-| `Qwen/Qwen3.8-27B` BF16 | eager | 25.50 | 92.72 | 186.98 | 52 ms |
-| `unsloth/Qwen3.8-27B-NVFP4` | NVFP4 Cutlass + CUDA graphs | 49.09 | 171.78 | 371.06 | 39 ms |
+| configuration | C1 tok/s | C4 tok/s | C8 tok/s |
+|---|---:|---:|---:|
+| **this quant + CUDA graphs** | **55.39** | **190.59** | **428.12** |
+| `unsloth/Qwen3.8-27B-NVFP4` (Cutlass FP4 + graphs) | 49.09 | 171.78 | 371.06 |
+| this quant, eager | 28.77 | 103.47 | 215.84 |
+| `Qwen/Qwen3.8-27B` BF16 + graphs | 27.47 | 101.04 | 208.31 |
+| `Qwen/Qwen3.8-27B` BF16, eager | 25.50 | 92.72 | 186.98 |
 
-Read carefully, because the obvious conclusion is wrong: **this quant already
-matches or beats BF16-with-CUDA-graphs** (28.77 vs 27.47 at C1) while holding
-36 GB less weight. The BF16 pair isolates what graphs are worth on this
-architecture — **+7.7 % / +9.0 % / +11.4 %** at C1/C4/C8 — so the loader's
-`--enforce-eager` requirement costs roughly 10 %, not the 1.7x gap to NVFP4.
-That gap is *kernel*-bound: Cutlass NVFP4 GEMM versus `exl3_gemm`. Only exactly-K6
-shards with the `mcg` codebook reach the fast B12X native Trellis kernel, which is
-the lever the next iteration pulls.
+Graphs are worth **+92 % / +84 % / +98 %** here — roughly nine times what they buy the
+BF16 model (+8-11 %), because eager EXL3 pays per-call dispatch on 193 quantized
+matmuls. With graphs this quant is **both the smallest and the fastest** option
+measured, and distribution parity against eager is exact (KLD 0.000000, top-1
+1.000000 over 32 contexts).
+
+Graphs need the patch in
+[local-inference-lab/vllm#312](https://github.com/local-inference-lab/vllm/pull/312)'s
+sibling (autotune priming, filed separately) plus:
+
+```bash
+-e VLLM_EXL3_GRAPH_DECODE=1 ... --compilation-config '{"cudagraph_mode":"FULL_DECODE_ONLY"}'
+```
+
+Without that patch the loader refuses non-eager execution and you must pass
+`--enforce-eager`, which costs the throughput above.
 
 ## Tradeoffs, stated plainly
 
@@ -287,8 +285,8 @@ the lever the next iteration pulls.
   BF16 so the runtime can encode it at K6 (and, later, at another width) instead
   of being locked to a serialized choice. If you want download == VRAM, the
   `v-serialized-k6` variant is the one to ask for.
-- **No CUDA graphs**, by loader requirement (see flag 2). Measured cost on this
-  architecture: about 10 % of decode throughput
+- **CUDA graphs need a patched loader** (see the throughput section). Unpatched, the
+  loader refuses non-eager execution and you lose 46-50 % of decode throughput
   ([local-inference-lab/vllm#311](https://github.com/local-inference-lab/vllm/issues/311)
   tracks the surrounding overlay work; the graph guard itself is next on the list).
   Decode is 58-60 % of the NVFP4 checkpoint's, dominated by the GEMM kernel rather
