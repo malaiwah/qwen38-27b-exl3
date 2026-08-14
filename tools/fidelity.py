@@ -153,13 +153,14 @@ def _rpc_install_hook(self):
     if len(cands) != 1:
         raise RuntimeError(f"final norm ambiguous: {[n for n, _ in cands]}")
     name, norm = cands[0]
-    store: dict = {"last": None, "rows": 0, "parts": [], "accumulate": False}
+    store: dict = {"last": None, "rows": 0, "parts": [], "accumulate": False, "fp32": False}
 
     def hook(_m, _i, output):
         t = output[0] if isinstance(output, tuple) else output
         if t.dim() != 2:
             return output
-        cpu = t.detach().to("cpu", torch.bfloat16, copy=True)
+        dtype = torch.float32 if store.get("fp32") else torch.bfloat16
+        cpu = t.detach().to("cpu", dtype, copy=True)
         if store["accumulate"]:
             # Contexts longer than max_num_batched_tokens arrive as several prefill
             # chunks; concatenating in arrival order reconstructs the full sequence.
@@ -185,6 +186,13 @@ def _rpc_pop_capture(self):
     store["rows"] = 0
     store["parts"] = []
     return t
+
+
+def _rpc_set_fp32(self, on: bool):
+    store = getattr(self, "_fid_store", None)
+    if store is not None:
+        store["fp32"] = bool(on)
+    return bool(on)
 
 
 def _rpc_set_accumulate(self, on: bool):
@@ -222,6 +230,9 @@ def cmd_capture(args) -> int:
 
     hooked = llm.collective_rpc(_rpc_install_hook)
     print(f"hooked {hooked}", flush=True)
+    if args.fp32:
+        llm.collective_rpc(_rpc_set_fp32, args=(True,))
+        print("capturing hidden states in float32", flush=True)
     if args.chunk_accumulate:
         llm.collective_rpc(_rpc_set_accumulate, args=(True,))
         print("chunk accumulation enabled for long contexts", flush=True)
@@ -360,8 +371,9 @@ def cmd_replay(args) -> int:
             key = "weight" if "weight" in f.keys() else f.keys()[0]
             return f.get_tensor(key).to(dev, torch.bfloat16)
 
-    head = load_head(args.head)
-    cand_head = load_head(args.candidate_head) if args.candidate_head else None
+    hdtype = torch.float32 if args.fp32 else torch.bfloat16
+    head = load_head(args.head).to(hdtype)
+    cand_head = load_head(args.candidate_head).to(hdtype) if args.candidate_head else None
     vocab, hidden_size = head.shape
     per_ctx, strata, clusters, top1_hits, positions = [], {}, [], 0, 0
     all_kl = []
@@ -373,9 +385,9 @@ def cmd_replay(args) -> int:
         if not (rp.exists() and cp.exists()):
             continue
         with safe_open(str(rp), framework="pt", device="cpu") as f:
-            ref = f.get_tensor("hidden_states").to(dev, torch.bfloat16)
+            ref = f.get_tensor("hidden_states").to(dev, hdtype)
         with safe_open(str(cp), framework="pt", device="cpu") as f:
-            cand = f.get_tensor("hidden_states").to(dev, torch.bfloat16)
+            cand = f.get_tensor("hidden_states").to(dev, hdtype)
         kl, js, hits = context_metrics(ref, cand, head, args.vocab_chunk, cand_head)
         m = float(kl.mean())
         per_ctx.append({"index": i, "stratum": ctx["stratum"],
@@ -476,9 +488,10 @@ def cmd_qualify(args) -> int:
     ctx_len = suite["context_length"]
     chosen = select(suite["context_index"], args.filter)[: args.contexts]
     dev = torch.device(args.device)
+    hdtype = torch.float32 if args.fp32 else torch.bfloat16
     with safe_open(args.head, framework="pt", device="cpu") as f:
         key = "weight" if "weight" in f.keys() else f.keys()[0]
-        head = f.get_tensor(key).to(dev, torch.bfloat16)
+        head = f.get_tensor(key).to(dev, hdtype)
     vocab = head.shape[0]
 
     kwargs = dict(model=args.model, trust_remote_code=True, tensor_parallel_size=1,
@@ -508,7 +521,7 @@ def cmd_qualify(args) -> int:
         npos = ctx_len - 1
         live = dense_prompt_logprobs(out.prompt_logprobs, npos, vocab).to(dev)
         with safe_open(str(hp), framework="pt", device="cpu") as f:
-            hidden = f.get_tensor("hidden_states").to(dev, torch.bfloat16)
+            hidden = f.get_tensor("hidden_states").to(dev, hdtype)
         kl, hits = qualification_metrics(live, hidden, head, args.vocab_chunk)
         rows.append({"index": i, "mean_kld": float(kl.mean()), "max_kld": float(kl.max()),
                      "p999_kld": float(kl.double().quantile(0.999)),
@@ -584,6 +597,8 @@ def main() -> int:
                    help="all | analysis | qualification | sentinel")
     c.add_argument("--max-batched-tokens", type=int, default=0,
                    help="prefill chunk size; 0 means one chunk per context")
+    c.add_argument("--fp32", action="store_true",
+                   help="store hidden states in float32 (2x disk, removes bf16 rounding)")
     c.add_argument("--chunk-accumulate", action="store_true",
                    help="concatenate chunked-prefill forwards (needed above one chunk)")
     c.set_defaults(func=cmd_capture)
@@ -602,6 +617,8 @@ def main() -> int:
     r.add_argument("--bootstrap-seed", type=int, default=1)
     r.add_argument("--filter", default="all",
                    help="all | analysis | qualification | sentinel")
+    r.add_argument("--fp32", action="store_true",
+                   help="replay in float32 (matches --fp32 captures)")
     r.set_defaults(func=cmd_replay)
 
     z = sub.add_parser("qualify")
@@ -618,6 +635,8 @@ def main() -> int:
     z.add_argument("--gpu-memory-utilization", type=float, default=0.9)
     z.add_argument("--vocab-chunk", type=int, default=24832)
     z.add_argument("--device", default="cuda")
+    z.add_argument("--fp32", action="store_true",
+                   help="float32 hidden states and head (precision experiment)")
     z.set_defaults(func=cmd_qualify)
 
     q = sub.add_parser("paired")

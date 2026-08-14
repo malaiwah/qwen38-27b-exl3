@@ -34,6 +34,7 @@ Design goal: NVFP4-class VRAM footprint, lower KLD.
 | [docs/13-upstream-contributions.md](docs/13-upstream-contributions.md) | Upstream issue + verified PR |
 | [docs/12-iteration-2-plan.md](docs/12-iteration-2-plan.md) | Where to invest next, ranked |
 | [docs/10-results-iteration-1.md](docs/10-results-iteration-1.md) | Iteration 1: build, serve, KLD, and the upstream defect |
+| [docs/24-p0-results.md](docs/24-p0-results.md) | **P0 done**: prefill +113 %, and why fp32 replay was a negative result |
 | [docs/23-next-attack-list.md](docs/23-next-attack-list.md) | **Ranked plan for iteration 3**, with evidence, cost and acceptance per item |
 | [PROGRESS.md](PROGRESS.md) | Chronological work log |
 
