@@ -51,16 +51,17 @@ Evidence to collect first: decode tok/s for this checkpoint (eager) against
 `unsloth/Qwen3.8-27B-NVFP4` (graphs) at concurrency 1 and 4 on the same GPU, so
 the PR quantifies what the guard costs.
 
-### P1 — `lm_head` to BF16 (+1.589 GB, no re-conversion needed)
+### ~~P1 — `lm_head` to BF16~~ — CANCELLED, measured worthless
 
-`lm_head` cannot be online-K6: `ParallelLMHead` is structurally excluded from the
-overlay. It is currently serialized K6. Splicing the BF16 head over the existing
-checkpoint costs one script run, no GPU, and lands at **20.80 GB — still 1.1 GB
-under budget**. If the anecdote about head sensitivity holds, this is the cheapest
-KLD win available and it is directly in the logit path the metric measures.
+Measured and rejected — see [16-head-attribution.md](16-head-attribution.md).
+Replaying the same hidden states through the BF16 head and through the
+reconstructed K6 head shows the K6 head costs **6.78e-05 KLD**
+(0.26 % of total divergence) and 0.06 points of top-1
+agreement. Spending 1.589 GB — 59 % of the remaining budget — to recover ~1 % of
+the gap to FP8 is a bad trade. The head stays at K6.
 
-Ship as branch `v-head-bf16`; keep `v-head-k6` (iteration 1) for the paired
-comparison. This is also a clean ablation: the only change is the head.
+The same measurement re-ranks the whole plan: the MLP stack owns ~99 % of the
+divergence, so the entire 2.7 GB goes there.
 
 ### P2 — error-driven MLP allocation (`down_proj` first)
 

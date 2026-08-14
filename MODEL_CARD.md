@@ -207,6 +207,25 @@ multilingual 0.0066 / 0.0256,
 short-form 0.0892 / 0.2289.
 Ours wins every stratum.
 
+### Head attribution: the K6 `lm_head` is nearly free
+
+Replaying the identical stored hidden states through the BF16 head and through the
+reconstructed K6 head (exllamav3's own `reconstruct_had_slice`, so it is the exact
+serving matrix) isolates head error from body error:
+
+| configuration | mean KLD | top-1 |
+|---|---:|---:|
+| head error alone (BF16 body, BF16 head vs K6 head) | 0.000367 | 99.31 % |
+| body only (K4 body, same head both sides) | 0.026231 | 96.03 % |
+| end to end, as served (K4 body + K6 head) | 0.026299 | 95.97 % |
+
+The K6 head adds **6.78e-05** on top of the body
+(95 % CI [4.63e-05, 9.01e-05]), i.e.
+**0.26 % of total divergence**. Contrary to the common
+assumption that `lm_head` is highly quantization-sensitive, at 6 bits on this model
+it is not worth spending 1.6 GB to promote it to BF16 — that budget belongs to the
+MLP stack, which owns the rest of the error.
+
 ### Single-window KLD, v1 protocol (kept for continuity)
 
 This was the first measurement; the v2 protocol above supersedes it.

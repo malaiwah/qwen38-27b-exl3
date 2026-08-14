@@ -251,18 +251,23 @@ def normalizers_and_top1(hidden: torch.Tensor, head: torch.Tensor, vocab_chunk: 
 
 @torch.inference_mode()
 def context_metrics(ref_h: torch.Tensor, cand_h: torch.Tensor, head: torch.Tensor,
-                    vocab_chunk: int):
+                    vocab_chunk: int, cand_head: torch.Tensor | None = None):
+    """Reference uses `head`; the candidate uses `cand_head` when given.
+
+    Passing a different candidate head is how head quantization is attributed:
+    the body captures stay byte-identical and only the head changes.
+    """
+    ch = head if cand_head is None else cand_head
     ref_z, ref_top = normalizers_and_top1(ref_h, head, vocab_chunk)
-    cand_z, cand_top = normalizers_and_top1(cand_h, head, vocab_chunk)
+    cand_z, cand_top = normalizers_and_top1(cand_h, ch, vocab_chunk)
     rows = ref_h.shape[0]
     kl = torch.zeros(rows, dtype=torch.float64, device=ref_h.device)
     js = torch.zeros(rows, dtype=torch.float64, device=ref_h.device)
     ln2 = math.log(2.0)
     for start in range(0, head.shape[0], vocab_chunk):
         end = min(start + vocab_chunk, head.shape[0])
-        w = head[start:end].T
-        rl = (ref_h @ w).float() - ref_z[:, None]
-        cl = (cand_h @ w).float() - cand_z[:, None]
+        rl = (ref_h @ head[start:end].T).float() - ref_z[:, None]
+        cl = (cand_h @ ch[start:end].T).float() - cand_z[:, None]
         p, q = rl.exp(), cl.exp()
         kl += (p * (rl - cl)).sum(-1).double()
         m = 0.5 * (p + q)
@@ -295,9 +300,13 @@ def cmd_replay(args) -> int:
 
     suite = json.loads(Path(args.suite, "suite-manifest.json").read_text())
     dev = torch.device(args.device)
-    with safe_open(args.head, framework="pt", device="cpu") as f:
-        key = "weight" if "weight" in f.keys() else f.keys()[0]
-        head = f.get_tensor(key).to(dev, torch.bfloat16)
+    def load_head(path: str) -> torch.Tensor:
+        with safe_open(path, framework="pt", device="cpu") as f:
+            key = "weight" if "weight" in f.keys() else f.keys()[0]
+            return f.get_tensor(key).to(dev, torch.bfloat16)
+
+    head = load_head(args.head)
+    cand_head = load_head(args.candidate_head) if args.candidate_head else None
     vocab, hidden_size = head.shape
     per_ctx, strata, clusters, top1_hits, positions = [], {}, [], 0, 0
     all_kl = []
@@ -312,7 +321,7 @@ def cmd_replay(args) -> int:
             ref = f.get_tensor("hidden_states").to(dev, torch.bfloat16)
         with safe_open(str(cp), framework="pt", device="cpu") as f:
             cand = f.get_tensor("hidden_states").to(dev, torch.bfloat16)
-        kl, js, hits = context_metrics(ref, cand, head, args.vocab_chunk)
+        kl, js, hits = context_metrics(ref, cand, head, args.vocab_chunk, cand_head)
         m = float(kl.mean())
         per_ctx.append({"index": i, "stratum": ctx["stratum"],
                         "source_cluster": ctx["source_cluster"],
@@ -336,6 +345,8 @@ def cmd_replay(args) -> int:
         "schema": "qwen38-fidelity-report/1",
         "reference": str(args.reference), "candidate": str(args.candidate),
         "head": str(args.head), "head_sha256": sha256_file(Path(args.head)),
+        "candidate_head": str(args.candidate_head) if args.candidate_head else None,
+        "candidate_head_sha256": sha256_file(Path(args.candidate_head)) if args.candidate_head else None,
         "suite_token_sha256": suite["suite_token_sha256"],
         "contexts": len(per_ctx), "scored_positions": positions,
         "vocab_size": vocab, "hidden_size": hidden_size,
@@ -411,7 +422,9 @@ def main() -> int:
     r = sub.add_parser("replay")
     r.add_argument("--reference", required=True)
     r.add_argument("--candidate", required=True)
-    r.add_argument("--head", required=True)
+    r.add_argument("--head", required=True, help="LM head for the reference operand")
+    r.add_argument("--candidate-head", default=None,
+                   help="different LM head for the candidate operand; attributes head error")
     r.add_argument("--suite", required=True)
     r.add_argument("--out", required=True)
     r.add_argument("--vocab-chunk", type=int, default=24832)
