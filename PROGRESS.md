@@ -83,9 +83,6 @@ iteration-1 head-attribution figure until fixed. Top of the iteration-2 list.
 
 ### Next
 
-1. K4 conversion inside the image rootfs (its exllamav3 and prebuilt SM120
-   `exl3_gemm` extension are the same ones the runtime loads).
-2. Splice BF16 attention, regenerate index + `quantization_config.json`.
-3. Serve with `--quantization exl3 --enforce-eager` and the Qwen `ignore` list.
-4. KLD against the BF16 teacher, with the NVFP4 quant as control.
-5. Publish `malaiwah/Qwen3.8-27B-K4`.
+Tracked in [docs/17](docs/17-next-iteration-shopping-list.md) and
+[docs/21](docs/21-independent-review-response.md). Items 1-5 of the original plan
+(conversion, splice, serve, KLD, publish) are complete.

@@ -22,7 +22,12 @@ from safetensors.torch import save_file
 # Projections that must ship BF16: the attention stack (claimed by the online-K6
 # overlay) and the MTP draft module (kept BF16 like both NVFP4 vendors, so
 # --speculative-config '{"method":"mtp"}' keeps an unquantized draft head).
-SPLICE = re.compile(
+ATTN_ONLY = (
+    r"^model\.language_model\.layers\.\d+\."
+    r"(linear_attn\.(in_proj_qkv|in_proj_z|out_proj|in_proj_b|in_proj_a)"
+    r"|self_attn\.(q_proj|k_proj|v_proj|o_proj))$"
+)
+WITH_MTP = (
     r"^(model\.language_model\.layers\.\d+\."
     r"(linear_attn\.(in_proj_qkv|in_proj_z|out_proj|in_proj_b|in_proj_a)"
     r"|self_attn\.(q_proj|k_proj|v_proj|o_proj))"
@@ -42,7 +47,11 @@ def main():
     ap.add_argument("-s", "--src_dir", required=True, help="original BF16 checkpoint")
     ap.add_argument("-o", "--out_dir", required=True)
     ap.add_argument("-ss", "--shard_size", type=int, default=8192, help="MB")
+    ap.add_argument("--include-mtp", action="store_true",
+                    help="also return the MTP draft module to BF16 (costs ~0.64 GB)")
     args = ap.parse_args()
+    global SPLICE
+    SPLICE = re.compile(WITH_MTP if args.include_mtp else ATTN_ONLY)
     os.makedirs(args.out_dir, exist_ok=True)
 
     q_index = json.load(open(f"{args.quant_dir}/model.safetensors.index.json"))["weight_map"]
@@ -52,7 +61,7 @@ def main():
     wanted: set[str] = set()
     for key in q_index:
         mod, suf = module_of(key)
-        if suf in EXL3_SUFFIX and ATTN.match(mod):
+        if suf in EXL3_SUFFIX and SPLICE.match(mod):
             wanted.add(mod)
     print(f"{len(wanted)} attention modules to replace with BF16", flush=True)
 

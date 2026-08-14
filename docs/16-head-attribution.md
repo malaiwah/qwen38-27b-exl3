@@ -31,7 +31,7 @@ stored hidden states through an arbitrary head.
 Paired, body-only versus end-to-end over the shared contexts:
 difference **-6.78e-05**, bootstrap 95 % CI
 [-9.01e-05, -4.63e-05],
-10/74 contexts worse with the K6 head.
+**64/74 contexts worse with the K6 head** (better in 10).
 
 ## Verdict
 
@@ -61,3 +61,22 @@ stack**, which owns ~99 % of the measured divergence. `down_proj` K4 to K6 costs
 1.426 GB and targets the projection with the largest per-tensor proxy error
 (2.5e-3 versus 1.1e-3 for `gate_proj`); the remainder buys `gate`/`up` promotions
 on the layers an error-driven allocator picks.
+
+## Correction (independent review, 2026-08-14)
+
+The win count in the table above was reported backwards on first publication. In
+`paired-head-e2e.json`, candidate A is the body-only configuration and `a_wins = 64`,
+so **the K6 head is worse in 64 of 74 contexts and better in 10** — not the reverse.
+The aggregate cost and its sign were correct; only the count was misstated.
+
+A second correction from the same review: the claim that "the MLP owns ~99 % of the
+divergence" is stronger than this ablation supports. The measured body contains both
+the K4 MLP **and** online-K6 attention, and the report itself observes non-additive
+error cancellation between them. The defensible statement is that the **head**
+contributes ~0.26 % of end-to-end divergence at K6, so the remaining ~99 % lives in
+the body, whose split between MLP and attention this experiment does not resolve.
+
+Both corrections are subject to the resolution floor noted in
+[18](18-results-fidelity-v3.md): at 6.5e-04 replay error, a 6.8e-05 effect is below
+what the current storage format can resolve, so this ablation must be redone with
+fp32 captures before it is treated as settled.

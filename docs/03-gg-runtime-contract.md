@@ -74,8 +74,17 @@ would otherwise sweep in the vision tower and any leftover BF16 linear, so the
 
 ```json
 {"linear": {"weight": "mxfp8"},
- "ignore": ["re:.*\\.visual\\..*", "re:.*\\.in_proj_b$", "re:.*\\.in_proj_a$", "lm_head"]}
+ "ignore": ["re:.*visual\\..*", "re:.*in_proj_a$", "re:.*in_proj_b$",
+            "re:.*in_proj_ba$", "re:.*mtp\\..*", "lm_head"]}
 ```
+
+> **SUPERSEDED EXAMPLE — do not copy the first version of this list.** The original
+> draft used `re:.*\.visual\..*` (a dot before `visual`), which never matches: the
+> prefixes the overlay tests have no leading `model.`, so the vision tower was claimed
+> and startup crashed
+> ([#311](https://github.com/local-inference-lab/vllm/issues/311)). `mtp` and
+> `in_proj_ba` were also missing. The corrected list above is what the published serve
+> command uses.
 
 `in_proj_b`/`in_proj_a` are the GatedDeltaNet projections that exllamav3 builds
 with `qmap = None`; they are never quantized and would otherwise be claimed by

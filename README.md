@@ -1,4 +1,13 @@
-# Qwen3.8-27B EXL3 mixed-precision quant (`malaiwah/Qwen3.8-27B-K4`)
+> **Status: facts under re-measurement (2026-08-14).** An independent review found
+> that the first published comparison used evaluation prompts drawn from the
+> quantizer's own calibration corpus. That measurement has been redone on a held-out
+> corpus ([docs/18](docs/18-results-fidelity-v3.md)) and the numbers below are the
+> held-out ones. A second iteration of the weights (gate K5 / up K5 / down K6) is in
+> flight, so throughput, footprint and fidelity figures for the *current* published
+> checkpoint are being re-measured and will be superseded. Items still open are
+> tracked in [docs/21](docs/21-independent-review-response.md).
+
+# Qwen3.8-27B EXL3 mixed-precision quants (`K4`, `EXL3-K5K6`)
 
 Research materials and progress log for building a dense EXL3 quant of
 [`Qwen/Qwen3.8-27B`](https://huggingface.co/Qwen/Qwen3.8-27B) that is inspired by
@@ -36,5 +45,5 @@ image puller, a proot-based runner for the image, and the BF16 attention splice.
 - [x] K4 conversion of `Qwen/Qwen3.8-27B`
 - [x] BF16 attention splice + metadata regeneration
 - [x] Serve the mixed checkpoint under GG with `ONLINE_QUANT=exl3-b6` (19.21 GB resident, vision verified)
-- [ ] KLD vs BF16 teacher, against NVFP4 as control
-- [ ] Publish to `malaiwah/Qwen3.8-27B-K4`
+- [x] KLD vs BF16 teacher, against NVFP4 and official FP8 controls (held-out, v3)
+- [x] Publish to `malaiwah/Qwen3.8-27B-K4` + [fidelity dataset](https://huggingface.co/datasets/malaiwah/qwen38-27b-fidelity-suite-v3)

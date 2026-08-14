@@ -6,6 +6,7 @@ measurement is decode-bound. Reports aggregate output tok/s per concurrency and
 the per-stream rate, plus TTFT from a single-token request.
 """
 import argparse, json, statistics, time, urllib.request
+from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 
 
@@ -23,6 +24,11 @@ def main():
     ap.add_argument("--tokens", type=int, default=256)
     ap.add_argument("--concurrency", type=int, nargs="+", default=[1, 4])
     ap.add_argument("--label", default="candidate")
+    ap.add_argument("--prefill-tokens", type=int, nargs="*", default=[2048, 6144],
+                    help="prompt lengths for the prefill (PP) probe")
+    ap.add_argument("--token-source", default="/var/tmp/work/kld3/suite/tokens",
+                    help="dir of frozen token-id JSON files; prefill prompts are built "
+                         "from these so prompt length is exact rather than estimated")
     args = ap.parse_args()
 
     prompt = "Write a detailed technical explanation of tensor parallelism. " * 4
@@ -47,6 +53,29 @@ def main():
             "per_stream_tok_s": round(completion / elapsed / c, 2),
         })
         print(json.dumps(out["runs"][-1]), flush=True)
+
+    # prefill throughput: long prompt, one output token, so the time is prefill-bound
+    out["prefill"] = []
+    pool = []
+    src = Path(args.token_source)
+    if src.is_dir():
+        for f in sorted(src.glob("context-*.json"))[:8]:
+            pool.extend(json.loads(f.read_text()))
+    for n in args.prefill_tokens:
+        if len(pool) >= n:
+            # exact token count: integer prompts avoid char/token estimation error
+            prompt_arg = pool[:n]
+        else:
+            prompt_arg = "Tensor parallelism partitions each weight matrix. " * (n // 10)
+        pf = dict(body, prompt=prompt_arg, max_tokens=1)
+        post(args.url, pf)  # warm this shape
+        t = time.monotonic()
+        r = post(args.url, pf)
+        el = time.monotonic() - t
+        got = r["usage"]["prompt_tokens"]
+        out["prefill"].append({"prompt_tokens": got, "elapsed_sec": round(el, 3),
+                               "prefill_tok_s": round(got / el, 1)})
+        print(json.dumps(out["prefill"][-1]), flush=True)
 
     # single-token latency as a TTFT proxy
     lat = []

@@ -15,7 +15,25 @@ tags:
   - gilded-gnosis
 ---
 
-# Qwen3.8-27B-K4 — EXL3 mixed-precision, NVFP4-class footprint
+# Qwen3.8-27B-K4 — EXL3 mixed-precision (superseded)
+
+> ### Superseded by [`malaiwah/Qwen3.8-27B-EXL3-K5K6`](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6)
+>
+> The successor spends the remaining memory budget on the MLP (gate/up K5, down K6) and
+> measures **0.008157** mean KLD against this checkpoint's **0.030736** on the same
+> held-out suite — and **38 % below official FP8** — at 21.82 GB resident. It also has a
+> quantized MTP draft head that works with speculative decoding (58.2 % acceptance,
+> +101 % single-stream throughput). Prefer it unless you specifically need the smaller
+> 19.21 GB footprint.
+>
+> Two corrections to this card, from an independent review: the first published
+> comparison used evaluation prompts drawn from the quantizer's own calibration corpus
+> (re-measured held-out numbers are below), and `reasoning_effort` accepts only
+> `xhigh`/`medium`/`low`. This checkpoint's `lm_head` also carries the `mul1` codebook
+> rather than the `mcg` implied by the documented `-cb mcg`, an artefact of that run's
+> crash-and-resume; the successor is `mcg` throughout and reproducible from its command.
+
+
 
 Dense EXL3 quant of [`Qwen/Qwen3.8-27B`](https://huggingface.co/Qwen/Qwen3.8-27B)
 built on one principle: **spend 4 bits only where the two independent NVFP4
@@ -35,8 +53,9 @@ protect — but protect it with Trellis, not with FP8.**
 **Measured resident weights: 17.89 GiB (19.21 GB)** on a single RTX PRO 6000
 Blackwell, versus **21.92 GB** for `nvidia/Qwen3.6-27B-NVFP4` and **23.42 GB**
 for `unsloth/Qwen3.8-27B-NVFP4` on the identical architecture — a
-**2.7 GB smaller** resident footprint with every role at equal or higher
-effective precision than the NVFP4 recipes.
+**2.7 GB smaller** resident footprint. Per-role bit widths are not directly comparable
+across Trellis, NVFP4 and FP8, so the comparison that matters is the measured fidelity
+below, not a per-role precision claim.
 
 Measured on a **held-out** corpus across **278,392 full-vocabulary positions in 136
 stratified contexts**: mean KLD **0.030736** versus **0.094978** for
@@ -126,12 +145,15 @@ Four flags are load-bearing:
 Generation defaults from upstream `generation_config.json`: `temperature 1.0`,
 `top_p 0.95`, `top_k 20`. Thinking control is upstream's
 `chat_template_kwargs`: `{"enable_thinking": false}` or
-`{"reasoning_effort": "low"|"medium"|"high"|"xhigh"}`. The chat template,
+`{"reasoning_effort": "xhigh"|"medium"|"low"}` (upstream raises on `high`). The chat template,
 tokenizer, preprocessor configs and vocabulary (248320, untied head) are
 upstream's, unmodified.
 
-Context: 262144 native. For ~1M, upstream's override nests under `text_config`:
-`--hf-overrides '{"text_config": {"max_position_embeddings": 1010000}}'`.
+Context: 262144 native, verified here only to 8,192. Upstream's 1M procedure is static
+YaRN (nested `rope_parameters` with `rope_type: yarn`, `factor: 4.0`,
+`original_max_position_embeddings: 262144`, `VLLM_ALLOW_LONG_MAX_MODEL_LEN=1`,
+`--max-model-len 1000000`), not a bare `max_position_embeddings` bump, and Qwen warns it
+costs short-context quality. Untested on this runtime.
 
 ## Verification
 
@@ -244,8 +266,9 @@ K6 attention instead of FP8.
 expected for the eager, `max_num_seqs=1`, prefix-caching-disabled configuration,
 and a useful signal that the online-K6 cache reloads deterministically.
 
-For scale, this project reads KLD as `<0.01` near-lossless, `0.01-0.05` good,
-`0.05-0.1` noticeable, `>0.1` significant. This quant sits in the "good" band; the
+For scale, this project uses project-local, unvalidated descriptors (`<0.01` near-lossless,
+`0.01-0.05` good, `0.05-0.1` noticeable, `>0.1` significant); they are not an external standard
+and do not transfer across models, corpora or tokenizers. This quant sits in the "good" band; the
 NVFP4 control sits in "noticeable".
 
 Still measuring on the same window and teacher: this checkpoint, overlay off (attention stays BF16 in VRAM).
@@ -350,5 +373,5 @@ Recipe derivations, the measured composition of both NVFP4 references, the
 runtime contract, the toolchain gaps, the KLD protocol and the iteration log:
 **<https://github.com/malaiwah/qwen38-27b-exl3>**.
 
-Variants are published as branches of this repo, each with its own measurement
-receipt. `main` is the recommended one.
+Successor checkpoints are published as separate repositories, each with its own
+measurement receipts (`build-receipt.json`, `SHA256SUMS`, `quantization_manifest.json`).
