@@ -56,3 +56,37 @@ v1 (one window, each model's own head): 0.034030 ours vs 0.091457 NVFP4, ratio
 2.69x. v2 (74 contexts, shared head): 0.026231 vs 0.073006, ratio 2.78x. Different
 corpora and a different head treatment, same ordering and same magnitude of
 advantage.
+
+## Official FP8 added as a third data point
+
+`Qwen/Qwen3.8-27B-FP8` (revision `017b9c7a`, 30.9 GB of weights) on the same
+suite, same reference captures, same shared BF16 head:
+
+| candidate | mean KLD | bootstrap 95 % CI | median | p99.9 | JSD (bits) | top-1 | weights |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| `Qwen/Qwen3.8-27B-FP8` | **0.019309** | [0.00883, 0.03172] | 0.001994 | 3.676 | 0.004087 | 96.68 % | 30.9 GB |
+| this quant (K4 + online K6) | 0.026231 | [0.01259, 0.04276] | 0.002608 | 4.567 | 0.005826 | 96.03 % | 19.2 GB |
+| `unsloth/Qwen3.8-27B-NVFP4` | 0.073006 | [0.03973, 0.11218] | 0.009380 | 10.291 | 0.016597 | 92.62 % | 23.4 GB |
+
+Paired, ours versus FP8 (positive favours FP8):
+
+| statistic | value |
+|---|---:|
+| mean difference (ours - FP8) | **+0.006923** |
+| median context difference | +0.002568 |
+| bootstrap 95 % CI | [0.00314, 0.01167] |
+| contexts favouring FP8 | 68 / 74 |
+
+**FP8 is genuinely better, and it should be**: 30.9 GB of weights against our
+19.2 GB — 61 % more memory for 26 % less divergence. The CI excludes zero, so the
+gap is real. Plainly:
+
+- Against its own size class (NVFP4, 23.4 GB) this quant wins decisively: 2.78x
+  lower KLD **and** 4.2 GB smaller.
+- Against 8-bit at 1.6x the memory it loses by 0.0069 KLD and 0.65 points of top-1.
+- The ordering `FP8 < K4-mixed < NVFP4` reproduces the independently published
+  Qwen3.6 ordering (FP8 0.017, 4-bit GGUF 0.013-0.035, NVFP4 0.039-0.044) from
+  Quesma — an external cross-check that our harness ranks formats correctly.
+
+That **0.0069** is the concrete iteration-2 target, and the budget for it is the
+2.7 GB still unspent under the NVFP4-equivalent ceiling.

@@ -38,10 +38,12 @@ for `unsloth/Qwen3.8-27B-NVFP4` on the identical architecture — a
 **2.7 GB smaller** resident footprint with every role at equal or higher
 effective precision than the NVFP4 recipes.
 
-Measured against a BF16 teacher on 2047 full-vocabulary positions:
-**mean KLD 0.034030**, versus **0.091457** for `unsloth/Qwen3.8-27B-NVFP4` on the
-identical window and teacher — **2.7x closer to BF16, with 4.2 GB less resident
-weight**. Vision works. Text is coherent. See *Verification* for the receipts.
+Measured against a BF16 reference across **151,478 full-vocabulary positions in 74
+stratified contexts**: mean KLD **0.026231** versus
+**0.073006** for `unsloth/Qwen3.8-27B-NVFP4`, top-1 agreement
+**96.03 %** versus 92.62 %, and
+**74/74 contexts** closer to BF16 with a bootstrap CI that excludes
+zero — **2.78x closer to BF16 with 4.2 GB less resident weight**. Vision works. Text is coherent. See *Verification* for the receipts.
 
 ## Why this shape
 
@@ -154,7 +156,49 @@ with `enable_thinking: false` → `Red, Green, Blue` (1.6 s, greedy).
 `2.5e-3` versus `1.1e-3` for `gate_proj` and `1.0e-3` for `in_proj_qkv`. Whole-block
 figures: `rfn ~0.0155`, `sqnr ~36.4 dB`.
 
-### Teacher-forced KLD, full vocabulary
+### Distribution fidelity, v2 protocol (headline)
+
+**74 stratified contexts x 2047 positions = 151,478 scored positions.** Exact
+full-vocabulary two-pass `KL(BF16 reference || candidate)` through one shared BF16
+LM head, float64 accumulation, source-cluster bootstrap. Protocol adopted from
+[Kimi-K3 distribution-fidelity](https://github.com/local-inference-lab/rtx6kpro/blob/master/models/kimi-k3/distribution-fidelity-1024x2048.md);
+harness and receipts in the companion repo. Suite token SHA-256
+`2c943c39...46a915a`.
+
+| candidate | mean KLD | bootstrap 95 % CI | median | p99.9 | JSD (bits) | top-1 agreement | resident |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| **this quant** | **0.026231** | [0.01259, 0.04276] | 0.002608 | 4.567 | 0.005826 | **96.03 %** | 19.21 GB |
+| `Qwen/Qwen3.8-27B-FP8` (8-bit reference point) | 0.019309 | [0.00883, 0.03172] | 0.001994 | 3.676 | 0.004087 | 96.68 % | 30.9 GB |
+| `unsloth/Qwen3.8-27B-NVFP4` | 0.073006 | [0.03973, 0.11218] | 0.009380 | 10.291 | 0.016597 | 92.62 % | 23.42 GB |
+
+Paired over the same 74 contexts: mean difference **-0.046775**
+(95 % CI [-0.07069, -0.02628], excludes zero),
+**74/74 contexts** closer to BF16. That is **2.78x lower mean KLD,
+3.60x lower median, 2.85x lower JSD and +3.4 points of top-1 agreement, with
+4.2 GB less resident weight**.
+
+Honest placement against 8-bit: official `Qwen/Qwen3.8-27B-FP8` measures
+0.019309 — better than this quant by 0.006923
+(95 % CI [0.00314, 0.01167], 68/74 contexts) while holding 30.9 GB of
+weights, i.e. **61 % more memory for 26 % less divergence**. This is the best of the
+sub-22 GB options measured here, not the best overall.
+
+Because both operands replay through the same BF16 head, this measures the
+transformer body (K4 MLP + online-K6 attention); head quantization is factored out
+and reported separately below.
+
+Per-stratum mean KLD (ours vs NVFP4): encyclopedic 0.0067 / 0.0233,
+code 0.0103 / 0.0254,
+technical 0.0106 / 0.0440,
+multilingual 0.0066 / 0.0256,
+short-form 0.0892 / 0.2289.
+Ours wins every stratum.
+
+### Single-window KLD, v1 protocol (kept for continuity)
+
+This was the first measurement; the v2 protocol above supersedes it.
+
+#### Teacher-forced KLD, full vocabulary
 
 One frozen 2048-token window (exllamav3's bundled `wiki.utf8`, first 2048 tokens),
 2047 scored positions, `KL(BF16 teacher || candidate)` across the entire
