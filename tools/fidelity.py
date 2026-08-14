@@ -52,6 +52,15 @@ CORPORA = {  # stratum -> exllamav3 calibration file
 CAL_DIR = "/work/exllamav3/exllamav3/conversion/standard_cal_data"
 
 
+def select(index: list[dict], flt: str) -> list[dict]:
+    """Filter the context index by partition or sentinel flag."""
+    if flt in ("all", "", None):
+        return index
+    if flt == "sentinel":
+        return [c for c in index if c.get("sentinel")]
+    return [c for c in index if c.get("partition", "analysis") == flt]
+
+
 def sha256_bytes(b: bytes) -> str:
     return hashlib.sha256(b).hexdigest()
 
@@ -199,7 +208,7 @@ def cmd_capture(args) -> int:
     done = 0
     t0 = time.time()
     records = []
-    for ctx in manifest["context_index"]:
+    for ctx in select(manifest["context_index"], args.filter):
         dst = out / f"hidden_{ctx['index']:04d}.safetensors"
         if dst.exists():
             done += 1
@@ -220,7 +229,7 @@ def cmd_capture(args) -> int:
                         "shape": list(hidden.shape)})
         done += 1
         if done % 16 == 0:
-            print(f"{done}/{manifest['contexts']} ({time.time() - t0:.0f}s)", flush=True)
+            print(f"{done} captured ({time.time() - t0:.0f}s)", flush=True)
     meta = {"model": args.model, "quantization": args.quantization,
             "quantization_config": args.quantization_config,
             "kv_cache_dtype": args.kv_cache_dtype,
@@ -311,7 +320,7 @@ def cmd_replay(args) -> int:
     per_ctx, strata, clusters, top1_hits, positions = [], {}, [], 0, 0
     all_kl = []
 
-    for ctx in suite["context_index"]:
+    for ctx in select(suite["context_index"], args.filter):
         i = ctx["index"]
         rp = Path(args.reference, f"hidden_{i:04d}.safetensors")
         cp = Path(args.candidate, f"hidden_{i:04d}.safetensors")
@@ -348,6 +357,7 @@ def cmd_replay(args) -> int:
         "candidate_head": str(args.candidate_head) if args.candidate_head else None,
         "candidate_head_sha256": sha256_file(Path(args.candidate_head)) if args.candidate_head else None,
         "suite_token_sha256": suite["suite_token_sha256"],
+        "filter": args.filter,
         "contexts": len(per_ctx), "scored_positions": positions,
         "vocab_size": vocab, "hidden_size": hidden_size,
         "token_mean_kld": float(kl_all.mean()),
@@ -368,6 +378,81 @@ def cmd_replay(args) -> int:
     print("replay_done " + json.dumps({k: report[k] for k in (
         "contexts", "scored_positions", "token_mean_kld", "context_macro_mean_kld",
         "top1_agreement", "p999_kld")}), flush=True)
+    return 0
+
+
+def cmd_qualify(args) -> int:
+    """Live-logit qualification: does hidden-state replay reproduce served logits?
+
+    The reference protocol reports mean KL(live || replayed) = 1.2e-6 on Kimi-K3.
+    Without this check, a replay defect would be indistinguishable from candidate
+    error. Runs the candidate twice over the same contexts: once through the
+    hidden-state capture already on disk, once through vLLM's own full-vocabulary
+    prompt logprobs.
+    """
+    from vllm import LLM, SamplingParams
+    from vllm.inputs import TokensPrompt
+    from safetensors.torch import safe_open
+
+    suite = json.loads(Path(args.suite, "suite-manifest.json").read_text())
+    ctx_len = suite["context_length"]
+    chosen = select(suite["context_index"], args.filter)[: args.contexts]
+    dev = torch.device(args.device)
+    with safe_open(args.head, framework="pt", device="cpu") as f:
+        key = "weight" if "weight" in f.keys() else f.keys()[0]
+        head = f.get_tensor(key).to(dev, torch.bfloat16)
+    vocab = head.shape[0]
+
+    kwargs = dict(model=args.model, trust_remote_code=True, tensor_parallel_size=1,
+                  gpu_memory_utilization=args.gpu_memory_utilization,
+                  kv_cache_memory_bytes=512 * 1024 * 1024, dtype="bfloat16",
+                  kv_cache_dtype=args.kv_cache_dtype, load_format="safetensors",
+                  max_model_len=ctx_len + 64, max_num_batched_tokens=256,
+                  max_num_seqs=1, enable_prefix_caching=False, disable_log_stats=True,
+                  enforce_eager=True, max_logprobs=-1)
+    if args.quantization.lower() not in ("", "auto", "none", "null"):
+        kwargs["quantization"] = args.quantization
+    if args.quantization_config:
+        kwargs["quantization_config"] = json.loads(args.quantization_config)
+    llm = LLM(**kwargs)
+    params = SamplingParams(prompt_logprobs=-1, flat_logprobs=True, max_tokens=1,
+                            detokenize=False)
+
+    rows = []
+    for ctx in chosen:
+        i = ctx["index"]
+        hp = Path(args.hidden, f"hidden_{i:04d}.safetensors")
+        if not hp.exists():
+            continue
+        ids = json.loads(Path(args.suite, ctx["file"]).read_text())
+        out = llm.generate([TokensPrompt(prompt_token_ids=ids)],
+                           sampling_params=params, use_tqdm=False)[0]
+        npos = ctx_len - 1
+        live = dense_prompt_logprobs(out.prompt_logprobs, npos, vocab).to(dev)
+        with safe_open(str(hp), framework="pt", device="cpu") as f:
+            hidden = f.get_tensor("hidden_states").to(dev, torch.bfloat16)
+        kl, js, hits = context_metrics(live, hidden, head, args.vocab_chunk)
+        rows.append({"index": i, "mean_kld": float(kl.mean()), "max_kld": float(kl.max()),
+                     "p999_kld": float(kl.double().quantile(0.999)),
+                     "top1_agreement": hits / kl.numel()})
+        print("qualify " + json.dumps(rows[-1]), flush=True)
+        del live, hidden, kl, js
+
+    if not rows:
+        raise SystemExit("no contexts qualified; check --hidden and --filter")
+    report = {
+        "schema": "qwen38-replay-qualification/1",
+        "model": args.model, "hidden": str(args.hidden), "head": str(args.head),
+        "contexts": len(rows),
+        "mean_kld_live_vs_replayed": statistics.fmean(r["mean_kld"] for r in rows),
+        "max_kld": max(r["max_kld"] for r in rows),
+        "p999_kld": max(r["p999_kld"] for r in rows),
+        "top1_agreement": statistics.fmean(r["top1_agreement"] for r in rows),
+        "per_context": rows,
+    }
+    Path(args.out).write_text(json.dumps(report, indent=2))
+    print("qualify_done " + json.dumps({k: report[k] for k in (
+        "contexts", "mean_kld_live_vs_replayed", "max_kld", "top1_agreement")}), flush=True)
     return 0
 
 
@@ -417,6 +502,8 @@ def main() -> int:
     c.add_argument("--quantization-config", default=None)
     c.add_argument("--kv-cache-dtype", default="auto")
     c.add_argument("--gpu-memory-utilization", type=float, default=0.9)
+    c.add_argument("--filter", default="all",
+                   help="all | analysis | qualification | sentinel")
     c.set_defaults(func=cmd_capture)
 
     r = sub.add_parser("replay")
@@ -431,7 +518,25 @@ def main() -> int:
     r.add_argument("--device", default="cuda")
     r.add_argument("--bootstrap-samples", type=int, default=10000)
     r.add_argument("--bootstrap-seed", type=int, default=1)
+    r.add_argument("--filter", default="all",
+                   help="all | analysis | qualification | sentinel")
     r.set_defaults(func=cmd_replay)
+
+    z = sub.add_parser("qualify")
+    z.add_argument("--model", required=True)
+    z.add_argument("--suite", required=True)
+    z.add_argument("--hidden", required=True, help="capture dir for the same model")
+    z.add_argument("--head", required=True)
+    z.add_argument("--out", required=True)
+    z.add_argument("--contexts", type=int, default=8)
+    z.add_argument("--filter", default="analysis")
+    z.add_argument("--quantization", default="auto")
+    z.add_argument("--quantization-config", default=None)
+    z.add_argument("--kv-cache-dtype", default="auto")
+    z.add_argument("--gpu-memory-utilization", type=float, default=0.9)
+    z.add_argument("--vocab-chunk", type=int, default=24832)
+    z.add_argument("--device", default="cuda")
+    z.set_defaults(func=cmd_qualify)
 
     q = sub.add_parser("paired")
     q.add_argument("--a", required=True)
