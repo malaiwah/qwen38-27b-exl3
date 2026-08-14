@@ -47,6 +47,18 @@ Unsloth's chat-template edits are partly undisclosed (we ship upstream's).
 image's bundled copy is 0.0.43 and has no converter. The CUDA extension is being
 JIT-built for `TORCH_CUDA_ARCH_LIST=12.0` against the image's torch 2.12.0+cu132.
 
+**Iteration 1 built, served and measured** — [docs/10-results-iteration-1.md](docs/10-results-iteration-1.md).
+K4 conversion took ~33 min on one GPU; the spliced checkpoint serves under the
+official r34 image at **17.89 GiB resident weights** (predicted 19.28 GB, 0.4 %
+error), answers text and image prompts correctly, and scores **mean KLD 0.034030
+(run SD 0)** against the BF16 teacher. Published to
+[`malaiwah/Qwen3.8-27B-K4`](https://huggingface.co/malaiwah/Qwen3.8-27B-K4).
+
+**Upstream defect filed** — [local-inference-lab/vllm#311](https://github.com/local-inference-lab/vllm/issues/311):
+the online overlay's MXFP8 fallback raises for shapes divisible by neither 128
+nor 32, which is exactly this architecture's vision tower. Patch pushed to a fork
+branch, PR opened after behavioural verification on this box.
+
 ### Next
 
 1. K4 conversion inside the image rootfs (its exllamav3 and prebuilt SM120

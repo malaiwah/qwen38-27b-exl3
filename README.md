@@ -19,6 +19,7 @@ Design goal: NVFP4-class VRAM footprint, lower KLD.
 | [docs/07-serving-recommendations.md](docs/07-serving-recommendations.md) | Serving-guide differences across upstream / NVIDIA / Unsloth cards, cross-checked against shipped configs |
 | [docs/08-upstream-cards-digest.md](docs/08-upstream-cards-digest.md) | Per-card digest: declared recipe, benchmarks, harnesses, limitations |
 | [docs/09-variant-publication.md](docs/09-variant-publication.md) | How iterative variants are published for independent re-measurement |
+| [docs/10-results-iteration-1.md](docs/10-results-iteration-1.md) | Iteration 1: build, serve, KLD, and the upstream defect |
 | [PROGRESS.md](PROGRESS.md) | Chronological work log |
 
 Tooling in [tools/](tools/) is what produced the evidence: an unprivileged OCI
@@ -27,8 +28,8 @@ image puller, a proot-based runner for the image, and the BF16 attention splice.
 ## Status
 
 - [x] Both upstream Qwen3.8-27B artifacts proven runnable under the official GG image
-- [ ] K4 conversion of `Qwen/Qwen3.8-27B`
-- [ ] BF16 attention splice + metadata regeneration
-- [ ] Serve the mixed checkpoint under GG with `ONLINE_QUANT=exl3-b6`
+- [x] K4 conversion of `Qwen/Qwen3.8-27B`
+- [x] BF16 attention splice + metadata regeneration
+- [x] Serve the mixed checkpoint under GG with `ONLINE_QUANT=exl3-b6` (19.21 GB resident, vision verified)
 - [ ] KLD vs BF16 teacher, against NVFP4 as control
 - [ ] Publish to `malaiwah/Qwen3.8-27B-K4`
