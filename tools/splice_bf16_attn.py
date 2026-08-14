@@ -19,13 +19,15 @@ import argparse, json, os, re, shutil
 from safetensors import safe_open
 from safetensors.torch import save_file
 
-# Projections that must ship BF16 for the online-K6 overlay to claim them.
-ATTN = re.compile(
-    r"^model\.language_model\.layers\.\d+\."
+# Projections that must ship BF16: the attention stack (claimed by the online-K6
+# overlay) and the MTP draft module (kept BF16 like both NVFP4 vendors, so
+# --speculative-config '{"method":"mtp"}' keeps an unquantized draft head).
+SPLICE = re.compile(
+    r"^(model\.language_model\.layers\.\d+\."
     r"(linear_attn\.(in_proj_qkv|in_proj_z|out_proj|in_proj_b|in_proj_a)"
-    r"|self_attn\.(q_proj|k_proj|v_proj|o_proj))$"
+    r"|self_attn\.(q_proj|k_proj|v_proj|o_proj))"
+    r"|mtp\.(fc|layers\.\d+\.(self_attn\.(q_proj|k_proj|v_proj|o_proj)|mlp\.(gate_proj|up_proj|down_proj))))$"
 )
-# EXL3 payload suffixes to strip for those modules.
 EXL3_SUFFIX = ("trellis", "suh", "svh", "su", "sv", "mcg", "mul1", "scale")
 
 

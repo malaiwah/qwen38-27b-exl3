@@ -1,5 +1,12 @@
 # KLD protocol
 
+**The KLD scripts are not in the container image.** Searched the flattened r34
+rootfs: no KLD harness, only vLLM's stock `benchmarks/` tree. That matches how
+the published driver works — `bench-glm52-exl3-shared-h-kld.sh` mounts a
+host-side `runner.py` into the image with
+`--entrypoint /opt/venv/bin/python /runner.py`. The scripts live in the
+`rtx6kpro` repo and are fetched from there.
+
 The metric shape published for GG r34 ("2,047 positions over the full
 vocabulary against one BF16 teacher, three repeats, mean KLD + run SD") is
 produced by `local-inference-lab/rtx6kpro@master`:
@@ -60,3 +67,34 @@ allocates several V-wide temporaries.
 Candidates to score: BF16 teacher (control), `nvidia/Qwen3.6-27B-NVFP4` is a
 different generation so the same-generation control is `unsloth/Qwen3.8-27B-NVFP4`,
 and our mixed EXL3 checkpoint with `ONLINE_QUANT=exl3-b6`.
+
+## Our adapted harness
+
+[`tools/qwen38_kld.py`](../tools/qwen38_kld.py) keeps `positional_kld` and the
+reporting statistics byte-for-byte from the published runner, and adds three
+subcommands: `tokens` (freeze the window), `capture` (BF16 teacher), `score`
+(candidate, N repeats).
+
+Environment-forced differences, all recorded in each `summary.json`:
+
+| change | reason |
+|---|---|
+| TP1, no `B12X_MLA_SPARSE`, no `moe_backend=b12x`, no GLM `hf_overrides` | one GPU, dense hybrid-attention model |
+| `--quantization` / `--quantization-config` as flags | one code path for BF16, `compressed-tensors` and `exl3` + online-K6 |
+| `prompt_logprobs=-1, flat_logprobs=True` densified to `[npos, vocab]` | this build has no `SamplingParams.return_prompt_logits`; this is the harness's own documented fallback |
+| window from exllamav3's bundled `wiki.utf8` (first 2048 tokens), frozen to JSON | the image has no `datasets` package; WikiText-2 is unavailable offline. Disclosed, deterministic, and the same window is asserted for every candidate |
+
+The published GLM numbers are therefore *shape*-comparable, not
+value-comparable: a different corpus window and a different model. Only our own
+BF16-teacher-relative numbers are comparable to each other.
+
+## Candidate set
+
+| label | model | flags |
+|---|---|---|
+| `bf16-teacher` | `Qwen/Qwen3.8-27B` | reference; captured once |
+| `unsloth-nvfp4` | `unsloth/Qwen3.8-27B-NVFP4` | `--quantization compressed-tensors` |
+| `k4-online-k6` | ours | `--quantization exl3 --quantization-config '{"linear":{"weight":"mxfp8"},"ignore":[...]}'` + `VLLM_EXL3_ONLINE_TRELLIS_BITS=6` |
+| `k4-serialized` | ours, overlay off | `--quantization exl3` with no online config: attention stays BF16 at runtime, isolating the K6 overlay's contribution |
+
+One KV dtype is pinned across all four.

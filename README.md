@@ -18,6 +18,7 @@ Design goal: NVFP4-class VRAM footprint, lower KLD.
 | [docs/06-baseline-validation.md](docs/06-baseline-validation.md) | Running the official GG image with no container runtime, and the two proven baselines |
 | [docs/07-serving-recommendations.md](docs/07-serving-recommendations.md) | Serving-guide differences across upstream / NVIDIA / Unsloth cards, cross-checked against shipped configs |
 | [docs/08-upstream-cards-digest.md](docs/08-upstream-cards-digest.md) | Per-card digest: declared recipe, benchmarks, harnesses, limitations |
+| [docs/09-variant-publication.md](docs/09-variant-publication.md) | How iterative variants are published for independent re-measurement |
 | [PROGRESS.md](PROGRESS.md) | Chronological work log |
 
 Tooling in [tools/](tools/) is what produced the evidence: an unprivileged OCI
