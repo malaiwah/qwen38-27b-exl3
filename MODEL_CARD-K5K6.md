@@ -89,20 +89,27 @@ exact token-count prompts.
 
 | configuration | TG C1 | TG C4 | TG C8 | PP 2k | PP 6k |
 |---|---:|---:|---:|---:|---:|
-| **this quant + CUDA graphs** | 56.5 | 199.6 | 402.7 | 2,369 | 2,362 |
-| **+ MTP-3 speculative decoding** | **113.8** | 206.8 | — | 2,292 | — |
-| `unsloth/…-NVFP4` | 48.9 | 171.4 | 369.7 | **14,528** | 13,468 |
+| **this quant + graphs + prefill dispatch** | 56.6 | 199.6 | 404.6 | **5,050** | **5,146** |
+| **+ MTP-3 speculative decoding** | **113.8** | 206.8 | — | 2,292* | — |
+| this quant, graphs only (no prefill patch) | 56.5 | 199.6 | 402.7 | 2,369 | 2,362 |
+| `unsloth/…-NVFP4` | 48.9 | 171.4 | 369.7 | 14,528 | 13,468 |
 | `Qwen/…-FP8` | 46.3 | 163.3 | 342.5 | 10,667 | 10,474 |
+
+\* MTP figure predates the prefill patch; the two are independent and compose.
 
 **Best decode throughput of every candidate measured, and 2.3-2.5x the single-stream
 rate of FP8/NVFP4 with speculative decoding on.** Speculative decoding uses this
 checkpoint's **quantized** draft head: 58.2 % draft acceptance, 2.745 mean accepted
 tokens per step (77.5 / 57.2 / 39.8 % by position).
 
-**Prefill is this artifact's weak axis** — 4.5-6x slower than NVFP4. Cause measured, not
-guessed: the backend routes every non-K6 shard through `exl3_gemm` at every row count,
-while reconstruct+`hgemm` is 3.9-6.1x faster above m=256 (and slower below m=32). Fix
-identified; see the companion repo.
+**Prefill improved 2.1x** in [PR #316](https://github.com/local-inference-lab/vllm/pull/316):
+the backend routed every shard through the decode-shaped `exl3_gemm` at all row counts, so
+rows >= 128 now use reconstruct+`hgemm` instead (4.1-5.2x faster at m=2048, slower below
+m=64). Decode is untouched. That patch is **not** bit-exact — it changes fp16 summation
+order and costs +0.43 % measured divergence with top-1 unchanged to four decimals;
+`VLLM_EXL3_PREFILL_RECONSTRUCT_M=0` restores the exact path. Prefill is still this
+artifact's weak axis: 5.0k against FP8's 10.7k and NVFP4's 14.5k, and the next suspect is
+the online-K6 attention overlay, which uses a small-M decode kernel at prefill shapes.
 
 ## Serving
 
@@ -133,7 +140,9 @@ Load-bearing details:
 2. **`VLLM_EXL3_GRAPH_DECODE=1` + `cudagraph_mode: FULL_DECODE_ONLY`** need
    [PR #314](https://github.com/local-inference-lab/vllm/pull/314). Without that patch the
    loader refuses non-eager execution: pass `--enforce-eager` and lose ~46 % of decode
-   throughput.
+   throughput. **`VLLM_EXL3_PREFILL_RECONSTRUCT_M`** needs
+   [PR #316](https://github.com/local-inference-lab/vllm/pull/316) and doubles prefill;
+   without it, drop the variable and expect 2.4k prefill tok/s.
 3. **The `ignore` list is mandatory and its anchoring is subtle.** Prefixes carry no
    leading `model.`, so `re:.*visual\..*` matches while `re:.*\.visual\..*` silently does
    not — and the wrong pattern **crashes** startup
