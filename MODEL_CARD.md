@@ -158,6 +158,19 @@ figures: `rfn ~0.0155`, `sqnr ~36.4 dB`.
 
 ### Distribution fidelity, v2 protocol (headline)
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/fidelity-vs-size-dark.svg">
+  <img alt="Mean KL divergence from BF16 versus resident weight footprint. This quant sits at 19.2 GB / 0.0262 with a bootstrap CI of 0.0126-0.0428; Qwen official FP8 at 30.9 GB / 0.0193; Unsloth NVFP4 at 23.4 GB / 0.0730. Right panel: top-1 agreement with BF16, 96.03 percent for this quant, 96.68 for FP8, 92.62 for NVFP4." src="assets/fidelity-vs-size-light.svg">
+</picture>
+
+*Left: mean KLD from BF16 against resident weight footprint, log scale, with
+source-cluster bootstrap 95 % intervals; the dashed line is the
+NVFP4-equivalent memory ceiling this recipe holds to. Grey points are the
+independently published Qwen3.6-27B series (different model generation and
+protocol) for scale. Right: greedy-token agreement with BF16.*
+
+
+
 **74 stratified contexts x 2047 positions = 151,478 scored positions.** Exact
 full-vocabulary two-pass `KL(BF16 reference || candidate)` through one shared BF16
 LM head, float64 accumulation, source-cluster bootstrap. Protocol adopted from
