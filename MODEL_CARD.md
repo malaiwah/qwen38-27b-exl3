@@ -38,7 +38,10 @@ for `unsloth/Qwen3.8-27B-NVFP4` on the identical architecture — a
 **2.7 GB smaller** resident footprint with every role at equal or higher
 effective precision than the NVFP4 recipes.
 
-Vision works. Text is coherent. See *Verification* for the receipts.
+Measured against a BF16 teacher on 2047 full-vocabulary positions:
+**mean KLD 0.034030**, versus **0.091457** for `unsloth/Qwen3.8-27B-NVFP4` on the
+identical window and teacher — **2.7x closer to BF16, with 4.2 GB less resident
+weight**. Vision works. Text is coherent. See *Verification* for the receipts.
 
 ## Why this shape
 
@@ -107,7 +110,10 @@ Four flags are load-bearing:
    while `re:.*visual\..*` works. With the wrong pattern the vision tower is
    claimed and startup **crashes** (`ValueError: MXFP8 requires
    input_size_per_partition (4304) to be divisible by 32`), reported upstream as
-   [local-inference-lab/vllm#311](https://github.com/local-inference-lab/vllm/issues/311).
+   [local-inference-lab/vllm#311](https://github.com/local-inference-lab/vllm/issues/311)
+   with a verified fix in
+   [PR #312](https://github.com/local-inference-lab/vllm/pull/312), which degrades
+   those shards to BF16 with a warning instead of aborting.
 4. **`VLLM_EXL3_ONLINE_TRELLIS_BITS=6`** is what turns the overlay from MXFP8 into
    K6. Point `VLLM_EXL3_ONLINE_CACHE_DIR` at persistent storage: the first load
    encodes 208 attention projections (~16 min on one GPU here) and later loads
@@ -148,7 +154,56 @@ with `enable_thinking: false` → `Red, Green, Blue` (1.6 s, greedy).
 `2.5e-3` versus `1.1e-3` for `gate_proj` and `1.0e-3` for `in_proj_qkv`. Whole-block
 figures: `rfn ~0.0155`, `sqnr ~36.4 dB`.
 
-<!-- KLD_TABLE -->
+### Teacher-forced KLD, full vocabulary
+
+One frozen 2048-token window (exllamav3's bundled `wiki.utf8`, first 2048 tokens),
+2047 scored positions, `KL(BF16 teacher || candidate)` across the entire
+248320-token vocabulary with no top-k, 3 repeats, `--kv-cache-dtype auto` pinned
+for every candidate, same teacher logits file for all of them. Protocol and
+statistics follow the published Gilded Gnosis harness
+(`rtx6kpro:scripts/glm52_exl3_shared_h_kld.py`): the headline value is the mean of
+the per-run means and `run SD` is the sample SD across those means.
+
+| candidate | mean KLD | run SD | SD across positions | resident weights |
+|---|---:|---:|---:|---:|
+| **this quant** (`--quantization exl3` + `exl3-b6` overlay) | **0.034030** | 0.000000 | 0.4628 | 19.21 GB |
+| `unsloth/Qwen3.8-27B-NVFP4` control, same generation | **0.091457** | 0.000000 | 0.8036 | 23.42 GB |
+
+**This quant is 2.7x closer to the BF16 teacher than the same-generation NVFP4
+checkpoint, while holding 4.2 GB less VRAM.** That is the whole point of the
+recipe: Trellis K4 spends 4.004 bpw where NVFP4 spends 4.50, and the savings buy
+K6 attention instead of FP8.
+
+`run SD = 0` for both candidates means the three repeats were bit-identical —
+expected for the eager, `max_num_seqs=1`, prefix-caching-disabled configuration,
+and a useful signal that the online-K6 cache reloads deterministically.
+
+For scale, this project reads KLD as `<0.01` near-lossless, `0.01-0.05` good,
+`0.05-0.1` noticeable, `>0.1` significant. This quant sits in the "good" band; the
+NVFP4 control sits in "noticeable".
+
+Still measuring on the same window and teacher: this checkpoint, overlay off (attention stays BF16 in VRAM).
+
+### Throughput, and the eager-execution tax
+
+Same GPU, `--max-num-seqs 8`, greedy, `ignore_eos`, 256 output tokens per request,
+one warmup request discarded.
+
+| candidate | mode | C1 tok/s | C4 tok/s | C8 tok/s | 1-token latency |
+|---|---|---:|---:|---:|---:|
+| **this quant** | EXL3, eager (loader-enforced) | 28.77 | 103.47 | 215.84 | 56 ms |
+| `Qwen/Qwen3.8-27B` BF16 | CUDA graphs | 27.47 | 101.04 | 208.31 | 46 ms |
+| `Qwen/Qwen3.8-27B` BF16 | eager | 25.50 | 92.72 | 186.98 | 52 ms |
+| `unsloth/Qwen3.8-27B-NVFP4` | NVFP4 Cutlass + CUDA graphs | 49.09 | 171.78 | 371.06 | 39 ms |
+
+Read carefully, because the obvious conclusion is wrong: **this quant already
+matches or beats BF16-with-CUDA-graphs** (28.77 vs 27.47 at C1) while holding
+36 GB less weight. The BF16 pair isolates what graphs are worth on this
+architecture — **+7.7 % / +9.0 % / +11.4 %** at C1/C4/C8 — so the loader's
+`--enforce-eager` requirement costs roughly 10 %, not the 1.7x gap to NVFP4.
+That gap is *kernel*-bound: Cutlass NVFP4 GEMM versus `exl3_gemm`. Only exactly-K6
+shards with the `mcg` codebook reach the fast B12X native Trellis kernel, which is
+the lever the next iteration pulls.
 
 ## Tradeoffs, stated plainly
 
@@ -156,8 +211,12 @@ figures: `rfn ~0.0155`, `sqnr ~36.4 dB`.
   BF16 so the runtime can encode it at K6 (and, later, at another width) instead
   of being locked to a serialized choice. If you want download == VRAM, the
   `v-serialized-k6` variant is the one to ask for.
-- **No CUDA graphs**, by loader requirement (see flag 2). Decode throughput is
-  below what an NVFP4 checkpoint achieves on the same GPU.
+- **No CUDA graphs**, by loader requirement (see flag 2). Measured cost on this
+  architecture: about 10 % of decode throughput
+  ([local-inference-lab/vllm#311](https://github.com/local-inference-lab/vllm/issues/311)
+  tracks the surrounding overlay work; the graph guard itself is next on the list).
+  Decode is 58-60 % of the NVFP4 checkpoint's, dominated by the GEMM kernel rather
+  than by graphs.
 - **First load pays the K6 encode** (~16 min here) unless the cache directory is
   warm.
 - **One runtime.** This checkpoint does not load in upstream vLLM, SGLang,

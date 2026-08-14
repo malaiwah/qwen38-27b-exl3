@@ -42,14 +42,52 @@ Protocol per [05](05-kld-protocol.md): one frozen 2048-token window
 
 | candidate | mean KLD | run SD | SD across positions | resident weights |
 |---|---:|---:|---:|---:|
+| `self-bf16` (harness control: teacher vs its own logits) | **0.000000** | 0.000000 | 0.0000 | 55.56 GB |
 | `k4-online-k6` (this quant) | **0.034030** | 0.000000 | 0.4628 | 19.21 GB |
+| `k4-bf16-attn` (same checkpoint, overlay off) | 0.036775 | 0.000000 | 0.6210 | 24.63 GB |
+| `unsloth/Qwen3.8-27B-NVFP4` | 0.091457 | 0.000000 | 0.8036 | 23.42 GB |
+
+**The harness is validated**: scoring the BF16 teacher against its own captured
+logits returns exactly 0.000000, so the densification path and the window
+identity introduce no bias. Every candidate above shares that teacher file.
+
+**2.69x closer to BF16 than the same-generation NVFP4 checkpoint**, with 4.2 GB
+less resident weight.
+
+**Online K6 attention beat BF16 attention** on the identical checkpoint
+(0.034030 vs 0.036775). Not noise: run SD is 0 for both. The K6 encode applies
+out-scales that partly cancel the K4 MLP's systematic shrinkage (`g_sc ~0.895`
+per projection in the conversion log). Consequence for the next iteration:
+attention is not where the remaining error lives, so it is not where bits should
+go.
 
 `run_sd = 0` means the three repeats were bit-identical, which is what the eager,
 `max_num_seqs=1`, prefix-cache-disabled configuration is supposed to produce.
 
-Remaining candidates in flight: `unsloth-nvfp4` (same-generation NVFP4 control)
-and `k4-bf16-attn` (this checkpoint with the overlay switched off, isolating the
-online-K6 contribution).
+## Throughput, and what eager execution costs
+
+Same GPU, `--max-num-seqs 8`, greedy, `ignore_eos`, 256 output tokens per request,
+one warmup request discarded.
+
+| candidate | mode | C1 tok/s | C4 tok/s | C8 tok/s | single-token latency |
+|---|---|---:|---:|---:|---:|
+| this quant | EXL3, **eager** (forced) | 28.77 | 103.47 | 215.84 | 56 ms |
+| `unsloth/Qwen3.8-27B-NVFP4` | NVFP4 Cutlass, CUDA graphs | 49.09 | 171.78 | 371.06 | 39 ms |
+
+| `Qwen/Qwen3.8-27B` BF16 | CUDA graphs | 27.47 | 101.04 | 208.31 | 46 ms |
+| `Qwen/Qwen3.8-27B` BF16 | eager | 25.50 | 92.72 | 186.98 | 52 ms |
+
+The BF16 pair separates the two confounds. **CUDA graphs are worth +7.7 % / +9.0 %
+/ +11.4 %** at C1/C4/C8 on this architecture, so the loader's eager requirement
+costs about 10 %. The remaining 1.7x gap to NVFP4 is kernel-bound: Cutlass NVFP4
+GEMM versus `exl3_gemm`. Note that this quant at K4, eager, already **matches
+BF16 with graphs** (28.77 vs 27.47 at C1) using 36 GB less weight.
+
+Consequence for iteration 2: chasing CUDA graphs buys ~10 %; moving GEMMs onto the
+B12X native Trellis kernel — which accepts **only exactly-K6 shards with the `mcg`
+codebook** — is the larger perf lever, and it happens to align with the accuracy
+lever (more K6). Our `lm_head` is K6 but was written with `mul1`, so it misses that
+path today.
 
 ## Upstream defect found and reported
 
