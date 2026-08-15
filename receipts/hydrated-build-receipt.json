@@ -1,5 +1,5 @@
 {
-  "schema": "qwen38-build-receipt/1",
+  "schema": "qwen38-build-receipt/2",
   "artifact": "qwen38-hyd",
   "source": {
     "repo": "Qwen/Qwen3.8-27B",
@@ -8,15 +8,13 @@
   "converter": "turboderp-org/exllamav3@5f3c537 (1.4.2)",
   "recipe": "MLP gate/up K5, down K6, attention K6 serialized (calibrated), lm_head K6/mcg, quantized MTP, BF16 embed+vision",
   "command": "convert.py -i Qwen3.8-27B -b 4 -hb 6 -mb 4 -vb 16 -cb mcg with EXL3_BITS_FIXED attention=6 and EXL3_BITS_OVERRIDE mlp gate/up=5 down=6",
-  "total_bytes": 21610985486,
-  "files": {
-    ".gitattributes": "34448b82c17d60fec9b65b1f093c115ddbaadc04beb1b0140b6bfed2e012a930",
+  "scope_note": "SHA256SUMS and immutable_payload cover only the files that define the artifact; README.md, .gitattributes, assets/** and the receipt files themselves are documentation that is rewritten by card edits without rebuilding the weights, so hashing them here would make the receipt go stale while still claiming to describe the build -- they are listed under mutable_documentation and hashed in DOCS-SHA256SUMS instead.",
+  "immutable_payload_bytes": 21610916123,
+  "file_count": 16,
+  "immutable_payload": {
     "LICENSE": "bbedc3fda3305820b977265f01b8619d87570a6739de3a5582c3464840f1e57a",
-    "README.md": "57e4bdb258ee1a7d2635c5174ebd4e56abe392505cdb5f8bbb356b0dc4293641",
-    "build-receipt.json": "a6de954fb1583b6786e33fe95077e8126f865e27e3796405b4e06711a79c4ccb",
     "chat_template.jinja": "c3cf9e34abf4f9e36c2d72165aa9c132d3e2a725b6c2586aaa3a8af9d7a81041",
     "config.json": "fbb105334da6554c10784ff1257fda5e3821d4d5426d64469cee2b2ad67ba2b3",
-    "crc32.txt": "b42dd291f5f98b05807e458f5b47849969a9b3326acbf0c97d28b05826740b83",
     "generation_config.json": "e70c136c1b78ddc1fb0905bac8e733a4dc448d4f852a5dd75143fffc70be550e",
     "merges.txt": "a9d356d7bdf1ef4949e3e748e95b8e10ad9d4e2e838eddc38a0a7b6b94d1db8d",
     "model-00001-of-00003.safetensors": "792b46b54a79871030a5a029a483b8938ff509912169a1c7627913d614365f0d",
@@ -31,6 +29,19 @@
     "video_preprocessor_config.json": "7768af27c1fafa9cc9011c1dc20067e03f8915e03b63504550e11d5066986d13",
     "vocab.json": "ce99b4cb2983d118806ce0a8b777a35b093e2000a503ebde25853284c9dfa003"
   },
+  "mutable_documentation": {
+    "bytes": 13142,
+    "file_count": 2,
+    "files": {
+      ".gitattributes": "34448b82c17d60fec9b65b1f093c115ddbaadc04beb1b0140b6bfed2e012a930",
+      "README.md": "8791630cada33f122210d4af4e571fef6a2caf315c8bfdc5e964bacd305759ef"
+    },
+    "self_excluded": [
+      "SHA256SUMS",
+      "DOCS-SHA256SUMS",
+      "build-receipt.json"
+    ]
+  },
   "tensor_inventory": {
     "physical_tensors": 2426,
     "exl3_modules": 409,
@@ -38,10 +49,10 @@
     "logical_parameter_count": 27781427952
   },
   "upstream_check": {
-    "dir": "/models/Qwen3.8-27B",
+    "dir": "/work/upstream-index",
     "index_sha256": "77042094076611b69791a610065f28b7013b8c621795fa86ddccc8bac7d1b9df",
     "logical_tensors": 1199,
-    "shapes_verified": 1199
+    "shapes_verified": 0
   },
   "host": "Linux 6.8.0-100-generic"
 }

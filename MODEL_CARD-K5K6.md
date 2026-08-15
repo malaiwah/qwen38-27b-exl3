@@ -46,6 +46,20 @@ does not exist, and carried stale hashes for two files. The legacy `config.json 
 `bits`/`codebook` pair for loader compatibility and **cannot** describe this mixed
 checkpoint.
 
+## Which of the three builds
+
+All three are the same architecture and tokenizer; they differ in where the bits go. Measured
+on one held-out suite, so the rows are comparable ([collection](https://huggingface.co/collections/qwen38-27b-mixed-precision-exl3-measured-6a7fe0cb27817c23e4a57025)):
+
+| build | download | resident | mean KLD (body-only) | native 262k on 32 GB | pick it when |
+|---|---:|---:|---:|---|---|
+| [**-hydrated**](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated) | 21.61 GB | 20.31 GiB | **0.007406** | no (~186k) | you want the best fidelity, the smallest download and a 178 s cold start |
+| [**-EXL3-K5K6**](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6) | 30.57 GB | 20.32 / 19.82 / 19.05 GiB | 0.008157 / 0.012135 / 0.027530 | no (~206k at K5) | you want to choose the attention width at launch |
+| [**-K4**](https://huggingface.co/malaiwah/Qwen3.8-27B-K4) | 28.31 GB | 17.89 GiB | 0.030736 | **yes** (289,577 KV tokens) | you need native context on a 32 GB card |
+
+Official `Qwen/Qwen3.8-27B-FP8` is 28.51 GiB resident at 0.013126 on the same suite, and runs
+on stock vLLM — which none of these do.
+
 ## Measured results
 
 **30.60 GB download → 20.32 GiB (21.82 GB) resident weights**, measured from the engine's

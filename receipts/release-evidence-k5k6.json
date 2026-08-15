@@ -1,0 +1,94 @@
+{
+  "schema": "qwen38-release-evidence/1",
+  "generated_utc": "2026-08-15T03:42:04Z",
+  "artifact": {
+    "hf_repo": "malaiwah/Qwen3.8-27B-EXL3-K5K6",
+    "label": "K5/K6, BF16 attention on disk",
+    "recipe": "MLP gate/up K5, down K6, lm_head K6/mcg, attention BF16 on disk encoded to K6/K5/K4 at load, quantized MTP",
+    "index_sha256": "f8ca5af94a4a8352eb2f0329c891f20e0c15d7b2733b396d88fb9fba05eabb24",
+    "shard_sha256": {
+      "model-00001-of-00004.safetensors": "349a94dc3fd74450dad3b1f57b76dec57b8b5bbe6add2ccd7e0adf5d777f3fb5",
+      "model-00002-of-00004.safetensors": "ea44be556fe63123fe278c357de90941c741d3cdd79062ccfba9f0d6b66d54f2",
+      "model-00003-of-00004.safetensors": "02efb298bc40bb3c739fb525d4b70ed4d307a7e24fd30ed71cb7e1433a6c326a",
+      "model-00004-of-00004.safetensors": "6832280ea4f2b630371fcb58548b8ec03f0a11ad36a031af0807d8daed88b238"
+    },
+    "disk_bytes": 30597231933,
+    "resident_weights_gib": 20.32
+  },
+  "upstream": {
+    "hf_repo": "Qwen/Qwen3.8-27B",
+    "revision": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0",
+    "logical_tensors_verified": 1199
+  },
+  "toolchain": {
+    "research_repo": "https://github.com/malaiwah/qwen38-27b-exl3",
+    "research_commit": "21c2b6d708de011c2d73fdd8b1806e2e49c0ed71",
+    "research_tree_clean": true,
+    "exllamav3_commit": "5f3c537ca9d89893d771256f5c43c93656553fbb",
+    "vllm_image": "voipmonitor/vllm@sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b",
+    "vllm_patches": {
+      "graph_decode_pr": "https://github.com/local-inference-lab/vllm/pull/314",
+      "prefill_dispatch_pr": "https://github.com/local-inference-lab/vllm/pull/316",
+      "patched_module_sha256": "cb9e60024057e8097237a5518e6469b15f73e4139cc37f1f67e9c1485b44aedd",
+      "note": "The pinned image predates both PRs; the patched module must be copied over vllm/model_executor/layers/quantization/exl3.py. No image digest containing them is published yet."
+    }
+  },
+  "hardware": {
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Server Edition",
+    "arch": "SM120",
+    "vram_gib": 95.6,
+    "driver": "595.58.03",
+    "tensor_parallel": 1
+  },
+  "evaluation": {
+    "protocol": "hidden-state replay, exact full-vocabulary two-pass KL(BF16 || candidate)",
+    "suite": "qwen38-27b-fidelity-suite-v3",
+    "suite_token_sha256": "3f9d17f1b55f64872ad3ac19c8711654e09ba70b7ca14b0851525088fe735691",
+    "partition": "analysis",
+    "contexts": 136,
+    "scored_positions": null,
+    "shared_comparator_head": "BF16, identical for every candidate (body-only)",
+    "mean_kld": 0.008156951368733588,
+    "ci95": [
+      0.00606635146891835,
+      0.010666507957708397
+    ],
+    "median_kld": 0.0015289096728281493,
+    "top1_agreement": 0.9697189574413058,
+    "paired": {
+      "vs_official_fp8": {
+        "difference": -0.004968588985984763,
+        "ci95": [
+          -0.006429518081118068,
+          -0.0037148316692523263
+        ],
+        "contexts_won": "136/136"
+      }
+    },
+    "controls": {
+      "harness_self_check": 0.0,
+      "runtime_repeat_noise_floor": 0.0,
+      "live_vs_replay_floor": 0.000654,
+      "eager_vs_graph_decode": {
+        "exact_sequences": "24/32",
+        "mean_abs_delta_logprob": 0.0118,
+        "bf16_control": "24/32, 0.0128"
+      }
+    },
+    "development_set_caveat": "Recipe selection saw this partition, and its source clusters are shared with the qualification partition, so these are development-set numbers. A source-disjoint suite is being built.",
+    "captures_published": false
+  },
+  "serving": {
+    "note": "Attention width is VLLM_EXL3_ONLINE_TRELLIS_BITS (3-8). 0.95 utilisation is the vision-safe ceiling."
+  },
+  "not_verified": [
+    "downstream task retention (code, reasoning, instruction following, tool calling)",
+    "multimodal quality beyond single image smoke tests",
+    "long-context accuracy beyond an external 205,021-token retrieval check",
+    "native 262,144 generation on this box",
+    "YaRN 1M",
+    "tensor parallel > 1",
+    "non-SM120 GPUs",
+    "quant-specific safety regression"
+  ]
+}

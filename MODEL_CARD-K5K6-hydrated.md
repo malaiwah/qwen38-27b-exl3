@@ -15,7 +15,7 @@ tags:
   - gilded-gnosis
 ---
 
-# Qwen3.8-27B EXL3 K5/K6, attention serialized — 9 % lower divergence than the BF16-attention build, 9 GB smaller, 5x faster cold start
+# Qwen3.8-27B EXL3 K5/K6, attention serialized on disk — 9 GB smaller, 5x faster cold start, and measurably closer to BF16
 
 > **Requires a custom runtime.** Does **not** load in upstream vLLM, SGLang, TensorRT-LLM,
 > llama.cpp, transformers, or stock exllamav3. It needs the Gilded Gnosis vLLM fork with
@@ -35,7 +35,8 @@ every cold start. Measured consequences:
 | first load, cold | 957 s (encodes 208 projections) | **178 s** (5.4x faster) |
 | restart with a warm cache | 173 s | 178 s (same) |
 | persistent encode cache | required, and must be writable | **not used** |
-| mean KL divergence from BF16 | 0.008157 | **0.007406** (−9.2 %) |
+| mean KL divergence from BF16 (body-only) | 0.008157 | **0.007406** (−9.2 %, but see the floor caveat) |
+| mean KL divergence, as served | 0.008284 | **0.007532** (measured, not estimated) |
 | attention width | K6 / K5 / K4, chosen at launch | fixed at K6 |
 
 **Choose this build** for the smaller download, the best fidelity in the family, and a start
@@ -44,6 +45,20 @@ the 5.4x is about first load and about environments where a persistent cache is 
 read-only images, ephemeral containers, many nodes. **Choose the sibling** if you need context: its runtime knob trades
 fidelity for KV room, and on a 32 GB card that difference matters (see
 [context](#context-capacity)).
+
+## Which of the three builds
+
+All three are the same architecture and tokenizer; they differ in where the bits go. Measured
+on one held-out suite, so the rows are comparable ([collection](https://huggingface.co/collections/qwen38-27b-mixed-precision-exl3-measured-6a7fe0cb27817c23e4a57025)):
+
+| build | download | resident | mean KLD (body-only) | native 262k on 32 GB | pick it when |
+|---|---:|---:|---:|---|---|
+| [**-hydrated**](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated) | 21.61 GB | 20.31 GiB | **0.007406** | no (~186k) | you want the best fidelity, the smallest download and a 178 s cold start |
+| [**-EXL3-K5K6**](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6) | 30.57 GB | 20.32 / 19.82 / 19.05 GiB | 0.008157 / 0.012135 / 0.027530 | no (~206k at K5) | you want to choose the attention width at launch |
+| [**-K4**](https://huggingface.co/malaiwah/Qwen3.8-27B-K4) | 28.31 GB | 17.89 GiB | 0.030736 | **yes** (289,577 KV tokens) | you need native context on a 32 GB card |
+
+Official `Qwen/Qwen3.8-27B-FP8` is 28.51 GiB resident at 0.013126 on the same suite, and runs
+on stock vLLM — which none of these do.
 
 ## Recipe
 
@@ -96,16 +111,21 @@ operands, source-cluster bootstrap. Same suite, reference and head as every comp
 Paired on identical contexts:
 
 - versus the BF16-attention sibling: **−0.000751**, 95 % CI [−0.000977, −0.000572],
-  **124/136 contexts**. Calibrated offline encoding beats the runtime's calibration-free
-  online encoding, and the interval excludes zero.
+  **124/136 contexts**. Calibrated offline encoding is consistently closer to BF16 than the
+  runtime's calibration-free online encoding. **Read this as encouraging, not settled:** the
+  magnitude is only slightly above this harness's 6.54e-04 live-versus-replay floor, so the
+  direction is well supported (124/136 contexts, interval excludes zero) while the size of the
+  gain is not resolved by these artifacts.
 - versus official FP8: **−0.005719**, 95 % CI [−0.007323, −0.004353], **136/136 contexts** —
   44 % lower mean divergence at 71 % of its resident weight.
 
-**Body-only, stated plainly:** every row replays both operands through one shared BF16 head,
-so no candidate's own head quantization is counted — that is what makes the ranking fair,
-since official FP8 serves a BF16 head. On the sibling, the same K6 head was measured with
-asymmetric heads at **+0.000127** (95 % CI [+0.000105, +0.000148]), so expect an as-served
-figure near 0.00753 here.
+**Body-only versus as-served.** Every row above replays both operands through one shared BF16
+head, so no candidate's own head quantization is counted — that is what makes the ranking fair,
+since official FP8 serves a BF16 head. Measured directly on **this** checkpoint with asymmetric
+heads (reference through the true BF16 head, candidate through this build's dequantized K6
+head): the head costs **+0.000125** (95 % CI [+0.000107, +0.000144], 9/136 contexts favour it),
+so **as served this build is 0.007532** with 97.08 % top-1. Still 1.74x better than FP8's
+body-only 0.013126.
 
 **Weakest control:** live-versus-replayed logit qualification is 6.54e-04 on this harness,
 so differences below ~1e-3 are not resolvable. The −0.000751 offline-versus-online gap sits
@@ -194,6 +214,16 @@ Evaluation captures for this build are being published in the
 until they land, the
 [receipts](https://github.com/malaiwah/qwen38-27b-exl3/tree/main/receipts) let a third party
 check the arithmetic but not recompute the row independently.
+
+## Machine-readable evidence
+
+[`release-evidence-hydrated.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/release-evidence-hydrated.json)
+carries the whole chain in one file: shard and index SHA-256, upstream revision and the
+verified 1,199-tensor topology, research and exllamav3 commits with tree-clean state, the
+container digest and the patched module's hash, hardware and driver, suite token hash and
+partition, every fidelity number with its interval, the controls including the replay floor,
+and an explicit `not_verified` list. `SHA256SUMS` covers the immutable payload (16 files);
+`DOCS-SHA256SUMS` covers card files, so a card edit can no longer invalidate the build hashes.
 
 ## Prior art and credits
 
