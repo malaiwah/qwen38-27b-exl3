@@ -76,7 +76,13 @@ Paired over the same contexts: **-0.004969** versus official FP8
 and **-0.022579** versus the previous K4 release (136/136 contexts).
 
 Controls published with the dataset: runtime-repeat noise floor **0.000000** (three
-captures of the same runtime), harness self-check 0.000000, CUDA-graph parity 0.000000.
+captures of the same runtime) and harness self-check 0.000000. A third control,
+"CUDA-graph parity 0.000000", was **withdrawn**: it captured a prefill forward, and
+`FULL_DECODE_ONLY` captures no prefill graph, so it could not have measured the decode
+path. Re-measured properly on real decode steps, graph and eager agree on 24/32 greedy
+32-token sequences with mean |Δ logprob| 0.0118 on the chosen token; unquantised BF16
+on this same build drifts identically (24/32, 0.0128), so this is a property of CUDA
+graphs here and not of the quantisation.
 **Weakest control:** live-vs-replayed logit qualification is 6.54e-04, so differences
 below ~1e-3 are not resolvable with these artifacts; the differences above are 8-27x
 larger. The KLD magnitudes here are only comparable within this suite — thresholds from
@@ -179,8 +185,8 @@ short-context quality. **Untested on this runtime.**
 Done: structural audit (1,199 logical tensors reconstructed, matching upstream), serving
 under the pinned image, greedy text, 96×96 and 2044×1622 image answers, MTP acceptance
 from server counters, 3-run throughput with <1 % dispersion, prefill at exact token
-counts, distribution parity between graph and eager execution (0.000000), and the
-fidelity suite above.
+counts, eager-vs-graph decode parity on real decode steps (24/32 exact sequences, with a
+BF16 control showing the same 24/32), and the fidelity suite above.
 
 **Not done:** downstream task benchmarks (no MMLU/GPQA/HumanEval-style retention
 evidence), OCR/chart/video multimodal evaluation, long-context retrieval or perplexity,
