@@ -111,12 +111,32 @@ Two gaps where the cards currently say "not done":
   replacement manifest, and paired analysis silently intersects available contexts. Both should
   refuse rather than proceed for a publication receipt.
 
-## Blocked on someone else
+## Owned elsewhere
 
-- **An immutable image containing the patches.** PRs #312/#314/#316 are open; the pinned r34
-  digest predates them. This box has no container builder (the rootfs is extracted with an
-  unprivileged puller and run through proot), so the honest options are to ask the image owner
-  for an r35 build or to publish the patched module with its sha256, which the cards now do.
+- **An immutable image containing PRs #312/#314/#316** is being built by voipmonitor (Martin),
+  so it is off this list. Until that digest exists the cards ship two recipes: what the pinned
+  r34 image runs unmodified (eager, 28.8 tok/s decode, 2.4k prefill) and the patched path with
+  the module's sha256. When the digest lands, replace both recipes with one and drop the patch
+  instructions.
+
+## Closed while writing this plan (card hygiene, found by auditing the live repos)
+
+Auditing the three published cards against the hub API rather than trusting them turned up
+three defects, all now fixed:
+
+- the **K5/K6 card had lost its `library_name`**, so the hub inferred `library_name: trellis`
+  for a checkpoint that only runs under vLLM. Restored to `vllm`; verified through the API on
+  all three repos.
+- the **K4 card still asserted the withdrawn CUDA-graph parity control as live fact**, in two
+  places, while every other surface had been corrected. Now carries the same retraction and the
+  real decode probe (24/32, BF16 control identical).
+- the **K4 card had a duplicated `### Head attribution` heading** from an earlier edit, and no
+  cross-links. It is now explicitly the **capacity edition** — the only build in the family that
+  fits native 262,144 on a 32 GB card — and all three cards carry the same three-build choice
+  table and collection link.
+
+The lesson worth keeping: card claims must be re-read from the hub after every edit round. Three
+surfaces drifted apart even though each individual edit was correct.
 
 ## Deliberately not doing
 

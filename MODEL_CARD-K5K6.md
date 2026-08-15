@@ -3,6 +3,7 @@ license: apache-2.0
 base_model: Qwen/Qwen3.8-27B
 base_model_relation: quantized
 pipeline_tag: image-text-to-text
+library_name: vllm
 tags:
   - exl3
   - exllamav3
