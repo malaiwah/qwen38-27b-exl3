@@ -1,0 +1,20 @@
+{
+  "schema": "qwen38-suite-manifest-amendment/1",
+  "amends": "receipts/kld5-suite-manifest.json",
+  "amends_sha256": "c79dfad3767ca5b3015129077f20dbb9282a2e51ca8bca9ed09be8c7a9c73019",
+  "field": "corpus_note",
+  "published_value": "Gutenberg / arXiv / Wikipedia (en + de,fr,es,ja,zh,ru) / CPython v3.12.8 Lib; calibration-overlapping documents are pre-excluded.",
+  "defect": "the field was hard-coded prose carried forward from the v3 builder and does not describe the v5 corpus: the v5 code stratum is pinned to python/cpython@v3.13.1 and numpy/numpy@v2.2.1, and the multilingual stratum covers 21 languages, not six.",
+  "authoritative_source": {
+    "path": "receipts/kld5-corpus-fetch-log.json",
+    "sha256": "fd44298cb2c6315b5b511c9e81f3b2a5c6c5b124e0f3e16a38279d5680db8322",
+    "note": "every corpus document appears there with its source URL, byte count and sha256; the suite manifest's own `documents` array carries the same per-document digests, so the corpus is fully identified without the prose field."
+  },
+  "measured_scope": "documentation only: no token, digest, exclusion count, context, or fidelity number in the manifest is affected, and no measurement was rerun.",
+  "code_fix": {
+    "path": "tools/suite3.py",
+    "change": "the builder no longer emits hard-coded corpus provenance; it points at the per-document digests and the fetch log instead.",
+    "applies_to": "suites built after this commit; the published v5 manifest is left byte-identical."
+  },
+  "generated_utc": "2026-08-15T21:35:27Z"
+}

@@ -554,9 +554,11 @@ def main() -> int:
         "total_scored_positions": len(index) * (ctx_len - 1),
         "hidden_size": 5120, "vocab_size": 248320,
         "corpus": str(corpus.resolve()),
-        "corpus_note": ("Gutenberg / arXiv / Wikipedia (en + de,fr,es,ja,zh,ru) / "
-                        "CPython v3.12.8 Lib; calibration-overlapping documents are "
-                        "pre-excluded."),
+        "corpus_note": ("source identities are the per-document sha256 values in `documents` "
+                        "and, when the corpus was built by tools/fetch_corpus_v5.py, the URL "
+                        "and digest of every file in its fetch log; this field carries no "
+                        "hard-coded corpus provenance because a stale description of a "
+                        "corpus is worse than none."),
         "windowing": {
             "selection": "deterministic sorted-document round-robin within each stratum",
             "file_reads": "each source file is read and UTF-8 decoded exactly once",

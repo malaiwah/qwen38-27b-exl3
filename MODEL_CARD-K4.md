@@ -20,8 +20,9 @@ tags:
 > ### Superseded by [`malaiwah/Qwen3.8-27B-EXL3-K5K6`](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6)
 >
 > The successor spends the remaining memory budget on the MLP (gate/up K5, down K6) and
-> measures **0.007945** mean KLD against this checkpoint's **0.029679** on the
-> overlap-corrected subset — **38 % below official FP8** — at 21.82 GB resident.
+> measures **0.003210** mean KLD on the v5 held-out suite against this checkpoint's
+> **0.010604** (0.007945 versus 0.029679 on the older overlap-corrected v3 subset), at
+> 21.82 GB resident — **39 % below official FP8** on v5, 38 % below it on the v3 subset.
 > It also has a quantized MTP draft head that works with speculative decoding (58.2 % acceptance,
 > +101 % single-stream throughput). Prefer it unless you specifically need the smaller
 > 19.21 GB footprint.
@@ -57,17 +58,22 @@ for `unsloth/Qwen3.8-27B-NVFP4` on the identical architecture — a
 across Trellis, NVFP4 and FP8, so the comparison that matters is the measured fidelity
 below, not a per-role precision claim.
 
-Measured on the conservative overlap-corrected subset — **259,969 full-vocabulary positions
-in 127 contexts** — mean KLD is **0.029679** versus **0.092727** for
-`unsloth/Qwen3.8-27B-NVFP4` and **0.012798** for `Qwen/Qwen3.8-27B-FP8`, which is genuinely
-better at 61 % more memory. The original 136-context receipt and correction are below. With
-CUDA graphs enabled this build also serves **faster than the NVFP4
-checkpoint** (55.39 vs 49.09 tok/s at C1). Vision works. Every artifact needed to
-recompute these numbers is published as a
-[dataset](https://huggingface.co/datasets/malaiwah/qwen38-27b-fidelity-suite-v3).
+Headline fidelity now comes from the **v5 held-out suite — 5,120 contexts x 2,047 positions =
+10,480,640 scored positions**. This build measures **0.010604** mean KLD
+[0.009640, 0.011746] with **95.76 %** top-1, against **0.005294** for
+`Qwen/Qwen3.8-27B-FP8`: on that suite official FP8 is the more faithful checkpoint, by
+**+0.005310** [+0.004710, +0.006019] paired, with this build ahead in only **7 of 5,120**
+contexts. The direction is unchanged from v3 (0.029679 here versus 0.012798 for FP8 on the
+corrected subset); only the absolute values moved, because the v5 corpus mix is different.
+Every earlier receipt is kept below. With CUDA graphs enabled this build still serves
+**faster than the NVFP4 checkpoint** (55.39 vs 49.09 tok/s at C1). Vision works. The v3
+artifacts are published as a
+[dataset](https://huggingface.co/datasets/malaiwah/qwen38-27b-fidelity-suite-v3); the v5 run
+ships as receipts (`receipts/kld5-*.json`).
 
 > **Position in the family:** this K4 build has the highest divergence of the four published
-> builds (0.029679 corrected) and the smallest resident footprint (**17.89 GiB**). It is the **only build
+> builds (**0.010604** on the v5 suite, 0.029679 on the corrected v3 subset) and the smallest
+> resident footprint (**17.89 GiB**). It is the **only build
 > hardware-qualified at native 262,144 on a real 32 GB card** — 289,577 KV tokens measured on
 > an RTX 5090 with MTP-3 and vision enabled. The context edition also starts at native length
 > with MTP-3 and an 8.4 MP image ceiling under a capped 32 GB-equivalent engine budget, but
@@ -75,8 +81,11 @@ recompute these numbers is published as a
 
 ## Which of the four builds
 
-Same architecture and tokenizer; the KLD column is the overlap-corrected 127-context v3
-subset. Capacity uses each card's documented profile: hydrated, online and K4 are real RTX
+Same architecture and tokenizer. The first KLD column is the v5 held-out suite (10,480,640
+scored positions); the second is the older overlap-corrected 127-context v3 subset, kept for
+continuity. Absolute KLD is suite-specific, so the two columns are not comparable with each
+other — only the ordering within a column is. Capacity uses each card's documented profile:
+hydrated, online and K4 are real RTX
 5090 MTP-3 tests; context is MTP-3 with an 8.4 MP cap on a budget-capped RTX PRO 6000.
 These profiles are not interchangeable
 ([collection](https://huggingface.co/collections/qwen38-27b-mixed-precision-exl3-measured-6a7fe0cb27817c23e4a57025)).
@@ -86,15 +95,16 @@ These profiles are not interchangeable
   <img alt="Overlap-corrected v3 mean KL divergence versus demonstrated or configured context. Circles are real RTX 5090 MTP-3 results: hydrated and online K6 at 185,600, K4 at 262,144. Stars have generation proof: online K5 at 206,400 on the 5090, and the context edition at 262,144 with MTP-3 and an 8.4 MP image cap under a 30.24 GiB engine budget; the latter's hard-limit 5090 rerun is pending." src="assets/context-frontier-light.svg">
 </picture>
 
-| build | download | resident | corrected v3 mean KLD | context profile | pick it when |
-|---|---:|---:|---:|---:|---|
-| [-hydrated](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated) | 21.61 GB | 20.31 GiB | **0.007172** | ~180k | fidelity first, smallest download |
-| [-EXL3-K5K6](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6) | 30.57 GB | 20.32 GiB | 0.007945 | ~180k | you want the attention width knob at launch |
-| [-context](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6-context) | 20.70 GB | **18.41 GiB** | 0.009459 | **262,144, MTP-3, 8.4 MP cap** | native window; hard-limit RTX 5090 check pending |
-| [-K4](https://huggingface.co/malaiwah/Qwen3.8-27B-K4) | 28.31 GB | 17.89 GiB | 0.029679 | 262,144 | smallest footprint, native context without any overlay |
+| build | download | resident | v5 mean KLD | corrected v3 mean KLD | context profile | pick it when |
+|---|---:|---:|---:|---:|---:|---|
+| [-hydrated](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated) | 21.61 GB | 20.31 GiB | **0.002760** | **0.007172** | ~180k | fidelity first, smallest download |
+| [-EXL3-K5K6](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6) | 30.57 GB | 20.32 GiB | 0.003210 | 0.007945 | ~180k | you want the attention width knob at launch |
+| [-context](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6-context) | 20.70 GB | **18.41 GiB** | 0.003509 | 0.009459 | **262,144, MTP-3, 8.4 MP cap** | native window; hard-limit RTX 5090 check pending |
+| [-K4](https://huggingface.co/malaiwah/Qwen3.8-27B-K4) | 28.31 GB | 17.89 GiB | 0.010604 | 0.029679 | 262,144 | smallest footprint, native context without any overlay |
 
-Official `Qwen/Qwen3.8-27B-FP8` is 28.51 GiB resident at 0.012798 on the same subset and runs
-on stock vLLM, which none of these do.
+Official `Qwen/Qwen3.8-27B-FP8` is 28.51 GiB resident at **0.005294** on the v5 suite and
+0.012798 on the corrected v3 subset, and runs on stock vLLM, which none of these do. On both
+suites it is more faithful than this K4 build and less faithful than the other three.
 
 ## Why this shape
 
@@ -115,9 +125,116 @@ attention at K6 instead of FP8, is what pays for a *lower* footprint at *higher*
 precision. The checkpoint is larger than the NVFP4 ones because attention ships
 BF16 so the runtime can re-encode it — see *Tradeoffs*.
 
+## Distribution fidelity — v5 held-out suite, 10,480,640 scored positions
+
+This is the headline fidelity evidence for the family, and it is the one measurement where
+this build loses to official FP8. Suite
+[`receipts/kld5-suite-manifest.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/kld5-suite-manifest.json)
+(schema `qwen38-distribution-fidelity/6`, suite token sha256
+`510541f6861b589d44932db253ec25d96d6daaeeee4ea2ab9b65329209482b88`): **5,120 contexts x
+2,047 positions = 10,480,640 scored positions** over **842 source clusters**, from a corpus of
+941 documents / 70,348,971 bytes fetched by `tools/fetch_corpus_v5.py`
+([fetch log](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/kld5-corpus-fetch-log.json)).
+All 941 documents were scanned at every position for exact normalized 12-token overlap with
+exllamav3 calibration data *before* selection, and the **44** that hit (43 code, 1
+encyclopedic) were excluded whole, leaving **897 eligible documents** — so contamination hits
+are 0 by construction. The suite is token-disjoint from the v4 suite (0/160 prior context
+hashes reachable), and its windows are exact-advance and non-overlapping — independently
+verified at 5,120/5,120 unique token hashes and 0 overlapping windows. Every candidate is
+scored body-only: both operands go through one shared BF16 LM head.
+
+| candidate | mean KLD | bootstrap 95 % CI | top-1 | exact max single-position KLD |
+|---|---:|---:|---:|---:|
+| [hydrated](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated) | **0.002760** | [0.002540, 0.003020] | 97.70 % | 8.258 |
+| [K5/K6 online K6](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6) | 0.003210 | [0.002982, 0.003480] | 97.52 % | 22.241 |
+| [context edition](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6-context) | 0.003509 | [0.003220, 0.003852] | 97.44 % | 5.557 |
+| `Qwen/Qwen3.8-27B-FP8` | 0.005294 | [0.004927, 0.005728] | 96.79 % | 10.714 |
+| **this quant (K4)** | **0.010604** | **[0.009640, 0.011746]** | **95.76 %** | 14.283 |
+
+Paired per-context differences (source-cluster bootstrap, 10,000 resamples, seed 1, 842
+clusters,
+[`receipts/kld5-10M-paired.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/kld5-10M-paired.json)):
+
+| comparison | difference | 95 % CI | contexts won |
+|---|---:|---:|---:|
+| **this quant - FP8** | **+0.005310** | [+0.004710, +0.006019] | **7 / 5,120** |
+| hydrated - FP8 | -0.002534 | [-0.002708, -0.002383] | 5,118 / 5,120 |
+| online K5/K6 - FP8 | -0.002084 | [-0.002249, -0.001942] | 5,105 / 5,120 |
+| context - FP8 | -0.001785 | [-0.001884, -0.001697] | 5,109 / 5,120 |
+| hydrated - online K5/K6 | -0.000450 | [-0.000469, -0.000433] | 4,922 / 5,120 |
+
+Stated plainly: **official `Qwen/Qwen3.8-27B-FP8` is markedly more faithful than this build**,
+and it wins 5,113 of 5,120 contexts. That is the same direction the v3 receipts reported; ten
+million positions did not overturn it, they narrowed the interval around it. If you want
+distribution fidelity, take one of the other three builds or FP8; take this one for the
+17.89 GiB footprint and native context without an overlay.
+
+**The corpus mix moves absolute values for every candidate, so v5 numbers are not comparable
+to v3 numbers.** This build reads 0.029679 on the corrected v3 subset and 0.010604 here; FP8
+reads 0.012798 there and 0.005294 here. Nothing about the checkpoints changed between those
+two runs — the text did. Only within-suite ordering and the paired differences transfer
+across suites.
+
+By stratum, this build's mean KLD is 0.007389 scientific, 0.008897 encyclopedic, 0.010356
+multilingual, 0.011612 code and 0.014766 literary, over 1,024 contexts (2,096,128 positions)
+each. The cumulative mean is stable along the ladder: for the hydrated candidate the 1M / 2M /
+5M / 10M checkpoints read 0.002700 / 0.002759 / 0.002699 / 0.002760, so the 10M figures are not
+a moving target.
+
+Per-candidate receipts are
+[`receipts/kld5-10M-{hyd,k5k6,ctx,fp8,k4}.json`](https://github.com/malaiwah/qwen38-27b-exl3/tree/main/receipts)
+(schema `qwen38-kld-ladder-cumulative/2`), built by `tools/kld_aggregate.py` from ten verified
+per-shard reports produced by `tools/kld_ladder.sh`: capture six models over 512 contexts,
+replay five candidates, verify, delete 64 GB of hidden states, move to the next shard.
+
+**Distribution tail.** A mean and a top-1 rate can hide a tail, so here is the tail itself,
+measured on **shard 0 of the same suite — 512 contexts, 1,048,064 scored positions** — the
+identical contexts for all five candidates. Receipts
+`receipts/kld5-1M-tail-{hyd,k5k6,ctx,fp8,k4}.json` (schema `qwen38-kld-ladder-cumulative/2`,
+built by `tools/kld_aggregate.py`); this build's row is
+[`receipts/kld5-1M-tail-k4.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/kld5-1M-tail-k4.json).
+Every `qwen38-fidelity-report/2` replay accumulates a **560-bin log-spaced histogram of
+per-position KLD** (`KLD_HIST_LOG10_LOW=-12.0`, `KLD_HIST_LOG10_HIGH=2.0`,
+`KLD_HIST_BINS_PER_DECADE=40` in `tools/fidelity.py`) whose bin counts add across shards,
+which is what makes cumulative quantiles possible at all.
+
+| candidate | mean | p50 | p95 | p99 | p99.9 | p99.99 | exact max | share of positions above 0.1 | above 1.0 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| [hydrated](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated) | 0.002700 | 0.00109 | 0.0082 | 0.0276 | 0.1319 | 0.463 | 3.735 | 0.1534 % | 0.00219 % |
+| [online K5/K6](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6) | 0.003141 | 0.00128 | 0.0099 | 0.0321 | 0.1446 | 0.498 | 5.507 | 0.1820 % | 0.00200 % |
+| [context edition](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6-context) | 0.003409 | 0.00135 | 0.0107 | 0.0357 | 0.1642 | 0.587 | 3.749 | 0.2287 % | 0.00305 % |
+| `Qwen/Qwen3.8-27B-FP8` | 0.005197 | 0.00202 | 0.0167 | 0.0531 | 0.2438 | 0.812 | 5.296 | 0.3912 % | 0.00592 % |
+| **this quant (K4)** | **0.010345** | **0.00320** | **0.0332** | **0.1194** | **0.5555** | **1.870** | **7.565** | **1.2604 %** | **0.03807 %** |
+
+**Stated plainly: this build's tail is heavier than official FP8's at every measured
+quantile.** p99 is 0.1194 against FP8's 0.0531, p99.9 is 0.5555 against 0.2438, p99.99 is
+1.870 against 0.812 — roughly 2.3x at each depth — and the exact worst position on this shard
+is 7.565 against 5.296. The exceedance counts say the same thing without any binning: **1.2604 %**
+of positions exceed 0.1 against FP8's 0.3912 % (3.2x), and **0.03807 %** exceed 1.0 against
+FP8's 0.00592 % (6.4x, 399 positions against 62). The tail ordering at p50, p95, p99, p99.9
+and p99.99 is the same as the ordering of the means, so the mean was not flattering this
+build: it is last on the mean and last at every quantile, and all three K5/K6 builds are below
+FP8 throughout. Take this build for the 17.89 GiB footprint and native context, not for
+distribution fidelity — including at the tail.
+
+Three limitations, stated rather than hidden:
+
+- **Not comparable across suites.** Absolute KLD is suite-specific; see above.
+- **Cumulative percentiles come from one shard, not from all ten.** The ten shard reports of
+  the 10M run carry no token-level KLD histogram, so nothing could be recombined across them.
+  The tail table above closes that gap on **shard 0** (`receipts/kld5-1M-tail-*.json`), with
+  bin-bounded quantiles — each receipt carries `lower` / `upper` / `estimate`, relative bin
+  width about 5.6 % — and **exact** maxima and exceedance counts. Across all 10,480,640
+  positions only the means, the intervals, the paired results and one exact global maximum
+  per candidate exist.
+- **No published captures.** The hidden-state captures were deleted shard by shard to fit 135
+  GB of scratch, so unlike the v3 dataset this run is reproducible from the pinned corpus
+  fetch log and suite manifest rather than from published captures.
+
 ## Post-selection qualification
 
-The numbers above come from the suite that guided recipe selection. This is the test that did
+The v3 numbers in this card come from the suite that guided recipe selection. This is the v4
+test that did
 not: **160 new contexts from 100 documents with zero intersection with the development suite**
 (context token hashes 0/160, document names 0/100, content hashes 0/100), partitioned by whole
 source cluster, run **once**, with no recipe changed afterwards.
@@ -139,7 +256,49 @@ below FP8. The original 42-context figures and the candidate-independent correct
 preserved in [docs/31](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/docs/31-frozen-qualification.md).
 Absolute magnitudes remain suite-specific.
 
-## Downstream task retention
+## Public capability — MMLU-Pro, item-paired against BF16
+
+70 MMLU-Pro questions, 14 official categories, 5 per category, official five-shot prefixes,
+pinned `TIGER-Lab/MMLU-Pro@b189ec765aa7ed75c8acfea42df31fdae71f97be`, greedy, thinking at low
+reasoning effort, 5,120-token completion cap. The BF16 reference ran first; the plan and its
+acceptance rule were frozen before any result was seen.
+
+| model | absolute | Wilson 95 % | BF16-pass retention | regressions | improvements | exact-answer agreement |
+|---|---:|---:|---:|---:|---:|---:|
+| `Qwen/Qwen3.8-27B` BF16 | 57/70 | [70.8 %, 88.8 %] | — | — | — | — |
+| **this quant (K4)** | **57/70** | [70.8 %, 88.8 %] | **55/57**, Wilson lower bound **88.1 %** | **2** | **2** | 0/70 |
+
+Pass-outcome agreement is 66/70. Equal absolute scores with two regressions and two
+improvements is exactly why the measurement is item-paired: the totals match, the per-item
+behaviour does not.
+
+Four caveats, all load-bearing:
+
+1. **Four BF16 items hit the 5,120-token completion cap and are counted as failures**, so the
+   BF16 reference itself is depressed by the cap; this build hits the cap on four items too.
+   The superseded 2,048-cap control is kept at
+   [`receipts/public-capability-bf16-superseded-cap2048.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/public-capability-bf16-superseded-cap2048.json).
+2. **Exact-answer agreement is 0/70.** Long chains of thought differ token-wise on every item,
+   so the pairing is on pass/fail outcome, never on generated text.
+3. **This is a measured shortfall against the pre-registered bar.** The plan required a Wilson
+   95 % lower bound at or above 90 % on BF16-pass retention; 88.1 % is below it. It is
+   published as measured, with nothing retuned after the fact.
+4. **70 items is small** — the Wilson intervals are wide, and the remaining four candidates in
+   the family have not been run yet.
+
+Receipts:
+[plan](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/public-capability-plan.json),
+[suite](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/public-capability-suite-mmlupro-70.json),
+[BF16 run](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/public-capability-bf16.json),
+[this build's run](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/public-capability-k4.json);
+harness `tools/public_capability.py`. Every receipt carries the per-item raw request, raw
+response, extracted letter, gold letter and digests.
+
+## Downstream task retention — 40-task smoke suite (prior, narrower evidence)
+
+This ran before the MMLU-Pro suite above and is kept unchanged. It is the narrower evidence:
+self-generated tasks with contract checks, not a public benchmark, and it says nothing about
+the knowledge-and-reasoning behaviour MMLU-Pro probes.
 
 On 40 deterministic generated tasks (10 each arithmetic, executable builtins-only code,
 exact-list instruction following and tool-call schema), BF16 and every comparator scored
@@ -249,7 +408,10 @@ with `enable_thinking: false` → `Red, Green, Blue` (1.6 s, greedy).
 `2.5e-3` versus `1.1e-3` for `gate_proj` and `1.0e-3` for `in_proj_qkv`. Whole-block
 figures: `rfn ~0.0155`, `sqnr ~36.4 dB`.
 
-### Distribution fidelity — v3 protocol, held-out corpus
+### Distribution fidelity — v3 protocol, held-out corpus (prior receipt)
+
+Superseded as the headline by the v5 suite above, which scores 10,480,640 positions against
+this section's 278,392. Kept unchanged, including its own correction history.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="assets/fidelity-vs-size-dark.svg">

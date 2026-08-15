@@ -209,3 +209,198 @@ Run the exact profile on a physical RTX 5090, publish an immutable runtime image
 the open patches, then extend the paired smoke test to public capability and real multimodal
 sets. Current ranked work and acceptance gates are in
 [docs/29](docs/29-plan-and-loose-ends.md).
+
+## 2026-08-15 (continued): the 10,480,640-position held-out rerun
+
+**The objection was fair, and it is now answered.** Every fidelity claim up to this point
+rested on the v3 analysis partition — 136 contexts / **278,392** scored positions from a
+suite of 41 source clusters ([docs/18](docs/18-results-fidelity-v3.md),
+`receipts/v3-report-v2-analysis.json`, tracked as F1 in
+[docs/29](docs/29-plan-and-loose-ends.md)). The objection from readers was that this is too
+thin to carry a "38 % lower divergence than official FP8" headline, and it was a good
+objection: the bootstrap had ~41 independent units. This session re-measured at **37.6x the
+volume** — **10,480,640 scored positions** over **842 source clusters**. Nothing older was
+rewritten. The v3 and v4 receipts stand exactly as published and remain valid within their
+own suites; they are superseded only as *the headline number*.
+
+**v5 corpus, pinned by digest.** `tools/fetch_corpus_v5.py` assembled a five-stratum corpus
+of **941 documents / 70,348,971 bytes** (code 241, encyclopedic 323, literary 59,
+multilingual 276, scientific 42) from Project Gutenberg, arXiv, Wikipedia in **21 languages**,
+and CPython **v3.13.1** plus NumPy sources. `receipts/kld5-corpus-fetch-log.json`
+(`kld5-corpus-fetch-log/1`) enumerates every document with its URL and sha256 — the final
+top-up pass fetched 79 CPython files and re-verified the 862 already present, with 0 failures,
+0 skips, 0 unmet stratum targets, and the v3 and v4 corpus roots (`/var/tmp/work/kld3/corpus`,
+`/var/tmp/work/kld4/corpus`) explicitly excluded as sources. Note for whoever reads both
+files: the manifest's prose `corpus_note` still says "CPython v3.12.8", which is stale
+carried-forward text — the fetch log's per-document `codeload.github.com/.../tags/v3.13.1`
+URLs and digests are the authority, and 79/79 fetched code documents are v3.13.1.
+
+**Contamination was handled before selection, not audited afterwards.** The all-position
+12-token normalized scan (NFKC, casefold, one token per Han/Kana character, stride 1,
+blake2b-128; 10,772,868 corpus shingles against 859,426 exllamav3 calibration shingles) ran
+over each *complete* document before any window was cut. **44 of the 941 discovered documents**
+— 43 code, 1 encyclopedic — were excluded whole on any match, leaving **897 eligible**
+(`receipts/kld5-suite-manifest.json` `/document_scan`). Contamination hits in the emitted
+suite are therefore 0 *by construction*: `contexts_with_any_hit` 0, `total_hits` 0,
+`decoded_candidates_rejected` 0. (An earlier plan number of "17 excluded" came from an aborted
+build against the smaller pre-top-up corpus and is wrong; 44 -> 897 is what the manifest says.)
+
+**Suite.** `receipts/kld5-suite-manifest.json`, schema `qwen38-distribution-fidelity/6`,
+`suite_token_sha256` `510541f6861b589d44932db253ec25d96d6daaeeee4ea2ab9b65329209482b88`:
+**5,120 contexts** (1,024 per stratum) x 2,047 scored positions = **10,480,640**, drawn from
+**842 source clusters**. Windows advance by exact tokenizer character offsets and never
+overlap; an independent check of the built suite found **5,120/5,120 unique context token
+hashes and 0 overlapping windows**. All **160** v4 context token hashes were seeded as
+exclusions and **0** were reachable, so v5 is token-disjoint from the frozen v4 suite as well
+as calibration-disjoint.
+
+**Why the run is sharded — 64 GB against 135 GB.** One 512-context capture is
+512 x 2,047 x 5,120 in bf16 = **10.7 GB per model**, so a shard covering all six models is
+**~64 GB of hidden states** while `/var/tmp` scratch holds **~135 GB**. `tools/kld_ladder.sh`
+therefore walks one shard at a time: capture six models over 512 contexts, replay the five
+candidates against the BF16 reference through **one shared BF16 LM head** (so every number
+below is body-only, both operands through the same head), verify every report against the
+pinned suite / head / comparator / model identities, delete that shard's 64 GB, then start the
+next. Resume is fail-closed in both directions: an already-verified shard is skipped without
+recapturing, and a report describing a different suite, shard, head or model identity aborts
+the run rather than being silently reused. `tools/kld_aggregate.py` welds the ten verified
+per-shard reports into `receipts/kld5-10M-{hyd,k5k6,ctx,fp8,k4}.json`
+(schema `qwen38-kld-ladder-cumulative/2`).
+
+**Cumulative results, 10,480,640 positions each.** 95 % CI is a source-cluster bootstrap
+(10,000 resamples, 842 clusters); "max" is the exact worst single position in the whole run.
+
+| candidate | mean KLD | 95 % CI | top-1 | max position |
+|---|---|---|---|---|
+| hydrated [`…-EXL3-K5K6-hydrated`](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated) | **0.002760** | [0.002540, 0.003020] | 97.70 % | 8.258 |
+| online K5/K6 [`…-EXL3-K5K6`](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6) | **0.003210** | [0.002982, 0.003480] | 97.52 % | 22.241 |
+| context [`…-EXL3-K5K6-context`](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6-context) | **0.003509** | [0.003220, 0.003852] | 97.44 % | 5.557 |
+| official [`Qwen/Qwen3.8-27B-FP8`](https://huggingface.co/Qwen/Qwen3.8-27B-FP8) | **0.005294** | [0.004927, 0.005728] | 96.79 % | 10.714 |
+| K4 [`malaiwah/Qwen3.8-27B-K4`](https://huggingface.co/malaiwah/Qwen3.8-27B-K4) | **0.010604** | [0.009640, 0.011746] | 95.76 % | 14.283 |
+
+**Paired per-context differences** — the comparison that actually transfers across suites,
+bootstrap 10,000 resamples, seed 1, 842 clusters, `receipts/kld5-10M-paired.json`:
+
+| pair | difference | 95 % CI | contexts won |
+|---|---|---|---|
+| hydrated - FP8 | **-0.002534** | [-0.002708, -0.002383] | **5,118 / 5,120** |
+| online K5/K6 - FP8 | **-0.002084** | [-0.002249, -0.001942] | **5,105 / 5,120** |
+| context - FP8 | **-0.001785** | [-0.001884, -0.001697] | **5,109 / 5,120** |
+| K4 - FP8 | **+0.005310** | [+0.004710, +0.006019] | 7 / 5,120 (K4 wins) |
+| hydrated - online K5/K6 | **-0.000450** | [-0.000469, -0.000433] | **4,922 / 5,120** |
+
+So the three K5/K6-class profiles beat official FP8 on essentially every one of 5,120
+held-out contexts, offline-serialized attention still edges the runtime overlay by a small
+but unambiguous 0.000450, and K4 loses to FP8 on 5,113 of 5,120.
+
+**The ladder was stable long before it finished.** Cumulative hydrated mean at the
+1M / 2M / 5M / 10M checkpoints: **0.002700 / 0.002759 / 0.002699 / 0.002760** (recomputable
+from the `shards[]` array of `receipts/kld5-10M-hyd.json`: 1,048,064 positions per shard).
+The estimate never moved by more than **6.1e-05** (2.2 % relative) after the first million
+positions, which is the useful result about evidence volume — the 278,392-position estimate
+was not *wrong*, it was under-supported, and 10.48 M positions mostly buys a defensible
+interval and 842 bootstrap units instead of 41.
+
+**Tail statistics: a real gap, and the fix landed after the run.** The ten shard reports were
+`qwen38-fidelity-report/1`, which carries no KLD histogram, and per-shard percentiles cannot
+be recombined into a cumulative percentile. So for this run only **per-shard p50/p95/p99/p999**
+and the **exact global maximum** exist; the cumulative receipts record that honestly in
+`not_aggregable.token_percentiles` rather than printing a recombined number that would be
+arithmetic fiction. The upgrade shipped immediately afterwards: replay now counts every scored
+position into a fixed log-spaced histogram with explicit zero/underflow and overflow buckets
+(`KLD_HIST_*` in `tools/fidelity.py`), stores edges plus counts plus the exact max, and
+`tools/kld_aggregate.py` derives bin-bounded cumulative quantiles from the summed counts.
+That bumps the report schema to `qwen38-fidelity-report/2` with every `/1` field unchanged —
+so the *next* run answers "what does the 99.9th percentile look like over 10 M positions",
+and this one cannot be retrofitted because its hidden states are gone.
+
+**First public-benchmark numbers, not a private smoke test.** `tools/public_capability.py` ran
+a paired MMLU-Pro subset — 70 questions, 14 official categories x 5, official five-shot
+prefixes, pinned `TIGER-Lab/MMLU-Pro@b189ec765aa7ed75c8acfea42df31fdae71f97be`, greedy,
+thinking at low effort, 5,120-token completion cap (`receipts/public-capability-plan.json`,
+`receipts/public-capability-suite-mmlupro-70.json`). BF16 scores **57/70** (Wilson 95 %
+[70.8 %, 88.8 %]) and K4 also **57/70**, with **BF16-pass retention 55/57** (Wilson lower
+bound 88.1 %), 2 regressions, 2 improvements, pass-outcome agreement 66/70, and
+**exact-output agreement 0/70** — long chains of thought never match token-for-token, which is
+why exact-match agreement is a useless metric for a thinking model and retention is the one to
+read. Four BF16 items hit the completion cap and are counted as failures, not excused. The
+earlier 2,048-cap control is kept as `receipts/public-capability-bf16-superseded-cap2048.json`
+(with its plan) rather than deleted. Receipts: `receipts/public-capability-bf16.json`,
+`receipts/public-capability-k4.json`. The remaining four candidates are **not yet run**.
+
+**Collection index.** `tools/collection_index.py` now emits `receipts/collection-index.json`
+(schema `qwen38-collection-index/1`): one immutable row per published checkpoint — k4, k5k6,
+hydrated, context — where every field carries the receipt path, that file's sha256 and the
+RFC 6901 pointer it was read through, a `null` always carries a `not_verified` note, and an
+optional field the receipt never wrote is *absent* rather than null. It also fixes the memory
+vocabulary that kept leaking into cards: `whole_tree_bytes` / `immutable_payload_bytes` /
+`tensor_payload_bytes` are disk sizes, `resident_weights` is the only memory figure and is
+measured GPU allocation at load — serialized bytes are never VRAM. One `known_divergences`
+entry is recorded instead of being fixed, because fixing it would mean rewriting a published
+receipt: the 8.4 MP amendment pinned the context release evidence's digest at 11:11:08Z and
+that file was then amended at 12:27:32Z to link back to the amendment, so the pinned digest
+can no longer match.
+
+**Operational lesson worth more than it cost: never edit a running `bash` script.** All ten
+shards had already been captured, replayed, verified and released when `tools/kld_ladder.sh`
+was edited in place to improve its summary output. `bash` reads a script incrementally from a
+byte offset, so the *running* instance resumed at a shifted offset and died with **exit 127**
+on the final summary line. **No measurement was lost** — the per-shard reports and the five
+cumulative receipts were already on disk and verified, and the exit code refers to a summary
+line, not to the ladder. The lesson is procedural, not technical: a long-running shell driver
+is part of the running experiment, so edits go to a copy and land between runs. Recorded here
+because a future reader who finds exit 127 in the shell history deserves to know it is a
+cosmetic failure after a complete run, not a truncated measurement.
+
+**Honest limitations of this run.**
+
+- **v5 absolute KLD is not comparable to v3 absolute KLD.** The corpus mix differs, so the
+  numbers move together: K4 reads **0.029679** on corrected v3 and **0.010604** here. Only
+  within-suite ordering and paired differences transfer across suites; anyone quoting a v5
+  mean beside a v3 mean is comparing two different measurements.
+- **No cumulative percentiles for this run**, per the tail note above — per-shard p95/p99/p999
+  and the exact global maximum only.
+- **Not reproducible from published captures.** The hidden states were deleted shard by shard
+  to fit 135 GB of scratch, so unlike the v3 dataset this run is reproducible from the pinned
+  corpus fetch log and suite manifest plus a GPU, not from downloadable tensors.
+- **Public capability is two of six candidates.** BF16 and K4 only; the three K5/K6-class
+  profiles and official FP8 are pending on the same pinned suite.
+
+### Still 2026-08-15: the 99.9th percentile, measured on a shard-0 rerun
+
+**The histogram harness was exercised, not just shipped.** Rather than leave
+`qwen38-fidelity-report/2` as an untested promise for the next volume run, **shard 0 of the
+same v5 suite was re-captured and re-replayed with the `/2` harness** — the identical 512
+contexts, 2,047 scored positions each, **1,048,064 positions per candidate**, every candidate
+scored on the same contexts through one shared BF16 LM head. `tools/kld_aggregate.py` then
+welded the five `/2` reports into `receipts/kld5-1M-tail-{hyd,k5k6,ctx,fp8,k4}.json`
+(schema `qwen38-kld-ladder-cumulative/2`), each carrying the summed 560-bin histogram, the
+bin-bounded quantiles with their `lower` / `upper` / `estimate`, the exact maximum and the
+exact exceedance counts.
+
+| candidate | mean | p50 | p95 | p99 | p99.9 | p99.99 | exact max | above 0.1 | above 1.0 |
+|---|---|---|---|---|---|---|---|---|---|
+| hydrated | 0.002700 | 0.00109 | 0.0082 | 0.0276 | **0.1319** | 0.463 | 3.735 | **0.1534 %** (1,608) | 0.00219 % (23) |
+| online K5/K6 | 0.003141 | 0.00128 | 0.0099 | 0.0321 | **0.1446** | 0.498 | 5.507 | **0.1820 %** (1,907) | 0.00200 % (21) |
+| context | 0.003409 | 0.00135 | 0.0107 | 0.0357 | **0.1642** | 0.587 | 3.749 | **0.2287 %** (2,397) | 0.00305 % (32) |
+| official FP8 | 0.005197 | 0.00202 | 0.0167 | 0.0531 | **0.2438** | 0.812 | 5.296 | **0.3912 %** (4,100) | 0.00592 % (62) |
+| K4 | 0.010345 | 0.00320 | 0.0332 | 0.1194 | **0.5555** | 1.870 | 7.565 | **1.2604 %** (13,210) | 0.03807 % (399) |
+
+**What this settles.** The standing objection — "avg KLD and top-1 are meaningless, what does
+the 99.9 % tail look like?" — now has an answer measured on the same held-out contexts as the
+headline: the ordering at **p50, p95, p99, p99.9 and p99.99 is the same as the ordering of the
+means**, so for these candidates the mean is not hiding a worse tail. Every EXL3 K5/K6-class
+build has a lighter tail than official FP8 at every measured quantile — at p99.9 hydrated
+**0.1319** against FP8 **0.2438**, and 0.1534 % of positions above 0.1 nats against FP8's
+0.3912 % — and **K4 is worse than FP8 at every quantile**, including 1.2604 % of positions
+above 0.1 nats against 0.3912 %.
+
+**What it does not settle.** This is **one 1,048,064-position shard**, not the full
+10,480,640-position run: the ten-shard ladder above predates the histogram and cannot be
+retrofitted, since its hidden states are gone. Cumulative histograms over all ten shards
+require re-running the other nine with the `/2` harness — roughly **6 hours of GPU time**, not
+yet done. The quantiles here are **bin-bounded**, not exact: each is the log-spaced bin that
+provably contains it, ~5.6 % wide, which is why every receipt publishes `lower` / `upper` /
+`estimate` instead of a single fabricated digit. The **maxima and exceedance counts are exact**.
+The 10 M receipts remain the authority for the full-run means, bootstrap intervals and paired
+results; nothing above was rewritten.

@@ -1,0 +1,105 @@
+{
+  "schema": "qwen38-kld-ladder-paired/1",
+  "generated_utc": "2026-08-15T21:24:44Z",
+  "scope": "paired per-context comparison at the 10M ladder checkpoint of the v5 held-out suite",
+  "suite": {
+    "manifest": "receipts/kld5-suite-manifest.json",
+    "manifest_sha256": "c79dfad3767ca5b3015129077f20dbb9282a2e51ca8bca9ed09be8c7a9c73019",
+    "suite_token_sha256": "510541f6861b589d44932db253ec25d96d6daaeeee4ea2ab9b65329209482b88",
+    "contexts": 5120,
+    "context_length": 2048,
+    "scored_positions": 10480640,
+    "source_clusters": 842
+  },
+  "inputs": {
+    "k4": {
+      "path": "receipts/kld5-10M-k4.json",
+      "sha256": "aff87959aa147e85b78491d3986897bbbfa27003fbb9e976738e71370bea347c",
+      "content_sha256": "163e798a30e6afd5e03a0f94ca2b44fba02160ad519b6f490eeebf061b00dd27"
+    },
+    "k5k6": {
+      "path": "receipts/kld5-10M-k5k6.json",
+      "sha256": "da1da6c34fecd4ba6b814f6de83ac2ea4c47bef9f9cc83e68e65164d1196b038",
+      "content_sha256": "d4237050fd4ad90aaecc3c0f6be011b33570ed1ce2e4271c000075c24ef814d3"
+    },
+    "hyd": {
+      "path": "receipts/kld5-10M-hyd.json",
+      "sha256": "2e4a28c487d22b0ed152306443169fe34e1d1c713f8bbd6c75b668812e65ce0e",
+      "content_sha256": "8d56fdcfc775d87a9d77c58e048b24b4f51e3e2910dbcc68fb2c4942d6c65650"
+    },
+    "ctx": {
+      "path": "receipts/kld5-10M-ctx.json",
+      "sha256": "2d605b7005f1e0cef1342eb8e939c9e8afa8d3cbb4ed6a427e86842a6921af31",
+      "content_sha256": "b720b83b06bf118ff3f9a4a1bb738b88706536857c9a7086bea9c11a87e43a61"
+    },
+    "fp8": {
+      "path": "receipts/kld5-10M-fp8.json",
+      "sha256": "03b18684e1bacaad3f65300db96e578626fe47cd22e03d34a09a3b9f79951ac3",
+      "content_sha256": "97bf51df5df27f5e14c6230df30924a22fbe701013c486eb60467873b919672c"
+    }
+  },
+  "method": {
+    "unit": "one 2,048-token context, 2,047 scored positions",
+    "statistic": "mean over contexts of (candidate A mean KLD - candidate B mean KLD)",
+    "interval": "source-cluster bootstrap, 10,000 resamples, seed 1, 842 clusters resampled with replacement",
+    "operands": "both candidates replayed through the same shared BF16 LM head; body-only, no candidate head quantization counted"
+  },
+  "comparisons": {
+    "hyd_vs_fp8": {
+      "a": "hyd",
+      "b": "fp8",
+      "contexts": 5120,
+      "difference_a_minus_b": -0.002534316245238691,
+      "ci95_low": -0.0027082676113414196,
+      "ci95_high": -0.0023828375497830473,
+      "a_wins": 5118,
+      "b_wins": 2,
+      "clusters": 842
+    },
+    "k5k6_vs_fp8": {
+      "a": "k5k6",
+      "b": "fp8",
+      "contexts": 5120,
+      "difference_a_minus_b": -0.0020840573031861214,
+      "ci95_low": -0.002248603010865803,
+      "ci95_high": -0.0019419345813114167,
+      "a_wins": 5105,
+      "b_wins": 15,
+      "clusters": 842
+    },
+    "ctx_vs_fp8": {
+      "a": "ctx",
+      "b": "fp8",
+      "contexts": 5120,
+      "difference_a_minus_b": -0.001784582510687777,
+      "ci95_low": -0.0018835139559242769,
+      "ci95_high": -0.0016971485992006924,
+      "a_wins": 5109,
+      "b_wins": 11,
+      "clusters": 842
+    },
+    "k4_vs_fp8": {
+      "a": "k4",
+      "b": "fp8",
+      "contexts": 5120,
+      "difference_a_minus_b": 0.005309945636986243,
+      "ci95_low": 0.004710494204428021,
+      "ci95_high": 0.0060189182174234255,
+      "a_wins": 7,
+      "b_wins": 5113,
+      "clusters": 842
+    },
+    "hyd_vs_k5k6": {
+      "a": "hyd",
+      "b": "k5k6",
+      "contexts": 5120,
+      "difference_a_minus_b": -0.0004502589420525692,
+      "ci95_low": -0.00046936758672114464,
+      "ci95_high": -0.00043254928793987676,
+      "a_wins": 4922,
+      "b_wins": 198,
+      "clusters": 842
+    }
+  },
+  "content_sha256": "ba0f9a2a3a680a135d28a5cc11b14d107e92c0ec477d4fdf0a7e3758b30b01e7"
+}

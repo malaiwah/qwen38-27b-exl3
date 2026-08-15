@@ -104,21 +104,43 @@ record came from the Arctic Shift `comments/search` API, paginated. Items are gr
 they would change.
 
 **Statistics.** "Avg KLD and top-1 are meaningless. What 99.9% tail looks like?" Publish
-p99/p99.9/max per candidate, not only the mean. **Landed.** `fidelity.py replay` now counts
-every scored position into a fixed log-spaced histogram — 560 bins from 1e-12 to 1e2 nats,
-plus explicit zero/underflow and overflow buckets — and stores it as `kld_tail` alongside the
-shard's own exact p50/p95/p99/p999 and exact maximum, which bumps the report schema to
+p99/p99.9/max per candidate, not only the mean. **Landed and measured.** `fidelity.py replay`
+counts every scored position into a fixed log-spaced histogram — 560 bins from 1e-12 to 1e2
+nats, plus explicit zero/underflow and overflow buckets — and stores it as `kld_tail` alongside
+the shard's own exact p50/p95/p99/p999 and exact maximum, which bumps the report schema to
 `qwen38-fidelity-report/2`. `tools/kld_aggregate.py` sums those counts across shards and
-publishes cumulative p50/p95/p99/p999/p9999 as the bin interval that provably contains each
-one (one bin, 5.6 % wide, wherever the tail is dense), plus the exact global maximum and
-exact exceedance counts at 1e-4 … 1 nat. Counts recombine, percentiles do not: that is the
-whole reason the histogram had to exist before the next volume run.
+publishes cumulative p50/p95/p99/p999/p9999 as the bin interval that provably contains each one
+(one bin, 5.6 % wide, wherever the tail is dense), plus the exact global maximum and exact
+exceedance counts at 1e-4 … 1 nat. Counts recombine, percentiles do not — which is why the
+histogram had to exist before any tail could be published at all.
 
-The 10.48M-position ladder now running was started with the pre-histogram harness and emits
-`/1` reports, which carry no histogram. Its tail is still published per shard with the global
-maximum, via `kld_aggregate.py --allow-legacy-no-tail`, and the receipt says in
+**The tail is now on the record.** Shard 0 of the v5 suite was re-captured and re-replayed with
+the `/2` harness — the same 512 contexts every candidate saw, **1,048,064 scored positions**
+each — and welded into `receipts/kld5-1M-tail-{hyd,k5k6,ctx,fp8,k4}.json`
+(`qwen38-kld-ladder-cumulative/2`):
+
+| candidate | mean | p50 | p95 | p99 | p99.9 | p99.99 | exact max | above 0.1 | above 1.0 |
+|---|---|---|---|---|---|---|---|---|---|
+| hydrated | 0.002700 | 0.00109 | 0.0082 | 0.0276 | **0.1319** | 0.463 | 3.735 | **0.1534 %** | 0.00219 % |
+| online K5/K6 | 0.003141 | 0.00128 | 0.0099 | 0.0321 | **0.1446** | 0.498 | 5.507 | **0.1820 %** | 0.00200 % |
+| context | 0.003409 | 0.00135 | 0.0107 | 0.0357 | **0.1642** | 0.587 | 3.749 | **0.2287 %** | 0.00305 % |
+| official FP8 | 0.005197 | 0.00202 | 0.0167 | 0.0531 | **0.2438** | 0.812 | 5.296 | **0.3912 %** | 0.00592 % |
+| K4 | 0.010345 | 0.00320 | 0.0332 | 0.1194 | **0.5555** | 1.870 | 7.565 | **1.2604 %** | 0.03807 % |
+
+The ordering at every measured quantile matches the ordering of the means, so for these
+candidates the mean is not hiding a worse tail: every EXL3 K5/K6-class build has a lighter tail
+than official FP8 at every quantile, and K4 is worse than FP8 at every quantile.
+
+**Remaining gap, precisely.** The 10.48 M-position ladder was captured with the pre-histogram
+harness and emits `/1` reports, which carry no histogram; its tail is published per shard with
+the exact global maximum via `kld_aggregate.py --allow-legacy-no-tail`, and the receipt says in
 `not_aggregable` why there is no cumulative percentile. A mixed `/1` + `/2` shard set is
-rejected rather than summed into a tail that would silently describe only part of the run.
+rejected rather than summed into a tail that would silently describe only part of the run. Its
+hidden states are deleted, so it cannot be retrofitted. **Cumulative histograms over all ten
+shards therefore require re-running the other nine shards with the `/2` harness — about 6 hours
+of GPU time, and not yet done.** Until that runs, the published tail is one shard of ten
+(1,048,064 of 10,480,640 positions) with bin-bounded quantiles, and the 10 M receipts stay the
+authority for full-run means, bootstrap intervals and paired results.
 
 **Long context.** Every scored position today comes from a 2,048-token window. Two readers
 asked for 64k/128k behaviour, and one reports measured instruction-following collapse at Q3
