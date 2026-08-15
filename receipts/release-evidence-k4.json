@@ -1,0 +1,59 @@
+{
+  "schema": "qwen38-release-evidence/1",
+  "generated_utc": "2026-08-15T08:20:49Z",
+  "artifact": {
+    "hf_repo": "malaiwah/Qwen3.8-27B-K4",
+    "label": "iteration-1 capacity edition",
+    "recipe": "MLP all K4, lm_head K6, attention BF16 on disk encoded to K6 at load, BF16 MTP/vision/embeddings",
+    "index_sha256": "f17bd87446338313304591297bbc3e37b541b32253723ef75c917c546416e660",
+    "shard_sha256": {
+      "model-00001-of-00004.safetensors": "690456b5db5d6187d3e4b15b84e5dbafcce440ffe05f30dba7e7eda81210ff26",
+      "model-00002-of-00004.safetensors": "44b8444793289e111a0956f06f18fb24090c3408a7aac0b517fdd061dfde0e5c",
+      "model-00003-of-00004.safetensors": "02efb298bc40bb3c739fb525d4b70ed4d307a7e24fd30ed71cb7e1433a6c326a",
+      "model-00004-of-00004.safetensors": "e21117898ca5d5fc9591091d8ed3b3e87cf27a434a6d212f10e6f5e62aa632de"
+    },
+    "resident_weights_gib": 17.89
+  },
+  "upstream": {
+    "hf_repo": "Qwen/Qwen3.8-27B",
+    "revision": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0"
+  },
+  "toolchain": {
+    "research_repo": "https://github.com/malaiwah/qwen38-27b-exl3",
+    "research_commit": "8b1c59ee5e27d99be5ce7047486ad2534bb83e2e",
+    "vllm_image": "voipmonitor/vllm@sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b"
+  },
+  "hardware": {
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Server Edition",
+    "arch": "SM120",
+    "tensor_parallel": 1
+  },
+  "evaluation": {
+    "suite": "qwen38-27b-fidelity-suite-v3",
+    "partition": "analysis",
+    "suite_token_sha256": "3f9d17f1b55f64872ad3ac19c8711654e09ba70b7ca14b0851525088fe735691",
+    "contexts": 136,
+    "mean_kld": 0.030736104824830267,
+    "ci95": [
+      0.0223837770930911,
+      0.040730999865936125
+    ],
+    "median_kld": 0.004218101546015873,
+    "top1_agreement": 0.944984051265841,
+    "note": "superseded on fidelity by every later build; retained as the capacity edition, the only one that reaches native 262,144 on a 32 GB card without an embedding overlay",
+    "captures_published": true
+  },
+  "context": {
+    "native_262144_on_32gb": true,
+    "kv_tokens_measured": 289577,
+    "measured_by": "independent RTX 5090 tester, MTP-3, vision enabled, utilisation 0.98"
+  },
+  "not_verified": [
+    "downstream task retention",
+    "multimodal quality",
+    "long-context accuracy",
+    "YaRN 1M",
+    "tensor parallel > 1",
+    "non-SM120 GPUs"
+  ]
+}
