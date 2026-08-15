@@ -26,7 +26,7 @@ the tensor the reference protocol captures.
     fidelity.py suite    --model DIR --out SUITE_DIR [--contexts 128]
     fidelity.py capture  --model DIR --suite SUITE_DIR --out CAP_DIR [--quantization ...]
     fidelity.py replay   --reference REF_DIR --candidate CAP_DIR --head W.safetensors \\
-                         --suite SUITE_DIR --out report.json
+                         --suite SUITE_DIR --out report.json [--score-from N]
     fidelity.py paired   --a report_a.json --b report_b.json --out paired.json
 
 New keys, all additive; every pre-existing key keeps its name and meaning:
@@ -65,6 +65,27 @@ New keys, all additive; every pre-existing key keeps its name and meaning:
     99.9th percentile look like over the whole run" instead of a mean.
     Carrying it bumps the report schema to `qwen38-fidelity-report/2`; every
     field of `/1` is still present, with its name and meaning unchanged.
+  * `scored_position_window` (replay report) - which scored positions of each
+    context the report's numbers cover, so a windowed run cannot be mistaken for
+    a full one. `--score-from N` drops the first N scored positions of every
+    context before any statistic is computed, which is what lets our numbers be
+    recomputed on the geometry of an external protocol that scores only the
+    second half of each window: `llama.cpp llama-perplexity --kl-divergence`
+    sets `first = n_ctx/2` and scores positions `n_ctx/2 .. n_ctx-2`, i.e.
+    `--score-from 1024` for our 2048-token contexts, and `--score-from 256`
+    reproduces its absolute 256-token left-context floor. Every number in the
+    report then covers exactly the retained positions - `scored_positions`, the
+    token mean/median, p95/p99/p999, the `kld_tail` histogram, the per-context
+    means and medians, top-1 agreement, mean JSD, the exact maximum and the
+    cluster bootstrap. The block records the requested `score_from`, the
+    resulting positions per context, what was dropped and the policy in prose.
+    `--score-from 0` is the default and leaves every pre-existing field exactly
+    as it was; a windowed run instead carries schema
+    `qwen38-fidelity-report/3`, identical in format to `/2` but covering a
+    declared sub-window of each context, so a tool that only knows how to sum
+    full-context reports refuses it instead of silently mixing two geometries.
+    Windowing is a replay-time slice of captured hidden states: no recapture,
+    and one capture set serves any `--score-from`.
 
 `torch` is imported by the subcommands that need it rather than at module
 import time, so `--help` and the pure-JSON `paired` subcommand work on a
@@ -701,6 +722,17 @@ KLD_HIST_LOG10_HIGH = 2.0
 KLD_HIST_BINS_PER_DECADE = 40
 KLD_HIST_SCHEMA = "qwen38-kld-tail-histogram/1"
 
+# A replay report's schema says which positions its numbers cover.  `/2` and `/3`
+# are the same format; the difference is scope, and it is the scope that must not
+# be summed by accident: a windowed shard's histogram counts, means and top-1
+# rate describe a different position set from a full-context shard's, so a
+# windowed run gets its own schema string and old tooling fails closed on it
+# instead of averaging two geometries.  `scored_position_window.score_from > 0`
+# and `/3` always agree; `kld_aggregate.py` checks both.
+REPORT_SCHEMA_FULL = "qwen38-fidelity-report/2"
+REPORT_SCHEMA_WINDOWED = "qwen38-fidelity-report/3"
+SCORED_WINDOW_SCHEMA = "qwen38-scored-position-window/1"
+
 
 def kld_bin_edges() -> list[float]:
     """Ascending `edges[i] = 10 ** (log10_low + i / bins_per_decade)`."""
@@ -864,6 +896,34 @@ def cmd_replay(args) -> int:
     top1_hits, positions = 0, 0
     all_kl, tail = [], TailHistogram()
 
+    # Scored-position window.  Dropping the first `score_from` rows of a capture
+    # is exactly dropping the first `score_from` scored positions of its context:
+    # row r holds the hidden state that predicts token r + 1, so what is retained
+    # are the positions carrying at least `score_from + 1` tokens of left context.
+    # The rows go before any statistic exists, which is why nothing downstream has
+    # to know about the window -- and why the slice is taken on the way off disk
+    # instead of after the metrics, so a windowed replay also reads and multiplies
+    # only the rows it scores.
+    score_from = int(args.score_from)
+    if score_from < 0:
+        raise SystemExit(f"--score-from must be >= 0, got {score_from}")
+    kept_counts, full_counts = set(), set()
+
+    def load_hidden(path: Path) -> tuple[torch.Tensor, int]:
+        """Retained hidden rows of one context, plus its full scored-row count."""
+        with safe_open(str(path), framework="pt", device="cpu") as f:
+            if not score_from:
+                whole = f.get_tensor("hidden_states")
+                return whole.to(dev, hdtype), whole.shape[0]
+            sliced = f.get_slice("hidden_states")
+            full = int(sliced.get_shape()[0])
+            if full <= score_from:
+                raise SystemExit(
+                    f"--score-from {score_from} retains no scored position in {path}: "
+                    f"the capture holds {full}"
+                )
+            return sliced[score_from:].to(dev, hdtype), full
+
     chosen = select(suite["context_index"], args.filter)
     if not chosen:
         raise SystemExit(f"replay filter {args.filter!r} selected no contexts")
@@ -879,12 +939,17 @@ def cmd_replay(args) -> int:
         i = ctx["index"]
         rp = Path(args.reference, f"hidden_{i:04d}.safetensors")
         cp = Path(args.candidate, f"hidden_{i:04d}.safetensors")
-        with safe_open(str(rp), framework="pt", device="cpu") as f:
-            ref = f.get_tensor("hidden_states").to(dev, hdtype)
-        with safe_open(str(cp), framework="pt", device="cpu") as f:
-            cand = f.get_tensor("hidden_states").to(dev, hdtype)
+        ref, ref_rows = load_hidden(rp)
+        cand, cand_rows = load_hidden(cp)
+        if ref_rows != cand_rows:
+            raise SystemExit(
+                f"context {i}: reference capture holds {ref_rows} scored positions, "
+                f"candidate holds {cand_rows}"
+            )
+        full_counts.add(ref_rows)
         kl, js, hits = context_metrics(ref, cand, head, args.vocab_chunk, cand_head)
         npos = kl.numel()
+        kept_counts.add(npos)
         m, med, agree = float(kl.mean()), float(kl.median()), hits / npos
         per_ctx.append({"index": i, "stratum": ctx["stratum"],
                         "source_cluster": ctx["source_cluster"],
@@ -912,8 +977,32 @@ def cmd_replay(args) -> int:
             f"{tail.total} vs {positions} positions, max {tail.max!r} vs {exact_max!r}"
         )
     means = [c["mean_kld"] for c in per_ctx]
+    kept_min, kept_max = min(kept_counts), max(kept_counts)
+    full_min, full_max = min(full_counts), max(full_counts)
+    window = {
+        "schema": SCORED_WINDOW_SCHEMA,
+        "score_from": score_from,
+        "windowed": score_from > 0,
+        "policy": (
+            "the first score_from scored positions of every context were dropped "
+            "before any statistic was computed, so scored_positions, the token "
+            "mean/median, p95/p99/p999, kld_tail, the per-context means and "
+            "medians, top1_agreement, mean_jsd_bits, max_kld and the cluster "
+            "bootstrap all cover only the retained positions"
+            if score_from else
+            "no window: every scored position of every context is included"
+        ),
+        "positions_per_context": kept_min if kept_min == kept_max else None,
+        "positions_per_context_min": kept_min,
+        "positions_per_context_max": kept_max,
+        "capture_positions_per_context": full_min if full_min == full_max else None,
+        "dropped_positions_per_context": score_from,
+        "dropped_positions_total": score_from * len(per_ctx),
+        "first_scored_position_index": score_from,
+        "min_left_context_tokens": score_from + 1,
+    }
     report = {
-        "schema": "qwen38-fidelity-report/2",
+        "schema": REPORT_SCHEMA_WINDOWED if score_from else REPORT_SCHEMA_FULL,
         "reference": str(args.reference), "candidate": str(args.candidate),
         "reference_identity": capture_identity(args.reference, args.hash_shards),
         "candidate_identity": capture_identity(args.candidate, args.hash_shards),
@@ -922,6 +1011,7 @@ def cmd_replay(args) -> int:
         "candidate_head_sha256": sha256_file(Path(args.candidate_head)) if args.candidate_head else None,
         "suite_token_sha256": suite["suite_token_sha256"],
         "filter": args.filter,
+        "scored_position_window": window,
         "contexts": len(per_ctx), "scored_positions": positions,
         "vocab_size": vocab, "hidden_size": hidden_size,
         "token_mean_kld": float(kl_all.mean()),
@@ -941,9 +1031,13 @@ def cmd_replay(args) -> int:
                        "accumulation": "float64", "two_pass": True},
     }
     atomic_write_json(Path(args.out), report)
-    print("replay_done " + json.dumps({k: report[k] for k in (
+    done = {k: report[k] for k in (
         "contexts", "scored_positions", "token_mean_kld", "context_macro_mean_kld",
-        "top1_agreement", "p999_kld")}), flush=True)
+        "top1_agreement", "p999_kld")}
+    if score_from:
+        done["score_from"] = score_from
+        done["positions_per_context"] = window["positions_per_context"]
+    print("replay_done " + json.dumps(done), flush=True)
     return 0
 
 
@@ -1198,6 +1292,14 @@ def main() -> int:
     r.add_argument("--bootstrap-seed", type=int, default=1)
     r.add_argument("--filter", default="all",
                    help="all | analysis | qualification | sentinel")
+    r.add_argument("--score-from", type=int, default=0,
+                   help="drop the first N scored positions of every context before any "
+                        "statistic is computed, so the run is comparable with a protocol "
+                        "that scores only late positions (llama-perplexity uses "
+                        "first = n_ctx/2, i.e. --score-from 1024 for 2048-token contexts); "
+                        "0 (default) scores every position and leaves the report a "
+                        f"{REPORT_SCHEMA_FULL}, any other value makes it a "
+                        f"{REPORT_SCHEMA_WINDOWED}")
     r.add_argument("--fp32", action="store_true",
                    help="replay in float32 (matches --fp32 captures)")
     r.add_argument("--hash-shards", action=argparse.BooleanOptionalAction, default=True,

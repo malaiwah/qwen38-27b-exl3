@@ -65,9 +65,25 @@ That is correct and currently unanswered. Required:
 - stock EXL3 uniform-bitrate controls, at least `turboderp/Qwen3.8-27B-exl3` 5.00bpw
   (`a35e75a7`) and 6.00bpw (`d32ba0bb`), to separate our role-aware allocation from EXL3
   itself;
-- a cross-dataset run on the corpus other publishers use (OpenWebText-style, qbench's 8 x
-  8,192-token protocol), because the same NVFP4 checkpoint reads 0.095 here and 0.016-0.068
-  in Unsloth's own table. Whichever way that lands, both numbers get published.
+- a cross-dataset run on the corpus other publishers use. Two corrections to what this
+  section said earlier. **First, the NVFP4 range was wrong here.** The same checkpoint reads
+  0.094978 on our v3 suite and 0.092727 after contamination correction
+  ([`receipts/v3-report-nvfp4-analysis.json`](../receipts/v3-report-nvfp4-analysis.json),
+  [`receipts/analysis-v3-contamination-corrected.json`](../receipts/analysis-v3-contamination-corrected.json)),
+  while Unsloth's own published per-corpus rows are **0.01628** zh, **0.02600** code,
+  **0.03993** refgen, **0.05818** chat and **0.0124-0.0155** ja/ko/ru/es — a range of
+  **0.0124-0.05818**, not the "0.016-0.068" written here before. Those rows carry no corpus
+  identity, token count, context length, reference precision, KL direction or engine, so
+  they are not reproducible by us or by anyone else. **Second, there is no upstream GGUF
+  ladder to compare against.** Unsloth publishes no per-quant KLD table for Qwen3.8-27B
+  GGUFs at all — one prose figure ("82.5% accuracy (IQ2_XXS 9GB)"), one top-1-versus-size
+  chart, and "More benchmarks coming soon!" — so the `Q5_K_XL` / `Q6_K` / `Q8_0` comparison
+  cannot be closed by citation and has to be run by us. Their nearest published exact ladder
+  is Qwen3.5-35B-A3B on wikitext-2 at ctx 512 (Q5_K_XL 0.0069, Q6_K_XL 0.0041, Q8_K_XL
+  0.0026). Protocol identity, the ordered delta list, pinned artifacts and the two-run
+  execution plan are in
+  [35-external-protocol-comparability.md](35-external-protocol-comparability.md). Whichever
+  way it lands, both numbers get published.
 
 Report confidence-conditioned buckets alongside the mean: a KLD below 0.01 is the threshold
 readers already associate with "practically BF16", so the distribution shape matters as much

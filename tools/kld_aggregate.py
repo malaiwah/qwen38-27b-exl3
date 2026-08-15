@@ -27,16 +27,26 @@ What is aggregable and what is not:
     inside it -- together with exact exceedance counts at the decade edges.
     `max_kld` needs no interpolation at all: it is the exact max over shards.
 
+Every receipt records the scored-position window its shards were replayed with
+(`scored_position_window`), because a run that scores only late positions of each
+context is a different measurement from a full-context one even when every other
+operand is identical.  Carrying that block is what bumps the receipt schema to
+`qwen38-kld-ladder-cumulative/3`: no earlier field changed its name or meaning,
+but `content_sha256` covers the whole payload, so a `/2` and a `/3` receipt over
+the same shard reports differ in digest by construction and the schema string has
+to say which shape was digested.
+
 Fail-closed rules -- any of these aborts without writing:
 
-  * a report that is neither `qwen38-fidelity-report/2` nor the pre-histogram
-    `qwen38-fidelity-report/1`, or that lacks a required field, or whose
-    `kld_tail` counts do not sum to the positions it says it scored;
-  * a mix of `/1` and `/2` reports: `/1` has no histogram, so a summed tail
-    would silently describe only part of the run;
+  * a report that is none of `qwen38-fidelity-report/2` (full context),
+    `qwen38-fidelity-report/3` (a declared scored-position window) and the
+    pre-histogram `qwen38-fidelity-report/1`, or that lacks a required field, or
+    whose `kld_tail` counts do not sum to the positions it says it scored;
+  * a mix of `/1` with either histogram generation: `/1` has no histogram, so a
+    summed tail would silently describe only part of the run;
   * an all-`/1` set, unless `--allow-legacy-no-tail` says so explicitly, in
     which case the receipt carries no cumulative tail and records why;
-  * `/2` reports whose histograms were built with different bin edges;
+  * histogram-carrying reports whose bin edges differ;
   * disagreeing candidate/reference model identity, head digest, comparator,
     filter, vocabulary or hidden size across reports;
   * a context index that appears in more than one report (overlap);
@@ -47,7 +57,15 @@ Fail-closed rules -- any of these aborts without writing:
     index that the parent suite does not contain;
   * without `--suite`: reports that declare different `suite_token_sha256`;
   * a shard summary that disagrees with its own per-context rows by more than
-    `--tolerance` (relative).
+    `--tolerance` (relative);
+  * reports whose scored-position window differs: `fidelity.py replay
+    --score-from N` drops the first N scored positions of every context, so a
+    windowed shard and a full-context shard cover different position sets and
+    their means, summed histograms, top-1 rates and maxima cannot be combined.  A
+    report that predates the block counts as `score_from = 0`; a windowed report
+    is a `qwen38-fidelity-report/3`, and a report whose schema and whose
+    `scored_position_window.score_from` disagree about being windowed is rejected
+    as internally inconsistent.
 
 Usage:
 
@@ -70,9 +88,15 @@ import sys
 import time
 from pathlib import Path
 
-SCHEMA = "qwen38-kld-ladder-cumulative/2"
+SCHEMA = "qwen38-kld-ladder-cumulative/3"
 REPORT_SCHEMA = "qwen38-fidelity-report/2"
+# Same format as `/2`, different scope: its numbers cover a declared sub-window of
+# each context (`fidelity.py replay --score-from N`).  Both carry `kld_tail`, and
+# both are aggregable -- but never with each other.
+WINDOWED_REPORT_SCHEMA = "qwen38-fidelity-report/3"
 LEGACY_REPORT_SCHEMA = "qwen38-fidelity-report/1"
+TAIL_REPORT_SCHEMAS = (REPORT_SCHEMA, WINDOWED_REPORT_SCHEMA)
+SCORED_WINDOW_SCHEMA = "qwen38-scored-position-window/1"
 
 # Cumulative quantiles read off the summed histogram.  p9999 is here and not in
 # the shard reports because it only becomes meaningful at ladder scale: it needs
@@ -253,9 +277,11 @@ def load_report(path: Path, errors: list[str]) -> dict | None:
         errors.append(f"{path}: report is not an object")
         return None
     schema = report.get("schema")
-    if schema not in (REPORT_SCHEMA, LEGACY_REPORT_SCHEMA):
+    known = (REPORT_SCHEMA, WINDOWED_REPORT_SCHEMA, LEGACY_REPORT_SCHEMA)
+    if schema not in known:
         errors.append(
-            f"{path}: schema {schema!r} is neither {REPORT_SCHEMA!r} nor {LEGACY_REPORT_SCHEMA!r}"
+            f"{path}: schema {schema!r} is none of "
+            + ", ".join(repr(s) for s in known)
         )
         return None
     for field in REQUIRED_REPORT_FIELDS:
@@ -271,6 +297,59 @@ def load_report(path: Path, errors: list[str]) -> dict | None:
             errors.append(f"{path}: per_context_all row lacks {ROW_FIELDS}")
             return None
     return report
+
+
+def scored_window(path: Path, report: dict, errors: list[str]) -> dict | None:
+    """The scored-position window a report declares, defaulted for older reports.
+
+    A report written before `--score-from` existed carries no block and scored
+    every position of every context, which is `score_from = 0` -- so it may be
+    welded with today's unwindowed reports and never with a windowed one.  The
+    schema and the block have to agree about being windowed: a `/3` without a
+    window, or a `/2` with one, is a hand-edited or half-migrated report and no
+    number in it can be trusted to mean what it says.
+    """
+    schema = str(report.get("schema"))
+    block = report.get("scored_position_window")
+    if block is None:
+        if schema == WINDOWED_REPORT_SCHEMA:
+            errors.append(
+                f"{path}: schema {schema} promises a scored-position window but the "
+                "report carries no scored_position_window block"
+            )
+            return None
+        return {"score_from": 0, "declared": False, "windowed": False,
+                "positions_per_context": None, "source_schema": schema}
+    if not isinstance(block, dict):
+        errors.append(f"{path}: scored_position_window is not an object")
+        return None
+    score_from = block.get("score_from")
+    if not isinstance(score_from, int) or isinstance(score_from, bool) or score_from < 0:
+        errors.append(
+            f"{path}: scored_position_window.score_from {score_from!r} is not a "
+            "non-negative integer"
+        )
+        return None
+    if (score_from > 0) != (schema == WINDOWED_REPORT_SCHEMA):
+        errors.append(
+            f"{path}: scored_position_window.score_from is {score_from} but the report "
+            f"is a {schema}; a windowed report must be a {WINDOWED_REPORT_SCHEMA} and a "
+            f"{WINDOWED_REPORT_SCHEMA} must declare score_from > 0"
+        )
+        return None
+    per_context = block.get("positions_per_context")
+    if per_context is not None and (not isinstance(per_context, int)
+                                    or isinstance(per_context, bool) or per_context <= 0):
+        errors.append(
+            f"{path}: scored_position_window.positions_per_context {per_context!r} is "
+            "neither null nor a positive integer"
+        )
+        return None
+    return {"score_from": score_from, "declared": True, "windowed": score_from > 0,
+            "positions_per_context": per_context, "source_schema": schema,
+            "policy": block.get("policy"),
+            "min_left_context_tokens": block.get("min_left_context_tokens"),
+            "dropped_positions_per_context": block.get("dropped_positions_per_context")}
 
 
 def identity_view(report: dict) -> dict:
@@ -320,7 +399,7 @@ def check_rows_against_summary(path: Path, report: dict, tolerance: float,
 
 
 def validate_tail(path: Path, report: dict, errors: list[str]) -> dict | None:
-    """Structural check of a `/2` report's `kld_tail` block.
+    """Structural check of a histogram-carrying report's `kld_tail` block.
 
     A histogram that does not account for exactly the positions its own report
     claims to have scored is worse than no histogram, because it would be summed
@@ -328,7 +407,7 @@ def validate_tail(path: Path, report: dict, errors: list[str]) -> dict | None:
     """
     tail = report.get("kld_tail")
     if not isinstance(tail, dict):
-        errors.append(f"{path}: {REPORT_SCHEMA} report has no kld_tail object")
+        errors.append(f"{path}: {report.get('schema')} report has no kld_tail object")
         return None
     edges = tail.get("bin_edges")
     counts = tail.get("counts")
@@ -572,13 +651,17 @@ def cmd_aggregate(args: argparse.Namespace) -> int:
 
     reports: list[tuple[Path, dict, dict]] = []
     tails: list[tuple[Path, dict]] = []
+    windows: list[tuple[Path, dict]] = []
     for path in paths:
         report = load_report(path, errors)
         if report is None:
             continue
         stats = check_rows_against_summary(path, report, tolerance, errors)
         reports.append((path, report, stats))
-        if report["schema"] == REPORT_SCHEMA:
+        window = scored_window(path, report, errors)
+        if window is not None:
+            windows.append((path, window))
+        if report["schema"] in TAIL_REPORT_SCHEMAS:
             tail = validate_tail(path, report, errors)
             if tail is not None:
                 tails.append((path, tail))
@@ -587,10 +670,10 @@ def cmd_aggregate(args: argparse.Namespace) -> int:
 
     # ---- one report generation, so the summed tail covers the whole run
     schemas = sorted({str(report["schema"]) for _, report, _ in reports})
-    if len(schemas) > 1:
+    if LEGACY_REPORT_SCHEMA in schemas and len(schemas) > 1:
         errors.append(
             f"mixed report schemas {schemas}: {LEGACY_REPORT_SCHEMA} predates the kld_tail "
-            f"histogram, so a summed tail would describe only the {REPORT_SCHEMA} shards. "
+            "histogram, so a summed tail would describe only the shards that carry one. "
             f"Re-run `fidelity.py replay` on the {LEGACY_REPORT_SCHEMA} shards, or aggregate "
             "the two generations into separate receipts"
         )
@@ -607,6 +690,23 @@ def cmd_aggregate(args: argparse.Namespace) -> int:
                 f"{path}: kld_tail bin edges differ from {tails[0][0]}; histograms with "
                 "different binning cannot be summed"
             )
+
+    # ---- one scored-position window, or the numbers are not the same measurement
+    if windows:
+        base_window_path, base_window = windows[0]
+        for path, window in windows[1:]:
+            if window["score_from"] != base_window["score_from"]:
+                errors.append(
+                    f"{path}: scored-position window differs from {base_window_path} "
+                    f"(--score-from {window['score_from']} vs {base_window['score_from']}"
+                    + ("; a report without a scored_position_window block scored every "
+                       "position, which is --score-from 0"
+                       if not (window["declared"] and base_window["declared"]) else "")
+                    + "): a windowed shard and a full-context shard score different "
+                    "position sets, so their means, summed histograms, top-1 rates and "
+                    "maxima are not the same measurement. Aggregate each window into "
+                    "its own receipt"
+                )
 
     # ---- identity: one candidate, one reference, one head, one comparator
     base_path, base_report, _ = reports[0]
@@ -780,6 +880,31 @@ def cmd_aggregate(args: argparse.Namespace) -> int:
                 "distribution cannot be recovered here"),
         }
 
+    # Every shard shares one window (enforced above), so the receipt states it once.
+    score_from = windows[0][1]["score_from"] if windows else 0
+    declared_per_context = {w["positions_per_context"] for _, w in windows
+                            if w["positions_per_context"] is not None}
+    scored_window_payload = {
+        "schema": SCORED_WINDOW_SCHEMA,
+        "score_from": score_from,
+        "windowed": score_from > 0,
+        "policy": (
+            f"every shard was replayed with `fidelity.py replay --score-from {score_from}`: "
+            f"the first {score_from} scored positions of every context were dropped before "
+            "any statistic was computed, so every number in this receipt -- scored "
+            "positions, token mean, macro mean, bootstrap, top-1 agreement, summed "
+            "histogram, cumulative quantiles, exceedances and exact maximum -- covers only "
+            "the retained positions and is not comparable with a full-context receipt"
+            if score_from else
+            "every shard scored every position of every context; nothing is windowed"
+        ),
+        "positions_per_context": (next(iter(declared_per_context))
+                                  if len(declared_per_context) == 1 else None),
+        "min_left_context_tokens": score_from + 1,
+        "declared_by_all_reports": bool(windows) and all(w["declared"] for _, w in windows),
+        "report_schemas": schemas,
+    }
+
     payload = {
         "schema": SCHEMA,
         "tool": "tools/kld_aggregate.py",
@@ -796,6 +921,7 @@ def cmd_aggregate(args: argparse.Namespace) -> int:
         "candidate_head": base_report.get("candidate_head"),
         "candidate_head_sha256": base_report.get("candidate_head_sha256"),
         "filter": base_report.get("filter"),
+        "scored_position_window": scored_window_payload,
         "vocab_size": base_report.get("vocab_size"),
         "hidden_size": base_report.get("hidden_size"),
         "comparator": base_report.get("comparator"),
@@ -860,7 +986,7 @@ def cmd_aggregate(args: argparse.Namespace) -> int:
 
     out = Path(args.out)
     atomic_write_json(out, payload)
-    print(json.dumps({
+    summary = {
         "out": str(out),
         "candidate": payload["candidate"],
         "reports": payload["reports"],
@@ -878,7 +1004,11 @@ def cmd_aggregate(args: argparse.Namespace) -> int:
         "max_kld": payload["max_kld"],
         "ladder_checkpoint": payload["ladder"]["checkpoint"],
         "content_sha256": payload["content_sha256"],
-    }), flush=True)
+    }
+    if score_from:
+        summary["score_from"] = score_from
+        summary["positions_per_context"] = scored_window_payload["positions_per_context"]
+    print(json.dumps(summary), flush=True)
     return 0
 
 
