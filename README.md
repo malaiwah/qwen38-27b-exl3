@@ -36,6 +36,9 @@ Design goal: NVFP4-class VRAM footprint, lower KLD.
 | [docs/10-results-iteration-1.md](docs/10-results-iteration-1.md) | Iteration 1: build, serve, KLD, and the upstream defect |
 | [docs/24-p0-results.md](docs/24-p0-results.md) | **P0 done**: prefill +113 %, and why fp32 replay was a negative result |
 | [docs/23-next-attack-list.md](docs/23-next-attack-list.md) | **Ranked plan for iteration 3**, with evidence, cost and acceptance per item |
+| [docs/25-goal-pareto-dominate-fp8.md](docs/25-goal-pareto-dominate-fp8.md) | the goal as a gate, and the iteration-3 verdict per axis |
+| [docs/26-prefill-attribution.md](docs/26-prefill-attribution.md) | where prefill time goes: MLP 2.26x, attention 1.11x, hgemm at cuBLAS parity |
+| [docs/27-graph-decode-drift-control.md](docs/27-graph-decode-drift-control.md) | eager-vs-graph drift is ambient: BF16 drifts the same as EXL3 |
 | [PROGRESS.md](PROGRESS.md) | Chronological work log |
 
 Tooling in [tools/](tools/) is what produced the evidence: an unprivileged OCI
