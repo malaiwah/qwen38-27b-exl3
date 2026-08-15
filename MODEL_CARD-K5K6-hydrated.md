@@ -61,8 +61,8 @@ serves on a 32 GB card with MTP-3 and vision enabled, at utilisation 0.97
 |---|---:|---:|---:|---:|---|
 | [-hydrated](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated) | 21.61 GB | 20.31 GiB | **0.007406** | ~180k | fidelity first, smallest download |
 | [-EXL3-K5K6](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6) | 30.57 GB | 20.32 GiB | 0.008157 | ~180k | you want the attention width knob at launch |
-| [-context](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6-context) | 20.70 GB | 19.56 GiB | 0.009673 | **196,608** | long context that still beats FP8 — 9/9 needle retrievals to 196,857 tokens |
-| [-K4](https://huggingface.co/malaiwah/Qwen3.8-27B-K4) | 28.31 GB | 17.89 GiB | 0.030736 | **262,144** | native context is non-negotiable |
+| [-context](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6-context) | 20.70 GB | **18.13 GiB** | 0.009738 | **262,144 native** | you need native context on 32 GB — int8 embeddings, retrieval verified at 227,334 tokens |
+| [-K4](https://huggingface.co/malaiwah/Qwen3.8-27B-K4) | 28.31 GB | 17.89 GiB | 0.030736 | 262,144 | smallest footprint, native context without any overlay |
 
 Official `Qwen/Qwen3.8-27B-FP8` is 28.51 GiB resident at 0.013126 on the same suite and runs on
 stock vLLM, which none of these do.

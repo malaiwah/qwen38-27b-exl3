@@ -43,7 +43,7 @@ utilisation 0.97 ([collection](https://huggingface.co/collections/qwen38-27b-mix
 |---|---:|---:|---:|---:|---|
 | [-hydrated](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated) | 21.61 GB | 20.31 GiB | **0.007406** | ~180k | fidelity first |
 | [-EXL3-K5K6](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6) | 30.57 GB | 20.32 GiB | 0.008157 | ~180k | you want the width knob at launch |
-| **this build** | 20.70 GB | **19.56 GiB** | 0.009673 | **196,608** | long context that still beats FP8 |
+| **this build** | 20.70 GB | **18.13 GiB** | 0.009738 | **262,144 native** | native context on 32 GB, still below FP8 |
 | [-K4](https://huggingface.co/malaiwah/Qwen3.8-27B-K4) | 28.31 GB | 17.89 GiB | 0.030736 | **262,144** | native context is non-negotiable |
 
 ## Recipe

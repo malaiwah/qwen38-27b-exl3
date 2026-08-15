@@ -84,9 +84,9 @@ Two gaps where the cards currently say "not done":
 
 New from iteration 4:
 
-- **File the B12X prefill routing upstream** with #316. It is +3.4 % prefill for a
-  fidelity-neutral change (+0.0000377, CI spans zero) and it fixes a whole class of matrices
-  that run a decode kernel through prefill.
+- **FILED: B12X prefill routing** as [PR #318](https://github.com/local-inference-lab/vllm/pull/318),
+  carrying the int8 embedding overlay with it, and the model-side change as
+  [PR #319](https://github.com/local-inference-lab/vllm/pull/319).
 - **Report `torch._scaled_mm` row-wise + `out_dtype=float16`** returning silently wrong results
   (~6x relative error, no exception). bfloat16 output is correct.
 - **Patch exllamav3's `quantize_side_model`**: it raises a bare `AttributeError` when a
