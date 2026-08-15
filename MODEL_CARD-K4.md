@@ -258,41 +258,90 @@ Absolute magnitudes remain suite-specific.
 
 ## Public capability — MMLU-Pro, item-paired against BF16
 
-70 MMLU-Pro questions, 14 official categories, 5 per category, official five-shot prefixes,
-pinned `TIGER-Lab/MMLU-Pro@b189ec765aa7ed75c8acfea42df31fdae71f97be`, greedy, thinking at low
-reasoning effort, 5,120-token completion cap. The BF16 reference ran first; the plan and its
-acceptance rule were frozen before any result was seen.
+70 MMLU-Pro questions, 14 official categories, 5 per category, official five-shot category
+prefixes, pinned `TIGER-Lab/MMLU-Pro@b189ec765aa7ed75c8acfea42df31fdae71f97be`, greedy,
+thinking at low reasoning effort, 5,120-token completion cap. The BF16 reference ran first; the
+plan and its acceptance rule were frozen before any result was seen. All six models answered
+the same 70 items in the same order through the same extractor, so every candidate row is
+paired item-by-item against the BF16 control.
 
-| model | absolute | Wilson 95 % | BF16-pass retention | regressions | improvements | exact-answer agreement |
-|---|---:|---:|---:|---:|---:|---:|
-| `Qwen/Qwen3.8-27B` BF16 | 57/70 | [70.8 %, 88.8 %] | — | — | — | — |
-| **this quant (K4)** | **57/70** | [70.8 %, 88.8 %] | **55/57**, Wilson lower bound **88.1 %** | **2** | **2** | 0/70 |
+| model | absolute | Wilson 95 % | BF16-pass retention | Wilson lower | regressions | improvements | completion-cap failures | receipt |
+|---|---:|---|---:|---:|---:|---:|---:|---|
+| `Qwen/Qwen3.8-27B` BF16 | 57/70 (81.4 %) | [70.8 %, 88.8 %] | reference | — | — | — | 4 | [bf16](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/public-capability-bf16.json) |
+| [context edition](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6-context) | 58/70 (82.9 %) | [72.4 %, 89.9 %] | 56/57 | **90.7 %** | 1 | 2 | 3 | [ctx](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/public-capability-ctx.json) |
+| **this quant (K4)** | **57/70 (81.4 %)** | **[70.8 %, 88.8 %]** | **55/57** | **88.1 %** | **2** | **2** | **4** | [k4](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/public-capability-k4.json) |
+| [hydrated](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated) | 56/70 (80.0 %) | [69.2 %, 87.7 %] | 54/57 | 85.6 % | 3 | 2 | 4 | [hyd](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/public-capability-hyd.json) |
+| `Qwen/Qwen3.8-27B-FP8` | 56/70 (80.0 %) | [69.2 %, 87.7 %] | 55/57 | 88.1 % | 2 | 1 | 4 | [fp8](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/public-capability-fp8.json) |
+| [online K5/K6](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6) | 55/70 (78.6 %) | [67.6 %, 86.6 %] | 54/57 | 85.6 % | 3 | 1 | 4 | [k5k6](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/public-capability-k5k6.json) |
 
-Pass-outcome agreement is 66/70. Equal absolute scores with two regressions and two
+**This quant's verdict: 57/70 matches BF16 absolutely, and it misses the pre-registered bar at
+88.1 %.** Pass-outcome agreement is 66/70. Equal absolute scores with two regressions and two
 improvements is exactly why the measurement is item-paired: the totals match, the per-item
-behaviour does not.
+behaviour does not, and the totals alone would have hidden both.
+
+### The pre-registered bar, and who clears it
+
+The frozen plan accepts a candidate when BF16-pass retention has a **Wilson 95 % lower bound at
+or above 0.90** and **no category loses more than two BF16 passes**. The category clause is met
+by all five candidates — the worst case is two passes in philosophy, for the hydrated build and
+online K5/K6 — so the retention lower bound is the only clause that ever fails.
+
+**Only the context edition clears the bar, at 90.7 %.** This quant reads 88.1 % (55/57) and
+official `Qwen/Qwen3.8-27B-FP8` reads exactly the same 88.1 % (55/57); the hydrated build and
+online K5/K6 read 85.6 %. Four of the five candidates, official FP8 included, are measured
+shortfalls, published as measured with nothing retuned after the fact.
+
+**No candidate here is shown to beat another.** Every interval in the table overlaps every
+other interval, including the BF16 control's, so the matrix does not rank these models and this
+card does not claim it does. This quant is not shown to be worse than the context edition or
+better than the hydrated build or online K5/K6 on knowledge-and-reasoning tasks; on this suite
+it and official FP8 land on identical retention numbers. Note the contrast with the v5 tail
+result above, which is a distribution-fidelity measurement on 10,480,640 scored positions and
+does separate this build from FP8: that is a different question, on a different metric, at a
+different sample size, and it makes no capability claim.
+
+### Why a 70-item suite cannot certify this bar
+
+With 57 BF16 passes as the paired denominator, **56/57 is the smallest count whose Wilson 95 %
+lower bound clears 0.90** (56/57 → 90.7 %; 55/57 → 88.1 %; 54/57 → 85.6 %). A single paired
+regression is therefore the entire budget, and no result that gives up two can pass, however
+sound the build. The suite has too few items to certify the bar it pre-registered, and at this
+size it separates nothing — the point applies to official FP8 exactly as it applies to this
+quant. Read the shortfall as a **power limitation of a 70-item draw, not as evidence that any
+of these checkpoints is broken**.
 
 Four caveats, all load-bearing:
 
-1. **Four BF16 items hit the 5,120-token completion cap and are counted as failures**, so the
-   BF16 reference itself is depressed by the cap; this build hits the cap on four items too.
-   The superseded 2,048-cap control is kept at
+1. **Four BF16 items hit the 5,120-token completion cap and are counted as failures** under the
+   plan's frozen addendum (`finish_reason: length` with no letter emitted), so the BF16
+   reference itself is depressed by the cap; this build hits the cap on four items too, and the
+   per-model counts are in the table. The superseded 2,048-cap control, where BF16 lost 7/70 to
+   truncation, is kept at
    [`receipts/public-capability-bf16-superseded-cap2048.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/public-capability-bf16-superseded-cap2048.json).
-2. **Exact-answer agreement is 0/70.** Long chains of thought differ token-wise on every item,
-   so the pairing is on pass/fail outcome, never on generated text.
+2. **Exact-answer agreement is 0/70** for this build and for every other EXL3 candidate, and
+   1/70 for official FP8 (one math item, a 113-token answer both models pass). Long chains of
+   thought differ token-wise on essentially every item, so the pairing is on pass/fail outcome,
+   never on generated text.
 3. **This is a measured shortfall against the pre-registered bar.** The plan required a Wilson
    95 % lower bound at or above 90 % on BF16-pass retention; 88.1 % is below it. It is
    published as measured, with nothing retuned after the fact.
-4. **70 items is small** — the Wilson intervals are wide, and the remaining four candidates in
-   the family have not been run yet.
+4. **70 items is small.** The Wilson intervals are wide and mutually overlapping, so the full
+   six-model matrix — now run for every candidate, not just this one — resolves no ordering.
+   This is a **first public, licence-compatible, item-paired benchmark, not a leaderboard
+   claim**. The honest next step is more items, which is the plan's own P1: HumanEval+/MBPP-style
+   executable cases, IFEval-style constraint following, tool schemas, and a larger MMLU-Pro
+   draw. No capability claim on this card graduates before that.
 
 Receipts:
 [plan](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/public-capability-plan.json),
 [suite](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/public-capability-suite-mmlupro-70.json),
-[BF16 run](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/public-capability-bf16.json),
-[this build's run](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/public-capability-k4.json);
-harness `tools/public_capability.py`. Every receipt carries the per-item raw request, raw
-response, extracted letter, gold letter and digests.
+and the six per-model runs linked in the table
+(`receipts/public-capability-{bf16,ctx,k4,hyd,fp8,k5k6}.json`); harness
+[`tools/public_capability.py`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/tools/public_capability.py),
+sweep runner
+[`tools/run_public_capability.sh`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/tools/run_public_capability.sh).
+Every receipt carries the per-item raw request, raw response, extracted letter, gold letter and
+digests.
 
 ## Downstream task retention — 40-task smoke suite (prior, narrower evidence)
 

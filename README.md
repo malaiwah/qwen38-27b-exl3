@@ -83,13 +83,42 @@ lighter tail than official FP8 at **every** measured quantile, and K4 is worse t
 every quantile. Receipts are schema `qwen38-kld-ladder-cumulative/2`, welded by
 `tools/kld_aggregate.py` from `/2` replay reports.
 
-Public capability, first two of six candidates on a pinned MMLU-Pro subset (70 questions, 14
-official categories x 5, official five-shot prefixes,
+**Public capability, all six models on one pinned MMLU-Pro subset.** 70 questions, 14 official
+categories x 5, official five-shot prefixes,
 `TIGER-Lab/MMLU-Pro@b189ec765aa7ed75c8acfea42df31fdae71f97be`, greedy, thinking at low effort,
-5,120-token cap): BF16 **57/70** (Wilson [70.8 %, 88.8 %]), K4 **57/70** with BF16-pass
-retention **55/57** (Wilson lower bound 88.1 %), 2 regressions, 2 improvements, exact-output
-agreement 0/70 — four BF16 items hit the completion cap and count as failures
-(`receipts/public-capability-bf16.json`, `receipts/public-capability-k4.json`).
+5,120-token completion cap, every candidate scored **item-paired against the BF16 control**.
+This is a first public, licence-compatible, item-paired benchmark, not a leaderboard claim.
+
+| model | absolute | Wilson 95 % | BF16-pass retention | Wilson lower | regressions | improvements | completion-cap failures | receipt |
+|---|---|---|---|---|---|---|---|---|
+| BF16 `Qwen/Qwen3.8-27B` | 57/70 (81.4 %) | [70.8 %, 88.8 %] | reference | — | — | — | 4 | `receipts/public-capability-bf16.json` |
+| context edition | **58/70** (82.9 %) | [72.4 %, 89.9 %] | 56/57 | **90.7 %** | 1 | 2 | 3 | `receipts/public-capability-ctx.json` |
+| K4 | 57/70 (81.4 %) | [70.8 %, 88.8 %] | 55/57 | 88.1 % | 2 | 2 | 4 | `receipts/public-capability-k4.json` |
+| hydrated | 56/70 (80.0 %) | [69.2 %, 87.7 %] | 54/57 | 85.6 % | 3 | 2 | 4 | `receipts/public-capability-hyd.json` |
+| official FP8 `Qwen/Qwen3.8-27B-FP8` | 56/70 (80.0 %) | [69.2 %, 87.7 %] | 55/57 | 88.1 % | 2 | 1 | 4 | `receipts/public-capability-fp8.json` |
+| online K5/K6 | 55/70 (78.6 %) | [67.6 %, 86.6 %] | 54/57 | 85.6 % | 3 | 1 | 4 | `receipts/public-capability-k5k6.json` |
+
+**The bar, and who clears it.** `receipts/public-capability-plan.json` pre-registered two
+conditions before any candidate ran: BF16-pass retention with a Wilson 95 % lower bound **at or
+above 0.90**, and **no category losing more than two BF16 passes**. All five candidates satisfy
+the second — the worst per-category loss is two passes (hydrated and online K5/K6, philosophy).
+Only the **context edition** satisfies the first, at **90.7 %**. K4 and **official FP8** read
+**88.1 %**; hydrated and online K5/K6 read **85.6 %**. Four of five candidates therefore miss a
+bar written down in advance, and that is published rather than restated as a pass.
+
+**Why that is a power limit, not a verdict.** With 57 BF16 passes as the paired denominator,
+**56/57 is the smallest count whose Wilson lower bound clears 0.90** — a single paired miss
+already fails it — so a 70-item suite has too few items to certify this bar at all, and every
+candidate interval overlaps every other. The matrix separates nothing at this size. It applies
+equally to official FP8, which misses the same bar; none of this is evidence that any build is
+broken. Exact-output agreement is **0/70** for every EXL3 candidate and **1/70** for official
+FP8 (a single 113-token math answer) because long chains of thought differ token-wise, so the
+pass/fail outcome is the only meaningful pairing. Harness `tools/public_capability.py`, sweep
+runner `tools/run_public_capability.sh`, superseded 2,048-cap control
+`receipts/public-capability-bf16-superseded-cap2048.json`. The honest next step is **more items
+and more task types**, the plan's own P1 — HumanEval+/MBPP-style executable cases, IFEval-style
+constraints, tool schemas and a larger MMLU-Pro draw — not another sweep of the same 70
+questions; no capability claim graduates before that.
 
 Three limits stated up front: v5 absolute KLD is **not** comparable to v3 (K4 reads 0.029679
 there and 0.010604 here — only within-suite ordering and paired differences transfer); this run
@@ -154,7 +183,8 @@ collection index are these files:
 | [tools/kld_ladder.sh](tools/kld_ladder.sh) | walks the ladder one 512-context shard at a time — capture six models, replay five candidates, verify, delete the shard's ~64 GB of hidden states — because scratch is ~135 GB | ten per-shard reports, listed in every cumulative receipt |
 | [tools/kld_aggregate.py](tools/kld_aggregate.py) | welds verified per-shard reports into cumulative means, cluster bootstraps, paired comparisons and (for `qwen38-fidelity-report/2` inputs) bin-bounded cumulative quantiles | `receipts/kld5-10M-{hyd,k5k6,ctx,fp8,k4}.json`, `receipts/kld5-10M-paired.json` |
 | [tools/fidelity.py](tools/fidelity.py) | capture/replay harness; now also counts every scored position into a fixed log-spaced `kld_tail` histogram, bumping reports to `qwen38-fidelity-report/2` | per-shard and per-candidate reports |
-| [tools/public_capability.py](tools/public_capability.py) | paired MMLU-Pro run against a pinned dataset revision, official five-shot prefixes, greedy, with Wilson intervals and BF16-pass retention | `receipts/public-capability-{plan,suite-mmlupro-70,bf16,k4}.json`, superseded 2,048-cap control kept as `receipts/public-capability-bf16-superseded-cap2048.json` |
+| [tools/public_capability.py](tools/public_capability.py) | paired MMLU-Pro run against a pinned dataset revision, official five-shot prefixes, greedy, with Wilson intervals and BF16-pass retention | `receipts/public-capability-{plan,suite-mmlupro-70,bf16,ctx,k4,hyd,fp8,k5k6}.json`, superseded 2,048-cap control kept as `receipts/public-capability-bf16-superseded-cap2048.json` |
+| [tools/run_public_capability.sh](tools/run_public_capability.sh) | drives the six-model sweep one server at a time against the frozen BF16 reference, with the per-candidate environment each build needs (every EXL3 candidate requires `VLLM_EXL3_GRAPH_DECODE=1`) | the five candidate receipts above |
 | [tools/collection_index.py](tools/collection_index.py) | one immutable row per published checkpoint, every field carrying its receipt path, sha256 and RFC 6901 pointer; disk bytes and `resident_weights` kept strictly distinct | `receipts/collection-index.json` (`qwen38-collection-index/1`) |
 
 ## Status
@@ -175,5 +205,5 @@ collection index are these files:
 - [x] Paired at 5,120 contexts: hydrated **-0.002534** (5,118 wins), online K5/K6 **-0.002084** (5,105), context **-0.001785** (5,109) against official FP8; hydrated beats the runtime overlay by **-0.000450** (4,922); K4 loses to FP8 on 5,113 of 5,120 (`receipts/kld5-10M-paired.json`)
 - [x] Ladder stability shown, not assumed: cumulative hydrated mean **0.002700 / 0.002759 / 0.002699 / 0.002760** at the 1M / 2M / 5M / 10M checkpoints
 - [x] Exact tail now aggregable for future runs: a fixed log-spaced KLD histogram in `tools/fidelity.py` (`qwen38-fidelity-report/2`) plus bin-bounded cumulative quantiles in `tools/kld_aggregate.py`; this run kept only per-shard percentiles and the exact global maximum, and says so in its receipts
-- [x] First public-benchmark numbers: paired MMLU-Pro (70 questions, pinned `TIGER-Lab/MMLU-Pro@b189ec76`) with BF16 **57/70** and K4 **57/70** at **55/57** BF16-pass retention; four remaining candidates not yet run
+- [x] First public-benchmark matrix, all six models: paired MMLU-Pro (70 questions, pinned `TIGER-Lab/MMLU-Pro@b189ec76`) — BF16 **57/70**, context **58/70** at **56/57** retention (Wilson lower **90.7 %**, the only candidate clearing the pre-registered 0.90 bar), K4 **57/70** and official FP8 **56/70** at **55/57** (88.1 %), hydrated **56/70** and online K5/K6 **55/70** at **54/57** (85.6 %); the four shortfalls are a 70-item power limit — 56/57 is the smallest count that can clear 0.90 — not a broken build, so the next step is item volume and task diversity
 - [x] Collection index published: `receipts/collection-index.json` from `tools/collection_index.py`, four immutable rows, receipt-traced fields, one disclosed divergence left unfixed rather than rewriting a published receipt

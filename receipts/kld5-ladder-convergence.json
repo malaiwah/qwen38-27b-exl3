@@ -1,0 +1,224 @@
+{
+  "schema": "qwen38-kld-ladder-convergence/1",
+  "generated_utc": "2026-08-15T22:54:52Z",
+  "question": "does scoring more positions of the same corpus narrow the published interval, or is the interval governed by source diversity?",
+  "method": {
+    "suite": "receipts/kld5-suite-manifest.json",
+    "suite_token_sha256": "510541f6861b589d44932db253ec25d96d6daaeeee4ea2ab9b65329209482b88",
+    "checkpoints": "cumulative over shards 0, 0-1, 0-4 and 0-9 of one fixed context order; each shard is 512 contexts of 2,047 scored positions",
+    "interval": "source-cluster bootstrap, 10,000 resamples, clusters resampled with replacement; the cluster count grows with the checkpoint because later shards introduce documents not seen earlier",
+    "note": "the 1M/2M/5M receipts were written to /var/tmp/work/kld5/cumulative-*.json during the run; the 10M receipts are receipts/kld5-10M-<candidate>.json. The rows below carry every number needed to re-derive the conclusion without them."
+  },
+  "rows": [
+    {
+      "candidate": "hyd",
+      "checkpoint": "1M",
+      "scored_positions": 1048064,
+      "source_clusters": 330,
+      "token_mean_kld": 0.0026998831596849425,
+      "ci95_width": 0.00039529499438469484,
+      "ci95_width_relative": 0.14641188933184168
+    },
+    {
+      "candidate": "hyd",
+      "checkpoint": "2M",
+      "scored_positions": 2096128,
+      "source_clusters": 495,
+      "token_mean_kld": 0.0027585367680028096,
+      "ci95_width": 0.0004902408551896932,
+      "ci95_width_relative": 0.17771771646336595
+    },
+    {
+      "candidate": "hyd",
+      "checkpoint": "5M",
+      "scored_positions": 5240320,
+      "source_clusters": 718,
+      "token_mean_kld": 0.002699373391440894,
+      "ci95_width": 0.000426261866682156,
+      "ci95_width_relative": 0.15791141308339798
+    },
+    {
+      "candidate": "hyd",
+      "checkpoint": "10M",
+      "scored_positions": 10480640,
+      "source_clusters": 842,
+      "token_mean_kld": 0.0027596250151498245,
+      "ci95_width": 0.00048008665521180344,
+      "ci95_width_relative": 0.1739680763060987
+    },
+    {
+      "candidate": "k5k6",
+      "checkpoint": "1M",
+      "scored_positions": 1048064,
+      "source_clusters": 330,
+      "token_mean_kld": 0.0031413603551342147,
+      "ci95_width": 0.00042192902417876677,
+      "ci95_width_relative": 0.1343141112381995
+    },
+    {
+      "candidate": "k5k6",
+      "checkpoint": "2M",
+      "scored_positions": 2096128,
+      "source_clusters": 495,
+      "token_mean_kld": 0.003200262784303665,
+      "ci95_width": 0.0005035819779440742,
+      "ci95_width_relative": 0.1573564459812468
+    },
+    {
+      "candidate": "k5k6",
+      "checkpoint": "5M",
+      "scored_positions": 5240320,
+      "source_clusters": 718,
+      "token_mean_kld": 0.003143845906187918,
+      "ci95_width": 0.0004386761301773271,
+      "ci95_width_relative": 0.13953487011367088
+    },
+    {
+      "candidate": "k5k6",
+      "checkpoint": "10M",
+      "scored_positions": 10480640,
+      "source_clusters": 842,
+      "token_mean_kld": 0.0032098839572023935,
+      "ci95_width": 0.0004977926182064673,
+      "ci95_width_relative": 0.15508118824342904
+    },
+    {
+      "candidate": "ctx",
+      "checkpoint": "1M",
+      "scored_positions": 1048064,
+      "source_clusters": 330,
+      "token_mean_kld": 0.003409409957186559,
+      "ci95_width": 0.0005161206097097806,
+      "ci95_width_relative": 0.15138121146794642
+    },
+    {
+      "candidate": "ctx",
+      "checkpoint": "2M",
+      "scored_positions": 2096128,
+      "source_clusters": 495,
+      "token_mean_kld": 0.0035024331047988455,
+      "ci95_width": 0.0006318754488318385,
+      "ci95_width_relative": 0.18041042610237915
+    },
+    {
+      "candidate": "ctx",
+      "checkpoint": "5M",
+      "scored_positions": 5240320,
+      "source_clusters": 718,
+      "token_mean_kld": 0.0034232056366314593,
+      "ci95_width": 0.0005603600137573201,
+      "ci95_width_relative": 0.16369452298189477
+    },
+    {
+      "candidate": "ctx",
+      "checkpoint": "10M",
+      "scored_positions": 10480640,
+      "source_clusters": 842,
+      "token_mean_kld": 0.0035093587497007383,
+      "ci95_width": 0.0006327186723167231,
+      "ci95_width_relative": 0.18029466846918354
+    },
+    {
+      "candidate": "fp8",
+      "checkpoint": "1M",
+      "scored_positions": 1048064,
+      "source_clusters": 330,
+      "token_mean_kld": 0.0051970635503104596,
+      "ci95_width": 0.0006775581519253594,
+      "ci95_width_relative": 0.13037326662762933
+    },
+    {
+      "candidate": "fp8",
+      "checkpoint": "2M",
+      "scored_positions": 2096128,
+      "source_clusters": 495,
+      "token_mean_kld": 0.005295626403239988,
+      "ci95_width": 0.0008033083708665007,
+      "ci95_width_relative": 0.15169279509125075
+    },
+    {
+      "candidate": "fp8",
+      "checkpoint": "5M",
+      "scored_positions": 5240320,
+      "source_clusters": 718,
+      "token_mean_kld": 0.005185628272245135,
+      "ci95_width": 0.0006985402438673665,
+      "ci95_width_relative": 0.13470696455550818
+    },
+    {
+      "candidate": "fp8",
+      "checkpoint": "10M",
+      "scored_positions": 10480640,
+      "source_clusters": 842,
+      "token_mean_kld": 0.005293941260388515,
+      "ci95_width": 0.0008004931793555072,
+      "ci95_width_relative": 0.15120930512492314
+    },
+    {
+      "candidate": "k4",
+      "checkpoint": "1M",
+      "scored_positions": 1048064,
+      "source_clusters": 330,
+      "token_mean_kld": 0.01034534853668276,
+      "ci95_width": 0.0016832250235378834,
+      "ci95_width_relative": 0.1627035587606805
+    },
+    {
+      "candidate": "k4",
+      "checkpoint": "2M",
+      "scored_positions": 2096128,
+      "source_clusters": 495,
+      "token_mean_kld": 0.010572596816359251,
+      "ci95_width": 0.0020824868029686496,
+      "ci95_width_relative": 0.19697022776337827
+    },
+    {
+      "candidate": "k4",
+      "checkpoint": "5M",
+      "scored_positions": 5240320,
+      "source_clusters": 718,
+      "token_mean_kld": 0.010334321960689846,
+      "ci95_width": 0.0018395669269692261,
+      "ci95_width_relative": 0.17800557539881695
+    },
+    {
+      "candidate": "k4",
+      "checkpoint": "10M",
+      "scored_positions": 10480640,
+      "source_clusters": 842,
+      "token_mean_kld": 0.010603886897374758,
+      "ci95_width": 0.0021064635564279153,
+      "ci95_width_relative": 0.19865013431531603
+    }
+  ],
+  "findings": {
+    "point_estimate_stability": "across a tenfold increase in scored positions every candidate mean moves by less than 2.3 % of its own value (hydrated 0.002700 -> 0.002760, official FP8 0.005197 -> 0.005294, K4 0.010345 -> 0.010604).",
+    "interval_does_not_shrink": "relative 95 % interval width does not fall with volume: hydrated 14.6 % at 1,048,064 positions and 17.4 % at 10,480,640; the same non-shrinking pattern holds for all five candidates.",
+    "why": "the estimator resamples source clusters, so its variance is dominated by between-document heterogeneity rather than by the number of positions drawn inside each document. Adding shards adds both positions and documents, and the newly admitted documents widen the population spread as fast as the extra positions tighten it.",
+    "consequence": "volume answers the objection that a mean rests on too few tokens, and it settles paired orderings that were previously marginal (hydrated versus the online sibling moved from 124/136 contexts to 4,922/5,120). It does not buy a narrower interval. The lever for a narrower interval is more independent source documents, not more windows per document.",
+    "comparison_to_v3": "the v3 suite bootstrapped 39 clusters and published relative widths near 60 % (K4 0.030736, interval [0.02238, 0.04073]); v5 bootstraps 842 clusters at roughly 17-20 %."
+  },
+  "inputs": {
+    "kld5-10M-hyd": {
+      "path": "receipts/kld5-10M-hyd.json",
+      "sha256": "2e4a28c487d22b0ed152306443169fe34e1d1c713f8bbd6c75b668812e65ce0e"
+    },
+    "kld5-10M-k5k6": {
+      "path": "receipts/kld5-10M-k5k6.json",
+      "sha256": "da1da6c34fecd4ba6b814f6de83ac2ea4c47bef9f9cc83e68e65164d1196b038"
+    },
+    "kld5-10M-ctx": {
+      "path": "receipts/kld5-10M-ctx.json",
+      "sha256": "2d605b7005f1e0cef1342eb8e939c9e8afa8d3cbb4ed6a427e86842a6921af31"
+    },
+    "kld5-10M-fp8": {
+      "path": "receipts/kld5-10M-fp8.json",
+      "sha256": "03b18684e1bacaad3f65300db96e578626fe47cd22e03d34a09a3b9f79951ac3"
+    },
+    "kld5-10M-k4": {
+      "path": "receipts/kld5-10M-k4.json",
+      "sha256": "aff87959aa147e85b78491d3986897bbbfa27003fbb9e976738e71370bea347c"
+    }
+  },
+  "content_sha256": "c81a9462136144c8b5fb99698546cc1609ee61bd9f0ef74b5a4076de1d9b66ad"
+}

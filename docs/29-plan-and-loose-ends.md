@@ -73,6 +73,15 @@ Report confidence-conditioned buckets alongside the mean: a KLD below 0.01 is th
 readers already associate with "practically BF16", so the distribution shape matters as much
 as the mean.
 
+**First item-paired public benchmark now exists, official FP8 included.** The pinned MMLU-Pro
+70-question run scores all six models on identical prompts against the BF16 control
+(`receipts/public-capability-{bf16,ctx,k4,hyd,fp8,k5k6}.json`): BF16 **57/70**, context
+**58/70**, K4 **57/70**, official FP8 **56/70**, hydrated **56/70**, online K5/K6 **55/70**. So
+the comparator no longer exists only on the KLD axis. This does **not** close F2: the missing
+comparators are still GGUF `Q5_K_XL` / `Q6_K` / `Q8_0` and stock uniform-bitrate EXL3, and at 70
+items every candidate interval overlaps every other, so the run separates nothing. The bar it
+missed, and why more items are the fix, is in the rank-4 section below.
+
 ### F3 — VRAM-class SKUs: 24 GB, then 16 GB
 
 Every profile we ship targets a 32 GB card. Two smaller classes are asked for and one of
@@ -394,6 +403,39 @@ template, greedy settings and runtime where formats permit. Publish every prompt
 scorer version and model identity. Primary statistic is paired pass retention versus BF16 with
 bootstrap or exact intervals; absolute scores are secondary. No claim graduates from smoke to
 benchmark until the public items and scorer are independently rerunnable.
+
+**Status, 2026-08-15: the first paired run exists, and one candidate of five clears its bar.**
+The reasoning/knowledge line above is now measured: 70 MMLU-Pro questions, 14 official
+categories x 5, pinned `TIGER-Lab/MMLU-Pro@b189ec765aa7ed75c8acfea42df31fdae71f97be`, official
+five-shot prefixes, greedy, thinking at low effort, 5,120-token completion cap, every candidate
+item-paired against the BF16 control, harness `tools/public_capability.py`, sweep runner
+`tools/run_public_capability.sh`. The pre-registered acceptance in
+`receipts/public-capability-plan.json` — BF16-pass retention with a Wilson 95 % lower bound at or
+above **0.90**, and no category losing more than two BF16 passes — resolves like this:
+
+| candidate | absolute | BF16-pass retention | Wilson lower | pre-registered bar |
+|---|---|---|---|---|
+| context edition | 58/70 | 56/57 | **90.7 %** | **met** |
+| K4 | 57/70 | 55/57 | 88.1 % | not met |
+| official FP8 | 56/70 | 55/57 | 88.1 % | not met |
+| hydrated | 56/70 | 54/57 | 85.6 % | not met |
+| online K5/K6 | 55/70 | 54/57 | 85.6 % | not met |
+
+The category condition is met by all five (worst per-category loss is two passes, hydrated and
+online K5/K6 in philosophy); the retention bound is what fails. **The reason is item count, not
+build quality.** With 57 BF16 passes as the paired denominator, 56/57 is the smallest count
+whose Wilson lower bound clears 0.90 — a single paired miss fails — so a 70-item suite cannot
+certify this bar for anything, and **official FP8 misses it on the same items under the same
+scorer**. Exact-output agreement is 0/70 for every EXL3 candidate and 1/70 for official FP8, so
+the pass/fail outcome is the only meaningful pairing. This is a first public,
+licence-compatible, item-paired benchmark, not a leaderboard claim.
+
+**Therefore the next step is item volume and task diversity, not another sweep of these 70
+questions.** Re-running the same suite cannot move a bound fixed by its denominator. The work
+that changes the answer is the list above: HumanEval+/MBPP-style executable cases, IFEval-style
+verifiable constraints, schema-constrained tool calls, and a substantially larger MMLU-Pro draw.
+Until that lands, the matrix is published as a measured shortfall against our own bar and no
+capability claim graduates.
 
 ## P1 / rank 5 — real multimodal quality
 

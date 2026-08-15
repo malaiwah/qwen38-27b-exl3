@@ -404,3 +404,74 @@ provably contains it, ~5.6 % wide, which is why every receipt publishes `lower` 
 `estimate` instead of a single fabricated digit. The **maxima and exceedance counts are exact**.
 The 10 M receipts remain the authority for the full-run means, bootstrap intervals and paired
 results; nothing above was rewritten.
+
+### Still 2026-08-15: the public-capability sweep finished, and the bar it mostly does not clear
+
+**All six models are now on the same pinned suite.** `tools/run_public_capability.sh` drove the
+four remaining candidates — online K5/K6, hydrated, context edition, official FP8 — against the
+frozen BF16 report, so the earlier note in this entry that public capability covers "two of six
+candidates" is superseded (that text stays as written; nothing above was rewritten). Same 70
+questions, 14 official categories x 5, official five-shot prefixes, pinned
+`TIGER-Lab/MMLU-Pro@b189ec765aa7ed75c8acfea42df31fdae71f97be`, greedy, thinking at low effort,
+5,120-token completion cap, every candidate scored item-paired against the BF16 control:
+
+| model | absolute | Wilson 95 % | BF16-pass retention | Wilson lower | regressions | improvements | completion-cap failures | receipt |
+|---|---|---|---|---|---|---|---|---|
+| BF16 `Qwen/Qwen3.8-27B` | 57/70 (81.4 %) | [70.8 %, 88.8 %] | reference | — | — | — | 4 | `receipts/public-capability-bf16.json` |
+| context edition | **58/70** (82.9 %) | [72.4 %, 89.9 %] | 56/57 | **90.7 %** | 1 | 2 | 3 | `receipts/public-capability-ctx.json` |
+| K4 | 57/70 (81.4 %) | [70.8 %, 88.8 %] | 55/57 | 88.1 % | 2 | 2 | 4 | `receipts/public-capability-k4.json` |
+| hydrated | 56/70 (80.0 %) | [69.2 %, 87.7 %] | 54/57 | 85.6 % | 3 | 2 | 4 | `receipts/public-capability-hyd.json` |
+| official FP8 `Qwen/Qwen3.8-27B-FP8` | 56/70 (80.0 %) | [69.2 %, 87.7 %] | 55/57 | 88.1 % | 2 | 1 | 4 | `receipts/public-capability-fp8.json` |
+| online K5/K6 | 55/70 (78.6 %) | [67.6 %, 86.6 %] | 54/57 | 85.6 % | 3 | 1 | 4 | `receipts/public-capability-k5k6.json` |
+
+**Acceptance, per model, against the plan written before the runs.**
+`receipts/public-capability-plan.json` pre-registered two conditions: BF16-pass retention with a
+Wilson 95 % lower bound at or above **0.90**, and no category losing more than two BF16 passes.
+The category condition is met by all five candidates — worst per-category loss is two passes
+(hydrated and online K5/K6, both in philosophy). The retention condition is met by exactly one:
+
+- **context edition — pass.** 56/57, Wilson lower **90.7 %**, and the only candidate above the
+  absolute BF16 score (58/70 against 57/70).
+- **K4 — shortfall.** 55/57, Wilson lower **88.1 %**.
+- **official FP8 — shortfall.** 55/57, Wilson lower **88.1 %** — the vendor format misses the
+  same bar, on the same items, under the same scorer.
+- **hydrated — shortfall.** 54/57, Wilson lower **85.6 %**.
+- **online K5/K6 — shortfall.** 54/57, Wilson lower **85.6 %**.
+
+**Why four shortfalls are a statement about the suite, not the builds.** With 57 BF16 passes as
+the paired denominator, **56/57 is the smallest count whose Wilson 95 % lower bound clears
+0.90** — one paired miss already fails the bar. A 70-item suite simply has too few items to
+certify what was pre-registered, and every candidate's absolute interval overlaps every other's,
+so this matrix separates nothing at this size. It is a power limitation, and the cleanest proof
+that it is a power limitation rather than a quantization verdict is that **official FP8 fails it
+too**. Exact-output agreement is **0/70** for every EXL3 candidate and **1/70** for official FP8
+(question 8278, math, a 113-token answer both models get right): long chains of thought differ
+token-wise, so the pass/fail outcome is the only meaningful pairing. Four BF16 items hit the
+completion cap and are counted as failures, not excused; the context edition hits it three
+times. This is a first public, licence-compatible, item-paired benchmark, not a leaderboard
+claim.
+
+**Operational note: every EXL3 candidate needs `VLLM_EXL3_GRAPH_DECODE=1`.** The sweep serves
+each model with `--compilation-config '{"cudagraph_mode":"FULL_DECODE_ONLY"}'`, and the EXL3
+loader is deliberately fail-closed: without the env var the pre-capture `exl3_gemm` priming pass
+is disabled, the backend refuses CUDA-graph capture rather than capturing unprimed kernels, and
+the server **exits during startup** instead of quietly falling back to eager. That was found the
+hard way — the first candidate server of this sweep failed to start — which is why
+`tools/run_public_capability.sh` now sets the environment per candidate: hydrated
+`VLLM_EXL3_GRAPH_DECODE=1 VLLM_EXL3_PREFILL_RECONSTRUCT_M=128`, context the same plus
+`VLLM_EXL3_EMBED_BITS=8`, K4 and online K5/K6 the same plus `VLLM_EXL3_ONLINE_TRELLIS_BITS=6`
+and `VLLM_EXL3_ONLINE_CACHE_DIR=/cache/exl3-online`, official FP8 nothing. Each receipt records
+the exact string it ran under in `runtime.env`, so this is checkable and not folklore.
+
+**New tool: `tools/run_public_capability.sh`.** One server at a time through the pinned rootfs;
+it refuses to start unless the suite, plan, BF16 reference report and BF16 runtime record all
+exist, because a candidate scored without the reference measures absolute accuracy and nothing
+else. Readiness is verified on `/v1/models` (the served id must actually be present) before any
+request, the server is stopped before the next model loads, and an already-written report is
+skipped rather than overwritten. Release evidence is attached per candidate where it exists.
+
+**Next step is items and task types, not another sweep of these 70 questions.** Re-running the
+same suite cannot move a bound set by its denominator. The plan's own P1 is the fix: HumanEval+
+/MBPP-style executable cases, IFEval-style verifiable constraints, schema-constrained tool
+calls, and a larger MMLU-Pro draw. No capability claim graduates from "measured" to "certified"
+before that.
