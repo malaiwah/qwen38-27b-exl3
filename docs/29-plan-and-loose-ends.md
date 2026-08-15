@@ -23,10 +23,16 @@ The vision-tower lever died on measurement: `-vb 6` saves 0.58 GB but the conver
 upstream's fused `visual.blocks.N.attn.qkv` into q/k/v, so the checkpoint stops matching the
 architecture, and the loader excludes vision by design anyway.
 
-**The single blocking item for native context on 32 GB is now the embedding table**: 2.543 GB
-of BF16, 1.19 GiB freed at FP8, which is nearly double the 0.63 GiB gap. exllamav3 quantizes
-`Linear`, not `Embedding`, and the runtime has no quantized-embedding path, so this is a loader
-feature. It is the highest-value remaining item in this whole plan.
+**DONE — the embedding table was the answer.** Narrowed to per-row int8 behind
+`VLLM_EXL3_EMBED_BITS=8`: resident 19.31 -> **18.13 GiB**, **native 262,144 now starts** with
+279,007 KV tokens, verified by 3/3 exact needle retrievals from 227,334-token prompts, for
+**+0.000065 mean KLD** and identical multimodal scoring. Two two-line model patches were needed
+because `VocabParallelEmbedding` is constructed without a quant config. Write-up in
+[docs/32](32-native-context-embedding-overlay.md).
+
+Remaining on this axis: MTP and native context still do not coexist (short 0.46 GiB at depth 1,
+0.77 at depth 3). A 4-bit embedding table with per-row scales would free another 0.6 GiB and is
+the only lever left that does not cost real fidelity.
 
 ## P0 — DONE: the frozen qualification ran, and the ranking survived
 

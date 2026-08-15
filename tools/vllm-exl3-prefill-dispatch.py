@@ -79,7 +79,7 @@ from vllm.model_executor.layers.quantization.utils.mxfp8_utils import (
 )
 from vllm.model_executor.layers.quantization.utils.quant_utils import kMxfp8Dynamic
 from vllm.model_executor.parameter import BasevLLMParameter
-from vllm.model_executor.utils import replace_parameter
+from vllm.model_executor.utils import replace_parameter, set_weight_attrs
 from vllm.transformers_utils.repo_utils import get_hf_file_to_dict
 
 if TYPE_CHECKING:
@@ -1875,7 +1875,12 @@ class Exl3Config(QuantizationConfig):
                 return None
             self._require_eager_moe_experts(prefix)
             return Exl3MoEMethod(self, layer.moe_config)
+        if layer.__class__.__name__ == "VocabParallelEmbedding":
+            if method := _get_embedding_overlay_method():
+                return method
+            return None
         return None
+
 
     def _get_bf16_online_linear_method(
         self, layer: torch.nn.Module, prefix: str
@@ -2152,6 +2157,107 @@ class Exl3Config(QuantizationConfig):
         if int(match.group("rank")) != get_tensor_model_parallel_rank():
             return None
         return f"{match.group('prefix')}.{match.group('field')}"
+
+
+
+_EMBED_OVERLAY_BITS_ENV = "VLLM_EXL3_EMBED_BITS"
+
+
+def _get_embedding_overlay_method() -> QuantizeMethodBase | None:
+    """Quantize the input embedding table, off by default.
+
+    On Qwen3.8-27B the table is 248,320 x 5,120 in BF16 = 2.543 GB resident, second only to
+    the MLP stack, and it is pure lookup: no matmul, no accumulation, one row per token. That
+    makes it the cheapest large saving available, and on a 32 GB card it is the difference
+    between 196,608 and native 262,144 context - the measured KV shortfall there is 0.63 GiB
+    and int8 frees 1.18 GiB.
+
+    int8 rather than FP8: both halve the table, but E4M3 carries three mantissa bits against
+    int8's seven, so per-row symmetric int8 is roughly an order of magnitude more accurate for
+    the same bytes. There is no tensor-core path to exploit here - the operation is a gather -
+    so FP8's throughput advantage does not apply.
+
+    ``VLLM_EXL3_EMBED_BITS=8`` enables it. The head is untied on this architecture, so this
+    touches inputs only.
+    """
+    raw = os.environ.get(_EMBED_OVERLAY_BITS_ENV)
+    if raw is None or not raw.strip():
+        return None
+    try:
+        bits = int(raw)
+    except ValueError:
+        raise ValueError(f"{_EMBED_OVERLAY_BITS_ENV} must be 8 or 16, got {raw!r}") from None
+    if bits == 16:
+        return None
+    if bits != 8:
+        raise ValueError(f"{_EMBED_OVERLAY_BITS_ENV} supports 8 (int8) or 16 (off), got {bits}")
+    return Exl3Int8EmbeddingMethod()
+
+
+class Exl3Int8EmbeddingMethod(QuantizeMethodBase):
+    """Per-row symmetric int8 storage for the input embedding table.
+
+    The checkpoint keeps BF16, so nothing about the artifact changes; the table is narrowed
+    once after loading and the BF16 copy is released. Each row carries its own scale, which is
+    what keeps the error small: a row is one token's vector, and rows differ in magnitude far
+    more than elements within a row do.
+    """
+
+    def create_weights(
+        self,
+        layer: torch.nn.Module,
+        input_size_per_partition: int,
+        output_partition_sizes: list[int],
+        input_size: int,
+        output_size: int,
+        params_dtype: torch.dtype,
+        **extra_weight_attrs,
+    ) -> None:
+        weight = torch.nn.Parameter(
+            torch.empty(
+                sum(output_partition_sizes),
+                input_size_per_partition,
+                dtype=params_dtype,
+            ),
+            requires_grad=False,
+        )
+        set_weight_attrs(weight, {"input_dim": 1, "output_dim": 0})
+        layer.register_parameter("weight", weight)
+        set_weight_attrs(weight, extra_weight_attrs)
+
+    def process_weights_after_loading(self, layer: torch.nn.Module) -> None:
+        weight = layer.weight.data
+        if weight.dtype == torch.int8:
+            return
+        out_dtype = weight.dtype
+        amax = weight.abs().amax(dim=1, keepdim=True).float().clamp_(min=1e-8)
+        scale = (amax / 127.0).to(torch.float32)
+        packed = torch.round(weight.float() / scale).clamp_(-127, 127).to(torch.int8)
+        layer.register_buffer("weight_int8", packed)
+        layer.register_buffer("weight_scale", scale.squeeze(1).to(out_dtype))
+        layer.exl3_embed_out_dtype = out_dtype
+        # Release the BF16 table: it is 2.543 GB on this model and nothing reads it again.
+        layer.weight = torch.nn.Parameter(
+            torch.empty(0, dtype=out_dtype, device=weight.device), requires_grad=False
+        )
+        del weight
+        torch.cuda.empty_cache()
+        logger.info(
+            "EXL3 int8 embedding overlay: %d x %d rows narrowed, %.3f GB -> %.3f GB",
+            packed.shape[0],
+            packed.shape[1],
+            packed.numel() * 2 / 1e9,
+            (packed.numel() + packed.shape[0] * 2) / 1e9,
+        )
+
+    def apply(self, layer: torch.nn.Module, *args, **kwargs) -> torch.Tensor:
+        raise NotImplementedError("the embedding overlay implements embedding(), not apply()")
+
+    def embedding(self, layer: torch.nn.Module, input_: torch.Tensor) -> torch.Tensor:
+        rows = layer.weight_int8.index_select(0, input_.flatten())
+        scales = layer.weight_scale.index_select(0, input_.flatten()).unsqueeze(-1)
+        out = rows.to(layer.exl3_embed_out_dtype) * scales
+        return out.view(*input_.shape, layer.weight_int8.shape[1])
 
 
 class Exl3Parameter(BasevLLMParameter):

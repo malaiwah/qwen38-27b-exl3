@@ -16,7 +16,7 @@ tags:
   - gilded-gnosis
 ---
 
-# Qwen3.8-27B EXL3 K5/K6 context edition — 196,857-token retrieval verified on a 32 GB budget, at 26 % lower divergence than official FP8
+# Qwen3.8-27B EXL3 K5/K6 context edition — native 262,144 context on a 32 GB card, at 26 % lower divergence than official FP8
 
 > **Requires a custom runtime.** Does **not** load in upstream vLLM, SGLang, TensorRT-LLM,
 > llama.cpp, transformers, or stock exllamav3. It needs the Gilded Gnosis vLLM fork with
@@ -144,6 +144,51 @@ post to `/completions`:
 
 ```
 
+## Native 262,144 context on a 32 GB card
+
+Reached by narrowing the **input embedding table to int8**, which is the largest cheap saving
+left in this architecture: 248,320 × 5,120 in BF16 is **2.543 GB resident**, second only to the
+MLP stack, and it is pure lookup — a gather, no matmul, no accumulation. Per-row symmetric int8
+halves it for a measured **+0.000065 mean KLD** (95 % CI [+0.0000046, +0.00013], 49/136
+contexts), about 0.7 % of this build's divergence.
+
+int8 rather than FP8 deliberately: both halve the table, but E4M3 carries three mantissa bits
+against int8's seven, and there is no tensor-core path to exploit in a gather, so FP8's
+throughput advantage does not apply while its precision penalty does.
+
+| | BF16 embeddings | **int8 embeddings** |
+|---|---:|---:|
+| embedding table | 2.543 GB | **1.272 GB** |
+| resident weights | 19.31 GiB | **18.13 GiB** |
+| max context on a 32 GB card | 229,376 | **262,144 (native)** |
+| KV allocated at that length | 240,080 tokens | **279,007 tokens** |
+| mean KLD | 0.009673 | 0.009738 |
+| multimodal score | 24/30 | **24/30 (identical)** |
+
+**Verified by using it**, not by allocating it: on a server at `--max-model-len 262144` with a
+5090-sized budget and vision enabled, a planted code was retrieved **exactly at all three
+depths from 227,334-token prompts** (94.6-95.0 s each, ~2,400 tok/s prefill).
+
+```bash
+-e VLLM_EXL3_EMBED_BITS=8 \
+  ... --max-model-len 262144 --gpu-memory-utilization 0.97 --max-num-seqs 4 \
+      --kv-cache-dtype fp8 --max-num-batched-tokens 2048
+```
+
+**Two model files need a two-line patch each** for the overlay to be reachable: `qwen3_5.py`
+and `qwen3_5_mtp.py` construct `VocabParallelEmbedding(vocab, hidden)` without passing the
+quantization config, so the layer's own quant hook is never consulted. Passing
+`quant_config=...` is enough; backends that do not implement `embedding()` are unaffected
+because the layer falls back to `UnquantizedEmbeddingMethod`. Both patched files ship in the
+[companion repository](https://github.com/malaiwah/qwen38-27b-exl3/tree/main/tools).
+
+**MTP and native context still do not coexist**, and the gap is now small enough to name: at
+262,144 the engine needs 8.83 GiB of KV with a single draft token and 9.13 GiB with three,
+against **8.37 GiB available** — short by 0.46 and 0.77 GiB. Narrowing the draft head's own
+embedding table (it builds a second full copy, which is most of what MTP costs in resident
+memory) was necessary to get that close. Choose: native context, or speculative decoding at
+196,608.
+
 ## Memory: what fits on a 32 GB card
 
 Measured with the engine budget capped to 30.44 GiB, which is what a 5090 gives vLLM at
@@ -161,12 +206,10 @@ Two things worth knowing, both measured here for the first time in this family:
 - **MTP's KV cost is nearly all fixed.** The draft layer's own cache is +0.65 GiB; going from
   depth 1 to depth 3 adds only 0.30 GiB more. If you are paying for speculative decoding at
   all, pay for depth 3.
-- **Native 262,144 does not fit any ~19-20 GiB build on a 32 GB card**, with or without MTP:
-  8.18 GiB of KV against 7.55 GiB available. Smaller prefill chunks do not help — the
-  activation peak is multimodal profiling, not text chunking. Only the
-  [K4 build](https://huggingface.co/malaiwah/Qwen3.8-27B-K4) reaches native context there, at
-  3.2x this build's divergence. Closing the last 0.63 GiB needs the embedding table quantized
-  (2.543 GB BF16), which the runtime does not support today.
+- **With BF16 embeddings, native 262,144 does not fit**: 8.18 GiB of KV against 7.55 GiB
+  available, and smaller prefill chunks do not help because the activation peak is multimodal
+  profiling rather than text chunking. That gap is what the int8 embedding overlay above
+  closes; the numbers in this table are the BF16-embedding baseline it improves on.
 
 ## Throughput
 
