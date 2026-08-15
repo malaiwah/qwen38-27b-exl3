@@ -13,8 +13,7 @@ import sys
 
 import torch
 
-sys.path.insert(0, "/work/exllamav3")
-from exllamav3.ext import exllamav3_ext as ext  # noqa: E402
+# Imported only by ``main``; ``--variants`` is a standalone PyTorch reproducer.
 
 E4M3_MAX = 448.0
 
@@ -24,6 +23,8 @@ def rel(a: torch.Tensor, b: torch.Tensor) -> float:
 
 
 def main() -> int:
+    sys.path.insert(0, "/work/exllamav3")
+    from exllamav3.ext import exllamav3_ext as ext
     dev = "cuda"
     torch.manual_seed(0)
     k, n, bits, m = 2048, 4096, 6, 256
@@ -65,8 +66,6 @@ def main() -> int:
     return 0
 
 
-if __name__ == "__main__":
-    raise SystemExit(main())
 
 
 def variants() -> int:
@@ -95,5 +94,5 @@ def variants() -> int:
     return 0
 
 
-if __name__ == "__main__" and "--variants" in sys.argv:
-    raise SystemExit(variants())
+if __name__ == "__main__":
+    raise SystemExit(variants() if "--variants" in sys.argv else main())

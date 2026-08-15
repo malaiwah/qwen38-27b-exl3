@@ -1,5 +1,9 @@
 # P0 results: prefill dispatch, and the fp32 replay negative result
 
+> **Metric correction, 2026-08-15.** Performance results below are unchanged. The current
+> overlap-corrected fidelity point is **0.007945** rather than the original 0.008157; FP8 is
+> **0.012798** rather than 0.013126. See [docs/31](31-frozen-qualification.md).
+
 Both P0 items from [23](23-next-attack-list.md) are done. One worked, one produced a
 negative result that changes how the measurement floor should be described.
 
@@ -56,8 +60,7 @@ from. Scratch is one fp16 buffer per (device, K, N-chunk) reused across layers, 
 
 ### Fidelity cost: small, real, and disclosed
 
-Unlike the CUDA-graph patch (which was bit-exact), this one changes summation order in
-fp16, so it is **not** bit-exact:
+This patch changes fp16 summation order, so it is **not** bit-exact:
 
 | comparison | mean KLD | top-1 |
 |---|---:|---:|
@@ -68,7 +71,7 @@ fp16, so it is **not** bit-exact:
 The patch costs **+0.43 %** of measured divergence and leaves top-1 agreement
 unchanged to four decimals. For scale, the gap to official FP8 is 61 % and the storage-format
 systematic below is 5 %. `VLLM_EXL3_PREFILL_RECONSTRUCT_M=0` restores the previous
-bit-exact path for anyone who wants it.
+prefill path; it does not establish bit-exact CUDA-graph decode.
 
 ## P0.2 — fp32 replay: negative result, and a better description of the floor
 

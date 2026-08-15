@@ -1,6 +1,7 @@
 {
   "schema": "qwen38-release-evidence/1",
   "generated_utc": "2026-08-15T07:09:29Z",
+  "amended_utc": "2026-08-15T12:27:32Z",
   "artifact": {
     "hf_repo": "malaiwah/Qwen3.8-27B-EXL3-K5K6-context",
     "label": "context edition: attention K5 serialized",
@@ -13,8 +14,10 @@
     },
     "disk_bytes": 20696053306,
     "resident_weights_gib": {
-      "mtp_off": 19.31,
-      "mtp_3": 19.56
+      "bf16_embedding_mtp_off": 19.31,
+      "bf16_embedding_mtp_3": 19.56,
+      "int8_embedding_mtp_off": 18.13,
+      "int8_embedding_mtp_1_or_3": 18.38
     }
   },
   "upstream": {
@@ -27,11 +30,21 @@
     "research_commit": "dd7b33b2aabba0f122c33d444852a673990622ed",
     "exllamav3_commit": "5f3c537ca9d89893d771256f5c43c93656553fbb",
     "vllm_image": "voipmonitor/vllm@sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b",
-    "patched_module_sha256": "c529547063e8bef4911c0f33fb1e7c7aeb4098c3dab0ddabb2e575af2449525f",
+    "patched_modules_sha256": {
+      "exl3.py": "bdce4081ce77b00dd47de1b5c5bda2779f2662d679384e852ff0899a8d17eb3b",
+      "qwen3_5.py": "04d2bd587b37142f4f55a8d00b9f8c907309490168cb7fcdfde450531df2c9e7",
+      "qwen3_5_mtp.py_tested": "663ee9119e07b82b83c9c2eb68dfa3ed873ae07bf239ee02de7f18dad8b03e11"
+    },
+    "current_patch_files_sha256": {
+      "vllm-exl3-prefill-dispatch.py": "2df9d0799fd323798cead1edb773cab556c94798eec263ee03ded35408c6e4ee",
+      "vllm-qwen3_5-embed-quant-config.py": "04d2bd587b37142f4f55a8d00b9f8c907309490168cb7fcdfde450531df2c9e7",
+      "vllm-qwen3_5_mtp-embed-quant-config.py": "0090dc131f0eaf439b24d50baf4def9f10b052864c76e695053d64f66b274bab"
+    },
     "patches": [
       "https://github.com/local-inference-lab/vllm/pull/314",
       "https://github.com/local-inference-lab/vllm/pull/316",
-      "b12x prefill routing (this work, not yet filed)"
+      "https://github.com/local-inference-lab/vllm/pull/318",
+      "https://github.com/local-inference-lab/vllm/pull/319"
     ]
   },
   "hardware": {
@@ -40,7 +53,7 @@
     "vram_gib": 95.6,
     "driver": "595.58.03",
     "tensor_parallel": 1,
-    "context_budget_note": "context numbers measured with the engine budget capped to 30.44 GiB, which is a 32 GB RTX 5090 at utilisation 0.97"
+    "context_budget_note": "native overlay run used 0.3184 of 94.97 GiB free-at-startup = 30.24 GiB; this is below 0.97 of the external RTX 5090's 31.39 GiB = 30.45 GiB, but is not a hard physical VRAM cap"
   },
   "evaluation": {
     "suite": "qwen38-27b-fidelity-suite-v3",
@@ -68,43 +81,68 @@
         "contexts_won": "1/136"
       }
     },
-    "development_set_caveat": "recipe selection saw this partition; a source-disjoint v4 suite is built and awaiting one frozen run",
-    "captures_published": true
+    "development_set_caveat": "recipe selection saw this partition; claims are cross-checked on the frozen source-disjoint v4 qualification below",
+    "qualification": {
+      "suite": "qwen38-27b-fidelity-suite-v4",
+      "suite_token_sha256": "71f4fab2c951841c5c504b3ab723fd8d3b07ef1fd91cdceac0cc92beb8198e4d",
+      "contexts": 42,
+      "scored_positions": 85974,
+      "mean_kld": 0.0039003616729275867,
+      "ci95": [0.0032751509635740293, 0.004588383389207283],
+      "top1_agreement": 0.9742829227440855,
+      "vs_official_fp8_difference": -0.0018199009164680906,
+      "contexts_won": "42/42",
+      "source_disjoint": true
+    },
+    "embedding_overlay": {
+      "mean_kld": 0.009737873501668846,
+      "delta_vs_bf16_embedding": 0.00006504850782130216,
+      "delta_ci95": [0.000004571752259591653, 0.00013180194270379192],
+      "paired_contexts": 136
+    },
+    "captures_published": {"v3_context_edition": false, "v4_context_edition": true}
   },
   "long_context": {
-    "method": "planted code in held-out literary text, three depths, template applied by hand to bypass the multimodal processor's ~2048-token chat truncation",
-    "results": [
-      {
-        "prompt_tokens": 28613,
-        "retrieved": "3/3",
-        "prefill_tok_s": 4500
-      },
-      {
-        "prompt_tokens": 113345,
-        "retrieved": "3/3",
-        "prefill_tok_s": 3301
-      },
-      {
-        "prompt_tokens": 196857,
-        "retrieved": "3/3",
-        "prefill_tok_s": 2588
-      }
-    ]
+    "baseline_bf16_embedding": {
+      "method": "planted code in held-out literary text, three depths per length",
+      "results": [
+        {"prompt_tokens": 28613, "retrieved": "3/3", "prompt_tok_s_including_decode": 4500},
+        {"prompt_tokens": 113345, "retrieved": "3/3", "prompt_tok_s_including_decode": 3301},
+        {"prompt_tokens": 196857, "retrieved": "3/3", "prompt_tok_s_including_decode": 2588}
+      ]
+    },
+    "int8_embedding_native_window": {
+      "configured_max_model_len": 262144,
+      "prompt_tokens": [227333, 227334, 227334],
+      "needle_depths": [0.1, 0.5, 0.9],
+      "retrieved": "3/3",
+      "prefill_tok_s_including_decode": [2392.6, 2402.9, 2402.3]
+    }
   },
   "memory": {
     "kv_bytes_per_token_fp8": 33505,
-    "kv_gib_at_262144": {
-      "mtp_off": 8.18,
-      "mtp_1": 8.83,
-      "mtp_2": 8.98,
-      "mtp_3": 9.13
+    "bf16_embedding_baseline": {
+      "available_kv_gib": 7.55,
+      "native_required_kv_gib": 8.18,
+      "max_model_len_mtp_off": 229376,
+      "max_model_len_mtp_3": 196608,
+      "native_262144_reachable": false
     },
-    "max_model_len_on_32gb": {
-      "mtp_off": 229376,
-      "mtp_3": 196608
+    "int8_embedding_overlay": {
+      "engine_budget_gib": 30.24,
+      "available_kv_gib": 8.73,
+      "gpu_kv_cache_tokens": 279007,
+      "configured_max_model_len": 262144,
+      "native_262144_started": true,
+      "hard_limit_rtx5090_verified": false
     },
-    "native_262144_reachable": false,
-    "blocking_lever": "embedding table is 2.543 GB BF16; quantizing it would free 1.19 GiB and close the 0.63 GiB gap, but the runtime has no quantized-embedding path"
+    "mtp_at_native": {
+      "depth_1_required_gib": 8.83,
+      "depth_3_required_gib": 9.13,
+      "seqs_1_one_graph_available_gib": 8.59,
+      "depth_1_estimated_max_model_len": 255024,
+      "embedding_is_aliased_to_target": true
+    }
   },
   "throughput": {
     "tg_tok_s": {
@@ -148,12 +186,56 @@
     }
   },
   "not_verified": [
-    "downstream task retention",
+    "physical RTX 5090 hard-limit native-context, MTP and long-image run",
+    "public downstream benchmark beyond the deterministic paired smoke",
     "OCR/document/video multimodal",
     "reasoning at length",
     "YaRN 1M",
     "tensor parallel > 1",
     "non-SM120 GPUs",
     "quant-specific safety regression"
+  ],
+  "amendments": [
+    {
+      "path": "receipts/analysis-v3-contamination-corrected.json",
+      "sha256": "026fc453787eccef15879f29266489ba9ec04bbff59ab7e35827e92394480417",
+      "scope": "overlap-corrected v3 comparison; context v3 hidden capture remains unpublished"
+    },
+    {
+      "path": "receipts/qualification-v4-contamination-corrected.json",
+      "sha256": "17148ed02713f426dcb4b7b69c8072a5eb8a9abd49bcbfcea585ca8e5c2f5ab3",
+      "scope": "source-disjoint overlap-corrected v4 qualification"
+    },
+    {
+      "dataset_revision": "73252e77e96bbf5596484e29dd8041f9f38c95f1",
+      "scope": "published v4 context capture and sibling/comparator captures"
+    },
+    {
+      "path": "receipts/native-mtp-8mp-amendment.json",
+      "sha256": "b7570d9fb7c5d6cd497b6de2b32a7a57c91694f84e6b778fee7fb19e015c5537",
+      "scope": "engine-budget native 262144 plus MTP-3 and combined long-image proof; physical RTX 5090 remains open"
+    },
+    {
+      "path": "receipts/tasks-v2-ctx.json",
+      "sha256": "cea4cfa885af0d254a24a4003ba956a70cc38269bd7604d32fb6ec306eadf67d",
+      "scope": "deterministic task run with full raw responses"
+    },
+    {
+      "path": "receipts/task-retention-v2-strict-rescore.json",
+      "sha256": "b1cddff1a9ae012a48ec0258096c3a258e652aef887fc9128d8665e62c867080",
+      "scope": "strict rescore; 40/40 unchanged and exact-final-answer diagnostic corrected"
+    }
+  ],
+  "corrections": [
+    {
+      "claim": "the MTP draft retains a second full embedding table and an int4 draft table preserves acceptance",
+      "status": "retracted",
+      "evidence": "runtime logs show the draft embedding is aliased to the target after loading; the int4/int8 comparison never exercised different inference weights"
+    },
+    {
+      "claim": "the capped native-context run is equivalent to operation under a physical 32 GB limit",
+      "status": "narrowed",
+      "evidence": "the vLLM desired budget was 30.24 GiB, but the RTX PRO 6000 retained physical memory outside that budget"
+    }
   ]
 }

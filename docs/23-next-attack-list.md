@@ -1,5 +1,10 @@
 # What to attack next, ranked
 
+> **Historical plan.** Later work closed or changed most items; the live ranking is
+> [docs/29](29-plan-and-loose-ends.md). An offset-independent contamination correction changes
+> the iteration-2 fidelity point from 0.008157 to **0.007945** and FP8 from 0.013126 to
+> **0.012798**, with the same 38 % advantage and ordering.
+
 State at the end of iteration 2 (all held-out, all measured on one RTX PRO 6000
 Blackwell, TP1, GG r34 image):
 

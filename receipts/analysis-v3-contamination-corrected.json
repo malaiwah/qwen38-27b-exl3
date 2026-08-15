@@ -1,0 +1,165 @@
+{
+  "schema": "qwen38-contamination-corrected-analysis/1",
+  "source_suite_token_sha256": "3f9d17f1b55f64872ad3ac19c8711654e09ba70b7ca14b0851525088fe735691",
+  "near_duplicate_receipt_sha256": "7d713a3b675a8bd79fea7e8dc4b33e86faa177bcbf6118c63c54dd0fababad3d",
+  "policy": "exclude every source document with any exact normalized 12-token n-gram; Unicode words plus one token per Han/Kana character",
+  "analysis_contexts_before": 136,
+  "analysis_contexts_after": 127,
+  "excluded_source_clusters": [
+    "cpython-v3.12.8-0060",
+    "pg4300"
+  ],
+  "metrics": {
+    "k5k6": {
+      "contexts": 127,
+      "mean_kld": 0.007945432690251431,
+      "ci95": {
+        "mean": 0.007945432690251431,
+        "ci95_low": 0.005848218299406182,
+        "ci95_high": 0.010598327530790602,
+        "clusters": 39,
+        "samples": 10000
+      },
+      "top1_agreement": 0.9694617435155729
+    },
+    "k4": {
+      "contexts": 127,
+      "mean_kld": 0.029678914726743645,
+      "ci95": {
+        "mean": 0.029678914726743645,
+        "ci95_low": 0.02132362090339316,
+        "ci95_high": 0.04017017189092785,
+        "clusters": 39,
+        "samples": 10000
+      },
+      "top1_agreement": 0.9447857244517616
+    },
+    "official_fp8": {
+      "contexts": 127,
+      "mean_kld": 0.012797762111083744,
+      "ci95": {
+        "mean": 0.012797762111083744,
+        "ci95_low": 0.009401499267687938,
+        "ci95_high": 0.017006306784908606,
+        "clusters": 39,
+        "samples": 10000
+      },
+      "top1_agreement": 0.9617608253291738
+    },
+    "nvfp4": {
+      "contexts": 127,
+      "mean_kld": 0.09272730252953497,
+      "ci95": {
+        "mean": 0.09272730252953497,
+        "ci95_low": 0.06581365841896612,
+        "ci95_high": 0.12687800764615112,
+        "clusters": 39,
+        "samples": 10000
+      },
+      "top1_agreement": 0.9049463589889564
+    },
+    "hydrated": {
+      "contexts": 127,
+      "mean_kld": 0.007172033855778145,
+      "ci95": {
+        "mean": 0.007172033855778145,
+        "ci95_low": 0.005191769435117302,
+        "ci95_high": 0.009655676953427048,
+        "clusters": 39,
+        "samples": 10000
+      },
+      "top1_agreement": 0.9716081532798141
+    },
+    "context": {
+      "contexts": 127,
+      "mean_kld": 0.009377507327503,
+      "ci95": {
+        "mean": 0.009377507327503,
+        "ci95_low": 0.006786165955502466,
+        "ci95_high": 0.012606360396931717,
+        "clusters": 39,
+        "samples": 10000
+      },
+      "top1_agreement": 0.9680000307728999
+    }
+  },
+  "as_served_metrics": {
+    "method": "exclude the same nine contexts, then recompute context means and source-cluster bootstrap from the asymmetric-head reports",
+    "scored_positions": 259969,
+    "k5k6": {
+      "contexts": 127,
+      "mean_kld": 0.008077680075900921,
+      "ci95": {
+        "mean": 0.008077680075900921,
+        "ci95_low": 0.0059326055746839286,
+        "ci95_high": 0.01072846234718272,
+        "clusters": 39,
+        "samples": 10000
+      },
+      "top1_agreement": 0.9686424150571799,
+      "head_delta_mean_kld": 0.00013224738564949175,
+      "head_delta_ci95": {
+        "mean": 0.00013224738564949175,
+        "ci95_low": 0.00011392136472681029,
+        "ci95_high": 0.0001509878045230859,
+        "clusters": 39,
+        "samples": 10000
+      },
+      "contexts_favouring_quantized_head": 7,
+      "source_reports_sha256": {
+        "v3-report-v2-asym-k6head.json": "f740914f1e10d1ffe23d805f909593bd5155b00a6f82bbdafdc6c4920681910e",
+        "v3-report-v2-analysis.json": "0b010c62a12e44e146cf6c2b836002f0da65ef00846929172b5ec43fe8e46ed6"
+      }
+    },
+    "hydrated": {
+      "contexts": 127,
+      "mean_kld": 0.007300129113882429,
+      "ci95": {
+        "mean": 0.007300129113882429,
+        "ci95_low": 0.0052734522625507985,
+        "ci95_high": 0.009777404375814557,
+        "clusters": 39,
+        "samples": 10000
+      },
+      "top1_agreement": 0.9704657093730407,
+      "head_delta_mean_kld": 0.00012809525810428388,
+      "head_delta_ci95": {
+        "mean": 0.00012809525810428388,
+        "ci95_low": 0.00010955942052458132,
+        "ci95_high": 0.0001463054626847932,
+        "clusters": 39,
+        "samples": 10000
+      },
+      "contexts_favouring_quantized_head": 8,
+      "source_reports_sha256": {
+        "v3-report-hyd-asserved.json": "f7cf9620853c2e6839064725e69ee5d8c8a54c1d9ce4f92691b1be4908f5de5d",
+        "v3-report-hyd.json": "0b86182c3da5dad20055b83f243d6d93651acc02b6fab410295e815297c4871d"
+      }
+    }
+  },
+  "runtime_overlays": {
+    "context_int8_input_embedding": {
+      "contexts": 127,
+      "scored_positions": 259969,
+      "mean_kld": 0.009459459517006497,
+      "ci95": {
+        "mean": 0.009459459517006497,
+        "ci95_low": 0.006784760992787494,
+        "ci95_high": 0.012703179918899717,
+        "clusters": 39,
+        "samples": 10000
+      },
+      "top1_agreement": 0.9679346383607277,
+      "delta_vs_bf16_embedding": 0.00008195218950349656,
+      "delta_ci95": {
+        "mean": 0.00008195218950349656,
+        "ci95_low": 0.000026042731053431203,
+        "ci95_high": 0.0001463132017448514,
+        "clusters": 39,
+        "samples": 10000
+      },
+      "source_report": "receipts/report-ctx-embed8.json",
+      "source_report_sha256": "e6b2fbf7a5b57accf36f9f9e3aa0caedbedfc26cfa9e6a843d12ea786d4ba1c8"
+    }
+  }
+}

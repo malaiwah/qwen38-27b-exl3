@@ -50,7 +50,7 @@ depth?
 | source clusters | 827 dataset-qualified families | 41 | **20x fewer**, so the bootstrap resamples fewer independent units |
 | deduplication | exact token + MinHash shingle within the suite | exact token only | missing near-duplicate pass |
 | benchmark-leakage scan | HumanEval, MMLU, GPQA-Diamond, 0 overlaps | none | missing |
-| calibration contamination scan | not applicable (official checkpoint) | 160-char shingles vs all exllamav3 corpora, 0 hits | **ours is stricter here** |
+| calibration contamination scan | not applicable (official checkpoint) | fixed-stride scan said 0; all-position 12-token audit later found 2/41 affected source documents | corrected subset preserves ranking |
 | partitions | 768 analysis / 256 qualification, freeze-before-open | 136 / 45, declared but not yet exercised | must actually freeze in iteration 2 |
 | sentinels | 64 contexts x 3 repeats, hidden **and** live logits | 32 contexts x 3 repeats, hidden only | live-logit sentinels missing |
 | measurement noise floor | 0.0032 (TP16 nondeterminism) | **0.000000** (bit-deterministic TP1) | **ours is better** |

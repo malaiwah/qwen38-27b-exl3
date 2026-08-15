@@ -12,9 +12,11 @@ This rental host allows no nested containers. Measured constraints:
 So a user-namespace chroot is impossible. Two pieces solve it:
 
 1. [`tools/pull_rootfs.py`](../tools/pull_rootfs.py) — unprivileged OCI pull.
-   Registry v2 token auth, manifest by digest, parallel blob fetch with sha256
-   verification, then layers flattened in order with `.wh.` whiteout handling,
-   device nodes skipped, ownership rewritten to the invoking uid.
+   Registry v2 token auth, response-manifest/config/layer digest verification (including
+   cached layers), then layers flattened in order with `.wh.` whiteout handling, device nodes
+   skipped and ownership rewritten to the invoking uid. A canonical full-rootfs manifest
+   binds every file, directory and symlink; serving harnesses verify it before installing the
+   three separately hashed public patch modules.
 2. [`tools/ggrun.sh`](../tools/ggrun.sh) — `proot` (static, ptrace-based, no
    privileges) emulates chroot plus bind mounts. Host NVIDIA driver libraries are
    bound onto the guest SONAMEs, because the image ships the CUDA toolkit but the

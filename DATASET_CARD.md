@@ -28,17 +28,15 @@ size_categories:
 
 # Qwen3.8-27B distribution-fidelity suite v3 (held-out, 181 x 2048)
 
-The frozen evaluation suite and the captured hidden states that let anyone **recompute or
-contest** the KL-divergence numbers published for
-[`malaiwah/Qwen3.8-27B-K4`](https://huggingface.co/malaiwah/Qwen3.8-27B-K4) — without a
-GPU, without downloading any model, and without trusting the publisher.
+The frozen evaluation suite and captured hidden states let anyone **recompute or contest**
+the distribution-fidelity numbers without a GPU, model download or trust in the publisher.
 
-**Scope, stated up front.** The captures in this snapshot are the **iteration-1** set:
-`malaiwah/Qwen3.8-27B-K4`, `unsloth/Qwen3.8-27B-NVFP4` and `Qwen/Qwen3.8-27B-FP8` against
-the BF16 reference. The **current** published checkpoint,
-[`malaiwah/Qwen3.8-27B-EXL3-K5K6`](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6)
-(mean KLD 0.008157), was measured on **this same suite and this same LM head**, but its
-captures are **not in this dataset yet** — see [What is missing](#what-is-missing).
+**Scope, stated up front.** This revision contains the BF16 reference; K4, official FP8 and
+Unsloth NVFP4; plus hydrated K6 and the online K5/K6 checkpoint at attention widths K6/K5/K4.
+The current online-K6 result is 0.008157 on the original 136-context receipt and
+**0.007945 after the overlap correction**. The serialized-K5 context edition was built later;
+its v3 reports and the source-disjoint v4 captures are published separately in this dataset
+family and the companion repository.
 
 Protocol adopted from
 [Kimi-K3 distribution fidelity](https://github.com/local-inference-lab/rtx6kpro/blob/master/models/kimi-k3/distribution-fidelity-1024x2048.md):
@@ -74,35 +72,36 @@ Paired over the same contexts: K4 beats NVFP4 by 0.064242 (95 % CI
 
 ## Layout
 
-Total 17.75 GiB. Every count and size below is the actual content of this revision.
+Repository snapshot: **2,708 files / 51.0 GB**. `checksums.txt` covers the original
+985-file v3 payload; capture manifests authenticate each added K5/K6 and v4 hidden-state
+file. It is not yet a complete top-level checksum map for the expanded snapshot.
 
 ```
-suite-manifest.json          181 contexts: stratum, source cluster, partition, sentinel
-                             flag, token SHA-256, contamination-scan result;
-                             partitions 136 analysis / 45 qualification / 32 sentinels
-tokens/                      181 x context-NNNN.json, the exact token IDs (2048 each)
-reference-hidden/            181 x hidden_NNNN.safetensors, BF16 [2047, 5120], from
-                             Qwen/Qwen3.8-27B, plus capture-manifest.json (per-file
-                             SHA-256 + the runtime config used)         3.53 GiB
-candidate-hidden/            three candidates, same shape and manifest  3.53 GiB each
-  k4-online-k6/              malaiwah/Qwen3.8-27B-K4: EXL3 K4 MLP + online-K6 attention
-  qwen-fp8/                  Qwen/Qwen3.8-27B-FP8
-  unsloth-nvfp4/             unsloth/Qwen3.8-27B-NVFP4
-sentinel-hidden/             two extra captures of the K4 runtime over the 32 sentinel
-  repeat-02/, repeat-03/     contexts, for the noise floor              0.62 GiB each
-lm-head/weight.safetensors   BF16 [248320, 5120], extracted from
-                             Qwen/Qwen3.8-27B@1d4bf0f2, SHA-256 25a30fd5…dee4cfff  2.37 GiB
-reports/                     8 JSON receipts:
-                             report-{k4,fp8,nvfp4}-analysis.json  the three candidates
-                             paired-k4-vs-{fp8,nvfp4}.json        the paired comparisons
-                             noise-r1-vs-r2.json, noise-r2-vs-r3.json  the noise floor
-                             qualification-bf16.json              live-vs-replay error
-checksums.txt                SHA-256 of all 985 data files (everything but itself and
-                             this README)
+suite-manifest.json          original v3: 181 contexts; 136 analysis / 45 qualification
+tokens/                      original v3 token IDs, 181 x 2,048
+reference-hidden/            original v3 BF16 hidden states and capture manifest
+candidate-hidden/            seven original-v3 candidate capture directories:
+  k4-online-k6/                EXL3 K4 MLP + online-K6 attention
+  qwen-fp8/                    official Qwen FP8
+  unsloth-nvfp4/               Unsloth NVFP4
+  k5k6-hydrated-offline-k6/    hydrated EXL3 K5/K6
+  k5k6-online-k{4,5,6}/         online EXL3 at three attention widths
+sentinel-hidden/             two repeat captures for the v3 noise floor
+lm-head/weight.safetensors   shared BF16 [248320, 5120] LM head
+reports/                     original v3 candidate, paired, noise and qualification reports
+reports-k5k6/                hydrated/online K5/K6 full-suite and paired reports
+v4/suite/                    source-disjoint 160-context suite and token IDs
+v4/hidden-{bf16,k5k6,hyd,fp8,ctx}/
+                             five v4 capture sets, each with a manifest
+v4/reports/                  v4 qualification and paired receipts
+checksums.txt                SHA-256 map for the original 985-file payload only
 ```
 
 `tokens/` is authoritative: **retokenising source text does not reproduce the
-evaluation input.** Verify integrity with `sha256sum --check checksums.txt` before use.
+evaluation input.** `sha256sum --check checksums.txt` verifies the original payload only.
+For added capture trees, verify every `hidden_NNNN.safetensors` digest against its adjacent
+`capture-manifest.json`; verify report inputs against those manifest and suite hashes.
+
 
 ## Reproduce a number
 
@@ -136,16 +135,19 @@ To score **your own** checkpoint, capture its hidden states over the same tokens
 | encyclopedic | 17 | Wikipedia extracts, English, CC BY-SA 4.0 |
 | multilingual | 8 | Wikipedia extracts in de, fr, es, ja, zh, ru, it, pt, CC BY-SA 4.0 |
 
-Why held out matters: the **previous** version of this suite was built from
-exllamav3's bundled calibration corpora — the same text the EXL3 candidate was
-calibrated on, while the NVFP4 and FP8 candidates were calibrated elsewhere. That
-biased the comparison. Re-measuring on held-out text moved our own number from
-0.026231 to 0.030736 (+17 %) and moved FP8's from 0.019309 to 0.013126 (-32 %). The
-published v3 numbers are the honest ones.
+Why separate sources matter: the **previous** suite was built directly from exllamav3's
+bundled calibration corpora — the same text the EXL3 candidate was calibrated on, while the
+NVFP4 and FP8 candidates were calibrated elsewhere. Re-measuring on independently sourced
+text moved our number from 0.026231 to 0.030736 (+17 %) and FP8's from 0.019309 to 0.013126
+(-32 %).
 
-A 160-character shingle scan of every context against every exllamav3 calibration
-corpus reports **0 contaminated contexts, 0 hits** (67,818 calibration shingles).
-Recorded in `suite-manifest.json -> contamination_scan`.
+**Correction:** the manifest's fixed-stride 160-character scan reports 0 hits, but that
+algorithm is offset-sensitive. A later scan of every normalized 12-token position (Unicode
+word or Han/Kana character) found exact
+overlap in 2/41 source documents. Conservatively excluding all nine analysis contexts from
+those documents gives K5/K6 0.007945, K4 0.029679, FP8 0.012798, and NVFP4 0.092727 over
+127 contexts; the ranking is unchanged. The original manifest is retained for chain of
+custody, not as proof of zero overlap.
 
 Token IDs are a lossless encoding of the source text, so the Wikipedia-derived
 strata carry CC BY-SA 4.0 attribution requirements; the Gutenberg strata are public
@@ -183,39 +185,38 @@ research repo (`receipts/decode-parity-*.json`) rather than in this dataset.
 
 ## What this snapshot now contains, and what it still does not
 
-**Added (this revision):** the whole K5/K6 family's hidden-state captures, so every headline
-in the family's model cards is independently recomputable without a GPU or a checkpoint
-download:
+**Added (this revision):** hidden-state captures for the original K4 comparators and the
+hydrated/online K5/K6 variants. The original 136-context receipt and the conservative
+127-context overlap-corrected subset are both recomputable from the same files:
 
-| directory | build | mean KLD (analysis partition) |
-|---|---|---:|
-| `candidate-hidden/k5k6-hydrated-offline-k6` | attention serialized offline at K6 | 0.007406 |
-| `candidate-hidden/k5k6-online-k6` | attention BF16 on disk, encoded K6 at load | 0.008157 |
-| `candidate-hidden/k5k6-online-k5` | same download, overlay K5 | 0.012135 |
-| `candidate-hidden/k5k6-online-k4` | same download, overlay K4 | 0.027530 |
-| `candidate-hidden/k4-online-k6` | iteration-1 build | 0.030736 |
-| `candidate-hidden/qwen-fp8` | official FP8 | 0.013126 |
-| `candidate-hidden/unsloth-nvfp4` | Unsloth NVFP4 | 0.094978 |
+| directory | build | full mean KLD | corrected mean KLD |
+|---|---|---:|---:|
+| `candidate-hidden/k5k6-hydrated-offline-k6` | attention serialized offline at K6 | 0.007406 | **0.007172** |
+| `candidate-hidden/k5k6-online-k6` | attention BF16 on disk, encoded K6 at load | 0.008157 | **0.007945** |
+| `candidate-hidden/k5k6-online-k5` | same download, overlay K5 | 0.012135 | **0.011801** |
+| `candidate-hidden/k5k6-online-k4` | same download, overlay K4 | 0.027530 | **0.026619** |
+| `candidate-hidden/k4-online-k6` | iteration-1 build | 0.030736 | **0.029679** |
+| `candidate-hidden/qwen-fp8` | official FP8 | 0.013126 | **0.012798** |
+| `candidate-hidden/unsloth-nvfp4` | Unsloth NVFP4 | 0.094978 | **0.092727** |
 
-`reports-k5k6/` carries the matching replay reports and every paired receipt, including the
-two as-served (asymmetric-head) reports that attribute the K6 head: +0.000127 on the online
-build, +0.000125 on the hydrated one.
+`reports-k5k6/` carries the full-suite replay and paired receipts, including two asymmetric-
+head reports that originally measured the K6-head increments as +0.000127 online and
++0.000125 hydrated. Recomputing the same asymmetric-head rows after the overlap exclusion
+gives +0.000132 online and +0.000128 hydrated.
 
 **Still missing, stated plainly:**
 
-- **A post-selection result.** Every number here is on the 136-context analysis partition,
-  which guided recipe selection, and this suite's qualification partition is *not*
-  source-disjoint from it: all 27 qualification clusters also appear in analysis, because the
-  builder split contexts rather than source clusters. A v4 suite is being built from new
-  documents with a group split; until it lands, treat these as development-set numbers.
+- **A post-selection result.** Every number here is on the analysis partition that guided
+  recipe selection, and this suite's qualification partition is not source-disjoint from it:
+  all 27 qualification clusters also appear in analysis. The later v4 suite uses new documents
+  and whole-source partitioning; its post-selection ranking and overlap correction are in
+  `docs/31-frozen-qualification.md`.
 - **Language coverage is narrower than the tags suggest.** The multilingual stratum is 6 German
-  and 1 Russian context; the builder tolerated under-filled strata. It now fails instead, and
-  v4 fetches more languages.
-- **No downstream task, multimodal-quality or long-context accuracy data.** This dataset
-  measures distribution divergence only.
-- **No near-duplicate or semantic contamination scan.** The exact 160-character shingle scan
-  found zero overlap with exllamav3's calibration corpus, and an independent reviewer
-  reproduced that at 80 characters too, but near-duplicates are untested.
+  and 1 Russian context; the builder tolerated under-filled strata. Schema v5 now fails on a
+  shortfall.
+- **No semantic paraphrase scan.** The offset-independent 12-token audit catches exact lexical
+  overlap and the 5-token sliding-window receipt measures lightly edited near-duplicates, but
+  neither proves semantic independence.
 
 ## Caveats, stated plainly
 

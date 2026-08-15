@@ -1,0 +1,590 @@
+{
+  "schema": "qwen38-near-duplicate-audit/2",
+  "method": {
+    "normalization": "Unicode NFKC and casefold; Unicode words plus one token per Han/Kana character",
+    "digest": "blake2b-128",
+    "exact_ngram_words": 12,
+    "near_ngram_words": 5,
+    "near_window_words": 256,
+    "near_stride_words": 128,
+    "limitation": "lexical near-duplicate audit; does not detect semantic paraphrases"
+  },
+  "inputs": {
+    "calibration_files": {
+      "c4.utf8": "2daf1ef16e02dbd337f86296acd4c3f2eb703800ad21fd1f48b40280c699cd41",
+      "code.utf8": "12a80d96af7e16b3ecbf2e6899a9c70aee2f4e0003b581979fe6876944e2d891",
+      "multilingual.utf8": "68182e06506ead0d2676673fdee4bbe6564ccb06cee3b8373b7e4824297ea91e",
+      "technical.utf8": "7cac2a0ddd7bc4db19e52e3b12ced3812514059f1f11bfc427b7849e0077a2ee",
+      "tiny.utf8": "51449c33b579f8b12e776dcbfa58ef47bab69f6ab7f44e972b7d98c4cfcac7fd",
+      "wiki.utf8": "d53fe0aeadf3355eb5d32b48bf8691575244c31caccae88ed46be8e1b40209c7"
+    },
+    "corpus_files": 41,
+    "calibration_words": 882042,
+    "exact_calibration_ngrams": 859426,
+    "near_calibration_ngrams": 820923
+  },
+  "summary": {
+    "documents": 41,
+    "documents_with_exact_hit": 2,
+    "documents_with_exact_run_32_words": 0,
+    "total_exact_ngram_hits": 19,
+    "longest_exact_run_words": 29,
+    "near_window_containment_mean": 0.0013104647057225888,
+    "near_window_containment_p95": 0.007936507936507936,
+    "near_window_containment_p99": 0.011904761904761904,
+    "near_window_containment_max": 0.10714285714285714
+  },
+  "top_documents": [
+    {
+      "file": "code/cpython-v3.12.8-0060.txt",
+      "sha256": "63efc9094014ff8741b65da708202906ad88dfc90328f98fc7fad37430951d36",
+      "words": 64801,
+      "exact_ngram_hits": 18,
+      "longest_exact_run_ngrams": 18,
+      "longest_exact_run_words": 29,
+      "max_near_window_containment": 0.10714285714285714
+    },
+    {
+      "file": "code/cpython-v3.12.8-0040.txt",
+      "sha256": "c5bfd5ad3a343b99bd638995deebbd0b6f1c892b2b97eb1092ef4097be813163",
+      "words": 50677,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.05555555555555555
+    },
+    {
+      "file": "literary/pg4300.txt",
+      "sha256": "c02af9d3f842247eb637b3712dc57491d51df3fce98be9081ce1db403b02588a",
+      "words": 70343,
+      "exact_ngram_hits": 1,
+      "longest_exact_run_ngrams": 1,
+      "longest_exact_run_words": 12,
+      "max_near_window_containment": 0.031746031746031744
+    },
+    {
+      "file": "literary/pg98.txt",
+      "sha256": "dc495fd89a6962cc83e9b47bd484c571c5a183cbb5d167737b88342d09dd5e0b",
+      "words": 71528,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.031746031746031744
+    },
+    {
+      "file": "code/cpython-v3.12.8-0000.txt",
+      "sha256": "fc140cae3ab91a8d858baf34306c10de4740a5c01e7d441f57afeda8e1277742",
+      "words": 95544,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.027777777777777776
+    },
+    {
+      "file": "encyclopedic/wiki-en-000.txt",
+      "sha256": "bc4ba4bdd8de13577857875c6996203e246c5221aed7623fc0ce9d0d584ea3ee",
+      "words": 41273,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.027777777777777776
+    },
+    {
+      "file": "literary/pg174.txt",
+      "sha256": "b338b0e0f8b8f98868cb9b07de444aa75846c04bde395b5e3236745b74fbff14",
+      "words": 73347,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.027777777777777776
+    },
+    {
+      "file": "literary/pg345.txt",
+      "sha256": "52f06752fd23f455803c03ea0e79ac5e220b1138251c0643b72c6c0514a53766",
+      "words": 75879,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.027777777777777776
+    },
+    {
+      "file": "code/cpython-v3.12.8-0080.txt",
+      "sha256": "0bb7759e1a79db6c1c99191298147f7e4e78cd719b8386459eb9502285901b64",
+      "words": 39155,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.01984126984126984
+    },
+    {
+      "file": "literary/pg1661.txt",
+      "sha256": "51be3a122b9aed8dea94d5e666625d19efc5615c6f776bf8ad920514c7c13041",
+      "words": 73688,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.01984126984126984
+    },
+    {
+      "file": "literary/pg2701.txt",
+      "sha256": "f5e0c5d65c1ba967154e5c8a959492fe9a104c82c2d6a4e4436299bbcfbbe246",
+      "words": 70867,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.01984126984126984
+    },
+    {
+      "file": "literary/pg2814.txt",
+      "sha256": "eb3fc36a11c9159f3d77a7a6ad1f17f2b8f9411030229c107ef6d2a8e2dc94ac",
+      "words": 69303,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.01984126984126984
+    },
+    {
+      "file": "code/cpython-v3.12.8-0020.txt",
+      "sha256": "0f24f17b78339beb51ad761879a2f925d32e42c14095df645ff1b036c57d6433",
+      "words": 42166,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.015873015873015872
+    },
+    {
+      "file": "encyclopedic/wiki-en.txt",
+      "sha256": "649844b4d3b95e361bf17ff49140436d2f0b533db2cd6107372de3e396dba4be",
+      "words": 2334,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.015873015873015872
+    },
+    {
+      "file": "literary/pg1232.txt",
+      "sha256": "b4167d1fd805fb7bb93fd8a0f8af9943dffb03bb4f221dc678a3775f5a843545",
+      "words": 50181,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.015873015873015872
+    },
+    {
+      "file": "literary/pg1342.txt",
+      "sha256": "d8bac51211befefe881f830ab55bd2f9124bfd5339b55fd29e33afd94f2650e0",
+      "words": 68656,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.015873015873015872
+    },
+    {
+      "file": "literary/pg1400.txt",
+      "sha256": "c340befddde05c2f6cf725194a0ca2c480e0af4c905031f871bf9ab1ec3d6011",
+      "words": 74271,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.015873015873015872
+    },
+    {
+      "file": "literary/pg219.txt",
+      "sha256": "3fda3261811f400bd426d2fb673820354e670ba1b5cbc9ca2bdf2576684438d7",
+      "words": 39073,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.015873015873015872
+    },
+    {
+      "file": "literary/pg244.txt",
+      "sha256": "549cb2c72ef7d6b43f22837d485b7eb5256bc0b84e4fcb6f13dc1807b0e7bd61",
+      "words": 44159,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.015873015873015872
+    },
+    {
+      "file": "literary/pg25344.txt",
+      "sha256": "5b03c084494f792a5a7799a6863ebbce8c857c50b12f80a4f0f50ff82295632f",
+      "words": 68588,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.015873015873015872
+    }
+  ],
+  "documents": [
+    {
+      "file": "code/cpython-v3.12.8-0000.txt",
+      "sha256": "fc140cae3ab91a8d858baf34306c10de4740a5c01e7d441f57afeda8e1277742",
+      "words": 95544,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.027777777777777776
+    },
+    {
+      "file": "code/cpython-v3.12.8-0020.txt",
+      "sha256": "0f24f17b78339beb51ad761879a2f925d32e42c14095df645ff1b036c57d6433",
+      "words": 42166,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.015873015873015872
+    },
+    {
+      "file": "code/cpython-v3.12.8-0040.txt",
+      "sha256": "c5bfd5ad3a343b99bd638995deebbd0b6f1c892b2b97eb1092ef4097be813163",
+      "words": 50677,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.05555555555555555
+    },
+    {
+      "file": "code/cpython-v3.12.8-0060.txt",
+      "sha256": "63efc9094014ff8741b65da708202906ad88dfc90328f98fc7fad37430951d36",
+      "words": 64801,
+      "exact_ngram_hits": 18,
+      "longest_exact_run_ngrams": 18,
+      "longest_exact_run_words": 29,
+      "max_near_window_containment": 0.10714285714285714
+    },
+    {
+      "file": "code/cpython-v3.12.8-0080.txt",
+      "sha256": "0bb7759e1a79db6c1c99191298147f7e4e78cd719b8386459eb9502285901b64",
+      "words": 39155,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.01984126984126984
+    },
+    {
+      "file": "code/cpython-v3.12.8-0100.txt",
+      "sha256": "c7d28cb093222015845e20309a23e05314c7c25e6e59a1121c9416b7f2d68db7",
+      "words": 48871,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.007936507936507936
+    },
+    {
+      "file": "encyclopedic/wiki-en-000.txt",
+      "sha256": "bc4ba4bdd8de13577857875c6996203e246c5221aed7623fc0ce9d0d584ea3ee",
+      "words": 41273,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.027777777777777776
+    },
+    {
+      "file": "encyclopedic/wiki-en.txt",
+      "sha256": "649844b4d3b95e361bf17ff49140436d2f0b533db2cd6107372de3e396dba4be",
+      "words": 2334,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.015873015873015872
+    },
+    {
+      "file": "literary/pg1232.txt",
+      "sha256": "b4167d1fd805fb7bb93fd8a0f8af9943dffb03bb4f221dc678a3775f5a843545",
+      "words": 50181,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.015873015873015872
+    },
+    {
+      "file": "literary/pg1342.txt",
+      "sha256": "d8bac51211befefe881f830ab55bd2f9124bfd5339b55fd29e33afd94f2650e0",
+      "words": 68656,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.015873015873015872
+    },
+    {
+      "file": "literary/pg1400.txt",
+      "sha256": "c340befddde05c2f6cf725194a0ca2c480e0af4c905031f871bf9ab1ec3d6011",
+      "words": 74271,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.015873015873015872
+    },
+    {
+      "file": "literary/pg16328.txt",
+      "sha256": "8a5e6d5103dabb6b54fd3685501c487e869938222c279fa8d2d098c4c3eb7337",
+      "words": 41731,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.007936507936507936
+    },
+    {
+      "file": "literary/pg1661.txt",
+      "sha256": "51be3a122b9aed8dea94d5e666625d19efc5615c6f776bf8ad920514c7c13041",
+      "words": 73688,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.01984126984126984
+    },
+    {
+      "file": "literary/pg174.txt",
+      "sha256": "b338b0e0f8b8f98868cb9b07de444aa75846c04bde395b5e3236745b74fbff14",
+      "words": 73347,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.027777777777777776
+    },
+    {
+      "file": "literary/pg219.txt",
+      "sha256": "3fda3261811f400bd426d2fb673820354e670ba1b5cbc9ca2bdf2576684438d7",
+      "words": 39073,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.015873015873015872
+    },
+    {
+      "file": "literary/pg244.txt",
+      "sha256": "549cb2c72ef7d6b43f22837d485b7eb5256bc0b84e4fcb6f13dc1807b0e7bd61",
+      "words": 44159,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.015873015873015872
+    },
+    {
+      "file": "literary/pg25344.txt",
+      "sha256": "5b03c084494f792a5a7799a6863ebbce8c857c50b12f80a4f0f50ff82295632f",
+      "words": 68588,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.015873015873015872
+    },
+    {
+      "file": "literary/pg2600.txt",
+      "sha256": "f0a28ddb9b7368fa64e13aa4aba189b671adab2b8169c2bab30163356e598e7b",
+      "words": 69640,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.015873015873015872
+    },
+    {
+      "file": "literary/pg2701.txt",
+      "sha256": "f5e0c5d65c1ba967154e5c8a959492fe9a104c82c2d6a4e4436299bbcfbbe246",
+      "words": 70867,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.01984126984126984
+    },
+    {
+      "file": "literary/pg2814.txt",
+      "sha256": "eb3fc36a11c9159f3d77a7a6ad1f17f2b8f9411030229c107ef6d2a8e2dc94ac",
+      "words": 69303,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.01984126984126984
+    },
+    {
+      "file": "literary/pg3207.txt",
+      "sha256": "952a1a5b311521b65fcc64857604bb99650b5950e33eb772581caffad74ec72f",
+      "words": 68318,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.011904761904761904
+    },
+    {
+      "file": "literary/pg345.txt",
+      "sha256": "52f06752fd23f455803c03ea0e79ac5e220b1138251c0643b72c6c0514a53766",
+      "words": 75879,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.027777777777777776
+    },
+    {
+      "file": "literary/pg4300.txt",
+      "sha256": "c02af9d3f842247eb637b3712dc57491d51df3fce98be9081ce1db403b02588a",
+      "words": 70343,
+      "exact_ngram_hits": 1,
+      "longest_exact_run_ngrams": 1,
+      "longest_exact_run_words": 12,
+      "max_near_window_containment": 0.031746031746031744
+    },
+    {
+      "file": "literary/pg5200.txt",
+      "sha256": "d18d1599b6b726b030ca91465e21c9bea9a583d966d43cd17c5a0140fe81b3bf",
+      "words": 22376,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.015873015873015872
+    },
+    {
+      "file": "literary/pg768.txt",
+      "sha256": "f0179a3f2f1fbf216523eff66348e17f5f324b559f8b77991a701a174cba0b11",
+      "words": 72301,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.015873015873015872
+    },
+    {
+      "file": "literary/pg84.txt",
+      "sha256": "6778681125eab17080a92af4d1287026b5c7061c145d3599530561fad206b149",
+      "words": 70629,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.011904761904761904
+    },
+    {
+      "file": "literary/pg98.txt",
+      "sha256": "dc495fd89a6962cc83e9b47bd484c571c5a183cbb5d167737b88342d09dd5e0b",
+      "words": 71528,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.031746031746031744
+    },
+    {
+      "file": "multilingual/wiki-de-000.txt",
+      "sha256": "588546a5615e004060be98a439e190f0a37da0eccb9691674fc14c1660387bde",
+      "words": 13950,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.003968253968253968
+    },
+    {
+      "file": "multilingual/wiki-ru.txt",
+      "sha256": "0ad93346eba1e5764a0ace786031eb76d648c5e3e116f1d7d75da06ca0679578",
+      "words": 1858,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.0
+    },
+    {
+      "file": "scientific/arxiv-astro-ph-GA.txt",
+      "sha256": "05f6feda299f3851cc776dc7a5f317a75b7d923ad05bbfa8d177b65bf909cf6a",
+      "words": 51210,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.015873015873015872
+    },
+    {
+      "file": "scientific/arxiv-cond-mat-soft.txt",
+      "sha256": "4916ab8dbe10e414ebe64b3184d7a5483b00c68e8d162b4e172d4802958b849b",
+      "words": 38201,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.007936507936507936
+    },
+    {
+      "file": "scientific/arxiv-cs-CL.txt",
+      "sha256": "dea5ec1567675589c9dc84783085ede8b9376feb4811171482da8aaba8d469e9",
+      "words": 43284,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.011904761904761904
+    },
+    {
+      "file": "scientific/arxiv-cs-DC.txt",
+      "sha256": "ced6307a8c18d5e065a03a0b6033e3269360c2fa115bf76974b580caa6d2f4d2",
+      "words": 45395,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.011904761904761904
+    },
+    {
+      "file": "scientific/arxiv-cs-LG.txt",
+      "sha256": "3b8a790632e0a3bd42ac18d2c1e7a1ad97edaaee17c181c44bd344eb4f9d48c7",
+      "words": 44541,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.011904761904761904
+    },
+    {
+      "file": "scientific/arxiv-econ-EM.txt",
+      "sha256": "96d7dfa6b4ea9d1c204bf7fcfba127c9835af7e29e8c967c6c11b7810f8db562",
+      "words": 38565,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.007936507936507936
+    },
+    {
+      "file": "scientific/arxiv-eess-SP.txt",
+      "sha256": "fe4d0a319e43ef2a464bda04cd12cf89a459c33fc866bba2f5df720f60307e9d",
+      "words": 41991,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.011904761904761904
+    },
+    {
+      "file": "scientific/arxiv-math-OC.txt",
+      "sha256": "8d91693d769e5357b550963494981e97084aac81de472fc190b97a0ace35b4a3",
+      "words": 39429,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.007936507936507936
+    },
+    {
+      "file": "scientific/arxiv-math-PR.txt",
+      "sha256": "df7e6e1d01c2d343c0d301fd963862d24d29c9624d8898578fa8c04d484e16fd",
+      "words": 33902,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.007936507936507936
+    },
+    {
+      "file": "scientific/arxiv-physics-optics.txt",
+      "sha256": "75da908d6ab3ce14604ddc7dab72be55597fbaeb5c454df3268ccd48ae1490b4",
+      "words": 38488,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.007936507936507936
+    },
+    {
+      "file": "scientific/arxiv-q-bio-NC.txt",
+      "sha256": "1833c937189df87911907a56cb231c367cb9ad5f98ddc72e1a07add6724e1fb9",
+      "words": 44497,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.011904761904761904
+    },
+    {
+      "file": "scientific/arxiv-stat-ME.txt",
+      "sha256": "3ba03c7e3c5e56042195acf52016e495c582bc9cae10c367c7517b5e66ee0f32",
+      "words": 42346,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.007936507936507936
+    }
+  ]
+}

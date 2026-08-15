@@ -17,12 +17,16 @@ tags:
 
 # Qwen3.8-27B-K4 — EXL3 mixed-precision (superseded)
 
+> **Archived iteration-1 snapshot.** This file is retained as research history and is not the
+> current Hub card or serving recipe. Use [`MODEL_CARD-K4.md`](MODEL_CARD-K4.md); it carries the
+> RTX 5090 correction, four-build comparison, frozen qualification, and current support limits.
+
 > ### Superseded by [`malaiwah/Qwen3.8-27B-EXL3-K5K6`](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6)
 >
 > The successor spends the remaining memory budget on the MLP (gate/up K5, down K6) and
-> measures **0.008157** mean KLD against this checkpoint's **0.030736** on the same
-> held-out suite — and **38 % below official FP8** — at 21.82 GB resident. It also has a
-> quantized MTP draft head that works with speculative decoding (58.2 % acceptance,
+> measures **0.007945** overlap-corrected mean KLD against this checkpoint's **0.029679**
+> on the same 127 contexts — **38 % below official FP8** — at 21.82 GB resident. It also
+> has a quantized MTP draft head that works with speculative decoding (58.2 % acceptance,
 > +101 % single-stream throughput). Prefer it unless you specifically need the smaller
 > 19.21 GB footprint.
 >
@@ -100,8 +104,8 @@ Its launcher scripts only dispatch GLM-5.2 and DeepSeek families, so call
 `vllm serve` directly:
 
 ```bash
-docker run --rm --gpus '"device=0"' --ipc host -p 8000:8000 \
-  -v /models:/models -v /cache:/cache \
+docker run --rm --gpus '"device=0"' --ipc host -p 127.0.0.1:8000:8000 \
+  -v /models:/models:ro -v /cache:/cache \
   -e VLLM_EXL3_ONLINE_TRELLIS_BITS=6 \
   -e VLLM_EXL3_ONLINE_CACHE_DIR=/cache/exl3-online \
   -e VLLM_EXL3_ONLINE_CACHE_MODE=readwrite \
@@ -117,6 +121,10 @@ docker run --rm --gpus '"device=0"' --ipc host -p 8000:8000 \
     --max-num-seqs 4 \
     --host 0.0.0.0 --port 8000
 ```
+The container listens on all interfaces internally, but Docker publishes the port to host
+loopback only. For remote clients, retain that binding and place an authenticated TLS proxy
+in front; never expose this unauthenticated generation endpoint directly.
+
 
 Four flags are load-bearing:
 

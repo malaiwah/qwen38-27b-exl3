@@ -1,5 +1,12 @@
 # Iteration 4: the context edition, and two kernels on the wrong side of a threshold
 
+> **Later result.** This document records the pre-overlay iteration. Per-row int8 input
+> embeddings subsequently reduced resident weights to 18.13 GiB and reached native 262,144
+> under a 30.24 GiB engine budget. An explicit image-pixel ceiling then recovered enough
+> activation memory for MTP-3 at the same native window. The physical RTX 5090 rerun remains
+> open; see [docs/32](32-native-context-embedding-overlay.md) and
+> [docs/29](29-plan-and-loose-ends.md).
+
 Goal for this iteration, from [docs/29](29-plan-and-loose-ends.md): a build that reaches
 native context on a 32 GB card while still beating official FP8. That goal was **not** met,
 and the arithmetic that says why is now measured rather than modelled. Four other things were
@@ -48,8 +55,10 @@ Measured on a budget of 30.44 GiB, which is what a 5090 gives vLLM at utilisatio
 ## Long context, verified by generation rather than allocation
 
 9/9 exact needle retrievals, three depths at each length, on the 5090-sized budget:
-28,613 tokens (6.3 s), 113,345 (34.3 s), **196,857 (76.1 s)**. Prefill falls from ~4,500 to
-2,588 tok/s as length grows, which is the expected attention cost and is now quantified.
+28,613 tokens (6.3 s), 113,345 (34.3 s), **196,857 (76.1 s)**. Prompt tokens divided by
+total request wall time fall from ~4,500 to 2,588 tok/s as length grows. Those quotients
+include decode and HTTP overhead; they are not engine-timed prefill measurements and do not
+by themselves attribute the decline.
 
 Two harness defects had to be fixed before those numbers meant anything, and both would have
 produced a *false pass*:
@@ -104,7 +113,8 @@ what it was hardened for.
 
 ## Loose ends this iteration created
 
-- The B12X prefill routing is not filed upstream yet; it belongs with #316.
+- The B12X prefill routing was filed upstream as
+  [PR #318](https://github.com/local-inference-lab/vllm/pull/318).
 - `torch._scaled_mm` row-wise + fp16 silent corruption deserves an upstream report.
 - The `reconstruct_fp8_slice` kernel (bit-exact, per-column scales) is useful even though the
   serving path rejects FP8 activations: it is the right primitive if a future path keeps

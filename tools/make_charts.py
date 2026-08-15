@@ -16,22 +16,21 @@ from matplotlib.lines import Line2D
 
 OUT = Path("/var/tmp/work/charts")
 
-# ---- measured here: v2 hidden-state-replay protocol, 74 contexts / 151,478 positions
+# ---- measured here: overlap-corrected v3 subset, 127 contexts
 #      weights = safetensors weight bytes actually resident (decimal GB)
 MEASURED = [
     # label, weights GB, mean KLD, top-1 %, colour key
-    # v3 protocol: held-out corpus, 136 analysis contexts, 278,392 scored positions
     ("Qwen3.8-27B BF16\n(reference)", 55.56, 0.0, 100.00, "ref"),
-    ("malaiwah/Qwen3.8-27B-EXL3-K5K6\n(iteration 2)", 21.82, 0.008157, 96.97, "ours2"),
-    ("Qwen/Qwen3.8-27B-FP8", 30.61, 0.013126, 96.22, "fp8"),
-    ("malaiwah/Qwen3.8-27B-K4\n(iteration 1)", 19.21, 0.030736, 94.50, "ours"),
-    ("unsloth/Qwen3.8-27B-NVFP4", 22.91, 0.094978, 90.53, "nvfp4"),
+    ("malaiwah/Qwen3.8-27B-EXL3-K5K6\n(iteration 2)", 21.82, 0.007945, 96.95, "ours2"),
+    ("Qwen/Qwen3.8-27B-FP8", 30.61, 0.012798, 96.18, "fp8"),
+    ("malaiwah/Qwen3.8-27B-K4\n(iteration 1)", 19.21, 0.029679, 94.48, "ours"),
+    ("unsloth/Qwen3.8-27B-NVFP4", 22.91, 0.092727, 90.49, "nvfp4"),
 ]
-# CI bounds for the three quantized points (source-cluster bootstrap, v3)
-CI = {"ours2": (0.006066, 0.010667),
-      "fp8": (0.009807, 0.017087),
-      "ours": (0.022384, 0.040731),
-      "nvfp4": (0.068584, 0.126882)}
+# Source-cluster bootstrap intervals on the same 127 contexts.
+CI = {"ours2": (0.005848, 0.010598),
+      "fp8": (0.009401, 0.017006),
+      "ours": (0.021324, 0.040170),
+      "nvfp4": (0.065814, 0.126878)}
 
 # ---- external context: Quesma, Qwen3.6-27B, different model generation and protocol
 #      https://quesma.com/blog/qwen-quantization-quality/
@@ -111,7 +110,7 @@ def draw(theme_name: str) -> None:
     ax.set_xlabel("resident weight footprint (decimal GB)", color=c["fg"], fontsize=10)
     ax.set_ylabel("mean KL divergence from BF16  (log scale, lower is better)",
                   color=c["fg"], fontsize=10)
-    ax.set_title("Distribution fidelity vs memory — held-out corpus, 136 contexts, 278,392 positions",
+    ax.set_title("Distribution fidelity vs memory — held-out corpus, 127 contexts, 259,969 positions",
                  color=c["fg"], fontsize=11.5, weight="bold", loc="left")
     ax.set_xlim(7, 59)
     ax.set_ylim(2.2e-4, 0.5)
@@ -150,15 +149,20 @@ def draw(theme_name: str) -> None:
     bx.set_ylim(89.5, 100.8)
 
     fig.text(0.005, 0.012,
-             "Measured on 1x RTX PRO 6000 Blackwell, TP1, GG r34 image. Held-out corpus (Gutenberg/arXiv/Wikipedia/CPython, "
-             "0 calibration-contamination hits). Exact full-vocabulary two-pass KL(BF16 || candidate) through one shared "
-             "BF16 LM head, float64, source-cluster bootstrap; runtime-repeat noise floor 0.000000. "
-             "Grey: Qwen3.6-27B external series, quesma.com/blog/qwen-quantization-quality.",
-             color=c["muted"], fontsize=7.2)
+             "Measured on 1x RTX PRO 6000 Blackwell, TP1, GG r34 image. A CJK-aware all-position 12-token scan found overlap in "
+             "2/41 source documents; plotted v3 points exclude their nine contexts. Exact full-vocabulary two-pass "
+             "KL(BF16 || candidate) through one shared BF16 LM head; float32 within vocabulary chunks and float64 "
+             "across chunks; source-cluster bootstrap; runtime-repeat noise floor 0.000000. Grey: Qwen3.6-27B external "
+             "series, quesma.com/blog/qwen-quantization-quality.",
+             color=c["muted"], fontsize=7.0)
     fig.tight_layout(rect=(0, 0.03, 1, 1))
     for ext in ("svg", "png"):
         p = OUT / f"fidelity-vs-size-{theme_name}.{ext}"
         fig.savefig(p, facecolor=c["bg"], dpi=170 if ext == "png" else None)
+        if ext == "svg":
+            p.write_text(
+                "\n".join(line.rstrip() for line in p.read_text().splitlines()) + "\n"
+            )
         print("wrote", p, p.stat().st_size // 1024, "KB")
     plt.close(fig)
 

@@ -88,10 +88,21 @@ def positional_kld(model_logits: torch.Tensor, reference_logits: torch.Tensor,
     return torch.cat(chunks).cpu()
 
 
+def require_local_model(path: str) -> Path:
+    root = Path(path).expanduser()
+    if not root.is_dir() or not (root / "config.json").is_file():
+        raise SystemExit(
+            "--model must be a reviewed local snapshot directory; download an immutable "
+            "revision before evaluation"
+        )
+    return root
+
+
 def build_llm(args, **overrides) -> LLM:
+    require_local_model(args.model)
     kwargs = dict(
         model=args.model,
-        trust_remote_code=True,
+        trust_remote_code=args.trust_remote_code,
         tensor_parallel_size=args.tensor_parallel_size,
         gpu_memory_utilization=args.gpu_memory_utilization,
         # Full prompt-logprob extraction needs several full-vocabulary
@@ -142,10 +153,13 @@ def prompt_logits(llm: LLM, token_ids: list[int], npos: int, vocab: int) -> torc
 
 # ------------------------------------------------------------------ commands
 def cmd_tokens(args) -> int:
+    require_local_model(args.model)
     from transformers import AutoTokenizer
     text = Path(args.corpus).read_text(encoding="utf-8", errors="ignore")
     text = "\n\n".join(p for p in text.split("\n") if p.strip())[: args.context * 8]
-    tok = AutoTokenizer.from_pretrained(args.model, trust_remote_code=True)
+    tok = AutoTokenizer.from_pretrained(
+        args.model, trust_remote_code=args.trust_remote_code
+    )
     ids = tok(text, add_special_tokens=False, truncation=True, max_length=args.context)["input_ids"]
     if isinstance(ids[0], list):
         ids = ids[0]
@@ -227,6 +241,8 @@ def main() -> int:
 
     t = sub.add_parser("tokens")
     t.add_argument("--model", required=True)
+    t.add_argument("--trust-remote-code", action="store_true",
+                   help="execute model-repository Python (unsafe; off by default)")
     t.add_argument("--out", required=True)
     t.add_argument("--context", type=int, default=2048)
     t.add_argument("--corpus", default=WIKI)
@@ -235,6 +251,8 @@ def main() -> int:
     for name, fn in (("capture", cmd_capture), ("score", cmd_score)):
         s = sub.add_parser(name)
         s.add_argument("--model", required=True)
+        s.add_argument("--trust-remote-code", action="store_true",
+                       help="execute model-repository Python (unsafe; off by default)")
         s.add_argument("--tokens", required=True)
         s.add_argument("--out", required=True)
         s.add_argument("--quantization", default="auto")

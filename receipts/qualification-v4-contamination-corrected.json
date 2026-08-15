@@ -1,0 +1,68 @@
+{
+  "schema": "qwen38-contamination-corrected-qualification/1",
+  "source_suite_token_sha256": "71f4fab2c951841c5c504b3ab723fd8d3b07ef1fd91cdceac0cc92beb8198e4d",
+  "near_duplicate_receipt_sha256": "1bee3e1f73a570333fe3dac02238c020d6549498099f18a96c4960f555c3ab3c",
+  "policy": "exclude every source document with any exact normalized 12-token n-gram; Unicode words plus one token per Han/Kana character",
+  "qualification_contexts_before": 42,
+  "qualification_contexts_after": 36,
+  "excluded_source_clusters": [
+    "cpython-c-v3.12.8-001",
+    "cpython-c-v3.12.8-002",
+    "wiki4-pt-003",
+    "wiki4-zh-003"
+  ],
+  "metrics": {
+    "hydrated": {
+      "contexts": 36,
+      "mean_kld": 0.003092692547304035,
+      "ci95": {
+        "mean": 0.003092692547304035,
+        "ci95_low": 0.002576735291324444,
+        "ci95_high": 0.003683722109532996,
+        "clusters": 24,
+        "samples": 10000
+      },
+      "top1_agreement": 0.9763067904250122,
+      "kld_reduction_vs_fp8": 0.4749935951133921
+    },
+    "k5k6": {
+      "contexts": 36,
+      "mean_kld": 0.0034548280332054506,
+      "ci95": {
+        "mean": 0.0034548280332054506,
+        "ci95_low": 0.002915840885889275,
+        "ci95_high": 0.004059584861382779,
+        "clusters": 24,
+        "samples": 10000
+      },
+      "top1_agreement": 0.9749633610161212,
+      "kld_reduction_vs_fp8": 0.41351853846713693
+    },
+    "context": {
+      "contexts": 36,
+      "mean_kld": 0.00399023439635578,
+      "ci95": {
+        "mean": 0.00399023439635578,
+        "ci95_low": 0.0032679462231305924,
+        "ci95_high": 0.004796822717456966,
+        "clusters": 24,
+        "samples": 10000
+      },
+      "top1_agreement": 0.973552081637084,
+      "kld_reduction_vs_fp8": 0.3226295265231589
+    },
+    "official_fp8": {
+      "contexts": 36,
+      "mean_kld": 0.00589077108111091,
+      "ci95": {
+        "mean": 0.00589077108111091,
+        "ci95_low": 0.004900737894229369,
+        "ci95_high": 0.00698534416038725,
+        "clusters": 24,
+        "samples": 10000
+      },
+      "top1_agreement": 0.9671606144493295,
+      "kld_reduction_vs_fp8": 0.0
+    }
+  }
+}

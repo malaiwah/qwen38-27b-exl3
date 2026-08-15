@@ -19,39 +19,37 @@ import argparse
 import hashlib
 import json
 import random
-import re
 from pathlib import Path
+from near_duplicate_scan import ngram_hashes, word_tokens
 
 CAL_DIR = Path("/work/exllamav3/exllamav3/conversion/standard_cal_data")
-SHINGLE = 160  # characters; a match this long is real overlap, not coincidence
+SHINGLE_WORDS = 12
 
 
 def sha(b: bytes) -> str:
     return hashlib.sha256(b).hexdigest()
 
 
-def cal_shingles() -> set[int]:
-    """Hashes of fixed-stride character shingles across the calibration corpora."""
-    out: set[int] = set()
-    for p in sorted(CAL_DIR.glob("*.utf8")):
-        text = re.sub(r"\s+", " ", p.read_text(encoding="utf-8", errors="ignore"))
-        for i in range(0, max(0, len(text) - SHINGLE), SHINGLE // 2):
-            out.add(hash(text[i:i + SHINGLE]))
+
+def cal_shingles() -> set[bytes]:
+    """Every normalized lexical-token n-gram in every calibration corpus."""
+    out: set[bytes] = set()
+    for path in sorted(CAL_DIR.glob("*.utf8")):
+        tokens = word_tokens(path.read_text(encoding="utf-8", errors="ignore"))
+        out.update(ngram_hashes(tokens, SHINGLE_WORDS))
     return out
 
 
-def contaminated(text: str, cal: set[int]) -> int:
-    norm = re.sub(r"\s+", " ", text)
-    hits = 0
-    for i in range(0, max(0, len(norm) - SHINGLE), SHINGLE):
-        if hash(norm[i:i + SHINGLE]) in cal:
-            hits += 1
-    return hits
+def contaminated(text: str, cal: set[bytes]) -> int:
+    """Count overlap independently of file offset or context-window alignment."""
+    return sum(value in cal for value in ngram_hashes(word_tokens(text), SHINGLE_WORDS))
 
 
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--model", required=True)
+    ap.add_argument("--trust-remote-code", action="store_true",
+                    help="execute model-repository Python (unsafe; off by default)")
     ap.add_argument("--corpus", default="/work/kld3/corpus")
     ap.add_argument("--out", required=True)
     ap.add_argument("--contexts", type=int, default=256)
@@ -67,16 +65,36 @@ def main() -> int:
                          "hashes recorded there are refused, which is how a later suite "
                          "is made source-disjoint from the one used to pick a recipe")
     args = ap.parse_args()
+    if args.contexts <= 0 or args.context_length <= 1:
+        raise SystemExit("--contexts must be positive and --context-length must exceed one")
+    if args.sentinels < 0:
+        raise SystemExit("--sentinels may not be negative")
+    if not 0 <= args.qualification_fraction < 1:
+        raise SystemExit("--qualification-fraction must be in [0, 1)")
+    model_root = Path(args.model)
+    if not model_root.is_dir():
+        raise SystemExit(
+            "--model must be a reviewed local snapshot directory; download an immutable "
+            "revision before building the suite"
+        )
+    tokenizer_file = model_root / "tokenizer.json"
+    config_file = model_root / "config.json"
+    if not tokenizer_file.is_file() or not config_file.is_file():
+        raise SystemExit("local model snapshot must contain tokenizer.json and config.json")
 
     from transformers import AutoTokenizer
-    tok = AutoTokenizer.from_pretrained(args.model, trust_remote_code=True)
+    tok = AutoTokenizer.from_pretrained(
+        args.model, trust_remote_code=args.trust_remote_code
+    )
 
-    print("hashing calibration shingles for the contamination scan", flush=True)
+    print("hashing every calibration lexical-token n-gram", flush=True)
     cal = cal_shingles()
-    print(f"  {len(cal)} shingles", flush=True)
+    print(f"  {len(cal)} {SHINGLE_WORDS}-token shingles", flush=True)
 
     corpus = Path(args.corpus)
     strata = sorted(p.name for p in corpus.iterdir() if p.is_dir())
+    if not strata:
+        raise SystemExit(f"no stratum directories under {corpus}")
     ctx_len = args.context_length
     per = {s: args.contexts // len(strata) for s in strata}
     for s in strata[: args.contexts % len(strata)]:
@@ -89,6 +107,12 @@ def main() -> int:
     for stratum in strata:
         for f in sorted((corpus / stratum).glob("*.txt")):
             raw = f.read_bytes()
+            if f.stem in doc_identity:
+                prior = doc_identity[f.stem]
+                raise SystemExit(
+                    f"duplicate source stem {f.stem!r}: {prior['stratum']}/{prior['file']} "
+                    f"and {stratum}/{f.name}; source_cluster identities must be unique"
+                )
             doc_identity[f.stem] = {"stratum": stratum, "file": f.name,
                                     "bytes": len(raw), "sha256": sha(raw)}
 
@@ -134,7 +158,7 @@ def main() -> int:
                 progressed = True
                 ids = tok(piece, add_special_tokens=False, truncation=True,
                           max_length=ctx_len)["input_ids"]
-                if isinstance(ids[0], list):
+                if ids and isinstance(ids[0], list):
                     ids = ids[0]
                 if len(ids) < ctx_len:
                     continue
@@ -143,7 +167,7 @@ def main() -> int:
                 if digest in seen:
                     continue
                 seen.add(digest)
-                hits = contaminated(piece[:ctx_len * 5], cal)
+                hits = contaminated(piece, cal)
                 contam_total += hits
                 contam_ctx += 1 if hits else 0
                 contexts.append({"stratum": stratum, "source_cluster": f.stem,
@@ -217,17 +241,25 @@ def main() -> int:
         r["sentinel"] = True
 
     manifest = {
-        "schema": "qwen38-distribution-fidelity/3",
-        "model": args.model, "context_length": ctx_len,
+        "schema": "qwen38-distribution-fidelity/5",
+        "model": args.model,
+        "model_identity": {
+            "tokenizer_sha256": sha(tokenizer_file.read_bytes()),
+            "config_sha256": sha(config_file.read_bytes()),
+            "trust_remote_code": args.trust_remote_code,
+        },
+        "context_length": ctx_len,
         "scored_positions_per_context": ctx_len - 1,
         "contexts": len(index),
         "total_scored_positions": len(index) * (ctx_len - 1),
         "hidden_size": 5120, "vocab_size": 248320,
-        "held_out": True,
         "corpus_note": ("Gutenberg / arXiv / Wikipedia (en + de,fr,es,ja,zh,ru) / "
-                        "CPython v3.12.8 Lib. Disjoint from exllamav3 calibration data."),
+                        "CPython v3.12.8 Lib; calibration overlap is measured below."),
         "contamination_scan": {
-            "shingle_chars": SHINGLE,
+            "shingle_words": SHINGLE_WORDS,
+            "stride_words": 1,
+            "digest": "blake2b-128",
+            "normalization": "Unicode NFKC, casefold, every Unicode word token",
             "calibration_shingles": len(cal),
             "contexts_with_any_hit": contam_ctx,
             "total_hits": contam_total,

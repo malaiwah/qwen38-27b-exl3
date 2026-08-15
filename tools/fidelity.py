@@ -98,6 +98,29 @@ def sha256_file(p: Path) -> str:
             h.update(chunk)
     return h.hexdigest()
 
+def require_local_model(path: str) -> Path:
+    """Refuse mutable Hub IDs; callers must download and review a snapshot first."""
+    root = Path(path).expanduser()
+    if not root.is_dir() or not (root / "config.json").is_file():
+        raise SystemExit(
+            "--model must be a local snapshot containing config.json; download an immutable "
+            "revision before running the fidelity harness"
+        )
+    return root
+
+
+def atomic_write_json(path: Path, payload: dict) -> None:
+    """Replace a JSON receipt atomically, so an interrupted run cannot bless partial work."""
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(json.dumps(payload, indent=2))
+    tmp.replace(path)
+
+
+def canonical_sha256(payload: object) -> str:
+    return sha256_bytes(
+        json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+    )
+
 
 def git_head(repo: Path) -> str | None:
     """HEAD commit of a checkout, without shelling out to git.
@@ -141,9 +164,9 @@ def model_identity(model: str, hash_shards: bool) -> dict:
     """Content identity of a checkpoint directory.
 
     A path is not an identity: it can be rebuilt or moved under the same name.
-    Revisions only exist for checkouts, so a locally built quant is pinned by
-    `index_sha256`, which covers every shard name, tensor name, dtype, shape and
-    offset, and exactly by `shard_sha256`, which costs a full read of the weights.
+    Revisions identify immutable Hub snapshots. An index digest identifies tensor
+    layout but not shard payload bytes; locally built quants therefore require
+    `shard_sha256` for a content identity.
     """
     p = Path(model)
     revision = git_head(p) if p.is_dir() else None
@@ -153,11 +176,13 @@ def model_identity(model: str, hash_shards: bool) -> dict:
         revision = txt.read_text().split("\n", 1)[0].strip() if txt.is_file() else ""
         source = "revision_txt" if revision else "none"
     index = p / "model.safetensors.index.json"
+    config = p / "config.json"
     return {
         "model_path": str(p.resolve()) if p.exists() else str(p),
         "model_revision": revision or None,
         "model_revision_source": source,
         "index_sha256": sha256_file(index) if index.is_file() else None,
+        "config_sha256": sha256_file(config) if config.is_file() else None,
         "shard_sha256": {f.name: sha256_file(f) for f in sorted(p.glob("*.safetensors"))}
                         if hash_shards and p.is_dir() else None,
     }
@@ -202,26 +227,120 @@ def capture_identity(capture: str, hash_shards: bool) -> dict:
     model = identity.get("model_path") or manifest.get("model")
     if model and Path(model).is_dir():
         fresh = model_identity(model, hash_shards)
-        if not hash_shards:
-            del fresh["shard_sha256"]  # keep whatever digests capture recorded
-        identity.update(fresh)
+        checked = ["model_revision", "index_sha256", "config_sha256"]
+        if hash_shards:
+            checked.append("shard_sha256")
+        for key in checked:
+            if key not in identity:
+                raise SystemExit(
+                    f"capture identity lacks {key}; cannot relabel stored hidden states"
+                )
+            if identity[key] != fresh[key]:
+                raise SystemExit(
+                    f"capture checkpoint identity changed for {key}; stored hidden "
+                    "states do not describe the current model path"
+                )
     identity.setdefault("model_path", model)
     identity.setdefault("quantization", manifest.get("quantization"))
     identity.setdefault("quantization_config", manifest.get("quantization_config"))
+    identity.setdefault("trust_remote_code", manifest.get("trust_remote_code"))
     identity.setdefault("kv_cache_dtype_requested", manifest.get("kv_cache_dtype"))
     for key, unknown in (("model_revision", None), ("model_revision_source", "none"),
-                         ("index_sha256", None), ("shard_sha256", None),
+                         ("index_sha256", None), ("config_sha256", None),
+                         ("shard_sha256", None), ("trust_remote_code", None),
                          ("kv_cache_dtype_resolved", "unresolved"),
                          ("kv_cache_dtype_resolved_source", "unavailable")):
         identity.setdefault(key, unknown)
     return identity
 
 
+def capture_contract(
+    identity: dict,
+    suite_token_sha256: str,
+    context_length: int,
+    selected: list[dict],
+    args,
+) -> dict:
+    """Facts that must be identical before capture files may be reused."""
+    quant_config = (
+        json.loads(args.quantization_config) if args.quantization_config else None
+    )
+    return {
+        "suite_token_sha256": suite_token_sha256,
+        "context_length": context_length,
+        "filter": args.filter,
+        "expected_indices": [int(c["index"]) for c in selected],
+        "candidate_content": {
+            "model_revision": identity.get("model_revision"),
+            "index_sha256": identity.get("index_sha256"),
+            "config_sha256": identity.get("config_sha256"),
+            "shard_sha256": identity.get("shard_sha256"),
+        },
+        "runtime": {
+            "quantization": args.quantization,
+            "quantization_config": quant_config,
+            "trust_remote_code": bool(args.trust_remote_code),
+            "kv_cache_dtype_requested": args.kv_cache_dtype,
+            "kv_cache_dtype_resolved": identity.get("kv_cache_dtype_resolved"),
+            "fp32": bool(args.fp32),
+            "chunk_accumulate": bool(args.chunk_accumulate),
+            "max_batched_tokens": int(args.max_batched_tokens),
+        },
+    }
+
+
+def validate_capture_files(
+    capture: Path,
+    suite_token_sha256: str,
+    selected_indices: set[int],
+) -> dict:
+    """Fail closed on incomplete, stale, duplicated, or modified capture sets."""
+    path = capture / "capture-manifest.json"
+    if not path.is_file():
+        raise SystemExit(f"missing capture manifest: {path}")
+    manifest = json.loads(path.read_text())
+    if manifest.get("complete") is not True:
+        raise SystemExit(f"incomplete capture manifest: {path}")
+    if manifest.get("suite_token_sha256") != suite_token_sha256:
+        raise SystemExit(f"suite identity mismatch in {path}")
+    records = manifest.get("captures")
+    if not isinstance(records, list):
+        raise SystemExit(f"invalid captures array in {path}")
+    by_index = {}
+    for record in records:
+        index = record.get("index")
+        if not isinstance(index, int) or index in by_index:
+            raise SystemExit(f"invalid or duplicate capture index {index!r} in {path}")
+        by_index[index] = record
+    if manifest.get("contexts") != len(by_index):
+        raise SystemExit(
+            f"incomplete capture manifest {path}: contexts={manifest.get('contexts')} "
+            f"but records={len(by_index)}"
+        )
+    missing = sorted(selected_indices - set(by_index))
+    if missing:
+        raise SystemExit(f"capture manifest {path} is missing indices {missing[:16]}")
+    for index in sorted(selected_indices):
+        file = capture / f"hidden_{index:04d}.safetensors"
+        if not file.is_file():
+            raise SystemExit(f"capture file missing: {file}")
+        expected = by_index[index].get("sha256")
+        if not expected or sha256_file(file) != expected:
+            raise SystemExit(f"capture digest mismatch: {file}")
+    return manifest
+
+
 # ------------------------------------------------------------------ suite
 def cmd_suite(args) -> int:
+    model_root = require_local_model(args.model)
+    tokenizer_file = model_root / "tokenizer.json"
+    if not tokenizer_file.is_file():
+        raise SystemExit("local model snapshot is missing tokenizer.json")
     from transformers import AutoTokenizer
 
-    tok = AutoTokenizer.from_pretrained(args.model, trust_remote_code=True)
+    tok = AutoTokenizer.from_pretrained(
+        args.model, trust_remote_code=args.trust_remote_code
+    )
     out = Path(args.out)
     (out / "tokens").mkdir(parents=True, exist_ok=True)
     ctx_len = args.context_length
@@ -266,11 +385,11 @@ def cmd_suite(args) -> int:
 
     manifest = {
         "schema": "qwen38-distribution-fidelity/1",
-        "model": args.model, "context_length": ctx_len,
+        "model": args.model, "trust_remote_code": args.trust_remote_code,
+        "context_length": ctx_len,
         "scored_positions_per_context": ctx_len - 1,
         "contexts": len(contexts), "total_scored_positions": len(contexts) * (ctx_len - 1),
-        "hidden_size": 5120, "vocab_size": 248320,
-        "tokenizer_sha256": sha256_file(Path(args.model, "tokenizer.json")),
+        "tokenizer_sha256": sha256_file(tokenizer_file),
         "strata": {k: sum(1 for c in contexts if c["stratum"] == k) for k in CORPORA},
         "context_index": contexts,
     }
@@ -348,17 +467,24 @@ def _rpc_set_accumulate(self, on: bool):
 
 
 def cmd_capture(args) -> int:
+    require_local_model(args.model)
     from vllm import LLM, SamplingParams
     from vllm.inputs import TokensPrompt
+    from safetensors import safe_open
     from safetensors.torch import save_file
 
     suite = Path(args.suite)
-    manifest = json.loads((suite / "suite-manifest.json").read_text())
-    ctx_len = manifest["context_length"]
+    suite_manifest = json.loads((suite / "suite-manifest.json").read_text())
+    ctx_len = suite_manifest["context_length"]
+    selected = select(suite_manifest["context_index"], args.filter)
+    if not selected:
+        raise SystemExit(f"capture filter {args.filter!r} selected no contexts")
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
+    manifest_path = out / "capture-manifest.json"
 
-    kwargs = dict(model=args.model, trust_remote_code=True, tensor_parallel_size=1,
+    kwargs = dict(model=args.model, trust_remote_code=args.trust_remote_code,
+                  tensor_parallel_size=1,
                   gpu_memory_utilization=args.gpu_memory_utilization,
                   kv_cache_memory_bytes=512 * 1024 * 1024, dtype="bfloat16",
                   kv_cache_dtype=args.kv_cache_dtype, load_format="safetensors",
@@ -376,11 +502,61 @@ def cmd_capture(args) -> int:
     resolved, resolved_source = resolved_kv_cache_dtype(llm)
     identity.update({"quantization": args.quantization,
                      "quantization_config": args.quantization_config,
+                     "trust_remote_code": args.trust_remote_code,
                      "kv_cache_dtype_requested": args.kv_cache_dtype,
                      "kv_cache_dtype_resolved": resolved,
                      "kv_cache_dtype_resolved_source": resolved_source})
+    if not identity.get("model_revision") and not identity.get("shard_sha256"):
+        raise SystemExit(
+            "candidate payload is unpinned: use a revisioned checkout or leave "
+            "--hash-shards enabled"
+        )
     print("candidate_identity " + json.dumps({k: identity[k] for k in (
         "model_revision", "index_sha256", "kv_cache_dtype_resolved")}), flush=True)
+
+    contract = capture_contract(
+        identity, suite_manifest["suite_token_sha256"], ctx_len, selected, args
+    )
+    contract_digest = canonical_sha256(contract)
+    expected_indices = set(contract["expected_indices"])
+    existing_files = {
+        int(path.stem.removeprefix("hidden_")): path
+        for path in out.glob("hidden_*.safetensors")
+        if path.stem.removeprefix("hidden_").isdigit()
+    }
+    prior = json.loads(manifest_path.read_text()) if manifest_path.is_file() else None
+    if prior is None and existing_files:
+        raise SystemExit(
+            f"{out} has capture files but no manifest; refusing an unverifiable resume"
+        )
+    if prior is not None and prior.get("capture_contract_sha256") != contract_digest:
+        raise SystemExit(
+            f"capture contract changed in {out}; use a new output directory"
+        )
+    unexpected = sorted(set(existing_files) - expected_indices)
+    if unexpected:
+        raise SystemExit(f"{out} contains unselected capture indices {unexpected[:16]}")
+
+    records_by_index = {}
+    for record in (prior or {}).get("captures", []):
+        index = record.get("index")
+        if not isinstance(index, int) or index in records_by_index:
+            raise SystemExit(f"invalid or duplicate capture record {index!r} in {out}")
+        records_by_index[index] = record
+    if set(records_by_index) != set(existing_files):
+        raise SystemExit(
+            f"capture files and manifest records disagree in {out}; refusing resume"
+        )
+    for index, path in existing_files.items():
+        record = records_by_index[index]
+        if sha256_file(path) != record.get("sha256"):
+            raise SystemExit(f"existing capture digest mismatch: {path}")
+        with safe_open(str(path), framework="pt", device="cpu") as file:
+            if "hidden_states" not in file.keys():
+                raise SystemExit(f"hidden_states missing from {path}")
+            shape = list(file.get_slice("hidden_states").get_shape())
+        if shape != record.get("shape") or shape[0] != ctx_len - 1:
+            raise SystemExit(f"existing capture shape mismatch: {path}: {shape}")
 
     hooked = llm.collective_rpc(_rpc_install_hook)
     print(f"hooked {hooked}", flush=True)
@@ -392,39 +568,68 @@ def cmd_capture(args) -> int:
         print("chunk accumulation enabled for long contexts", flush=True)
 
     params = SamplingParams(max_tokens=1, temperature=0, detokenize=False)
-    done = 0
-    t0 = time.time()
-    records = []
-    for ctx in select(manifest["context_index"], args.filter):
-        dst = out / f"hidden_{ctx['index']:04d}.safetensors"
-        if dst.exists():
-            done += 1
+    started = time.time()
+
+    def write_manifest(complete: bool) -> None:
+        records = [records_by_index[i] for i in sorted(records_by_index)]
+        meta = {
+            "schema": "qwen38-fidelity-capture/2",
+            "model": args.model,
+            "quantization": args.quantization,
+            "quantization_config": args.quantization_config,
+            "kv_cache_dtype": args.kv_cache_dtype,
+            "candidate_identity": identity,
+            "suite_token_sha256": suite_manifest["suite_token_sha256"],
+            "filter": args.filter,
+            "context_length": ctx_len,
+            "expected_contexts": len(selected),
+            "expected_indices": sorted(expected_indices),
+            "capture_contract": contract,
+            "capture_contract_sha256": contract_digest,
+            "contexts": len(records),
+            "captures": records,
+            "complete": complete,
+            "elapsed_sec": time.time() - started,
+        }
+        atomic_write_json(manifest_path, meta)
+
+    write_manifest(complete=False)
+    for ctx in selected:
+        index = ctx["index"]
+        dst = out / f"hidden_{index:04d}.safetensors"
+        if index in records_by_index:
             continue
         ids = json.loads((suite / ctx["file"]).read_text())
         if sha256_bytes(json.dumps(ids).encode()) != ctx["token_sha256"]:
-            raise SystemExit(f"token hash drift on context {ctx['index']}")
+            raise SystemExit(f"token hash drift on context {index}")
         llm.collective_rpc(_rpc_pop_capture)
         llm.generate([TokensPrompt(prompt_token_ids=ids)], sampling_params=params,
                      use_tqdm=False)
         got = llm.collective_rpc(_rpc_pop_capture)[0]
         if got is None or got.shape[0] != ctx_len:
-            raise SystemExit(f"capture failed for context {ctx['index']}: "
+            raise SystemExit(f"capture failed for context {index}: "
                              f"{None if got is None else tuple(got.shape)}")
         hidden = got[: ctx_len - 1].contiguous()
-        save_file({"hidden_states": hidden}, str(dst))
-        records.append({"index": ctx["index"], "sha256": sha256_file(dst),
-                        "shape": list(hidden.shape)})
-        done += 1
-        if done % 16 == 0:
-            print(f"{done} captured ({time.time() - t0:.0f}s)", flush=True)
-    meta = {"model": args.model, "quantization": args.quantization,
-            "quantization_config": args.quantization_config,
-            "kv_cache_dtype": args.kv_cache_dtype,
-            "candidate_identity": identity,
-            "suite_token_sha256": manifest["suite_token_sha256"],
-            "contexts": done, "captures": records, "elapsed_sec": time.time() - t0}
-    (out / "capture-manifest.json").write_text(json.dumps(meta, indent=2))
-    print("capture_done " + json.dumps({k: meta[k] for k in ("contexts", "elapsed_sec")}), flush=True)
+        tmp = dst.with_name(dst.name + ".tmp")
+        save_file({"hidden_states": hidden}, str(tmp))
+        tmp.replace(dst)
+        records_by_index[index] = {
+            "index": index,
+            "sha256": sha256_file(dst),
+            "shape": list(hidden.shape),
+        }
+        write_manifest(complete=False)
+        if len(records_by_index) % 16 == 0:
+            print(
+                f"{len(records_by_index)} captured ({time.time() - started:.0f}s)",
+                flush=True,
+            )
+    if set(records_by_index) != expected_indices:
+        raise SystemExit("capture ended without the exact selected context set")
+    write_manifest(complete=True)
+    print("capture_done " + json.dumps({
+        "contexts": len(records_by_index), "elapsed_sec": time.time() - started
+    }), flush=True)
     return 0
 
 
@@ -534,12 +739,21 @@ def cmd_replay(args) -> int:
     top1_hits, positions = 0, 0
     all_kl = []
 
-    for ctx in select(suite["context_index"], args.filter):
+    chosen = select(suite["context_index"], args.filter)
+    if not chosen:
+        raise SystemExit(f"replay filter {args.filter!r} selected no contexts")
+    selected_indices = {int(ctx["index"]) for ctx in chosen}
+    validate_capture_files(
+        Path(args.reference), suite["suite_token_sha256"], selected_indices
+    )
+    validate_capture_files(
+        Path(args.candidate), suite["suite_token_sha256"], selected_indices
+    )
+
+    for ctx in chosen:
         i = ctx["index"]
         rp = Path(args.reference, f"hidden_{i:04d}.safetensors")
         cp = Path(args.candidate, f"hidden_{i:04d}.safetensors")
-        if not (rp.exists() and cp.exists()):
-            continue
         with safe_open(str(rp), framework="pt", device="cpu") as f:
             ref = f.get_tensor("hidden_states").to(dev, hdtype)
         with safe_open(str(cp), framework="pt", device="cpu") as f:
@@ -562,15 +776,13 @@ def cmd_replay(args) -> int:
         all_kl.append(kl)
         if len(per_ctx) % 16 == 0:
             print(f"{len(per_ctx)} contexts, running mean {statistics.fmean(x['mean_kld'] for x in per_ctx):.6f}", flush=True)
-
-    if not per_ctx:
-        raise SystemExit("no overlapping contexts between reference and candidate")
     kl_all = torch.cat(all_kl).double()
     q = lambda p: float(kl_all.quantile(p))
     means = [c["mean_kld"] for c in per_ctx]
     report = {
         "schema": "qwen38-fidelity-report/1",
         "reference": str(args.reference), "candidate": str(args.candidate),
+        "reference_identity": capture_identity(args.reference, args.hash_shards),
         "candidate_identity": capture_identity(args.candidate, args.hash_shards),
         "head": str(args.head), "head_sha256": sha256_file(Path(args.head)),
         "candidate_head": str(args.candidate_head) if args.candidate_head else None,
@@ -594,7 +806,7 @@ def cmd_replay(args) -> int:
         "comparator": {"vocab_chunk": args.vocab_chunk, "device": args.device,
                        "accumulation": "float64", "two_pass": True},
     }
-    Path(args.out).write_text(json.dumps(report, indent=2))
+    atomic_write_json(Path(args.out), report)
     print("replay_done " + json.dumps({k: report[k] for k in (
         "contexts", "scored_positions", "token_mean_kld", "context_macro_mean_kld",
         "top1_agreement", "p999_kld")}), flush=True)
@@ -642,6 +854,7 @@ def cmd_qualify(args) -> int:
     hidden-state capture already on disk, once through vLLM's own full-vocabulary
     prompt logprobs.
     """
+    require_local_model(args.model)
     from vllm import LLM, SamplingParams
     from vllm.inputs import TokensPrompt
     from safetensors.torch import safe_open
@@ -649,6 +862,37 @@ def cmd_qualify(args) -> int:
     suite = json.loads(Path(args.suite, "suite-manifest.json").read_text())
     ctx_len = suite["context_length"]
     chosen = select(suite["context_index"], args.filter)[: args.contexts]
+    if len(chosen) != args.contexts:
+        raise SystemExit(
+            f"qualification requested {args.contexts} contexts but selected {len(chosen)}"
+        )
+    hidden_manifest = validate_capture_files(
+        Path(args.hidden), suite["suite_token_sha256"],
+        {int(ctx["index"]) for ctx in chosen},
+    )
+    hidden_identity = capture_identity(args.hidden, hash_shards=False)
+    live_identity = model_identity(args.model, hash_shards=True)
+    for key in ("model_revision", "index_sha256", "config_sha256", "shard_sha256"):
+        if hidden_identity.get(key) != live_identity.get(key):
+            raise SystemExit(
+                f"qualification model does not match hidden capture identity: {key}"
+            )
+    captured_runtime = (hidden_manifest.get("capture_contract") or {}).get("runtime") or {}
+    requested_quant_config = (
+        json.loads(args.quantization_config) if args.quantization_config else None
+    )
+    expected_runtime = {
+        "quantization": args.quantization,
+        "quantization_config": requested_quant_config,
+        "trust_remote_code": bool(args.trust_remote_code),
+        "kv_cache_dtype_requested": args.kv_cache_dtype,
+        "fp32": bool(args.fp32),
+    }
+    for key, value in expected_runtime.items():
+        if captured_runtime.get(key) != value:
+            raise SystemExit(
+                f"qualification runtime does not match hidden capture: {key}"
+            )
     dev = torch.device(args.device)
     hdtype = torch.float32 if args.fp32 else torch.bfloat16
     with safe_open(args.head, framework="pt", device="cpu") as f:
@@ -656,7 +900,8 @@ def cmd_qualify(args) -> int:
         head = f.get_tensor(key).to(dev, hdtype)
     vocab = head.shape[0]
 
-    kwargs = dict(model=args.model, trust_remote_code=True, tensor_parallel_size=1,
+    kwargs = dict(model=args.model, trust_remote_code=args.trust_remote_code,
+                  tensor_parallel_size=1,
                   gpu_memory_utilization=args.gpu_memory_utilization,
                   kv_cache_memory_bytes=512 * 1024 * 1024, dtype="bfloat16",
                   kv_cache_dtype=args.kv_cache_dtype, load_format="safetensors",
@@ -671,13 +916,15 @@ def cmd_qualify(args) -> int:
     params = SamplingParams(prompt_logprobs=-1, flat_logprobs=True, max_tokens=1,
                             detokenize=False)
 
+    if not chosen:
+        raise SystemExit("qualification selected no contexts")
     rows = []
     for ctx in chosen:
         i = ctx["index"]
         hp = Path(args.hidden, f"hidden_{i:04d}.safetensors")
-        if not hp.exists():
-            continue
         ids = json.loads(Path(args.suite, ctx["file"]).read_text())
+        if sha256_bytes(json.dumps(ids).encode()) != ctx["token_sha256"]:
+            raise SystemExit(f"token hash drift on context {i}")
         out = llm.generate([TokensPrompt(prompt_token_ids=ids)],
                            sampling_params=params, use_tqdm=False)[0]
         npos = ctx_len - 1
@@ -694,8 +941,16 @@ def cmd_qualify(args) -> int:
     if not rows:
         raise SystemExit("no contexts qualified; check --hidden and --filter")
     report = {
-        "schema": "qwen38-replay-qualification/1",
-        "model": args.model, "hidden": str(args.hidden), "head": str(args.head),
+        "schema": "qwen38-replay-qualification/2",
+        "model": args.model,
+        "candidate_identity": live_identity,
+        "hidden": str(args.hidden),
+        "capture_manifest_sha256": sha256_file(Path(args.hidden, "capture-manifest.json")),
+        "head": str(args.head),
+        "head_sha256": sha256_file(Path(args.head)),
+        "suite_token_sha256": suite["suite_token_sha256"],
+        "filter": args.filter,
+        "runtime": expected_runtime,
         "contexts": len(rows),
         "mean_kld_live_vs_replayed": statistics.fmean(r["mean_kld"] for r in rows),
         "max_kld": max(r["max_kld"] for r in rows),
@@ -703,7 +958,7 @@ def cmd_qualify(args) -> int:
         "top1_agreement": statistics.fmean(r["top1_agreement"] for r in rows),
         "per_context": rows,
     }
-    Path(args.out).write_text(json.dumps(report, indent=2))
+    atomic_write_json(Path(args.out), report)
     print("qualify_done " + json.dumps({k: report[k] for k in (
         "contexts", "mean_kld_live_vs_replayed", "max_kld", "top1_agreement")}), flush=True)
     return 0
@@ -712,14 +967,35 @@ def cmd_qualify(args) -> int:
 def cmd_paired(args) -> int:
     a = json.loads(Path(args.a).read_text())
     b = json.loads(Path(args.b).read_text())
+    for field in ("suite_token_sha256", "filter", "head_sha256"):
+        if a.get(field) != b.get(field):
+            raise SystemExit(
+                f"paired reports disagree on {field}: {a.get(field)!r} != {b.get(field)!r}"
+            )
     ai = {c["index"]: c for c in a["per_context"]}
     bi = {c["index"]: c for c in b["per_context"]}
-    shared = sorted(set(ai) & set(bi))
+    if len(ai) != len(a["per_context"]) or len(bi) != len(b["per_context"]):
+        raise SystemExit("paired report contains duplicate context indices")
+    if set(ai) != set(bi):
+        raise SystemExit(
+            "paired reports must contain the same context set; "
+            f"a_only={sorted(set(ai) - set(bi))[:16]}, "
+            f"b_only={sorted(set(bi) - set(ai))[:16]}"
+        )
+    shared = sorted(ai)
+    for index in shared:
+        if ai[index].get("source_cluster") != bi[index].get("source_cluster"):
+            raise SystemExit(f"source cluster mismatch at context {index}")
+    if not shared:
+        raise SystemExit("paired reports contain no contexts")
     diffs = [ai[i]["mean_kld"] - bi[i]["mean_kld"] for i in shared]
     clusters = [ai[i]["source_cluster"] for i in shared]
     wins_a = sum(1 for d in diffs if d < 0)
     out = {
-        "schema": "qwen38-fidelity-paired/1",
+        "schema": "qwen38-fidelity-paired/2",
+        "suite_token_sha256": a["suite_token_sha256"],
+        "filter": a["filter"],
+        "head_sha256": a["head_sha256"],
         "a": {"report": str(args.a), "label": args.a_label, "mean": a["context_macro_mean_kld"]},
         "b": {"report": str(args.b), "label": args.b_label, "mean": b["context_macro_mean_kld"]},
         "contexts": len(shared),
@@ -730,7 +1006,7 @@ def cmd_paired(args) -> int:
         "largest_a_advantage": sorted(zip(shared, diffs), key=lambda x: x[1])[:10],
         "largest_b_advantage": sorted(zip(shared, diffs), key=lambda x: -x[1])[:10],
     }
-    Path(args.out).write_text(json.dumps(out, indent=2))
+    atomic_write_json(Path(args.out), out)
     print("paired_done " + json.dumps({k: out[k] for k in (
         "contexts", "difference_a_minus_b", "a_wins", "b_wins")}), flush=True)
     return 0
@@ -742,6 +1018,8 @@ def main() -> int:
 
     s = sub.add_parser("suite")
     s.add_argument("--model", required=True)
+    s.add_argument("--trust-remote-code", action="store_true",
+                   help="execute model-repository Python (unsafe; off by default)")
     s.add_argument("--out", required=True)
     s.add_argument("--contexts", type=int, default=128)
     s.add_argument("--context-length", type=int, default=2048)
@@ -750,6 +1028,8 @@ def main() -> int:
     c = sub.add_parser("capture")
     c.add_argument("--model", required=True)
     c.add_argument("--suite", required=True)
+    c.add_argument("--trust-remote-code", action="store_true",
+                   help="execute model-repository Python (unsafe; off by default)")
     c.add_argument("--out", required=True)
     c.add_argument("--quantization", default="auto")
     c.add_argument("--quantization-config", default=None)
@@ -763,8 +1043,8 @@ def main() -> int:
                    help="store hidden states in float32 (2x disk, removes bf16 rounding)")
     c.add_argument("--chunk-accumulate", action="store_true",
                    help="concatenate chunked-prefill forwards (needed above one chunk)")
-    c.add_argument("--hash-shards", action="store_true",
-                   help="sha256 every weight shard for candidate_identity (full read)")
+    c.add_argument("--hash-shards", action=argparse.BooleanOptionalAction, default=True,
+                   help="sha256 every weight shard for content identity (default: true)")
     c.set_defaults(func=cmd_capture)
 
     r = sub.add_parser("replay")
@@ -783,14 +1063,16 @@ def main() -> int:
                    help="all | analysis | qualification | sentinel")
     r.add_argument("--fp32", action="store_true",
                    help="replay in float32 (matches --fp32 captures)")
-    r.add_argument("--hash-shards", action="store_true",
-                   help="sha256 every weight shard for candidate_identity (full read)")
+    r.add_argument("--hash-shards", action=argparse.BooleanOptionalAction, default=True,
+                   help="recheck every candidate weight shard (default: true)")
     r.set_defaults(func=cmd_replay)
 
     z = sub.add_parser("qualify")
     z.add_argument("--model", required=True)
     z.add_argument("--suite", required=True)
     z.add_argument("--hidden", required=True, help="capture dir for the same model")
+    z.add_argument("--trust-remote-code", action="store_true",
+                   help="execute model-repository Python (unsafe; off by default)")
     z.add_argument("--head", required=True)
     z.add_argument("--out", required=True)
     z.add_argument("--contexts", type=int, default=8)

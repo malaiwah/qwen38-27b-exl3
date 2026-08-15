@@ -1,6 +1,7 @@
 {
   "schema": "qwen38-release-evidence/1",
   "generated_utc": "2026-08-15T03:42:51Z",
+  "amended_utc": "2026-08-15T12:27:32Z",
   "artifact": {
     "hf_repo": "malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated",
     "label": "K5/K6, attention serialized offline at K6",
@@ -45,7 +46,7 @@
     "suite_token_sha256": "3f9d17f1b55f64872ad3ac19c8711654e09ba70b7ca14b0851525088fe735691",
     "partition": "analysis",
     "contexts": 136,
-    "scored_positions": null,
+    "scored_positions": 278392,
     "shared_comparator_head": "BF16, identical for every candidate (body-only)",
     "mean_kld": 0.007406422525617622,
     "ci95": [
@@ -83,24 +84,59 @@
         "bf16_control": "24/32, 0.0128"
       }
     },
-    "development_set_caveat": "Recipe selection saw this partition, and its source clusters are shared with the qualification partition, so these are development-set numbers. A source-disjoint suite is being built.",
-    "captures_published": false,
+    "development_set_caveat": "Recipe selection saw v3; source-disjoint v4 qualification is published. The conservative overlap-corrected v3 subset and v4 results are linked by amendments below.",
+    "captures_published": true,
     "as_served": {
-      "mean_kld": 0.007532,
-      "top1_agreement": 0.9708,
-      "head_cost": 0.00012516804670361007,
-      "head_cost_ci95": [
-        0.00010680418990943814,
-        0.0001438008910763626
-      ],
-      "method": "asymmetric heads: reference through the true BF16 head, candidate through this checkpoint's dequantized K6 head; measured, not inferred from the sibling"
+      "original": {
+        "contexts": 136,
+        "scored_positions": 278392,
+        "mean_kld": 0.007531590572321231,
+        "top1_agreement": 0.9707822063852409,
+        "head_delta_mean_kld": 0.00012516804670361007,
+        "head_delta_ci95": [
+          0.00010680418990943814,
+          0.0001438008910763626
+        ]
+      },
+      "overlap_corrected": {
+        "contexts": 127,
+        "scored_positions": 259969,
+        "mean_kld": 0.007300129113882429,
+        "top1_agreement": 0.9704657093730407,
+        "head_delta_mean_kld": 0.00012809525810428388,
+        "head_delta_ci95": [
+          0.00010955942052458132,
+          0.0001463054626847932
+        ],
+        "contexts_favouring_quantized_head": 8
+      },
+      "method": "asymmetric heads: BF16 reference head versus this checkpoint's dequantized K6 head"
     }
   },
   "serving": {
     "note": "No online encoding: no VLLM_EXL3_ONLINE_TRELLIS_BITS, no cache directory. Eager on the pinned image."
   },
+  "amendments": {
+    "fidelity_dataset_revision": "73252e77e96bbf5596484e29dd8041f9f38c95f1",
+    "overlap_corrected_v3": {
+      "path": "receipts/analysis-v3-contamination-corrected.json",
+      "sha256": "026fc453787eccef15879f29266489ba9ec04bbff59ab7e35827e92394480417"
+    },
+    "source_disjoint_v4": {
+      "path": "receipts/qualification-v4-contamination-corrected.json",
+      "sha256": "17148ed02713f426dcb4b7b69c8072a5eb8a9abd49bcbfcea585ca8e5c2f5ab3"
+    },
+    "task_run": {
+      "path": "receipts/tasks-v2-hydrated.json",
+      "sha256": "704b9c51f5e902a680f087e2eed00d51c6166d35461e667f0d6d7c5ce6d3aec4"
+    },
+    "task_strict_rescore": {
+      "path": "receipts/task-retention-v2-strict-rescore.json",
+      "sha256": "b1cddff1a9ae012a48ec0258096c3a258e652aef887fc9128d8665e62c867080"
+    }
+  },
   "not_verified": [
-    "downstream task retention (code, reasoning, instruction following, tool calling)",
+    "public downstream benchmark beyond the deterministic paired smoke",
     "multimodal quality beyond single image smoke tests",
     "long-context accuracy beyond an external 205,021-token retrieval check",
     "native 262,144 generation on this box",

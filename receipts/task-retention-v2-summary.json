@@ -1,0 +1,430 @@
+{
+  "schema": "qwen38-task-retention-summary/2",
+  "suite_sha256": "e1eccaaf98071d7dc25cb1b10da08459d0de8a3061e76790c490f80072642030",
+  "seed": 20260815,
+  "harness_sha256": "dfcf1c330aa53ad11f96860b62c08dfd6306caa2739dd8840bd0732f4d92d3ca",
+  "contract": "40 deterministic generated tasks: 10 each arithmetic, builtins-only code with 3 hidden cases, exact-list instruction following, and tool-call schema; greedy identical prompts; paired to BF16",
+  "limitations": "small downstream smoke suite, not a public benchmark; exact-output agreement is diagnostic, pass retention is the contract",
+  "models": {
+    "bf16": {
+      "receipt": "receipts/tasks-v2-bf16.json",
+      "receipt_sha256": "2dc545f3f117750d5e513ddcfaaf62df71470e21913e53225ded569b43ab91fc",
+      "candidate_identity": {
+        "path": "/var/tmp/models/Qwen3.8-27B",
+        "revision": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0",
+        "index_sha256": "77042094076611b69791a610065f28b7013b8c621795fa86ddccc8bac7d1b9df",
+        "config_sha256": "191e0af232104ed8b65258cf3fb2b842e288008baca7633c11b82a1ac7203aab",
+        "release_evidence": null,
+        "release_evidence_sha256": null
+      },
+      "pass": {
+        "successes": 40,
+        "n": 40,
+        "rate": 1.0,
+        "ci95_low": 0.9123783988027135,
+        "ci95_high": 1.0000000000000002
+      },
+      "per_kind": {
+        "arithmetic": {
+          "successes": 10,
+          "n": 10,
+          "rate": 1.0,
+          "ci95_low": 0.7224672001371107,
+          "ci95_high": 0.9999999999999999
+        },
+        "code": {
+          "successes": 10,
+          "n": 10,
+          "rate": 1.0,
+          "ci95_low": 0.7224672001371107,
+          "ci95_high": 0.9999999999999999
+        },
+        "format": {
+          "successes": 10,
+          "n": 10,
+          "rate": 1.0,
+          "ci95_low": 0.7224672001371107,
+          "ci95_high": 0.9999999999999999
+        },
+        "tool": {
+          "successes": 10,
+          "n": 10,
+          "rate": 1.0,
+          "ci95_low": 0.7224672001371107,
+          "ci95_high": 0.9999999999999999
+        }
+      },
+      "paired": null
+    },
+    "ctx": {
+      "receipt": "receipts/tasks-v2-ctx.json",
+      "receipt_sha256": "cea4cfa885af0d254a24a4003ba956a70cc38269bd7604d32fb6ec306eadf67d",
+      "candidate_identity": {
+        "path": "/var/tmp/work/qwen38-ctx",
+        "revision": null,
+        "index_sha256": "cd53b8e487b5c70b1ffe26578464a9cfd9bea9d7ed50a39e39ba3e153c1ab1b4",
+        "config_sha256": "fbb105334da6554c10784ff1257fda5e3821d4d5426d64469cee2b2ad67ba2b3",
+        "release_evidence": "/var/tmp/work/qwen38-ctx/release-evidence.json",
+        "release_evidence_sha256": "86bd30e3288d7b7f0cc8acc74206a1fe685bf051dbb6a772bed93390b7f9971a"
+      },
+      "pass": {
+        "successes": 40,
+        "n": 40,
+        "rate": 1.0,
+        "ci95_low": 0.9123783988027135,
+        "ci95_high": 1.0000000000000002
+      },
+      "per_kind": {
+        "arithmetic": {
+          "successes": 10,
+          "n": 10,
+          "rate": 1.0,
+          "ci95_low": 0.7224672001371107,
+          "ci95_high": 0.9999999999999999
+        },
+        "code": {
+          "successes": 10,
+          "n": 10,
+          "rate": 1.0,
+          "ci95_low": 0.7224672001371107,
+          "ci95_high": 0.9999999999999999
+        },
+        "format": {
+          "successes": 10,
+          "n": 10,
+          "rate": 1.0,
+          "ci95_low": 0.7224672001371107,
+          "ci95_high": 0.9999999999999999
+        },
+        "tool": {
+          "successes": 10,
+          "n": 10,
+          "rate": 1.0,
+          "ci95_low": 0.7224672001371107,
+          "ci95_high": 0.9999999999999999
+        }
+      },
+      "paired": {
+        "bf16_pass_retention": {
+          "successes": 40,
+          "n": 40,
+          "rate": 1.0,
+          "ci95_low": 0.9123783988027135,
+          "ci95_high": 1.0000000000000002
+        },
+        "pass_outcome_agreement": {
+          "successes": 40,
+          "n": 40,
+          "rate": 1.0,
+          "ci95_low": 0.9123783988027135,
+          "ci95_high": 1.0000000000000002
+        },
+        "exact_output_agreement": {
+          "successes": 39,
+          "n": 40,
+          "rate": 0.975,
+          "ci95_low": 0.8711863103652591,
+          "ci95_high": 0.9955731684973186
+        },
+        "regressions": 0,
+        "improvements": 0
+      }
+    },
+    "hydrated": {
+      "receipt": "receipts/tasks-v2-hydrated.json",
+      "receipt_sha256": "704b9c51f5e902a680f087e2eed00d51c6166d35461e667f0d6d7c5ce6d3aec4",
+      "candidate_identity": {
+        "path": "/var/tmp/work/qwen38-hyd",
+        "revision": null,
+        "index_sha256": "ea6e0e1064efbb72d89b4a6f9e0ee76c909a94b3f25047487a2ffb282896a26c",
+        "config_sha256": "fbb105334da6554c10784ff1257fda5e3821d4d5426d64469cee2b2ad67ba2b3",
+        "release_evidence": "/var/tmp/work/qwen38-hyd/release-evidence.json",
+        "release_evidence_sha256": "2200d0da8d5c664714ba18f11bc966c867bb2afda9dc0d0e3929218b782361b9"
+      },
+      "pass": {
+        "successes": 40,
+        "n": 40,
+        "rate": 1.0,
+        "ci95_low": 0.9123783988027135,
+        "ci95_high": 1.0000000000000002
+      },
+      "per_kind": {
+        "arithmetic": {
+          "successes": 10,
+          "n": 10,
+          "rate": 1.0,
+          "ci95_low": 0.7224672001371107,
+          "ci95_high": 0.9999999999999999
+        },
+        "code": {
+          "successes": 10,
+          "n": 10,
+          "rate": 1.0,
+          "ci95_low": 0.7224672001371107,
+          "ci95_high": 0.9999999999999999
+        },
+        "format": {
+          "successes": 10,
+          "n": 10,
+          "rate": 1.0,
+          "ci95_low": 0.7224672001371107,
+          "ci95_high": 0.9999999999999999
+        },
+        "tool": {
+          "successes": 10,
+          "n": 10,
+          "rate": 1.0,
+          "ci95_low": 0.7224672001371107,
+          "ci95_high": 0.9999999999999999
+        }
+      },
+      "paired": {
+        "bf16_pass_retention": {
+          "successes": 40,
+          "n": 40,
+          "rate": 1.0,
+          "ci95_low": 0.9123783988027135,
+          "ci95_high": 1.0000000000000002
+        },
+        "pass_outcome_agreement": {
+          "successes": 40,
+          "n": 40,
+          "rate": 1.0,
+          "ci95_low": 0.9123783988027135,
+          "ci95_high": 1.0000000000000002
+        },
+        "exact_output_agreement": {
+          "successes": 40,
+          "n": 40,
+          "rate": 1.0,
+          "ci95_low": 0.9123783988027135,
+          "ci95_high": 1.0000000000000002
+        },
+        "regressions": 0,
+        "improvements": 0
+      }
+    },
+    "k5k6": {
+      "receipt": "receipts/tasks-v2-k5k6.json",
+      "receipt_sha256": "a5086d40f09bc15e8f1d9a7b3c31fee6df332196c23394fd6e13cee912d87aa9",
+      "candidate_identity": {
+        "path": "/var/tmp/work/Qwen3.8-27B-K5K6",
+        "revision": null,
+        "index_sha256": "f8ca5af94a4a8352eb2f0329c891f20e0c15d7b2733b396d88fb9fba05eabb24",
+        "config_sha256": "fbb105334da6554c10784ff1257fda5e3821d4d5426d64469cee2b2ad67ba2b3",
+        "release_evidence": "/var/tmp/work/card2/release-evidence.json",
+        "release_evidence_sha256": "36aaa3b8bb01ca8c66f63d834d06138f0e27d4eb269f6b9aee06036629877acf"
+      },
+      "pass": {
+        "successes": 40,
+        "n": 40,
+        "rate": 1.0,
+        "ci95_low": 0.9123783988027135,
+        "ci95_high": 1.0000000000000002
+      },
+      "per_kind": {
+        "arithmetic": {
+          "successes": 10,
+          "n": 10,
+          "rate": 1.0,
+          "ci95_low": 0.7224672001371107,
+          "ci95_high": 0.9999999999999999
+        },
+        "code": {
+          "successes": 10,
+          "n": 10,
+          "rate": 1.0,
+          "ci95_low": 0.7224672001371107,
+          "ci95_high": 0.9999999999999999
+        },
+        "format": {
+          "successes": 10,
+          "n": 10,
+          "rate": 1.0,
+          "ci95_low": 0.7224672001371107,
+          "ci95_high": 0.9999999999999999
+        },
+        "tool": {
+          "successes": 10,
+          "n": 10,
+          "rate": 1.0,
+          "ci95_low": 0.7224672001371107,
+          "ci95_high": 0.9999999999999999
+        }
+      },
+      "paired": {
+        "bf16_pass_retention": {
+          "successes": 40,
+          "n": 40,
+          "rate": 1.0,
+          "ci95_low": 0.9123783988027135,
+          "ci95_high": 1.0000000000000002
+        },
+        "pass_outcome_agreement": {
+          "successes": 40,
+          "n": 40,
+          "rate": 1.0,
+          "ci95_low": 0.9123783988027135,
+          "ci95_high": 1.0000000000000002
+        },
+        "exact_output_agreement": {
+          "successes": 37,
+          "n": 40,
+          "rate": 0.925,
+          "ci95_low": 0.8013576647568946,
+          "ci95_high": 0.9741639742254119
+        },
+        "regressions": 0,
+        "improvements": 0
+      }
+    },
+    "fp8": {
+      "receipt": "receipts/tasks-v2-fp8.json",
+      "receipt_sha256": "4493e81c17b6ddc65540ef2579aad7155bdef6d3343ad1a12ce3341a2d843b39",
+      "candidate_identity": {
+        "path": "/var/tmp/models/Qwen3.8-27B-FP8",
+        "revision": "017b9c7af6b5689d5dd426a76e0bc077eb5ca20a",
+        "index_sha256": "f0838c766951bdfe76d6afbdb2771a8f67aaa2231dedb3d33cebd817729843a2",
+        "config_sha256": "74227dd615bf1ea975aa676bdf355a0379858c12f394b5365cd9dfa5fc2c70bc",
+        "release_evidence": null,
+        "release_evidence_sha256": null
+      },
+      "pass": {
+        "successes": 40,
+        "n": 40,
+        "rate": 1.0,
+        "ci95_low": 0.9123783988027135,
+        "ci95_high": 1.0000000000000002
+      },
+      "per_kind": {
+        "arithmetic": {
+          "successes": 10,
+          "n": 10,
+          "rate": 1.0,
+          "ci95_low": 0.7224672001371107,
+          "ci95_high": 0.9999999999999999
+        },
+        "code": {
+          "successes": 10,
+          "n": 10,
+          "rate": 1.0,
+          "ci95_low": 0.7224672001371107,
+          "ci95_high": 0.9999999999999999
+        },
+        "format": {
+          "successes": 10,
+          "n": 10,
+          "rate": 1.0,
+          "ci95_low": 0.7224672001371107,
+          "ci95_high": 0.9999999999999999
+        },
+        "tool": {
+          "successes": 10,
+          "n": 10,
+          "rate": 1.0,
+          "ci95_low": 0.7224672001371107,
+          "ci95_high": 0.9999999999999999
+        }
+      },
+      "paired": {
+        "bf16_pass_retention": {
+          "successes": 40,
+          "n": 40,
+          "rate": 1.0,
+          "ci95_low": 0.9123783988027135,
+          "ci95_high": 1.0000000000000002
+        },
+        "pass_outcome_agreement": {
+          "successes": 40,
+          "n": 40,
+          "rate": 1.0,
+          "ci95_low": 0.9123783988027135,
+          "ci95_high": 1.0000000000000002
+        },
+        "exact_output_agreement": {
+          "successes": 38,
+          "n": 40,
+          "rate": 0.95,
+          "ci95_low": 0.8349612263085903,
+          "ci95_high": 0.9861793326138516
+        },
+        "regressions": 0,
+        "improvements": 0
+      }
+    },
+    "k4": {
+      "receipt": "receipts/tasks-v2-k4.json",
+      "receipt_sha256": "fb615fbe28b8572ff0f8f2d4856e7164047361f4be1eda551cb1b1ed48e7f9a5",
+      "candidate_identity": {
+        "path": "/var/tmp/work/Qwen3.8-27B-K4",
+        "revision": null,
+        "index_sha256": "f17bd87446338313304591297bbc3e37b541b32253723ef75c917c546416e660",
+        "config_sha256": "dab9abc478e1b1b928ef354f27a26fc90e8191a4a3ce5f3d19aa21558216b267",
+        "release_evidence": "/var/tmp/work/card/release-evidence.json",
+        "release_evidence_sha256": "286f28ab279a0990665bd5cc90b8eb3decc612b8ca607bc34876e713040a5284"
+      },
+      "pass": {
+        "successes": 40,
+        "n": 40,
+        "rate": 1.0,
+        "ci95_low": 0.9123783988027135,
+        "ci95_high": 1.0000000000000002
+      },
+      "per_kind": {
+        "arithmetic": {
+          "successes": 10,
+          "n": 10,
+          "rate": 1.0,
+          "ci95_low": 0.7224672001371107,
+          "ci95_high": 0.9999999999999999
+        },
+        "code": {
+          "successes": 10,
+          "n": 10,
+          "rate": 1.0,
+          "ci95_low": 0.7224672001371107,
+          "ci95_high": 0.9999999999999999
+        },
+        "format": {
+          "successes": 10,
+          "n": 10,
+          "rate": 1.0,
+          "ci95_low": 0.7224672001371107,
+          "ci95_high": 0.9999999999999999
+        },
+        "tool": {
+          "successes": 10,
+          "n": 10,
+          "rate": 1.0,
+          "ci95_low": 0.7224672001371107,
+          "ci95_high": 0.9999999999999999
+        }
+      },
+      "paired": {
+        "bf16_pass_retention": {
+          "successes": 40,
+          "n": 40,
+          "rate": 1.0,
+          "ci95_low": 0.9123783988027135,
+          "ci95_high": 1.0000000000000002
+        },
+        "pass_outcome_agreement": {
+          "successes": 40,
+          "n": 40,
+          "rate": 1.0,
+          "ci95_low": 0.9123783988027135,
+          "ci95_high": 1.0000000000000002
+        },
+        "exact_output_agreement": {
+          "successes": 39,
+          "n": 40,
+          "rate": 0.975,
+          "ci95_low": 0.8711863103652591,
+          "ci95_high": 0.9955731684973186
+        },
+        "regressions": 0,
+        "improvements": 0
+      }
+    }
+  }
+}

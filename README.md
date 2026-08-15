@@ -1,8 +1,8 @@
 > **Status: iteration 2 published (2026-08-15).** The current checkpoint is
 > [`malaiwah/Qwen3.8-27B-EXL3-K5K6`](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6):
-> mean KLD **0.008157** body-only, **0.008284** as served, at **20.32 GiB** resident
-> weights on the held-out v3 suite — 38 % lower divergence than official FP8 at 71 % of
-> its weight ([docs/22](docs/22-results-iteration-2.md)). Figures labelled K4 or v1 belong
+> overlap-corrected mean KLD **0.007945** body-only and **0.008078** as served at
+> **20.32 GiB** resident weights on 127 v3 contexts — 38 % lower divergence than official
+> FP8 at 71 % of its weight ([docs/22](docs/22-results-iteration-2.md)). Figures labelled K4 or v1 belong
 > to iteration 1 and are superseded. One earlier control was **withdrawn**: the
 > "CUDA-graph parity 0.000000" receipt captured a *prefill* forward, which
 > `FULL_DECODE_ONLY` never captures, so it could not have measured decode; the decode
@@ -36,8 +36,8 @@ format in this runtime ([docs/25](docs/25-goal-pareto-dominate-fp8.md),
 | [docs/08-upstream-cards-digest.md](docs/08-upstream-cards-digest.md) | Per-card digest: declared recipe, benchmarks, harnesses, limitations |
 | [docs/09-variant-publication.md](docs/09-variant-publication.md) | How iterative variants are published for independent re-measurement |
 | [docs/14-fidelity-protocol-v2.md](docs/14-fidelity-protocol-v2.md) | Hidden-state replay protocol, supersedes the single-window KLD |
-| [docs/18-results-fidelity-v3.md](docs/18-results-fidelity-v3.md) | Held-out re-measurement: 181 contexts, contamination scan, per-stratum means, and the controls — including the one that was withdrawn |
-| [docs/22-results-iteration-2.md](docs/22-results-iteration-2.md) | **Headline results**: gate K5 / up K5 / down K6, mean KLD 0.008157, 38 % below official FP8 at 71 % of its resident weight |
+| [docs/18-results-fidelity-v3.md](docs/18-results-fidelity-v3.md) | Held-out re-measurement, the later offset-independent contamination correction, per-stratum means, and controls |
+| [docs/22-results-iteration-2.md](docs/22-results-iteration-2.md) | Gate K5 / up K5 / down K6: corrected mean KLD **0.007945**, 38 % below official FP8 at 71 % of its resident weight |
 | [docs/15-results-fidelity-v2.md](docs/15-results-fidelity-v2.md) | Superseded v2 run: 151,478 positions, 74/74 paired wins — measured on a corpus that overlapped our calibration data |
 | [docs/16-head-attribution.md](docs/16-head-attribution.md) | Is `lm_head` the sensitive tensor? Measured: not at K6 |
 | [docs/11-kld-external-comparison.md](docs/11-kld-external-comparison.md) | Published KLD data for this family; why "FP8 = 0.5" is wrong |
@@ -54,6 +54,10 @@ format in this runtime ([docs/25](docs/25-goal-pareto-dominate-fp8.md),
 | [docs/26-prefill-attribution.md](docs/26-prefill-attribution.md) | where prefill time goes: MLP 2.13-2.26x, attention overlay 1.05-1.11x, hgemm at cuBLAS parity |
 | [docs/27-graph-decode-drift-control.md](docs/27-graph-decode-drift-control.md) | eager-vs-graph drift is ambient: BF16 drifts the same as EXL3 |
 | [PROGRESS.md](PROGRESS.md) | Chronological work log |
+| [docs/28-external-validation-and-corrections.md](docs/28-external-validation-and-corrections.md) | external RTX 5090 validation and the corrected capacity boundary |
+| [docs/30-iteration-4-context-edition.md](docs/30-iteration-4-context-edition.md) | serialized-K5 context build, receipts and rejected vision quant |
+| [docs/31-frozen-qualification.md](docs/31-frozen-qualification.md) | source-disjoint frozen v4 qualification |
+| [docs/32-native-context-embedding-overlay.md](docs/32-native-context-embedding-overlay.md) | int8 input table, native MTP-3 plus 8.4 MP engine-budget proof, and corrected draft accounting |
 
 Tooling in [tools/](tools/) is what produced the evidence: an unprivileged OCI image
 puller and a proot-based runner for it, the BF16 attention splice and checkpoint
@@ -67,11 +71,12 @@ standalone files.
 - [x] Both upstream Qwen3.8-27B artifacts proven runnable under the official GG image
 - [x] Iteration 1 (K4 MLP + BF16 attention splice) served under GG with `ONLINE_QUANT=exl3-b6`, 19.21 GB resident, vision verified, published as [`malaiwah/Qwen3.8-27B-K4`](https://huggingface.co/malaiwah/Qwen3.8-27B-K4)
 - [x] Held-out v3 fidelity suite with a contamination scan, plus the [dataset](https://huggingface.co/datasets/malaiwah/qwen38-27b-fidelity-suite-v3) that lets anyone recompute it without a GPU
-- [x] Iteration 2 built, measured and published as [`malaiwah/Qwen3.8-27B-EXL3-K5K6`](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6): **20.32 GiB** resident, mean KLD **0.008157** body-only / **0.008284** as served, top-1 96.97 %
-- [x] CUDA graphs ([PR #314](https://github.com/local-inference-lab/vllm/pull/314)) and row-count prefill dispatch ([PR #316](https://github.com/local-inference-lab/vllm/pull/316)) landed as fork PRs: decode 56.6 / 199.6 / 404.6 tok/s, **113.8** with MTP-3, prefill 2,369 -> **5,050** tok/s at 2k
+- [x] Iteration 2 built, measured and published as [`malaiwah/Qwen3.8-27B-EXL3-K5K6`](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6): **20.32 GiB** resident, overlap-corrected mean KLD **0.007945** body-only / **0.008078** as served, top-1 96.86 %
+- [x] CUDA graphs ([PR #314](https://github.com/local-inference-lab/vllm/pull/314)), row-count prefill dispatch ([PR #316](https://github.com/local-inference-lab/vllm/pull/316)), B12X prefill routing ([PR #318](https://github.com/local-inference-lab/vllm/pull/318)) and quantized-embedding construction ([PR #319](https://github.com/local-inference-lab/vllm/pull/319)) filed against the fork and exercised in the tested runtime
 - [x] Prefill attributed and bounded: the MLP kernel is the whole story (2.13x / 2.26x), the online-K6 attention overlay is not the bottleneck (1.05x / 1.11x), `ext.hgemm` is already at cuBLAS parity — FP8 prefill parity needs a fused dequant-in-epilogue kernel, not tuning
-- [x] Attention-overlay width is a runtime knob, measured on the same suite: K6 **0.008157** at 20.32 GiB, K5 **0.012135** at 19.82 GiB (still below FP8, and reaches native 262,144 context on a 32 GB card), K4 **0.027530** at 19.05 GiB
-- [x] Serializing attention offline instead of encoding it at load — the "hydrated" build — measures **0.007406**, i.e. calibrated offline K6 beats the runtime overlay by 0.000751 (124/136 contexts)
+- [x] Attention-overlay width is a runtime knob, measured on the same suite and real RTX 5090: K6 **0.007945** at 20.32 GiB and ~185k context; K5 **0.011801** at 19.82 GiB and **206,400 retrieval-verified**; K4 **0.026619** at 19.05 GiB
+- [x] Serializing attention offline instead of encoding it at load — the "hydrated" build — measures **0.007172**, i.e. calibrated offline K6 beats the runtime overlay by 0.000773 on the overlap-corrected subset
 - [x] Graph-vs-eager decode drift measured properly and traced to the build, not to EXL3 ([docs/27](docs/27-graph-decode-drift-control.md))
-- [ ] K5/K6, attention-width and hydrated captures published into the fidelity dataset — the dataset currently carries iteration-1 captures only
-- [ ] Task-level retention evidence: nothing here shows whether the graph-decode near-tie flips, or the quantization itself, cost downstream accuracy
+- [x] Frozen v4 suite: 160 source-disjoint contexts, 100 documents, zero token/document/content overlap; all five candidate capture sets and qualification receipts published (**2,708 files / 51.0 GB**)
+- [x] Context edition plus per-row int8 input table starts native 262,144 with **MTP-3, decode graphs and an 8.4 MP image cap** under a 30.24 GiB engine budget; 266,612 KV tokens, exact retrieval at 261,794 text tokens and in a 236,824-token seven-megapixel request; hard-limit RTX 5090 rerun pending
+- [x] Task-retention smoke: BF16, all four EXL3 profiles and official FP8 each pass **40/40** deterministic paired tasks with zero regressions; a hardened rescore leaves every pass unchanged and corrects exact-final-answer agreement to 32/40–35/40 (`receipts/task-retention-v2-summary.json`, `receipts/task-retention-v2-strict-rescore.json`)

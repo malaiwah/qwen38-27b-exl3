@@ -1,0 +1,1121 @@
+{
+  "schema": "qwen38-near-duplicate-audit/2",
+  "method": {
+    "normalization": "Unicode NFKC and casefold; Unicode words plus one token per Han/Kana character",
+    "digest": "blake2b-128",
+    "exact_ngram_words": 12,
+    "near_ngram_words": 5,
+    "near_window_words": 256,
+    "near_stride_words": 128,
+    "limitation": "lexical near-duplicate audit; does not detect semantic paraphrases"
+  },
+  "inputs": {
+    "calibration_files": {
+      "c4.utf8": "2daf1ef16e02dbd337f86296acd4c3f2eb703800ad21fd1f48b40280c699cd41",
+      "code.utf8": "12a80d96af7e16b3ecbf2e6899a9c70aee2f4e0003b581979fe6876944e2d891",
+      "multilingual.utf8": "68182e06506ead0d2676673fdee4bbe6564ccb06cee3b8373b7e4824297ea91e",
+      "technical.utf8": "7cac2a0ddd7bc4db19e52e3b12ced3812514059f1f11bfc427b7849e0077a2ee",
+      "tiny.utf8": "51449c33b579f8b12e776dcbfa58ef47bab69f6ab7f44e972b7d98c4cfcac7fd",
+      "wiki.utf8": "d53fe0aeadf3355eb5d32b48bf8691575244c31caccae88ed46be8e1b40209c7"
+    },
+    "corpus_files": 100,
+    "calibration_words": 882042,
+    "exact_calibration_ngrams": 859426,
+    "near_calibration_ngrams": 820923
+  },
+  "summary": {
+    "documents": 100,
+    "documents_with_exact_hit": 10,
+    "documents_with_exact_run_32_words": 2,
+    "total_exact_ngram_hits": 2942,
+    "longest_exact_run_words": 324,
+    "near_window_containment_mean": 0.002865884619760895,
+    "near_window_containment_p95": 0.011904761904761904,
+    "near_window_containment_p99": 0.023809523809523808,
+    "near_window_containment_max": 1.0
+  },
+  "top_documents": [
+    {
+      "file": "multilingual/wiki4-zh-001.txt",
+      "sha256": "8cf4f2a07416776d0461b5cc5dc802a58683ba1056137d13bd0f973e499415ad",
+      "words": 67602,
+      "exact_ngram_hits": 1369,
+      "longest_exact_run_ngrams": 313,
+      "longest_exact_run_words": 324,
+      "max_near_window_containment": 1.0
+    },
+    {
+      "file": "encyclopedic/wiki4-en-004.txt",
+      "sha256": "68f1caa04d5c21791e7fd4bf24a2c87830755272e6f85f52b5a574170229d266",
+      "words": 15063,
+      "exact_ngram_hits": 1470,
+      "longest_exact_run_ngrams": 189,
+      "longest_exact_run_words": 200,
+      "max_near_window_containment": 0.9523809523809523
+    },
+    {
+      "file": "code/numpy-py-v2.1.3-005.txt",
+      "sha256": "96cdd47b364d181db42d89484739f8a671cc23111722a7e29ef8d1e8c057aff2",
+      "words": 14869,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.29365079365079366
+    },
+    {
+      "file": "code/cpython-c-v3.12.8-006.txt",
+      "sha256": "9676a497663942ec4acdb2e06ca3538d9fcf460592e46caac55b9a6654b78103",
+      "words": 13818,
+      "exact_ngram_hits": 22,
+      "longest_exact_run_ngrams": 9,
+      "longest_exact_run_words": 20,
+      "max_near_window_containment": 0.2698412698412698
+    },
+    {
+      "file": "multilingual/wiki4-es-001.txt",
+      "sha256": "b87635d30c53347d47d697fd6bec12099da5b07b5a29dcdecadb8ca84e438b4f",
+      "words": 15600,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.15873015873015872
+    },
+    {
+      "file": "multilingual/wiki4-pt-003.txt",
+      "sha256": "351d180949ba6af733ebf5bfb5c5b26a4c02bdf10d0b684bb9e88be96ffbd1b7",
+      "words": 16474,
+      "exact_ngram_hits": 27,
+      "longest_exact_run_ngrams": 10,
+      "longest_exact_run_words": 21,
+      "max_near_window_containment": 0.15476190476190477
+    },
+    {
+      "file": "code/numpy-py-v2.1.3-006.txt",
+      "sha256": "b0640cff43c423c8fee196785f50cda8e2ac1965c5b33f9e3863c01303e17287",
+      "words": 13392,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.1111111111111111
+    },
+    {
+      "file": "code/numpy-py-v2.1.3-000.txt",
+      "sha256": "dcd2514125d41f5b1a88a72e75cff5d40e2ed6299e2fdc8e569350148bad32ff",
+      "words": 35931,
+      "exact_ngram_hits": 16,
+      "longest_exact_run_ngrams": 12,
+      "longest_exact_run_words": 23,
+      "max_near_window_containment": 0.10714285714285714
+    },
+    {
+      "file": "code/cpython-c-v3.12.8-001.txt",
+      "sha256": "e0224a95ffb09d5be7804c58cc8615906daf373a0486d707a026f6db1dd2b6b3",
+      "words": 12424,
+      "exact_ngram_hits": 16,
+      "longest_exact_run_ngrams": 4,
+      "longest_exact_run_words": 15,
+      "max_near_window_containment": 0.09523809523809523
+    },
+    {
+      "file": "code/numpy-py-v2.1.3-004.txt",
+      "sha256": "2967e9de6043bc137e382a40ccabd37686450b770b6ca573f4a02d8126fc628e",
+      "words": 31169,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.07539682539682539
+    },
+    {
+      "file": "multilingual/wiki4-ja-004.txt",
+      "sha256": "1de9801ef72224a70d3ad4e39b96141d016abf464e7d2e95330bae042499b35e",
+      "words": 88601,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.07142857142857142
+    },
+    {
+      "file": "code/cpython-c-v3.12.8-002.txt",
+      "sha256": "0b056a7b4674b5ea1bdfcf90eb489473be9d761dabc1308d0c449aa33a4d1e78",
+      "words": 15384,
+      "exact_ngram_hits": 8,
+      "longest_exact_run_ngrams": 4,
+      "longest_exact_run_words": 15,
+      "max_near_window_containment": 0.06746031746031746
+    },
+    {
+      "file": "multilingual/wiki4-ja-001.txt",
+      "sha256": "671f9d6091a8d1ca81cee7c7f3a6d9e6df39d5d1acd86c98781dfb6f06aea361",
+      "words": 132914,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.06746031746031746
+    },
+    {
+      "file": "multilingual/wiki4-zh-003.txt",
+      "sha256": "125442719bb2cf1dda43ef324e3552a5644c7e4564d9dd7b283a9970b8a9f173",
+      "words": 102819,
+      "exact_ngram_hits": 9,
+      "longest_exact_run_ngrams": 9,
+      "longest_exact_run_words": 20,
+      "max_near_window_containment": 0.06349206349206349
+    },
+    {
+      "file": "code/numpy-py-v2.1.3-003.txt",
+      "sha256": "7f1894def776b4ac778e60a6ef67e345da9abb8702f6e16f9f3077c2020df616",
+      "words": 17853,
+      "exact_ngram_hits": 4,
+      "longest_exact_run_ngrams": 4,
+      "longest_exact_run_words": 15,
+      "max_near_window_containment": 0.06349206349206349
+    },
+    {
+      "file": "code/numpy-py-v2.1.3-007.txt",
+      "sha256": "201bbfb8d8000b3ecdb1e8a02d643f24044e6453b4f3f0bf07f19ee0aeb635fd",
+      "words": 8854,
+      "exact_ngram_hits": 1,
+      "longest_exact_run_ngrams": 1,
+      "longest_exact_run_words": 12,
+      "max_near_window_containment": 0.06349206349206349
+    },
+    {
+      "file": "code/cpython-c-v3.12.8-003.txt",
+      "sha256": "54840a6e3c611b770e0fad1a253a6ddf3607d88eb6772436e8699e136f0de824",
+      "words": 20171,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.051587301587301584
+    },
+    {
+      "file": "multilingual/wiki4-ja-000.txt",
+      "sha256": "6f2fe40c8bc9524f7cce161a980c0d367a1d5d9bde8c09fc0fb1e4b184b8b6a3",
+      "words": 78699,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.051587301587301584
+    },
+    {
+      "file": "multilingual/wiki4-ja-003.txt",
+      "sha256": "1e232b722a73b6c97d5fba8c83887df59f741045f180275cbcdc5c6eff6ffa67",
+      "words": 75722,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.047619047619047616
+    },
+    {
+      "file": "encyclopedic/wiki4-en-002.txt",
+      "sha256": "552c6e75991d782b0af3d49f99080e4f7af6206a0dfb2b0995e9d30df4ff50ac",
+      "words": 17760,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.03571428571428571
+    }
+  ],
+  "documents": [
+    {
+      "file": "code/cpython-c-v3.12.8-000.txt",
+      "sha256": "afb75999e45ed75aa17cde730b251ecc96966e400ae6c39d0075d554f4762b07",
+      "words": 11654,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.003968253968253968
+    },
+    {
+      "file": "code/cpython-c-v3.12.8-001.txt",
+      "sha256": "e0224a95ffb09d5be7804c58cc8615906daf373a0486d707a026f6db1dd2b6b3",
+      "words": 12424,
+      "exact_ngram_hits": 16,
+      "longest_exact_run_ngrams": 4,
+      "longest_exact_run_words": 15,
+      "max_near_window_containment": 0.09523809523809523
+    },
+    {
+      "file": "code/cpython-c-v3.12.8-002.txt",
+      "sha256": "0b056a7b4674b5ea1bdfcf90eb489473be9d761dabc1308d0c449aa33a4d1e78",
+      "words": 15384,
+      "exact_ngram_hits": 8,
+      "longest_exact_run_ngrams": 4,
+      "longest_exact_run_words": 15,
+      "max_near_window_containment": 0.06746031746031746
+    },
+    {
+      "file": "code/cpython-c-v3.12.8-003.txt",
+      "sha256": "54840a6e3c611b770e0fad1a253a6ddf3607d88eb6772436e8699e136f0de824",
+      "words": 20171,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.051587301587301584
+    },
+    {
+      "file": "code/cpython-c-v3.12.8-004.txt",
+      "sha256": "7e2e144e87ceb5fbe31a708095755c4d4c3c7e5dceae047d302a78604e959900",
+      "words": 10932,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.023809523809523808
+    },
+    {
+      "file": "code/cpython-c-v3.12.8-005.txt",
+      "sha256": "38ab67cd36da7aafb23be85e5e19a5314ca68ce3866e6876c43a0b27a48e8802",
+      "words": 10682,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.011904761904761904
+    },
+    {
+      "file": "code/cpython-c-v3.12.8-006.txt",
+      "sha256": "9676a497663942ec4acdb2e06ca3538d9fcf460592e46caac55b9a6654b78103",
+      "words": 13818,
+      "exact_ngram_hits": 22,
+      "longest_exact_run_ngrams": 9,
+      "longest_exact_run_words": 20,
+      "max_near_window_containment": 0.2698412698412698
+    },
+    {
+      "file": "code/cpython-c-v3.12.8-007.txt",
+      "sha256": "0fd82eaeed4a1295fb2da2de3ba8e5916b03f741c7c600f3c3004687edbcced4",
+      "words": 21871,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.015873015873015872
+    },
+    {
+      "file": "code/numpy-py-v2.1.3-000.txt",
+      "sha256": "dcd2514125d41f5b1a88a72e75cff5d40e2ed6299e2fdc8e569350148bad32ff",
+      "words": 35931,
+      "exact_ngram_hits": 16,
+      "longest_exact_run_ngrams": 12,
+      "longest_exact_run_words": 23,
+      "max_near_window_containment": 0.10714285714285714
+    },
+    {
+      "file": "code/numpy-py-v2.1.3-001.txt",
+      "sha256": "aa60c90b705296cb27e7286348b03b8564e1925288abaeb6bca12299f24f2a7b",
+      "words": 18285,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.01984126984126984
+    },
+    {
+      "file": "code/numpy-py-v2.1.3-002.txt",
+      "sha256": "aee106bb8844e15e67a5c9837cd51c5f4f689280e3c5d405774ae227e2fd3732",
+      "words": 10210,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.015873015873015872
+    },
+    {
+      "file": "code/numpy-py-v2.1.3-003.txt",
+      "sha256": "7f1894def776b4ac778e60a6ef67e345da9abb8702f6e16f9f3077c2020df616",
+      "words": 17853,
+      "exact_ngram_hits": 4,
+      "longest_exact_run_ngrams": 4,
+      "longest_exact_run_words": 15,
+      "max_near_window_containment": 0.06349206349206349
+    },
+    {
+      "file": "code/numpy-py-v2.1.3-004.txt",
+      "sha256": "2967e9de6043bc137e382a40ccabd37686450b770b6ca573f4a02d8126fc628e",
+      "words": 31169,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.07539682539682539
+    },
+    {
+      "file": "code/numpy-py-v2.1.3-005.txt",
+      "sha256": "96cdd47b364d181db42d89484739f8a671cc23111722a7e29ef8d1e8c057aff2",
+      "words": 14869,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.29365079365079366
+    },
+    {
+      "file": "code/numpy-py-v2.1.3-006.txt",
+      "sha256": "b0640cff43c423c8fee196785f50cda8e2ac1965c5b33f9e3863c01303e17287",
+      "words": 13392,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.1111111111111111
+    },
+    {
+      "file": "code/numpy-py-v2.1.3-007.txt",
+      "sha256": "201bbfb8d8000b3ecdb1e8a02d643f24044e6453b4f3f0bf07f19ee0aeb635fd",
+      "words": 8854,
+      "exact_ngram_hits": 1,
+      "longest_exact_run_ngrams": 1,
+      "longest_exact_run_words": 12,
+      "max_near_window_containment": 0.06349206349206349
+    },
+    {
+      "file": "encyclopedic/wiki4-en-000.txt",
+      "sha256": "19a99f4bed08788f8ef135f483ef0e0ef2ea0f9df567f0ccecf8887257e51890",
+      "words": 19633,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.01984126984126984
+    },
+    {
+      "file": "encyclopedic/wiki4-en-001.txt",
+      "sha256": "fadb79bfc682a3deb0b19c70b60b915d345b4598225ebf175332a9ca62dd4aeb",
+      "words": 18958,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.01984126984126984
+    },
+    {
+      "file": "encyclopedic/wiki4-en-002.txt",
+      "sha256": "552c6e75991d782b0af3d49f99080e4f7af6206a0dfb2b0995e9d30df4ff50ac",
+      "words": 17760,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.03571428571428571
+    },
+    {
+      "file": "encyclopedic/wiki4-en-003.txt",
+      "sha256": "737c4a29e942a31ec10152b1dd14c42e1dd095f6308f9ecf17d6f451660bcb14",
+      "words": 27488,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.031746031746031744
+    },
+    {
+      "file": "encyclopedic/wiki4-en-004.txt",
+      "sha256": "68f1caa04d5c21791e7fd4bf24a2c87830755272e6f85f52b5a574170229d266",
+      "words": 15063,
+      "exact_ngram_hits": 1470,
+      "longest_exact_run_ngrams": 189,
+      "longest_exact_run_words": 200,
+      "max_near_window_containment": 0.9523809523809523
+    },
+    {
+      "file": "encyclopedic/wiki4-en-005.txt",
+      "sha256": "eb9ee9c67d7dcb4bf85f56c323234fe97ebeb5794a3da40c24eb0d06e17704c1",
+      "words": 18502,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.015873015873015872
+    },
+    {
+      "file": "encyclopedic/wiki4-en-006.txt",
+      "sha256": "35ba058714574f380a66e0e3d2dd431e77cc69f89e17eb3dc53363aa88ce3ba9",
+      "words": 16281,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.01984126984126984
+    },
+    {
+      "file": "encyclopedic/wiki4-en-007.txt",
+      "sha256": "897b953f82045ffee648d95b7d5018cbc3d3a37ad17d77addc179eae13e8d510",
+      "words": 21233,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.027777777777777776
+    },
+    {
+      "file": "encyclopedic/wiki4-en-008.txt",
+      "sha256": "5554dc996fa18bb80e88d70240bcafa3a327f2020537f398cbf8ecfb2cb6fd1a",
+      "words": 25390,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.01984126984126984
+    },
+    {
+      "file": "encyclopedic/wiki4-en-009.txt",
+      "sha256": "6b0cf717e00c420469c9d68bedb739bb4e2036e6b4dd9645521dbc735aad7027",
+      "words": 25629,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.01984126984126984
+    },
+    {
+      "file": "encyclopedic/wiki4-en-010.txt",
+      "sha256": "684c7f3567e85080852d0e4c10020a1be9cd9f70f73fcb56eeff37d4e7795fd6",
+      "words": 15918,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.011904761904761904
+    },
+    {
+      "file": "encyclopedic/wiki4-en-011.txt",
+      "sha256": "88bee2b461646e577c27435e0bf40499621ecd2dfebdffad0b0064cc87018505",
+      "words": 20261,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.011904761904761904
+    },
+    {
+      "file": "encyclopedic/wiki4-en-012.txt",
+      "sha256": "6bc411013c355731abc882a071a11f9fcae6c5062d92326c4a0d7c5729897d12",
+      "words": 23111,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.015873015873015872
+    },
+    {
+      "file": "encyclopedic/wiki4-en-013.txt",
+      "sha256": "22fcd33d59dd0a8e5718b4cf26f616d56337becba9b64135df5164c901f4b07a",
+      "words": 15986,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.01984126984126984
+    },
+    {
+      "file": "encyclopedic/wiki4-en-014.txt",
+      "sha256": "acebcaa73831dd0bd17b6329286391877682a63112f61143b3bd44851ad5feb6",
+      "words": 10612,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.031746031746031744
+    },
+    {
+      "file": "encyclopedic/wiki4-en-015.txt",
+      "sha256": "f4c19969f061e0280ed08dcf42b9f39830d7f28e30fa7403183ec7184ce87a98",
+      "words": 16755,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.01984126984126984
+    },
+    {
+      "file": "encyclopedic/wiki4-en-016.txt",
+      "sha256": "80ae162dbb86e9d4cf32f61a0c5898755c7cc1120f76bd6e14e416fb3534c503",
+      "words": 17321,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.015873015873015872
+    },
+    {
+      "file": "encyclopedic/wiki4-en-017.txt",
+      "sha256": "f83a607b2994acaf86a2534d0a292288788a9e8e56d402bdd458ad1757ee6619",
+      "words": 17231,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.023809523809523808
+    },
+    {
+      "file": "encyclopedic/wiki4-en-018.txt",
+      "sha256": "661586b5cd21ecb4bbbd1db9aa44d9d3622eb6133e1e65ef9e5d619ef6ac442a",
+      "words": 23846,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.027777777777777776
+    },
+    {
+      "file": "encyclopedic/wiki4-en-019.txt",
+      "sha256": "c57f5cab70f99a26b5aad60576e0954b0a31d41d071c4ef8835dd6678e92b592",
+      "words": 17745,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.015873015873015872
+    },
+    {
+      "file": "literary/pg1184.txt",
+      "sha256": "0f8ccb0d0600adfbdf49a0674fba032a9ac52af5a755075dcf4e62a47e18ac48",
+      "words": 69887,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.015873015873015872
+    },
+    {
+      "file": "literary/pg120.txt",
+      "sha256": "93fe4910fc949f6a1d0dfc0e4aa9ec4c0fa182c95a581ac7047a6c6857db3138",
+      "words": 70542,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.011904761904761904
+    },
+    {
+      "file": "literary/pg1260.txt",
+      "sha256": "20169512dcedd62064efdd1fa47b1294e0be39aa903609c8bc3877eaf173267e",
+      "words": 71857,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.015873015873015872
+    },
+    {
+      "file": "literary/pg145.txt",
+      "sha256": "a66f7c6d41cf62c1b1da94aa4f77a9b7f9e36f411edd7a37e327433b033f3949",
+      "words": 70689,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.01984126984126984
+    },
+    {
+      "file": "literary/pg1497.txt",
+      "sha256": "3a6d0282f3ba91dd09dbbca72ed8ee9e9df46385c773f39ffe4937b1a0bcac33",
+      "words": 70568,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.015873015873015872
+    },
+    {
+      "file": "literary/pg1524.txt",
+      "sha256": "f1b0a75666a1d0ea753f0b32a275d59852492c5513ae5fd3bc2aff62953ba28b",
+      "words": 33162,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.007936507936507936
+    },
+    {
+      "file": "literary/pg1727.txt",
+      "sha256": "719bff0a9e360c6c871d9a85922a703bad6477f387027d34135ec77e800060e9",
+      "words": 76236,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.015873015873015872
+    },
+    {
+      "file": "literary/pg1998.txt",
+      "sha256": "3e598723f0bc1718190e2512a16453349b795d7f05772bf308de4aaf136b406a",
+      "words": 70393,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.011904761904761904
+    },
+    {
+      "file": "literary/pg205.txt",
+      "sha256": "87d2791e6e7bf11c47d73521de3b4976525e206052f7e822bdeb667e9b05e060",
+      "words": 72735,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.015873015873015872
+    },
+    {
+      "file": "literary/pg2413.txt",
+      "sha256": "e3fe589c5366dabdb30627716b94d69c11eab11ee9f33bfc0a5700e0115a7957",
+      "words": 70996,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.01984126984126984
+    },
+    {
+      "file": "literary/pg2554.txt",
+      "sha256": "640673a2e18d5d8ccc0fe32d71e62cb1f375d0501af6224ec30ac1f15c9e2308",
+      "words": 72657,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.023809523809523808
+    },
+    {
+      "file": "literary/pg2591.txt",
+      "sha256": "8030d09fac470a73e503ce4c6dba434a28ecf7deda3e5ac56828a9cb5973062c",
+      "words": 76847,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.01984126984126984
+    },
+    {
+      "file": "literary/pg2680.txt",
+      "sha256": "7f3eaa906700a04ed07840059443ca47ca140462979b479375307c100c2d8fc3",
+      "words": 71577,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.011904761904761904
+    },
+    {
+      "file": "literary/pg3600.txt",
+      "sha256": "b1a67404860cde0f735e4ac0e25055cc49fb5eb302afb0bfe956d19d66069bc6",
+      "words": 69294,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.011904761904761904
+    },
+    {
+      "file": "literary/pg514.txt",
+      "sha256": "93bf178a92b7f37de9679c42633f3a43645f6c2802883d8945b0944dbe26f500",
+      "words": 74567,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.015873015873015872
+    },
+    {
+      "file": "literary/pg5827.txt",
+      "sha256": "ea89854ba8129f72a010b41f8ee5d2540ed2d1917df8f2f496eb72ce702f82c3",
+      "words": 43261,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.011904761904761904
+    },
+    {
+      "file": "literary/pg76.txt",
+      "sha256": "cee9ec2f05e6de9784e9714a0906d5972f66e77830237be17ecf67ea03104b74",
+      "words": 80538,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.015873015873015872
+    },
+    {
+      "file": "literary/pg996.txt",
+      "sha256": "0564cafacaa80bab8937a6677968f0e812dd3b8c2f7f3316c6f2ff2bdaf6acc5",
+      "words": 72200,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.01984126984126984
+    },
+    {
+      "file": "multilingual/wiki4-es-000.txt",
+      "sha256": "af775b2e12449adc5c73e70f4868c6b18b245ad451fe746a46886160bcc0c7f8",
+      "words": 18707,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.003968253968253968
+    },
+    {
+      "file": "multilingual/wiki4-es-001.txt",
+      "sha256": "b87635d30c53347d47d697fd6bec12099da5b07b5a29dcdecadb8ca84e438b4f",
+      "words": 15600,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.15873015873015872
+    },
+    {
+      "file": "multilingual/wiki4-es-002.txt",
+      "sha256": "e27ca1250e631c78d6a7cad3b2d283a2ab82089e8bd73b73a2d6a96243c4f8a5",
+      "words": 19804,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.007936507936507936
+    },
+    {
+      "file": "multilingual/wiki4-es-003.txt",
+      "sha256": "115a6064cd4dc190919418efad15f27126d8b04fc8b15418ca88783aa3e329f3",
+      "words": 14904,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.003968253968253968
+    },
+    {
+      "file": "multilingual/wiki4-es-004.txt",
+      "sha256": "3479b704650b2a810bf79eb37dc38dcf9328a0d28493943fd899fb877f46cdf6",
+      "words": 16486,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.007936507936507936
+    },
+    {
+      "file": "multilingual/wiki4-fr-000.txt",
+      "sha256": "71ef80c4328f335a7a4f0c282740867092553bbf960f7775be2cb00dd9859a27",
+      "words": 26031,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.003968253968253968
+    },
+    {
+      "file": "multilingual/wiki4-fr-001.txt",
+      "sha256": "217a05929e6efe6519765417f8f38c386099bb2b3de60c69399b5087dd978b3d",
+      "words": 15533,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.0
+    },
+    {
+      "file": "multilingual/wiki4-fr-002.txt",
+      "sha256": "3d5c7b886ae7ad63b6ad11dba37960b617f81ce326529e1a77f3b3baf22c6da4",
+      "words": 17806,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.003968253968253968
+    },
+    {
+      "file": "multilingual/wiki4-fr-003.txt",
+      "sha256": "d237d8af4a27363c18a98ce7a1fb591063186790209d61ae4bb27f7838729f7e",
+      "words": 41134,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.007936507936507936
+    },
+    {
+      "file": "multilingual/wiki4-fr-004.txt",
+      "sha256": "8de422070c674d5112f2c8e1759bcb733d83e21a8d3484cd9e60a5d0062d9090",
+      "words": 16174,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.003968253968253968
+    },
+    {
+      "file": "multilingual/wiki4-it-000.txt",
+      "sha256": "91be5bdeabbba5cd19595a3ddd47eeac59b33c5811b281e959ee214d9f515dd1",
+      "words": 12397,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.0
+    },
+    {
+      "file": "multilingual/wiki4-it-001.txt",
+      "sha256": "cd2c47d3ca569465d24e75036b9113419a462d7561534cdf0c6e77c2b0827446",
+      "words": 20647,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.007936507936507936
+    },
+    {
+      "file": "multilingual/wiki4-it-002.txt",
+      "sha256": "20e00c2b5565b5333ce9942eaccefcf544bdb50a622dd0ddd49ae5e5f77459ca",
+      "words": 16368,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.01984126984126984
+    },
+    {
+      "file": "multilingual/wiki4-it-003.txt",
+      "sha256": "f1c9f0505a579307f47ee1d8ba3fe0602e46d48a3b42c9f4d80ede0b192931f8",
+      "words": 35762,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.0
+    },
+    {
+      "file": "multilingual/wiki4-it-004.txt",
+      "sha256": "ccd8e24b23b24d816a8c7fe335565169489fd329c10ddd35342a547107d10847",
+      "words": 17200,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.003968253968253968
+    },
+    {
+      "file": "multilingual/wiki4-ja-000.txt",
+      "sha256": "6f2fe40c8bc9524f7cce161a980c0d367a1d5d9bde8c09fc0fb1e4b184b8b6a3",
+      "words": 78699,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.051587301587301584
+    },
+    {
+      "file": "multilingual/wiki4-ja-001.txt",
+      "sha256": "671f9d6091a8d1ca81cee7c7f3a6d9e6df39d5d1acd86c98781dfb6f06aea361",
+      "words": 132914,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.06746031746031746
+    },
+    {
+      "file": "multilingual/wiki4-ja-002.txt",
+      "sha256": "a6a4af454b09fe96f1dce846191e0b134e963d8f6e1f19b20065fbe6e422e704",
+      "words": 86191,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.03571428571428571
+    },
+    {
+      "file": "multilingual/wiki4-ja-003.txt",
+      "sha256": "1e232b722a73b6c97d5fba8c83887df59f741045f180275cbcdc5c6eff6ffa67",
+      "words": 75722,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.047619047619047616
+    },
+    {
+      "file": "multilingual/wiki4-ja-004.txt",
+      "sha256": "1de9801ef72224a70d3ad4e39b96141d016abf464e7d2e95330bae042499b35e",
+      "words": 88601,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.07142857142857142
+    },
+    {
+      "file": "multilingual/wiki4-pt-000.txt",
+      "sha256": "c11651b45d3d7ac6aa66698aac3a4ba76cd521fac57ba4f425782abbad0276da",
+      "words": 24655,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.0
+    },
+    {
+      "file": "multilingual/wiki4-pt-001.txt",
+      "sha256": "2847c708f9c41e0196dbaa3b3af7e0b274e816f8947faddbae2e9b8f7b168aed",
+      "words": 13717,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.0
+    },
+    {
+      "file": "multilingual/wiki4-pt-002.txt",
+      "sha256": "551a37f28d441644bc52de98ee6551e5ef82ed608e7923541ff6a00c7d45740e",
+      "words": 16939,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.007936507936507936
+    },
+    {
+      "file": "multilingual/wiki4-pt-003.txt",
+      "sha256": "351d180949ba6af733ebf5bfb5c5b26a4c02bdf10d0b684bb9e88be96ffbd1b7",
+      "words": 16474,
+      "exact_ngram_hits": 27,
+      "longest_exact_run_ngrams": 10,
+      "longest_exact_run_words": 21,
+      "max_near_window_containment": 0.15476190476190477
+    },
+    {
+      "file": "multilingual/wiki4-pt-004.txt",
+      "sha256": "c8d6eb85dc5f0d724b3637100bf0240e410ba9fc37a03516a7ed3bf09c40eb82",
+      "words": 18257,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.003968253968253968
+    },
+    {
+      "file": "multilingual/wiki4-zh-000.txt",
+      "sha256": "e12b37e89eaf84b195ac876478b28aa9ad798deb84a5d903dd9979aa2bd491b6",
+      "words": 70223,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.007936507936507936
+    },
+    {
+      "file": "multilingual/wiki4-zh-001.txt",
+      "sha256": "8cf4f2a07416776d0461b5cc5dc802a58683ba1056137d13bd0f973e499415ad",
+      "words": 67602,
+      "exact_ngram_hits": 1369,
+      "longest_exact_run_ngrams": 313,
+      "longest_exact_run_words": 324,
+      "max_near_window_containment": 1.0
+    },
+    {
+      "file": "multilingual/wiki4-zh-002.txt",
+      "sha256": "cc2bb21f99074bedc4cfcc15e3dc67632bb3ea2aca1be8c38ecad3c640244264",
+      "words": 87339,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.007936507936507936
+    },
+    {
+      "file": "multilingual/wiki4-zh-003.txt",
+      "sha256": "125442719bb2cf1dda43ef324e3552a5644c7e4564d9dd7b283a9970b8a9f173",
+      "words": 102819,
+      "exact_ngram_hits": 9,
+      "longest_exact_run_ngrams": 9,
+      "longest_exact_run_words": 20,
+      "max_near_window_containment": 0.06349206349206349
+    },
+    {
+      "file": "scientific/arxiv-astro-ph-SR.txt",
+      "sha256": "5bb89d8885ce81123a1ec8fe684f5b82ed7d67b900f20089207086d052a0f279",
+      "words": 72747,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.015873015873015872
+    },
+    {
+      "file": "scientific/arxiv-cond-mat-supr-con.txt",
+      "sha256": "5a33656589d9a0eab9fba35698eff2afe1bcc0c0ae4da3d59e44a1621910e07b",
+      "words": 57834,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.007936507936507936
+    },
+    {
+      "file": "scientific/arxiv-cs-CR.txt",
+      "sha256": "aa9ee6fa528d465de63a57eacea6391c19d75b4090a0b5dadace8c2a76077b70",
+      "words": 68749,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.011904761904761904
+    },
+    {
+      "file": "scientific/arxiv-cs-RO.txt",
+      "sha256": "cc2faed982dcd99c2c2ab5687aec02580e97b91f29eece0a8413ae2e08821280",
+      "words": 64271,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.01984126984126984
+    },
+    {
+      "file": "scientific/arxiv-cs-SE.txt",
+      "sha256": "8515b55f0ef513e4bff8d5ac7d305f5f10d3994a29e22647b2d7420880b02891",
+      "words": 68423,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.01984126984126984
+    },
+    {
+      "file": "scientific/arxiv-gr-qc.txt",
+      "sha256": "60fe92792067289f30cefafb0766693db72cdbe4b82f14c0ea08599fa8392340",
+      "words": 61105,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.011904761904761904
+    },
+    {
+      "file": "scientific/arxiv-math-AG.txt",
+      "sha256": "c0cf8be8f7a648e9d4c3319502decb19ee1b23d89de9a7487d56bb4bdcdfd799",
+      "words": 33523,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.011904761904761904
+    },
+    {
+      "file": "scientific/arxiv-math-DG.txt",
+      "sha256": "d51f6a7c470e995bc53c4c5e953ed72c8fdb91f304337901291dc18a29cb1755",
+      "words": 38550,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.011904761904761904
+    },
+    {
+      "file": "scientific/arxiv-math-NT.txt",
+      "sha256": "afeb8643d2e869cf75de8cf236e0faa4d3af4977e1b0a7b54ff906eb8b57a8d5",
+      "words": 38179,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.007936507936507936
+    },
+    {
+      "file": "scientific/arxiv-nlin-CD.txt",
+      "sha256": "0b7fecc145b332b026435e75b4bb6f83a509c78c51503c7f46b8607e3f68b75c",
+      "words": 57160,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.011904761904761904
+    },
+    {
+      "file": "scientific/arxiv-nucl-th.txt",
+      "sha256": "740d1ded52881ddf00b77e3a8f9d0f21f4ddcaebc17cfd441b27ec55b30dad6f",
+      "words": 58802,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.011904761904761904
+    },
+    {
+      "file": "scientific/arxiv-physics-flu-dyn.txt",
+      "sha256": "644be47d18a0351f802943d8c565117b9f880c24dad1aa9d5e8b492e64b0379d",
+      "words": 65453,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.007936507936507936
+    },
+    {
+      "file": "scientific/arxiv-physics-geo-ph.txt",
+      "sha256": "407916112d2d55e1cf212db1532316aa07fc577b7b4716d52d106fc2f7c70ed7",
+      "words": 68380,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.011904761904761904
+    },
+    {
+      "file": "scientific/arxiv-q-bio-PE.txt",
+      "sha256": "a1c81feb3932422a185bf17875e64d9ce1fb2417c25227b1270d9ab65e947938",
+      "words": 60160,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.007936507936507936
+    },
+    {
+      "file": "scientific/arxiv-q-fin-PR.txt",
+      "sha256": "941fb980dcc7a2b6c20b3af83b1a2c3349cb3ba28bab99cff5641b39dd40cd13",
+      "words": 48414,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.007936507936507936
+    },
+    {
+      "file": "scientific/arxiv-quant-ph.txt",
+      "sha256": "2009af0f3be9ba978c29fec823bf5dc7238d4295be47c62122b84b53b31cadcf",
+      "words": 58746,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.007936507936507936
+    },
+    {
+      "file": "scientific/arxiv-stat-AP.txt",
+      "sha256": "9b803cc97962e57a78b31ba7c8a9e81f8f6d79d42c44a6f6339f3e6471ce77df",
+      "words": 64053,
+      "exact_ngram_hits": 0,
+      "longest_exact_run_ngrams": 0,
+      "longest_exact_run_words": 0,
+      "max_near_window_containment": 0.007936507936507936
+    }
+  ]
+}

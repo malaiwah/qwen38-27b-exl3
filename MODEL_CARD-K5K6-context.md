@@ -16,35 +16,39 @@ tags:
   - gilded-gnosis
 ---
 
-# Qwen3.8-27B EXL3 K5/K6 context edition — native 262,144 context on a 32 GB card, at 26 % lower divergence than official FP8
+# Qwen3.8-27B EXL3 K5/K6 context edition — native 262,144 under a 32 GB engine budget, at 26 % lower divergence than official FP8
 
 > **Requires a custom runtime.** Does **not** load in upstream vLLM, SGLang, TensorRT-LLM,
 > llama.cpp, transformers, or stock exllamav3. It needs the Gilded Gnosis vLLM fork with
 > explicit `--quantization exl3` and an exact `ignore` list. Treat it as an experimental,
 > runtime-specific research artifact.
 
-The long-context member of the family: attention is serialized at **K5** on disk, which frees
-0.85 GiB against the K6 builds and buys about 16k tokens of context, while still measuring
-**below official FP8**. It is the only build here whose long context is verified by
-generation rather than by allocation.
+The long-context member of the family: K5 attention plus an opt-in int8 input embedding
+overlay starts at native 262,144 with MTP-3, decode graphs and an 8,388,608-pixel image
+ceiling under a conservative 30.24 GiB vLLM budget. It retrieved a code from 261,794 text
+tokens and from a 236,824-token prompt containing a seven-megapixel image. The proof server
+was a capped 96 GB SM120, not a physically constrained RTX 5090; hard-limit 5090 validation
+is still pending. It remains below official FP8 on both development and source-disjoint suites.
 
 ## Which of the four builds
 
-Same architecture, same tokenizer, same held-out suite — they differ in where the bits go.
-Contexts are what the engine serves on a 32 GB card with MTP-3, vision enabled, at
-utilisation 0.97 ([collection](https://huggingface.co/collections/qwen38-27b-mixed-precision-exl3-measured-6a7fe0cb27817c23e4a57025)).
+Same architecture and tokenizer; the KLD column is the overlap-corrected 127-context v3
+subset. The context edition's native result is MTP-3 with an 8.4 MP image cap on a
+budget-capped RTX PRO 6000; the other rows are real RTX 5090 MTP-3 tests. These profiles
+are not interchangeable.
+([collection](https://huggingface.co/collections/qwen38-27b-mixed-precision-exl3-measured-6a7fe0cb27817c23e4a57025)).
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="assets/context-frontier-dark.svg">
-  <img alt="Mean KL divergence versus context served on a 32 GB card. Hydrated 0.007406 at 180k, online K6 0.008157 at 180k, context edition 0.009673 at 196k with needle verification, online K5 0.012135 at 196k, K4 0.030736 at 262k. Official FP8 is 0.013126." src="assets/context-frontier-light.svg">
+  <img alt="Overlap-corrected v3 mean KL divergence versus demonstrated or configured context. Circles are real RTX 5090 MTP-3 results: hydrated and online K6 at 185,600, K4 at 262,144. Stars have generation proof: online K5 at 206,400 on the 5090, and the context edition at 262,144 with MTP-3 and an 8.4 MP image cap under a 30.24 GiB engine budget; the latter's hard-limit 5090 rerun is pending." src="assets/context-frontier-light.svg">
 </picture>
 
-| build | download | resident | mean KLD | context on 32 GB | pick it when |
+| build | download | resident | corrected v3 mean KLD | context profile | pick it when |
 |---|---:|---:|---:|---:|---|
-| [-hydrated](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated) | 21.61 GB | 20.31 GiB | **0.007406** | ~180k | fidelity first |
-| [-EXL3-K5K6](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6) | 30.57 GB | 20.32 GiB | 0.008157 | ~180k | you want the width knob at launch |
-| **this build** | 20.70 GB | **18.13 GiB** | 0.009738 | **262,144 native** | native context on 32 GB, still below FP8 |
-| [-K4](https://huggingface.co/malaiwah/Qwen3.8-27B-K4) | 28.31 GB | 17.89 GiB | 0.030736 | **262,144** | native context is non-negotiable |
+| [-hydrated](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated) | 21.61 GB | 20.31 GiB | **0.007172** | ~180k, 5090 MTP-3 | fidelity first |
+| [-EXL3-K5K6](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6) | 30.57 GB | 20.32 GiB | 0.007945 | ~180k, 5090 MTP-3 | you want the width knob at launch |
+| **this build** | 20.70 GB | **18.41 GiB** | 0.009459 | **262,144, MTP-3, 8.4 MP cap** | native window plus speculative decode; 5090 check pending |
+| [-K4](https://huggingface.co/malaiwah/Qwen3.8-27B-K4) | 28.31 GB | 17.89 GiB | 0.029679 | **262,144, 5090 MTP-3** | native context is non-negotiable |
 
 ## Recipe
 
@@ -55,7 +59,7 @@ utilisation 0.97 ([collection](https://huggingface.co/collections/qwen38-27b-mix
 | attention: `linear_attn.{in_proj_qkv,in_proj_z,out_proj}` ×48, `self_attn.{q,k,v,o}_proj` ×16 | **EXL3 K5 on disk**, `mcg`, calibrated |
 | `lm_head` | EXL3 **K6**, `mcg` |
 | MTP draft head | quantized (`fc` + attention K4, MLP K5/K6) |
-| `embed_tokens`, vision tower (27 blocks), norms | BF16 |
+| `embed_tokens`; vision tower (27 blocks), norms | BF16 on disk; input table **int8 at load** with the overlay; vision/norms BF16 |
 | GatedDeltaNet `in_proj_a` / `in_proj_b` (96) | FP16 passthrough |
 
 Built from [`Qwen/Qwen3.8-27B`](https://huggingface.co/Qwen/Qwen3.8-27B)
@@ -72,25 +76,36 @@ loader excludes vision by design anyway. The topology check caught it; the build
 
 Held-out corpus, 136 analysis contexts, 278,392 full-vocabulary scored positions,
 `KL(BF16 ‖ candidate)` with one shared BF16 head for both operands, source-cluster bootstrap.
+The first row is the serialized checkpoint with its BF16 input table; the second changes only
+that table at load.
 
-| candidate | resident | mean KLD | 95 % CI | median | top-1 |
+| candidate | resident profile | mean KLD | 95 % CI | token median | top-1 |
 |---|---:|---:|---|---:|---:|
-| **this build** | 19.56 GiB | **0.009673** | [0.00711, 0.01275] | 0.001929 | 96.81 % |
+| this build, BF16 input, MTP off | 19.31 GiB | **0.009673** | [0.00711, 0.01275] | 0.001672 | 96.81 % |
+| **this build, int8 input overlay, MTP off** | **18.13 GiB** | **0.009738** | [0.00716, 0.01284] | 0.001687 | 96.80 % |
 | hydrated (attention K6) | 20.31 GiB | 0.007406 | [0.00543, 0.00978] | 0.001335 | 97.19 % |
 | `Qwen/Qwen3.8-27B-FP8` | 28.51 GiB | 0.013126 | [0.00981, 0.01709] | 0.002343 | 96.22 % |
 | `unsloth/Qwen3.8-27B-NVFP4` | 21.34 GiB | 0.094978 | [0.06858, 0.12688] | 0.012911 | 90.53 % |
 
+**Overlap-corrected subset:** a later all-position 12-token scan found exact calibration
+overlap in 2/41 source documents that the original fixed-stride scan missed. Conservatively
+removing their nine contexts gives this build **0.009378**, hydrated **0.007172**, official FP8
+**0.012798**, and NVFP4 **0.092727** over 127 contexts. The int8 input-overlay row is
+**0.009459** on that same subset. No ordering changes.
+
 Paired on identical contexts:
 
-- versus official FP8: **−0.003453**, 95 % CI [−0.004383, −0.002666], **135/136 contexts** —
-  26 % lower divergence at 69 % of its resident weight.
-- versus the hydrated build: **+0.002266** (1/136). That is what K5 attention costs, and it
-  buys 0.85 GiB and ~16k tokens of context.
+- baseline versus official FP8: **−0.003453**, 95 % CI [−0.004383, −0.002666],
+  **135/136 contexts** — 26 % lower divergence at 68 % of its resident weight; the int8
+  overlay is 64 % of FP8 resident weight for +0.000065 KLD.
+- baseline versus the hydrated build: **+0.002266** (1/136). That is what K5 attention costs,
+  and it buys 0.85 GiB and ~16k tokens of context before the embedding overlay.
 - **Calibration beats the runtime overlay again:** serialized K5 attention measures 0.009673
-  where the same checkpoint family encoded to K5 *at load* measures 0.012135 — 20 % better for
-  the same bit width.
-- As served with its own K6 head: **0.009795** (head costs +0.000122, 95 % CI [+0.000103,
-  +0.000142], 13/136), still 25 % below FP8's body-only figure.
+  where the same family encoded K5 *at load* measures 0.012135 on the original receipt;
+  overlap-corrected values are **0.009378 versus 0.011801**.
+- With its own K6 head the BF16-input baseline is 0.009795 on the original receipt and
+  **0.009503** on the corrected subset. The head and input-overlay deltas were measured
+  separately; their combination is not presented as a measured number.
 
 ## Post-selection qualification
 
@@ -99,40 +114,58 @@ not: **160 new contexts from 100 documents with zero intersection with the devel
 (context token hashes 0/160, document names 0/100, content hashes 0/100), partitioned by whole
 source cluster, run **once**, with no recipe changed afterwards.
 
+The original 42-context table used a fixed-stride character overlap scan. A later,
+offset-independent scan found exact 12-token calibration overlap in four qualification source
+documents. Applying the same conservative rule to every candidate — exclude every context from
+any source document with even one hit — leaves **36 contexts / 24 clusters**:
+
 | candidate | mean KLD | 95 % CI | top-1 | paired vs FP8 |
 |---|---:|---|---:|---|
-| [hydrated](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated) | **0.003029** | [0.002572, 0.003536] | 97.68 % | −0.002691, **42/42** |
-| [K5/K6 online K6](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6) | 0.003395 | [0.002925, 0.003910] | 97.58 % | −0.002325, **42/42** |
-| [context edition](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6-context) | 0.003900 | [0.003275, 0.004588] | 97.43 % | −0.001820, **42/42** |
-| `Qwen/Qwen3.8-27B-FP8` | 0.005720 | [0.004849, 0.006680] | 96.82 % | — |
+| [hydrated](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated) | **0.003093** | [0.002577, 0.003684] | 97.63 % | −0.002798, **36/36** |
+| [K5/K6 online K6](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6) | 0.003455 | [0.002916, 0.004060] | 97.50 % | −0.002436, **36/36** |
+| [context edition](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6-context) | 0.003990 | [0.003268, 0.004797] | 97.36 % | −0.001901, **36/36** |
+| `Qwen/Qwen3.8-27B-FP8` | 0.005891 | [0.004901, 0.006985] | 96.72 % | — |
 
-The ranking is preserved and the advantage over FP8 is **larger** on unseen sources (47 / 41 /
-32 % lower) than on the development suite (44 / 38 / 26 %), which is the opposite of what
-selection bias would produce.
+The correction changes no ordering or paired win: the three EXL3 builds remain 47 / 41 / 32 %
+below FP8. The original 42-context figures and the candidate-independent correction are both
+preserved in [docs/31](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/docs/31-frozen-qualification.md).
+Absolute magnitudes remain suite-specific.
 
-**Absolute magnitudes are suite-specific:** every candidate, FP8 included, measures ~2.4x lower
-on this corpus than on the development one. Quote the suite with the number.
-Details in [docs/31](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/docs/31-frozen-qualification.md).
+## Downstream task retention
+
+On 40 deterministic generated tasks (10 each arithmetic, executable builtins-only code,
+exact-list instruction following and tool-call schema), BF16 and every comparator scored
+40/40. This build had **zero regressions** and matched BF16's exact final-answer text on
+**32/40**; all eight differing answers still passed their contracts. Wilson 95 % lower bound
+is 91.2 %. This is a transparent smoke suite, not a public leaderboard; full responses are in
+the [run receipt](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/tasks-v2-ctx.json);
+its extracted-value agreement field is superseded by the
+[strict rescore](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/task-retention-v2-strict-rescore.json).
 
 ## Long context, verified by generation
 
 Not an allocation test. A unique code is planted in held-out literary text at three depths and
 the model is asked to return it, on a server capped to a 5090-sized budget:
 
-| prompt tokens | needle depth | retrieved exactly | wall | prefill |
-|---:|---|---|---:|---:|
-| 28,613 | 0.1 / 0.5 / 0.9 | **3/3** | 6.3 s | ~4,500 tok/s |
-| 113,345 | 0.1 / 0.5 / 0.9 | **3/3** | 34.3 s | 3,301 tok/s |
-| **196,857** | 0.1 / 0.5 / 0.9 | **3/3** | 76.1 s | 2,588 tok/s |
+| profile | prompt tokens | needle depth | retrieved exactly | wall | request-average prompt tok/s* |
+|---|---:|---|---|---:|---:|
+| BF16 input, MTP-3 | 28,613 | 0.1 / 0.5 / 0.9 | **3/3** | 6.3 s | ~4,500 tok/s |
+| BF16 input, MTP-3 | 113,345 | 0.1 / 0.5 / 0.9 | **3/3** | 34.3 s | 3,301 tok/s |
+| BF16 input, MTP-3 | 196,857 | 0.1 / 0.5 / 0.9 | **3/3** | 76.1 s | 2,588 tok/s |
+| int8 input, MTP off | 227,334 | 0.1 / 0.5 / 0.9 | **3/3** | 94.8 s | ~2,400 tok/s |
+| **int8 input, MTP-3, 8.4 MP cap** | **261,794** | 0.5 | **1/1** | 123.1 s | 2,127 tok/s |
 
-**9/9 exact retrievals.** Prefill throughput falls with length as attention cost grows, which
-is expected and now quantified.
+**13/13 exact retrievals.** \*This is prompt tokens divided by total request wall time,
+including decode, queueing and HTTP overhead — not an engine-timed prefill measurement.
+The request-average prompt-token rate falls with length, consistent with increasing attention
+cost; this receipt does not attribute the decline.
 
-**Long-context requests must not use the chat endpoint on this VLM.** Its multimodal processor
-truncates chat text to about 2,048 tokens — a 32,768-token request came back with
-`prompt_tokens: 1909` — the same defect family as
-[#313](https://github.com/local-inference-lab/vllm/issues/313). Apply the template yourself and
-post to `/completions`:
+For text-only proof, the harness applies the chat template itself and posts to `/completions`,
+so the server tokenizer can size the exact final prompt. The multimodal chat path is also
+validated at length, but it **must** use
+`--mm-processor-kwargs '{"truncation":false,"max_pixels":8388608}'`: one combined request
+preserved **236,824 prompt tokens**, retrieved the planted code and read the image correctly.
+The text-only wrapper is:
 
 ```text
 <|im_start|>user
@@ -144,78 +177,87 @@ post to `/completions`:
 
 ```
 
-## Native 262,144 context on a 32 GB card
+## Native 262,144 under a 32 GB-equivalent engine budget
 
-Reached by narrowing the **input embedding table to int8**, which is the largest cheap saving
-left in this architecture: 248,320 × 5,120 in BF16 is **2.543 GB resident**, second only to the
-MLP stack, and it is pure lookup — a gather, no matmul, no accumulation. Per-row symmetric int8
-halves it for a measured **+0.000065 mean KLD** (95 % CI [+0.0000046, +0.00013], 49/136
-contexts), about 0.7 % of this build's divergence.
+The opt-in `VLLM_EXL3_EMBED_BITS=8` overlay narrows the input embedding table. At
+248,320 × 5,120, BF16 costs **2.543 GB resident**; the operation is a gather, so per-row
+symmetric int8 halves it without putting another matmul on the serving path.
 
-int8 rather than FP8 deliberately: both halve the table, but E4M3 carries three mantissa bits
-against int8's seven, and there is no tensor-core path to exploit in a gather, so FP8's
-throughput advantage does not apply while its precision penalty does.
+| | BF16 input, MTP off | int8 input, MTP off | **int8 input, MTP-3 + 8.4 MP cap** |
+|---|---:|---:|---:|
+| embedding table | 2.543 GB | **1.272 GB** | **1.272 GB, shared with draft** |
+| resident weights | 19.31 GiB | **18.13 GiB** | **18.41 GiB** |
+| largest configured context tested | 229,376 | **262,144** | **262,144 (native)** |
+| KV allocated at that length | 240,080 tokens | 279,007 tokens | **266,612 tokens** |
+| v3 full-suite mean KLD | 0.009673 | 0.009738 | **0.009738 (same target)** |
+| multimodal smoke score | 24/30 | 24/30 | **24/30 (identical)** |
 
-| | BF16 embeddings | **int8 embeddings** |
-|---|---:|---:|
-| embedding table | 2.543 GB | **1.272 GB** |
-| resident weights | 19.31 GiB | **18.13 GiB** |
-| max context on a 32 GB card | 229,376 | **262,144 (native)** |
-| KV allocated at that length | 240,080 tokens | **279,007 tokens** |
-| mean KLD | 0.009673 | 0.009738 |
-| multimodal score | 24/30 | **24/30 (identical)** |
+Fidelity cost of the input overlay on the original receipt: **+0.000065 mean KLD**, 95 % CI
+[+0.0000046, +0.00013], 49/136 contexts; corrected-subset point estimate +0.000082.
+MTP does not alter the accepted target distribution; its draft is separately quantized and
+shares the target input table.
 
-**Verified by using it**, not by allocating it: on a server at `--max-model-len 262144` with a
-5090-sized budget and vision enabled, a planted code was retrieved **exactly at all three
-depths from 227,334-token prompts** (94.6-95.0 s each, ~2,400 tok/s prefill).
+The native MTP profile is a served proof, not allocation arithmetic: 261,794 text tokens
+retrieved exactly; a 3,072 × 2,304 image returned `red, blue`; and a single request combining
+that seven-megapixel image with 229,910 measured text tokens produced a **236,824-token**
+prompt and exact `1376346594 | red, blue`. Warmed 256-token single-stream decode measured
+98.72 tok/s in one run.
+
+Scope matters. The server was an RTX PRO 6000 with vLLM capped to **30.24 GiB**, below the
+30.44 GiB budget of a 31.39 GiB RTX 5090 at utilisation 0.97. That proves the engine budget
+and served path, but the physical GPU retained memory beyond the cap. A real 5090 rerun
+remains pending.
+
+The captured run named the pinned image digest but did not preserve a launch-time full-rootfs
+manifest. The published rerun harness now verifies every extracted-rootfs entry and the three
+installed patch hashes before launch; that stronger image check applies to reruns, not
+retroactively to this historical result.
+
 
 ```bash
--e VLLM_EXL3_EMBED_BITS=8 \
-  ... --max-model-len 262144 --gpu-memory-utilization 0.97 --max-num-seqs 4 \
-      --kv-cache-dtype fp8 --max-num-batched-tokens 2048
+-e VLLM_EXL3_EMBED_BITS=8 -e VLLM_EXL3_GRAPH_DECODE=1 \
+  ... --max-model-len 262144 --gpu-memory-utilization 0.97 --max-num-seqs 1 \
+      --kv-cache-dtype fp8 --max-num-batched-tokens 2048 \
+      --speculative-config '{"method":"mtp","num_speculative_tokens":3}' \
+      --mm-processor-kwargs '{"truncation":false,"max_pixels":8388608}' \
+      --compilation-config '{"cudagraph_mode":"FULL_DECODE_ONLY","cudagraph_capture_sizes":[4]}'
 ```
 
-**Two model files need a two-line patch each** for the overlay to be reachable: `qwen3_5.py`
-and `qwen3_5_mtp.py` construct `VocabParallelEmbedding(vocab, hidden)` without passing the
-quantization config, so the layer's own quant hook is never consulted. Passing
-`quant_config=...` is enough; backends that do not implement `embedding()` are unaffected
-because the layer falls back to `UnquantizedEmbeddingMethod`. Both patched files ship in the
-[companion repository](https://github.com/malaiwah/qwen38-27b-exl3/tree/main/tools).
+Two model files must pass their existing quant config into `VocabParallelEmbedding`:
+`qwen3_5.py` and `qwen3_5_mtp.py`. Backends without an `embedding()` method retain BF16.
+The exact patched files and SHA-256 digests are in the companion repository.
 
-**The draft head's table can go to int4 for free.** `VLLM_EXL3_MTP_EMBED_BITS=4` narrows the
-second table to 0.656 GB, and because a draft is verified before it is accepted, the cost lands
-on acceptance rather than correctness — measured at depth 3, acceptance is **56.7 % against
-56.1 %** for int8 with throughput equal or better. The main table stays int8: group-128 int4
-carries 13.2x the relative error, which is not a trade worth making on every input token.
+### Correction: no second resident MTP embedding
 
-**MTP and native context still do not coexist.** At 262,144 the engine needs 8.83 GiB of KV
-with one draft token and 9.13 with three, against **8.36 GiB available** — and that number did
-not move when the draft table went from int8 to int4. So MTP's cost at native context is **not
-its weights**; it is the draft's own KV plus its share of the profiled activation peak. On a
-32 GB card the choice is native context **or** speculative decoding at 196,608, and the
-embedding table is not the lever that changes it.
+An earlier card revision said the draft kept a second resident table and that separately
+quantizing it to int4 preserved acceptance. Runtime receipts contradict that:
 
-## Memory: what fits on a 32 GB card
+```text
+Detected MTP model. Sharing target model embedding weights with the draft model.
+```
 
-Measured with the engine budget capped to 30.44 GiB, which is what a 5090 gives vLLM at
-utilisation 0.97, `--max-num-seqs 4`, fp8 KV, CUDA graphs, vision enabled.
+The draft table is materialized during load, then replaced by the target embedding. The
+int8/int4 acceptance comparison therefore did **not** exercise int4 at inference; 56.1 %
+versus 56.7 % was run noise. The separate draft-width environment variable and int4 method
+were removed. PR #319 carries the same correction in its body and public comment.
 
-| MTP draft depth | KV needed at 262,144 | max `--max-model-len` that starts | KV allocated |
-|---|---:|---:|---:|
-| off | 8.18 GiB | **229,376** | 240,080 tokens |
-| 1 | 8.83 GiB | — | — |
-| 2 | 8.98 GiB | — | — |
-| 3 | 9.13 GiB | **196,608** | 205,346 tokens |
+### Why the image ceiling is load-bearing
 
-Two things worth knowing, both measured here for the first time in this family:
+The initial MTP-3 profile retained the model's 16,777,216-pixel image default. It needed
+9.13 GiB of KV against 8.59 GiB available and refused native length. vLLM reserves activation
+memory for the maximum allowed image at startup; that default, not a second draft embedding,
+was the remaining lever.
 
-- **MTP's KV cost is nearly all fixed.** The draft layer's own cache is +0.65 GiB; going from
-  depth 1 to depth 3 adds only 0.30 GiB more. If you are paying for speculative decoding at
-  all, pay for depth 3.
-- **With BF16 embeddings, native 262,144 does not fit**: 8.18 GiB of KV against 7.55 GiB
-  available, and smaller prefill chunks do not help because the activation peak is multimodal
-  profiling rather than text chunking. That gap is what the int8 embedding overlay above
-  closes; the numbers in this table are the BF16-embedding baseline it improves on.
+At **8,388,608 pixels** and the stricter 30.24 GiB budget, peak activation is 1.78 GiB,
+available KV is **9.31 GiB**, and the engine allocates **266,612 tokens**. The cap still
+accepts the tested 7,077,888-pixel image. It does not claim that the original 16.8 MP ceiling
+fits.
+
+Reducing concurrency to one and capturing only the speculative row count are also part of this
+profile. A compact KV-group experiment remains rejected: it reduced padding from three layers
+to one but raised graph memory from 0.46 to 1.25 GiB and increased total required KV.
+Machine-readable proof and exact artifact hashes:
+[`receipts/native-mtp-8mp-amendment.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/native-mtp-8mp-amendment.json).
 
 ## Throughput
 
@@ -226,6 +268,9 @@ Median of 3 runs on one RTX PRO 6000 Blackwell, `--max-num-seqs 8`, greedy, 256 
 | B12X everywhere (as published upstream) | 56.0 | 197.2 | 397.3 | 5,078 | 5,188 |
 | **+ prefill routing (shipped here)** | 56.0 | 197.0 | 398.8 | **5,250** | 5,249 |
 | + FP8 prefill (**rejected**, see below) | 56.7 | 199.5 | 401.6 | 6,650 | 6,285 |
+
+The native MTP-3 / 8.4 MP / 262,144 profile measured **98.72 tok/s C1** in one warmed
+256-token run. It is a capability receipt, not part of the three-run concurrency matrix above.
 
 **A whole class of matrices was on the wrong kernel at prefill.** The serialized EXL3 path
 routes every K6/MCG shard with 128-divisible dimensions to B12X's native kernel *before* the
@@ -255,20 +300,22 @@ exactly known answers, scored by exact match (30 cases, greedy, thinking disable
 | overall | | **24/30 (80 %)** |
 
 The generator is published (`tools/vision_eval.py`) so the same cases can be run against any
-candidate. This build and its siblings all carry a BF16 vision tower, so these numbers
-characterise the model rather than the quantization — they are the baseline for a future
-paired comparison.
+candidate. This build and its siblings carry the same BF16 vision tower; all score 24/30.
+The native MTP profile also answered a 3,072 × 2,304 two-colour image exactly, both alone and
+inside a 236,824-token combined prompt. This is still synthetic, not OCR/document/video quality.
 
 ## Serving
 
+### Pinned image, unmodified fallback
+
 ```bash
-docker run --rm --gpus '"device=0"' --ipc host -p 8000:8000 \
+docker run --rm --gpus '"device=0"' --ipc host -p 127.0.0.1:8000:8000 \
   -v /models:/models:ro \
   --entrypoint /opt/venv/bin/vllm \
   voipmonitor/vllm@sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b \
   serve /models/Qwen3.8-27B-EXL3-K5K6-context \
     --served-model-name qwen38 --quantization exl3 --enforce-eager \
-    --quantization-config '{"linear":{"weight":"mxfp8"},"ignore":["re:.*visual\\..*","re:.*in_proj_a$","re:.*in_proj_b$","re:.*in_proj_ba$","lm_head"]}' \
+    --quantization-config '{"linear":{"weight":"mxfp8"},"ignore":["re:.*visual\\..*","re:.*in_proj_a$","re:.*in_proj_b$","re:.*in_proj_ba$","re:.*mtp\\..*","lm_head"]}' \
     --mm-processor-kwargs '{"truncation":false}' \
     --reasoning-parser qwen3 --enable-auto-tool-choice --tool-call-parser qwen3_coder \
     --max-model-len 196608 --gpu-memory-utilization 0.97 --max-num-seqs 4 \
@@ -277,33 +324,84 @@ docker run --rm --gpus '"device=0"' --ipc host -p 8000:8000 \
     --host 0.0.0.0 --port 8000
 ```
 
-Nothing is encoded at load: no `VLLM_EXL3_ONLINE_TRELLIS_BITS`, no cache directory. The command
-above is what the pinned image runs **unmodified**, so it is eager-only. CUDA-graph decode
-(+46-50 %) and the prefill routing above need patches still open upstream
-([#314](https://github.com/local-inference-lab/vllm/pull/314),
-[#316](https://github.com/local-inference-lab/vllm/pull/316)); the sibling card carries the
-exact patch recipe with its sha256.
+Nothing is encoded at load: no `VLLM_EXL3_ONLINE_TRELLIS_BITS`, no cache directory. This is
+what the pinned image runs without modification. It does not include the input-table overlay,
+graph decode or prefill routing, so it is not the native-window profile.
+
+### Patched native-window profile
+
+Clone the companion repository, verify the three executed files against the native-MTP
+receipt, then mount them over the pinned image:
+
+```bash
+set -euo pipefail
+git clone https://github.com/malaiwah/qwen38-27b-exl3
+cd qwen38-27b-exl3
+cat <<'SHA256' | sha256sum -c -
+2df9d0799fd323798cead1edb773cab556c94798eec263ee03ded35408c6e4ee  tools/vllm-exl3-prefill-dispatch.py
+04d2bd587b37142f4f55a8d00b9f8c907309490168cb7fcdfde450531df2c9e7  tools/vllm-qwen3_5-embed-quant-config.py
+0090dc131f0eaf439b24d50baf4def9f10b052864c76e695053d64f66b274bab  tools/vllm-qwen3_5_mtp-embed-quant-config.py
+SHA256
+PATCH=$PWD/tools
+VLLM=/opt/venv/lib/python3.12/site-packages/vllm
+docker run --rm --gpus '"device=0"' --ipc host -p 127.0.0.1:8000:8000 \
+  -v /models:/models:ro \
+  -v "$PATCH/vllm-exl3-prefill-dispatch.py:$VLLM/model_executor/layers/quantization/exl3.py:ro" \
+  -v "$PATCH/vllm-qwen3_5-embed-quant-config.py:$VLLM/model_executor/models/qwen3_5.py:ro" \
+  -v "$PATCH/vllm-qwen3_5_mtp-embed-quant-config.py:$VLLM/model_executor/models/qwen3_5_mtp.py:ro" \
+  -e VLLM_EXL3_EMBED_BITS=8 -e VLLM_EXL3_GRAPH_DECODE=1 \
+  -e VLLM_EXL3_PREFILL_RECONSTRUCT_M=128 \
+  --entrypoint /opt/venv/bin/vllm \
+  voipmonitor/vllm@sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b \
+  serve /models/Qwen3.8-27B-EXL3-K5K6-context \
+    --served-model-name qwen38 --quantization exl3 \
+    --quantization-config '{"linear":{"weight":"mxfp8"},"ignore":["re:.*visual\\..*","re:.*in_proj_a$","re:.*in_proj_b$","re:.*in_proj_ba$","re:.*mtp\\..*","lm_head"]}' \
+    --max-model-len 262144 --gpu-memory-utilization 0.97 --max-num-seqs 1 \
+    --kv-cache-dtype fp8 --max-num-batched-tokens 2048 \
+    --speculative-config '{"method":"mtp","num_speculative_tokens":3}' \
+    --mm-processor-kwargs '{"truncation":false,"max_pixels":8388608}' \
+    --compilation-config '{"cudagraph_mode":"FULL_DECODE_ONLY","cudagraph_capture_sizes":[4]}' \
+    --reasoning-parser qwen3 --enable-auto-tool-choice --tool-call-parser qwen3_coder \
+    --host 0.0.0.0 --port 8000
+```
+The container listens on all interfaces internally, but Docker publishes the port to host
+loopback only. For remote clients, keep that binding and put an authenticated TLS proxy in
+front; do not expose this unauthenticated generation endpoint directly.
+
+
+The changes remain open upstream:
+[#314](https://github.com/local-inference-lab/vllm/pull/314),
+[#316](https://github.com/local-inference-lab/vllm/pull/316),
+[#318](https://github.com/local-inference-lab/vllm/pull/318), and
+[#319](https://github.com/local-inference-lab/vllm/pull/319).
 
 Load-bearing details, unchanged from the siblings: `--quantization exl3` is mandatory; the
 `ignore` list is mandatory and its anchoring is subtle (`re:.*visual\..*` matches,
 `re:.*\.visual\..*` silently does not and **crashes** startup,
-[#311](https://github.com/local-inference-lab/vllm/issues/311)); `mtp.*` must **not** be
-ignored; `--mm-processor-kwargs '{"truncation":false}'` is required for large images
-([#313](https://github.com/local-inference-lab/vllm/issues/313)).
+[#311](https://github.com/local-inference-lab/vllm/issues/311)). The tested config ignores
+`mtp.*` from the generic BF16 online overlay; EXL3-owned draft projections are selected first
+and still load from serialized tensors. `truncation:false` is required for large images
+([#313](https://github.com/local-inference-lab/vllm/issues/313)); `max_pixels:8388608` is
+required for the measured native-MTP memory profile.
 
 ## What is not verified
 
-No downstream task benchmarks, no OCR/chart/document evaluation beyond the synthetic set above,
-no video, no YaRN-1M, no multi-GPU or TP>1, no non-SM120 GPU, and no quant-specific safety
-regression testing. The needle test proves retrieval, not reasoning, at length.
+The 40-case deterministic downstream smoke has zero regressions against BF16, but it is not a
+public benchmark. Still unverified: real OCR/document/video quality, long-context reasoning
+beyond planted-code retrieval, YaRN-1M, multi-GPU or TP>1, non-SM120 GPUs, and quant-specific
+safety regression testing.
 
-Recipe development used the 136-context analysis partition, so these are development-set
-numbers. A source-disjoint v4 suite (160 contexts, 100 clusters, zero overlap with v3 on
-document hashes and token hashes) is built and awaiting a single frozen qualification run.
+Recipe development used the v3 analysis partition. A frozen source-disjoint v4 qualification
+was run once after selection; after the same conservative overlap correction all three EXL3
+builds still beat FP8 on 36/36 paired contexts. Absolute KLD differs by suite.
 
-Machine-readable evidence: `release-evidence.json`. Captures and per-context reports for the
-family are published in the
+Machine-readable base evidence is `release-evidence.json`; the native-MTP result is the
+[amendment](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/native-mtp-8mp-amendment.json).
+Comparator and sibling captures are published in the
 [fidelity dataset](https://huggingface.co/datasets/malaiwah/qwen38-27b-fidelity-suite-v3).
+This edition's v3 report is in the companion repository, but its replay capture is not yet
+published; the 0.009738 / 0.009459 result is therefore not independently replayable from the
+dataset snapshot.
 
 ## Prior art and credits
 

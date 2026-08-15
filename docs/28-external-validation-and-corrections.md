@@ -1,5 +1,18 @@
 # External validation, and the four claims it corrected
 
+> **Current status, 2026-08-15.** Sections 2–4 preserve the iteration-2 review state at the
+> time the defects were found; their “being built”, “absent” and “not run” statements are
+> historical, not current. Source-disjoint v4 captures and qualification are published, and
+> the overlap-corrected subset preserves all **36/36** paired wins. K5/K6 captures and reports
+> are published. The generated task smoke passes **40/40** for BF16 and every comparator with
+> zero regressions; it is not a public benchmark. The native-context retraction below remains
+> correct for online K5. A separate serialized-K5 context build with per-row int8 input
+> embeddings reaches native 262,144 with MTP-3 under a 30.24 GiB engine budget when image
+> preprocessing is capped; physical RTX 5090 validation remains pending. Current receipts and
+> acceptance gates are in [docs/31](31-frozen-qualification.md),
+> [docs/32](32-native-context-embedding-overlay.md), and
+> [docs/29](29-plan-and-loose-ends.md).
+
 Two independent reviews and one hardware test landed on iteration 2. All three found real
 defects. This records what was wrong, what the corrected numbers are, and what changed in the
 code so the same class of error cannot recur.

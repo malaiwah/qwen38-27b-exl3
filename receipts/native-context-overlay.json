@@ -1,0 +1,125 @@
+{
+  "schema": "qwen38-native-context-overlay/1",
+  "generated_utc": "2026-08-15T10:17:54Z",
+  "checkpoint": {
+    "hf_repo": "malaiwah/Qwen3.8-27B-EXL3-K5K6-context",
+    "index_sha256": "cd53b8e487b5c70b1ffe26578464a9cfd9bea9d7ed50a39e39ba3e153c1ab1b4",
+    "source_repo": "Qwen/Qwen3.8-27B",
+    "source_revision": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0"
+  },
+  "runtime": {
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Server Edition",
+    "architecture": "SM120",
+    "physical_vram_gib": 95.6,
+    "vllm_free_memory_at_startup_gib": 94.97,
+    "gpu_memory_utilization": 0.3184,
+    "desired_engine_budget_gib": 30.24,
+    "image": "voipmonitor/vllm@sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b",
+    "tested_modules_sha256": {
+      "vllm/model_executor/layers/quantization/exl3.py": "bdce4081ce77b00dd47de1b5c5bda2779f2662d679384e852ff0899a8d17eb3b",
+      "vllm/model_executor/models/qwen3_5.py": "04d2bd587b37142f4f55a8d00b9f8c907309490168cb7fcdfde450531df2c9e7",
+      "vllm/model_executor/models/qwen3_5_mtp.py": "663ee9119e07b82b83c9c2eb68dfa3ed873ae07bf239ee02de7f18dad8b03e11"
+    },
+    "published_patch_files_sha256": {
+      "tools/vllm-exl3-prefill-dispatch.py": "2df9d0799fd323798cead1edb773cab556c94798eec263ee03ded35408c6e4ee",
+      "tools/vllm-qwen3_5-embed-quant-config.py": "04d2bd587b37142f4f55a8d00b9f8c907309490168cb7fcdfde450531df2c9e7",
+      "tools/vllm-qwen3_5_mtp-embed-quant-config.py": "0090dc131f0eaf439b24d50baf4def9f10b052864c76e695053d64f66b274bab"
+    },
+    "environment": {
+      "VLLM_EXL3_EMBED_BITS": "8",
+      "VLLM_EXL3_GRAPH_DECODE": "1",
+      "VLLM_EXL3_PREFILL_RECONSTRUCT_M": "128"
+    },
+    "serve": {
+      "max_model_len": 262144,
+      "max_num_seqs": 4,
+      "max_num_batched_tokens": 2048,
+      "kv_cache_dtype": "fp8",
+      "cudagraph_mode": "FULL_DECODE_ONLY",
+      "mtp": false,
+      "vision_profiled": true
+    }
+  },
+  "embedding_overlay": {
+    "tensor": "model.language_model.embed_tokens.weight",
+    "shape": [248320, 5120],
+    "source_dtype": "bfloat16",
+    "representation": "symmetric int8 per row, scale=amax/127",
+    "bf16_gb": 2.543,
+    "int8_plus_scales_gb": 1.272,
+    "resident_weights_before_gib": 19.31,
+    "resident_weights_after_gib": 18.13
+  },
+  "capacity": {
+    "server_started": true,
+    "available_kv_gib": 8.73,
+    "gpu_kv_cache_tokens": 279007,
+    "maximum_concurrency_at_262144": 1.06,
+    "graph_memory_estimated_gib": 0.47,
+    "graph_memory_actual_gib": 0.48,
+    "peak_activation_gib": 2.62,
+    "non_torch_memory_gib": 0.29
+  },
+  "generation": {
+    "prompt_tokens": [227333, 227334, 227334],
+    "needle_depths": [0.1, 0.5, 0.9],
+    "exact_retrievals": "3/3",
+    "wall_seconds": [95.017, 94.607, 94.631],
+    "prefill_tokens_per_second_including_decode": [2392.6, 2402.9, 2402.3],
+    "receipts": [
+      "receipts/native-needle-0.1.json",
+      "receipts/native-needle-0.5.json",
+      "receipts/native-needle-0.9.json"
+    ]
+  },
+  "fidelity": {
+    "v3_contexts": 136,
+    "bf16_embedding_mean_kld": 0.009672824993847544,
+    "int8_embedding_mean_kld": 0.009737873501668846,
+    "delta_mean_kld": 0.00006504850782130216,
+    "delta_ci95": [0.000004571752259591653, 0.00013180194270379192],
+    "paired_receipt": "receipts/paired-ctx-embed8.json",
+    "multimodal_before": "24/30",
+    "multimodal_after": "24/30",
+    "multimodal_receipt": "receipts/vision-ctx-embed8.json"
+  },
+  "mtp_native_context": {
+    "embedding_alias_observed": true,
+    "alias_log": "Detected MTP model. Sharing target model embedding weights with the draft model.",
+    "profiles": [
+      {
+        "depth": 1,
+        "max_num_seqs": 1,
+        "capture_rows": [2],
+        "desired_engine_budget_gib": 30.44,
+        "available_kv_gib": 8.59,
+        "required_kv_gib": 8.83,
+        "estimated_max_model_len": 255024,
+        "starts": false
+      },
+      {
+        "depth": 3,
+        "max_num_seqs": 1,
+        "capture_rows": [4],
+        "desired_engine_budget_gib": 30.44,
+        "available_kv_gib": 8.59,
+        "required_kv_gib": 9.13,
+        "starts": false
+      }
+    ],
+    "conclusion": "The draft embedding is aliased after load. Compressing its temporary construction cannot recover steady-state KV capacity."
+  },
+  "scope": {
+    "proves": [
+      "vLLM starts at max_model_len=262144 within its 30.24 GiB desired engine budget",
+      "the served path retrieves planted codes from 227334-token prompts",
+      "multimodal profiling was included before KV allocation"
+    ],
+    "does_not_prove": [
+      "operation under a hard 32 GB physical VRAM limit",
+      "a long-context image request on an RTX 5090",
+      "native 262144 with MTP enabled",
+      "non-SM120 compatibility"
+    ]
+  }
+}

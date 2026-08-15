@@ -1,163 +1,377 @@
 # What is left, ordered by evidence value
 
-State at this point: three published builds, all headline numbers recomputable from the
-dataset, two independent reviews and one hardware test addressed. What follows is ranked by
-what each item would *prove*, not by how hard it is.
+State on 2026-08-15 after four published builds, two independent reviews, one external
+RTX 5090 test, a source-disjoint qualification, a contamination re-audit, and paired
+downstream smoke testing. Priority is the claim each item can close, not implementation cost.
 
-## P0 — DONE, and the goal it chased is now proven unreachable
+## Current measured frontier
 
-Built and published as
-[`malaiwah/Qwen3.8-27B-EXL3-K5K6-context`](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6-context):
-attention serialized at K5, 19.31 GiB resident, **mean KLD 0.009673 — 26 % below official FP8,
-135/136 contexts** — and long context verified by generation, **9/9 exact needle retrievals up
-to 196,857 tokens**. Full write-up in [docs/30](30-iteration-4-context-edition.md).
+KLD is `KL(BF16 || candidate)` through one shared BF16 head on the overlap-corrected
+127-context v3 subset. Capacity profiles are deliberately not treated as interchangeable.
 
-The native-262,144 goal it was built for is **not reachable** and the gap is now exact rather
-than modelled: 8.18 GiB of KV needed against **7.55 GiB available** on a 32 GB card with
-multimodal profiling on. Smaller prefill chunks do not help (1024 and 512 both leave 7.54-7.55).
-MTP's KV cost was measured for the first time — +0.65 GiB for the draft layer, only +0.30 more
-from depth 1 to depth 3 — so speculative decoding is nearly free once you pay for it at all,
-but it still costs 33k tokens of context.
+| profile | resident weights | corrected mean KLD | demonstrated/configured context | hardware |
+|---|---:|---:|---:|---|
+| hydrated K6 | 20.31 GiB | **0.007172** | 185,600, MTP-3 | physical RTX 5090 |
+| online K6 | 20.32 GiB | 0.007945 | 185,600, MTP-3 | physical RTX 5090 |
+| context + int8 input | **18.41 GiB** | 0.009459 | **262,144, MTP-3, 8.4 MP cap** | 30.24 GiB engine budget on RTX PRO 6000 |
+| K4 | 17.89 GiB | 0.029679 | **262,144, MTP-3** | physical RTX 5090 |
+| official FP8 | 28.51 GiB | 0.012798 | not measured here | — |
 
-The vision-tower lever died on measurement: `-vb 6` saves 0.58 GB but the converter splits
-upstream's fused `visual.blocks.N.attn.qkv` into q/k/v, so the checkpoint stops matching the
-architecture, and the loader excludes vision by design anyway.
+The context profile now combines native context, speculative decode and multimodality:
+266,612 KV tokens allocated; exact retrieval from 261,794 text tokens; and exact code plus
+image answer from a 236,824-token prompt containing a 3,072 × 2,304 image. Its one-run
+warmed C1 decode result is 98.72 tok/s. This is an engine-budget proof, not a physical
+RTX 5090 proof.
 
-**DONE — the embedding table was the answer.** Narrowed to per-row int8 behind
-`VLLM_EXL3_EMBED_BITS=8`: resident 19.31 -> **18.13 GiB**, **native 262,144 now starts** with
-279,007 KV tokens, verified by 3/3 exact needle retrievals from 227,334-token prompts, for
-**+0.000065 mean KLD** and identical multimodal scoring. Two two-line model patches were needed
-because `VocabParallelEmbedding` is constructed without a quant config. Write-up in
-[docs/32](32-native-context-embedding-overlay.md).
+The frozen post-selection ranking also survives the offset-independent correction. After
+excluding every context from four qualification source documents with an exact calibration
+12-gram, hydrated / online / context score 0.003093 / 0.003455 / 0.003990 against FP8
+0.005891, each winning 36/36 paired contexts. Absolute KLD is suite-specific.
 
-Remaining on this axis, now with the lever eliminated: MTP and native context still do not
-coexist (8.83 GiB needed at depth 1 against 8.36 available). int4 for the draft table is
-implemented and **free** — acceptance 56.7 % against 56.1 %, throughput equal or better, 0.62 GB
-saved — but the KV budget did not move, so **MTP's cost at native context is not its weights**.
-It is the draft's own KV plus its share of the profiled peak. Anyone attacking this next should
-look at the draft's KV allocation and the multimodal profiling peak, not at more weight
-compression.
+## Closed by the audit
 
-## P0 — DONE: the frozen qualification ran, and the ranking survived
+- The fixed-stride contamination claim was wrong. Every normalized 12-token position (Unicode
+  word or Han/Kana character) is now scanned; v3 excludes two affected documents (nine
+  analysis contexts) and v4 excludes four affected qualification documents (six contexts).
+  A sliding five-token receipt measures
+  lightly edited overlap. No ranking changes.
+- Capture resume now fails closed on missing or modified files; replay refuses an incomplete
+  selected context set. The frozen corpus builder fails on language shortfalls.
+- The deterministic task harness now executes code in a bounded subprocess with a strict
+  builtin allowlist and validates every hidden case. BF16, all four EXL3 profiles and official
+  FP8 each pass **40/40 with zero regressions**. A strict final-answer rescore corrects exact
+  BF16 agreement to hydrated 35/40, online K5/K6 34/40, FP8 34/40, K4 33/40 and context
+  32/40; the original diagnostic compared extracted test summaries for code tasks.
+- The draft-embedding int4 claim was invalid and is retracted. vLLM aliases the draft input
+  table to the target after load; the earlier comparison never exercised int4 at inference.
+- Native MTP was not fundamentally blocked by model weight. Halving the image profiler ceiling
+  from 16,777,216 to 8,388,608 pixels lowers peak activation enough to fit MTP-3 and native
+  262,144 inside the same 30.24 GiB engine budget while accepting a tested 7.08 MP image.
+- PRs #312, #314, #316, #318 and #319 are open as of this state. Cards no longer imply that
+  their patches exist in the pinned r34 image.
 
-Built and run once on **160 contexts from 100 documents with zero intersection with the
-development suite** (token hashes 0/160, document names 0/100, content hashes 0/100), whole
-cluster partitioning, `cluster_partition.overlap` empty. Full write-up in
-[docs/31](31-frozen-qualification.md).
+Receipts: `analysis-v3-contamination-corrected.json`,
+`qualification-v4-contamination-corrected.json`, `near-duplicate-v3.json`,
+`near-duplicate-v4.json`, `task-retention-v2-summary.json`,
+`task-retention-v2-strict-rescore.json`, and `native-mtp-8mp-amendment.json`.
 
-On the 42-context qualification partition: hydrated **0.003029**, K5/K6 0.003395, context
-edition 0.003900, official FP8 0.005720 — **42/42 paired contexts for all three builds**, and
-the relative advantage over FP8 is *larger* on unseen sources (47/41/32 %) than on the
-development suite (44/38/26 %).
+## Queue A — finish on this RTX PRO 6000 rental
 
-One caveat that must travel with every number: absolute KLD is ~2.4x lower on v4 than v3 for
-every candidate including FP8, so magnitudes are comparable only within a suite.
+Use paid time only for work that the 31.39 GiB RTX 5090 cannot perform, chiefly live BF16
+Qwen3.8-27B controls. Preserve each control as a reusable reference so candidate-side runs
+can move to the free local card.
 
-Remaining discipline: development uses the v4 **analysis** partition only, so the qualification
-partition stays clean for the next frozen run.
+| rental rank | global rank | investigation | why it belongs here | closeout before moving on |
+|---:|---:|---|---|---|
+| R1 | prerequisite | freeze and publish this session | `/var/tmp` models, rootfs, logs and caches are ephemeral | Git commit plus pushed receipts/cards/tools; no evidence only on rental disk |
+| R2 | 4 | public capability BF16 baseline | the 55.6 GB BF16 model cannot reside on a 32 GB card | content-hashed prompts, raw BF16 outputs and scorer receipt |
+| R3 | 5 | real multimodal BF16 baseline | full BF16 target plus large image activations need the 96 GB card | OCR/chart/document/video BF16 control with original media hashes |
+| R4 | 6 | BF16 context-quality control | establish the longest same-model loss/reasoning curve BF16 can actually serve | 32k/64k/maximum-fit token-counted reports; never extrapolate to 262k |
+| R5 | 13 | BF16 safety/control side | candidate regressions need a frozen base-model response, not a policy assumption | raw paired-set BF16 outputs and item labels |
+| R6 | 9 | conversion error measurements | source BF16 plus converter workspaces are already present and proven here | immutable converter log, `args.json`, per-module adjacent-width errors |
+| R7 | 10 | large-shape kernel prototypes | the 96 GB card can retain reconstructed weights and broad shape sweeps without displacing evidence | reproducible microbench plus end-to-end prefill/KLD gate |
 
-## P1 — RESOLVED: FP8 prefill measured, rejected on fidelity
+Run R2–R5 from one immutable prompt/media bundle and one BF16 server identity where possible.
+Do **not** spend rental time repeating quant-only 5090 tests. Before the rental ends, copy
+every accepted or negative result into `receipts/`, update the corresponding section here and
+`PROGRESS.md`, commit, and push `main` to
+`https://github.com/malaiwah/qwen38-27b-exl3`.
 
-The kernel works and is bit-exact; the serving result is **+31 % prefill (5,078 → 6,650 tok/s)
-for +0.0141 mean KLD**, which lands the build at 0.0237 — worse than official FP8. Row-wise
-scaling (per-token activation, per-channel weight) changed nothing, so the loss is FP8
-*activations* rather than scale granularity. Shipped disabled behind
-`VLLM_EXL3_PREFILL_FP8=1` for anyone who wants prefill over fidelity.
+## Queue B — free local RTX 5090 32 GB handoff
 
-What did ship from that work: the B12X prefill routing, +3.4 % for no measurable fidelity cost.
+The local session starts here after pulling the pushed `main`; it must not infer state from
+this rental's `/var/tmp` paths.
 
-Still open on the prefill axis, in order of remaining value: fuse `gate_proj` and `up_proj`
-into one GEMM (same input, same shape, larger N measures slightly more efficient), and the
-Marlin-shaped fused dequant-in-epilogue kernel that would reach FP8 parity — a real kernel,
-weeks of work, and it belongs in exllamav3.
+| local rank | global rank | investigation | first action | push target |
+|---:|---:|---|---|---|
+| L1 | 1 | physical RTX 5090 qualification | run the exact context/int8/MTP-3/8.4 MP profile and all seven gates below | receipt + raw logs to this repo; corrected context card to GitHub and its Hub README |
+| L2 | 11 | image-cap/concurrency frontier | after L1, sweep 4.2/6.3/8.4/10.5 MP at sequence counts 1/2 | frontier receipt and card-supported ceiling |
+| L3 | 7 | lifecycle/cache reliability | run cold/warm/corrupt/interrupted/restart cases against the L1 runtime | transition matrix and negative logs |
+| L4 | 2 | immutable production image | build the reviewed patch stack into one OCI image, then repeat L1 smoke | Dockerfile/source map, OCI digest, SBOM and simplified card commands |
+| L5 | 8 | fair speculative matrix | run every quant artifact at MTP off/depth 1/depth 3, C1/C4/C8 | raw three-run matrix and revised throughput claims |
+| L6 | 4–6, 13 | candidate sides of paired quality tests | consume the content-hashed rental BF16 bundles; run quant profiles with identical prompts/scorers | candidate reports plus summaries bound to each BF16 receipt hash |
+| L7 | 3 | clean-room reproduction | use a fresh checkout/cache and only public model/dataset revisions | independent data-only and runtime reproduction receipt |
+| L8 | 12 | 5090 portability boundary | repeat the production smoke on the local driver/CUDA stack | explicit supported tuple; leave TP2/TP4/other architectures open |
 
-## P1 — earn the word "verified" for context, and for tasks
+**Local start sequence.** Run
+`git clone https://github.com/malaiwah/qwen38-27b-exl3 && cd qwen38-27b-exl3`,
+then `git fetch origin main && git checkout -B main origin/main`. Record `git rev-parse HEAD`,
+verify the
+three patch hashes in `receipts/native-mtp-8mp-amendment.json`, and download
+`malaiwah/Qwen3.8-27B-EXL3-K5K6-context`. Confirm `nvidia-smi` reports the physical card,
+31.39 GiB-class usable memory and no competing process. Launch the content-verified command
+in `MODEL_CARD-K5K6-context.md`; save GPU UUID/model/driver, full command and startup log
+before sending requests. Run L1 in order: exact 261,794-token needle, 30-case image suite,
+236,824-token combined seven-megapixel request, three warmed 256-token decode runs, then a
+second long request after release. Do not tune after seeing a partial result; a failed gate
+is published as a bounded negative result.
 
-Two gaps where the cards currently say "not done":
+All local work lands in this repository: tools under `tools/`, immutable JSON/log evidence
+under `receipts/`, and narrative in this file and `PROGRESS.md`; then run
+`git push github main` (and mirror with `git push origin main` when the private Gitea remote
+is reachable). Upload card-only changes to `malaiwah/Qwen3.8-27B-EXL3-K5K6-context`;
+dataset captures and reports go to `malaiwah/qwen38-27b-fidelity-suite-v3`. Never compare
+throughput across the two GPUs;
+cross-machine pairing is allowed only for deterministic capability outputs whose prompt,
+scorer, runtime and BF16 receipt hashes match.
 
-- **Context exercises.** Prefill *and* generate at 32k / 128k / 196k / 262k on the 96 GB box,
-  with needle retrieval, TTFT, inter-token latency and peak memory recorded per run. The
-  external tester did exactly this at 205,021 tokens and it is the strongest single piece of
-  evidence anyone has produced for this family.
-- **Downstream retention.** Paired greedy runs against BF16 on the same prompts and seeds:
-  code, grade-school reasoning, instruction following, tool-call schema conformance, and a
-  multimodal set (OCR, chart, document). Report paired deltas with intervals, not absolute
-  scores, because the point is retention rather than leaderboard placement.
+## Contract for every investigation
 
-## P2 — fairness and hygiene
+Before the first candidate run, write a small machine-readable plan containing:
 
-New from iteration 4:
+1. question, primary metric, paired unit, acceptance threshold and explicit failure outcome;
+2. checkpoint index/config/release-evidence hashes, tokenizer revision, runtime image digest,
+   patch hashes, command, environment knobs, GPU UUID/model, driver, CUDA and Torch versions;
+3. immutable input identities and partition policy, including every exclusion decided before
+   results are visible;
+4. BF16 or current-profile control, warm-up policy, repeat count and randomness controls;
+5. output schema with raw per-item results, not only means.
 
-- **FILED: B12X prefill routing** as [PR #318](https://github.com/local-inference-lab/vllm/pull/318),
-  carrying the int8 embedding overlay with it, and the model-side change as
-  [PR #319](https://github.com/local-inference-lab/vllm/pull/319).
-- **Report `torch._scaled_mm` row-wise + `out_dtype=float16`** returning silently wrong results
-  (~6x relative error, no exception). bfloat16 output is correct.
-- **Patch exllamav3's `quantize_side_model`**: it raises a bare `AttributeError` when a
-  side-model Linear is consumed without being rebuilt, naming nothing. Local fix names the
-  module; upstream it properly.
-- **Keep `reconstruct_fp8_slice`** even though FP8 activations were rejected: it is bit-exact
-  with per-column scales and is the right primitive if a path that keeps activations in fp16
-  ever exists.
+Afterward, publish the plan unchanged beside atomic per-run reports, stdout/stderr, a summary
+derived only from those reports, and a SHA-256 inventory. Failed and rejected routes stay in
+the record. Any post-hoc correction gets a new amendment that names the superseded receipt;
+old evidence is never rewritten. A result closes a row only when a fresh checkout can run the
+documented verifier without private paths, mutable branches or unrecorded model state.
 
+## P0 / rank 1 — physical RTX 5090 qualification
 
-- **Symmetric MTP matrix.** MTP off/on x draft depth 1-4 x concurrency 1/4/8, for our builds
-  *and* for FP8/NVFP4 using their own preserved MTP. The current 113.8 tok/s headline compares
-  our speculative decoding against comparators without it, which the reviewers correctly called
-  unfair. Accounting to keep straight: 58.2 % of drafted tokens accepted, 1.745 accepted draft
-  tokens per step, 2.745 output tokens per iteration.
-- **Support matrix**: tested (SM120, TP1, text+image), untested (TP>1, non-SM120, video),
-  unsupported (generic NVFP4 KV on SM120 - the runtime requires SM100 trtllm-gen; GLM-5.2's
-  `nvfp4_ds_mla` is MLA-only and Qwen3.8 is not MLA).
-- **HF metadata**: `config.json` still carries a single `bits: 4.0` for loader compatibility, so
-  HF tags a K5/K6 artifact "4-bit". Publish explicit mixed-precision fields and say in one line
-  why the legacy key cannot describe the mix.
-- **Error-driven allocation** - the original P1, still unmeasured. It needs per-module proxy
-  error at two or more bit widths; the data existed in conversion stdout and was lost to log
-  rotation. Next conversion must tee stdout to a file, then the ladder can be fitted and the
-  allocation solved under a byte budget instead of hand-split by role. Expected 10-30 % KLD at
-  equal bytes, and it is the last untried lever that improves fidelity without spending memory.
-- **Embedding quantization** is worth 1.589 GB - more than the entire native-context gap - but
-  exllamav3 quantizes `Linear`, not `Embedding`, so it needs new code. Park it behind the vision
-  tower, which is free.
-- **Near-duplicate contamination scanning.** Exact 160- and 80-character shingle scans find zero
-  overlap with the calibration corpus; rolling n-gram or MinHash would test paraphrase overlap,
-  which is currently unmeasured.
-- **Capture resume must fail closed.** A resumed capture records only newly written files in the
-  replacement manifest, and paired analysis silently intersects available contexts. Both should
-  refuse rather than proceed for a publication receipt.
+This is the highest-value remaining test because it changes the context card from
+“budget-proven” to “hardware-qualified”.
 
-## Owned elsewhere
+Run the exact native profile on a real 31.39 GiB RTX 5090:
 
-- **An immutable image containing PRs #312/#314/#316** is being built by voipmonitor (Martin),
-  so it is off this list. Until that digest exists the cards ship two recipes: what the pinned
-  r34 image runs unmodified (eager, 28.8 tok/s decode, 2.4k prefill) and the patched path with
-  the module's sha256. When the digest lands, replace both recipes with one and drop the patch
-  instructions.
+- int8 input overlay, MTP-3, FP8 KV, decode graphs, one sequence;
+- native 262,144;
+- `max_pixels=8388608`;
+- the three content-hashed runtime patches from the amendment receipt;
+- no other process on the GPU, with `nvidia-smi` memory sampled before load, after startup,
+  at peak prefill and after release.
 
-## Closed while writing this plan (card hygiene, found by auditing the live repos)
+Acceptance is all-or-nothing:
 
-Auditing the three published cards against the hub API rather than trusting them turned up
-three defects, all now fixed:
+1. startup allocates at least one native-length request without exceeding utilisation 0.97;
+2. the 261,794-token text needle is exact;
+3. the combined 236,824-token / seven-megapixel request returns both code and colours exactly;
+4. the 30-case image suite remains 24/30 or better;
+5. three warmed 256-token C1 runs report median decode, MTP acceptance and dispersion;
+6. a second long request succeeds after the first is released, proving recovery rather than
+   one lucky allocation;
+7. receipt includes GPU UUID/model, driver, image digest, patch hashes, command, peak memory,
+   KV allocation, outputs and wall times.
 
-- the **K5/K6 card had lost its `library_name`**, so the hub inferred `library_name: trellis`
-  for a checkpoint that only runs under vLLM. Restored to `vllm`; verified through the API on
-  all three repos.
-- the **K4 card still asserted the withdrawn CUDA-graph parity control as live fact**, in two
-  places, while every other surface had been corrected. Now carries the same retraction and the
-  real decode probe (24/32, BF16 control identical).
-- the **K4 card had a duplicated `### Head attribution` heading** from an earlier edit, and no
-  cross-links. It is now explicitly the **capacity edition** — the only build in the family that
-  fits native 262,144 on a 32 GB card — and all three cards carry the same three-build choice
-  table and collection link.
+Failure is still useful: report the exact shortfall and lower `max_pixels` before sacrificing
+MTP or native length. A 4.2 MP trial fit at 30.44 GiB and the 8.4 MP profile fit at the exact
+30.24 GiB budget, so this is a bounded frontier rather than an open-ended search.
 
-The lesson worth keeping: card claims must be re-read from the hub after every edit round. Three
-surfaces drifted apart even though each individual edit was correct.
+## P0 / rank 2 — immutable production runtime
 
-## Deliberately not doing
+The published r34 image predates every required patch. Bind-mounting Python modules is
+reproducible but not a production distribution.
 
-- More bits on attention. Measured: online K6 attention already beats BF16 attention on this
-  architecture, and the overlay is not the prefill bottleneck (1.05-1.11x).
-- Chasing NVFP4's prefill. Even a perfect fused FP8 kernel reaches FP8 parity, not NVFP4's
-  14.5k tok/s, because that needs 4-bit tensor cores. Prefill is the one axis where the honest
-  ceiling is a draw.
+Build one immutable image from the pinned r34 digest plus reviewed versions of:
+
+- #312: BF16 fallback for unrepresentable online-overlay shapes;
+- #314: EXL3 graph-decode autotune priming;
+- #316 and #318: prefill reconstruction dispatch and B12X row-count routing;
+- #319: pass the existing quant config to both Qwen3.5 input-embedding constructors.
+
+Acceptance:
+
+1. source modules in the image match the published SHA-256 map and a generated SBOM;
+2. no bind mounts, startup file copies, mutable branch fetches or runtime package installs;
+3. all four model-card recipes start, one text and one image request pass, and the native
+   context profile repeats its memory allocation;
+4. image digest, composed Git trees, package version and CUDA/Torch/driver compatibility are
+   recorded;
+5. model weights mount read-only, the service runs without host-root privilege, and only the
+   content-addressed cache is writable;
+6. the public recipe either binds loopback or requires an API key behind TLS; it never exposes
+   an unauthenticated generation endpoint on every host interface;
+7. cards collapse the current “unmodified” and “patched” recipes to one command only after
+   that digest exists.
+
+Wheel archives alone are insufficient: the prior audit found they were not bit-reproducible.
+The OCI digest and source-tree identities are the release unit.
+
+## P0 / rank 3 — clean-room release reproduction
+
+The current receipts are internally cross-checkable, but most were produced on one
+workstation. A second operator should begin from empty caches and only public URLs.
+
+Two rungs are required:
+
+1. **data-only:** verify Git/Hugging Face revisions and every release-evidence hash, download
+   the published hidden-state captures, apply the declared v3/v4 exclusion policies, and
+   reproduce every corrected mean, paired win count and interval used in the cards;
+2. **build/runtime:** from pinned BF16 shards, converter source and immutable runtime, rebuild
+   one representative checkpoint, compare logical tensor names/shapes/dtypes/storage metadata,
+   then run deterministic text, image, graph/eager and KLD smoke.
+
+Acceptance: a fresh-machine transcript contains no `/var/tmp/work` or unpublished artifact,
+the data-only values match at full stored precision, every fetched blob is content-identified,
+and build differences are either byte-identical or explicitly reduced to a measured numerical
+equivalence contract. The independent operator signs the receipt or publishes it from a
+separate account. A copy of this workstation is not an independent reproduction.
+
+## P1 / rank 4 — public capability retention
+
+The 40-task suite is a good regression smoke test, not evidence of broad capability. Extend
+the same paired BF16/candidate design to established, licence-compatible task sets:
+
+- code: HumanEval+/MBPP-style executable cases;
+- reasoning/knowledge: a fixed MMLU-Pro or equivalent subset with exact prompt templates;
+- instruction following: IFEval-style verifiable constraints;
+- tools: schema-constrained multi-turn calls;
+- multimodal: OCR, ChartQA and document question answering with original image hashes.
+
+Run BF16, hydrated, online K5/K6, context, K4 and official FP8 with identical tokenizer,
+template, greedy settings and runtime where formats permit. Publish every prompt, raw output,
+scorer version and model identity. Primary statistic is paired pass retention versus BF16 with
+bootstrap or exact intervals; absolute scores are secondary. No claim graduates from smoke to
+benchmark until the public items and scorer are independently rerunnable.
+
+## P1 / rank 5 — real multimodal quality
+
+The current 24/30 suite is deterministic and useful, but synthetic. Add OCR, chart,
+document-layout and video subsets with redistribution-safe fixtures. Run BF16 first so the
+result measures retention rather than base-model capability. The 8.4 MP ceiling must be
+reported as part of every result; include resize dimensions and visual-token counts.
+
+Acceptance: paired score and latency, no hidden resize/truncation, at least one near-cap image,
+and a long-text-plus-image case on the same production profile.
+
+## P1 / rank 6 — context quality beyond retrieval
+
+Needle retrieval proves access, not reasoning over the window. At 32k, 128k, 236k and the
+largest physical-5090 length:
+
+- two-hop retrieval with evidence in separated regions;
+- aggregation over many records;
+- passkey distractor count sweeps;
+- perplexity or next-token loss on held-out continuous text;
+- one combined image-plus-text reasoning task, not only colour recognition.
+
+Use the server-reported token count, record TTFT/inter-token latency and fail on silent
+truncation. Compare the context build with BF16 at the same lengths that BF16 can support;
+do not extrapolate a short-window KLD to 262k.
+
+## P1 / rank 7 — lifecycle and cache reliability
+
+The online-attention cache and reconstructed-prefill scratch paths have been measured during
+successful runs, not under service faults. Test the immutable image with:
+
+- empty, warm and read-only caches; one deliberately truncated or hash-mismatched cache entry;
+- termination during online encoding followed by restart;
+- ten sequential native-length requests and an intentionally rejected over-budget request,
+  followed by a valid request on the same server;
+- concurrency at every documented profile limit, client cancellation during prefill, and
+  clean shutdown/restart without orphan GPU memory or processes;
+- disk-full and unwritable-cache failures that must fail closed rather than silently encode
+  into an unidentified location.
+
+Record cold-start/encode time, cache bytes and content identities, resident/peak GPU memory,
+file-descriptor/process counts, request status and post-release memory after every transition.
+Acceptance: no corrupt cache reuse, no silent precision fallback, no unbounded host/GPU growth,
+all expected 4xx/5xx failures are explicit, and the final valid request matches the first.
+
+## P1 / rank 8 — fair speculative-decoding matrix
+
+The 113.8 tok/s headline compared our MTP-enabled path with FP8/NVFP4 target-only runs. It is
+real throughput but not a fair model-to-model speculative comparison.
+
+Run, for every artifact whose preserved MTP head loads:
+
+- MTP off, depth 1 and depth 3;
+- concurrency 1 / 4 / 8;
+- 256 fixed output tokens, identical prompts, three warmed repeats;
+- short and long configured windows separately;
+- resident memory, KV allocation, drafted/accepted tokens, acceptance by position, TTFT and
+  aggregate/per-stream throughput.
+
+The closing result is a matrix, not a single favourable ratio. Unsupported comparator paths
+must be reported as such rather than silently run without MTP.
+
+## P2 / rank 9 — error-driven mixed-precision allocation
+
+This is the last untried lever likely to improve fidelity without spending more memory.
+The role split was hand-designed; exllamav3 already emits per-module proxy errors during
+conversion, but the original logs were lost.
+
+For the next conversion:
+
+1. tee immutable converter stdout and preserve `args.json`, codebook and per-module errors;
+2. measure each eligible module at two or more adjacent bit widths;
+3. solve the byte-constrained benefit curve rather than assigning one width per role;
+4. build one candidate only if predicted gains exceed the ~1e-3 replay-resolution caveat;
+5. select on v4 analysis, then run one untouched source-disjoint qualification.
+
+Expected improvement is a hypothesis, not a promised 10–30 %. The candidate must beat the
+current profile at equal resident bytes with a paired interval excluding zero.
+
+## P2 / rank 10 — prefill kernels
+
+FP8 activations are closed: +31 % prefill cost +0.0141 KLD and made the context build worse
+than official FP8. Remaining credible work:
+
+1. fuse `gate_proj` and `up_proj` reconstruction/GEMM because they share input and shape;
+2. prototype a Marlin-shaped fused dequant-in-epilogue kernel in exllamav3;
+3. retain B12X for decode and dispatch by row count.
+
+Acceptance is end-to-end prefill gain at unchanged decode and a measured fidelity delta below
+the replay floor. Kernel microbenchmarks alone do not close the item. NVFP4's 4-bit tensor-core
+prefill remains an architectural ceiling, not a tuning target for Trellis.
+
+## P2 / rank 11 — image-cap and concurrency frontier
+
+Eight megapixels is the first safe native-MTP point, not necessarily the maximum. On the
+physical 5090, sweep 4.2 / 6.3 / 8.4 / 10.5 MP and sequence counts 1 / 2 without changing
+other knobs. Report startup activation, KV tokens, actual resized dimensions and combined
+request success. Select the largest cap with at least 256 KV-token margin after the full
+262,144 request; do not publish a zero-headroom maximum.
+
+## P2 / rank 12 — portability and package quality
+
+- Test TP2 and TP4; the input table is rank-sliced and the overlay must prove correct shard
+  scales and no non-local payload.
+- Test one SM100 and one pre-Blackwell CUDA target or declare the support boundary.
+- Publish explicit mixed-precision metadata; the legacy `bits: 4.0` key cannot describe
+  gate/up K5, down K6 and per-row int8 input.
+- Upstream the side-model `AttributeError` diagnostic and report the
+  `torch._scaled_mm(..., out_dtype=float16)` row-wise-scale corruption separately.
+
+## P2 / rank 13 — quant-specific safety stability
+
+Low mean KLD does not guarantee unchanged refusals, calibration or tool-use boundaries. Freeze
+a redistribution-safe paired set spanning self-harm, cyber misuse, privacy, medical/legal
+over-reliance, jailbreak pressure and benign near-neighbours. Run BF16 and every shipped
+profile with identical templates and decoding, retaining raw outputs and per-item policy labels.
+
+Primary outcomes are BF16-safe-to-unsafe regressions, benign over-refusals and exact refusal
+agreement; report categories and paired examples, never only an aggregate “safety score”.
+Any severe BF16-safe-to-unsafe regression blocks a broad intended-use claim until reviewed.
+A clean small set supports only “no regression observed on this set”, not general safety.
+
+## Prior art that constrains the plan
+
+- NVIDIA's Qwen3.6 NVFP4 is the memory/performance reference, not a drop-in recipe for this
+  architecture. Its compressed-tensors runtime and calibration are different.
+- Unsloth's Qwen3.8 NVFP4 retains higher precision in the last eight MLP layers and still
+  measures 0.092727 on this protocol; “keep the last layers high” is not sufficient by itself.
+- Gilded Gnosis GLM-5.2 demonstrates online K6 and quantized MTP for an MoE model. Its BF16
+  shared-expert exception does not map onto this dense Qwen topology.
+- exllamav3 supplies LDLQ/Trellis/MCG and proxy errors, but its public CLI exposes a global
+  width; the regex per-module strategy used here remains a local extension.
+- The Kimi-K3 protocol motivated hidden-state replay. Our 6.54e-4 live/replay discrepancy is
+  roughly 500× its reported reference floor, so sub-1e-3 absolute conclusions remain out of
+  scope even though paired common-head comparisons are stable.
+
+## Do not reopen without new evidence
+
+- Quantizing the vision tower: the converter changes fused qkv tensor topology and the loader
+  intentionally excludes vision.
+- A separate low-bit draft embedding: it is aliased away after load.
+- Compact KV grouping: measured total memory increased.
+- BF16 `lm_head`: costs 1.589 GB for a delta at or below the replay floor.
+- More online attention bits: K6 is already the measured best point and attention is not the
+  prefill bottleneck.
+- FP8 prefill activations: fidelity failure is measured under both tensor and row-wise scales.

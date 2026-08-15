@@ -1,0 +1,150 @@
+{
+  "schema": "qwen38-native-mtp-multimodal-amendment/1",
+  "generated_utc": "2026-08-15T11:11:08Z",
+  "supersedes_open_items_in": "receipts/release-evidence-context.json",
+  "base_release_evidence_sha256": "86bd30e3288d7b7f0cc8acc74206a1fe685bf051dbb6a772bed93390b7f9971a",
+  "claim_scope": "engine-budget proof on a 95.6 GiB RTX PRO 6000 with vLLM hard-budgeted to 30.24 GiB; not a physical RTX 5090 hard-limit proof",
+  "artifact": {
+    "hf_repo": "malaiwah/Qwen3.8-27B-EXL3-K5K6-context",
+    "index_sha256": "cd53b8e487b5c70b1ffe26578464a9cfd9bea9d7ed50a39e39ba3e153c1ab1b4"
+  },
+  "runtime": {
+    "image": "voipmonitor/vllm@sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b",
+    "image_identity_verified_during_capture": false,
+    "image_identity_limit": "the captured run named this digest but did not preserve a full-rootfs manifest at launch; the post-run rerun harness below now authenticates every extracted-rootfs entry before installing the three pinned patches",
+    "max_model_len": 262144,
+    "gpu_memory_utilization": 0.3184,
+    "desired_engine_budget_gib": 30.24,
+    "kv_cache_dtype": "fp8",
+    "max_num_seqs": 1,
+    "max_num_batched_tokens": 2048,
+    "mtp_depth": 3,
+    "cudagraph_mode": "FULL_DECODE_ONLY",
+    "cudagraph_capture_sizes": [
+      4
+    ],
+    "embedding_overlay_bits": 8,
+    "max_image_pixels": 8388608,
+    "model_default_max_image_pixels": 16777216
+  },
+  "measured_memory": {
+    "resident_weights_gib": 18.41,
+    "peak_activation_gib": 1.78,
+    "non_torch_gib": 0.28,
+    "cudagraph_gib": 0.46,
+    "available_kv_gib": 9.31,
+    "gpu_kv_cache_tokens": 266612,
+    "native_262144_started": true
+  },
+  "proofs": {
+    "near_native_text": {
+      "schema": "qwen38-longctx/2",
+      "requested_tokens": 261800,
+      "measured_tokens_before_submit": 261794,
+      "prompt_tokens": 261794,
+      "token_count_delta": -6,
+      "completion_tokens": 11,
+      "needle_depth_fraction": 0.5,
+      "needle_code": "1376346594",
+      "retrieved_exact": true,
+      "answer": "1376346594",
+      "wall_sec": 123.068,
+      "prefill_tok_s_including_decode": 2127.2
+    },
+    "synthetic_vision": {
+      "n": 30,
+      "correct": 24,
+      "accuracy": 0.8
+    },
+    "large_image": {
+      "dimensions": [
+        3072,
+        2304
+      ],
+      "pixels": 7077888,
+      "prompt_tokens": 6942,
+      "answer": "red, blue"
+    },
+    "combined_long_multimodal": {
+      "schema": "qwen38-longmm/1",
+      "requested_text_tokens": 230000,
+      "measured_text_tokens_before_submit": 229910,
+      "prompt_tokens": 236824,
+      "completion_tokens": 15,
+      "minimum_prompt_tokens": 220000,
+      "length_preserved": true,
+      "needle_depth_fraction": 0.5,
+      "needle_code": "1376346594",
+      "retrieved_exact": true,
+      "image": {
+        "path": "/var/tmp/work/vis_7mp.png",
+        "sha256": "7e3748a403f201b83ac67130895223122660e1cb07877ef768c1d6a49127533d",
+        "bytes": 26153
+      },
+      "colours_exact": true,
+      "answer": "1376346594 | red, blue",
+      "wall_sec": 106.543,
+      "prompt_tok_s_including_decode": 2222.8,
+      "passed": true
+    },
+    "single_stream_decode": {
+      "label": "native-mtp-cap-8mp",
+      "output_tokens_per_request": 256,
+      "runs": [
+        {
+          "concurrency": 1,
+          "elapsed_sec": 2.593,
+          "output_tokens": 256,
+          "aggregate_tok_s": 98.72,
+          "per_stream_tok_s": 98.72
+        }
+      ],
+      "prefill": [],
+      "ttft_proxy_sec": 0.0527
+    }
+  },
+  "evidence_files": {
+    "native-mtp-cap-8mp-needle.json": "37c4aed7d8a3eaf6eb7eea1636e41633b87e4444e1266f26c42f6fdc0fe12ffb",
+    "native-mtp-cap-8mp-vision.json": "e82dec5b97be93f2b61b43b0571ed7c2ba8160601e1029be97414a66cca95dfc",
+    "native-mtp-cap-8mp-bench.log": "845f448f51753fb56c514b5082225f44aab6f9488ce7d919065e4d17387839ed",
+    "native-mtp-cap-8mp-server.log": "1f27519d7561babd5bdcb0b9b27a15656871d5120e3b5ee51c33762fc6c123e0",
+    "native-mtp-8mp-combined-longmm.json": "f396cf9c4b9f174406fd8182c538e38a29b4a3f2d918582280cbb9c1ee4aa59f",
+    "native-mtp-8mp-large-image.json": "8844937932a88e7a8fb2207217e46a62e41a3c225f46fd899c3c0af984d38a5a",
+    "native-mtp-8mp-combined-server.log": "cb1aa32a7e694328962b494a626ec6122533426688a1cb7350f479d9fadd83fb",
+    "native-mtp-8mp-fixture.png": "7e3748a403f201b83ac67130895223122660e1cb07877ef768c1d6a49127533d"
+  },
+  "mtp_active_evidence": [
+    "engine config resolved Qwen3_5MTP with num_spec_tokens=3",
+    "drafter model loaded",
+    "target embedding and lm_head shared with draft",
+    "256-token decode completed at 98.72 tok/s"
+  ],
+  "conclusions": {
+    "native_context_mtp3_under_budget": true,
+    "vision_after_long_prefill": true,
+    "combined_long_text_and_7mp_image": true,
+    "physical_rtx5090_verified": false,
+    "decode_measurement_note": "one timed run after warmup; previous 113.8 tok/s headline used a different profile and three-run protocol"
+  },
+  "remaining_limits": [
+    "physical RTX 5090 hard-limit rerun",
+    "real OCR/document/video benchmark",
+    "long-context reasoning beyond retrieval",
+    "TP>1 and non-SM120"
+  ],
+  "patch_files_sha256": {
+    "vllm-exl3-prefill-dispatch.py": "2df9d0799fd323798cead1edb773cab556c94798eec263ee03ded35408c6e4ee",
+    "vllm-qwen3_5-embed-quant-config.py": "04d2bd587b37142f4f55a8d00b9f8c907309490168cb7fcdfde450531df2c9e7",
+    "vllm-qwen3_5_mtp-embed-quant-config.py": "0090dc131f0eaf439b24d50baf4def9f10b052864c76e695053d64f66b274bab"
+  },
+  "post_run_hardened_harness_sha256": {
+    "note": "These identify the fail-closed rerun harness published after the captured requests, not the unrecoverable pre-amendment script bytes. The captured JSON/log identities are authoritative for this run; image identity was not fully authenticated during capture.",
+    "pull_rootfs.py": "05e2488495e79617f39b826626257d3af9017a1fc6a0caff2051fffae6f7645f",
+    "ggrun.sh": "3ef891efce8b4c669eca2cce21b22177ab33a90985e8ee8a47286cf305ad367a",
+    "longctx.py": "a63b087d9c63fdb40f6e065619e915c4bee47b75ba89cc8a6e39aadf71a635ab",
+    "longmm.py": "bcd6527f290d89a8442eb2704fb30281b8513cb795dabfd78295dcae2e4c8b31",
+    "vision_eval.py": "7bf9a7ebef93b46d9ee52cfc2aa6ee53ff05025ad4562e561f79be0445de0a08",
+    "bench.py": "d5dfd9db22dced3ee5b54c77f30e8aa0558a6a177d77eb6279c7df3b7885b2e9",
+    "native_mtp_cap.sh": "c0cce8e94df4088e2597d61dc8adaec0430c6af8e55d671ae5293937409da9b1"
+  }
+}

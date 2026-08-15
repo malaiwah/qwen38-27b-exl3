@@ -1,0 +1,144 @@
+{
+  "schema": "qwen38-task-retention-rescore/2",
+  "generated_utc": "2026-08-15T12:27:12.045211+00:00",
+  "source_summary": "receipts/task-retention-v2-summary.json",
+  "source_summary_sha256": "006e227d2698ddea1c3ef1898e78ac9533726e7dfdaa2415bebed423ef8b39c0",
+  "suite_sha256": "e1eccaaf98071d7dc25cb1b10da08459d0de8a3061e76790c490f80072642030",
+  "policy": {
+    "code": "same hidden cases plus input-argument immutability",
+    "format": "exact count of distinct non-empty lowercase strings",
+    "tool": "exact top-level and argument keys; city exact; days integer but not bool",
+    "exact_output": "compare stripped final-answer text, not extracted checker summaries",
+    "raw_outputs_reused": true,
+    "model_inference_rerun": false
+  },
+  "rescore_runtime": {
+    "python": "3.12.13",
+    "executable": "project .venv"
+  },
+  "harness_sha256": "d9307a4699877e04a05b18fd9c99cc7d7fc02c28b4cccf187ef88efb88d61047",
+  "supersession": {
+    "pass_and_regression_metrics": "unchanged",
+    "original_exact_output_agreement": "superseded; code rows compared only their 3/3 checker summaries"
+  },
+  "models": {
+    "bf16": {
+      "source_report": "receipts/tasks-v2-bf16.json",
+      "source_report_sha256": "2dc545f3f117750d5e513ddcfaaf62df71470e21913e53225ded569b43ab91fc",
+      "tasks": 40,
+      "strict_passes": 40,
+      "raw_integrity_verified": true,
+      "stored_pass_fields_unchanged": true,
+      "stored_extracted_fields_unchanged": true,
+      "regressions_vs_bf16": 0,
+      "corrected_exact_final_answer_vs_bf16": 40,
+      "corrected_exact_final_answer_by_kind": {
+        "arithmetic": 10,
+        "code": 10,
+        "format": 10,
+        "tool": 10
+      },
+      "original_extracted_summary_agreement": null
+    },
+    "ctx": {
+      "source_report": "receipts/tasks-v2-ctx.json",
+      "source_report_sha256": "cea4cfa885af0d254a24a4003ba956a70cc38269bd7604d32fb6ec306eadf67d",
+      "tasks": 40,
+      "strict_passes": 40,
+      "raw_integrity_verified": true,
+      "stored_pass_fields_unchanged": true,
+      "stored_extracted_fields_unchanged": true,
+      "regressions_vs_bf16": 0,
+      "corrected_exact_final_answer_vs_bf16": 32,
+      "corrected_exact_final_answer_by_kind": {
+        "arithmetic": 10,
+        "code": 7,
+        "format": 5,
+        "tool": 10
+      },
+      "original_extracted_summary_agreement": 39
+    },
+    "fp8": {
+      "source_report": "receipts/tasks-v2-fp8.json",
+      "source_report_sha256": "4493e81c17b6ddc65540ef2579aad7155bdef6d3343ad1a12ce3341a2d843b39",
+      "tasks": 40,
+      "strict_passes": 40,
+      "raw_integrity_verified": true,
+      "stored_pass_fields_unchanged": true,
+      "stored_extracted_fields_unchanged": true,
+      "regressions_vs_bf16": 0,
+      "corrected_exact_final_answer_vs_bf16": 34,
+      "corrected_exact_final_answer_by_kind": {
+        "arithmetic": 10,
+        "code": 8,
+        "format": 6,
+        "tool": 10
+      },
+      "original_extracted_summary_agreement": 38
+    },
+    "hydrated": {
+      "source_report": "receipts/tasks-v2-hydrated.json",
+      "source_report_sha256": "704b9c51f5e902a680f087e2eed00d51c6166d35461e667f0d6d7c5ce6d3aec4",
+      "tasks": 40,
+      "strict_passes": 40,
+      "raw_integrity_verified": true,
+      "stored_pass_fields_unchanged": true,
+      "stored_extracted_fields_unchanged": true,
+      "regressions_vs_bf16": 0,
+      "corrected_exact_final_answer_vs_bf16": 35,
+      "corrected_exact_final_answer_by_kind": {
+        "arithmetic": 10,
+        "code": 8,
+        "format": 7,
+        "tool": 10
+      },
+      "original_extracted_summary_agreement": 40
+    },
+    "k4": {
+      "source_report": "receipts/tasks-v2-k4.json",
+      "source_report_sha256": "fb615fbe28b8572ff0f8f2d4856e7164047361f4be1eda551cb1b1ed48e7f9a5",
+      "tasks": 40,
+      "strict_passes": 40,
+      "raw_integrity_verified": true,
+      "stored_pass_fields_unchanged": true,
+      "stored_extracted_fields_unchanged": true,
+      "regressions_vs_bf16": 0,
+      "corrected_exact_final_answer_vs_bf16": 33,
+      "corrected_exact_final_answer_by_kind": {
+        "arithmetic": 10,
+        "code": 8,
+        "format": 5,
+        "tool": 10
+      },
+      "original_extracted_summary_agreement": 39
+    },
+    "k5k6": {
+      "source_report": "receipts/tasks-v2-k5k6.json",
+      "source_report_sha256": "a5086d40f09bc15e8f1d9a7b3c31fee6df332196c23394fd6e13cee912d87aa9",
+      "tasks": 40,
+      "strict_passes": 40,
+      "raw_integrity_verified": true,
+      "stored_pass_fields_unchanged": true,
+      "stored_extracted_fields_unchanged": true,
+      "regressions_vs_bf16": 0,
+      "corrected_exact_final_answer_vs_bf16": 34,
+      "corrected_exact_final_answer_by_kind": {
+        "arithmetic": 10,
+        "code": 8,
+        "format": 6,
+        "tool": 10
+      },
+      "original_extracted_summary_agreement": 37
+    }
+  },
+  "conclusion": {
+    "all_six_40_of_40": true,
+    "zero_regressions": true,
+    "all_raw_integrity_verified": true,
+    "all_stored_passes_unchanged": true,
+    "corrected_exact_final_answer_range_excluding_bf16": [
+      32,
+      35
+    ]
+  }
+}

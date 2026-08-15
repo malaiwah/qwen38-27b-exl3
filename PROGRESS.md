@@ -137,9 +137,10 @@ deltas to five digits), killing the zero-priming hypothesis.
 **Attention-overlay width is a runtime knob, and it is measured.** Same suite, same
 reference and comparator head, varying only `ONLINE_QUANT` bits: K6 **0.008157** at
 20.32 GiB, K5 **0.012135** at 19.82 GiB, K4 **0.027530** at 19.05 GiB. Paired against K6,
-K5 costs +0.003978 and K4 +0.019373, both 0/136. K5 is the interesting setting: still
-below official FP8's 0.013126 while fitting native 262,144 context on a 32 GB card
-(266,743 KV tokens verified against a 31.2 GiB budget).
+K5 costs +0.003978 and K4 +0.019373, both 0/136. K5 remains below official FP8's 0.013126.
+The initial native-262,144 claim from a capped 96 GB simulation was later retracted after a
+real RTX 5090 test; K5 reached **206,400** with exact retrieval. See
+[docs/28](docs/28-external-validation-and-corrections.md).
 
 **Offline attention beats the online overlay, slightly.** A "hydrated" build with the
 same MLP recipe but attention **serialized at K6 by the converter** instead of encoded at
@@ -153,11 +154,58 @@ rounding is ~5 % of the floor and the rest is the implementation difference betw
 logit path and our replay. Paired comparisons are unaffected (common-mode); only absolute
 values below ~1e-3 stay unresolvable.
 
+### Later that day: qualification, context edition, and corrected capacity accounting
+
+The v4 source-disjoint suite was frozen before candidate scoring: 160 contexts from 100
+documents, zero token/document/content overlap with v3. On its 42-context qualification
+partition, hydrated scored **0.003029**, online K5/K6 **0.003395**, context edition
+**0.003900**, and official FP8 **0.005720**. All five candidate capture sets and receipts are
+published in the dataset, now 2,708 files / 51.0 GB.
+
+A fourth checkpoint serialized attention at K5. Its BF16-embedding baseline is 19.31 GiB and
+0.009673 v3 mean KLD. Per-row int8 input embeddings reduce resident weights to **18.13 GiB**
+for **+0.000065 KLD**. Under a 30.24 GiB vLLM budget the server starts at native 262,144,
+allocates 279,007 KV tokens, and retrieves 3/3 planted codes from 227,334-token prompts.
+Because the host was a 96 GB SM120, this is an engine-budget proof rather than a hard physical
+RTX 5090 proof; that rerun remains open.
+
+An MTP follow-up also corrected a false lead. vLLM aliases the draft embedding to the target
+after loading, so the claimed int4 draft acceptance comparison never exercised int4. The
+method and environment variable were removed; PR #319 and all cards now record the correction.
+At concurrency one with one decode graph, MTP-1 still needs 8.83 GiB against 8.59 available
+(estimated max 255,024), while MTP-3 needs 9.13 GiB. Compact KV grouping reduced padding but
+raised graph memory and lost overall.
+
+### Final audit pass: overlap correction, task retention, native MTP
+
+The original fixed-stride contamination scanner was offset-sensitive. An all-position
+normalized 12-token audit (Unicode words plus Han/Kana characters) found overlap in two v3 source documents and four v4 qualification
+documents. Conservatively excluding every context from those sources changes v3 K5/K6
+0.008157 → **0.007945**, hydrated 0.007406 → **0.007172**, K4 0.030736 →
+**0.029679**, context 0.009673 → **0.009378**, FP8 0.013126 → **0.012798**, and
+NVFP4 0.094978 → **0.092727**. On corrected v4 qualification, hydrated / online /
+context / FP8 are 0.003093 / 0.003455 / 0.003990 / 0.005891; all three EXL3
+profiles still win 36/36 paired contexts. Both original and corrected receipts remain.
+
+Capture/replay now fails closed on interrupted or modified data, and the frozen-suite builder
+fails on language shortfalls. The corrected deterministic downstream matrix then completed:
+BF16, all four EXL3 profiles and official FP8 each passed **40/40**, zero regressions.
+A hardened offline rescore preserves every pass and corrects exact-final-answer agreement to
+32/40–35/40; the original 37/40–40/40 diagnostic compared only `3/3 cases` summaries for
+code tasks.
+
+The remaining native-MTP gap was multimodal activation profiling, not another model weight.
+Setting the image ceiling to 8,388,608 pixels under the exact 30.24 GiB budget reduced peak
+activation to 1.78 GiB and allocated **266,612 KV tokens** with MTP-3 and decode graphs.
+Generation retrieved exactly from 261,794 text tokens. A second request combined 229,910
+measured text tokens with a 3,072 × 2,304 image: the server reported 236,824 prompt tokens
+and returned exact `1376346594 | red, blue`. The synthetic vision score stayed 24/30 and
+one warmed C1 decode run measured 98.72 tok/s. This remains an engine-budget proof on the
+96 GB SM120; physical RTX 5090 qualification is P0.
+
 ### Next
 
-Ranked in [docs/23](docs/23-next-attack-list.md), with the re-scoped goal and its
-per-axis verdict in [docs/25](docs/25-goal-pareto-dominate-fp8.md). The two open items
-that are not kernel work: publish the K5/K6, attention-width and hydrated captures into
-the fidelity dataset (it still carries iteration-1 captures only), and get task-level
-retention evidence — neither the decode-drift probe nor the KLD suite says whether the
-flipped near-ties cost anything downstream.
+Run the exact profile on a physical RTX 5090, publish an immutable runtime image containing
+the open patches, then extend the paired smoke test to public capability and real multimodal
+sets. Current ranked work and acceptance gates are in
+[docs/29](docs/29-plan-and-loose-ends.md).

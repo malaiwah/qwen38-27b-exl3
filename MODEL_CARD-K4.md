@@ -20,9 +20,9 @@ tags:
 > ### Superseded by [`malaiwah/Qwen3.8-27B-EXL3-K5K6`](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6)
 >
 > The successor spends the remaining memory budget on the MLP (gate/up K5, down K6) and
-> measures **0.008157** mean KLD against this checkpoint's **0.030736** on the same
-> held-out suite — and **38 % below official FP8** — at 21.82 GB resident. It also has a
-> quantized MTP draft head that works with speculative decoding (58.2 % acceptance,
+> measures **0.007945** mean KLD against this checkpoint's **0.029679** on the
+> overlap-corrected subset — **38 % below official FP8** — at 21.82 GB resident.
+> It also has a quantized MTP draft head that works with speculative decoding (58.2 % acceptance,
 > +101 % single-stream throughput). Prefer it unless you specifically need the smaller
 > 19.21 GB footprint.
 >
@@ -57,42 +57,44 @@ for `unsloth/Qwen3.8-27B-NVFP4` on the identical architecture — a
 across Trellis, NVFP4 and FP8, so the comparison that matters is the measured fidelity
 below, not a per-role precision claim.
 
-Measured on a **held-out** corpus across **278,392 full-vocabulary positions in 136
-stratified contexts**: mean KLD **0.030736** versus **0.094978** for
-`unsloth/Qwen3.8-27B-NVFP4` (3.09x closer to BF16, **136/136 contexts**, CI excludes
-zero) and **0.013126** for `Qwen/Qwen3.8-27B-FP8`, which is genuinely better
-at 61 % more memory. With CUDA graphs enabled it also serves **faster than the NVFP4
+Measured on the conservative overlap-corrected subset — **259,969 full-vocabulary positions
+in 127 contexts** — mean KLD is **0.029679** versus **0.092727** for
+`unsloth/Qwen3.8-27B-NVFP4` and **0.012798** for `Qwen/Qwen3.8-27B-FP8`, which is genuinely
+better at 61 % more memory. The original 136-context receipt and correction are below. With
+CUDA graphs enabled this build also serves **faster than the NVFP4
 checkpoint** (55.39 vs 49.09 tok/s at C1). Vision works. Every artifact needed to
 recompute these numbers is published as a
 [dataset](https://huggingface.co/datasets/malaiwah/qwen38-27b-fidelity-suite-v3).
 
-> **This is the capacity edition of the family.** It carries the largest divergence of the
-> three builds (0.030736) and the smallest resident footprint (**17.89 GiB**), and it is the
-> **only one that fits native 262,144 context on a 32 GB card** — 289,577 KV tokens measured
-> on an RTX 5090 with MTP-3 and vision enabled. If you do not need native context, the
-> [hydrated build](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated) is **4.2x
-> closer to BF16** at a similar footprint.
+> **Position in the family:** this K4 build has the highest divergence of the four published
+> builds (0.029679 corrected) and the smallest resident footprint (**17.89 GiB**). It is the **only build
+> hardware-qualified at native 262,144 on a real 32 GB card** — 289,577 KV tokens measured on
+> an RTX 5090 with MTP-3 and vision enabled. The context edition also starts at native length
+> with MTP-3 and an 8.4 MP image ceiling under a capped 32 GB-equivalent engine budget, but
+> still awaits a hard-limit RTX 5090 rerun.
 
 ## Which of the four builds
 
-Same architecture and tokenizer; they differ in where the bits go. Contexts are what the engine
-serves on a 32 GB card with MTP-3 and vision enabled, at utilisation 0.97
+Same architecture and tokenizer; the KLD column is the overlap-corrected 127-context v3
+subset. Capacity uses each card's documented profile: hydrated, online and K4 are real RTX
+5090 MTP-3 tests; context is MTP-3 with an 8.4 MP cap on a budget-capped RTX PRO 6000.
+These profiles are not interchangeable
 ([collection](https://huggingface.co/collections/qwen38-27b-mixed-precision-exl3-measured-6a7fe0cb27817c23e4a57025)).
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="assets/context-frontier-dark.svg">
-  <img alt="Mean KL divergence versus context served on a 32 GB card: hydrated 0.007406, online K6 0.008157, context edition 0.009673 with verified needle retrieval, online K5 0.012135, K4 0.030736; official FP8 0.013126." src="assets/context-frontier-light.svg">
+  <img alt="Overlap-corrected v3 mean KL divergence versus demonstrated or configured context. Circles are real RTX 5090 MTP-3 results: hydrated and online K6 at 185,600, K4 at 262,144. Stars have generation proof: online K5 at 206,400 on the 5090, and the context edition at 262,144 with MTP-3 and an 8.4 MP image cap under a 30.24 GiB engine budget; the latter's hard-limit 5090 rerun is pending." src="assets/context-frontier-light.svg">
 </picture>
 
-| build | download | resident | mean KLD | context on 32 GB | pick it when |
+| build | download | resident | corrected v3 mean KLD | context profile | pick it when |
 |---|---:|---:|---:|---:|---|
-| [-hydrated](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated) | 21.61 GB | 20.31 GiB | **0.007406** | ~180k | fidelity first, smallest download |
-| [-EXL3-K5K6](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6) | 30.57 GB | 20.32 GiB | 0.008157 | ~180k | you want the attention width knob at launch |
-| [-context](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6-context) | 20.70 GB | **18.13 GiB** | 0.009738 | **262,144 native** | you need native context on 32 GB — int8 embeddings, retrieval verified at 227,334 tokens |
-| [-K4](https://huggingface.co/malaiwah/Qwen3.8-27B-K4) | 28.31 GB | 17.89 GiB | 0.030736 | 262,144 | smallest footprint, native context without any overlay |
+| [-hydrated](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated) | 21.61 GB | 20.31 GiB | **0.007172** | ~180k | fidelity first, smallest download |
+| [-EXL3-K5K6](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6) | 30.57 GB | 20.32 GiB | 0.007945 | ~180k | you want the attention width knob at launch |
+| [-context](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6-context) | 20.70 GB | **18.41 GiB** | 0.009459 | **262,144, MTP-3, 8.4 MP cap** | native window; hard-limit RTX 5090 check pending |
+| [-K4](https://huggingface.co/malaiwah/Qwen3.8-27B-K4) | 28.31 GB | 17.89 GiB | 0.029679 | 262,144 | smallest footprint, native context without any overlay |
 
-Official `Qwen/Qwen3.8-27B-FP8` is 28.51 GiB resident at 0.013126 on the same suite and runs on
-stock vLLM, which none of these do.
+Official `Qwen/Qwen3.8-27B-FP8` is 28.51 GiB resident at 0.012798 on the same subset and runs
+on stock vLLM, which none of these do.
 
 ## Why this shape
 
@@ -120,20 +122,33 @@ not: **160 new contexts from 100 documents with zero intersection with the devel
 (context token hashes 0/160, document names 0/100, content hashes 0/100), partitioned by whole
 source cluster, run **once**, with no recipe changed afterwards.
 
+The original 42-context table used a fixed-stride character overlap scan. A later,
+offset-independent scan found exact 12-token calibration overlap in four qualification source
+documents. Applying the same conservative rule to every candidate — exclude every context from
+any source document with even one hit — leaves **36 contexts / 24 clusters**:
+
 | candidate | mean KLD | 95 % CI | top-1 | paired vs FP8 |
 |---|---:|---|---:|---|
-| [hydrated](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated) | **0.003029** | [0.002572, 0.003536] | 97.68 % | −0.002691, **42/42** |
-| [K5/K6 online K6](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6) | 0.003395 | [0.002925, 0.003910] | 97.58 % | −0.002325, **42/42** |
-| [context edition](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6-context) | 0.003900 | [0.003275, 0.004588] | 97.43 % | −0.001820, **42/42** |
-| `Qwen/Qwen3.8-27B-FP8` | 0.005720 | [0.004849, 0.006680] | 96.82 % | — |
+| [hydrated](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated) | **0.003093** | [0.002577, 0.003684] | 97.63 % | −0.002798, **36/36** |
+| [K5/K6 online K6](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6) | 0.003455 | [0.002916, 0.004060] | 97.50 % | −0.002436, **36/36** |
+| [context edition](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6-context) | 0.003990 | [0.003268, 0.004797] | 97.36 % | −0.001901, **36/36** |
+| `Qwen/Qwen3.8-27B-FP8` | 0.005891 | [0.004901, 0.006985] | 96.72 % | — |
 
-The ranking is preserved and the advantage over FP8 is **larger** on unseen sources (47 / 41 /
-32 % lower) than on the development suite (44 / 38 / 26 %), which is the opposite of what
-selection bias would produce.
+The correction changes no ordering or paired win: the three EXL3 builds remain 47 / 41 / 32 %
+below FP8. The original 42-context figures and the candidate-independent correction are both
+preserved in [docs/31](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/docs/31-frozen-qualification.md).
+Absolute magnitudes remain suite-specific.
 
-**Absolute magnitudes are suite-specific:** every candidate, FP8 included, measures ~2.4x lower
-on this corpus than on the development one. Quote the suite with the number.
-Details in [docs/31](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/docs/31-frozen-qualification.md).
+## Downstream task retention
+
+On 40 deterministic generated tasks (10 each arithmetic, executable builtins-only code,
+exact-list instruction following and tool-call schema), BF16 and every comparator scored
+40/40. This build had **zero regressions** and matched BF16's exact final-answer text on
+**33/40**; all seven differing answers still passed their contracts. Wilson 95 % lower bound
+is 91.2 %. This is a transparent smoke suite, not a public leaderboard; full responses are in
+the [run receipt](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/tasks-v2-k4.json);
+its extracted-value agreement field is superseded by the
+[strict rescore](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/task-retention-v2-strict-rescore.json).
 
 ## Serving
 
@@ -150,8 +165,8 @@ Its launcher scripts only dispatch GLM-5.2 and DeepSeek families, so call
 `vllm serve` directly:
 
 ```bash
-docker run --rm --gpus '"device=0"' --ipc host -p 8000:8000 \
-  -v /models:/models -v /cache:/cache \
+docker run --rm --gpus '"device=0"' --ipc host -p 127.0.0.1:8000:8000 \
+  -v /models:/models:ro -v /cache:/cache \
   -e VLLM_EXL3_ONLINE_TRELLIS_BITS=6 \
   -e VLLM_EXL3_ONLINE_CACHE_DIR=/cache/exl3-online \
   -e VLLM_EXL3_ONLINE_CACHE_MODE=readwrite \
@@ -167,6 +182,10 @@ docker run --rm --gpus '"device=0"' --ipc host -p 8000:8000 \
     --max-num-seqs 4 \
     --host 0.0.0.0 --port 8000
 ```
+The container listens on all interfaces internally, but Docker publishes the port to host
+loopback only. For remote clients, keep that binding and put an authenticated TLS proxy in
+front; do not expose this unauthenticated generation endpoint directly.
+
 
 Four flags are load-bearing:
 
@@ -234,21 +253,26 @@ figures: `rfn ~0.0155`, `sqnr ~36.4 dB`.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="assets/fidelity-vs-size-dark.svg">
-  <img alt="Mean KL divergence from BF16 versus resident weight footprint. This quant at 19.2 GB and 0.0307; Qwen FP8 at 30.9 GB and 0.0131; Unsloth NVFP4 at 23.4 GB and 0.0950. Right panel shows top-1 agreement: 94.50, 96.22 and 90.53 percent respectively." src="assets/fidelity-vs-size-light.svg">
+  <img alt="Overlap-corrected mean KL divergence from BF16 versus resident weight footprint. This quant at 19.2 GB and 0.0297; Qwen FP8 at 30.9 GB and 0.0128; Unsloth NVFP4 at 23.4 GB and 0.0927. Right panel shows top-1 agreement: 94.48, 96.18 and 90.49 percent respectively." src="assets/fidelity-vs-size-light.svg">
 </picture>
 
-**136 analysis contexts x 2047 positions = 278,392 scored positions** from a corpus
-that no candidate was calibrated on (Gutenberg, arXiv, Wikipedia in 9 languages,
-CPython), verified by a 160-character shingle scan against every exllamav3
-calibration corpus: **0 contaminated contexts**. Exact full-vocabulary two-pass
-`KL(BF16 reference || candidate)` through one shared BF16 LM head, float64
-accumulation, source-cluster bootstrap.
+**136 analysis contexts x 2047 positions = 278,392 scored positions** from separately
+sourced Gutenberg, arXiv, Wikipedia and CPython documents. The original fixed-stride
+160-character scan reported zero calibration hits; a later all-position 12-token scan found
+exact overlap in 2/41 source documents. Exact full-vocabulary two-pass
+`KL(BF16 reference || candidate)` through one shared BF16 LM head, float32 within each
+vocabulary chunk and float64 across chunks, source-cluster bootstrap.
 
 | candidate | weights | mean KLD | bootstrap 95 % CI | median | p99.9 | JSD (bits) | top-1 |
 |---|---|---:|---:|---:|---:|---:|---:|
 | `Qwen/Qwen3.8-27B-FP8` | 30.9 GB | 0.013126 | [0.00981, 0.01709] | 0.002343 | 0.773 | 0.004528 | 96.22 % |
 | **this quant** | **19.2 GB** | **0.030736** | [0.02238, 0.04073] | 0.004218 | 1.758 | 0.010051 | 94.50 % |
 | `unsloth/Qwen3.8-27B-NVFP4` | 23.4 GB | 0.094978 | [0.06858, 0.12688] | 0.012911 | 4.509 | 0.028663 | 90.53 % |
+
+**Overlap-corrected subset:** conservatively removing all nine analysis contexts from either
+affected source document gives K4 **0.029679**, FP8 **0.012798**, and NVFP4 **0.092727**
+over 127 contexts. The ranking and every conclusion survive; the table above is retained as
+the original full-suite receipt, not described as contamination-free.
 
 Paired over the same contexts: **-0.064242** versus NVFP4
 (95 % CI [-0.08621, -0.04611], **136/136** contexts ours) and

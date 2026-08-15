@@ -1,0 +1,47 @@
+{
+  "schema": "qwen38-embedding-quant-error/1",
+  "source": {
+    "repo": "Qwen/Qwen3.8-27B",
+    "revision": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0",
+    "tensor": "model.language_model.embed_tokens.weight",
+    "shape": [248320, 5120],
+    "dtype": "BF16"
+  },
+  "quantizers": {
+    "int8_per_row": {
+      "scale": "amax/127",
+      "range": [-127, 127]
+    },
+    "int4_group_128": {
+      "scale": "amax/7",
+      "range": [-8, 7]
+    }
+  },
+  "elapsed_seconds": 2.775735855102539,
+  "int8": {
+    "relative_mae": 0.009650932743275789,
+    "relative_rmse": 0.009007277427409694,
+    "mean_row_relative_l2": 0.008873417973518372,
+    "p50_row_relative_l2": 0.008720861747860909,
+    "p95_row_relative_l2": 0.010202225297689438,
+    "p99_row_relative_l2": 0.011363455094397068,
+    "mean_cosine": 0.9999603629112244,
+    "p01_cosine": 0.9999361038208008
+  },
+  "int4": {
+    "relative_mae": 0.12623111059135148,
+    "relative_rmse": 0.11799257910623152,
+    "mean_row_relative_l2": 0.1177344024181366,
+    "p50_row_relative_l2": 0.1174103394150734,
+    "p95_row_relative_l2": 0.12202351540327072,
+    "p99_row_relative_l2": 0.1254531592130661,
+    "mean_cosine": 0.9931408166885376,
+    "p01_cosine": 0.9922359585762024
+  },
+  "int4_over_int8_error_ratio": {
+    "relative_mae": 13.079679855742649,
+    "relative_rmse": 13.099694114802428,
+    "mean_row_relative_l2": 13.268213305121035
+  },
+  "metadata_correction": "The original scratch receipt contained a 41-character transcription error in source.revision. This published copy uses the immutable revision verified in the checkpoint and release evidence. Numeric fields are unchanged."
+}

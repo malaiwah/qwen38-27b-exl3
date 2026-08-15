@@ -1,5 +1,9 @@
 # Goal: Pareto-dominate official FP8 on every axis at <= 21.92 GB
 
+> **Metric correction, 2026-08-15.** The gate result is unchanged: on the
+> overlap-corrected subset this build is **0.007945** versus official FP8 **0.012798**
+> (38 % lower). Tables below retain the original 136-context receipt.
+
 ## The goal, stated as a gate
 
 `Qwen/Qwen3.8-27B-FP8` is the strongest same-generation reference: an official artifact,

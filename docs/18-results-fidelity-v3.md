@@ -2,12 +2,18 @@
 
 The v2 numbers were measured on a suite built from exllamav3's bundled calibration
 corpora — **the same text our K4 conversion was calibrated on**, while NVFP4 and FP8
-were calibrated elsewhere. That is train-on-test and it flattered us. v3 re-measures
-everything on held-out text with a contamination scan.
+were calibrated elsewhere. That is train-on-test and it flattered us. v3 re-measured
+everything on separately sourced text.
+
+**2026-08-15 correction:** the original fixed-stride character scan's “0 hits” result was
+offset-sensitive. Scanning every normalized 12-token position found exact overlap in 2/41
+source documents. Excluding all nine analysis contexts from those documents leaves 127:
+K4 0.029679, FP8 0.012798, NVFP4 0.092727, and K5/K6 0.007945. The original 136-context
+receipt below is retained for traceability; no ranking or conclusion changes.
 
 Suite: 181 contexts (136 analysis / 45 qualification, 32 sentinels), 2048 tokens each,
-5 strata, 41 real source clusters, **0 contamination hits** against 67,818 calibration
-shingles. Suite token SHA-256 `3f9d17f1b55f6487...fe735691`.
+5 strata, 41 real source clusters. Suite token SHA-256
+`3f9d17f1b55f6487...fe735691`.
 
 ## Analysis partition — 136 contexts, 278,392 scored positions
 

@@ -1,5 +1,13 @@
 # Iteration 2: gate K5 / up K5 / down K6
 
+> **2026-08-15 contamination correction.** An offset-independent audit found exact
+> calibration overlap in two source documents missed by the original fixed-stride scan.
+> Excluding all nine affected analysis contexts changes the headline from 0.008157 to
+> **0.007945**; official FP8 changes 0.013126 → **0.012798**, K4 0.030736 →
+> **0.029679**, and NVFP4 0.094978 → **0.092727**. The 38 % FP8 advantage and every
+> ordering survive. Tables below preserve the original 136-context receipt; current claims
+> use the corrected 127-context subset.
+
 ## Recipe and why
 
 The v1 recipe put the whole MLP at K4 and left 2.71 GB of the NVFP4-equivalent budget
