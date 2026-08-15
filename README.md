@@ -166,6 +166,7 @@ See [PROGRESS.md](PROGRESS.md) for the full session record.
 | [docs/30-iteration-4-context-edition.md](docs/30-iteration-4-context-edition.md) | serialized-K5 context build, receipts and rejected vision quant |
 | [docs/31-frozen-qualification.md](docs/31-frozen-qualification.md) | source-disjoint frozen v4 qualification |
 | [docs/32-native-context-embedding-overlay.md](docs/32-native-context-embedding-overlay.md) | int8 input table, native MTP-3 plus 8.4 MP engine-budget proof, and corrected draft accounting |
+| [docs/33-evidence-volume-and-intervals.md](docs/33-evidence-volume-and-intervals.md) | the 10,480,640-position rerun, the measured tail, and why ten times the positions did not narrow the interval |
 | [docs/29-plan-and-loose-ends.md](docs/29-plan-and-loose-ends.md) | ranked open work and acceptance gates, including the evidence-volume objection (F1) this session closed |
 
 Tooling in [tools/](tools/) is what produced the evidence: an unprivileged OCI image
