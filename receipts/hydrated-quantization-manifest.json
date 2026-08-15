@@ -1,0 +1,104 @@
+{
+  "schema": "qwen38-quantization-manifest/1",
+  "source": {
+    "repo": "Qwen/Qwen3.8-27B",
+    "revision": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0"
+  },
+  "converter": "turboderp-org/exllamav3@5f3c537 (1.4.2)",
+  "recipe": "MLP gate/up K5, down K6, attention K6 serialized (calibrated), lm_head K6/mcg, quantized MTP, BF16 embed+vision",
+  "command": "convert.py -i Qwen3.8-27B -b 4 -hb 6 -mb 4 -vb 16 -cb mcg with EXL3_BITS_FIXED attention=6 and EXL3_BITS_OVERRIDE mlp gate/up=5 down=6",
+  "physical_tensors": 2426,
+  "physical_tensor_count": 2426,
+  "logical_tensor_count": 1199,
+  "logical_parameter_count": 27781427952,
+  "exl3_modules": 409,
+  "roles": {
+    "embed_tokens": {
+      "modules": 0,
+      "bytes": 2542796800,
+      "gb": 2.543,
+      "formats": {
+        "BF16": 1
+      }
+    },
+    "full_attention": {
+      "modules": 64,
+      "bytes": 1259618560,
+      "gb": 1.26,
+      "formats": {
+        "exl3_K6_mcg": 64,
+        "BF16": 32
+      }
+    },
+    "linear_attention": {
+      "modules": 144,
+      "bytes": 4207138368,
+      "gb": 4.207,
+      "formats": {
+        "exl3_K6_mcg": 144,
+        "F16": 96,
+        "BF16": 192
+      }
+    },
+    "lm_head": {
+      "modules": 1,
+      "bytes": 954055684,
+      "gb": 0.954,
+      "formats": {
+        "exl3_K6_mcg": 1
+      }
+    },
+    "mlp_down_proj": {
+      "modules": 64,
+      "bytes": 4281073920,
+      "gb": 4.281,
+      "formats": {
+        "exl3_K6_mcg": 64
+      }
+    },
+    "mlp_gate_proj": {
+      "modules": 64,
+      "bytes": 3568042240,
+      "gb": 3.568,
+      "formats": {
+        "exl3_K5_mcg": 64
+      }
+    },
+    "mlp_up_proj": {
+      "modules": 64,
+      "bytes": 3568042240,
+      "gb": 3.568,
+      "formats": {
+        "exl3_K5_mcg": 64
+      }
+    },
+    "mtp_draft": {
+      "modules": 8,
+      "bytes": 283415584,
+      "gb": 0.283,
+      "formats": {
+        "exl3_K4_mcg": 1,
+        "exl3_K6_mcg": 5,
+        "exl3_K5_mcg": 2,
+        "BF16": 7
+      }
+    },
+    "norms_and_small": {
+      "modules": 0,
+      "bytes": 1320960,
+      "gb": 0.001,
+      "formats": {
+        "BF16": 129
+      }
+    },
+    "vision_tower": {
+      "modules": 0,
+      "bytes": 921460192,
+      "gb": 0.921,
+      "formats": {
+        "BF16": 333
+      }
+    }
+  },
+  "note": "config.json -> quantization_config keeps a single bits/codebook/mtp_bits triple for loader compatibility; it cannot describe a mixed checkpoint. This file and quantization_config.json -> tensor_storage are authoritative. physical_tensor_count counts stored tensors, and one EXL3 module is several of them, so the Hub's tensor and parameter totals report packed storage elements; logical_parameter_count is the real parameter count."
+}

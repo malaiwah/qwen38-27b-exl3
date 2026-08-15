@@ -1,0 +1,47 @@
+{
+  "schema": "qwen38-build-receipt/1",
+  "artifact": "qwen38-hyd",
+  "source": {
+    "repo": "Qwen/Qwen3.8-27B",
+    "revision": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0"
+  },
+  "converter": "turboderp-org/exllamav3@5f3c537 (1.4.2)",
+  "recipe": "MLP gate/up K5, down K6, attention K6 serialized (calibrated), lm_head K6/mcg, quantized MTP, BF16 embed+vision",
+  "command": "convert.py -i Qwen3.8-27B -b 4 -hb 6 -mb 4 -vb 16 -cb mcg with EXL3_BITS_FIXED attention=6 and EXL3_BITS_OVERRIDE mlp gate/up=5 down=6",
+  "total_bytes": 21610985486,
+  "files": {
+    ".gitattributes": "34448b82c17d60fec9b65b1f093c115ddbaadc04beb1b0140b6bfed2e012a930",
+    "LICENSE": "bbedc3fda3305820b977265f01b8619d87570a6739de3a5582c3464840f1e57a",
+    "README.md": "57e4bdb258ee1a7d2635c5174ebd4e56abe392505cdb5f8bbb356b0dc4293641",
+    "build-receipt.json": "a6de954fb1583b6786e33fe95077e8126f865e27e3796405b4e06711a79c4ccb",
+    "chat_template.jinja": "c3cf9e34abf4f9e36c2d72165aa9c132d3e2a725b6c2586aaa3a8af9d7a81041",
+    "config.json": "fbb105334da6554c10784ff1257fda5e3821d4d5426d64469cee2b2ad67ba2b3",
+    "crc32.txt": "b42dd291f5f98b05807e458f5b47849969a9b3326acbf0c97d28b05826740b83",
+    "generation_config.json": "e70c136c1b78ddc1fb0905bac8e733a4dc448d4f852a5dd75143fffc70be550e",
+    "merges.txt": "a9d356d7bdf1ef4949e3e748e95b8e10ad9d4e2e838eddc38a0a7b6b94d1db8d",
+    "model-00001-of-00003.safetensors": "792b46b54a79871030a5a029a483b8938ff509912169a1c7627913d614365f0d",
+    "model-00002-of-00003.safetensors": "1902a7425fb7e36b45f1c65e5aa0d6e159a6dd8b79b7810e54ab33457ed1ccd2",
+    "model-00003-of-00003.safetensors": "6fa500e4bebf04917ede2ee7b1379ded7aa85aa37110e103d36d9ad330fc0e96",
+    "model.safetensors.index.json": "ea6e0e1064efbb72d89b4a6f9e0ee76c909a94b3f25047487a2ffb282896a26c",
+    "preprocessor_config.json": "27225450ac9c6529872ee1924fcb0962ff5634834f817040f444118116f4e516",
+    "quantization_config.json": "bdf00572254e104c61474e8006054e8666f03c24be523e4ddfb52766fefeffee",
+    "quantization_manifest.json": "db9b03fb2bb8fa9219e266a825ee028f6ed1420f4de2617d752143dee9ed4c4d",
+    "tokenizer.json": "0997f410c57a1f4e53b09e4be8f4a172d90edd9564368fb0847030937229b9f3",
+    "tokenizer_config.json": "b11349aafa7cdc6a320767cf7ceb29ed82f7eda5d65e8e0819e76f0ce947bf27",
+    "video_preprocessor_config.json": "7768af27c1fafa9cc9011c1dc20067e03f8915e03b63504550e11d5066986d13",
+    "vocab.json": "ce99b4cb2983d118806ce0a8b777a35b093e2000a503ebde25853284c9dfa003"
+  },
+  "tensor_inventory": {
+    "physical_tensors": 2426,
+    "exl3_modules": 409,
+    "logical_tensors_reconstructed": 1199,
+    "logical_parameter_count": 27781427952
+  },
+  "upstream_check": {
+    "dir": "/models/Qwen3.8-27B",
+    "index_sha256": "77042094076611b69791a610065f28b7013b8c621795fa86ddccc8bac7d1b9df",
+    "logical_tensors": 1199,
+    "shapes_verified": 1199
+  },
+  "host": "Linux 6.8.0-100-generic"
+}

@@ -28,6 +28,32 @@ the tensor the reference protocol captures.
     fidelity.py replay   --reference REF_DIR --candidate CAP_DIR --head W.safetensors \\
                          --suite SUITE_DIR --out report.json
     fidelity.py paired   --a report_a.json --b report_b.json --out paired.json
+
+New keys, all additive; every pre-existing key keeps its name and meaning:
+  * `per_context_all` (replay report) - one row per scored context, complete and
+    untruncated, so the headline is recomputable from the report alone: `index`,
+    `source_cluster`, `stratum`, `positions_scored`, `mean_kld`, `median_kld`,
+    `top1_agreement`. `worst_contexts` remains the truncated worst-20 view and
+    `per_context` remains the richer per-context array that `paired` consumes.
+  * `candidate_identity` (replay report and capture manifest) - what was measured,
+    by content instead of by local path: `model_path`, `model_revision` (git HEAD
+    of `<model>/.git` when the checkpoint is a checkout, else the first line of
+    `revision.txt`), `model_revision_source` (`git_head` | `revision_txt` |
+    `none`), `index_sha256` (sha256 of `model.safetensors.index.json` - the digest
+    that pins a locally built quant, which has no revision of any kind),
+    `shard_sha256` (shard filename -> sha256, null unless `--hash-shards` is
+    passed, since it reads every byte of the checkpoint), `quantization`,
+    `quantization_config`, `kv_cache_dtype_requested`, `kv_cache_dtype_resolved`,
+    `kv_cache_dtype_resolved_source`. `capture` writes it from the live engine;
+    `replay` carries the manifest block forward and recomputes the digests when
+    the checkpoint is still reachable.
+  * `kv_cache_dtype_requested` / `kv_cache_dtype_resolved` - the requested string
+    is normally `auto`, which identifies nothing. The resolved value is read back
+    from the engine's cache config after construction; `auto` there means the
+    model dtype, which is vLLM's own rule, and `kv_cache_dtype_resolved_source`
+    says which of the two produced the answer. `unresolved` means the engine
+    exposed no cache config in this process - never a guessed dtype. The legacy
+    manifest key `kv_cache_dtype` keeps recording the requested string.
 """
 from __future__ import annotations
 
@@ -71,6 +97,124 @@ def sha256_file(p: Path) -> str:
         while chunk := f.read(8 << 20):
             h.update(chunk)
     return h.hexdigest()
+
+
+def git_head(repo: Path) -> str | None:
+    """HEAD commit of a checkout, without shelling out to git.
+
+    Hub snapshot directories are git clones, so their HEAD is the model revision.
+    `.git` is a directory for a normal clone and a `gitdir:` pointer file for a
+    worktree or submodule, and the branch ref may be loose or packed.
+    """
+    dot = repo / ".git"
+    if dot.is_file():
+        line = dot.read_text().strip()
+        if not line.startswith("gitdir:"):
+            return None
+        gitdir = repo / line.split(":", 1)[1].strip()
+    elif dot.is_dir():
+        gitdir = dot
+    else:
+        return None
+    head = gitdir / "HEAD"
+    if not head.is_file():
+        return None
+    text = head.read_text().strip()
+    if not text.startswith("ref:"):
+        return text or None  # detached HEAD holds the commit itself
+    ref = text.split(":", 1)[1].strip()
+    loose = gitdir / ref
+    if loose.is_file():
+        return loose.read_text().strip() or None
+    packed = gitdir / "packed-refs"
+    if packed.is_file():
+        for line in packed.read_text().splitlines():
+            if line[:1] in ("#", "^"):
+                continue
+            parts = line.split()
+            if len(parts) == 2 and parts[1] == ref:
+                return parts[0]
+    return None
+
+
+def model_identity(model: str, hash_shards: bool) -> dict:
+    """Content identity of a checkpoint directory.
+
+    A path is not an identity: it can be rebuilt or moved under the same name.
+    Revisions only exist for checkouts, so a locally built quant is pinned by
+    `index_sha256`, which covers every shard name, tensor name, dtype, shape and
+    offset, and exactly by `shard_sha256`, which costs a full read of the weights.
+    """
+    p = Path(model)
+    revision = git_head(p) if p.is_dir() else None
+    source = "git_head"
+    if revision is None:
+        txt = p / "revision.txt"
+        revision = txt.read_text().split("\n", 1)[0].strip() if txt.is_file() else ""
+        source = "revision_txt" if revision else "none"
+    index = p / "model.safetensors.index.json"
+    return {
+        "model_path": str(p.resolve()) if p.exists() else str(p),
+        "model_revision": revision or None,
+        "model_revision_source": source,
+        "index_sha256": sha256_file(index) if index.is_file() else None,
+        "shard_sha256": {f.name: sha256_file(f) for f in sorted(p.glob("*.safetensors"))}
+                        if hash_shards and p.is_dir() else None,
+    }
+
+
+def resolved_kv_cache_dtype(llm) -> tuple[str, str]:
+    """What the engine stores KV in, and where that answer came from.
+
+    An explicit `cache_dtype` (`fp8`, `fp8_e4m3`, ...) is the answer directly;
+    `auto` means "use the model dtype", so the model dtype is reported and the
+    source field says which one it was. vLLM keeps the cache config on the engine
+    and on `vllm_config` and has moved it between the two, so both chains are
+    tried; an engine that only holds a handle to a separate core process exposes
+    neither, and then the dtype is `unresolved` rather than a guess.
+    """
+    engine = getattr(llm, "llm_engine", llm)
+    config = getattr(engine, "vllm_config", None)
+    cache = getattr(engine, "cache_config", None) or getattr(config, "cache_config", None)
+    requested = getattr(cache, "cache_dtype", None)
+    if isinstance(requested, str) and requested not in ("", "auto"):
+        return requested, "cache_config.cache_dtype"
+    model = getattr(engine, "model_config", None) or getattr(config, "model_config", None)
+    dtype = getattr(model, "dtype", None)
+    if requested == "auto" and dtype is not None:
+        return str(dtype).removeprefix("torch."), "model_config.dtype"
+    return "unresolved", "unavailable"
+
+
+def capture_identity(capture: str, hash_shards: bool) -> dict:
+    """`candidate_identity` for an existing capture directory.
+
+    Engine-side facts can only come from the capture manifest, because only the
+    capture process saw the engine. Digests are recomputed here when the
+    checkpoint is still reachable, so a replay can be re-verified against the
+    checkpoint it names, and are otherwise carried forward from the manifest.
+    Captures written before the identity block existed keep null fields instead of
+    invented ones.
+    """
+    path = Path(capture, "capture-manifest.json")
+    manifest = json.loads(path.read_text()) if path.is_file() else {}
+    identity = dict(manifest.get("candidate_identity") or {})
+    model = identity.get("model_path") or manifest.get("model")
+    if model and Path(model).is_dir():
+        fresh = model_identity(model, hash_shards)
+        if not hash_shards:
+            del fresh["shard_sha256"]  # keep whatever digests capture recorded
+        identity.update(fresh)
+    identity.setdefault("model_path", model)
+    identity.setdefault("quantization", manifest.get("quantization"))
+    identity.setdefault("quantization_config", manifest.get("quantization_config"))
+    identity.setdefault("kv_cache_dtype_requested", manifest.get("kv_cache_dtype"))
+    for key, unknown in (("model_revision", None), ("model_revision_source", "none"),
+                         ("index_sha256", None), ("shard_sha256", None),
+                         ("kv_cache_dtype_resolved", "unresolved"),
+                         ("kv_cache_dtype_resolved_source", "unavailable")):
+        identity.setdefault(key, unknown)
+    return identity
 
 
 # ------------------------------------------------------------------ suite
@@ -228,6 +372,16 @@ def cmd_capture(args) -> int:
         kwargs["quantization_config"] = json.loads(args.quantization_config)
     llm = LLM(**kwargs)
 
+    identity = model_identity(args.model, args.hash_shards)
+    resolved, resolved_source = resolved_kv_cache_dtype(llm)
+    identity.update({"quantization": args.quantization,
+                     "quantization_config": args.quantization_config,
+                     "kv_cache_dtype_requested": args.kv_cache_dtype,
+                     "kv_cache_dtype_resolved": resolved,
+                     "kv_cache_dtype_resolved_source": resolved_source})
+    print("candidate_identity " + json.dumps({k: identity[k] for k in (
+        "model_revision", "index_sha256", "kv_cache_dtype_resolved")}), flush=True)
+
     hooked = llm.collective_rpc(_rpc_install_hook)
     print(f"hooked {hooked}", flush=True)
     if args.fp32:
@@ -266,6 +420,7 @@ def cmd_capture(args) -> int:
     meta = {"model": args.model, "quantization": args.quantization,
             "quantization_config": args.quantization_config,
             "kv_cache_dtype": args.kv_cache_dtype,
+            "candidate_identity": identity,
             "suite_token_sha256": manifest["suite_token_sha256"],
             "contexts": done, "captures": records, "elapsed_sec": time.time() - t0}
     (out / "capture-manifest.json").write_text(json.dumps(meta, indent=2))
@@ -375,7 +530,8 @@ def cmd_replay(args) -> int:
     head = load_head(args.head).to(hdtype)
     cand_head = load_head(args.candidate_head).to(hdtype) if args.candidate_head else None
     vocab, hidden_size = head.shape
-    per_ctx, strata, clusters, top1_hits, positions = [], {}, [], 0, 0
+    per_ctx, rows_all, strata, clusters = [], [], {}, []
+    top1_hits, positions = 0, 0
     all_kl = []
 
     for ctx in select(suite["context_index"], args.filter):
@@ -389,16 +545,20 @@ def cmd_replay(args) -> int:
         with safe_open(str(cp), framework="pt", device="cpu") as f:
             cand = f.get_tensor("hidden_states").to(dev, hdtype)
         kl, js, hits = context_metrics(ref, cand, head, args.vocab_chunk, cand_head)
-        m = float(kl.mean())
+        npos = kl.numel()
+        m, med, agree = float(kl.mean()), float(kl.median()), hits / npos
         per_ctx.append({"index": i, "stratum": ctx["stratum"],
                         "source_cluster": ctx["source_cluster"],
-                        "mean_kld": m, "median_kld": float(kl.median()),
+                        "mean_kld": m, "median_kld": med,
                         "max_kld": float(kl.max()), "mean_jsd_bits": float(js.mean()),
-                        "top1_agreement": hits / kl.numel()})
+                        "top1_agreement": agree})
+        rows_all.append({"index": i, "source_cluster": ctx["source_cluster"],
+                         "stratum": ctx["stratum"], "positions_scored": npos,
+                         "mean_kld": m, "median_kld": med, "top1_agreement": agree})
         strata.setdefault(ctx["stratum"], []).append(m)
         clusters.append(ctx["source_cluster"])
         top1_hits += hits
-        positions += kl.numel()
+        positions += npos
         all_kl.append(kl)
         if len(per_ctx) % 16 == 0:
             print(f"{len(per_ctx)} contexts, running mean {statistics.fmean(x['mean_kld'] for x in per_ctx):.6f}", flush=True)
@@ -411,6 +571,7 @@ def cmd_replay(args) -> int:
     report = {
         "schema": "qwen38-fidelity-report/1",
         "reference": str(args.reference), "candidate": str(args.candidate),
+        "candidate_identity": capture_identity(args.candidate, args.hash_shards),
         "head": str(args.head), "head_sha256": sha256_file(Path(args.head)),
         "candidate_head": str(args.candidate_head) if args.candidate_head else None,
         "candidate_head_sha256": sha256_file(Path(args.candidate_head)) if args.candidate_head else None,
@@ -428,6 +589,7 @@ def cmd_replay(args) -> int:
         "strata": {k: {"contexts": len(v), "mean_kld": statistics.fmean(v)}
                    for k, v in sorted(strata.items())},
         "worst_contexts": sorted(per_ctx, key=lambda c: -c["mean_kld"])[:20],
+        "per_context_all": rows_all,
         "per_context": per_ctx,
         "comparator": {"vocab_chunk": args.vocab_chunk, "device": args.device,
                        "accumulation": "float64", "two_pass": True},
@@ -601,6 +763,8 @@ def main() -> int:
                    help="store hidden states in float32 (2x disk, removes bf16 rounding)")
     c.add_argument("--chunk-accumulate", action="store_true",
                    help="concatenate chunked-prefill forwards (needed above one chunk)")
+    c.add_argument("--hash-shards", action="store_true",
+                   help="sha256 every weight shard for candidate_identity (full read)")
     c.set_defaults(func=cmd_capture)
 
     r = sub.add_parser("replay")
@@ -619,6 +783,8 @@ def main() -> int:
                    help="all | analysis | qualification | sentinel")
     r.add_argument("--fp32", action="store_true",
                    help="replay in float32 (matches --fp32 captures)")
+    r.add_argument("--hash-shards", action="store_true",
+                   help="sha256 every weight shard for candidate_identity (full read)")
     r.set_defaults(func=cmd_replay)
 
     z = sub.add_parser("qualify")

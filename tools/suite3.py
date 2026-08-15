@@ -59,6 +59,13 @@ def main() -> int:
     ap.add_argument("--sentinels", type=int, default=32)
     ap.add_argument("--qualification-fraction", type=float, default=0.25)
     ap.add_argument("--seed", type=int, default=20260814)
+    ap.add_argument("--allow-shortfall", action="store_true",
+                    help="accept fewer contexts than requested in a stratum instead of "
+                         "failing; without it an under-filled stratum aborts the build")
+    ap.add_argument("--exclude-suite", default=None,
+                    help="path to an earlier suite-manifest.json; documents and token "
+                         "hashes recorded there are refused, which is how a later suite "
+                         "is made source-disjoint from the one used to pick a recipe")
     args = ap.parse_args()
 
     from transformers import AutoTokenizer
@@ -75,10 +82,40 @@ def main() -> int:
     for s in strata[: args.contexts % len(strata)]:
         per[s] += 1
 
-    contexts, seen, contam_total, contam_ctx = [], set(), 0, 0
+    # Document identity travels with the suite: without it a reader cannot tell which
+    # source a context came from, only which category, and cannot check that a later
+    # suite is source-disjoint from this one.
+    doc_identity: dict[str, dict] = {}
+    for stratum in strata:
+        for f in sorted((corpus / stratum).glob("*.txt")):
+            raw = f.read_bytes()
+            doc_identity[f.stem] = {"stratum": stratum, "file": f.name,
+                                    "bytes": len(raw), "sha256": sha(raw)}
+
+
+    excluded_docs: set[str] = set()
+    excluded_tokens: set[str] = set()
+    if args.exclude_suite:
+        prior = json.loads(Path(args.exclude_suite).read_text())
+        for name, meta in prior.get("documents", []):
+            excluded_docs.add(name)
+            if isinstance(meta, dict) and meta.get("sha256"):
+                excluded_docs.add(meta["sha256"])
+        excluded_docs.update(r["source_cluster"] for r in prior.get("context_index", []))
+        excluded_tokens.update(r["token_sha256"] for r in prior.get("context_index", []))
+        for name in list(doc_identity):
+            if name in excluded_docs or doc_identity[name]["sha256"] in excluded_docs:
+                del doc_identity[name]
+        print(f"excluding {len(excluded_docs)} prior document identifiers and "
+              f"{len(excluded_tokens)} prior context hashes", flush=True)
+    # Seeding `seen` with the prior suite's context hashes means an excluded context
+    # cannot re-enter even if the same passage is reachable through a different document.
+    contexts, seen, contam_total, contam_ctx = [], set(excluded_tokens), 0, 0
+    shortfall = {}
     for stratum in strata:
         want = per[stratum]
-        files = sorted((corpus / stratum).glob("*.txt"))
+        files = [f for f in sorted((corpus / stratum).glob("*.txt"))
+                 if f.stem in doc_identity]
         made = 0
         # round-robin across documents so one long book cannot dominate a stratum
         cursors = {f: 0 for f in files}
@@ -115,15 +152,50 @@ def main() -> int:
                 made += 1
             if not progressed:
                 break
-        print(f"  {stratum}: {made} contexts from {len(set(c['source_cluster'] for c in contexts if c['stratum']==stratum))} documents", flush=True)
+        if made < want:
+            shortfall[stratum] = (made, want)
+        print(f"  {stratum}: {made}/{want} contexts from "
+              f"{len(set(c['source_cluster'] for c in contexts if c['stratum']==stratum))} "
+              "documents", flush=True)
+    # Under-filling silently is how the v3 suite ended up claiming nine Wikipedia
+    # languages while holding German and Russian only. Refuse instead, unless the caller
+    # accepts the shortfall explicitly.
+    if shortfall and not args.allow_shortfall:
+        detail = ", ".join(f"{s}: {got}/{want}" for s, (got, want) in sorted(shortfall.items()))
+        raise SystemExit(
+            f"stratum shortfall ({detail}); fetch more sources or pass --allow-shortfall"
+        )
 
     rng = random.Random(args.seed)
-    rng.shuffle(contexts)
+    # Partition by SOURCE CLUSTER, not by context. Shuffling contexts and slicing put
+    # every cluster on both sides of the split: measured on the v3 suite, all 27
+    # qualification clusters also appeared in analysis, so the "held-out" partition
+    # shared documents with the partition used to pick the recipe and could not serve as
+    # a post-selection test. Whole clusters move together here, and the split is
+    # stratified by stratum so neither side loses a domain.
+    by_stratum: dict[str, dict[str, list[dict]]] = {}
+    for c in contexts:
+        by_stratum.setdefault(c["stratum"], {}).setdefault(c["source_cluster"], []).append(c)
+    qual_clusters: set[str] = set()
+    for stratum, clusters in sorted(by_stratum.items()):
+        names = sorted(clusters)
+        rng.shuffle(names)
+        stratum_contexts = sum(len(v) for v in clusters.values())
+        target = stratum_contexts * args.qualification_fraction
+        taken = 0
+        # names[:-1] keeps at least one cluster of every stratum on the analysis side,
+        # so neither partition silently loses a domain.
+        for name in names[:-1]:
+            if taken >= target:
+                break
+            qual_clusters.add(name)
+            taken += len(clusters[name])
+    ordered = list(contexts)
+    rng.shuffle(ordered)
     out = Path(args.out)
     (out / "tokens").mkdir(parents=True, exist_ok=True)
-    n_qual = int(len(contexts) * args.qualification_fraction)
     index = []
-    for i, c in enumerate(contexts):
+    for i, c in enumerate(ordered):
         name = f"context-{i:04d}.json"
         (out / "tokens" / name).write_text(json.dumps(c["tokens"]))
         index.append({"index": i, "stratum": c["stratum"],
@@ -131,8 +203,14 @@ def main() -> int:
                       "file": f"tokens/{name}", "tokens": len(c["tokens"]),
                       "token_sha256": c["token_sha256"],
                       "calibration_shingle_hits": c["calibration_shingle_hits"],
-                      "partition": "qualification" if i < n_qual else "analysis",
+                      "partition": ("qualification" if c["source_cluster"] in qual_clusters
+                                    else "analysis"),
                       "sentinel": False})
+    n_qual = sum(1 for r in index if r["partition"] == "qualification")
+    analysis_clusters = {r["source_cluster"] for r in index if r["partition"] == "analysis"}
+    leak = analysis_clusters & qual_clusters
+    if leak:
+        raise SystemExit(f"partition leak: clusters on both sides: {sorted(leak)}")
     sentinels = rng.sample([r for r in index if r["partition"] == "analysis"],
                            min(args.sentinels, len(index) - n_qual))
     for r in sentinels:
@@ -159,6 +237,19 @@ def main() -> int:
                        "sentinels": len(sentinels)},
         "strata": {s: sum(1 for r in index if r["stratum"] == s) for s in strata},
         "source_clusters": len({r["source_cluster"] for r in index}),
+        # Recorded explicitly so a reader can check group-disjointness without
+        # recomputing it, which is exactly the property the v3 suite lacked.
+        "cluster_partition": {
+            "analysis": sorted({r["source_cluster"] for r in index
+                                if r["partition"] == "analysis"}),
+            "qualification": sorted(qual_clusters),
+            "overlap": sorted({r["source_cluster"] for r in index
+                               if r["partition"] == "analysis"} & qual_clusters),
+        },
+        "documents": sorted(
+            {r["source_cluster"]: doc_identity.get(r["source_cluster"], {})
+             for r in index}.items()
+        ),
         "context_index": index,
     }
     manifest["suite_token_sha256"] = sha("".join(r["token_sha256"] for r in index).encode())

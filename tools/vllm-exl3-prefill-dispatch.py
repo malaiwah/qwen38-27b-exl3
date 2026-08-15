@@ -795,6 +795,114 @@ def _reconstruct_scratch(device: torch.device, k: int, n: int) -> torch.Tensor:
     return buf
 
 
+_EXL3_FP8_SCRATCH: dict[tuple[int, int, int], torch.Tensor] = {}
+_EXL3_FP8_WEIGHT_SCALE: dict[tuple[int, int], torch.Tensor] = {}
+_E4M3_MAX = 448.0
+
+
+def _prefill_fp8_enabled() -> bool:
+    """Whether the prefill GEMM may run in FP8 (off by default).
+
+    An FP8 matmul is 1.5-1.8x faster than fp16 on these shapes (SM120, measured), and
+    the reconstruct kernel can emit the column-major FP8 operand directly, so the win
+    is not eaten by a conversion pass. It costs numerics: both operands are narrowed to
+    E4M3, on the prefill path only - decode keeps the exact trellis kernel.
+    """
+    return os.environ.get("VLLM_EXL3_PREFILL_FP8", "0") == "1"
+
+
+def _fp8_scratch(device: torch.device, n: int, k: int) -> torch.Tensor:
+    index = device.index if device.index is not None else torch.cuda.current_device()
+    key = (index, n, k)
+    buf = _EXL3_FP8_SCRATCH.get(key)
+    if buf is None:
+        buf = torch.empty((n, k), dtype=torch.float8_e4m3fn, device=device)
+        _EXL3_FP8_SCRATCH[key] = buf
+    return buf
+
+
+def _fp8_weight_scale(
+    trellis: torch.Tensor, bits: int, mcg: bool, mul1: bool
+) -> torch.Tensor:
+    """Per-tensor E4M3 scale for a trellis, measured once and cached.
+
+    The reconstructed matrix is the raw decoded weight - suh and svh are applied to the
+    activation and the output, not folded in - so its dynamic range is fixed per matrix
+    and one absmax is enough. Cost is one reconstruct per matrix at first prefill use.
+    """
+    key = (trellis.data_ptr(), bits)
+    scale = _EXL3_FP8_WEIGHT_SCALE.get(key)
+    if scale is None:
+        ext = _load_exl3_ext()
+        k = trellis.shape[0] * 16
+        n = trellis.shape[1] * 16
+        probe = _reconstruct_scratch(trellis.device, k, min(n, _EXL3_RECONSTRUCT_SLICE_N))
+        amax = torch.zeros((), dtype=torch.float32, device=trellis.device)
+        chunk = probe.shape[1]
+        for start in range(0, n, chunk):
+            view = probe[:, : min(chunk, n - start)]
+            if n <= chunk:
+                ext.reconstruct(view, trellis, bits, mcg, mul1)
+            else:
+                ext.reconstruct_slice(view, trellis, bits, mcg, mul1, start)
+            torch.maximum(amax, view.abs().amax().float(), out=amax)
+        scale = (amax.clamp_(min=1e-6) / _E4M3_MAX).to(torch.float32)
+        _EXL3_FP8_WEIGHT_SCALE[key] = scale
+    return scale
+
+
+def _reconstruct_fp8_mm_into(
+    output: torch.Tensor,
+    x: torch.Tensor,
+    trellis: torch.Tensor,
+    suh: torch.Tensor,
+    svh: torch.Tensor,
+    mcg: bool,
+    mul1: bool,
+) -> bool:
+    """FP8 variant of the prefill path. Returns False if this shape cannot use it."""
+    ext = _load_exl3_ext()
+    if not hasattr(ext, "reconstruct_fp8_slice"):
+        return False
+    bits = trellis.shape[2] // 16
+    k = trellis.shape[0] * 16
+    n = trellis.shape[1] * 16
+    chunk = min(n, _EXL3_RECONSTRUCT_SLICE_N)
+    if chunk % 128 or k % 16:
+        return False
+
+    scale_b = _fp8_weight_scale(trellis, bits, mcg, mul1)
+    inv_scale_b = float(1.0 / scale_b.item())
+
+    x_had = torch.empty_like(x)
+    ext.had_r_128(x, x_had, suh, None, 1.0)
+    scale_a = (x_had.abs().amax().float().clamp_(min=1e-6) / _E4M3_MAX).to(torch.float32)
+    # _scaled_mm wants both extents padded to 16 rows; prefill chunks are usually 2048
+    # but a prompt remainder is not, so pad rather than fall back.
+    rows = x_had.shape[0]
+    padded = (rows + 15) // 16 * 16
+    x8 = torch.empty((padded, k), dtype=torch.float8_e4m3fn, device=x.device)
+    torch.div(x_had, scale_a, out=x_had)
+    x8[:rows].copy_(x_had)
+    if padded != rows:
+        x8[rows:].zero_()
+
+    for start in range(0, n, chunk):
+        end = min(start + chunk, n)
+        w8 = _fp8_scratch(x.device, end - start, k)
+        ext.reconstruct_fp8_slice(w8, trellis, bits, mcg, mul1, start, inv_scale_b)
+        part = torch._scaled_mm(
+            x8,
+            w8.t(),
+            scale_a=scale_a,
+            scale_b=scale_b,
+            out_dtype=torch.float16,
+        )
+        output[:, start:end].copy_(part[:rows])
+    ext.had_r_128(output, output, None, svh, 1.0)
+    return True
+
+
 def _reconstruct_hgemm_into(
     output: torch.Tensor,
     x: torch.Tensor,
@@ -854,6 +962,10 @@ def _exl3_gemm(
     # counts and loses by 4-5x at prefill row counts. See the table above.
     threshold = _prefill_reconstruct_rows()
     if threshold and x.shape[0] >= threshold:
+        if _prefill_fp8_enabled() and _reconstruct_fp8_mm_into(
+            output, x, trellis, suh, svh, mcg, mul1
+        ):
+            return output
         _reconstruct_hgemm_into(output, x, trellis, suh, svh, mcg, mul1)
         return output
     x_had = torch.empty_like(x)

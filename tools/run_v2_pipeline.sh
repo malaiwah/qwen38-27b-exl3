@@ -7,11 +7,18 @@ CFG='{"linear":{"weight":"mxfp8"},"ignore":["re:.*visual\\..*","re:.*in_proj_a$"
 export VLLM_ALLOW_INSECURE_SERIALIZATION=1 TORCH_EXTENSIONS_DIR=/work/torch-ext
 
 echo "== splice BF16 attention (MTP stays quantized to hold the memory budget)"
-python /work/splice_bf16_attn.py -q /work/qwen38-v2 -s /models/Qwen3.8-27B -o /work/Qwen3.8-27B-K5K6 \
-  || die splice
+# --force is deliberate here: the pipeline owns /work/Qwen3.8-27B-K5K6 and the splicer
+# clears its shards, index and receipt first, so a rerun cannot leave a previous build behind.
+SPLICE="python /work/splice_bf16_attn.py -q /work/qwen38-v2 -s /models/Qwen3.8-27B -o /work/Qwen3.8-27B-K5K6 --force"
+$SPLICE || die splice
 cd /work/exllamav3
 python util/add_safetensors_index.py -m /work/Qwen3.8-27B-K5K6 --force || die index
 python util/add_quant_config.py -m /work/Qwen3.8-27B-K5K6 || die quantconfig
+
+echo "== finalize: repair tensor_storage, verify the tensor set against upstream, emit manifest + receipts"
+python /work/kld3/finalize_checkpoint.py -m /work/Qwen3.8-27B-K5K6 --upstream /models/Qwen3.8-27B \
+  --recipe "attn BF16->online K6, mlp gate/up K5 + down K6, lm_head K6, mtp quantized" \
+  --command "$SPLICE" || die finalize
 
 echo "== capture v2 candidate on the held-out analysis partition"
 VLLM_EXL3_ONLINE_TRELLIS_BITS=6 VLLM_EXL3_ONLINE_CACHE_DIR=/cache/exl3-online \

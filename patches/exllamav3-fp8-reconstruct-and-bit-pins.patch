@@ -1,0 +1,345 @@
+diff --git a/exllamav3/conversion/allocation.py b/exllamav3/conversion/allocation.py
+index 47a95b1..99d28bc 100644
+--- a/exllamav3/conversion/allocation.py
++++ b/exllamav3/conversion/allocation.py
+@@ -1,5 +1,6 @@
+ from __future__ import annotations
+ import math
++import os
+ import bisect
+ from dataclasses import dataclass
+ from typing import TYPE_CHECKING
+@@ -59,19 +60,50 @@ def create_q_strategy(
+     aux_targets = {}
+     target_groups = {}
+ 
++    # Modules pinned *before* allocation, so their bits leave the budget and the
++    # remaining budget is spent only on what is left. EXL3_BITS_OVERRIDE (below)
++    # pins after allocation, which is right for "force this module to K6" but wrong
++    # for "hold attention at K4 and let the allocator spend everything else on the
++    # MLP": there the pinned bits must not be double-counted.
++    #
++    #   EXL3_BITS_FIXED='{"^.*self_attn\\..*$": 4, "^.*linear_attn\\..*$": 4}'
++    #
++    fixed_spec = os.environ.get("EXL3_BITS_FIXED")
++    fixed_rules = []
++    if fixed_spec:
++        import json as _json
++        if os.path.isfile(fixed_spec):
++            fixed_spec = open(fixed_spec).read()
++        fixed_rules = [(re.compile(k), int(v)) for k, v in _json.loads(fixed_spec).items()]
++        for _, b in fixed_rules:
++            if not 1 <= b <= 8:
++                raise ValueError(f"EXL3_BITS_FIXED: {b} bpw out of range")
++    fixed_hits = {}
++
++    def _fixed_for(key: str):
++        for pat, b in fixed_rules:
++            if pat.match(key):
++                fixed_hits[pat.pattern] = fixed_hits.get(pat.pattern, 0) + 1
++                return b
++        return None
++
+     # Collect and initialize targets
+     def _add(module: Module, priority: int, fixed_bpw: int = None):
+         priority = max(priority, module.q_priority)
+         nonlocal sum_numel, sum_bits, targets, aux_targets
+         if isinstance(module, Linear) and module.qmap is not None:
+-            if fixed_bpw is not None:
+-                # Uncalibrated side model (vision tower): every eligible Linear gets the same
+-                # fixed bitrate outside the main budget
++            # Effective pin: an explicit fixed_bpw from the caller (vision tower) wins,
++            # otherwise an EXL3_BITS_FIXED pattern may pin this module. Kept in a local
++            # so the recursive call below still passes the caller's value unchanged.
++            eff_fixed = fixed_bpw if fixed_bpw is not None else _fixed_for(module.key)
++            if eff_fixed is not None:
++                # Fixed outside the main budget: the uncalibrated vision tower, or a
++                # module pinned through EXL3_BITS_FIXED.
+                 numel = module.weights_numel()
+                 aux_targets[module.key] = QTarget(
+                     numel = numel,
+-                    target_bpw = fixed_bpw,
+-                    min_bpw = fixed_bpw,
++                    target_bpw = eff_fixed,
++                    min_bpw = eff_fixed,
+                     priority = priority
+                 )
+ 
+@@ -122,6 +154,15 @@ def create_q_strategy(
+         for m in vision_model.modules:
+             _add(m, 0, fixed_bpw = vision_bpw)
+ 
++    if fixed_rules:
++        for pat, b in fixed_rules:
++            if pat.pattern not in fixed_hits:
++                raise ValueError(
++                    f"EXL3_BITS_FIXED: pattern {pat.pattern!r} matched nothing")
++        print(" -- Bitrate pinned before allocation: " +
++              ", ".join(f"{k} -> {n} modules" for k, n in fixed_hits.items()) +
++              f"; {sum_numel / 1e9:.3f} G params remain budgeted", flush = True)
++
+     # Target
+     max_bits = int(bpw * float(sum_numel))
+ 
+@@ -169,6 +210,41 @@ def create_q_strategy(
+     # Keep only bitrate
+     f_targets = {k: v.target_bpw for k, v in targets.items()}
+ 
++    # Per-module bitrate overrides, applied after budget allocation.
++    #
++    # Upstream exposes only --bits/--head_bits/--mtp_bits/--vision_bits, and the
++    # remaining budget is spent by a static priority order rather than by measured
++    # error. This hook lets a caller pin specific modules, which is what a
++    # mixed-precision recipe needs (e.g. down_proj at K6 because it carries the
++    # largest per-tensor proxy error in every layer).
++    #
++    #   EXL3_BITS_OVERRIDE='{"^.*mlp\\.down_proj$": 6, "^.*mlp\\.(gate|up)_proj$": 5}'
++    #
++    # Keys are regexes matched against the module key; values are integer bpw 1-8.
++    # The override is applied to f_targets only, so the reported average bpw still
++    # reflects the budgeted allocation and the caller can see the difference.
++    spec = os.environ.get("EXL3_BITS_OVERRIDE")
++    if spec:
++        import json as _json
++        if os.path.isfile(spec):
++            spec = open(spec).read()
++        rules = [(re.compile(k), int(v)) for k, v in _json.loads(spec).items()]
++        hits = {}
++        for key in list(f_targets):
++            for pat, bpw in rules:
++                if pat.match(key):
++                    if not 1 <= bpw <= 8:
++                        raise ValueError(f"EXL3_BITS_OVERRIDE: {bpw} bpw out of range for {key}")
++                    f_targets[key] = bpw
++                    hits[pat.pattern] = hits.get(pat.pattern, 0) + 1
++                    break
++        print(" -- Bitrate overrides applied: " +
++              ", ".join(f"{k} -> {dict(rules)[re.compile(k)] if False else ''}{n} modules"
++                        for k, n in hits.items()), flush = True)
++        for pat, bpw in rules:
++            if pat.pattern not in hits:
++                raise ValueError(f"EXL3_BITS_OVERRIDE: pattern {pat.pattern!r} matched nothing")
++
+     return f_targets, float(final_bits) / sum_numel if sum_numel else 0
+ 
+ 
+diff --git a/exllamav3/exllamav3_ext/bindings.cpp b/exllamav3/exllamav3_ext/bindings.cpp
+index 4c59860..8e48204 100644
+--- a/exllamav3/exllamav3_ext/bindings.cpp
++++ b/exllamav3/exllamav3_ext/bindings.cpp
+@@ -122,6 +122,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m)
+     m.def("reconstruct", &reconstruct, "reconstruct");
+     m.def("reconstruct_had_slice", &reconstruct_had_slice, "reconstruct_had_slice");
+     m.def("reconstruct_slice", &reconstruct_slice, "reconstruct_slice");
++    m.def("reconstruct_fp8_slice", &reconstruct_fp8_slice, "reconstruct_fp8_slice");
+     m.def("had_r_128", &had_r_128, "had_r_128");
+     m.def("exl3_gemm", &exl3_gemm, "exl3_gemm");
+     m.def("exl3_gemv", &exl3_gemv, "exl3_gemv");
+diff --git a/exllamav3/exllamav3_ext/quant/reconstruct.cu b/exllamav3/exllamav3_ext/quant/reconstruct.cu
+index 4ed2c16..49e54b3 100644
+--- a/exllamav3/exllamav3_ext/quant/reconstruct.cu
++++ b/exllamav3/exllamav3_ext/quant/reconstruct.cu
+@@ -1,4 +1,5 @@
+ #include <cuda_fp16.h>
++#include <cuda_fp8.h>
+ #include "reconstruct.cuh"
+ #include <c10/cuda/CUDAGuard.h>
+ #include <ATen/cuda/CUDAContext.h>
+@@ -92,6 +93,169 @@ constexpr auto reconstruct_kernel_instances = std::array
+ };
+ #undef __
+ 
++// Reconstruct + narrow to FP8 E4M3 with a transposed store.
++//
++// Why this exists: the prefill path materialises the weight and calls a dense GEMM,
++// and an FP8 GEMM is 1.5-1.8x faster than fp16 on the same shapes (measured, SM120).
++// But torch._scaled_mm requires the weight operand to be column-major, and converting
++// a reconstructed row-major (K, N) fp16 buffer costs a full extra pass over the weight
++// - measured at 2.5-3 ms per matrix, which is more than the GEMM saving. Emitting FP8
++// in the transposed layout directly from the tile already in shared memory removes
++// that pass entirely.
++//
++// The dequant and tensor-core-to-row-major shuffle are identical to reconstruct_kernel;
++// only the store differs. Each of the first 128 threads owns one output row (one N) and
++// writes its 16 K-values as a single 16-byte store.
++template <int K, int cb>
++__global__ __launch_bounds__(256)
++void reconstruct_fp8_kernel
++(
++    __nv_fp8_storage_t* __restrict__ g_unpacked,
++    const uint16_t* __restrict__ g_packed,
++    int packed_blocks_n,
++    int packed_n_offset,
++    int k_total,
++    float inv_scale
++)
++{
++    constexpr int packed_size = 256 * K / 16;
++
++    int t = threadIdx.x;
++    int lane_id = t % 32;
++    int warp_id = t / 32;
++    int k = blockIdx.y;
++    int n = blockIdx.x * 8;
++
++    __shared__ uint32_t s_packed[8][packed_size / 2];
++    g_packed += (k * packed_blocks_n + packed_n_offset + n) * packed_size;
++    if (t < packed_size)
++        ((int4*) s_packed)[t] = ((int4*) g_packed)[t];
++    __syncthreads();
++
++    register FragB frag[2];
++    dq_dispatch<K, cb>(s_packed[warp_id], lane_id * 8, frag[0], frag[1]);
++
++    __shared__ half2 tile[16][8][8];
++
++    half2 n0 = __shfl_down_sync(0xFFFFFFFF, frag[0][0], 4, 32);
++    half2 n1 = __shfl_down_sync(0xFFFFFFFF, frag[0][1], 4, 32);
++    half2 n2 = __shfl_down_sync(0xFFFFFFFF, frag[1][0], 4, 32);
++    half2 n3 = __shfl_down_sync(0xFFFFFFFF, frag[1][1], 4, 32);
++
++    if (!(lane_id & 4))
++    {
++        half2 m0 = __halves2half2(__low2half(frag[0][0]), __low2half(n0));
++        half2 m1 = __halves2half2(__high2half(frag[0][0]), __high2half(n0));
++        half2 m2 = __halves2half2(__low2half(frag[0][1]), __low2half(n1));
++        half2 m3 = __halves2half2(__high2half(frag[0][1]), __high2half(n1));
++        half2 m4 = __halves2half2(__low2half(frag[1][0]), __low2half(n2));
++        half2 m5 = __halves2half2(__high2half(frag[1][0]), __high2half(n2));
++        half2 m6 = __halves2half2(__low2half(frag[1][1]), __low2half(n3));
++        half2 m7 = __halves2half2(__high2half(frag[1][1]), __high2half(n3));
++        int r0 = (lane_id % 4) * 2;
++        int r1 = r0 + 1;
++        int r2 = r0 + 8;
++        int r3 = r0 + 9;
++        int c0 = lane_id / 8;
++        int c1 = c0 + 4;
++        tile[r0][warp_id][c0] = m0;
++        tile[r1][warp_id][c0] = m1;
++        tile[r2][warp_id][c0] = m2;
++        tile[r3][warp_id][c0] = m3;
++        tile[r0][warp_id][c1] = m4;
++        tile[r1][warp_id][c1] = m5;
++        tile[r2][warp_id][c1] = m6;
++        tile[r3][warp_id][c1] = m7;
++    }
++    __syncthreads();
++
++    // Transposed narrowing store: thread t owns column n_local of the tile, i.e. output
++    // row (n + n_local) of the (N, K) buffer, and gathers the 16 K-values of that column
++    // from shared memory. Lanes read consecutive columns, so each of the 16 gathers is a
++    // contiguous 64-byte shared read per warp.
++    if (t < 128)
++    {
++        const half* s_tile = reinterpret_cast<const half*>(tile);
++        __align__(16) __nv_fp8_storage_t out_bytes[16];
++        #pragma unroll
++        for (int r = 0; r < 16; ++r)
++        {
++            float v = __half2float(s_tile[r * 128 + t]) * inv_scale;
++            out_bytes[r] = __nv_cvt_float_to_fp8(v, __NV_SATFINITE, __NV_E4M3);
++        }
++        size_t out_row = (size_t) (n * 16 + t);
++        int4* dst = (int4*) (g_unpacked + out_row * (size_t) k_total + (size_t) k * 16);
++        *dst = *reinterpret_cast<const int4*>(out_bytes);
++    }
++}
++
++#define __(i, cb) reconstruct_fp8_kernel<i, cb>
++constexpr auto reconstruct_fp8_kernel_instances = std::array
++{
++    __(1, 0), __(2, 0), __(3, 0), __(4, 0), __(5, 0), __(6, 0), __(7, 0), __(8, 0),
++    __(1, 1), __(2, 1), __(3, 1), __(4, 1), __(5, 1), __(6, 1), __(7, 1), __(8, 1),
++    __(1, 2), __(2, 2), __(3, 2), __(4, 2), __(5, 2), __(6, 2), __(7, 2), __(8, 2)
++};
++#undef __
++
++/*
++Reconstruct encoded+packed tensor into a transposed FP8 E4M3 buffer
++*/
++void reconstruct_fp8_slice
++(
++    at::Tensor unpacked_fp8,
++    at::Tensor packed,
++    int K,
++    bool mcg,
++    bool mul1,
++    int64_t n_offset,
++    double inv_scale
++)
++{
++    const at::cuda::OptionalCUDAGuard device_guard(unpacked_fp8.device());
++    cudaStream_t stream = at::cuda::getCurrentCUDAStream().stream();
++
++    TORCH_CHECK_SIZE(packed, 2, 256 * K / 16);
++    TORCH_CHECK_DTYPE(unpacked_fp8, kFloat8_e4m3fn);
++    TORCH_CHECK(unpacked_fp8.is_contiguous(), "unpacked_fp8 must be contiguous (N, K)");
++
++    int rows = packed.size(0);
++    int packed_cols = packed.size(1);
++    int k_total = rows * 16;
++
++    if (unpacked_fp8.numel() == 0)
++        return;
++
++    TORCH_CHECK(unpacked_fp8.size(1) == k_total,
++        "unpacked_fp8 second dimension must equal the packed K dimension");
++    TORCH_CHECK(unpacked_fp8.size(0) % 128 == 0, "unpacked_fp8 N dimension must be divisible by 128");
++    TORCH_CHECK(n_offset % 128 == 0, "n_offset must be divisible by 128");
++    TORCH_CHECK(n_offset >= 0, "n_offset must be non-negative");
++    TORCH_CHECK(n_offset + unpacked_fp8.size(0) <= packed.size(1) * 16,
++        "reconstruct slice exceeds packed tensor bounds");
++
++    int cols = unpacked_fp8.size(0) / 16;
++    int packed_n_offset = n_offset / 16;
++
++    dim3 blockDim(256);
++    dim3 gridDim(cols / 8, rows);
++
++    int cbi = K - 1;
++    if (mcg) cbi += 8;
++    else if (mul1) cbi += 16;
++
++    reconstruct_fp8_kernel_instances[cbi]<<<gridDim, blockDim, 0, stream>>>
++    (
++        (__nv_fp8_storage_t*) unpacked_fp8.data_ptr(),
++        (const uint16_t*) packed.data_ptr(),
++        packed_cols,
++        packed_n_offset,
++        k_total,
++        (float) inv_scale
++    );
++    cuda_check(cudaPeekAtLastError());
++}
++
+ /*
+ Reconstruct encoded+packed tensor
+ */
+diff --git a/exllamav3/exllamav3_ext/quant/reconstruct.cuh b/exllamav3/exllamav3_ext/quant/reconstruct.cuh
+index 6ce0f55..0c31cab 100644
+--- a/exllamav3/exllamav3_ext/quant/reconstruct.cuh
++++ b/exllamav3/exllamav3_ext/quant/reconstruct.cuh
+@@ -21,6 +21,23 @@ void reconstruct_slice
+     int64_t n_offset
+ );
+ 
++// Reconstruct straight into FP8 E4M3, transposed, so the result is a column-major
++// (K, N) operand for a scaled FP8 matmul without a second pass over the weight.
++// `unpacked_fp8` is (N_slice, K) contiguous; view it as `.t()` on the Python side.
++// `inv_scale` is 1/scale, applied before the narrowing conversion; the reconstructed
++// matrix is the raw trellis-decoded weight (suh/svh live on the activation and output
++// side), so a per-tensor scale measured once per matrix is sufficient.
++void reconstruct_fp8_slice
++(
++    at::Tensor unpacked_fp8,
++    at::Tensor packed,
++    int K,
++    bool mcg,
++    bool mul1,
++    int64_t n_offset,
++    double inv_scale
++);
++
+ void reconstruct_had_slice
+ (
+     at::Tensor unpacked,

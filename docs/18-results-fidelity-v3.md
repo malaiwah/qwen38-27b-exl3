@@ -61,8 +61,20 @@ was never going to be trustworthy.
 |---|---|---|
 | runtime-repeat noise floor, captures 1-2 and 2-3 over 32 sentinels | **0.000000**, top-1 1.0 | this runtime is bit-deterministic across process restarts; every difference reported above is far outside noise. The reference protocol's TP16 runtime had a floor of 0.0032, which would have swamped our head-attribution result |
 | harness self-check | 0.000000 | no densification or window bias |
-| CUDA-graph parity | 0.000000, top-1 1.0 | graphs change throughput, not distributions |
+| ~~CUDA-graph parity~~ **withdrawn** | published as 0.000000, top-1 1.0 | not a parity measurement: `fidelity.py capture` takes one **prefill** forward, and `cudagraph_mode=FULL_DECODE_ONLY` captures no prefill graph, so this compared two runs of the same eager prefill. The narrow claim it supports is "enabling graph decode does not change prefill numerics". Replaced by a real decode probe — [27](27-graph-decode-drift-control.md) |
 | **replay qualification** | mean `KL(live \|\| replayed)` = **6.54e-04**, top-1 98.999 %, max 0.0913 | **this is our weakest link**: ~500x worse than the reference protocol's 1.23e-06 |
+
+### The retracted graph-parity control
+
+The row above was published with [PR #314](https://github.com/local-inference-lab/vllm/pull/314)
+as evidence that graph decode is distribution-exact. It could not have measured decode at
+all. The replacement harness (`tools/decode_parity.py`, 32 prompts x 32 greedy tokens
+through the OpenAI endpoint) measures the decode path directly: graph and eager agree on
+**24/32** exact sequences with mean `|delta logprob|` **0.0118** on the chosen token, and
+each mode is internally deterministic (32/32 self-repeat). Unquantised BF16 on the same
+build drifts by the same amount (**24/32**, **0.0128**), so the drift belongs to this
+build's graph decode path, not to the quantisation. Full result in
+[27](27-graph-decode-drift-control.md).
 
 ### The replay-qualification caveat, in proportion
 
@@ -72,7 +84,11 @@ sets a resolution floor: **differences below ~1e-3 are not measurable with the c
 storage format.** The head-attribution result from iteration 1 (6.8e-05) is *below*
 that floor and must be re-derived at higher precision before it is trusted.
 
-Likely causes, in order: BF16 storage of the hidden states (the operand is rounded
-before replay), and a different logit path on the live side (vLLM's own head kernel
-and dtype versus our chunked bf16 matmul). Both are fixable — store fp32 hidden
-states, or compute the replay in fp32 — at 2x disk and some compute.
+Two candidate causes were proposed here: BF16 storage of the hidden states (the operand is
+rounded before replay), and a different logit path on the live side (vLLM's own head kernel
+and dtype versus our chunked bf16 matmul). Both were then measured — see
+[24](24-p0-results.md). Storing fp32 hidden states moved the qualification only from
+6.54e-04 to 6.25e-04 (−4.5 %), so operand rounding accounts for ~5 % of the floor and the
+rest is the implementation difference between the two logit paths. Paired comparisons are
+unaffected because both arms use the identical replay path; only *absolute* values below
+~1e-3 remain unresolvable.

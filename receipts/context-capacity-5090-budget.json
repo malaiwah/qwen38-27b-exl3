@@ -1,0 +1,63 @@
+{
+  "schema": "qwen38-context-capacity/1",
+  "note": "Engine allocation and startup only, at a 31.2 GiB budget on an RTX PRO 6000 to reproduce a 32 GB card at utilisation 0.98. Not a full-length generation.",
+  "flags": "--max-num-seqs 4 --max-num-batched-tokens 2048 --kv-cache-dtype fp8 --compilation-config {\"cudagraph_mode\":\"FULL_DECODE_ONLY\"} VLLM_EXL3_GRAPH_DECODE=1 VLLM_EXL3_PREFILL_RECONSTRUCT_M=128",
+  "runs": {
+    "attn-k6": {
+      "kv_cache": [],
+      "allocation": [],
+      "refusal": [
+        "ValueError: To serve at least one request with the model's max seq len (262144), (8.18 GiB KV cache is needed, which is larger than the available KV cache memory (7.78 GiB). Based on the available memor"
+      ],
+      "started": false
+    },
+    "attn-k5": {
+      "kv_cache": [
+        "GPU KV cache size: 266,743 tokens"
+      ],
+      "allocation": [
+        "Actual usage is 19.82 GiB for weight, 2.05 GiB for peak activation, 0.29 GiB for non-torch memory, and 0.48 GiB for CUDAGraph memory. Replace gpu_memory_utilization config with `--kv-cache-memory-bytes=8778"
+      ],
+      "refusal": [],
+      "started": true
+    },
+    "attn-k4": {
+      "kv_cache": [
+        "GPU KV cache size: 291,271 tokens"
+      ],
+      "allocation": [
+        "Actual usage is 19.05 GiB for weight, 2.05 GiB for peak activation, 0.29 GiB for non-torch memory, and 0.48 GiB for CUDAGraph memory. Replace gpu_memory_utilization config with `--kv-cache-memory-bytes=9604"
+      ],
+      "refusal": [],
+      "started": true
+    },
+    "hydrated-262144": {
+      "kv_cache": [],
+      "allocation": [],
+      "refusal": [
+        "ValueError: To serve at least one request with the model's max seq len (262144), (8.18 GiB KV cache is needed, which is larger than the available KV cache memory (7.77 GiB). Based on the available memor"
+      ],
+      "started": false
+    },
+    "hydrated-196608": {
+      "kv_cache": [
+        "GPU KV cache size: 246,903 tokens"
+      ],
+      "allocation": [
+        "Actual usage is 20.31 GiB for weight, 2.11 GiB for peak activation, 0.29 GiB for non-torch memory, and 0.48 GiB for CUDAGraph memory. Replace gpu_memory_utilization config with `--kv-cache-memory-bytes=8181"
+      ],
+      "refusal": [],
+      "started": true
+    },
+    "hydrated-131072": {
+      "kv_cache": [
+        "GPU KV cache size: 244,065 tokens"
+      ],
+      "allocation": [
+        "Actual usage is 20.31 GiB for weight, 2.11 GiB for peak activation, 0.29 GiB for non-torch memory, and 0.48 GiB for CUDAGraph memory. Replace gpu_memory_utilization config with `--kv-cache-memory-bytes=8181"
+      ],
+      "refusal": [],
+      "started": true
+    }
+  }
+}

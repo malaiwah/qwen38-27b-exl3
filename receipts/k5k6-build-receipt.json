@@ -1,0 +1,67 @@
+{
+  "schema": "qwen38-build-receipt/2",
+  "artifact": "Qwen3.8-27B-K5K6",
+  "source": {
+    "repo": "Qwen/Qwen3.8-27B",
+    "revision": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0"
+  },
+  "converter": "turboderp-org/exllamav3@5f3c537 (1.4.2)",
+  "recipe": "MLP gate/up K5, down K6, attention BF16 for online K6, lm_head K6/mcg, MTP quantized (attn K4, MLP K5/K6), embed+vision BF16",
+  "command": "convert.py -i Qwen3.8-27B -o qwen38-v2 -w wd-v2 -b 4 -hb 6 -mb 4 -vb 16 -cb mcg -d 0 with EXL3_BITS_OVERRIDE={\"^.*mlp\\\\.down_proj$\": 6, \"^.*mlp\\\\.(gate|up)_proj$\": 5}; then splice_bf16_attn.py (attention only); add_safetensors_index.py; add_quant_config.py; finalize_checkpoint.py",
+  "scope_note": "SHA256SUMS and immutable_payload cover only the files that define the artifact; README.md, .gitattributes, assets/** and the receipt files themselves are documentation that is rewritten by card edits without rebuilding the weights, so hashing them here would make the receipt go stale while still claiming to describe the build -- they are listed under mutable_documentation and hashed in DOCS-SHA256SUMS instead.",
+  "immutable_payload_bytes": 30597223337,
+  "file_count": 17,
+  "immutable_payload": {
+    "LICENSE": "bbedc3fda3305820b977265f01b8619d87570a6739de3a5582c3464840f1e57a",
+    "chat_template.jinja": "c3cf9e34abf4f9e36c2d72165aa9c132d3e2a725b6c2586aaa3a8af9d7a81041",
+    "config.json": "fbb105334da6554c10784ff1257fda5e3821d4d5426d64469cee2b2ad67ba2b3",
+    "generation_config.json": "e70c136c1b78ddc1fb0905bac8e733a4dc448d4f852a5dd75143fffc70be550e",
+    "merges.txt": "a9d356d7bdf1ef4949e3e748e95b8e10ad9d4e2e838eddc38a0a7b6b94d1db8d",
+    "model-00001-of-00004.safetensors": "349a94dc3fd74450dad3b1f57b76dec57b8b5bbe6add2ccd7e0adf5d777f3fb5",
+    "model-00002-of-00004.safetensors": "ea44be556fe63123fe278c357de90941c741d3cdd79062ccfba9f0d6b66d54f2",
+    "model-00003-of-00004.safetensors": "02efb298bc40bb3c739fb525d4b70ed4d307a7e24fd30ed71cb7e1433a6c326a",
+    "model-00004-of-00004.safetensors": "6832280ea4f2b630371fcb58548b8ec03f0a11ad36a031af0807d8daed88b238",
+    "model.safetensors.index.json": "f8ca5af94a4a8352eb2f0329c891f20e0c15d7b2733b396d88fb9fba05eabb24",
+    "preprocessor_config.json": "27225450ac9c6529872ee1924fcb0962ff5634834f817040f444118116f4e516",
+    "quantization_config.json": "8507e2a8de75a2f8164dd7e43a475dd459054ff68b95a42c000c5af2d88c25bb",
+    "quantization_manifest.json": "9ad56820c1c6ab51c3915abf9182094cd1d0e3d46e424877bd8cd7361f360183",
+    "tokenizer.json": "0997f410c57a1f4e53b09e4be8f4a172d90edd9564368fb0847030937229b9f3",
+    "tokenizer_config.json": "b11349aafa7cdc6a320767cf7ceb29ed82f7eda5d65e8e0819e76f0ce947bf27",
+    "video_preprocessor_config.json": "7768af27c1fafa9cc9011c1dc20067e03f8915e03b63504550e11d5066986d13",
+    "vocab.json": "ce99b4cb2983d118806ce0a8b777a35b093e2000a503ebde25853284c9dfa003"
+  },
+  "mutable_documentation": {
+    "bytes": 1448403,
+    "file_count": 10,
+    "files": {
+      ".gitattributes": "34448b82c17d60fec9b65b1f093c115ddbaadc04beb1b0140b6bfed2e012a930",
+      "README.md": "2748d3a0613b03caff5ed09334e990e63b032bf1415ed5d24aff3b012d4cc510",
+      "assets/context-per-card-dark.png": "2992aef09adc64bcf9f416ea5692bb28f9ef574e4cf348cef2155c9e4f1e53f5",
+      "assets/context-per-card-dark.svg": "44d2d60a8f17c011b5e4cced3d18a9166b16771b11640be5fccf07b21abb330b",
+      "assets/context-per-card-light.png": "3fd4c98ef4f0ec21f29662c0d643908ddef5479d8a1a3d19ad17129263212a48",
+      "assets/context-per-card-light.svg": "6cd457a5b64ce3835210ac08dbec6c7a4bad8caf0d06da276f476d041cae802e",
+      "assets/fidelity-vs-size-dark.png": "806acb819763db443ee9cf0b3f114f5e23b61c2dc23f91d6370f8a28de23f211",
+      "assets/fidelity-vs-size-dark.svg": "08485e4074ae1aeb8c7425fdbab05a949053d7f9ccd7ff8cb054534c10ae54f5",
+      "assets/fidelity-vs-size-light.png": "f845a50823a03b681432114f21bcc50dd0d6dd3ff810608ad893965bb7cb1205",
+      "assets/fidelity-vs-size-light.svg": "51460d00eda0b11a525482e94bc600210dc4a9cbc158f4dfb1889e16c061c671"
+    },
+    "self_excluded": [
+      "SHA256SUMS",
+      "DOCS-SHA256SUMS",
+      "build-receipt.json"
+    ]
+  },
+  "tensor_inventory": {
+    "physical_tensors": 1802,
+    "exl3_modules": 201,
+    "logical_tensors_reconstructed": 1199,
+    "logical_parameter_count": 27781427952
+  },
+  "upstream_check": {
+    "dir": "/var/tmp/work/upstream-index",
+    "index_sha256": "77042094076611b69791a610065f28b7013b8c621795fa86ddccc8bac7d1b9df",
+    "logical_tensors": 1199,
+    "shapes_verified": 0
+  },
+  "host": "Linux 6.8.0-100-generic"
+}
