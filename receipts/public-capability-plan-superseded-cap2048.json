@@ -1,0 +1,84 @@
+{
+  "schema": "qwen38-public-capability-plan/1",
+  "suite_sha256": "46fac6d39afe94541f655833fd52414692dc835cf8fcc48d69c369a0054bd8b3",
+  "question": "Does each quantized Qwen3.8-27B build retain BF16 pass behaviour on a public, licence-compatible reasoning/knowledge benchmark, measured item-paired?",
+  "primary_metric": "paired BF16-pass retention on MMLU-Pro exact letter answers",
+  "secondary_metrics": [
+    "absolute accuracy with Wilson 95% interval",
+    "per-category accuracy",
+    "pass-outcome agreement",
+    "exact-answer agreement"
+  ],
+  "paired_unit": "one MMLU-Pro question with its frozen five-shot category prefix",
+  "acceptance": "a candidate passes when BF16-pass retention has a Wilson 95% lower bound at or above 0.90 and no category loses more than two BF16 passes; anything else is published as a measured shortfall",
+  "failure_outcome": "publish the shortfall with raw outputs; do not retune prompts, sampling, or scorer after seeing results",
+  "inputs": {
+    "dataset": {
+      "dataset": "TIGER-Lab/MMLU-Pro",
+      "revision": "b189ec765aa7ed75c8acfea42df31fdae71f97be",
+      "test": {
+        "filename": "test-00000-of-00001.parquet",
+        "sha256": "0e24a191921c2f453518a537a8b2117bd137e7714d4ef1565e9ba06c1ecb9ad8"
+      },
+      "validation": {
+        "filename": "validation-00000-of-00001.parquet",
+        "sha256": "139423c23722e480c807ac4a191409a710cfce4eba744c1d641cf88e730e2078"
+      }
+    },
+    "selection": {
+      "namespace": "qwen38-public-capability-v1",
+      "method": "lowest_sha256_per_category",
+      "per_category": 5,
+      "categories": [
+        "biology",
+        "business",
+        "chemistry",
+        "computer science",
+        "economics",
+        "engineering",
+        "health",
+        "history",
+        "law",
+        "math",
+        "other",
+        "philosophy",
+        "physics",
+        "psychology"
+      ]
+    },
+    "partition_policy": "whole public test split is eligible; selection is content-addressed and fixed before any run; the 70-row validation split supplies the official five-shot prefixes only",
+    "exclusions_decided_before_results": "none beyond the pinned revision and the official category set"
+  },
+  "controls": {
+    "reference": "BF16 /models/Qwen3.8-27B at revision 1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0, run first",
+    "sampling": "temperature 0, greedy, thinking enabled at low reasoning effort, max_tokens 2048",
+    "warmup": "server readiness plus vLLM multi-modal warmup only; no benchmark warm-up items",
+    "repeats": 1,
+    "randomness_controls": "no sampling randomness; request concurrency does not affect per-item determinism"
+  },
+  "output_schema": "qwen38-public-capability/1 with per-item raw request, raw response, extracted letter, gold letter, and digests",
+  "runtime": {
+    "image": "voipmonitor/vllm@sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b",
+    "identity_verified": true,
+    "rootfs_provenance_sha256": "d8b837b45d742b2540ffc4aa21304101e280ec17b394b99556be074d331ca1f5",
+    "rootfs_file_manifest_sha256": "9f2456247b6d527c379e427c9bae4eef000edde24254ffcb9d61c2020c0e5aac",
+    "ggrun_sha256": "3ef891efce8b4c669eca2cce21b22177ab33a90985e8ee8a47286cf305ad367a",
+    "exl3_module_sha256": "2df9d0799fd323798cead1edb773cab556c94798eec263ee03ded35408c6e4ee",
+    "qwen3_5_module_sha256": "04d2bd587b37142f4f55a8d00b9f8c907309490168cb7fcdfde450531df2c9e7",
+    "qwen3_5_mtp_module_sha256": "0090dc131f0eaf439b24d50baf4def9f10b052864c76e695053d64f66b274bab",
+    "vllm": "0.11.2.dev280+gilded.gnosis.v20.vllm4d006a4.b12xcd3ce19.fi1ac6942.cu132.20260810.r34",
+    "torch": "2.12.0+cu132",
+    "cuda": "13.2",
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Server Edition",
+    "gpu_uuid": "GPU-a1c308e7-fdd4-7130-9e3a-045ded2c20fd",
+    "driver": "595.58.03",
+    "max_model_len": 8192,
+    "gpu_memory_utilization": 0.9,
+    "kv_cache_dtype": "fp8",
+    "max_num_seqs": 4,
+    "max_num_batched_tokens": 4096,
+    "cudagraph_mode": "FULL_DECODE_ONLY",
+    "harness_sha256": "870c704ff29641cc36750ea5e079e6e3e54751884946eca2f3a48f8e30aacded"
+  },
+  "plan_sha256": "3d6dbc1314ef7a4a9459b93199eb8e65ae13971af69487dcdb9e7ef1fe76edde"
+}

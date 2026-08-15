@@ -28,6 +28,129 @@ excluding every context from four qualification source documents with an exact c
 12-gram, hydrated / online / context score 0.003093 / 0.003455 / 0.003990 against FP8
 0.005891, each winning 36/36 paired contexts. Absolute KLD is suite-specific.
 
+## Priorities added from public feedback, 2026-08-15
+
+Four independent readers attacked the same weak point: the fidelity claim is strong but
+thin, and the comparator set is narrow. These outrank everything below except the physical
+RTX 5090 qualification.
+
+### F1 — evidence volume: 278,392 scored positions is not enough
+
+"Do I understand this correctly that you evaluated only on 136 traces and 278k output
+tokens?" The headline KLD rests on 136 analysis contexts. Bootstrap intervals are computed
+over 39 source clusters, so the interval is honest, but the absolute volume invites the
+objection that the estimate is fragile.
+
+Built for this: `tools/fetch_corpus_v5.py` (941 documents, 70.3 MB of held-out public text)
+and a v5 suite of **5,120 contexts x 2,047 = 10,480,640 scored positions** over 842 source
+clusters, token-disjoint from v4 and with zero calibration 12-gram overlap by construction
+(whole documents with any hit are excluded before selection). `tools/suite3.py` now advances
+each document cursor to the exact end of the emitted context, so corpus capacity is
+token-bound rather than window-bound.
+
+`tools/kld_ladder.sh` walks it in 512-context shards because one shard of six models is
+~64 GB of hidden states and `/var/tmp` holds ~135 GB: capture six models, replay the five
+candidates, verify, delete, next shard. `tools/kld_aggregate.py` welds the per-shard reports
+into cumulative receipts at the **1M / 2M / 5M / 10M** checkpoints. Escalate until the run
+stops being reasonable on this hardware, and publish the point at which it stopped.
+
+### F2 — comparator breadth: FP8 is a throughput format, not the quality ceiling
+
+"A comparison to Q8 instead of FP8 would've looked differently... someone would need to run
+a KLD/top-1 test on the same dataset for all of them in the same size/performance range."
+That is correct and currently unanswered. Required:
+
+- GGUF `Q5_K_XL`, `Q6_K` and `Q8_0` in our suite, which means a second engine (llama.cpp)
+  with the same tokenizer, same token IDs, same BF16 teacher and the same shared head;
+- stock EXL3 uniform-bitrate controls, at least `turboderp/Qwen3.8-27B-exl3` 5.00bpw
+  (`a35e75a7`) and 6.00bpw (`d32ba0bb`), to separate our role-aware allocation from EXL3
+  itself;
+- a cross-dataset run on the corpus other publishers use (OpenWebText-style, qbench's 8 x
+  8,192-token protocol), because the same NVFP4 checkpoint reads 0.095 here and 0.016-0.068
+  in Unsloth's own table. Whichever way that lands, both numbers get published.
+
+Report confidence-conditioned buckets alongside the mean: a KLD below 0.01 is the threshold
+readers already associate with "practically BF16", so the distribution shape matters as much
+as the mean.
+
+### F3 — VRAM-class SKUs: 24 GB, then 16 GB
+
+Every profile we ship targets a 32 GB card. Two smaller classes are asked for and one of
+them is explicitly framed as the hard one:
+
+- **24 GB** (mid-point; the RTX PRO 4500/SFF-class 24 GB boards are not Blackwell-only, so
+  the supported-hardware tuple has to be stated, not assumed);
+- **16 GB** ("make a version for the 16GB of RAM or VRAM and you'll be a god"), which must be
+  published with an honest KV budget: at 16 GB the usable context is a fraction of 262,144,
+  and the card must say so in the same table as the fidelity number.
+
+Bound already known from the external ladder: stock 3.50bpw is a 14.28 GiB tensor payload
+with a 2.37 GiB BF16 embedding, so a 16 GB build needs either an int8/int4 input overlay or
+CPU-resident embeddings, and its KV budget must be measured, not modelled.
+
+### F4 — collection presentation
+
+Adopted from the external ladder review: one immutable machine-readable collection index
+(artifact commit, base commit, converter commit, whole-tree bytes, tensor-payload bytes,
+measured resident bytes, per-role precision, runtime image and patch digests, suite digest),
+the same compact ladder rendered in every card, and strict size terminology — serialized
+bytes are never called VRAM.
+
+### F5 — everything else the release megathread asked for
+
+Harvested from 260 comments across the r/LocalLLaMA release megathread (`1voojjz`) and our
+own KLD post (`1vp15wq`); the megathread and post are 403 to plain fetches, so the harvest of
+record came from the Arctic Shift `comments/search` API, paginated. Items are grouped by what
+they would change.
+
+**Statistics.** "Avg KLD and top-1 are meaningless. What 99.9% tail looks like?" Publish
+p99/p99.9/max per candidate, not only the mean. The current per-shard reports already carry
+them; the cumulative receipt cannot recombine percentiles exactly, so the replay pass needs a
+per-position KLD histogram before the next volume run, and until then the tail must be
+published per shard with the global maximum.
+
+**Long context.** Every scored position today comes from a 2,048-token window. Two readers
+asked for 64k/128k behaviour, and one reports measured instruction-following collapse at Q3
+beyond 40k. Long-window KLD is a separate suite, not a rescale of this one.
+
+**Degeneration.** Two independent Q4 reports describe looping until the context is exhausted.
+Mean KLD cannot see it; the downstream suite needs an explicit repetition/non-termination
+check.
+
+**Sampler and effort pinning.** Measured in-thread: MTP acceptance moves with temperature and
+with reasoning effort, and some front-ends silently downgrade the effort they were asked for.
+Every fidelity and throughput figure we publish must carry temperature, top-p/top-k and
+reasoning effort. `high` is not a valid effort on this model; only `low`, `medium`, `xhigh`.
+
+**Serving answers we owe.** An unanswered question on our own thread asks whether the
+Gilded Gnosis vLLM EXL3 path supports q4 KV cache; the cards must state the supported KV
+dtypes and their measured cost. A second reader reverse-engineered the `-context` spec sheet
+(fp8 KV, native 262,144, roughly 200-215k with MTP, LMCache-compatible) and asked for
+confirmation: publish it as a table.
+
+**Throughput next to fidelity.** The 5090 audience compares against NVFP4 and 5.5-bit vLLM
+formats on tok/s. Each card needs single-request and concurrent throughput at its native
+context with MTP on and off, measured on the same machine as its fidelity number.
+
+**MTP acceptance regression.** Five independent reporters see 3.8 acceptance at roughly
+60-70 % where 3.6 was 80-90 %, across llama.cpp and vLLM. Reproduce on our checkpoints at
+pinned temperature and publish acceptance per SKU against the in-thread BF16 reference
+(MTP-3 optimal, MTP-4 regressing).
+
+**Prefill, not just decode.** A 196k-token agentic turn spends ~75 s in prefill; prefix-cache
+reuse dominates that workload. Our LMCache path is real and unpublished.
+
+**Per-tensor bit maps.** Readers now inspect how a quant spends its bit budget before
+downloading. Mixed precision is our differentiator and it is currently only prose.
+
+**Non-CUDA tiers.** MLX/Apple and ROCm requests recur; EXL3 serves neither. One explicit
+unsupported line per card prevents the question repeating.
+
+**Ship the client config.** Three readers hand-rolled an opencode/pi model block for this
+model. Ship a correct one with the valid effort variants, 262,144 context and image modality.
+
+
+
 ## Closed by the audit
 
 - The fixed-stride contamination claim was wrong. Every normalized 12-token position (Unicode
