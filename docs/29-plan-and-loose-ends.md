@@ -104,10 +104,21 @@ record came from the Arctic Shift `comments/search` API, paginated. Items are gr
 they would change.
 
 **Statistics.** "Avg KLD and top-1 are meaningless. What 99.9% tail looks like?" Publish
-p99/p99.9/max per candidate, not only the mean. The current per-shard reports already carry
-them; the cumulative receipt cannot recombine percentiles exactly, so the replay pass needs a
-per-position KLD histogram before the next volume run, and until then the tail must be
-published per shard with the global maximum.
+p99/p99.9/max per candidate, not only the mean. **Landed.** `fidelity.py replay` now counts
+every scored position into a fixed log-spaced histogram — 560 bins from 1e-12 to 1e2 nats,
+plus explicit zero/underflow and overflow buckets — and stores it as `kld_tail` alongside the
+shard's own exact p50/p95/p99/p999 and exact maximum, which bumps the report schema to
+`qwen38-fidelity-report/2`. `tools/kld_aggregate.py` sums those counts across shards and
+publishes cumulative p50/p95/p99/p999/p9999 as the bin interval that provably contains each
+one (one bin, 5.6 % wide, wherever the tail is dense), plus the exact global maximum and
+exact exceedance counts at 1e-4 … 1 nat. Counts recombine, percentiles do not: that is the
+whole reason the histogram had to exist before the next volume run.
+
+The 10.48M-position ladder now running was started with the pre-histogram harness and emits
+`/1` reports, which carry no histogram. Its tail is still published per shard with the global
+maximum, via `kld_aggregate.py --allow-legacy-no-tail`, and the receipt says in
+`not_aggregable` why there is no cumulative percentile. A mixed `/1` + `/2` shard set is
+rejected rather than summed into a tail that would silently describe only part of the run.
 
 **Long context.** Every scored position today comes from a 2,048-token window. Two readers
 asked for 64k/128k behaviour, and one reports measured instruction-following collapse at Q3
@@ -123,8 +134,17 @@ Every fidelity and throughput figure we publish must carry temperature, top-p/to
 reasoning effort. `high` is not a valid effort on this model; only `low`, `medium`, `xhigh`.
 
 **Serving answers we owe.** An unanswered question on our own thread asks whether the
-Gilded Gnosis vLLM EXL3 path supports q4 KV cache; the cards must state the supported KV
-dtypes and their measured cost. A second reader reverse-engineered the `-context` spec sheet
+Gilded Gnosis vLLM EXL3 path supports q4 KV cache. Read out of the pinned r34 build, the
+accepted `--kv-cache-dtype` set is `auto, float16, bfloat16, fp8, fp8_e4m3, fp8_e5m2,
+fp8_inc, fp8_ds_mla, nvfp4_ds_mla, turboquant_k8v4, turboquant_4bit_nc, turboquant_k3v4_nc,
+turboquant_3bit_nc, int4_per_token_head, int8_per_token_head, fp8_per_token_head, nvfp4`, so
+sub-8-bit KV exists in several flavours — but every number we publish used `fp8`, and none of
+the 4-bit schemes has been measured here for KV capacity, retrieval or KLD. The honest card
+answer is the flag list plus that gap, and the fix is a KV-dtype sweep (fp8 versus
+`int4_per_token_head` versus `turboquant_4bit_nc`) reporting allocated KV tokens, needle
+retrieval at native length and KLD delta on the same checkpoint. That sweep is also the
+cheapest lever for the 16 GB and 24 GB classes, where KV is the binding constraint.
+A second reader reverse-engineered the `-context` spec sheet
 (fp8 KV, native 262,144, roughly 200-215k with MTP, LMCache-compatible) and asked for
 confirmation: publish it as a table.
 

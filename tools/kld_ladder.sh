@@ -440,7 +440,9 @@ except ValueError as exc:
     sys.exit(1)
 
 bad = []
-if report.get("schema") != "qwen38-fidelity-report/1":
+# /2 adds the kld_tail histogram; /1 shards already written by an earlier pass of
+# the same ladder stay verifiable on resume, so both generations are accepted here.
+if report.get("schema") not in ("qwen38-fidelity-report/1", "qwen38-fidelity-report/2"):
     bad.append(f"schema {report.get('schema')!r}")
 if report.get("suite_token_sha256") != view["suite_token_sha256"]:
     bad.append("suite_token_sha256 does not match the shard view")

@@ -54,18 +54,33 @@ New keys, all additive; every pre-existing key keeps its name and meaning:
     says which of the two produced the answer. `unresolved` means the engine
     exposed no cache config in this process - never a guessed dtype. The legacy
     manifest key `kv_cache_dtype` keeps recording the requested string.
+  * `kld_tail` (replay report) - the position-level KL tail in a form that
+    survives sharding. Per-shard percentiles cannot be recombined, so replay
+    also counts every scored position into a FIXED log-spaced histogram (the
+    `KLD_HIST_*` constants in this file) with explicit zero/underflow and
+    overflow buckets, and stores the bin edges, the counts, the total count,
+    the exact global max and this shard's own exact p50/p95/p99/p999.
+    `tools/kld_aggregate.py` sums those counts across shards and derives
+    bin-bounded cumulative quantiles, which is what answers "what does the
+    99.9th percentile look like over the whole run" instead of a mean.
+    Carrying it bumps the report schema to `qwen38-fidelity-report/2`; every
+    field of `/1` is still present, with its name and meaning unchanged.
+
+`torch` is imported by the subcommands that need it rather than at module
+import time, so `--help` and the pure-JSON `paired` subcommand work on a
+machine that has no torch installed.
 """
 from __future__ import annotations
 
 import argparse
+import bisect
+import functools
 import hashlib
 import json
 import math
 import statistics
 import time
 from pathlib import Path
-
-import torch
 
 CORPORA = {  # stratum -> exllamav3 calibration file
     "encyclopedic": "wiki.utf8",
@@ -76,6 +91,22 @@ CORPORA = {  # stratum -> exllamav3 calibration file
     "short_form": "tiny.utf8",
 }
 CAL_DIR = "/work/exllamav3/exllamav3/conversion/standard_cal_data"
+
+
+def inference_mode(fn):
+    """`torch.inference_mode()`, resolved when the function is called.
+
+    Identical semantics to decorating with `@torch.inference_mode()`; the only
+    difference is that importing this module no longer requires torch.
+    """
+    @functools.wraps(fn)
+    def wrapper(*args, **kwargs):
+        import torch
+
+        with torch.inference_mode():
+            return fn(*args, **kwargs)
+
+    return wrapper
 
 
 def select(index: list[dict], flt: str) -> list[dict]:
@@ -635,6 +666,8 @@ def cmd_capture(args) -> int:
 
 def dense_prompt_logprobs(prompt_logprobs: object, npos: int, vocab: int) -> torch.Tensor:
     """Densify vLLM prompt logprobs to [npos, vocab]; verbatim from the published harness."""
+    import torch
+
     dense = torch.empty((npos, vocab), dtype=torch.float32)
     if hasattr(prompt_logprobs, "start_indices"):
         for pos in range(npos):
@@ -658,8 +691,97 @@ def dense_prompt_logprobs(prompt_logprobs: object, npos: int, vocab: int) -> tor
 
 
 # ----------------------------------------------------------------- replay
-@torch.inference_mode()
+# The tail histogram is a CONSTANT of the report format: two shards' counts may
+# only be summed when their edges are identical, so changing any of these three
+# numbers means a new report schema.  Bins are log-spaced because per-position
+# KL spans many decades, and the positions below the first edge (where exact
+# zeros land) and above the last one get explicit buckets instead of clipping.
+KLD_HIST_LOG10_LOW = -12.0
+KLD_HIST_LOG10_HIGH = 2.0
+KLD_HIST_BINS_PER_DECADE = 40
+KLD_HIST_SCHEMA = "qwen38-kld-tail-histogram/1"
+
+
+def kld_bin_edges() -> list[float]:
+    """Ascending `edges[i] = 10 ** (log10_low + i / bins_per_decade)`."""
+    span = KLD_HIST_LOG10_HIGH - KLD_HIST_LOG10_LOW
+    bins = round(span * KLD_HIST_BINS_PER_DECADE)
+    return [10.0 ** (KLD_HIST_LOG10_LOW + i / KLD_HIST_BINS_PER_DECADE)
+            for i in range(bins + 1)]
+
+
+KLD_BIN_EDGES = kld_bin_edges()
+
+
+class TailHistogram:
+    """Every scored position's KL, in a form that survives sharding.
+
+    `counts[b]` is the number of positions in bucket `b`, and the bucket of a
+    value is exactly `bisect.bisect_right(KLD_BIN_EDGES, value)`.  So bucket 0
+    is the zero/underflow bucket (`v < edges[0]`, which is where exact zeros
+    go), bucket `len(edges)` is the overflow bucket (`v >= edges[-1]`), and
+    every bucket between them is the half-open interval `[edges[b-1],
+    edges[b])`.  There is no floating-point freedom in that rule, so an
+    aggregator can re-derive any bucket it wants to check.
+
+    Counts add across shards; percentiles do not.  That is the whole point: a
+    ten-million-position ladder gets cumulative tail quantiles from the summed
+    counts without anyone keeping ten million floats.
+    """
+
+    def __init__(self) -> None:
+        self.counts = [0] * (len(KLD_BIN_EDGES) + 1)
+        self.total = 0
+        self.max = -math.inf
+        self.min = math.inf
+
+    def add(self, values) -> None:
+        counts, edges, bucket = self.counts, KLD_BIN_EDGES, bisect.bisect_right
+        vmax, vmin, seen = self.max, self.min, 0
+        for v in values:
+            counts[bucket(edges, v)] += 1
+            seen += 1
+            if v > vmax:
+                vmax = v
+            if v < vmin:
+                vmin = v
+        self.total += seen
+        self.max, self.min = vmax, vmin
+
+    def summary(self, exact_quantiles: dict) -> dict:
+        """The report block: binning, counts, and the exact numbers alongside."""
+        if self.total != sum(self.counts):
+            raise SystemExit(
+                f"tail histogram lost positions: {sum(self.counts)} counted, {self.total} added"
+            )
+        return {
+            "schema": KLD_HIST_SCHEMA,
+            "units": "nats",
+            "binning": {
+                "log10_low": KLD_HIST_LOG10_LOW,
+                "log10_high": KLD_HIST_LOG10_HIGH,
+                "bins_per_decade": KLD_HIST_BINS_PER_DECADE,
+                "bins": len(KLD_BIN_EDGES) - 1,
+                "edge_formula": "edges[i] = 10 ** (log10_low + i / bins_per_decade)",
+                "bucket_rule": "bucket(v) = bisect_right(bin_edges, v)",
+                "underflow": "counts[0]: v < bin_edges[0], including every exact zero",
+                "overflow": f"counts[{len(KLD_BIN_EDGES)}]: v >= bin_edges[-1]",
+            },
+            "bin_edges": KLD_BIN_EDGES,
+            "counts": self.counts,
+            "total_count": self.total,
+            "underflow_count": self.counts[0],
+            "overflow_count": self.counts[-1],
+            "max_kld": None if self.total == 0 else self.max,
+            "min_kld": None if self.total == 0 else self.min,
+            "shard_exact_quantiles": exact_quantiles,
+        }
+
+
+@inference_mode
 def normalizers_and_top1(hidden: torch.Tensor, head: torch.Tensor, vocab_chunk: int):
+    import torch
+
     rows = hidden.shape[0]
     log_z = torch.full((rows,), -math.inf, dtype=torch.float32, device=hidden.device)
     top_val = torch.full((rows,), -math.inf, dtype=torch.float32, device=hidden.device)
@@ -675,7 +797,7 @@ def normalizers_and_top1(hidden: torch.Tensor, head: torch.Tensor, vocab_chunk: 
     return log_z, top_id
 
 
-@torch.inference_mode()
+@inference_mode
 def context_metrics(ref_h: torch.Tensor, cand_h: torch.Tensor, head: torch.Tensor,
                     vocab_chunk: int, cand_head: torch.Tensor | None = None):
     """Reference uses `head`; the candidate uses `cand_head` when given.
@@ -683,6 +805,8 @@ def context_metrics(ref_h: torch.Tensor, cand_h: torch.Tensor, head: torch.Tenso
     Passing a different candidate head is how head quantization is attributed:
     the body captures stay byte-identical and only the head changes.
     """
+    import torch
+
     ch = head if cand_head is None else cand_head
     ref_z, ref_top = normalizers_and_top1(ref_h, head, vocab_chunk)
     cand_z, cand_top = normalizers_and_top1(cand_h, ch, vocab_chunk)
@@ -722,6 +846,7 @@ def bootstrap(values: list[float], clusters: list[str], samples: int, seed: int)
 
 
 def cmd_replay(args) -> int:
+    import torch
     from safetensors.torch import safe_open
 
     suite = json.loads(Path(args.suite, "suite-manifest.json").read_text())
@@ -737,7 +862,7 @@ def cmd_replay(args) -> int:
     vocab, hidden_size = head.shape
     per_ctx, rows_all, strata, clusters = [], [], {}, []
     top1_hits, positions = 0, 0
-    all_kl = []
+    all_kl, tail = [], TailHistogram()
 
     chosen = select(suite["context_index"], args.filter)
     if not chosen:
@@ -774,13 +899,21 @@ def cmd_replay(args) -> int:
         top1_hits += hits
         positions += npos
         all_kl.append(kl)
+        tail.add(kl.tolist())
         if len(per_ctx) % 16 == 0:
             print(f"{len(per_ctx)} contexts, running mean {statistics.fmean(x['mean_kld'] for x in per_ctx):.6f}", flush=True)
     kl_all = torch.cat(all_kl).double()
     q = lambda p: float(kl_all.quantile(p))
+    exact_q = {"p50": q(0.5), "p95": q(0.95), "p99": q(0.99), "p999": q(0.999)}
+    exact_max = float(kl_all.max())
+    if tail.total != positions or tail.max != exact_max:
+        raise SystemExit(
+            "tail histogram disagrees with the scored vector: "
+            f"{tail.total} vs {positions} positions, max {tail.max!r} vs {exact_max!r}"
+        )
     means = [c["mean_kld"] for c in per_ctx]
     report = {
-        "schema": "qwen38-fidelity-report/1",
+        "schema": "qwen38-fidelity-report/2",
         "reference": str(args.reference), "candidate": str(args.candidate),
         "reference_identity": capture_identity(args.reference, args.hash_shards),
         "candidate_identity": capture_identity(args.candidate, args.hash_shards),
@@ -792,8 +925,9 @@ def cmd_replay(args) -> int:
         "contexts": len(per_ctx), "scored_positions": positions,
         "vocab_size": vocab, "hidden_size": hidden_size,
         "token_mean_kld": float(kl_all.mean()),
-        "token_median_kld": q(0.5), "p95_kld": q(0.95), "p99_kld": q(0.99),
-        "p999_kld": q(0.999), "max_kld": float(kl_all.max()),
+        "token_median_kld": exact_q["p50"], "p95_kld": exact_q["p95"],
+        "p99_kld": exact_q["p99"], "p999_kld": exact_q["p999"], "max_kld": exact_max,
+        "kld_tail": tail.summary(exact_q),
         "context_macro_mean_kld": statistics.fmean(means),
         "context_bootstrap": bootstrap(means, clusters, args.bootstrap_samples, args.bootstrap_seed),
         "mean_jsd_bits": statistics.fmean(c["mean_jsd_bits"] for c in per_ctx),
@@ -813,7 +947,7 @@ def cmd_replay(args) -> int:
     return 0
 
 
-@torch.inference_mode()
+@inference_mode
 def qualification_metrics(live_logprobs: torch.Tensor, hidden: torch.Tensor,
                           head: torch.Tensor, vocab_chunk: int):
     """KL(live served distribution || distribution replayed from hidden states).
@@ -822,6 +956,8 @@ def qualification_metrics(live_logprobs: torch.Tensor, hidden: torch.Tensor,
     go through the head; only the replayed operand does. Two passes, as elsewhere:
     normaliser and argmax first, then the divergence.
     """
+    import torch
+
     rows = hidden.shape[0]
     dev = hidden.device
     log_z = torch.full((rows,), -math.inf, dtype=torch.float32, device=dev)
@@ -855,6 +991,7 @@ def cmd_qualify(args) -> int:
     prompt logprobs.
     """
     require_local_model(args.model)
+    import torch
     from vllm import LLM, SamplingParams
     from vllm.inputs import TokensPrompt
     from safetensors.torch import safe_open

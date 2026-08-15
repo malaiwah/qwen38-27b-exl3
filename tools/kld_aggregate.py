@@ -18,13 +18,25 @@ What is aggregable and what is not:
     every cluster the ladder touched, not a mean of per-shard intervals.  The
     resampler is byte-for-byte the one in `fidelity.py`, so a single-shard
     aggregate reproduces that shard's own `context_bootstrap` exactly;
-  * token-level percentiles (p95/p99/p999/median) are NOT aggregable from
-    per-context rows and are deliberately absent.  `max_kld` is aggregable and
-    is carried as the max over shards.
+  * token-level percentiles are NOT aggregable from per-context rows, and an
+    average of per-shard percentiles means nothing.  What IS aggregable is the
+    fixed log-spaced histogram of every scored position's KL that
+    `qwen38-fidelity-report/2` carries in `kld_tail`: counts add.  This tool
+    sums them and reports cumulative p50/p95/p99/p999/p9999 as the bin each
+    quantile falls in -- a bounded interval, plus a log-uniform point estimate
+    inside it -- together with exact exceedance counts at the decade edges.
+    `max_kld` needs no interpolation at all: it is the exact max over shards.
 
 Fail-closed rules -- any of these aborts without writing:
 
-  * a report that is not `qwen38-fidelity-report/1`, or lacks a required field;
+  * a report that is neither `qwen38-fidelity-report/2` nor the pre-histogram
+    `qwen38-fidelity-report/1`, or that lacks a required field, or whose
+    `kld_tail` counts do not sum to the positions it says it scored;
+  * a mix of `/1` and `/2` reports: `/1` has no histogram, so a summed tail
+    would silently describe only part of the run;
+  * an all-`/1` set, unless `--allow-legacy-no-tail` says so explicitly, in
+    which case the receipt carries no cumulative tail and records why;
+  * `/2` reports whose histograms were built with different bin edges;
   * disagreeing candidate/reference model identity, head digest, comparator,
     filter, vocabulary or hidden size across reports;
   * a context index that appears in more than one report (overlap);
@@ -48,6 +60,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import bisect
 import hashlib
 import json
 import math
@@ -57,8 +70,19 @@ import sys
 import time
 from pathlib import Path
 
-SCHEMA = "qwen38-kld-ladder-cumulative/1"
-REPORT_SCHEMA = "qwen38-fidelity-report/1"
+SCHEMA = "qwen38-kld-ladder-cumulative/2"
+REPORT_SCHEMA = "qwen38-fidelity-report/2"
+LEGACY_REPORT_SCHEMA = "qwen38-fidelity-report/1"
+
+# Cumulative quantiles read off the summed histogram.  p9999 is here and not in
+# the shard reports because it only becomes meaningful at ladder scale: it needs
+# 10^4 positions to exist at all and 10^6 to be worth printing.
+TAIL_QUANTILES = (("p50", 0.5), ("p95", 0.95), ("p99", 0.99),
+                  ("p999", 0.999), ("p9999", 0.9999))
+
+# Exceedance rows, as powers of ten of KL in nats.  These are counted at a bin
+# edge, so unlike the quantiles they are exact.
+EXCEEDANCE_LOG10 = (-4, -3, -2, -1, 0)
 
 # Cumulative scored-position checkpoints of the published ladder.
 LADDER_TARGETS = (
@@ -228,8 +252,11 @@ def load_report(path: Path, errors: list[str]) -> dict | None:
     if not isinstance(report, dict):
         errors.append(f"{path}: report is not an object")
         return None
-    if report.get("schema") != REPORT_SCHEMA:
-        errors.append(f"{path}: schema {report.get('schema')!r} != {REPORT_SCHEMA!r}")
+    schema = report.get("schema")
+    if schema not in (REPORT_SCHEMA, LEGACY_REPORT_SCHEMA):
+        errors.append(
+            f"{path}: schema {schema!r} is neither {REPORT_SCHEMA!r} nor {LEGACY_REPORT_SCHEMA!r}"
+        )
         return None
     for field in REQUIRED_REPORT_FIELDS:
         if field not in report:
@@ -290,6 +317,182 @@ def check_rows_against_summary(path: Path, report: dict, tolerance: float,
             f"({weighted_top1!r}), relative gap {top1_gap:.3e} > {tolerance:.3e}"
         )
     return {"token_mean_gap": kld_gap, "top1_gap": top1_gap, "positions": positions}
+
+
+def validate_tail(path: Path, report: dict, errors: list[str]) -> dict | None:
+    """Structural check of a `/2` report's `kld_tail` block.
+
+    A histogram that does not account for exactly the positions its own report
+    claims to have scored is worse than no histogram, because it would be summed
+    into a cumulative tail without anyone noticing.
+    """
+    tail = report.get("kld_tail")
+    if not isinstance(tail, dict):
+        errors.append(f"{path}: {REPORT_SCHEMA} report has no kld_tail object")
+        return None
+    edges = tail.get("bin_edges")
+    counts = tail.get("counts")
+    if (not isinstance(edges, list) or len(edges) < 2
+            or not all(isinstance(e, (int, float)) for e in edges)):
+        errors.append(f"{path}: kld_tail.bin_edges is not a list of at least two numbers")
+        return None
+    if any(b <= a for a, b in zip(edges, edges[1:])):
+        errors.append(f"{path}: kld_tail.bin_edges is not strictly ascending")
+        return None
+    if not isinstance(counts, list) or len(counts) != len(edges) + 1:
+        got = len(counts) if isinstance(counts, list) else "no"
+        errors.append(
+            f"{path}: kld_tail.counts has {got} entries; {len(edges)} edges need "
+            f"{len(edges) + 1} buckets (underflow, one per bin, overflow)"
+        )
+        return None
+    if any(not isinstance(c, int) or isinstance(c, bool) or c < 0 for c in counts):
+        errors.append(f"{path}: kld_tail.counts holds a negative or non-integer count")
+        return None
+    total = sum(counts)
+    if tail.get("total_count") != total:
+        errors.append(
+            f"{path}: kld_tail.total_count {tail.get('total_count')!r} != {total} summed counts"
+        )
+    if total != int(report["scored_positions"]):
+        errors.append(
+            f"{path}: kld_tail counts {total} positions but the report scored "
+            f"{report['scored_positions']}"
+        )
+    top = tail.get("max_kld")
+    if not isinstance(top, (int, float)) or not math.isfinite(float(top)):
+        errors.append(f"{path}: kld_tail.max_kld is not a finite number")
+    elif isinstance(report.get("max_kld"), (int, float)) and float(report["max_kld"]) != float(top):
+        errors.append(
+            f"{path}: kld_tail.max_kld {top!r} != the report's own max_kld "
+            f"{report['max_kld']!r}; one of them is not the exact maximum"
+        )
+    exact = tail.get("shard_exact_quantiles")
+    if not isinstance(exact, dict) or any(k not in exact for k in ("p50", "p95", "p99", "p999")):
+        errors.append(f"{path}: kld_tail.shard_exact_quantiles lacks p50/p95/p99/p999")
+    return tail
+
+
+def bucket_bounds(edges: list[float], bucket: int) -> tuple[float, float]:
+    """The half-open KL interval, in nats, that a bucket index stands for."""
+    lo = 0.0 if bucket == 0 else float(edges[bucket - 1])
+    hi = float(edges[bucket]) if bucket < len(edges) else math.inf
+    return lo, hi
+
+
+def histogram_quantile(edges: list[float], counts: list[int], cumulative: list[int],
+                       total: int, q: float, global_max: float) -> dict:
+    """Bound one cumulative quantile by the histogram bin it falls in.
+
+    Linear interpolation between order statistics -- what `torch.quantile`, and
+    therefore every per-shard report, uses -- puts the exact q-th quantile
+    between the k-th and (k+1)-th smallest scored positions, where
+    `k = floor((n - 1) q) + 1`.  Bounding both of those observations bounds the
+    exact value, and each bound is a bin edge, so `lower` and `upper` are a
+    guarantee rather than an estimate.  `estimate` interpolates log-uniformly
+    inside the lower observation's bin, which is the assumption the log-spaced
+    binning already encodes; it is never outside `[lower, upper]`.
+
+    The exact maximum tightens the upper bound: no quantile can exceed it, and
+    for the overflow bucket it is the only finite bound there is.
+    """
+    h = (total - 1) * q
+    k_lo = math.floor(h) + 1
+    k_hi = k_lo if h == math.floor(h) else min(k_lo + 1, total)
+    b_lo = bisect.bisect_left(cumulative, k_lo)
+    b_hi = bisect.bisect_left(cumulative, k_hi)
+    lo, hi = bucket_bounds(edges, b_lo)
+    upper = bucket_bounds(edges, b_hi)[1]
+    if not math.isfinite(upper) or upper > global_max:
+        upper = global_max
+    below = cumulative[b_lo - 1] if b_lo else 0
+    inside = counts[b_lo]
+    if b_lo == 0:
+        kind, estimate = "underflow", None
+    elif b_lo == len(edges):
+        kind, estimate = "overflow", None
+    else:
+        kind = "log"
+        frac = min(1.0, max(0.0, (h + 1.0 - below - 0.5) / inside))
+        # Clamped into the guaranteed interval: interpolation inside the last
+        # populated bin can otherwise land above the exact maximum, and an
+        # estimate that contradicts a bound the same receipt states is worthless.
+        estimate = min(max(lo * (hi / lo) ** frac, lo), upper)
+    return {
+        "quantile": q,
+        "lower": lo,
+        "upper": upper,
+        "estimate": estimate,
+        "bin": b_lo,
+        "bin_kind": kind,
+        "bin_lower": lo,
+        "bin_upper": None if math.isinf(hi) else hi,
+        "order_statistic": k_lo,
+        "positions_below_bin": below,
+        "positions_in_bin": inside,
+        "relative_width": None if upper <= 0.0 else (upper - lo) / upper,
+    }
+
+
+def exceedance_row(edges: list[float], counts: list[int], total: int,
+                   log10_threshold: int) -> dict:
+    """Exact number of positions at or above a bin edge -- no interpolation.
+
+    `threshold` is the edge actually used: the first one at or above
+    `10 ** log10_threshold`, which is that power of ten itself whenever it is a
+    bin edge, as it is for the published binning.
+    """
+    requested = 10.0 ** log10_threshold
+    index = bisect.bisect_left(edges, requested)
+    if index == len(edges):
+        raise SystemExit(
+            f"exceedance threshold {requested!r} is above the histogram's last bin edge"
+        )
+    above = sum(counts[index + 1:])
+    return {"requested": requested, "threshold": float(edges[index]),
+            "exact": float(edges[index]) == requested,
+            "positions": above, "fraction": above / total}
+
+
+def cumulative_tail(tails: list[dict]) -> dict:
+    """Sum the shard histograms and read the cumulative tail off the sum.
+
+    Callers must have checked that every histogram shares one set of bin edges;
+    counts from different binnings are not summable.
+    """
+    edges = [float(e) for e in tails[0]["bin_edges"]]
+    counts = [0] * (len(edges) + 1)
+    for tail in tails:
+        for i, c in enumerate(tail["counts"]):
+            counts[i] += int(c)
+    total = sum(counts)
+    cumulative, running = [], 0
+    for c in counts:
+        running += c
+        cumulative.append(running)
+    global_max = max(float(t["max_kld"]) for t in tails)
+    mins = [float(t["min_kld"]) for t in tails
+            if isinstance(t.get("min_kld"), (int, float))]
+    return {
+        "source": "sum of the per-shard kld_tail histograms",
+        "units": "nats",
+        "shards": len(tails),
+        "binning": tails[0].get("binning"),
+        "bin_edges": edges,
+        "counts": counts,
+        "total_count": total,
+        "underflow_count": counts[0],
+        "overflow_count": counts[-1],
+        "max_kld_exact": global_max,
+        "min_kld_exact": min(mins) if len(mins) == len(tails) else None,
+        "quantiles": {name: histogram_quantile(edges, counts, cumulative, total, q, global_max)
+                      for name, q in TAIL_QUANTILES},
+        "exceedance": [exceedance_row(edges, counts, total, d) for d in EXCEEDANCE_LOG10],
+        "method": ("counts add across shards, percentiles do not: each quantile is reported "
+                   "as the [lower, upper] bin interval that provably contains it, plus a "
+                   "log-uniform point estimate inside that interval. max_kld_exact and the "
+                   "exceedance counts are exact, not interpolated."),
+    }
 
 
 def load_parent_suite(suite: Path, errors: list[str]) -> dict | None:
@@ -368,14 +571,42 @@ def cmd_aggregate(args: argparse.Namespace) -> int:
     parent = load_parent_suite(Path(args.suite), errors) if args.suite else None
 
     reports: list[tuple[Path, dict, dict]] = []
+    tails: list[tuple[Path, dict]] = []
     for path in paths:
         report = load_report(path, errors)
         if report is None:
             continue
         stats = check_rows_against_summary(path, report, tolerance, errors)
         reports.append((path, report, stats))
+        if report["schema"] == REPORT_SCHEMA:
+            tail = validate_tail(path, report, errors)
+            if tail is not None:
+                tails.append((path, tail))
     if not reports:
         raise Rejected(errors or ["no usable reports"])
+
+    # ---- one report generation, so the summed tail covers the whole run
+    schemas = sorted({str(report["schema"]) for _, report, _ in reports})
+    if len(schemas) > 1:
+        errors.append(
+            f"mixed report schemas {schemas}: {LEGACY_REPORT_SCHEMA} predates the kld_tail "
+            f"histogram, so a summed tail would describe only the {REPORT_SCHEMA} shards. "
+            f"Re-run `fidelity.py replay` on the {LEGACY_REPORT_SCHEMA} shards, or aggregate "
+            "the two generations into separate receipts"
+        )
+    elif schemas == [LEGACY_REPORT_SCHEMA] and not args.allow_legacy_no_tail:
+        errors.append(
+            f"all {len(reports)} reports are {LEGACY_REPORT_SCHEMA}, which carries no kld_tail "
+            "histogram, so no cumulative percentile can be derived from them. Re-run "
+            f"`fidelity.py replay` to produce {REPORT_SCHEMA}, or pass --allow-legacy-no-tail "
+            "to build a receipt that states the cumulative tail is unavailable"
+        )
+    for path, tail in tails[1:]:
+        if [float(e) for e in tail["bin_edges"]] != [float(e) for e in tails[0][1]["bin_edges"]]:
+            errors.append(
+                f"{path}: kld_tail bin edges differ from {tails[0][0]}; histograms with "
+                "different binning cannot be summed"
+            )
 
     # ---- identity: one candidate, one reference, one head, one comparator
     base_path, base_report, _ = reports[0]
@@ -466,6 +697,8 @@ def cmd_aggregate(args: argparse.Namespace) -> int:
     if errors:
         raise Rejected(errors)
 
+    tail_summary = cumulative_tail([t for _, t in tails]) if tails else None
+
     # ---- aggregation over the union of per-context rows, in suite order
     if parent is not None:
         order_key = lambda i: parent["order"][i]  # noqa: E731
@@ -520,6 +753,7 @@ def cmd_aggregate(args: argparse.Namespace) -> int:
             "context_macro_mean_kld": report.get("context_macro_mean_kld"),
             "top1_agreement": float(report["top1_agreement"]),
             "max_kld": report.get("max_kld"),
+            "p999_kld": report.get("p999_kld"),
             "row_consistency": {"token_mean_relative_gap": stats["token_mean_gap"],
                                 "top1_relative_gap": stats["top1_gap"]},
         })
@@ -527,6 +761,24 @@ def cmd_aggregate(args: argparse.Namespace) -> int:
     max_kld = [float(r["max_kld"]) for _, r, _ in reports if isinstance(r.get("max_kld"), (int, float))]
     jsd = [(float(r["mean_jsd_bits"]), int(r["contexts"]))
            for _, r, _ in reports if isinstance(r.get("mean_jsd_bits"), (int, float))]
+    if tail_summary is None:
+        not_aggregable = {
+            "token_percentiles": (
+                f"these reports are {LEGACY_REPORT_SCHEMA}, which carries no kld_tail "
+                "histogram: median/p95/p99/p999 need the token-level KLD vector, so only "
+                "each shard's own percentiles exist; see the per-shard reports listed above"),
+        }
+    else:
+        not_aggregable = {
+            "token_percentiles_exact": (
+                "an exact cumulative median/p95/p99/p999 would need the token-level KLD "
+                "vector, which no shard report carries. `tail.quantiles` bounds each one by "
+                "the histogram bin it falls in, which is exact to the bin width; each "
+                "shard's own exact percentiles are in its report"),
+            "jsd_percentiles": (
+                "shard reports carry only the position-weighted mean JSD, so its "
+                "distribution cannot be recovered here"),
+        }
 
     payload = {
         "schema": SCHEMA,
@@ -584,6 +836,7 @@ def cmd_aggregate(args: argparse.Namespace) -> int:
               "top1_agreement": float(r["top1_agreement"])} for r in rows),
             key=lambda r: -r["mean_kld"],
         )[:20],
+        "tail": tail_summary,
         "ladder": ladder_state(positions),
         "shards": shard_rows,
         "consistency": {
@@ -593,10 +846,7 @@ def cmd_aggregate(args: argparse.Namespace) -> int:
             "note": ("headline numbers are recomputed from per-context rows and cross-checked "
                      "against each shard report's own summary"),
         },
-        "not_aggregable": {
-            "token_percentiles": ("median/p95/p99/p999 need the token-level KLD vector; see the "
-                                  "per-shard reports listed above"),
-        },
+        "not_aggregable": not_aggregable,
         "inputs": {row["report"]: row["report_sha256"] for row in shard_rows},
     }
     if args.rows:
@@ -622,6 +872,10 @@ def cmd_aggregate(args: argparse.Namespace) -> int:
         "ci95": [payload["context_bootstrap"]["ci95_low"],
                  payload["context_bootstrap"]["ci95_high"]],
         "top1_agreement": payload["top1_agreement"],
+        "cumulative_p999": None if tail_summary is None else [
+            tail_summary["quantiles"]["p999"]["lower"],
+            tail_summary["quantiles"]["p999"]["upper"]],
+        "max_kld": payload["max_kld"],
         "ladder_checkpoint": payload["ladder"]["checkpoint"],
         "content_sha256": payload["content_sha256"],
     }), flush=True)
@@ -643,6 +897,9 @@ def main() -> int:
     a.add_argument("--candidate", default=None,
                    help="candidate label; default is the basename of its model path")
     a.add_argument("--label", default=None, help="free-text label stored in the receipt")
+    a.add_argument("--allow-legacy-no-tail", action="store_true",
+                   help=f"accept a set that is entirely {LEGACY_REPORT_SCHEMA} (the "
+                        "pre-histogram harness) and write a receipt with no cumulative tail")
     a.add_argument("--suite", default=None,
                    help="parent suite directory; enables shard-view lineage verification")
     a.add_argument("--shard-size", type=int, default=512,

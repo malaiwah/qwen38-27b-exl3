@@ -1,0 +1,2863 @@
+{
+  "schema": "qwen38-collection-index/1",
+  "title": "Qwen3.8-27B EXL3 collection: one immutable row per published checkpoint, every field traced to a receipt",
+  "conventions": {
+    "row_sources": "every number in a row carries the receipt path, that file's sha256 and the RFC 6901 pointer it was read through; a null always carries a not_verified note in its block, and an optional receipt string the receipt never wrote is absent rather than null",
+    "byte_counts": {
+      "whole_tree_bytes": "all published files of the artifact, on disk",
+      "immutable_payload_bytes": "the files the build receipt treats as defining the artifact",
+      "tensor_payload_bytes": "sum of the quantization manifest's per-role tensor bytes",
+      "resident_weights": "measured GPU allocation for weights at load; the only memory figure here, and never a disk size"
+    },
+    "shard_map_sha256": "sha256 of json.dumps({\"index_sha256\": <index digest>, \"shard_sha256\": <shard map>}, sort_keys=True, separators=(\",\", \":\")).encode()",
+    "self_digest": "content_sha256 is canonical_sha256 of this document with generated_utc, generator, content_sha256 and content_sha256_excludes removed; canonical means json.dumps(..., sort_keys=True, separators=(\",\", \":\"))",
+    "row_digests": "canonical_sha256 of each row object, keyed by row id"
+  },
+  "releases": [
+    {
+      "id": "k4",
+      "artifact": {
+        "hf_repo": "malaiwah/Qwen3.8-27B-K4",
+        "label": "iteration-1 capacity edition",
+        "recipe": "MLP all K4, lm_head K6, attention BF16 on disk encoded to K6 at load, BF16 MTP/vision/embeddings",
+        "index_sha256": "f17bd87446338313304591297bbc3e37b541b32253723ef75c917c546416e660",
+        "shard_sha256": {
+          "model-00001-of-00004.safetensors": "690456b5db5d6187d3e4b15b84e5dbafcce440ffe05f30dba7e7eda81210ff26",
+          "model-00002-of-00004.safetensors": "44b8444793289e111a0956f06f18fb24090c3408a7aac0b517fdd061dfde0e5c",
+          "model-00003-of-00004.safetensors": "02efb298bc40bb3c739fb525d4b70ed4d307a7e24fd30ed71cb7e1433a6c326a",
+          "model-00004-of-00004.safetensors": "e21117898ca5d5fc9591091d8ed3b3e87cf27a434a6d212f10e6f5e62aa632de"
+        },
+        "source": {
+          "path": "receipts/release-evidence-k4.json",
+          "sha256": "d1fc7aaae42f4eafb57f14e937341e5b1b6c0c68e14737cd28a6c6602cea883f",
+          "pointers": {
+            "hf_repo": "/artifact/hf_repo",
+            "label": "/artifact/label",
+            "recipe": "/artifact/recipe",
+            "index_sha256": "/artifact/index_sha256",
+            "shard_sha256": "/artifact/shard_sha256"
+          }
+        },
+        "shard_map_sha256": "a30a6976edd1dc8df837d2e7f5ddb06cde6fda9b5eaa7e745d0f5c676f1dece2",
+        "shard_map_corroboration": [],
+        "shard_map_not_verified": [
+          "no build receipt or SHA256SUMS for this release is published in the repo; the index and shard digests rest on the release evidence alone"
+        ],
+        "hf_url": "https://huggingface.co/malaiwah/Qwen3.8-27B-K4",
+        "revision": null,
+        "not_verified": [
+          "no receipt records a Hub revision for this artifact",
+          "receipts/v3-report-k4-analysis.json predates candidate_identity, so not even the absence of a revision is recorded for the capture"
+        ]
+      },
+      "base_model": {
+        "hf_repo": "Qwen/Qwen3.8-27B",
+        "revision": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0",
+        "source": {
+          "path": "receipts/release-evidence-k4.json",
+          "sha256": "d1fc7aaae42f4eafb57f14e937341e5b1b6c0c68e14737cd28a6c6602cea883f",
+          "pointers": {
+            "hf_repo": "/upstream/hf_repo",
+            "revision": "/upstream/revision"
+          }
+        },
+        "index_sha256": null,
+        "not_verified": [
+          "no build receipt for this release is published in the repo, so the base model's index digest is not pinned for this artifact"
+        ]
+      },
+      "converter": {
+        "repo": null,
+        "commit": null,
+        "declared": null,
+        "not_verified": [
+          "the K4 release evidence records no exllamav3 converter commit, and no K4 build receipt is published in the repo; MODEL_CARD-K4.md names exllamav3 1.4.2 @ 5f3c537 in prose but no receipt pins it"
+        ],
+        "research_repo": "https://github.com/malaiwah/qwen38-27b-exl3",
+        "research_commit": "8b1c59ee5e27d99be5ce7047486ad2534bb83e2e",
+        "research_source": {
+          "path": "receipts/release-evidence-k4.json",
+          "sha256": "d1fc7aaae42f4eafb57f14e937341e5b1b6c0c68e14737cd28a6c6602cea883f",
+          "pointers": {
+            "research_repo": "/toolchain/research_repo",
+            "research_commit": "/toolchain/research_commit"
+          }
+        }
+      },
+      "precision": {
+        "declared_recipe": {
+          "text": "MLP all K4, lm_head K6, attention BF16 on disk encoded to K6 at load, BF16 MTP/vision/embeddings",
+          "source": {
+            "path": "receipts/release-evidence-k4.json",
+            "sha256": "d1fc7aaae42f4eafb57f14e937341e5b1b6c0c68e14737cd28a6c6602cea883f",
+            "pointers": {
+              "text": "/artifact/recipe"
+            }
+          }
+        },
+        "by_role": {
+          "attention": {
+            "declared": "BF16 on disk, encoded to K6 at load",
+            "declared_quote": "attention BF16 on disk encoded to K6 at load",
+            "declared_source": {
+              "path": "receipts/release-evidence-k4.json",
+              "sha256": "d1fc7aaae42f4eafb57f14e937341e5b1b6c0c68e14737cd28a6c6602cea883f",
+              "pointer": "/artifact/recipe"
+            },
+            "serialized_formats": null,
+            "serialized_bytes": null,
+            "exl3_modules": null,
+            "not_verified": [
+              "no quantization manifest in the repo, so the stored formats and per-role byte sizes of this release are not machine-verifiable here"
+            ]
+          },
+          "mlp_gate": {
+            "declared": "K4",
+            "declared_quote": "MLP all K4",
+            "declared_source": {
+              "path": "receipts/release-evidence-k4.json",
+              "sha256": "d1fc7aaae42f4eafb57f14e937341e5b1b6c0c68e14737cd28a6c6602cea883f",
+              "pointer": "/artifact/recipe"
+            },
+            "serialized_formats": null,
+            "serialized_bytes": null,
+            "exl3_modules": null,
+            "not_verified": [
+              "no quantization manifest in the repo, so the stored formats and per-role byte sizes of this release are not machine-verifiable here"
+            ]
+          },
+          "mlp_up": {
+            "declared": "K4",
+            "declared_quote": "MLP all K4",
+            "declared_source": {
+              "path": "receipts/release-evidence-k4.json",
+              "sha256": "d1fc7aaae42f4eafb57f14e937341e5b1b6c0c68e14737cd28a6c6602cea883f",
+              "pointer": "/artifact/recipe"
+            },
+            "serialized_formats": null,
+            "serialized_bytes": null,
+            "exl3_modules": null,
+            "not_verified": [
+              "no quantization manifest in the repo, so the stored formats and per-role byte sizes of this release are not machine-verifiable here"
+            ]
+          },
+          "mlp_down": {
+            "declared": "K4",
+            "declared_quote": "MLP all K4",
+            "declared_source": {
+              "path": "receipts/release-evidence-k4.json",
+              "sha256": "d1fc7aaae42f4eafb57f14e937341e5b1b6c0c68e14737cd28a6c6602cea883f",
+              "pointer": "/artifact/recipe"
+            },
+            "serialized_formats": null,
+            "serialized_bytes": null,
+            "exl3_modules": null,
+            "not_verified": [
+              "no quantization manifest in the repo, so the stored formats and per-role byte sizes of this release are not machine-verifiable here"
+            ]
+          },
+          "embed": {
+            "declared": "BF16",
+            "declared_quote": "BF16 MTP/vision/embeddings",
+            "declared_source": {
+              "path": "receipts/release-evidence-k4.json",
+              "sha256": "d1fc7aaae42f4eafb57f14e937341e5b1b6c0c68e14737cd28a6c6602cea883f",
+              "pointer": "/artifact/recipe"
+            },
+            "serialized_formats": null,
+            "serialized_bytes": null,
+            "exl3_modules": null,
+            "not_verified": [
+              "no quantization manifest in the repo, so the stored formats and per-role byte sizes of this release are not machine-verifiable here"
+            ]
+          },
+          "lm_head": {
+            "declared": "K6",
+            "declared_quote": "lm_head K6",
+            "declared_source": {
+              "path": "receipts/release-evidence-k4.json",
+              "sha256": "d1fc7aaae42f4eafb57f14e937341e5b1b6c0c68e14737cd28a6c6602cea883f",
+              "pointer": "/artifact/recipe"
+            },
+            "serialized_formats": null,
+            "serialized_bytes": null,
+            "exl3_modules": null,
+            "not_verified": [
+              "no quantization manifest in the repo, so the stored formats and per-role byte sizes of this release are not machine-verifiable here"
+            ]
+          },
+          "mtp": {
+            "declared": "BF16",
+            "declared_quote": "BF16 MTP/vision/embeddings",
+            "declared_source": {
+              "path": "receipts/release-evidence-k4.json",
+              "sha256": "d1fc7aaae42f4eafb57f14e937341e5b1b6c0c68e14737cd28a6c6602cea883f",
+              "pointer": "/artifact/recipe"
+            },
+            "serialized_formats": null,
+            "serialized_bytes": null,
+            "exl3_modules": null,
+            "not_verified": [
+              "no quantization manifest in the repo, so the stored formats and per-role byte sizes of this release are not machine-verifiable here"
+            ]
+          },
+          "vision": {
+            "declared": "BF16",
+            "declared_quote": "BF16 MTP/vision/embeddings",
+            "declared_source": {
+              "path": "receipts/release-evidence-k4.json",
+              "sha256": "d1fc7aaae42f4eafb57f14e937341e5b1b6c0c68e14737cd28a6c6602cea883f",
+              "pointer": "/artifact/recipe"
+            },
+            "serialized_formats": null,
+            "serialized_bytes": null,
+            "exl3_modules": null,
+            "not_verified": [
+              "no quantization manifest in the repo, so the stored formats and per-role byte sizes of this release are not machine-verifiable here"
+            ]
+          },
+          "norms_and_small": {
+            "declared": null,
+            "not_verified": [
+              "the published recipe does not name norms and other small tensors",
+              "no quantization manifest in the repo, so the stored formats and per-role byte sizes of this release are not machine-verifiable here"
+            ],
+            "serialized_formats": null,
+            "serialized_bytes": null,
+            "exl3_modules": null
+          }
+        },
+        "online_encoding": {
+          "note": "attention ships BF16 and is encoded to K6 at load; the online width is a serving knob, not a property of the stored bytes",
+          "source": {
+            "path": "receipts/release-evidence-k4.json",
+            "sha256": "d1fc7aaae42f4eafb57f14e937341e5b1b6c0c68e14737cd28a6c6602cea883f",
+            "pointer": "/artifact/recipe"
+          }
+        }
+      },
+      "serialized_bytes": {
+        "note": "serialized bytes are on-disk bytes and are never VRAM; resident weight memory is reported separately under resident_weights",
+        "whole_tree_bytes": null,
+        "immutable_payload_bytes": null,
+        "tensor_payload_bytes": null,
+        "whole_tree_not_verified": [
+          "the release evidence for this artifact records no disk byte count"
+        ],
+        "immutable_payload_not_verified": [
+          "no build receipt for this release is published in the repo"
+        ],
+        "tensor_payload_not_verified": [
+          "no quantization manifest for this release is published in the repo, so tensor-payload bytes cannot be derived from per-role tensor sizes"
+        ]
+      },
+      "resident_weights": {
+        "note": "measured GPU allocation for weights at load, as vLLM reports it; not a serialized size",
+        "measurement": {
+          "gib_reported": 17.89,
+          "bytes_approx": 19209241231,
+          "bytes_interval": [
+            19203872522,
+            19214609941
+          ],
+          "interval_note": "the source reports 2-decimal GiB; bytes are derived and span the +/-0.005 GiB the report leaves open",
+          "configuration": "not stated by the receipt",
+          "source": {
+            "path": "receipts/release-evidence-k4.json",
+            "sha256": "d1fc7aaae42f4eafb57f14e937341e5b1b6c0c68e14737cd28a6c6602cea883f",
+            "pointers": {
+              "gib_reported": "/artifact/resident_weights_gib"
+            }
+          },
+          "log_corroboration": null,
+          "not_verified": [
+            "no vLLM startup log receipt is published in the repo for this figure, and the receipt does not state the MTP depth or embedding mode it was measured under"
+          ]
+        },
+        "additional_measurements": []
+      },
+      "runtime": {
+        "image_digest": "voipmonitor/vllm@sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b",
+        "gpu": "NVIDIA RTX PRO 6000 Blackwell Server Edition",
+        "arch": "SM120",
+        "tensor_parallel": 1,
+        "source": {
+          "path": "receipts/release-evidence-k4.json",
+          "sha256": "d1fc7aaae42f4eafb57f14e937341e5b1b6c0c68e14737cd28a6c6602cea883f",
+          "pointers": {
+            "image_digest": "/toolchain/vllm_image",
+            "gpu": "/hardware/gpu",
+            "arch": "/hardware/arch",
+            "tensor_parallel": "/hardware/tensor_parallel"
+          }
+        },
+        "patch_modules": null,
+        "patch_prs": null,
+        "not_verified": [
+          "the K4 release evidence names the runtime image but no patched-module digests or patch PRs, so the served code cannot be pinned from it",
+          "the image digest was not authenticated against a rootfs manifest"
+        ]
+      },
+      "fidelity": {
+        "protocol": "hidden-state replay, exact full-vocabulary two-pass KL(BF16 || candidate)",
+        "protocol_source": {
+          "path": "receipts/v3-report-k4-analysis.json",
+          "sha256": "6355512fa76e75d659b044f581f9cf67c48210f034877ed56025791703f2c7bc",
+          "pointers": {
+            "comparator": "/comparator",
+            "reference": "/reference",
+            "candidate": "/candidate"
+          }
+        },
+        "comparator": {
+          "vocab_chunk": 24832,
+          "device": "cuda",
+          "accumulation": "float64",
+          "two_pass": true
+        },
+        "headline": {
+          "suite_token_sha256": "3f9d17f1b55f64872ad3ac19c8711654e09ba70b7ca14b0851525088fe735691",
+          "partition": "analysis",
+          "contexts": 136,
+          "scored_positions": 278392,
+          "mean_kld": 0.030736104824830267,
+          "median_kld": 0.004218101546015873,
+          "context_macro_mean_kld": 0.030736104824830267,
+          "ci95_low": 0.0223837770930911,
+          "ci95_high": 0.040730999865936125,
+          "bootstrap_clusters": 41,
+          "bootstrap_samples": 10000,
+          "top1_agreement": 0.944984051265841,
+          "reference_head_sha256": "25a30fd5f826da0abc4efc4cc71def9f02bcb8085f7175eee284d221dee4cfff",
+          "source": {
+            "path": "receipts/v3-report-k4-analysis.json",
+            "sha256": "6355512fa76e75d659b044f581f9cf67c48210f034877ed56025791703f2c7bc",
+            "pointers": {
+              "suite_token_sha256": "/suite_token_sha256",
+              "partition": "/filter",
+              "contexts": "/contexts",
+              "scored_positions": "/scored_positions",
+              "mean_kld": "/token_mean_kld",
+              "median_kld": "/token_median_kld",
+              "context_macro_mean_kld": "/context_macro_mean_kld",
+              "ci95_low": "/context_bootstrap/ci95_low",
+              "ci95_high": "/context_bootstrap/ci95_high",
+              "bootstrap_clusters": "/context_bootstrap/clusters",
+              "bootstrap_samples": "/context_bootstrap/samples",
+              "top1_agreement": "/top1_agreement",
+              "reference_head_sha256": "/head_sha256"
+            }
+          },
+          "suite": "qwen38-27b-fidelity-suite-v3",
+          "declared_by": {
+            "path": "receipts/release-evidence-k4.json",
+            "sha256": "d1fc7aaae42f4eafb57f14e937341e5b1b6c0c68e14737cd28a6c6602cea883f",
+            "pointers": {
+              "suite": "/evaluation/suite",
+              "mean_kld": "/evaluation/mean_kld",
+              "ci95": "/evaluation/ci95",
+              "contexts": "/evaluation/contexts",
+              "top1_agreement": "/evaluation/top1_agreement",
+              "suite_token_sha256": "/evaluation/suite_token_sha256"
+            }
+          }
+        },
+        "corrected_mean_kld": {
+          "contexts": 127,
+          "mean_kld": 0.029678914726743645,
+          "ci95_low": 0.02132362090339316,
+          "ci95_high": 0.04017017189092785,
+          "bootstrap_clusters": 39,
+          "top1_agreement": 0.9447857244517616,
+          "policy": "exclude every source document with any exact normalized 12-token n-gram; Unicode words plus one token per Han/Kana character",
+          "contexts_before": 136,
+          "excluded_source_clusters": [
+            "cpython-v3.12.8-0060",
+            "pg4300"
+          ],
+          "source": {
+            "path": "receipts/analysis-v3-contamination-corrected.json",
+            "sha256": "026fc453787eccef15879f29266489ba9ec04bbff59ab7e35827e92394480417",
+            "pointers": {
+              "contexts": "/metrics/k4/contexts",
+              "mean_kld": "/metrics/k4/mean_kld",
+              "ci95_low": "/metrics/k4/ci95/ci95_low",
+              "ci95_high": "/metrics/k4/ci95/ci95_high",
+              "bootstrap_clusters": "/metrics/k4/ci95/clusters",
+              "top1_agreement": "/metrics/k4/top1_agreement",
+              "policy": "/policy",
+              "contexts_before": "/analysis_contexts_before",
+              "excluded_source_clusters": "/excluded_source_clusters"
+            }
+          },
+          "basis": "v3 analysis partition, calibration-overlap-corrected subset",
+          "suite": "qwen38-27b-fidelity-suite-v3",
+          "suite_token_sha256": "3f9d17f1b55f64872ad3ac19c8711654e09ba70b7ca14b0851525088fe735691",
+          "source_disjoint": false,
+          "not_verified": [
+            "no source-disjoint v4 qualification is published for this release, so the corrected figure comes from the development-set partition"
+          ]
+        },
+        "corrected_alternates": [],
+        "suite_digests": [
+          {
+            "suite": "qwen38-27b-fidelity-suite-v3",
+            "suite_token_sha256": "3f9d17f1b55f64872ad3ac19c8711654e09ba70b7ca14b0851525088fe735691",
+            "partition": "analysis",
+            "contexts": 136,
+            "manifest": null,
+            "digest_reproduced_from_manifest": null,
+            "not_verified": [
+              "the v3 suite manifest is not published in the repo; the v3 suite digest is carried by the reports that used it"
+            ]
+          }
+        ],
+        "capture_identity": {
+          "report": "receipts/v3-report-k4-analysis.json",
+          "report_sha256": "6355512fa76e75d659b044f581f9cf67c48210f034877ed56025791703f2c7bc",
+          "report_index_sha256": null,
+          "not_verified": [
+            "receipts/v3-report-k4-analysis.json predates candidate_identity, so this capture is not bound to the artifact's index digest by the report itself"
+          ]
+        }
+      },
+      "amendments": {
+        "links": [
+          {
+            "name": "overlap_corrected_v3",
+            "path": "receipts/analysis-v3-contamination-corrected.json",
+            "sha256": "026fc453787eccef15879f29266489ba9ec04bbff59ab7e35827e92394480417",
+            "verified": true
+          },
+          {
+            "name": "source_disjoint_v4",
+            "path": "receipts/qualification-v4-contamination-corrected.json",
+            "sha256": "17148ed02713f426dcb4b7b69c8072a5eb8a9abd49bcbfcea585ca8e5c2f5ab3",
+            "verified": true
+          },
+          {
+            "name": "task_run",
+            "path": "receipts/tasks-v2-k4.json",
+            "sha256": "fb615fbe28b8572ff0f8f2d4856e7164047361f4be1eda551cb1b1ed48e7f9a5",
+            "verified": true
+          },
+          {
+            "name": "task_strict_rescore",
+            "path": "receipts/task-retention-v2-strict-rescore.json",
+            "sha256": "b1cddff1a9ae012a48ec0258096c3a258e652aef887fc9128d8665e62c867080",
+            "verified": true
+          }
+        ],
+        "scalars": {
+          "fidelity_dataset_revision": "73252e77e96bbf5596484e29dd8041f9f38c95f1"
+        },
+        "source": {
+          "path": "receipts/release-evidence-k4.json",
+          "sha256": "d1fc7aaae42f4eafb57f14e937341e5b1b6c0c68e14737cd28a6c6602cea883f",
+          "pointers": {
+            "amendments": "/amendments"
+          }
+        }
+      },
+      "status": {
+        "state": "published",
+        "label": "iteration-1 capacity edition",
+        "published_evidence": {
+          "path": "receipts/release-evidence-k4.json",
+          "sha256": "d1fc7aaae42f4eafb57f14e937341e5b1b6c0c68e14737cd28a6c6602cea883f",
+          "generated_utc": "2026-08-15T08:20:49Z",
+          "amended_utc": "2026-08-15T12:27:32Z"
+        },
+        "fidelity_rank": {
+          "rank": 4,
+          "of": 4,
+          "mean_kld": 0.029678914726743645,
+          "basis": "ascending mean KLD on the one corrected basis every release in this collection shares: the v3 analysis partition with calibration-overlapping source documents excluded.  The source-disjoint v4 figures in fidelity.corrected_mean_kld are the stronger evidence but do not cover K4.",
+          "source": {
+            "path": "receipts/analysis-v3-contamination-corrected.json",
+            "sha256": "026fc453787eccef15879f29266489ba9ec04bbff59ab7e35827e92394480417",
+            "pointers": {
+              "mean_kld": "/metrics/k4/mean_kld"
+            }
+          },
+          "best_in_collection": false
+        },
+        "not_verified": [
+          "public downstream benchmark beyond the deterministic paired smoke",
+          "multimodal quality",
+          "long-context accuracy",
+          "YaRN 1M",
+          "tensor parallel > 1",
+          "non-SM120 GPUs"
+        ],
+        "evaluation_note": "superseded on fidelity by every later build; retained as the capacity edition, the only one that reaches native 262,144 on a 32 GB card without an embedding overlay",
+        "native_context": {
+          "native_262144_on_32gb": true,
+          "kv_tokens_measured": 289577,
+          "measured_by": "independent RTX 5090 tester, MTP-3, vision enabled, utilisation 0.98",
+          "source": {
+            "path": "receipts/release-evidence-k4.json",
+            "sha256": "d1fc7aaae42f4eafb57f14e937341e5b1b6c0c68e14737cd28a6c6602cea883f",
+            "pointers": {
+              "native_262144_on_32gb": "/context/native_262144_on_32gb",
+              "kv_tokens_measured": "/context/kv_tokens_measured",
+              "measured_by": "/context/measured_by"
+            }
+          }
+        },
+        "model_card": {
+          "path": "MODEL_CARD-K4.md",
+          "sha256": "229f6716b495e07821910a4bdcdb1a492764978af8c1705f34c38509e1c40ef4"
+        }
+      }
+    },
+    {
+      "id": "k5k6",
+      "artifact": {
+        "hf_repo": "malaiwah/Qwen3.8-27B-EXL3-K5K6",
+        "label": "K5/K6, BF16 attention on disk",
+        "recipe": "MLP gate/up K5, down K6, lm_head K6/mcg, attention BF16 on disk encoded to K6/K5/K4 at load, quantized MTP",
+        "index_sha256": "f8ca5af94a4a8352eb2f0329c891f20e0c15d7b2733b396d88fb9fba05eabb24",
+        "shard_sha256": {
+          "model-00001-of-00004.safetensors": "349a94dc3fd74450dad3b1f57b76dec57b8b5bbe6add2ccd7e0adf5d777f3fb5",
+          "model-00002-of-00004.safetensors": "ea44be556fe63123fe278c357de90941c741d3cdd79062ccfba9f0d6b66d54f2",
+          "model-00003-of-00004.safetensors": "02efb298bc40bb3c739fb525d4b70ed4d307a7e24fd30ed71cb7e1433a6c326a",
+          "model-00004-of-00004.safetensors": "6832280ea4f2b630371fcb58548b8ec03f0a11ad36a031af0807d8daed88b238"
+        },
+        "source": {
+          "path": "receipts/release-evidence-k5k6.json",
+          "sha256": "5cab8e95bbae2df0628d16bb44e576fb88f86ec18d362dffa8a34eb3fcfc127c",
+          "pointers": {
+            "hf_repo": "/artifact/hf_repo",
+            "label": "/artifact/label",
+            "recipe": "/artifact/recipe",
+            "index_sha256": "/artifact/index_sha256",
+            "shard_sha256": "/artifact/shard_sha256"
+          }
+        },
+        "shard_map_sha256": "6d1ae267db0ebfde2bb0a1813cf540768d71fa14414a184c4b97bb03964d0b5d",
+        "shard_map_corroboration": [
+          {
+            "path": "receipts/k5k6-build-receipt.json",
+            "sha256": "9bac707d6ffd2af4386dbcab7f2ea8b471659030648b614c44f69bb52f7e4fc4",
+            "covers": "index + all shards",
+            "agrees": true
+          },
+          {
+            "path": "receipts/k5k6-SHA256SUMS",
+            "sha256": "19accf253c8f6c9390992504fb95b8edde8bbc3b84c628dbb988fe5c02753afe",
+            "covers": "index + all shards",
+            "agrees": true
+          }
+        ],
+        "hf_url": "https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6",
+        "revision": null,
+        "not_verified": [
+          "no receipt records a Hub revision for this artifact"
+        ],
+        "evidence_of_absence": {
+          "path": "receipts/report-v4-k5k6-qual.json",
+          "sha256": "845257b62b71b9770bbd1786dab1684b65f045d87dacf393b4149d48d265d408",
+          "pointers": {
+            "model_revision": "/candidate_identity/model_revision",
+            "model_revision_source": "/candidate_identity/model_revision_source"
+          },
+          "model_revision": null,
+          "model_revision_source": "none"
+        }
+      },
+      "base_model": {
+        "hf_repo": "Qwen/Qwen3.8-27B",
+        "revision": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0",
+        "logical_tensors_verified": 1199,
+        "source": {
+          "path": "receipts/release-evidence-k5k6.json",
+          "sha256": "5cab8e95bbae2df0628d16bb44e576fb88f86ec18d362dffa8a34eb3fcfc127c",
+          "pointers": {
+            "hf_repo": "/upstream/hf_repo",
+            "revision": "/upstream/revision",
+            "logical_tensors_verified": "/upstream/logical_tensors_verified"
+          }
+        },
+        "index_sha256": "77042094076611b69791a610065f28b7013b8c621795fa86ddccc8bac7d1b9df",
+        "index_sha256_source": {
+          "path": "receipts/k5k6-build-receipt.json",
+          "sha256": "9bac707d6ffd2af4386dbcab7f2ea8b471659030648b614c44f69bb52f7e4fc4",
+          "pointer": "/upstream_check/index_sha256"
+        }
+      },
+      "converter": {
+        "repo": "turboderp-org/exllamav3",
+        "commit": "5f3c537ca9d89893d771256f5c43c93656553fbb",
+        "declared": "turboderp-org/exllamav3@5f3c537 (1.4.2)",
+        "source": {
+          "path": "receipts/release-evidence-k5k6.json",
+          "sha256": "5cab8e95bbae2df0628d16bb44e576fb88f86ec18d362dffa8a34eb3fcfc127c",
+          "pointers": {
+            "commit": "/toolchain/exllamav3_commit"
+          }
+        },
+        "declared_source": {
+          "path": "receipts/k5k6-build-receipt.json",
+          "sha256": "9bac707d6ffd2af4386dbcab7f2ea8b471659030648b614c44f69bb52f7e4fc4",
+          "pointer": "/converter"
+        },
+        "research_repo": "https://github.com/malaiwah/qwen38-27b-exl3",
+        "research_commit": "21c2b6d708de011c2d73fdd8b1806e2e49c0ed71",
+        "research_source": {
+          "path": "receipts/release-evidence-k5k6.json",
+          "sha256": "5cab8e95bbae2df0628d16bb44e576fb88f86ec18d362dffa8a34eb3fcfc127c",
+          "pointers": {
+            "research_repo": "/toolchain/research_repo",
+            "research_commit": "/toolchain/research_commit"
+          }
+        }
+      },
+      "precision": {
+        "declared_recipe": {
+          "text": "MLP gate/up K5, down K6, attention BF16 for online K6, lm_head K6/mcg, MTP quantized (attn K4, MLP K5/K6), embed+vision BF16",
+          "source": {
+            "path": "receipts/k5k6-build-receipt.json",
+            "sha256": "9bac707d6ffd2af4386dbcab7f2ea8b471659030648b614c44f69bb52f7e4fc4",
+            "pointers": {
+              "text": "/recipe"
+            }
+          }
+        },
+        "by_role": {
+          "attention": {
+            "declared": "BF16 on disk, encoded online to K6",
+            "declared_quote": "attention BF16 for online K6",
+            "declared_source": {
+              "path": "receipts/k5k6-build-receipt.json",
+              "sha256": "9bac707d6ffd2af4386dbcab7f2ea8b471659030648b614c44f69bb52f7e4fc4",
+              "pointer": "/recipe"
+            },
+            "serialized_formats": null,
+            "serialized_bytes": null,
+            "exl3_modules": null,
+            "not_verified": [
+              "no quantization manifest in the repo, so the stored formats and per-role byte sizes of this release are not machine-verifiable here"
+            ]
+          },
+          "mlp_gate": {
+            "declared": "K5",
+            "declared_quote": "MLP gate/up K5",
+            "declared_source": {
+              "path": "receipts/k5k6-build-receipt.json",
+              "sha256": "9bac707d6ffd2af4386dbcab7f2ea8b471659030648b614c44f69bb52f7e4fc4",
+              "pointer": "/recipe"
+            },
+            "serialized_formats": null,
+            "serialized_bytes": null,
+            "exl3_modules": null,
+            "not_verified": [
+              "no quantization manifest in the repo, so the stored formats and per-role byte sizes of this release are not machine-verifiable here"
+            ]
+          },
+          "mlp_up": {
+            "declared": "K5",
+            "declared_quote": "MLP gate/up K5",
+            "declared_source": {
+              "path": "receipts/k5k6-build-receipt.json",
+              "sha256": "9bac707d6ffd2af4386dbcab7f2ea8b471659030648b614c44f69bb52f7e4fc4",
+              "pointer": "/recipe"
+            },
+            "serialized_formats": null,
+            "serialized_bytes": null,
+            "exl3_modules": null,
+            "not_verified": [
+              "no quantization manifest in the repo, so the stored formats and per-role byte sizes of this release are not machine-verifiable here"
+            ]
+          },
+          "mlp_down": {
+            "declared": "K6",
+            "declared_quote": "down K6",
+            "declared_source": {
+              "path": "receipts/k5k6-build-receipt.json",
+              "sha256": "9bac707d6ffd2af4386dbcab7f2ea8b471659030648b614c44f69bb52f7e4fc4",
+              "pointer": "/recipe"
+            },
+            "serialized_formats": null,
+            "serialized_bytes": null,
+            "exl3_modules": null,
+            "not_verified": [
+              "no quantization manifest in the repo, so the stored formats and per-role byte sizes of this release are not machine-verifiable here"
+            ]
+          },
+          "embed": {
+            "declared": "BF16",
+            "declared_quote": "embed+vision BF16",
+            "declared_source": {
+              "path": "receipts/k5k6-build-receipt.json",
+              "sha256": "9bac707d6ffd2af4386dbcab7f2ea8b471659030648b614c44f69bb52f7e4fc4",
+              "pointer": "/recipe"
+            },
+            "serialized_formats": null,
+            "serialized_bytes": null,
+            "exl3_modules": null,
+            "not_verified": [
+              "no quantization manifest in the repo, so the stored formats and per-role byte sizes of this release are not machine-verifiable here"
+            ]
+          },
+          "lm_head": {
+            "declared": "K6/mcg",
+            "declared_quote": "lm_head K6/mcg",
+            "declared_source": {
+              "path": "receipts/k5k6-build-receipt.json",
+              "sha256": "9bac707d6ffd2af4386dbcab7f2ea8b471659030648b614c44f69bb52f7e4fc4",
+              "pointer": "/recipe"
+            },
+            "serialized_formats": null,
+            "serialized_bytes": null,
+            "exl3_modules": null,
+            "not_verified": [
+              "no quantization manifest in the repo, so the stored formats and per-role byte sizes of this release are not machine-verifiable here"
+            ]
+          },
+          "mtp": {
+            "declared": "quantized: attention K4, MLP K5/K6",
+            "declared_quote": "MTP quantized (attn K4, MLP K5/K6)",
+            "declared_source": {
+              "path": "receipts/k5k6-build-receipt.json",
+              "sha256": "9bac707d6ffd2af4386dbcab7f2ea8b471659030648b614c44f69bb52f7e4fc4",
+              "pointer": "/recipe"
+            },
+            "serialized_formats": null,
+            "serialized_bytes": null,
+            "exl3_modules": null,
+            "not_verified": [
+              "no quantization manifest in the repo, so the stored formats and per-role byte sizes of this release are not machine-verifiable here"
+            ]
+          },
+          "vision": {
+            "declared": "BF16",
+            "declared_quote": "embed+vision BF16",
+            "declared_source": {
+              "path": "receipts/k5k6-build-receipt.json",
+              "sha256": "9bac707d6ffd2af4386dbcab7f2ea8b471659030648b614c44f69bb52f7e4fc4",
+              "pointer": "/recipe"
+            },
+            "serialized_formats": null,
+            "serialized_bytes": null,
+            "exl3_modules": null,
+            "not_verified": [
+              "no quantization manifest in the repo, so the stored formats and per-role byte sizes of this release are not machine-verifiable here"
+            ]
+          },
+          "norms_and_small": {
+            "declared": null,
+            "not_verified": [
+              "the published recipe does not name norms and other small tensors",
+              "no quantization manifest in the repo, so the stored formats and per-role byte sizes of this release are not machine-verifiable here"
+            ],
+            "serialized_formats": null,
+            "serialized_bytes": null,
+            "exl3_modules": null
+          }
+        },
+        "online_encoding": {
+          "note": "Attention width is VLLM_EXL3_ONLINE_TRELLIS_BITS (3-8). 0.95 utilisation is the vision-safe ceiling.",
+          "source": {
+            "path": "receipts/release-evidence-k5k6.json",
+            "sha256": "5cab8e95bbae2df0628d16bb44e576fb88f86ec18d362dffa8a34eb3fcfc127c",
+            "pointers": {
+              "note": "/serving/note"
+            }
+          }
+        }
+      },
+      "serialized_bytes": {
+        "note": "serialized bytes are on-disk bytes and are never VRAM; resident weight memory is reported separately under resident_weights",
+        "whole_tree_bytes": {
+          "value": 30597231933,
+          "unit": "bytes",
+          "covers": "every published file of the artifact as the release counted it",
+          "source": {
+            "path": "receipts/release-evidence-k5k6.json",
+            "sha256": "5cab8e95bbae2df0628d16bb44e576fb88f86ec18d362dffa8a34eb3fcfc127c",
+            "pointers": {
+              "value": "/artifact/disk_bytes"
+            }
+          }
+        },
+        "immutable_payload_bytes": {
+          "value": 30597223337,
+          "unit": "bytes",
+          "covers": "SHA256SUMS and immutable_payload cover only the files that define the artifact; README.md, .gitattributes, assets/** and the receipt files themselves are documentation that is rewritten by card edits without rebuilding the weights, so hashing them here would make the receipt go stale while still claiming to describe the build -- they are listed under mutable_documentation and hashed in DOCS-SHA256SUMS instead.",
+          "file_count": 17,
+          "source": {
+            "path": "receipts/k5k6-build-receipt.json",
+            "sha256": "9bac707d6ffd2af4386dbcab7f2ea8b471659030648b614c44f69bb52f7e4fc4",
+            "pointers": {
+              "value": "/immutable_payload_bytes",
+              "covers": "/scope_note",
+              "file_count": "/file_count"
+            }
+          }
+        },
+        "tensor_payload_bytes": null,
+        "tensor_payload_not_verified": [
+          "no quantization manifest for this release is published in the repo, so tensor-payload bytes cannot be derived from per-role tensor sizes"
+        ]
+      },
+      "resident_weights": {
+        "note": "measured GPU allocation for weights at load, as vLLM reports it; not a serialized size",
+        "measurement": {
+          "gib_reported": 20.32,
+          "bytes_approx": 21818433864,
+          "bytes_interval": [
+            21813065154,
+            21823802573
+          ],
+          "interval_note": "the source reports 2-decimal GiB; bytes are derived and span the +/-0.005 GiB the report leaves open",
+          "configuration": "not stated by the receipt",
+          "source": {
+            "path": "receipts/release-evidence-k5k6.json",
+            "sha256": "5cab8e95bbae2df0628d16bb44e576fb88f86ec18d362dffa8a34eb3fcfc127c",
+            "pointers": {
+              "gib_reported": "/artifact/resident_weights_gib"
+            }
+          },
+          "log_corroboration": null,
+          "not_verified": [
+            "no vLLM startup log receipt is published in the repo for this figure, and the receipt does not state the MTP depth or embedding mode it was measured under"
+          ]
+        },
+        "additional_measurements": []
+      },
+      "runtime": {
+        "image_digest": "voipmonitor/vllm@sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b",
+        "gpu": "NVIDIA RTX PRO 6000 Blackwell Server Edition",
+        "arch": "SM120",
+        "tensor_parallel": 1,
+        "driver": "595.58.03",
+        "source": {
+          "path": "receipts/release-evidence-k5k6.json",
+          "sha256": "5cab8e95bbae2df0628d16bb44e576fb88f86ec18d362dffa8a34eb3fcfc127c",
+          "pointers": {
+            "image_digest": "/toolchain/vllm_image",
+            "gpu": "/hardware/gpu",
+            "arch": "/hardware/arch",
+            "tensor_parallel": "/hardware/tensor_parallel",
+            "driver": "/hardware/driver"
+          }
+        },
+        "patch_modules": {
+          "digests": {
+            "vllm/model_executor/layers/quantization/exl3.py": "cb9e60024057e8097237a5518e6469b15f73e4139cc37f1f67e9c1485b44aedd"
+          },
+          "note": "The pinned image predates both PRs; the patched module must be copied over vllm/model_executor/layers/quantization/exl3.py. No image digest containing them is published yet.",
+          "source": {
+            "path": "receipts/release-evidence-k5k6.json",
+            "sha256": "5cab8e95bbae2df0628d16bb44e576fb88f86ec18d362dffa8a34eb3fcfc127c",
+            "pointers": {
+              "digest": "/toolchain/vllm_patches/patched_module_sha256",
+              "note": "/toolchain/vllm_patches/note"
+            }
+          }
+        },
+        "patch_prs": [
+          "https://github.com/local-inference-lab/vllm/pull/314",
+          "https://github.com/local-inference-lab/vllm/pull/316"
+        ],
+        "not_verified": [
+          "no published image digest contains these patches; the module must be copied over the pinned image at launch",
+          "the image digest was not authenticated against a rootfs manifest"
+        ]
+      },
+      "fidelity": {
+        "protocol": "hidden-state replay, exact full-vocabulary two-pass KL(BF16 || candidate)",
+        "protocol_source": {
+          "path": "receipts/v3-report-v2-analysis.json",
+          "sha256": "0b010c62a12e44e146cf6c2b836002f0da65ef00846929172b5ec43fe8e46ed6",
+          "pointers": {
+            "comparator": "/comparator",
+            "reference": "/reference",
+            "candidate": "/candidate"
+          }
+        },
+        "comparator": {
+          "vocab_chunk": 24832,
+          "device": "cuda",
+          "accumulation": "float64",
+          "two_pass": true
+        },
+        "headline": {
+          "suite_token_sha256": "3f9d17f1b55f64872ad3ac19c8711654e09ba70b7ca14b0851525088fe735691",
+          "partition": "analysis",
+          "contexts": 136,
+          "scored_positions": 278392,
+          "mean_kld": 0.008156951368733588,
+          "median_kld": 0.0015289096728281493,
+          "context_macro_mean_kld": 0.008156951368733588,
+          "ci95_low": 0.00606635146891835,
+          "ci95_high": 0.010666507957708397,
+          "bootstrap_clusters": 41,
+          "bootstrap_samples": 10000,
+          "top1_agreement": 0.9697189574413058,
+          "reference_head_sha256": "25a30fd5f826da0abc4efc4cc71def9f02bcb8085f7175eee284d221dee4cfff",
+          "source": {
+            "path": "receipts/v3-report-v2-analysis.json",
+            "sha256": "0b010c62a12e44e146cf6c2b836002f0da65ef00846929172b5ec43fe8e46ed6",
+            "pointers": {
+              "suite_token_sha256": "/suite_token_sha256",
+              "partition": "/filter",
+              "contexts": "/contexts",
+              "scored_positions": "/scored_positions",
+              "mean_kld": "/token_mean_kld",
+              "median_kld": "/token_median_kld",
+              "context_macro_mean_kld": "/context_macro_mean_kld",
+              "ci95_low": "/context_bootstrap/ci95_low",
+              "ci95_high": "/context_bootstrap/ci95_high",
+              "bootstrap_clusters": "/context_bootstrap/clusters",
+              "bootstrap_samples": "/context_bootstrap/samples",
+              "top1_agreement": "/top1_agreement",
+              "reference_head_sha256": "/head_sha256"
+            }
+          },
+          "suite": "qwen38-27b-fidelity-suite-v3",
+          "declared_by": {
+            "path": "receipts/release-evidence-k5k6.json",
+            "sha256": "5cab8e95bbae2df0628d16bb44e576fb88f86ec18d362dffa8a34eb3fcfc127c",
+            "pointers": {
+              "suite": "/evaluation/suite",
+              "mean_kld": "/evaluation/mean_kld",
+              "ci95": "/evaluation/ci95",
+              "contexts": "/evaluation/contexts",
+              "top1_agreement": "/evaluation/top1_agreement",
+              "suite_token_sha256": "/evaluation/suite_token_sha256"
+            }
+          }
+        },
+        "corrected_mean_kld": {
+          "contexts": 36,
+          "mean_kld": 0.0034548280332054506,
+          "ci95_low": 0.002915840885889275,
+          "ci95_high": 0.004059584861382779,
+          "bootstrap_clusters": 24,
+          "top1_agreement": 0.9749633610161212,
+          "kld_reduction_vs_official_fp8": 0.41351853846713693,
+          "policy": "exclude every source document with any exact normalized 12-token n-gram; Unicode words plus one token per Han/Kana character",
+          "contexts_before": 42,
+          "excluded_source_clusters": [
+            "cpython-c-v3.12.8-001",
+            "cpython-c-v3.12.8-002",
+            "wiki4-pt-003",
+            "wiki4-zh-003"
+          ],
+          "source": {
+            "path": "receipts/qualification-v4-contamination-corrected.json",
+            "sha256": "17148ed02713f426dcb4b7b69c8072a5eb8a9abd49bcbfcea585ca8e5c2f5ab3",
+            "pointers": {
+              "contexts": "/metrics/k5k6/contexts",
+              "mean_kld": "/metrics/k5k6/mean_kld",
+              "ci95_low": "/metrics/k5k6/ci95/ci95_low",
+              "ci95_high": "/metrics/k5k6/ci95/ci95_high",
+              "bootstrap_clusters": "/metrics/k5k6/ci95/clusters",
+              "top1_agreement": "/metrics/k5k6/top1_agreement",
+              "kld_reduction_vs_official_fp8": "/metrics/k5k6/kld_reduction_vs_fp8",
+              "policy": "/policy",
+              "contexts_before": "/qualification_contexts_before",
+              "excluded_source_clusters": "/excluded_source_clusters"
+            }
+          },
+          "basis": "v4 qualification partition, source-disjoint from recipe selection, calibration-overlap-corrected subset",
+          "suite": "qwen38-27b-fidelity-suite-v4",
+          "suite_token_sha256": "71f4fab2c951841c5c504b3ab723fd8d3b07ef1fd91cdceac0cc92beb8198e4d",
+          "source_disjoint": true
+        },
+        "corrected_alternates": [
+          {
+            "contexts": 127,
+            "mean_kld": 0.007945432690251431,
+            "ci95_low": 0.005848218299406182,
+            "ci95_high": 0.010598327530790602,
+            "bootstrap_clusters": 39,
+            "top1_agreement": 0.9694617435155729,
+            "policy": "exclude every source document with any exact normalized 12-token n-gram; Unicode words plus one token per Han/Kana character",
+            "contexts_before": 136,
+            "excluded_source_clusters": [
+              "cpython-v3.12.8-0060",
+              "pg4300"
+            ],
+            "source": {
+              "path": "receipts/analysis-v3-contamination-corrected.json",
+              "sha256": "026fc453787eccef15879f29266489ba9ec04bbff59ab7e35827e92394480417",
+              "pointers": {
+                "contexts": "/metrics/k5k6/contexts",
+                "mean_kld": "/metrics/k5k6/mean_kld",
+                "ci95_low": "/metrics/k5k6/ci95/ci95_low",
+                "ci95_high": "/metrics/k5k6/ci95/ci95_high",
+                "bootstrap_clusters": "/metrics/k5k6/ci95/clusters",
+                "top1_agreement": "/metrics/k5k6/top1_agreement",
+                "policy": "/policy",
+                "contexts_before": "/analysis_contexts_before",
+                "excluded_source_clusters": "/excluded_source_clusters"
+              }
+            },
+            "basis": "v3 analysis partition, calibration-overlap-corrected subset",
+            "suite": "qwen38-27b-fidelity-suite-v3",
+            "suite_token_sha256": "3f9d17f1b55f64872ad3ac19c8711654e09ba70b7ca14b0851525088fe735691",
+            "source_disjoint": false
+          },
+          {
+            "suite_token_sha256": "71f4fab2c951841c5c504b3ab723fd8d3b07ef1fd91cdceac0cc92beb8198e4d",
+            "partition": "qualification",
+            "contexts": 42,
+            "scored_positions": 85974,
+            "mean_kld": 0.0033948259585706696,
+            "ci95_low": 0.0029254646680274463,
+            "ci95_high": 0.003910303485740736,
+            "top1_agreement": 0.9757950077930537,
+            "source": {
+              "path": "receipts/report-v4-k5k6-qual.json",
+              "sha256": "845257b62b71b9770bbd1786dab1684b65f045d87dacf393b4149d48d265d408",
+              "pointers": {
+                "suite_token_sha256": "/suite_token_sha256",
+                "partition": "/filter",
+                "contexts": "/contexts",
+                "scored_positions": "/scored_positions",
+                "mean_kld": "/token_mean_kld",
+                "ci95_low": "/context_bootstrap/ci95_low",
+                "ci95_high": "/context_bootstrap/ci95_high",
+                "top1_agreement": "/top1_agreement"
+              }
+            },
+            "basis": "v4 qualification partition, full set, no overlap correction",
+            "source_disjoint": true
+          }
+        ],
+        "suite_digests": [
+          {
+            "suite": "qwen38-27b-fidelity-suite-v3",
+            "suite_token_sha256": "3f9d17f1b55f64872ad3ac19c8711654e09ba70b7ca14b0851525088fe735691",
+            "partition": "analysis",
+            "contexts": 136,
+            "manifest": null,
+            "digest_reproduced_from_manifest": null,
+            "not_verified": [
+              "the v3 suite manifest is not published in the repo; the v3 suite digest is carried by the reports that used it"
+            ]
+          },
+          {
+            "suite": "qwen38-27b-fidelity-suite-v4",
+            "suite_token_sha256": "71f4fab2c951841c5c504b3ab723fd8d3b07ef1fd91cdceac0cc92beb8198e4d",
+            "partition": "qualification",
+            "contexts": 42,
+            "manifest": {
+              "path": "receipts/v4-suite-manifest.json",
+              "sha256": "f0d045930b7e7fd063f9525483d030ad4525623f7bb854815f47489fd7a96e5a",
+              "contexts": 160,
+              "partitions": {
+                "analysis": 118,
+                "qualification": 42,
+                "sentinels": 16
+              }
+            },
+            "digest_reproduced_from_manifest": true,
+            "reproduction": "sha256 of the concatenated per-context token_sha256 hex strings in manifest order"
+          }
+        ],
+        "capture_identity": {
+          "report": "receipts/v3-report-v2-analysis.json",
+          "report_sha256": "0b010c62a12e44e146cf6c2b836002f0da65ef00846929172b5ec43fe8e46ed6",
+          "report_index_sha256": null,
+          "not_verified": [
+            "receipts/v3-report-v2-analysis.json predates candidate_identity, so this capture is not bound to the artifact's index digest by the report itself"
+          ]
+        },
+        "development_set_caveat": "Recipe selection saw v3; source-disjoint v4 qualification is published. The conservative overlap-corrected v3 subset and v4 results are linked by amendments below."
+      },
+      "amendments": {
+        "links": [
+          {
+            "name": "overlap_corrected_v3",
+            "path": "receipts/analysis-v3-contamination-corrected.json",
+            "sha256": "026fc453787eccef15879f29266489ba9ec04bbff59ab7e35827e92394480417",
+            "verified": true
+          },
+          {
+            "name": "source_disjoint_v4",
+            "path": "receipts/qualification-v4-contamination-corrected.json",
+            "sha256": "17148ed02713f426dcb4b7b69c8072a5eb8a9abd49bcbfcea585ca8e5c2f5ab3",
+            "verified": true
+          },
+          {
+            "name": "task_run",
+            "path": "receipts/tasks-v2-k5k6.json",
+            "sha256": "a5086d40f09bc15e8f1d9a7b3c31fee6df332196c23394fd6e13cee912d87aa9",
+            "verified": true
+          },
+          {
+            "name": "task_strict_rescore",
+            "path": "receipts/task-retention-v2-strict-rescore.json",
+            "sha256": "b1cddff1a9ae012a48ec0258096c3a258e652aef887fc9128d8665e62c867080",
+            "verified": true
+          }
+        ],
+        "scalars": {
+          "fidelity_dataset_revision": "73252e77e96bbf5596484e29dd8041f9f38c95f1"
+        },
+        "source": {
+          "path": "receipts/release-evidence-k5k6.json",
+          "sha256": "5cab8e95bbae2df0628d16bb44e576fb88f86ec18d362dffa8a34eb3fcfc127c",
+          "pointers": {
+            "amendments": "/amendments"
+          }
+        }
+      },
+      "status": {
+        "state": "published",
+        "label": "K5/K6, BF16 attention on disk",
+        "published_evidence": {
+          "path": "receipts/release-evidence-k5k6.json",
+          "sha256": "5cab8e95bbae2df0628d16bb44e576fb88f86ec18d362dffa8a34eb3fcfc127c",
+          "generated_utc": "2026-08-15T03:42:04Z",
+          "amended_utc": "2026-08-15T12:27:32Z"
+        },
+        "fidelity_rank": {
+          "rank": 2,
+          "of": 4,
+          "mean_kld": 0.007945432690251431,
+          "basis": "ascending mean KLD on the one corrected basis every release in this collection shares: the v3 analysis partition with calibration-overlapping source documents excluded.  The source-disjoint v4 figures in fidelity.corrected_mean_kld are the stronger evidence but do not cover K4.",
+          "source": {
+            "path": "receipts/analysis-v3-contamination-corrected.json",
+            "sha256": "026fc453787eccef15879f29266489ba9ec04bbff59ab7e35827e92394480417",
+            "pointers": {
+              "mean_kld": "/metrics/k5k6/mean_kld"
+            }
+          },
+          "best_in_collection": false
+        },
+        "not_verified": [
+          "public downstream benchmark beyond the deterministic paired smoke",
+          "multimodal quality beyond single image smoke tests",
+          "long-context accuracy beyond an external 205,021-token retrieval check",
+          "native 262,144 generation on this box",
+          "YaRN 1M",
+          "tensor parallel > 1",
+          "non-SM120 GPUs",
+          "quant-specific safety regression"
+        ],
+        "model_card": {
+          "path": "MODEL_CARD-K5K6.md",
+          "sha256": "59037b7583e9da7873539f7d736dd7344478166f494712834b8736f66e624ec0"
+        }
+      }
+    },
+    {
+      "id": "hydrated",
+      "artifact": {
+        "hf_repo": "malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated",
+        "label": "K5/K6, attention serialized offline at K6",
+        "recipe": "MLP gate/up K5, down K6, lm_head K6/mcg, attention EXL3 K6 serialized on disk (calibrated), quantized MTP",
+        "index_sha256": "ea6e0e1064efbb72d89b4a6f9e0ee76c909a94b3f25047487a2ffb282896a26c",
+        "shard_sha256": {
+          "model-00001-of-00003.safetensors": "792b46b54a79871030a5a029a483b8938ff509912169a1c7627913d614365f0d",
+          "model-00002-of-00003.safetensors": "1902a7425fb7e36b45f1c65e5aa0d6e159a6dd8b79b7810e54ab33457ed1ccd2",
+          "model-00003-of-00003.safetensors": "6fa500e4bebf04917ede2ee7b1379ded7aa85aa37110e103d36d9ad330fc0e96"
+        },
+        "source": {
+          "path": "receipts/release-evidence-hydrated.json",
+          "sha256": "0602ce8b2ba9e95b84adc5933ab1138faec605a6c0b12af935bbcd91d94d6aff",
+          "pointers": {
+            "hf_repo": "/artifact/hf_repo",
+            "label": "/artifact/label",
+            "recipe": "/artifact/recipe",
+            "index_sha256": "/artifact/index_sha256",
+            "shard_sha256": "/artifact/shard_sha256"
+          }
+        },
+        "shard_map_sha256": "3e066fe7b3252db1633d917643f82acb5d6fa2716824077ef644a30b41329970",
+        "shard_map_corroboration": [
+          {
+            "path": "receipts/hydrated-build-receipt.json",
+            "sha256": "59865da087bf835f9ef23ed372290a28c5244da7fa2abe4f6cc7e3a44707754e",
+            "covers": "index + all shards",
+            "agrees": true
+          },
+          {
+            "path": "receipts/hydrated-SHA256SUMS",
+            "sha256": "7626d18481e7f995fd1d9ff211083b7fd57f044daba39e107fb29a48207f24c4",
+            "covers": "index + all shards",
+            "agrees": true
+          }
+        ],
+        "hf_url": "https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated",
+        "revision": null,
+        "not_verified": [
+          "no receipt records a Hub revision for this artifact"
+        ],
+        "evidence_of_absence": {
+          "path": "receipts/report-v4-hyd-qual.json",
+          "sha256": "70d9cc0a03b033786416dbd6e9b27cb4987e9e57a1084509358f977d78ec8837",
+          "pointers": {
+            "model_revision": "/candidate_identity/model_revision",
+            "model_revision_source": "/candidate_identity/model_revision_source"
+          },
+          "model_revision": null,
+          "model_revision_source": "none"
+        }
+      },
+      "base_model": {
+        "hf_repo": "Qwen/Qwen3.8-27B",
+        "revision": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0",
+        "logical_tensors_verified": 1199,
+        "source": {
+          "path": "receipts/release-evidence-hydrated.json",
+          "sha256": "0602ce8b2ba9e95b84adc5933ab1138faec605a6c0b12af935bbcd91d94d6aff",
+          "pointers": {
+            "hf_repo": "/upstream/hf_repo",
+            "revision": "/upstream/revision",
+            "logical_tensors_verified": "/upstream/logical_tensors_verified"
+          }
+        },
+        "index_sha256": "77042094076611b69791a610065f28b7013b8c621795fa86ddccc8bac7d1b9df",
+        "index_sha256_source": {
+          "path": "receipts/hydrated-build-receipt.json",
+          "sha256": "59865da087bf835f9ef23ed372290a28c5244da7fa2abe4f6cc7e3a44707754e",
+          "pointer": "/upstream_check/index_sha256"
+        }
+      },
+      "converter": {
+        "repo": "turboderp-org/exllamav3",
+        "commit": "5f3c537ca9d89893d771256f5c43c93656553fbb",
+        "declared": "turboderp-org/exllamav3@5f3c537 (1.4.2)",
+        "source": {
+          "path": "receipts/release-evidence-hydrated.json",
+          "sha256": "0602ce8b2ba9e95b84adc5933ab1138faec605a6c0b12af935bbcd91d94d6aff",
+          "pointers": {
+            "commit": "/toolchain/exllamav3_commit"
+          }
+        },
+        "declared_source": {
+          "path": "receipts/hydrated-build-receipt.json",
+          "sha256": "59865da087bf835f9ef23ed372290a28c5244da7fa2abe4f6cc7e3a44707754e",
+          "pointer": "/converter"
+        },
+        "research_repo": "https://github.com/malaiwah/qwen38-27b-exl3",
+        "research_commit": "21c2b6d708de011c2d73fdd8b1806e2e49c0ed71",
+        "research_source": {
+          "path": "receipts/release-evidence-hydrated.json",
+          "sha256": "0602ce8b2ba9e95b84adc5933ab1138faec605a6c0b12af935bbcd91d94d6aff",
+          "pointers": {
+            "research_repo": "/toolchain/research_repo",
+            "research_commit": "/toolchain/research_commit"
+          }
+        }
+      },
+      "precision": {
+        "declared_recipe": {
+          "text": "MLP gate/up K5, down K6, attention K6 serialized (calibrated), lm_head K6/mcg, quantized MTP, BF16 embed+vision",
+          "source": {
+            "path": "receipts/hydrated-build-receipt.json",
+            "sha256": "59865da087bf835f9ef23ed372290a28c5244da7fa2abe4f6cc7e3a44707754e",
+            "pointers": {
+              "text": "/recipe"
+            }
+          }
+        },
+        "by_role": {
+          "attention": {
+            "declared": "K6 serialized (calibrated)",
+            "declared_quote": "attention K6 serialized (calibrated)",
+            "declared_source": {
+              "path": "receipts/hydrated-build-receipt.json",
+              "sha256": "59865da087bf835f9ef23ed372290a28c5244da7fa2abe4f6cc7e3a44707754e",
+              "pointer": "/recipe"
+            },
+            "serialized_formats": {
+              "BF16": 224,
+              "F16": 96,
+              "exl3_K6_mcg": 208
+            },
+            "serialized_bytes": 5466756928,
+            "exl3_modules": 208,
+            "measured_source": {
+              "path": "receipts/hydrated-quantization-manifest.json",
+              "sha256": "db9b03fb2bb8fa9219e266a825ee028f6ed1420f4de2617d752143dee9ed4c4d",
+              "pointers": {
+                "full_attention": "/roles/full_attention",
+                "linear_attention": "/roles/linear_attention"
+              }
+            },
+            "sub_roles": {
+              "full_attention": {
+                "serialized_formats": {
+                  "BF16": 32,
+                  "exl3_K6_mcg": 64
+                },
+                "serialized_bytes": 1259618560,
+                "exl3_modules": 64
+              },
+              "linear_attention": {
+                "serialized_formats": {
+                  "BF16": 192,
+                  "F16": 96,
+                  "exl3_K6_mcg": 144
+                },
+                "serialized_bytes": 4207138368,
+                "exl3_modules": 144
+              }
+            }
+          },
+          "mlp_gate": {
+            "declared": "K5",
+            "declared_quote": "MLP gate/up K5",
+            "declared_source": {
+              "path": "receipts/hydrated-build-receipt.json",
+              "sha256": "59865da087bf835f9ef23ed372290a28c5244da7fa2abe4f6cc7e3a44707754e",
+              "pointer": "/recipe"
+            },
+            "serialized_formats": {
+              "exl3_K5_mcg": 64
+            },
+            "serialized_bytes": 3568042240,
+            "exl3_modules": 64,
+            "measured_source": {
+              "path": "receipts/hydrated-quantization-manifest.json",
+              "sha256": "db9b03fb2bb8fa9219e266a825ee028f6ed1420f4de2617d752143dee9ed4c4d",
+              "pointers": {
+                "mlp_gate_proj": "/roles/mlp_gate_proj"
+              }
+            }
+          },
+          "mlp_up": {
+            "declared": "K5",
+            "declared_quote": "MLP gate/up K5",
+            "declared_source": {
+              "path": "receipts/hydrated-build-receipt.json",
+              "sha256": "59865da087bf835f9ef23ed372290a28c5244da7fa2abe4f6cc7e3a44707754e",
+              "pointer": "/recipe"
+            },
+            "serialized_formats": {
+              "exl3_K5_mcg": 64
+            },
+            "serialized_bytes": 3568042240,
+            "exl3_modules": 64,
+            "measured_source": {
+              "path": "receipts/hydrated-quantization-manifest.json",
+              "sha256": "db9b03fb2bb8fa9219e266a825ee028f6ed1420f4de2617d752143dee9ed4c4d",
+              "pointers": {
+                "mlp_up_proj": "/roles/mlp_up_proj"
+              }
+            }
+          },
+          "mlp_down": {
+            "declared": "K6",
+            "declared_quote": "down K6",
+            "declared_source": {
+              "path": "receipts/hydrated-build-receipt.json",
+              "sha256": "59865da087bf835f9ef23ed372290a28c5244da7fa2abe4f6cc7e3a44707754e",
+              "pointer": "/recipe"
+            },
+            "serialized_formats": {
+              "exl3_K6_mcg": 64
+            },
+            "serialized_bytes": 4281073920,
+            "exl3_modules": 64,
+            "measured_source": {
+              "path": "receipts/hydrated-quantization-manifest.json",
+              "sha256": "db9b03fb2bb8fa9219e266a825ee028f6ed1420f4de2617d752143dee9ed4c4d",
+              "pointers": {
+                "mlp_down_proj": "/roles/mlp_down_proj"
+              }
+            }
+          },
+          "embed": {
+            "declared": "BF16",
+            "declared_quote": "BF16 embed+vision",
+            "declared_source": {
+              "path": "receipts/hydrated-build-receipt.json",
+              "sha256": "59865da087bf835f9ef23ed372290a28c5244da7fa2abe4f6cc7e3a44707754e",
+              "pointer": "/recipe"
+            },
+            "serialized_formats": {
+              "BF16": 1
+            },
+            "serialized_bytes": 2542796800,
+            "exl3_modules": 0,
+            "measured_source": {
+              "path": "receipts/hydrated-quantization-manifest.json",
+              "sha256": "db9b03fb2bb8fa9219e266a825ee028f6ed1420f4de2617d752143dee9ed4c4d",
+              "pointers": {
+                "embed_tokens": "/roles/embed_tokens"
+              }
+            }
+          },
+          "lm_head": {
+            "declared": "K6/mcg",
+            "declared_quote": "lm_head K6/mcg",
+            "declared_source": {
+              "path": "receipts/hydrated-build-receipt.json",
+              "sha256": "59865da087bf835f9ef23ed372290a28c5244da7fa2abe4f6cc7e3a44707754e",
+              "pointer": "/recipe"
+            },
+            "serialized_formats": {
+              "exl3_K6_mcg": 1
+            },
+            "serialized_bytes": 954055684,
+            "exl3_modules": 1,
+            "measured_source": {
+              "path": "receipts/hydrated-quantization-manifest.json",
+              "sha256": "db9b03fb2bb8fa9219e266a825ee028f6ed1420f4de2617d752143dee9ed4c4d",
+              "pointers": {
+                "lm_head": "/roles/lm_head"
+              }
+            }
+          },
+          "mtp": {
+            "declared": "quantized",
+            "declared_quote": "quantized MTP",
+            "declared_source": {
+              "path": "receipts/hydrated-build-receipt.json",
+              "sha256": "59865da087bf835f9ef23ed372290a28c5244da7fa2abe4f6cc7e3a44707754e",
+              "pointer": "/recipe"
+            },
+            "serialized_formats": {
+              "BF16": 7,
+              "exl3_K4_mcg": 1,
+              "exl3_K5_mcg": 2,
+              "exl3_K6_mcg": 5
+            },
+            "serialized_bytes": 283415584,
+            "exl3_modules": 8,
+            "measured_source": {
+              "path": "receipts/hydrated-quantization-manifest.json",
+              "sha256": "db9b03fb2bb8fa9219e266a825ee028f6ed1420f4de2617d752143dee9ed4c4d",
+              "pointers": {
+                "mtp_draft": "/roles/mtp_draft"
+              }
+            }
+          },
+          "vision": {
+            "declared": "BF16",
+            "declared_quote": "BF16 embed+vision",
+            "declared_source": {
+              "path": "receipts/hydrated-build-receipt.json",
+              "sha256": "59865da087bf835f9ef23ed372290a28c5244da7fa2abe4f6cc7e3a44707754e",
+              "pointer": "/recipe"
+            },
+            "serialized_formats": {
+              "BF16": 333
+            },
+            "serialized_bytes": 921460192,
+            "exl3_modules": 0,
+            "measured_source": {
+              "path": "receipts/hydrated-quantization-manifest.json",
+              "sha256": "db9b03fb2bb8fa9219e266a825ee028f6ed1420f4de2617d752143dee9ed4c4d",
+              "pointers": {
+                "vision_tower": "/roles/vision_tower"
+              }
+            }
+          },
+          "norms_and_small": {
+            "declared": null,
+            "not_verified": [
+              "the published recipe does not name norms and other small tensors"
+            ],
+            "serialized_formats": {
+              "BF16": 129
+            },
+            "serialized_bytes": 1320960,
+            "exl3_modules": 0,
+            "measured_source": {
+              "path": "receipts/hydrated-quantization-manifest.json",
+              "sha256": "db9b03fb2bb8fa9219e266a825ee028f6ed1420f4de2617d752143dee9ed4c4d",
+              "pointers": {
+                "norms_and_small": "/roles/norms_and_small"
+              }
+            }
+          }
+        }
+      },
+      "serialized_bytes": {
+        "note": "serialized bytes are on-disk bytes and are never VRAM; resident weight memory is reported separately under resident_weights",
+        "whole_tree_bytes": {
+          "value": 21610933884,
+          "unit": "bytes",
+          "covers": "every published file of the artifact as the release counted it",
+          "source": {
+            "path": "receipts/release-evidence-hydrated.json",
+            "sha256": "0602ce8b2ba9e95b84adc5933ab1138faec605a6c0b12af935bbcd91d94d6aff",
+            "pointers": {
+              "value": "/artifact/disk_bytes"
+            }
+          }
+        },
+        "immutable_payload_bytes": {
+          "value": 21610916123,
+          "unit": "bytes",
+          "covers": "SHA256SUMS and immutable_payload cover only the files that define the artifact; README.md, .gitattributes, assets/** and the receipt files themselves are documentation that is rewritten by card edits without rebuilding the weights, so hashing them here would make the receipt go stale while still claiming to describe the build -- they are listed under mutable_documentation and hashed in DOCS-SHA256SUMS instead.",
+          "file_count": 16,
+          "source": {
+            "path": "receipts/hydrated-build-receipt.json",
+            "sha256": "59865da087bf835f9ef23ed372290a28c5244da7fa2abe4f6cc7e3a44707754e",
+            "pointers": {
+              "value": "/immutable_payload_bytes",
+              "covers": "/scope_note",
+              "file_count": "/file_count"
+            }
+          }
+        },
+        "tensor_payload_bytes": {
+          "value": 21586964548,
+          "unit": "bytes",
+          "derivation": "sum of the quantization manifest's per-role tensor bytes over embed_tokens, full_attention, linear_attention, lm_head, mlp_down_proj, mlp_gate_proj, mlp_up_proj, mtp_draft, norms_and_small, vision_tower",
+          "source": {
+            "path": "receipts/hydrated-quantization-manifest.json",
+            "sha256": "db9b03fb2bb8fa9219e266a825ee028f6ed1420f4de2617d752143dee9ed4c4d",
+            "pointers": {
+              "embed_tokens": "/roles/embed_tokens/bytes",
+              "full_attention": "/roles/full_attention/bytes",
+              "linear_attention": "/roles/linear_attention/bytes",
+              "lm_head": "/roles/lm_head/bytes",
+              "mlp_down_proj": "/roles/mlp_down_proj/bytes",
+              "mlp_gate_proj": "/roles/mlp_gate_proj/bytes",
+              "mlp_up_proj": "/roles/mlp_up_proj/bytes",
+              "mtp_draft": "/roles/mtp_draft/bytes",
+              "norms_and_small": "/roles/norms_and_small/bytes",
+              "vision_tower": "/roles/vision_tower/bytes"
+            }
+          }
+        }
+      },
+      "resident_weights": {
+        "note": "measured GPU allocation for weights at load, as vLLM reports it; not a serialized size",
+        "measurement": {
+          "gib_reported": 20.31,
+          "bytes_approx": 21807696445,
+          "bytes_interval": [
+            21802327736,
+            21813065155
+          ],
+          "interval_note": "the source reports 2-decimal GiB; bytes are derived and span the +/-0.005 GiB the report leaves open",
+          "configuration": "not stated by the receipt",
+          "source": {
+            "path": "receipts/release-evidence-hydrated.json",
+            "sha256": "0602ce8b2ba9e95b84adc5933ab1138faec605a6c0b12af935bbcd91d94d6aff",
+            "pointers": {
+              "gib_reported": "/artifact/resident_weights_gib"
+            }
+          },
+          "log_corroboration": null,
+          "not_verified": [
+            "no vLLM startup log receipt is published in the repo for this figure, and the receipt does not state the MTP depth or embedding mode it was measured under"
+          ]
+        },
+        "additional_measurements": []
+      },
+      "runtime": {
+        "image_digest": "voipmonitor/vllm@sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b",
+        "gpu": "NVIDIA RTX PRO 6000 Blackwell Server Edition",
+        "arch": "SM120",
+        "tensor_parallel": 1,
+        "driver": "595.58.03",
+        "source": {
+          "path": "receipts/release-evidence-hydrated.json",
+          "sha256": "0602ce8b2ba9e95b84adc5933ab1138faec605a6c0b12af935bbcd91d94d6aff",
+          "pointers": {
+            "image_digest": "/toolchain/vllm_image",
+            "gpu": "/hardware/gpu",
+            "arch": "/hardware/arch",
+            "tensor_parallel": "/hardware/tensor_parallel",
+            "driver": "/hardware/driver"
+          }
+        },
+        "patch_modules": {
+          "digests": {
+            "vllm/model_executor/layers/quantization/exl3.py": "cb9e60024057e8097237a5518e6469b15f73e4139cc37f1f67e9c1485b44aedd"
+          },
+          "note": "The pinned image predates both PRs; the patched module must be copied over vllm/model_executor/layers/quantization/exl3.py. No image digest containing them is published yet.",
+          "source": {
+            "path": "receipts/release-evidence-hydrated.json",
+            "sha256": "0602ce8b2ba9e95b84adc5933ab1138faec605a6c0b12af935bbcd91d94d6aff",
+            "pointers": {
+              "digest": "/toolchain/vllm_patches/patched_module_sha256",
+              "note": "/toolchain/vllm_patches/note"
+            }
+          }
+        },
+        "patch_prs": [
+          "https://github.com/local-inference-lab/vllm/pull/314",
+          "https://github.com/local-inference-lab/vllm/pull/316"
+        ],
+        "not_verified": [
+          "no published image digest contains these patches; the module must be copied over the pinned image at launch",
+          "the image digest was not authenticated against a rootfs manifest"
+        ]
+      },
+      "fidelity": {
+        "protocol": "hidden-state replay, exact full-vocabulary two-pass KL(BF16 || candidate)",
+        "protocol_source": {
+          "path": "receipts/v3-report-hyd.json",
+          "sha256": "0b86182c3da5dad20055b83f243d6d93651acc02b6fab410295e815297c4871d",
+          "pointers": {
+            "comparator": "/comparator",
+            "reference": "/reference",
+            "candidate": "/candidate"
+          }
+        },
+        "comparator": {
+          "vocab_chunk": 24832,
+          "device": "cuda",
+          "accumulation": "float64",
+          "two_pass": true
+        },
+        "headline": {
+          "suite_token_sha256": "3f9d17f1b55f64872ad3ac19c8711654e09ba70b7ca14b0851525088fe735691",
+          "partition": "analysis",
+          "contexts": 136,
+          "scored_positions": 278392,
+          "mean_kld": 0.007406422525617622,
+          "median_kld": 0.0013346898785542294,
+          "context_macro_mean_kld": 0.007406422525617622,
+          "ci95_low": 0.005432440035904208,
+          "ci95_high": 0.009783941242335555,
+          "bootstrap_clusters": 41,
+          "bootstrap_samples": 10000,
+          "top1_agreement": 0.9718598235581483,
+          "reference_head_sha256": "25a30fd5f826da0abc4efc4cc71def9f02bcb8085f7175eee284d221dee4cfff",
+          "source": {
+            "path": "receipts/v3-report-hyd.json",
+            "sha256": "0b86182c3da5dad20055b83f243d6d93651acc02b6fab410295e815297c4871d",
+            "pointers": {
+              "suite_token_sha256": "/suite_token_sha256",
+              "partition": "/filter",
+              "contexts": "/contexts",
+              "scored_positions": "/scored_positions",
+              "mean_kld": "/token_mean_kld",
+              "median_kld": "/token_median_kld",
+              "context_macro_mean_kld": "/context_macro_mean_kld",
+              "ci95_low": "/context_bootstrap/ci95_low",
+              "ci95_high": "/context_bootstrap/ci95_high",
+              "bootstrap_clusters": "/context_bootstrap/clusters",
+              "bootstrap_samples": "/context_bootstrap/samples",
+              "top1_agreement": "/top1_agreement",
+              "reference_head_sha256": "/head_sha256"
+            }
+          },
+          "suite": "qwen38-27b-fidelity-suite-v3",
+          "declared_by": {
+            "path": "receipts/release-evidence-hydrated.json",
+            "sha256": "0602ce8b2ba9e95b84adc5933ab1138faec605a6c0b12af935bbcd91d94d6aff",
+            "pointers": {
+              "suite": "/evaluation/suite",
+              "mean_kld": "/evaluation/mean_kld",
+              "ci95": "/evaluation/ci95",
+              "contexts": "/evaluation/contexts",
+              "top1_agreement": "/evaluation/top1_agreement",
+              "suite_token_sha256": "/evaluation/suite_token_sha256"
+            }
+          }
+        },
+        "corrected_mean_kld": {
+          "contexts": 36,
+          "mean_kld": 0.003092692547304035,
+          "ci95_low": 0.002576735291324444,
+          "ci95_high": 0.003683722109532996,
+          "bootstrap_clusters": 24,
+          "top1_agreement": 0.9763067904250122,
+          "kld_reduction_vs_official_fp8": 0.4749935951133921,
+          "policy": "exclude every source document with any exact normalized 12-token n-gram; Unicode words plus one token per Han/Kana character",
+          "contexts_before": 42,
+          "excluded_source_clusters": [
+            "cpython-c-v3.12.8-001",
+            "cpython-c-v3.12.8-002",
+            "wiki4-pt-003",
+            "wiki4-zh-003"
+          ],
+          "source": {
+            "path": "receipts/qualification-v4-contamination-corrected.json",
+            "sha256": "17148ed02713f426dcb4b7b69c8072a5eb8a9abd49bcbfcea585ca8e5c2f5ab3",
+            "pointers": {
+              "contexts": "/metrics/hydrated/contexts",
+              "mean_kld": "/metrics/hydrated/mean_kld",
+              "ci95_low": "/metrics/hydrated/ci95/ci95_low",
+              "ci95_high": "/metrics/hydrated/ci95/ci95_high",
+              "bootstrap_clusters": "/metrics/hydrated/ci95/clusters",
+              "top1_agreement": "/metrics/hydrated/top1_agreement",
+              "kld_reduction_vs_official_fp8": "/metrics/hydrated/kld_reduction_vs_fp8",
+              "policy": "/policy",
+              "contexts_before": "/qualification_contexts_before",
+              "excluded_source_clusters": "/excluded_source_clusters"
+            }
+          },
+          "basis": "v4 qualification partition, source-disjoint from recipe selection, calibration-overlap-corrected subset",
+          "suite": "qwen38-27b-fidelity-suite-v4",
+          "suite_token_sha256": "71f4fab2c951841c5c504b3ab723fd8d3b07ef1fd91cdceac0cc92beb8198e4d",
+          "source_disjoint": true
+        },
+        "corrected_alternates": [
+          {
+            "contexts": 127,
+            "mean_kld": 0.007172033855778145,
+            "ci95_low": 0.005191769435117302,
+            "ci95_high": 0.009655676953427048,
+            "bootstrap_clusters": 39,
+            "top1_agreement": 0.9716081532798141,
+            "policy": "exclude every source document with any exact normalized 12-token n-gram; Unicode words plus one token per Han/Kana character",
+            "contexts_before": 136,
+            "excluded_source_clusters": [
+              "cpython-v3.12.8-0060",
+              "pg4300"
+            ],
+            "source": {
+              "path": "receipts/analysis-v3-contamination-corrected.json",
+              "sha256": "026fc453787eccef15879f29266489ba9ec04bbff59ab7e35827e92394480417",
+              "pointers": {
+                "contexts": "/metrics/hydrated/contexts",
+                "mean_kld": "/metrics/hydrated/mean_kld",
+                "ci95_low": "/metrics/hydrated/ci95/ci95_low",
+                "ci95_high": "/metrics/hydrated/ci95/ci95_high",
+                "bootstrap_clusters": "/metrics/hydrated/ci95/clusters",
+                "top1_agreement": "/metrics/hydrated/top1_agreement",
+                "policy": "/policy",
+                "contexts_before": "/analysis_contexts_before",
+                "excluded_source_clusters": "/excluded_source_clusters"
+              }
+            },
+            "basis": "v3 analysis partition, calibration-overlap-corrected subset",
+            "suite": "qwen38-27b-fidelity-suite-v3",
+            "suite_token_sha256": "3f9d17f1b55f64872ad3ac19c8711654e09ba70b7ca14b0851525088fe735691",
+            "source_disjoint": false
+          },
+          {
+            "suite_token_sha256": "71f4fab2c951841c5c504b3ab723fd8d3b07ef1fd91cdceac0cc92beb8198e4d",
+            "partition": "qualification",
+            "contexts": 42,
+            "scored_positions": 85974,
+            "mean_kld": 0.003029258733519331,
+            "ci95_low": 0.002571896281811383,
+            "ci95_high": 0.003535909665414064,
+            "top1_agreement": 0.9768302044804243,
+            "source": {
+              "path": "receipts/report-v4-hyd-qual.json",
+              "sha256": "70d9cc0a03b033786416dbd6e9b27cb4987e9e57a1084509358f977d78ec8837",
+              "pointers": {
+                "suite_token_sha256": "/suite_token_sha256",
+                "partition": "/filter",
+                "contexts": "/contexts",
+                "scored_positions": "/scored_positions",
+                "mean_kld": "/token_mean_kld",
+                "ci95_low": "/context_bootstrap/ci95_low",
+                "ci95_high": "/context_bootstrap/ci95_high",
+                "top1_agreement": "/top1_agreement"
+              }
+            },
+            "basis": "v4 qualification partition, full set, no overlap correction",
+            "source_disjoint": true
+          }
+        ],
+        "suite_digests": [
+          {
+            "suite": "qwen38-27b-fidelity-suite-v3",
+            "suite_token_sha256": "3f9d17f1b55f64872ad3ac19c8711654e09ba70b7ca14b0851525088fe735691",
+            "partition": "analysis",
+            "contexts": 136,
+            "manifest": null,
+            "digest_reproduced_from_manifest": null,
+            "not_verified": [
+              "the v3 suite manifest is not published in the repo; the v3 suite digest is carried by the reports that used it"
+            ]
+          },
+          {
+            "suite": "qwen38-27b-fidelity-suite-v4",
+            "suite_token_sha256": "71f4fab2c951841c5c504b3ab723fd8d3b07ef1fd91cdceac0cc92beb8198e4d",
+            "partition": "qualification",
+            "contexts": 42,
+            "manifest": {
+              "path": "receipts/v4-suite-manifest.json",
+              "sha256": "f0d045930b7e7fd063f9525483d030ad4525623f7bb854815f47489fd7a96e5a",
+              "contexts": 160,
+              "partitions": {
+                "analysis": 118,
+                "qualification": 42,
+                "sentinels": 16
+              }
+            },
+            "digest_reproduced_from_manifest": true,
+            "reproduction": "sha256 of the concatenated per-context token_sha256 hex strings in manifest order"
+          }
+        ],
+        "capture_identity": {
+          "report": "receipts/v3-report-hyd.json",
+          "report_sha256": "0b86182c3da5dad20055b83f243d6d93651acc02b6fab410295e815297c4871d",
+          "report_index_sha256": null,
+          "not_verified": [
+            "receipts/v3-report-hyd.json predates candidate_identity, so this capture is not bound to the artifact's index digest by the report itself"
+          ]
+        },
+        "development_set_caveat": "Recipe selection saw v3; source-disjoint v4 qualification is published. The conservative overlap-corrected v3 subset and v4 results are linked by amendments below."
+      },
+      "amendments": {
+        "links": [
+          {
+            "name": "overlap_corrected_v3",
+            "path": "receipts/analysis-v3-contamination-corrected.json",
+            "sha256": "026fc453787eccef15879f29266489ba9ec04bbff59ab7e35827e92394480417",
+            "verified": true
+          },
+          {
+            "name": "source_disjoint_v4",
+            "path": "receipts/qualification-v4-contamination-corrected.json",
+            "sha256": "17148ed02713f426dcb4b7b69c8072a5eb8a9abd49bcbfcea585ca8e5c2f5ab3",
+            "verified": true
+          },
+          {
+            "name": "task_run",
+            "path": "receipts/tasks-v2-hydrated.json",
+            "sha256": "704b9c51f5e902a680f087e2eed00d51c6166d35461e667f0d6d7c5ce6d3aec4",
+            "verified": true
+          },
+          {
+            "name": "task_strict_rescore",
+            "path": "receipts/task-retention-v2-strict-rescore.json",
+            "sha256": "b1cddff1a9ae012a48ec0258096c3a258e652aef887fc9128d8665e62c867080",
+            "verified": true
+          }
+        ],
+        "scalars": {
+          "fidelity_dataset_revision": "73252e77e96bbf5596484e29dd8041f9f38c95f1"
+        },
+        "source": {
+          "path": "receipts/release-evidence-hydrated.json",
+          "sha256": "0602ce8b2ba9e95b84adc5933ab1138faec605a6c0b12af935bbcd91d94d6aff",
+          "pointers": {
+            "amendments": "/amendments"
+          }
+        }
+      },
+      "status": {
+        "state": "published",
+        "label": "K5/K6, attention serialized offline at K6",
+        "published_evidence": {
+          "path": "receipts/release-evidence-hydrated.json",
+          "sha256": "0602ce8b2ba9e95b84adc5933ab1138faec605a6c0b12af935bbcd91d94d6aff",
+          "generated_utc": "2026-08-15T03:42:51Z",
+          "amended_utc": "2026-08-15T12:27:32Z"
+        },
+        "fidelity_rank": {
+          "rank": 1,
+          "of": 4,
+          "mean_kld": 0.007172033855778145,
+          "basis": "ascending mean KLD on the one corrected basis every release in this collection shares: the v3 analysis partition with calibration-overlapping source documents excluded.  The source-disjoint v4 figures in fidelity.corrected_mean_kld are the stronger evidence but do not cover K4.",
+          "source": {
+            "path": "receipts/analysis-v3-contamination-corrected.json",
+            "sha256": "026fc453787eccef15879f29266489ba9ec04bbff59ab7e35827e92394480417",
+            "pointers": {
+              "mean_kld": "/metrics/hydrated/mean_kld"
+            }
+          },
+          "best_in_collection": true
+        },
+        "not_verified": [
+          "public downstream benchmark beyond the deterministic paired smoke",
+          "multimodal quality beyond single image smoke tests",
+          "long-context accuracy beyond an external 205,021-token retrieval check",
+          "native 262,144 generation on this box",
+          "YaRN 1M",
+          "tensor parallel > 1",
+          "non-SM120 GPUs",
+          "quant-specific safety regression"
+        ],
+        "model_card": {
+          "path": "MODEL_CARD-K5K6-hydrated.md",
+          "sha256": "264d838d7f2fef99be8e12c1166e80273f531f94419622efd940c438cd30fc5c"
+        }
+      }
+    },
+    {
+      "id": "context",
+      "artifact": {
+        "hf_repo": "malaiwah/Qwen3.8-27B-EXL3-K5K6-context",
+        "label": "context edition: attention K5 serialized",
+        "recipe": "MLP gate/up K5, down K6, attention K5 serialized (calibrated), lm_head K6/mcg, quantized MTP, BF16 embeddings and vision",
+        "index_sha256": "cd53b8e487b5c70b1ffe26578464a9cfd9bea9d7ed50a39e39ba3e153c1ab1b4",
+        "shard_sha256": {
+          "model-00001-of-00003.safetensors": "c9e837be0dc9ad35fe22a42b9cefb192957767bc83d82bd893aa6b9c036cfa00",
+          "model-00002-of-00003.safetensors": "222fb1aac7254a98799ac852266d9e8e326a535d4292e3341141e03ec662bc03",
+          "model-00003-of-00003.safetensors": "d01bd1d5664382ca1490d3232453d4fbcf6b8bcf1b27bbe69f2a9ef4fc7019fc"
+        },
+        "source": {
+          "path": "receipts/release-evidence-context.json",
+          "sha256": "6d68e11761b9376c90db5fb1f0f89075cf255af63a9daa6833a5e9da299ff35f",
+          "pointers": {
+            "hf_repo": "/artifact/hf_repo",
+            "label": "/artifact/label",
+            "recipe": "/artifact/recipe",
+            "index_sha256": "/artifact/index_sha256",
+            "shard_sha256": "/artifact/shard_sha256"
+          }
+        },
+        "shard_map_sha256": "527b70d201e929fa14b69957573ea25a3e564325bae676ee95d87638eebe7caa",
+        "shard_map_corroboration": [
+          {
+            "path": "receipts/context-build-receipt.json",
+            "sha256": "0bab1c3549760adc65899bb6f7f59ae79bb000d51f9c8cd52b8e2da8b64c1d09",
+            "covers": "index + all shards",
+            "agrees": true
+          }
+        ],
+        "hf_url": "https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6-context",
+        "revision": null,
+        "not_verified": [
+          "no receipt records a Hub revision for this artifact"
+        ],
+        "evidence_of_absence": {
+          "path": "receipts/report-v4-ctx-qual.json",
+          "sha256": "877f0e33d801f6b2ffdd45f0df695b0580d94ac58f6bc448a92345b46f549466",
+          "pointers": {
+            "model_revision": "/candidate_identity/model_revision",
+            "model_revision_source": "/candidate_identity/model_revision_source"
+          },
+          "model_revision": null,
+          "model_revision_source": "none"
+        }
+      },
+      "base_model": {
+        "hf_repo": "Qwen/Qwen3.8-27B",
+        "revision": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0",
+        "logical_tensors_verified": 1199,
+        "source": {
+          "path": "receipts/release-evidence-context.json",
+          "sha256": "6d68e11761b9376c90db5fb1f0f89075cf255af63a9daa6833a5e9da299ff35f",
+          "pointers": {
+            "hf_repo": "/upstream/hf_repo",
+            "revision": "/upstream/revision",
+            "logical_tensors_verified": "/upstream/logical_tensors_verified"
+          }
+        },
+        "index_sha256": "77042094076611b69791a610065f28b7013b8c621795fa86ddccc8bac7d1b9df",
+        "index_sha256_source": {
+          "path": "receipts/context-build-receipt.json",
+          "sha256": "0bab1c3549760adc65899bb6f7f59ae79bb000d51f9c8cd52b8e2da8b64c1d09",
+          "pointer": "/upstream_check/index_sha256"
+        }
+      },
+      "converter": {
+        "repo": "turboderp-org/exllamav3",
+        "commit": "5f3c537ca9d89893d771256f5c43c93656553fbb",
+        "declared": "turboderp-org/exllamav3@5f3c537 (1.4.2)",
+        "source": {
+          "path": "receipts/release-evidence-context.json",
+          "sha256": "6d68e11761b9376c90db5fb1f0f89075cf255af63a9daa6833a5e9da299ff35f",
+          "pointers": {
+            "commit": "/toolchain/exllamav3_commit"
+          }
+        },
+        "declared_source": {
+          "path": "receipts/context-build-receipt.json",
+          "sha256": "0bab1c3549760adc65899bb6f7f59ae79bb000d51f9c8cd52b8e2da8b64c1d09",
+          "pointer": "/converter"
+        },
+        "research_repo": "https://github.com/malaiwah/qwen38-27b-exl3",
+        "research_commit": "dd7b33b2aabba0f122c33d444852a673990622ed",
+        "research_source": {
+          "path": "receipts/release-evidence-context.json",
+          "sha256": "6d68e11761b9376c90db5fb1f0f89075cf255af63a9daa6833a5e9da299ff35f",
+          "pointers": {
+            "research_repo": "/toolchain/research_repo",
+            "research_commit": "/toolchain/research_commit"
+          }
+        }
+      },
+      "precision": {
+        "declared_recipe": {
+          "text": "MLP gate/up K5, down K6, attention K5 serialized (calibrated), lm_head K6/mcg, quantized MTP, BF16 embeddings and vision",
+          "source": {
+            "path": "receipts/context-build-receipt.json",
+            "sha256": "0bab1c3549760adc65899bb6f7f59ae79bb000d51f9c8cd52b8e2da8b64c1d09",
+            "pointers": {
+              "text": "/recipe"
+            }
+          }
+        },
+        "by_role": {
+          "attention": {
+            "declared": "K5 serialized (calibrated)",
+            "declared_quote": "attention K5 serialized (calibrated)",
+            "declared_source": {
+              "path": "receipts/context-build-receipt.json",
+              "sha256": "0bab1c3549760adc65899bb6f7f59ae79bb000d51f9c8cd52b8e2da8b64c1d09",
+              "pointer": "/recipe"
+            },
+            "serialized_formats": {
+              "BF16": 224,
+              "F16": 96,
+              "exl3_K5_mcg": 208
+            },
+            "serialized_bytes": 4564981568,
+            "exl3_modules": 208,
+            "measured_source": {
+              "path": "receipts/context-quantization-manifest.json",
+              "sha256": "eb1dd3acfdb98059974addb61c05d7a25c5cf09b76ffde473a6d4ef5e798dc9d",
+              "pointers": {
+                "full_attention": "/roles/full_attention",
+                "linear_attention": "/roles/linear_attention"
+              }
+            },
+            "sub_roles": {
+              "full_attention": {
+                "serialized_formats": {
+                  "BF16": 32,
+                  "exl3_K5_mcg": 64
+                },
+                "serialized_bytes": 1049903360,
+                "exl3_modules": 64
+              },
+              "linear_attention": {
+                "serialized_formats": {
+                  "BF16": 192,
+                  "F16": 96,
+                  "exl3_K5_mcg": 144
+                },
+                "serialized_bytes": 3515078208,
+                "exl3_modules": 144
+              }
+            }
+          },
+          "mlp_gate": {
+            "declared": "K5",
+            "declared_quote": "MLP gate/up K5",
+            "declared_source": {
+              "path": "receipts/context-build-receipt.json",
+              "sha256": "0bab1c3549760adc65899bb6f7f59ae79bb000d51f9c8cd52b8e2da8b64c1d09",
+              "pointer": "/recipe"
+            },
+            "serialized_formats": {
+              "exl3_K5_mcg": 64
+            },
+            "serialized_bytes": 3568042240,
+            "exl3_modules": 64,
+            "measured_source": {
+              "path": "receipts/context-quantization-manifest.json",
+              "sha256": "eb1dd3acfdb98059974addb61c05d7a25c5cf09b76ffde473a6d4ef5e798dc9d",
+              "pointers": {
+                "mlp_gate_proj": "/roles/mlp_gate_proj"
+              }
+            }
+          },
+          "mlp_up": {
+            "declared": "K5",
+            "declared_quote": "MLP gate/up K5",
+            "declared_source": {
+              "path": "receipts/context-build-receipt.json",
+              "sha256": "0bab1c3549760adc65899bb6f7f59ae79bb000d51f9c8cd52b8e2da8b64c1d09",
+              "pointer": "/recipe"
+            },
+            "serialized_formats": {
+              "exl3_K5_mcg": 64
+            },
+            "serialized_bytes": 3568042240,
+            "exl3_modules": 64,
+            "measured_source": {
+              "path": "receipts/context-quantization-manifest.json",
+              "sha256": "eb1dd3acfdb98059974addb61c05d7a25c5cf09b76ffde473a6d4ef5e798dc9d",
+              "pointers": {
+                "mlp_up_proj": "/roles/mlp_up_proj"
+              }
+            }
+          },
+          "mlp_down": {
+            "declared": "K6",
+            "declared_quote": "down K6",
+            "declared_source": {
+              "path": "receipts/context-build-receipt.json",
+              "sha256": "0bab1c3549760adc65899bb6f7f59ae79bb000d51f9c8cd52b8e2da8b64c1d09",
+              "pointer": "/recipe"
+            },
+            "serialized_formats": {
+              "exl3_K6_mcg": 64
+            },
+            "serialized_bytes": 4281073920,
+            "exl3_modules": 64,
+            "measured_source": {
+              "path": "receipts/context-quantization-manifest.json",
+              "sha256": "eb1dd3acfdb98059974addb61c05d7a25c5cf09b76ffde473a6d4ef5e798dc9d",
+              "pointers": {
+                "mlp_down_proj": "/roles/mlp_down_proj"
+              }
+            }
+          },
+          "embed": {
+            "declared": "BF16",
+            "declared_quote": "BF16 embeddings and vision",
+            "declared_source": {
+              "path": "receipts/context-build-receipt.json",
+              "sha256": "0bab1c3549760adc65899bb6f7f59ae79bb000d51f9c8cd52b8e2da8b64c1d09",
+              "pointer": "/recipe"
+            },
+            "serialized_formats": {
+              "BF16": 1
+            },
+            "serialized_bytes": 2542796800,
+            "exl3_modules": 0,
+            "measured_source": {
+              "path": "receipts/context-quantization-manifest.json",
+              "sha256": "eb1dd3acfdb98059974addb61c05d7a25c5cf09b76ffde473a6d4ef5e798dc9d",
+              "pointers": {
+                "embed_tokens": "/roles/embed_tokens"
+              }
+            }
+          },
+          "lm_head": {
+            "declared": "K6/mcg",
+            "declared_quote": "lm_head K6/mcg",
+            "declared_source": {
+              "path": "receipts/context-build-receipt.json",
+              "sha256": "0bab1c3549760adc65899bb6f7f59ae79bb000d51f9c8cd52b8e2da8b64c1d09",
+              "pointer": "/recipe"
+            },
+            "serialized_formats": {
+              "exl3_K6_mcg": 1
+            },
+            "serialized_bytes": 954055684,
+            "exl3_modules": 1,
+            "measured_source": {
+              "path": "receipts/context-quantization-manifest.json",
+              "sha256": "eb1dd3acfdb98059974addb61c05d7a25c5cf09b76ffde473a6d4ef5e798dc9d",
+              "pointers": {
+                "lm_head": "/roles/lm_head"
+              }
+            }
+          },
+          "mtp": {
+            "declared": "quantized",
+            "declared_quote": "quantized MTP",
+            "declared_source": {
+              "path": "receipts/context-build-receipt.json",
+              "sha256": "0bab1c3549760adc65899bb6f7f59ae79bb000d51f9c8cd52b8e2da8b64c1d09",
+              "pointer": "/recipe"
+            },
+            "serialized_formats": {
+              "BF16": 7,
+              "exl3_K4_mcg": 1,
+              "exl3_K5_mcg": 6,
+              "exl3_K6_mcg": 1
+            },
+            "serialized_bytes": 270308384,
+            "exl3_modules": 8,
+            "measured_source": {
+              "path": "receipts/context-quantization-manifest.json",
+              "sha256": "eb1dd3acfdb98059974addb61c05d7a25c5cf09b76ffde473a6d4ef5e798dc9d",
+              "pointers": {
+                "mtp_draft": "/roles/mtp_draft"
+              }
+            }
+          },
+          "vision": {
+            "declared": "BF16",
+            "declared_quote": "BF16 embeddings and vision",
+            "declared_source": {
+              "path": "receipts/context-build-receipt.json",
+              "sha256": "0bab1c3549760adc65899bb6f7f59ae79bb000d51f9c8cd52b8e2da8b64c1d09",
+              "pointer": "/recipe"
+            },
+            "serialized_formats": {
+              "BF16": 333
+            },
+            "serialized_bytes": 921460192,
+            "exl3_modules": 0,
+            "measured_source": {
+              "path": "receipts/context-quantization-manifest.json",
+              "sha256": "eb1dd3acfdb98059974addb61c05d7a25c5cf09b76ffde473a6d4ef5e798dc9d",
+              "pointers": {
+                "vision_tower": "/roles/vision_tower"
+              }
+            }
+          },
+          "norms_and_small": {
+            "declared": null,
+            "not_verified": [
+              "the published recipe does not name norms and other small tensors"
+            ],
+            "serialized_formats": {
+              "BF16": 129
+            },
+            "serialized_bytes": 1320960,
+            "exl3_modules": 0,
+            "measured_source": {
+              "path": "receipts/context-quantization-manifest.json",
+              "sha256": "eb1dd3acfdb98059974addb61c05d7a25c5cf09b76ffde473a6d4ef5e798dc9d",
+              "pointers": {
+                "norms_and_small": "/roles/norms_and_small"
+              }
+            }
+          }
+        },
+        "runtime_overlays": {
+          "embed": {
+            "mean_kld": 0.009737873501668846,
+            "delta_vs_bf16_embedding": 6.504850782130216e-05,
+            "delta_ci95": [
+              4.571752259591653e-06,
+              0.00013180194270379192
+            ],
+            "paired_contexts": 136,
+            "source": {
+              "path": "receipts/release-evidence-context.json",
+              "sha256": "6d68e11761b9376c90db5fb1f0f89075cf255af63a9daa6833a5e9da299ff35f",
+              "pointers": {
+                "mean_kld": "/evaluation/embedding_overlay/mean_kld",
+                "delta_vs_bf16_embedding": "/evaluation/embedding_overlay/delta_vs_bf16_embedding",
+                "delta_ci95": "/evaluation/embedding_overlay/delta_ci95",
+                "paired_contexts": "/evaluation/embedding_overlay/paired_contexts"
+              }
+            },
+            "description": "optional int8 input-embedding overlay applied at runtime; the stored embedding stays BF16",
+            "overlay_bits": 8,
+            "overlay_bits_source": {
+              "path": "receipts/native-mtp-8mp-amendment.json",
+              "sha256": "b7570d9fb7c5d6cd497b6de2b32a7a57c91694f84e6b778fee7fb19e015c5537",
+              "pointer": "/runtime/embedding_overlay_bits"
+            },
+            "corrected_delta": {
+              "contexts": 127,
+              "mean_kld": 0.009459459517006497,
+              "delta_vs_bf16_embedding": 8.195218950349656e-05,
+              "delta_ci95_low": 2.6042731053431203e-05,
+              "delta_ci95_high": 0.0001463132017448514,
+              "source": {
+                "path": "receipts/analysis-v3-contamination-corrected.json",
+                "sha256": "026fc453787eccef15879f29266489ba9ec04bbff59ab7e35827e92394480417",
+                "pointers": {
+                  "contexts": "/runtime_overlays/context_int8_input_embedding/contexts",
+                  "mean_kld": "/runtime_overlays/context_int8_input_embedding/mean_kld",
+                  "delta_vs_bf16_embedding": "/runtime_overlays/context_int8_input_embedding/delta_vs_bf16_embedding",
+                  "delta_ci95_low": "/runtime_overlays/context_int8_input_embedding/delta_ci95/ci95_low",
+                  "delta_ci95_high": "/runtime_overlays/context_int8_input_embedding/delta_ci95/ci95_high"
+                }
+              }
+            }
+          }
+        }
+      },
+      "serialized_bytes": {
+        "note": "serialized bytes are on-disk bytes and are never VRAM; resident weight memory is reported separately under resident_weights",
+        "whole_tree_bytes": {
+          "value": 20696053306,
+          "unit": "bytes",
+          "covers": "every published file of the artifact as the release counted it",
+          "source": {
+            "path": "receipts/release-evidence-context.json",
+            "sha256": "6d68e11761b9376c90db5fb1f0f89075cf255af63a9daa6833a5e9da299ff35f",
+            "pointers": {
+              "value": "/artifact/disk_bytes"
+            }
+          }
+        },
+        "immutable_payload_bytes": {
+          "value": 20696033532,
+          "unit": "bytes",
+          "covers": "SHA256SUMS and immutable_payload cover only the files that define the artifact; README.md, .gitattributes, assets/** and the receipt files themselves are documentation that is rewritten by card edits without rebuilding the weights, so hashing them here would make the receipt go stale while still claiming to describe the build -- they are listed under mutable_documentation and hashed in DOCS-SHA256SUMS instead.",
+          "file_count": 16,
+          "source": {
+            "path": "receipts/context-build-receipt.json",
+            "sha256": "0bab1c3549760adc65899bb6f7f59ae79bb000d51f9c8cd52b8e2da8b64c1d09",
+            "pointers": {
+              "value": "/immutable_payload_bytes",
+              "covers": "/scope_note",
+              "file_count": "/file_count"
+            }
+          }
+        },
+        "tensor_payload_bytes": {
+          "value": 20672081988,
+          "unit": "bytes",
+          "derivation": "sum of the quantization manifest's per-role tensor bytes over embed_tokens, full_attention, linear_attention, lm_head, mlp_down_proj, mlp_gate_proj, mlp_up_proj, mtp_draft, norms_and_small, vision_tower",
+          "source": {
+            "path": "receipts/context-quantization-manifest.json",
+            "sha256": "eb1dd3acfdb98059974addb61c05d7a25c5cf09b76ffde473a6d4ef5e798dc9d",
+            "pointers": {
+              "embed_tokens": "/roles/embed_tokens/bytes",
+              "full_attention": "/roles/full_attention/bytes",
+              "linear_attention": "/roles/linear_attention/bytes",
+              "lm_head": "/roles/lm_head/bytes",
+              "mlp_down_proj": "/roles/mlp_down_proj/bytes",
+              "mlp_gate_proj": "/roles/mlp_gate_proj/bytes",
+              "mlp_up_proj": "/roles/mlp_up_proj/bytes",
+              "mtp_draft": "/roles/mtp_draft/bytes",
+              "norms_and_small": "/roles/norms_and_small/bytes",
+              "vision_tower": "/roles/vision_tower/bytes"
+            }
+          }
+        }
+      },
+      "resident_weights": {
+        "note": "measured GPU allocation for weights at load, as vLLM reports it; not a serialized size",
+        "measurement": {
+          "gib_reported": 18.41,
+          "bytes_approx": 19767586980,
+          "bytes_interval": [
+            19762218270,
+            19772955689
+          ],
+          "interval_note": "the source reports 2-decimal GiB; bytes are derived and span the +/-0.005 GiB the report leaves open",
+          "configuration": "int8 input-embedding overlay, MTP depth 3, fp8 KV, max_model_len 262144, engine budget 30.24 GiB",
+          "source": {
+            "path": "receipts/native-mtp-8mp-amendment.json",
+            "sha256": "b7570d9fb7c5d6cd497b6de2b32a7a57c91694f84e6b778fee7fb19e015c5537",
+            "pointers": {
+              "gib_reported": "/measured_memory/resident_weights_gib",
+              "mtp_depth": "/runtime/mtp_depth",
+              "kv_cache_dtype": "/runtime/kv_cache_dtype",
+              "max_model_len": "/runtime/max_model_len",
+              "embedding_overlay_bits": "/runtime/embedding_overlay_bits",
+              "desired_engine_budget_gib": "/runtime/desired_engine_budget_gib"
+            }
+          },
+          "log_corroboration": {
+            "path": "receipts/native-mtp-8mp-combined-server.log",
+            "sha256": "cb1aa32a7e694328962b494a626ec6122533426688a1cb7350f479d9fadd83fb",
+            "line": "gpu_model_runner.py:5415] Model loading took 18.41 GiB memory",
+            "pinned_by": {
+              "path": "receipts/native-mtp-8mp-amendment.json",
+              "pointer": "/evidence_files/native-mtp-8mp-combined-server.log"
+            }
+          }
+        },
+        "additional_measurements": [
+          {
+            "gib_reported": 19.31,
+            "bytes_approx": 20733954621,
+            "bytes_interval": [
+              20728585912,
+              20739323331
+            ],
+            "interval_note": "the source reports 2-decimal GiB; bytes are derived and span the +/-0.005 GiB the report leaves open",
+            "configuration": "BF16 embeddings, MTP off",
+            "source": {
+              "path": "receipts/release-evidence-context.json",
+              "sha256": "6d68e11761b9376c90db5fb1f0f89075cf255af63a9daa6833a5e9da299ff35f",
+              "pointers": {
+                "gib_reported": "/artifact/resident_weights_gib/bf16_embedding_mtp_off"
+              }
+            }
+          },
+          {
+            "gib_reported": 19.56,
+            "bytes_approx": 21002390077,
+            "bytes_interval": [
+              20997021368,
+              21007758787
+            ],
+            "interval_note": "the source reports 2-decimal GiB; bytes are derived and span the +/-0.005 GiB the report leaves open",
+            "configuration": "BF16 embeddings, MTP depth 3",
+            "source": {
+              "path": "receipts/release-evidence-context.json",
+              "sha256": "6d68e11761b9376c90db5fb1f0f89075cf255af63a9daa6833a5e9da299ff35f",
+              "pointers": {
+                "gib_reported": "/artifact/resident_weights_gib/bf16_embedding_mtp_3"
+              }
+            }
+          },
+          {
+            "gib_reported": 18.13,
+            "bytes_approx": 19466939269,
+            "bytes_interval": [
+              19461570560,
+              19472307979
+            ],
+            "interval_note": "the source reports 2-decimal GiB; bytes are derived and span the +/-0.005 GiB the report leaves open",
+            "configuration": "int8 embedding overlay, MTP off",
+            "source": {
+              "path": "receipts/release-evidence-context.json",
+              "sha256": "6d68e11761b9376c90db5fb1f0f89075cf255af63a9daa6833a5e9da299ff35f",
+              "pointers": {
+                "gib_reported": "/artifact/resident_weights_gib/int8_embedding_mtp_off"
+              }
+            }
+          },
+          {
+            "gib_reported": 18.38,
+            "bytes_approx": 19735374725,
+            "bytes_interval": [
+              19730006016,
+              19740743435
+            ],
+            "interval_note": "the source reports 2-decimal GiB; bytes are derived and span the +/-0.005 GiB the report leaves open",
+            "configuration": "int8 embedding overlay, MTP depth 1 or 3",
+            "source": {
+              "path": "receipts/release-evidence-context.json",
+              "sha256": "6d68e11761b9376c90db5fb1f0f89075cf255af63a9daa6833a5e9da299ff35f",
+              "pointers": {
+                "gib_reported": "/artifact/resident_weights_gib/int8_embedding_mtp_1_or_3"
+              }
+            }
+          }
+        ],
+        "measurement_selection": "the amendment figure is primary because it is the only one corroborated by a published server log; it sits 0.03 GiB above the release evidence's int8/MTP figure, which was a separate run"
+      },
+      "runtime": {
+        "image_digest": "voipmonitor/vllm@sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b",
+        "gpu": "NVIDIA RTX PRO 6000 Blackwell Server Edition",
+        "arch": "SM120",
+        "tensor_parallel": 1,
+        "driver": "595.58.03",
+        "source": {
+          "path": "receipts/release-evidence-context.json",
+          "sha256": "6d68e11761b9376c90db5fb1f0f89075cf255af63a9daa6833a5e9da299ff35f",
+          "pointers": {
+            "image_digest": "/toolchain/vllm_image",
+            "gpu": "/hardware/gpu",
+            "arch": "/hardware/arch",
+            "tensor_parallel": "/hardware/tensor_parallel",
+            "driver": "/hardware/driver"
+          }
+        },
+        "patch_modules": {
+          "digests": {
+            "exl3.py": "bdce4081ce77b00dd47de1b5c5bda2779f2662d679384e852ff0899a8d17eb3b",
+            "qwen3_5.py": "04d2bd587b37142f4f55a8d00b9f8c907309490168cb7fcdfde450531df2c9e7",
+            "qwen3_5_mtp.py_tested": "663ee9119e07b82b83c9c2eb68dfa3ed873ae07bf239ee02de7f18dad8b03e11"
+          },
+          "source": {
+            "path": "receipts/release-evidence-context.json",
+            "sha256": "6d68e11761b9376c90db5fb1f0f89075cf255af63a9daa6833a5e9da299ff35f",
+            "pointers": {
+              "digests": "/toolchain/patched_modules_sha256"
+            }
+          }
+        },
+        "patch_sources_in_repo": [
+          {
+            "path": "tools/vllm-exl3-prefill-dispatch.py",
+            "sha256": "2df9d0799fd323798cead1edb773cab556c94798eec263ee03ded35408c6e4ee"
+          },
+          {
+            "path": "tools/vllm-qwen3_5-embed-quant-config.py",
+            "sha256": "04d2bd587b37142f4f55a8d00b9f8c907309490168cb7fcdfde450531df2c9e7"
+          },
+          {
+            "path": "tools/vllm-qwen3_5_mtp-embed-quant-config.py",
+            "sha256": "0090dc131f0eaf439b24d50baf4def9f10b052864c76e695053d64f66b274bab"
+          }
+        ],
+        "patch_prs": [
+          "https://github.com/local-inference-lab/vllm/pull/314",
+          "https://github.com/local-inference-lab/vllm/pull/316",
+          "https://github.com/local-inference-lab/vllm/pull/318",
+          "https://github.com/local-inference-lab/vllm/pull/319"
+        ],
+        "image_identity_verified_during_capture": false,
+        "image_identity_limit": "the captured run named this digest but did not preserve a full-rootfs manifest at launch; the post-run rerun harness below now authenticates every extracted-rootfs entry before installing the three pinned patches",
+        "image_identity_source": {
+          "path": "receipts/native-mtp-8mp-amendment.json",
+          "sha256": "b7570d9fb7c5d6cd497b6de2b32a7a57c91694f84e6b778fee7fb19e015c5537",
+          "pointers": {
+            "image_digest": "/runtime/image",
+            "image_identity_verified_during_capture": "/runtime/image_identity_verified_during_capture",
+            "image_identity_limit": "/runtime/image_identity_limit"
+          }
+        }
+      },
+      "fidelity": {
+        "protocol": "hidden-state replay, exact full-vocabulary two-pass KL(BF16 || candidate)",
+        "protocol_source": {
+          "path": "receipts/v3-report-ctx.json",
+          "sha256": "c5214e705ebe927c42fbf5dbd93aad0bf152ff6205d996058f0a4003bc048c72",
+          "pointers": {
+            "comparator": "/comparator",
+            "reference": "/reference",
+            "candidate": "/candidate"
+          }
+        },
+        "comparator": {
+          "vocab_chunk": 24832,
+          "device": "cuda",
+          "accumulation": "float64",
+          "two_pass": true
+        },
+        "headline": {
+          "suite_token_sha256": "3f9d17f1b55f64872ad3ac19c8711654e09ba70b7ca14b0851525088fe735691",
+          "partition": "analysis",
+          "contexts": 136,
+          "scored_positions": 278392,
+          "mean_kld": 0.009672824993847544,
+          "median_kld": 0.0016716444978506217,
+          "context_macro_mean_kld": 0.009672824993847544,
+          "ci95_low": 0.00710878608723887,
+          "ci95_high": 0.012747934304694062,
+          "bootstrap_clusters": 41,
+          "bootstrap_samples": 10000,
+          "top1_agreement": 0.968116899910917,
+          "reference_head_sha256": "25a30fd5f826da0abc4efc4cc71def9f02bcb8085f7175eee284d221dee4cfff",
+          "source": {
+            "path": "receipts/v3-report-ctx.json",
+            "sha256": "c5214e705ebe927c42fbf5dbd93aad0bf152ff6205d996058f0a4003bc048c72",
+            "pointers": {
+              "suite_token_sha256": "/suite_token_sha256",
+              "partition": "/filter",
+              "contexts": "/contexts",
+              "scored_positions": "/scored_positions",
+              "mean_kld": "/token_mean_kld",
+              "median_kld": "/token_median_kld",
+              "context_macro_mean_kld": "/context_macro_mean_kld",
+              "ci95_low": "/context_bootstrap/ci95_low",
+              "ci95_high": "/context_bootstrap/ci95_high",
+              "bootstrap_clusters": "/context_bootstrap/clusters",
+              "bootstrap_samples": "/context_bootstrap/samples",
+              "top1_agreement": "/top1_agreement",
+              "reference_head_sha256": "/head_sha256"
+            }
+          },
+          "suite": "qwen38-27b-fidelity-suite-v3",
+          "declared_by": {
+            "path": "receipts/release-evidence-context.json",
+            "sha256": "6d68e11761b9376c90db5fb1f0f89075cf255af63a9daa6833a5e9da299ff35f",
+            "pointers": {
+              "suite": "/evaluation/suite",
+              "mean_kld": "/evaluation/mean_kld",
+              "ci95": "/evaluation/ci95",
+              "contexts": "/evaluation/contexts",
+              "top1_agreement": "/evaluation/top1_agreement",
+              "suite_token_sha256": "/evaluation/suite_token_sha256"
+            }
+          }
+        },
+        "corrected_mean_kld": {
+          "contexts": 36,
+          "mean_kld": 0.00399023439635578,
+          "ci95_low": 0.0032679462231305924,
+          "ci95_high": 0.004796822717456966,
+          "bootstrap_clusters": 24,
+          "top1_agreement": 0.973552081637084,
+          "kld_reduction_vs_official_fp8": 0.3226295265231589,
+          "policy": "exclude every source document with any exact normalized 12-token n-gram; Unicode words plus one token per Han/Kana character",
+          "contexts_before": 42,
+          "excluded_source_clusters": [
+            "cpython-c-v3.12.8-001",
+            "cpython-c-v3.12.8-002",
+            "wiki4-pt-003",
+            "wiki4-zh-003"
+          ],
+          "source": {
+            "path": "receipts/qualification-v4-contamination-corrected.json",
+            "sha256": "17148ed02713f426dcb4b7b69c8072a5eb8a9abd49bcbfcea585ca8e5c2f5ab3",
+            "pointers": {
+              "contexts": "/metrics/context/contexts",
+              "mean_kld": "/metrics/context/mean_kld",
+              "ci95_low": "/metrics/context/ci95/ci95_low",
+              "ci95_high": "/metrics/context/ci95/ci95_high",
+              "bootstrap_clusters": "/metrics/context/ci95/clusters",
+              "top1_agreement": "/metrics/context/top1_agreement",
+              "kld_reduction_vs_official_fp8": "/metrics/context/kld_reduction_vs_fp8",
+              "policy": "/policy",
+              "contexts_before": "/qualification_contexts_before",
+              "excluded_source_clusters": "/excluded_source_clusters"
+            }
+          },
+          "basis": "v4 qualification partition, source-disjoint from recipe selection, calibration-overlap-corrected subset",
+          "suite": "qwen38-27b-fidelity-suite-v4",
+          "suite_token_sha256": "71f4fab2c951841c5c504b3ab723fd8d3b07ef1fd91cdceac0cc92beb8198e4d",
+          "source_disjoint": true
+        },
+        "corrected_alternates": [
+          {
+            "contexts": 127,
+            "mean_kld": 0.009377507327503,
+            "ci95_low": 0.006786165955502466,
+            "ci95_high": 0.012606360396931717,
+            "bootstrap_clusters": 39,
+            "top1_agreement": 0.9680000307728999,
+            "policy": "exclude every source document with any exact normalized 12-token n-gram; Unicode words plus one token per Han/Kana character",
+            "contexts_before": 136,
+            "excluded_source_clusters": [
+              "cpython-v3.12.8-0060",
+              "pg4300"
+            ],
+            "source": {
+              "path": "receipts/analysis-v3-contamination-corrected.json",
+              "sha256": "026fc453787eccef15879f29266489ba9ec04bbff59ab7e35827e92394480417",
+              "pointers": {
+                "contexts": "/metrics/context/contexts",
+                "mean_kld": "/metrics/context/mean_kld",
+                "ci95_low": "/metrics/context/ci95/ci95_low",
+                "ci95_high": "/metrics/context/ci95/ci95_high",
+                "bootstrap_clusters": "/metrics/context/ci95/clusters",
+                "top1_agreement": "/metrics/context/top1_agreement",
+                "policy": "/policy",
+                "contexts_before": "/analysis_contexts_before",
+                "excluded_source_clusters": "/excluded_source_clusters"
+              }
+            },
+            "basis": "v3 analysis partition, calibration-overlap-corrected subset",
+            "suite": "qwen38-27b-fidelity-suite-v3",
+            "suite_token_sha256": "3f9d17f1b55f64872ad3ac19c8711654e09ba70b7ca14b0851525088fe735691",
+            "source_disjoint": false
+          },
+          {
+            "suite_token_sha256": "71f4fab2c951841c5c504b3ab723fd8d3b07ef1fd91cdceac0cc92beb8198e4d",
+            "partition": "qualification",
+            "contexts": 42,
+            "scored_positions": 85974,
+            "mean_kld": 0.0039003616729275867,
+            "ci95_low": 0.0032751509635740293,
+            "ci95_high": 0.004588383389207283,
+            "top1_agreement": 0.9742829227440855,
+            "source": {
+              "path": "receipts/report-v4-ctx-qual.json",
+              "sha256": "877f0e33d801f6b2ffdd45f0df695b0580d94ac58f6bc448a92345b46f549466",
+              "pointers": {
+                "suite_token_sha256": "/suite_token_sha256",
+                "partition": "/filter",
+                "contexts": "/contexts",
+                "scored_positions": "/scored_positions",
+                "mean_kld": "/token_mean_kld",
+                "ci95_low": "/context_bootstrap/ci95_low",
+                "ci95_high": "/context_bootstrap/ci95_high",
+                "top1_agreement": "/top1_agreement"
+              }
+            },
+            "basis": "v4 qualification partition, full set, no overlap correction",
+            "source_disjoint": true
+          }
+        ],
+        "suite_digests": [
+          {
+            "suite": "qwen38-27b-fidelity-suite-v3",
+            "suite_token_sha256": "3f9d17f1b55f64872ad3ac19c8711654e09ba70b7ca14b0851525088fe735691",
+            "partition": "analysis",
+            "contexts": 136,
+            "manifest": null,
+            "digest_reproduced_from_manifest": null,
+            "not_verified": [
+              "the v3 suite manifest is not published in the repo; the v3 suite digest is carried by the reports that used it"
+            ]
+          },
+          {
+            "suite": "qwen38-27b-fidelity-suite-v4",
+            "suite_token_sha256": "71f4fab2c951841c5c504b3ab723fd8d3b07ef1fd91cdceac0cc92beb8198e4d",
+            "partition": "qualification",
+            "contexts": 42,
+            "manifest": {
+              "path": "receipts/v4-suite-manifest.json",
+              "sha256": "f0d045930b7e7fd063f9525483d030ad4525623f7bb854815f47489fd7a96e5a",
+              "contexts": 160,
+              "partitions": {
+                "analysis": 118,
+                "qualification": 42,
+                "sentinels": 16
+              }
+            },
+            "digest_reproduced_from_manifest": true,
+            "reproduction": "sha256 of the concatenated per-context token_sha256 hex strings in manifest order"
+          }
+        ],
+        "capture_identity": {
+          "report": "receipts/v3-report-ctx.json",
+          "report_sha256": "c5214e705ebe927c42fbf5dbd93aad0bf152ff6205d996058f0a4003bc048c72",
+          "report_index_sha256": "cd53b8e487b5c70b1ffe26578464a9cfd9bea9d7ed50a39e39ba3e153c1ab1b4",
+          "agrees_with_artifact_index": true
+        },
+        "development_set_caveat": "recipe selection saw this partition; claims are cross-checked on the frozen source-disjoint v4 qualification below"
+      },
+      "amendments": {
+        "links": [
+          {
+            "name": "overlap-corrected v3 comparison; context v3 hidden capture remains unpublished",
+            "path": "receipts/analysis-v3-contamination-corrected.json",
+            "sha256": "026fc453787eccef15879f29266489ba9ec04bbff59ab7e35827e92394480417",
+            "verified": true,
+            "scope": "overlap-corrected v3 comparison; context v3 hidden capture remains unpublished"
+          },
+          {
+            "name": "source-disjoint overlap-corrected v4 qualification",
+            "path": "receipts/qualification-v4-contamination-corrected.json",
+            "sha256": "17148ed02713f426dcb4b7b69c8072a5eb8a9abd49bcbfcea585ca8e5c2f5ab3",
+            "verified": true,
+            "scope": "source-disjoint overlap-corrected v4 qualification"
+          },
+          {
+            "name": "engine-budget native 262144 plus MTP-3 and combined long-image proof; physical RTX 5090 remains open",
+            "path": "receipts/native-mtp-8mp-amendment.json",
+            "sha256": "b7570d9fb7c5d6cd497b6de2b32a7a57c91694f84e6b778fee7fb19e015c5537",
+            "verified": true,
+            "scope": "engine-budget native 262144 plus MTP-3 and combined long-image proof; physical RTX 5090 remains open"
+          },
+          {
+            "name": "deterministic task run with full raw responses",
+            "path": "receipts/tasks-v2-ctx.json",
+            "sha256": "cea4cfa885af0d254a24a4003ba956a70cc38269bd7604d32fb6ec306eadf67d",
+            "verified": true,
+            "scope": "deterministic task run with full raw responses"
+          },
+          {
+            "name": "strict rescore; 40/40 unchanged and exact-final-answer diagnostic corrected",
+            "path": "receipts/task-retention-v2-strict-rescore.json",
+            "sha256": "b1cddff1a9ae012a48ec0258096c3a258e652aef887fc9128d8665e62c867080",
+            "verified": true,
+            "scope": "strict rescore; 40/40 unchanged and exact-final-answer diagnostic corrected"
+          }
+        ],
+        "scalars": {
+          "published v4 context capture and sibling/comparator captures": {
+            "dataset_revision": "73252e77e96bbf5596484e29dd8041f9f38c95f1",
+            "scope": "published v4 context capture and sibling/comparator captures"
+          }
+        },
+        "source": {
+          "path": "receipts/release-evidence-context.json",
+          "sha256": "6d68e11761b9376c90db5fb1f0f89075cf255af63a9daa6833a5e9da299ff35f",
+          "pointers": {
+            "amendments": "/amendments"
+          }
+        }
+      },
+      "status": {
+        "state": "published",
+        "label": "context edition: attention K5 serialized",
+        "published_evidence": {
+          "path": "receipts/release-evidence-context.json",
+          "sha256": "6d68e11761b9376c90db5fb1f0f89075cf255af63a9daa6833a5e9da299ff35f",
+          "generated_utc": "2026-08-15T07:09:29Z",
+          "amended_utc": "2026-08-15T12:27:32Z"
+        },
+        "fidelity_rank": {
+          "rank": 3,
+          "of": 4,
+          "mean_kld": 0.009377507327503,
+          "basis": "ascending mean KLD on the one corrected basis every release in this collection shares: the v3 analysis partition with calibration-overlapping source documents excluded.  The source-disjoint v4 figures in fidelity.corrected_mean_kld are the stronger evidence but do not cover K4.",
+          "source": {
+            "path": "receipts/analysis-v3-contamination-corrected.json",
+            "sha256": "026fc453787eccef15879f29266489ba9ec04bbff59ab7e35827e92394480417",
+            "pointers": {
+              "mean_kld": "/metrics/context/mean_kld"
+            }
+          },
+          "best_in_collection": false
+        },
+        "not_verified": [
+          "physical RTX 5090 hard-limit native-context, MTP and long-image run",
+          "public downstream benchmark beyond the deterministic paired smoke",
+          "OCR/document/video multimodal",
+          "reasoning at length",
+          "YaRN 1M",
+          "tensor parallel > 1",
+          "non-SM120 GPUs",
+          "quant-specific safety regression"
+        ],
+        "corrections": [
+          {
+            "claim": "the MTP draft retains a second full embedding table and an int4 draft table preserves acceptance",
+            "status": "retracted",
+            "evidence": "runtime logs show the draft embedding is aliased to the target after loading; the int4/int8 comparison never exercised different inference weights"
+          },
+          {
+            "claim": "the capped native-context run is equivalent to operation under a physical 32 GB limit",
+            "status": "narrowed",
+            "evidence": "the vLLM desired budget was 30.24 GiB, but the RTX PRO 6000 retained physical memory outside that budget"
+          }
+        ],
+        "native_context": {
+          "configured_max_model_len": 262144,
+          "native_262144_started": true,
+          "hard_limit_rtx5090_verified": false,
+          "source": {
+            "path": "receipts/release-evidence-context.json",
+            "sha256": "6d68e11761b9376c90db5fb1f0f89075cf255af63a9daa6833a5e9da299ff35f",
+            "pointers": {
+              "configured_max_model_len": "/memory/int8_embedding_overlay/configured_max_model_len",
+              "native_262144_started": "/memory/int8_embedding_overlay/native_262144_started",
+              "hard_limit_rtx5090_verified": "/memory/int8_embedding_overlay/hard_limit_rtx5090_verified"
+            }
+          }
+        },
+        "model_card": {
+          "path": "MODEL_CARD-K5K6-context.md",
+          "sha256": "8d25801490ff0269f2936b16b1b786441901975fdcdfba29e4836803d74cbe14"
+        }
+      }
+    }
+  ],
+  "row_digests": {
+    "k4": "4aff8cbf597a9181c2ca110cbd4ab5eda9a36d0f7d53ba3bd05e69451322eb1c",
+    "k5k6": "b7f5325f2d23ad398ab71030466bfb73883b28e1071773646fe429e15a7a9d59",
+    "hydrated": "3bebceefd8eb35b0f7964074140f9ffe50ef57123cde081d20b2c19356e4ecf1",
+    "context": "cb0c599ca0435d7a87e84abffbe70760f72a0c2b4c7db66073fcb67fbb43a088"
+  },
+  "known_divergences": [
+    {
+      "what": "receipts/native-mtp-8mp-amendment.json pins the sha256 of the release evidence it amends, and that file was then amended to link the amendment",
+      "pinned_by": {
+        "path": "receipts/native-mtp-8mp-amendment.json",
+        "pointer": "/base_release_evidence_sha256",
+        "sha256": "b7570d9fb7c5d6cd497b6de2b32a7a57c91694f84e6b778fee7fb19e015c5537"
+      },
+      "claimed_sha256": "86bd30e3288d7b7f0cc8acc74206a1fe685bf051dbb6a772bed93390b7f9971a",
+      "current_sha256": "6d68e11761b9376c90db5fb1f0f89075cf255af63a9daa6833a5e9da299ff35f",
+      "path": "receipts/release-evidence-context.json",
+      "why_not_fatal": "the amendment (11:11:08Z) predates the amendment link added to the release evidence (amended_utc 12:27:32Z); the backreference cannot be satisfied without rewriting a published receipt, which this repo never does"
+    }
+  ],
+  "suites_not_used_by_any_row": [
+    {
+      "label": "the 10.48M-position ladder suite; the manifest declares a schema, not a suite name",
+      "manifest": {
+        "path": "receipts/kld5-suite-manifest.json",
+        "sha256": "c79dfad3767ca5b3015129077f20dbb9282a2e51ca8bca9ed09be8c7a9c73019",
+        "schema": "qwen38-distribution-fidelity/6"
+      },
+      "suite_token_sha256": "510541f6861b589d44932db253ec25d96d6daaeeee4ea2ab9b65329209482b88",
+      "digest_reproduced_from_manifest": true,
+      "contexts": 5120,
+      "total_scored_positions": 10480640,
+      "used_by_rows": [],
+      "note": "no row's fidelity numbers come from this suite; ladder results will be separate receipts"
+    }
+  ],
+  "receipt_digests": {
+    "MODEL_CARD-K4.md": "229f6716b495e07821910a4bdcdb1a492764978af8c1705f34c38509e1c40ef4",
+    "MODEL_CARD-K5K6-context.md": "8d25801490ff0269f2936b16b1b786441901975fdcdfba29e4836803d74cbe14",
+    "MODEL_CARD-K5K6-hydrated.md": "264d838d7f2fef99be8e12c1166e80273f531f94419622efd940c438cd30fc5c",
+    "MODEL_CARD-K5K6.md": "59037b7583e9da7873539f7d736dd7344478166f494712834b8736f66e624ec0",
+    "receipts/analysis-v3-contamination-corrected.json": "026fc453787eccef15879f29266489ba9ec04bbff59ab7e35827e92394480417",
+    "receipts/context-build-receipt.json": "0bab1c3549760adc65899bb6f7f59ae79bb000d51f9c8cd52b8e2da8b64c1d09",
+    "receipts/context-quantization-manifest.json": "eb1dd3acfdb98059974addb61c05d7a25c5cf09b76ffde473a6d4ef5e798dc9d",
+    "receipts/hydrated-SHA256SUMS": "7626d18481e7f995fd1d9ff211083b7fd57f044daba39e107fb29a48207f24c4",
+    "receipts/hydrated-build-receipt.json": "59865da087bf835f9ef23ed372290a28c5244da7fa2abe4f6cc7e3a44707754e",
+    "receipts/hydrated-quantization-manifest.json": "db9b03fb2bb8fa9219e266a825ee028f6ed1420f4de2617d752143dee9ed4c4d",
+    "receipts/k5k6-SHA256SUMS": "19accf253c8f6c9390992504fb95b8edde8bbc3b84c628dbb988fe5c02753afe",
+    "receipts/k5k6-build-receipt.json": "9bac707d6ffd2af4386dbcab7f2ea8b471659030648b614c44f69bb52f7e4fc4",
+    "receipts/kld5-suite-manifest.json": "c79dfad3767ca5b3015129077f20dbb9282a2e51ca8bca9ed09be8c7a9c73019",
+    "receipts/native-mtp-8mp-amendment.json": "b7570d9fb7c5d6cd497b6de2b32a7a57c91694f84e6b778fee7fb19e015c5537",
+    "receipts/native-mtp-8mp-combined-server.log": "cb1aa32a7e694328962b494a626ec6122533426688a1cb7350f479d9fadd83fb",
+    "receipts/qualification-v4-contamination-corrected.json": "17148ed02713f426dcb4b7b69c8072a5eb8a9abd49bcbfcea585ca8e5c2f5ab3",
+    "receipts/release-evidence-context.json": "6d68e11761b9376c90db5fb1f0f89075cf255af63a9daa6833a5e9da299ff35f",
+    "receipts/release-evidence-hydrated.json": "0602ce8b2ba9e95b84adc5933ab1138faec605a6c0b12af935bbcd91d94d6aff",
+    "receipts/release-evidence-k4.json": "d1fc7aaae42f4eafb57f14e937341e5b1b6c0c68e14737cd28a6c6602cea883f",
+    "receipts/release-evidence-k5k6.json": "5cab8e95bbae2df0628d16bb44e576fb88f86ec18d362dffa8a34eb3fcfc127c",
+    "receipts/report-v4-ctx-qual.json": "877f0e33d801f6b2ffdd45f0df695b0580d94ac58f6bc448a92345b46f549466",
+    "receipts/report-v4-hyd-qual.json": "70d9cc0a03b033786416dbd6e9b27cb4987e9e57a1084509358f977d78ec8837",
+    "receipts/report-v4-k5k6-qual.json": "845257b62b71b9770bbd1786dab1684b65f045d87dacf393b4149d48d265d408",
+    "receipts/task-retention-v2-strict-rescore.json": "b1cddff1a9ae012a48ec0258096c3a258e652aef887fc9128d8665e62c867080",
+    "receipts/tasks-v2-ctx.json": "cea4cfa885af0d254a24a4003ba956a70cc38269bd7604d32fb6ec306eadf67d",
+    "receipts/tasks-v2-hydrated.json": "704b9c51f5e902a680f087e2eed00d51c6166d35461e667f0d6d7c5ce6d3aec4",
+    "receipts/tasks-v2-k4.json": "fb615fbe28b8572ff0f8f2d4856e7164047361f4be1eda551cb1b1ed48e7f9a5",
+    "receipts/tasks-v2-k5k6.json": "a5086d40f09bc15e8f1d9a7b3c31fee6df332196c23394fd6e13cee912d87aa9",
+    "receipts/v3-report-ctx.json": "c5214e705ebe927c42fbf5dbd93aad0bf152ff6205d996058f0a4003bc048c72",
+    "receipts/v3-report-hyd.json": "0b86182c3da5dad20055b83f243d6d93651acc02b6fab410295e815297c4871d",
+    "receipts/v3-report-k4-analysis.json": "6355512fa76e75d659b044f581f9cf67c48210f034877ed56025791703f2c7bc",
+    "receipts/v3-report-v2-analysis.json": "0b010c62a12e44e146cf6c2b836002f0da65ef00846929172b5ec43fe8e46ed6",
+    "receipts/v4-suite-manifest.json": "f0d045930b7e7fd063f9525483d030ad4525623f7bb854815f47489fd7a96e5a",
+    "tools/vllm-exl3-prefill-dispatch.py": "2df9d0799fd323798cead1edb773cab556c94798eec263ee03ded35408c6e4ee",
+    "tools/vllm-qwen3_5-embed-quant-config.py": "04d2bd587b37142f4f55a8d00b9f8c907309490168cb7fcdfde450531df2c9e7",
+    "tools/vllm-qwen3_5_mtp-embed-quant-config.py": "0090dc131f0eaf439b24d50baf4def9f10b052864c76e695053d64f66b274bab"
+  },
+  "generated_utc": "2026-08-15T17:10:54Z",
+  "generator": {
+    "tool": "tools/collection_index.py",
+    "tool_sha256": "e847d9c4769c55800185482ddd250a04bbdf7a9ecf325b259e26a2840bd77a9c",
+    "repo_commit": "d79ed870fc583ce7caeef921eda157a0c9e8f4d2",
+    "worktree_dirty": true
+  },
+  "content_sha256": "330d6f6a14320838da56b27bc5f346001a1511ca9c275b0de082eac1eed0d335",
+  "content_sha256_excludes": [
+    "generated_utc",
+    "generator",
+    "content_sha256",
+    "content_sha256_excludes"
+  ]
+}
