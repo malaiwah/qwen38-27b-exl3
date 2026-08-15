@@ -1,0 +1,3317 @@
+{
+  "schema": "qwen38-fidelity-report/1",
+  "reference": "/work/kld4/hidden-bf16",
+  "candidate": "/work/kld4/hidden-fp8",
+  "candidate_identity": {
+    "model_path": "/models/Qwen3.8-27B-FP8",
+    "model_revision": null,
+    "model_revision_source": "none",
+    "index_sha256": "f0838c766951bdfe76d6afbdb2771a8f67aaa2231dedb3d33cebd817729843a2",
+    "shard_sha256": null,
+    "quantization": "auto",
+    "quantization_config": null,
+    "kv_cache_dtype_requested": "auto",
+    "kv_cache_dtype_resolved": "bfloat16",
+    "kv_cache_dtype_resolved_source": "model_config.dtype"
+  },
+  "head": "/work/kld2/lm_head.safetensors",
+  "head_sha256": "25a30fd5f826da0abc4efc4cc71def9f02bcb8085f7175eee284d221dee4cfff",
+  "candidate_head": null,
+  "candidate_head_sha256": null,
+  "suite_token_sha256": "71f4fab2c951841c5c504b3ab723fd8d3b07ef1fd91cdceac0cc92beb8198e4d",
+  "filter": "all",
+  "contexts": 160,
+  "scored_positions": 327520,
+  "vocab_size": 248320,
+  "hidden_size": 5120,
+  "token_mean_kld": 0.007063529246063983,
+  "token_median_kld": 0.0021416941913230403,
+  "p95_kld": 0.025293309654534815,
+  "p99_kld": 0.08913948638501537,
+  "p999_kld": 0.3473864323008166,
+  "max_kld": 3.0608803731715,
+  "context_macro_mean_kld": 0.007063529246063983,
+  "context_bootstrap": {
+    "mean": 0.007063529246063983,
+    "ci95_low": 0.005958840977900346,
+    "ci95_high": 0.008291459653503787,
+    "clusters": 100,
+    "samples": 10000
+  },
+  "mean_jsd_bits": 0.002490901696403017,
+  "top1_agreement": 0.9668142403517342,
+  "strata": {
+    "code": {
+      "contexts": 32,
+      "mean_kld": 0.00707325025222082
+    },
+    "encyclopedic": {
+      "contexts": 32,
+      "mean_kld": 0.007361046613440984
+    },
+    "literary": {
+      "contexts": 32,
+      "mean_kld": 0.012800794953116028
+    },
+    "multilingual": {
+      "contexts": 32,
+      "mean_kld": 0.004095500328209451
+    },
+    "scientific": {
+      "contexts": 32,
+      "mean_kld": 0.003987054083332634
+    }
+  },
+  "worst_contexts": [
+    {
+      "index": 108,
+      "stratum": "literary",
+      "source_cluster": "pg1727",
+      "mean_kld": 0.039979308011085984,
+      "median_kld": 0.004412220244063292,
+      "max_kld": 0.9604371573341268,
+      "mean_jsd_bits": 0.013711875549426381,
+      "top1_agreement": 0.9355153883732291
+    },
+    {
+      "index": 131,
+      "stratum": "literary",
+      "source_cluster": "pg2591",
+      "mean_kld": 0.035730069976260194,
+      "median_kld": 0.01440443655837953,
+      "max_kld": 0.9166218049467716,
+      "mean_jsd_bits": 0.012458056888913376,
+      "top1_agreement": 0.9179286761113825
+    },
+    {
+      "index": 135,
+      "stratum": "code",
+      "source_cluster": "numpy-py-v2.1.3-000",
+      "mean_kld": 0.028885609182955897,
+      "median_kld": 0.0016553542168935564,
+      "max_kld": 1.5177293953382787,
+      "mean_jsd_bits": 0.009720733778812463,
+      "top1_agreement": 0.9516365412799218
+    },
+    {
+      "index": 13,
+      "stratum": "code",
+      "source_cluster": "numpy-py-v2.1.3-000",
+      "mean_kld": 0.02579286121992209,
+      "median_kld": 0.00014997361100918365,
+      "max_kld": 1.502864600631748,
+      "mean_jsd_bits": 0.00864359975706711,
+      "top1_agreement": 0.9614069369809477
+    },
+    {
+      "index": 19,
+      "stratum": "literary",
+      "source_cluster": "pg205",
+      "mean_kld": 0.023116023809372808,
+      "median_kld": 0.010322753440947352,
+      "max_kld": 0.5862440459895879,
+      "mean_jsd_bits": 0.008216355605727648,
+      "top1_agreement": 0.9438202247191011
+    },
+    {
+      "index": 156,
+      "stratum": "literary",
+      "source_cluster": "pg2591",
+      "mean_kld": 0.0221108276643045,
+      "median_kld": 0.005736514691307093,
+      "max_kld": 1.1555403797683539,
+      "mean_jsd_bits": 0.007676270126850742,
+      "top1_agreement": 0.9511480214948705
+    },
+    {
+      "index": 117,
+      "stratum": "literary",
+      "source_cluster": "pg1497",
+      "mean_kld": 0.020500140165492103,
+      "median_kld": 0.008073624861481221,
+      "max_kld": 0.34027939300730736,
+      "mean_jsd_bits": 0.007291125633161743,
+      "top1_agreement": 0.9389350268685882
+    },
+    {
+      "index": 136,
+      "stratum": "literary",
+      "source_cluster": "pg120",
+      "mean_kld": 0.02010983967164276,
+      "median_kld": 0.0023436221821668823,
+      "max_kld": 1.0096743602116476,
+      "mean_jsd_bits": 0.007070596659637971,
+      "top1_agreement": 0.945285784074255
+    },
+    {
+      "index": 22,
+      "stratum": "literary",
+      "source_cluster": "pg76",
+      "mean_kld": 0.018206359906612866,
+      "median_kld": 0.0074558875003276626,
+      "max_kld": 0.4125232591177337,
+      "mean_jsd_bits": 0.006443351860279927,
+      "top1_agreement": 0.9438202247191011
+    },
+    {
+      "index": 75,
+      "stratum": "encyclopedic",
+      "source_cluster": "wiki4-en-008",
+      "mean_kld": 0.017825095266068926,
+      "median_kld": 0.004025162323942677,
+      "max_kld": 0.6951387559495714,
+      "mean_jsd_bits": 0.006325586137990134,
+      "top1_agreement": 0.9472398632144602
+    },
+    {
+      "index": 120,
+      "stratum": "code",
+      "source_cluster": "numpy-py-v2.1.3-005",
+      "mean_kld": 0.01717964293226717,
+      "median_kld": 0.0002063759129740106,
+      "max_kld": 1.8125942947194176,
+      "mean_jsd_bits": 0.005880350418407165,
+      "top1_agreement": 0.9721543722520762
+    },
+    {
+      "index": 102,
+      "stratum": "literary",
+      "source_cluster": "pg1260",
+      "mean_kld": 0.0167849232433741,
+      "median_kld": 0.003791138365158986,
+      "max_kld": 0.9642511766554094,
+      "mean_jsd_bits": 0.005885609797057467,
+      "top1_agreement": 0.9501709819247679
+    },
+    {
+      "index": 90,
+      "stratum": "encyclopedic",
+      "source_cluster": "wiki4-en-003",
+      "mean_kld": 0.016699700496708637,
+      "median_kld": 0.004068997300041843,
+      "max_kld": 1.6470336877323746,
+      "mean_jsd_bits": 0.00576412760235339,
+      "top1_agreement": 0.9482169027845627
+    },
+    {
+      "index": 4,
+      "stratum": "literary",
+      "source_cluster": "pg514",
+      "mean_kld": 0.015836308368622563,
+      "median_kld": 0.005935811481919018,
+      "max_kld": 0.7465514947705927,
+      "mean_jsd_bits": 0.005561356979558956,
+      "top1_agreement": 0.9418661455788959
+    },
+    {
+      "index": 10,
+      "stratum": "literary",
+      "source_cluster": "pg1260",
+      "mean_kld": 0.01507871480561282,
+      "median_kld": 0.0066144401581880174,
+      "max_kld": 0.3471847037144471,
+      "mean_jsd_bits": 0.005368140702229161,
+      "top1_agreement": 0.9413776257938447
+    },
+    {
+      "index": 45,
+      "stratum": "encyclopedic",
+      "source_cluster": "wiki4-en-008",
+      "mean_kld": 0.014794378418044773,
+      "median_kld": 0.0038538473503706427,
+      "max_kld": 0.35118081909043575,
+      "mean_jsd_bits": 0.00525145489307895,
+      "top1_agreement": 0.9467513434294089
+    },
+    {
+      "index": 70,
+      "stratum": "literary",
+      "source_cluster": "pg1524",
+      "mean_kld": 0.014644723916558265,
+      "median_kld": 0.00027160859145602956,
+      "max_kld": 1.0271950872563593,
+      "mean_jsd_bits": 0.005050634043655737,
+      "top1_agreement": 0.9804592085979482
+    },
+    {
+      "index": 72,
+      "stratum": "code",
+      "source_cluster": "numpy-py-v2.1.3-006",
+      "mean_kld": 0.014625033368604457,
+      "median_kld": 0.0003389458606912754,
+      "max_kld": 2.111805371662143,
+      "mean_jsd_bits": 0.004844819832924357,
+      "top1_agreement": 0.9726428920371275
+    },
+    {
+      "index": 81,
+      "stratum": "encyclopedic",
+      "source_cluster": "wiki4-en-013",
+      "mean_kld": 0.013596672076678785,
+      "median_kld": 0.0021035413633114786,
+      "max_kld": 0.5575715317099821,
+      "mean_jsd_bits": 0.004725144628959053,
+      "top1_agreement": 0.9662921348314607
+    },
+    {
+      "index": 42,
+      "stratum": "literary",
+      "source_cluster": "pg1497",
+      "mean_kld": 0.013389486191540519,
+      "median_kld": 0.006767000778836518,
+      "max_kld": 0.26354899327270687,
+      "mean_jsd_bits": 0.004787471983939408,
+      "top1_agreement": 0.9472398632144602
+    }
+  ],
+  "per_context_all": [
+    {
+      "index": 0,
+      "source_cluster": "wiki4-en-018",
+      "stratum": "encyclopedic",
+      "positions_scored": 2047,
+      "mean_kld": 0.0037880868623250148,
+      "median_kld": 0.0023697501590049797,
+      "top1_agreement": 0.9706888128969223
+    },
+    {
+      "index": 1,
+      "source_cluster": "wiki4-en-014",
+      "stratum": "encyclopedic",
+      "positions_scored": 2047,
+      "mean_kld": 0.0030663630702985347,
+      "median_kld": 0.0021748192814641243,
+      "top1_agreement": 0.9765510503175379
+    },
+    {
+      "index": 2,
+      "source_cluster": "cpython-c-v3.12.8-007",
+      "stratum": "code",
+      "positions_scored": 2047,
+      "mean_kld": 0.003236463613023437,
+      "median_kld": 0.0004467350808501358,
+      "top1_agreement": 0.9824132877381534
+    },
+    {
+      "index": 3,
+      "source_cluster": "wiki4-en-007",
+      "stratum": "encyclopedic",
+      "positions_scored": 2047,
+      "mean_kld": 0.01179607420656715,
+      "median_kld": 0.0050055924511980265,
+      "top1_agreement": 0.95847581827064
+    },
+    {
+      "index": 4,
+      "source_cluster": "pg514",
+      "stratum": "literary",
+      "positions_scored": 2047,
+      "mean_kld": 0.015836308368622563,
+      "median_kld": 0.005935811481919018,
+      "top1_agreement": 0.9418661455788959
+    },
+    {
+      "index": 5,
+      "source_cluster": "wiki4-es-001",
+      "stratum": "multilingual",
+      "positions_scored": 2047,
+      "mean_kld": 0.002244727471726645,
+      "median_kld": 0.0007410277795543152,
+      "top1_agreement": 0.9804592085979482
+    },
+    {
+      "index": 6,
+      "source_cluster": "wiki4-en-011",
+      "stratum": "encyclopedic",
+      "positions_scored": 2047,
+      "mean_kld": 0.007133737751674162,
+      "median_kld": 0.0027412265919792844,
+      "top1_agreement": 0.9677576941866145
+    },
+    {
+      "index": 7,
+      "source_cluster": "wiki4-es-001",
+      "stratum": "multilingual",
+      "positions_scored": 2047,
+      "mean_kld": 0.0033508740452324374,
+      "median_kld": 0.0015525631054060796,
+      "top1_agreement": 0.9755740107474352
+    },
+    {
+      "index": 8,
+      "source_cluster": "cpython-c-v3.12.8-005",
+      "stratum": "code",
+      "positions_scored": 2047,
+      "mean_kld": 0.0038160197756455716,
+      "median_kld": 0.00045354177713363697,
+      "top1_agreement": 0.9765510503175379
+    },
+    {
+      "index": 9,
+      "source_cluster": "wiki4-en-015",
+      "stratum": "encyclopedic",
+      "positions_scored": 2047,
+      "mean_kld": 0.009277060200117858,
+      "median_kld": 0.002618986184182326,
+      "top1_agreement": 0.9682462139716659
+    },
+    {
+      "index": 10,
+      "source_cluster": "pg1260",
+      "stratum": "literary",
+      "positions_scored": 2047,
+      "mean_kld": 0.01507871480561282,
+      "median_kld": 0.0066144401581880174,
+      "top1_agreement": 0.9413776257938447
+    },
+    {
+      "index": 11,
+      "source_cluster": "wiki4-fr-002",
+      "stratum": "multilingual",
+      "positions_scored": 2047,
+      "mean_kld": 0.0026892906011799504,
+      "median_kld": 0.0017705835669481473,
+      "top1_agreement": 0.9687347337567171
+    },
+    {
+      "index": 12,
+      "source_cluster": "pg120",
+      "stratum": "literary",
+      "positions_scored": 2047,
+      "mean_kld": 0.011801059764566578,
+      "median_kld": 0.007030328414884934,
+      "top1_agreement": 0.9394235466536395
+    },
+    {
+      "index": 13,
+      "source_cluster": "numpy-py-v2.1.3-000",
+      "stratum": "code",
+      "positions_scored": 2047,
+      "mean_kld": 0.02579286121992209,
+      "median_kld": 0.00014997361100918365,
+      "top1_agreement": 0.9614069369809477
+    },
+    {
+      "index": 14,
+      "source_cluster": "arxiv-nucl-th",
+      "stratum": "scientific",
+      "positions_scored": 2047,
+      "mean_kld": 0.004169416845561827,
+      "median_kld": 0.0024178151783686985,
+      "top1_agreement": 0.9721543722520762
+    },
+    {
+      "index": 15,
+      "source_cluster": "pg3600",
+      "stratum": "literary",
+      "positions_scored": 2047,
+      "mean_kld": 0.004874349141825671,
+      "median_kld": 0.00241481253003073,
+      "top1_agreement": 0.9614069369809477
+    },
+    {
+      "index": 16,
+      "source_cluster": "wiki4-en-010",
+      "stratum": "encyclopedic",
+      "positions_scored": 2047,
+      "mean_kld": 0.01015354428936963,
+      "median_kld": 0.0017896614890453577,
+      "top1_agreement": 0.9677576941866145
+    },
+    {
+      "index": 17,
+      "source_cluster": "wiki4-es-002",
+      "stratum": "multilingual",
+      "positions_scored": 2047,
+      "mean_kld": 0.0035575286897411283,
+      "median_kld": 0.002197975184344614,
+      "top1_agreement": 0.9672691744015632
+    },
+    {
+      "index": 18,
+      "source_cluster": "wiki4-en-004",
+      "stratum": "encyclopedic",
+      "positions_scored": 2047,
+      "mean_kld": 0.0070062975270209285,
+      "median_kld": 0.002611147976807615,
+      "top1_agreement": 0.9677576941866145
+    },
+    {
+      "index": 19,
+      "source_cluster": "pg205",
+      "stratum": "literary",
+      "positions_scored": 2047,
+      "mean_kld": 0.023116023809372808,
+      "median_kld": 0.010322753440947352,
+      "top1_agreement": 0.9438202247191011
+    },
+    {
+      "index": 20,
+      "source_cluster": "arxiv-q-fin-PR",
+      "stratum": "scientific",
+      "positions_scored": 2047,
+      "mean_kld": 0.0040501193821661065,
+      "median_kld": 0.0027747929862016463,
+      "top1_agreement": 0.9682462139716659
+    },
+    {
+      "index": 21,
+      "source_cluster": "pg145",
+      "stratum": "literary",
+      "positions_scored": 2047,
+      "mean_kld": 0.00440934552499897,
+      "median_kld": 0.0029117718705293782,
+      "top1_agreement": 0.9628724963361016
+    },
+    {
+      "index": 22,
+      "source_cluster": "pg76",
+      "stratum": "literary",
+      "positions_scored": 2047,
+      "mean_kld": 0.018206359906612866,
+      "median_kld": 0.0074558875003276626,
+      "top1_agreement": 0.9438202247191011
+    },
+    {
+      "index": 23,
+      "source_cluster": "wiki4-es-000",
+      "stratum": "multilingual",
+      "positions_scored": 2047,
+      "mean_kld": 0.005965106550542137,
+      "median_kld": 0.001933905004079861,
+      "top1_agreement": 0.9648265754763068
+    },
+    {
+      "index": 24,
+      "source_cluster": "wiki4-ja-004",
+      "stratum": "multilingual",
+      "positions_scored": 2047,
+      "mean_kld": 0.0038803941766208105,
+      "median_kld": 0.0023478538678318728,
+      "top1_agreement": 0.9623839765510503
+    },
+    {
+      "index": 25,
+      "source_cluster": "wiki4-en-006",
+      "stratum": "encyclopedic",
+      "positions_scored": 2047,
+      "mean_kld": 0.01227561745561939,
+      "median_kld": 0.0038461790818473673,
+      "top1_agreement": 0.9531021006350757
+    },
+    {
+      "index": 26,
+      "source_cluster": "arxiv-gr-qc",
+      "stratum": "scientific",
+      "positions_scored": 2047,
+      "mean_kld": 0.004711039295713713,
+      "median_kld": 0.0033194514197347758,
+      "top1_agreement": 0.9609184171958964
+    },
+    {
+      "index": 27,
+      "source_cluster": "wiki4-it-000",
+      "stratum": "multilingual",
+      "positions_scored": 2047,
+      "mean_kld": 0.00460679096590036,
+      "median_kld": 0.002120076153005357,
+      "top1_agreement": 0.9702002931118711
+    },
+    {
+      "index": 28,
+      "source_cluster": "pg1998",
+      "stratum": "literary",
+      "positions_scored": 2047,
+      "mean_kld": 0.0050311156510974816,
+      "median_kld": 0.0030665330195915885,
+      "top1_agreement": 0.9550561797752809
+    },
+    {
+      "index": 29,
+      "source_cluster": "numpy-py-v2.1.3-007",
+      "stratum": "code",
+      "positions_scored": 2047,
+      "mean_kld": 0.007053867766380124,
+      "median_kld": 0.0014445298607084212,
+      "top1_agreement": 0.9731314118221788
+    },
+    {
+      "index": 30,
+      "source_cluster": "numpy-py-v2.1.3-007",
+      "stratum": "code",
+      "positions_scored": 2047,
+      "mean_kld": 0.0072404770699993045,
+      "median_kld": 0.0014167244353302522,
+      "top1_agreement": 0.9711773326819736
+    },
+    {
+      "index": 31,
+      "source_cluster": "wiki4-ja-000",
+      "stratum": "multilingual",
+      "positions_scored": 2047,
+      "mean_kld": 0.006707942490919551,
+      "median_kld": 0.00345413715695031,
+      "top1_agreement": 0.9574987787005373
+    },
+    {
+      "index": 32,
+      "source_cluster": "cpython-c-v3.12.8-005",
+      "stratum": "code",
+      "positions_scored": 2047,
+      "mean_kld": 0.002203136982490956,
+      "median_kld": 2.3682454202034187e-05,
+      "top1_agreement": 0.9965803615046409
+    },
+    {
+      "index": 33,
+      "source_cluster": "arxiv-math-NT",
+      "stratum": "scientific",
+      "positions_scored": 2047,
+      "mean_kld": 0.003797745287647204,
+      "median_kld": 0.0019766592770906755,
+      "top1_agreement": 0.9721543722520762
+    },
+    {
+      "index": 34,
+      "source_cluster": "cpython-c-v3.12.8-004",
+      "stratum": "code",
+      "positions_scored": 2047,
+      "mean_kld": 0.0011064627051951164,
+      "median_kld": 3.589461034342323e-05,
+      "top1_agreement": 0.9921836834391793
+    },
+    {
+      "index": 35,
+      "source_cluster": "wiki4-en-011",
+      "stratum": "encyclopedic",
+      "positions_scored": 2047,
+      "mean_kld": 0.006063237902123135,
+      "median_kld": 0.002517372009350538,
+      "top1_agreement": 0.9745969711773327
+    },
+    {
+      "index": 36,
+      "source_cluster": "cpython-c-v3.12.8-001",
+      "stratum": "code",
+      "positions_scored": 2047,
+      "mean_kld": 0.0026463439620657424,
+      "median_kld": 0.00012222485648294423,
+      "top1_agreement": 0.9599413776257938
+    },
+    {
+      "index": 37,
+      "source_cluster": "arxiv-math-NT",
+      "stratum": "scientific",
+      "positions_scored": 2047,
+      "mean_kld": 0.003726528949263646,
+      "median_kld": 0.0020094897359967945,
+      "top1_agreement": 0.975085490962384
+    },
+    {
+      "index": 38,
+      "source_cluster": "pg2554",
+      "stratum": "literary",
+      "positions_scored": 2047,
+      "mean_kld": 0.00401763586702321,
+      "median_kld": 0.0028972758773022633,
+      "top1_agreement": 0.9560332193453834
+    },
+    {
+      "index": 39,
+      "source_cluster": "pg2413",
+      "stratum": "literary",
+      "positions_scored": 2047,
+      "mean_kld": 0.0071846075760773455,
+      "median_kld": 0.004195488847685169,
+      "top1_agreement": 0.9560332193453834
+    },
+    {
+      "index": 40,
+      "source_cluster": "pg3600",
+      "stratum": "literary",
+      "positions_scored": 2047,
+      "mean_kld": 0.003869651522728511,
+      "median_kld": 0.002593567282971776,
+      "top1_agreement": 0.9687347337567171
+    },
+    {
+      "index": 41,
+      "source_cluster": "wiki4-en-004",
+      "stratum": "encyclopedic",
+      "positions_scored": 2047,
+      "mean_kld": 0.005510451091510952,
+      "median_kld": 0.002674284380759673,
+      "top1_agreement": 0.9560332193453834
+    },
+    {
+      "index": 42,
+      "source_cluster": "pg1497",
+      "stratum": "literary",
+      "positions_scored": 2047,
+      "mean_kld": 0.013389486191540519,
+      "median_kld": 0.006767000778836518,
+      "top1_agreement": 0.9472398632144602
+    },
+    {
+      "index": 43,
+      "source_cluster": "wiki4-pt-002",
+      "stratum": "multilingual",
+      "positions_scored": 2047,
+      "mean_kld": 0.005504200327919852,
+      "median_kld": 0.0024583768517913995,
+      "top1_agreement": 0.9662921348314607
+    },
+    {
+      "index": 44,
+      "source_cluster": "wiki4-en-009",
+      "stratum": "encyclopedic",
+      "positions_scored": 2047,
+      "mean_kld": 0.008317036298394111,
+      "median_kld": 0.00308856226683929,
+      "top1_agreement": 0.9589643380556913
+    },
+    {
+      "index": 45,
+      "source_cluster": "wiki4-en-008",
+      "stratum": "encyclopedic",
+      "positions_scored": 2047,
+      "mean_kld": 0.014794378418044773,
+      "median_kld": 0.0038538473503706427,
+      "top1_agreement": 0.9467513434294089
+    },
+    {
+      "index": 46,
+      "source_cluster": "wiki4-zh-000",
+      "stratum": "multilingual",
+      "positions_scored": 2047,
+      "mean_kld": 0.0060283889902368595,
+      "median_kld": 0.0028202069388498785,
+      "top1_agreement": 0.9555446995603322
+    },
+    {
+      "index": 47,
+      "source_cluster": "pg145",
+      "stratum": "literary",
+      "positions_scored": 2047,
+      "mean_kld": 0.009561398939746788,
+      "median_kld": 0.0037555426973199246,
+      "top1_agreement": 0.9604298974108452
+    },
+    {
+      "index": 48,
+      "source_cluster": "pg2554",
+      "stratum": "literary",
+      "positions_scored": 2047,
+      "mean_kld": 0.012449574834598125,
+      "median_kld": 0.004315399846746004,
+      "top1_agreement": 0.9496824621397166
+    },
+    {
+      "index": 49,
+      "source_cluster": "arxiv-math-DG",
+      "stratum": "scientific",
+      "positions_scored": 2047,
+      "mean_kld": 0.004208629606613523,
+      "median_kld": 0.002499360041440468,
+      "top1_agreement": 0.9702002931118711
+    },
+    {
+      "index": 50,
+      "source_cluster": "cpython-c-v3.12.8-007",
+      "stratum": "code",
+      "positions_scored": 2047,
+      "mean_kld": 0.0056068161528890085,
+      "median_kld": 0.00031897179981754675,
+      "top1_agreement": 0.9838788470933073
+    },
+    {
+      "index": 51,
+      "source_cluster": "pg2413",
+      "stratum": "literary",
+      "positions_scored": 2047,
+      "mean_kld": 0.009672299300448049,
+      "median_kld": 0.005857290027499573,
+      "top1_agreement": 0.9565217391304348
+    },
+    {
+      "index": 52,
+      "source_cluster": "arxiv-cs-RO",
+      "stratum": "scientific",
+      "positions_scored": 2047,
+      "mean_kld": 0.004422584686213077,
+      "median_kld": 0.003122457691318914,
+      "top1_agreement": 0.9609184171958964
+    },
+    {
+      "index": 53,
+      "source_cluster": "wiki4-en-005",
+      "stratum": "encyclopedic",
+      "positions_scored": 2047,
+      "mean_kld": 0.006452673124157005,
+      "median_kld": 0.002792316186798871,
+      "top1_agreement": 0.9658036150464093
+    },
+    {
+      "index": 54,
+      "source_cluster": "numpy-py-v2.1.3-003",
+      "stratum": "code",
+      "positions_scored": 2047,
+      "mean_kld": 0.003502711109646385,
+      "median_kld": 0.00011553577684697558,
+      "top1_agreement": 0.9887640449438202
+    },
+    {
+      "index": 55,
+      "source_cluster": "arxiv-cs-CR",
+      "stratum": "scientific",
+      "positions_scored": 2047,
+      "mean_kld": 0.0033739950213789597,
+      "median_kld": 0.0023290181645450048,
+      "top1_agreement": 0.9662921348314607
+    },
+    {
+      "index": 56,
+      "source_cluster": "wiki4-zh-003",
+      "stratum": "multilingual",
+      "positions_scored": 2047,
+      "mean_kld": 0.005666358314077771,
+      "median_kld": 0.002511391741677471,
+      "top1_agreement": 0.9628724963361016
+    },
+    {
+      "index": 57,
+      "source_cluster": "arxiv-astro-ph-SR",
+      "stratum": "scientific",
+      "positions_scored": 2047,
+      "mean_kld": 0.0043803622119014205,
+      "median_kld": 0.002765978089996679,
+      "top1_agreement": 0.9692232535417684
+    },
+    {
+      "index": 58,
+      "source_cluster": "wiki4-zh-001",
+      "stratum": "multilingual",
+      "positions_scored": 2047,
+      "mean_kld": 0.0038483189731547364,
+      "median_kld": 0.0025791779630708334,
+      "top1_agreement": 0.9662921348314607
+    },
+    {
+      "index": 59,
+      "source_cluster": "arxiv-astro-ph-SR",
+      "stratum": "scientific",
+      "positions_scored": 2047,
+      "mean_kld": 0.004159017810052252,
+      "median_kld": 0.002613751799799502,
+      "top1_agreement": 0.9682462139716659
+    },
+    {
+      "index": 60,
+      "source_cluster": "numpy-py-v2.1.3-002",
+      "stratum": "code",
+      "positions_scored": 2047,
+      "mean_kld": 0.004898620122027339,
+      "median_kld": 0.0003698318019367264,
+      "top1_agreement": 0.978505129457743
+    },
+    {
+      "index": 61,
+      "source_cluster": "wiki4-en-007",
+      "stratum": "encyclopedic",
+      "positions_scored": 2047,
+      "mean_kld": 0.0035662106630554207,
+      "median_kld": 0.0019857148091944055,
+      "top1_agreement": 0.9745969711773327
+    },
+    {
+      "index": 62,
+      "source_cluster": "arxiv-nucl-th",
+      "stratum": "scientific",
+      "positions_scored": 2047,
+      "mean_kld": 0.0042901040016433654,
+      "median_kld": 0.0025817750140681994,
+      "top1_agreement": 0.9716658524670249
+    },
+    {
+      "index": 63,
+      "source_cluster": "cpython-c-v3.12.8-000",
+      "stratum": "code",
+      "positions_scored": 2047,
+      "mean_kld": 0.004151807605279823,
+      "median_kld": 0.00018352010380429107,
+      "top1_agreement": 0.9721543722520762
+    },
+    {
+      "index": 64,
+      "source_cluster": "wiki4-en-005",
+      "stratum": "encyclopedic",
+      "positions_scored": 2047,
+      "mean_kld": 0.007774393748411704,
+      "median_kld": 0.0030175821365219235,
+      "top1_agreement": 0.9555446995603322
+    },
+    {
+      "index": 65,
+      "source_cluster": "arxiv-nlin-CD",
+      "stratum": "scientific",
+      "positions_scored": 2047,
+      "mean_kld": 0.003511478637111364,
+      "median_kld": 0.0024486747178116275,
+      "top1_agreement": 0.9716658524670249
+    },
+    {
+      "index": 66,
+      "source_cluster": "wiki4-it-003",
+      "stratum": "multilingual",
+      "positions_scored": 2047,
+      "mean_kld": 0.0032691436612935906,
+      "median_kld": 0.0018826826816233933,
+      "top1_agreement": 0.9745969711773327
+    },
+    {
+      "index": 67,
+      "source_cluster": "wiki4-es-004",
+      "stratum": "multilingual",
+      "positions_scored": 2047,
+      "mean_kld": 0.0032974356023984805,
+      "median_kld": 0.001961948983989714,
+      "top1_agreement": 0.9731314118221788
+    },
+    {
+      "index": 68,
+      "source_cluster": "wiki4-en-017",
+      "stratum": "encyclopedic",
+      "positions_scored": 2047,
+      "mean_kld": 0.004478376649130123,
+      "median_kld": 0.0027835391896360306,
+      "top1_agreement": 0.97361993160723
+    },
+    {
+      "index": 69,
+      "source_cluster": "wiki4-ja-002",
+      "stratum": "multilingual",
+      "positions_scored": 2047,
+      "mean_kld": 0.0040543925915248686,
+      "median_kld": 0.002182334954795806,
+      "top1_agreement": 0.9716658524670249
+    },
+    {
+      "index": 70,
+      "source_cluster": "pg1524",
+      "stratum": "literary",
+      "positions_scored": 2047,
+      "mean_kld": 0.014644723916558265,
+      "median_kld": 0.00027160859145602956,
+      "top1_agreement": 0.9804592085979482
+    },
+    {
+      "index": 71,
+      "source_cluster": "wiki4-en-002",
+      "stratum": "encyclopedic",
+      "positions_scored": 2047,
+      "mean_kld": 0.004293262699878729,
+      "median_kld": 0.002244587146805088,
+      "top1_agreement": 0.9721543722520762
+    },
+    {
+      "index": 72,
+      "source_cluster": "numpy-py-v2.1.3-006",
+      "stratum": "code",
+      "positions_scored": 2047,
+      "mean_kld": 0.014625033368604457,
+      "median_kld": 0.0003389458606912754,
+      "top1_agreement": 0.9726428920371275
+    },
+    {
+      "index": 73,
+      "source_cluster": "wiki4-pt-004",
+      "stratum": "multilingual",
+      "positions_scored": 2047,
+      "mean_kld": 0.0028483521066169945,
+      "median_kld": 0.0019387291140446905,
+      "top1_agreement": 0.9716658524670249
+    },
+    {
+      "index": 74,
+      "source_cluster": "wiki4-es-000",
+      "stratum": "multilingual",
+      "positions_scored": 2047,
+      "mean_kld": 0.0036797518425808686,
+      "median_kld": 0.001980664183065528,
+      "top1_agreement": 0.9711773326819736
+    },
+    {
+      "index": 75,
+      "source_cluster": "wiki4-en-008",
+      "stratum": "encyclopedic",
+      "positions_scored": 2047,
+      "mean_kld": 0.017825095266068926,
+      "median_kld": 0.004025162323942677,
+      "top1_agreement": 0.9472398632144602
+    },
+    {
+      "index": 76,
+      "source_cluster": "numpy-py-v2.1.3-004",
+      "stratum": "code",
+      "positions_scored": 2047,
+      "mean_kld": 0.0044730555843571895,
+      "median_kld": 0.00010729802271214339,
+      "top1_agreement": 0.9892525647288715
+    },
+    {
+      "index": 77,
+      "source_cluster": "wiki4-es-003",
+      "stratum": "multilingual",
+      "positions_scored": 2047,
+      "mean_kld": 0.0037216802695086647,
+      "median_kld": 0.0017723154738291669,
+      "top1_agreement": 0.9726428920371275
+    },
+    {
+      "index": 78,
+      "source_cluster": "cpython-c-v3.12.8-003",
+      "stratum": "code",
+      "positions_scored": 2047,
+      "mean_kld": 0.0044340696430418556,
+      "median_kld": 0.00022283025720071237,
+      "top1_agreement": 0.9789936492427943
+    },
+    {
+      "index": 79,
+      "source_cluster": "pg1184",
+      "stratum": "literary",
+      "positions_scored": 2047,
+      "mean_kld": 0.005378748651939598,
+      "median_kld": 0.0030511582224335143,
+      "top1_agreement": 0.9628724963361016
+    },
+    {
+      "index": 80,
+      "source_cluster": "pg1184",
+      "stratum": "literary",
+      "positions_scored": 2047,
+      "mean_kld": 0.004415603408461549,
+      "median_kld": 0.0016261854689219035,
+      "top1_agreement": 0.9760625305324866
+    },
+    {
+      "index": 81,
+      "source_cluster": "wiki4-en-013",
+      "stratum": "encyclopedic",
+      "positions_scored": 2047,
+      "mean_kld": 0.013596672076678785,
+      "median_kld": 0.0021035413633114786,
+      "top1_agreement": 0.9662921348314607
+    },
+    {
+      "index": 82,
+      "source_cluster": "wiki4-it-001",
+      "stratum": "multilingual",
+      "positions_scored": 2047,
+      "mean_kld": 0.002858062792846107,
+      "median_kld": 0.0012796440139482002,
+      "top1_agreement": 0.975085490962384
+    },
+    {
+      "index": 83,
+      "source_cluster": "wiki4-en-012",
+      "stratum": "encyclopedic",
+      "positions_scored": 2047,
+      "mean_kld": 0.0032781136216658573,
+      "median_kld": 0.002245628298183533,
+      "top1_agreement": 0.9623839765510503
+    },
+    {
+      "index": 84,
+      "source_cluster": "arxiv-cs-SE",
+      "stratum": "scientific",
+      "positions_scored": 2047,
+      "mean_kld": 0.004671498107353791,
+      "median_kld": 0.0034334511365159415,
+      "top1_agreement": 0.95847581827064
+    },
+    {
+      "index": 85,
+      "source_cluster": "numpy-py-v2.1.3-002",
+      "stratum": "code",
+      "positions_scored": 2047,
+      "mean_kld": 0.00752243252153279,
+      "median_kld": 0.001611456216494389,
+      "top1_agreement": 0.9697117733268197
+    },
+    {
+      "index": 86,
+      "source_cluster": "arxiv-physics-flu-dyn",
+      "stratum": "scientific",
+      "positions_scored": 2047,
+      "mean_kld": 0.003745235714260104,
+      "median_kld": 0.0024534916410630103,
+      "top1_agreement": 0.9706888128969223
+    },
+    {
+      "index": 87,
+      "source_cluster": "arxiv-math-AG",
+      "stratum": "scientific",
+      "positions_scored": 2047,
+      "mean_kld": 0.003970053958239134,
+      "median_kld": 0.00238854887652451,
+      "top1_agreement": 0.9711773326819736
+    },
+    {
+      "index": 88,
+      "source_cluster": "wiki4-fr-003",
+      "stratum": "multilingual",
+      "positions_scored": 2047,
+      "mean_kld": 0.004042644468412915,
+      "median_kld": 0.0017113076785904013,
+      "top1_agreement": 0.9687347337567171
+    },
+    {
+      "index": 89,
+      "source_cluster": "arxiv-nlin-CD",
+      "stratum": "scientific",
+      "positions_scored": 2047,
+      "mean_kld": 0.00411106046889316,
+      "median_kld": 0.0025951538116260053,
+      "top1_agreement": 0.9643380556912555
+    },
+    {
+      "index": 90,
+      "source_cluster": "wiki4-en-003",
+      "stratum": "encyclopedic",
+      "positions_scored": 2047,
+      "mean_kld": 0.016699700496708637,
+      "median_kld": 0.004068997300041843,
+      "top1_agreement": 0.9482169027845627
+    },
+    {
+      "index": 91,
+      "source_cluster": "pg2680",
+      "stratum": "literary",
+      "positions_scored": 2047,
+      "mean_kld": 0.00843862363624709,
+      "median_kld": 0.003696171638011947,
+      "top1_agreement": 0.9653150952613581
+    },
+    {
+      "index": 92,
+      "source_cluster": "arxiv-q-bio-PE",
+      "stratum": "scientific",
+      "positions_scored": 2047,
+      "mean_kld": 0.0035681759131506448,
+      "median_kld": 0.002292101371466515,
+      "top1_agreement": 0.97361993160723
+    },
+    {
+      "index": 93,
+      "source_cluster": "wiki4-it-002",
+      "stratum": "multilingual",
+      "positions_scored": 2047,
+      "mean_kld": 0.0042618395167991424,
+      "median_kld": 0.0022097729370216257,
+      "top1_agreement": 0.9711773326819736
+    },
+    {
+      "index": 94,
+      "source_cluster": "cpython-c-v3.12.8-006",
+      "stratum": "code",
+      "positions_scored": 2047,
+      "mean_kld": 0.005825653196441336,
+      "median_kld": 0.00029411884449359604,
+      "top1_agreement": 0.9863214460185638
+    },
+    {
+      "index": 95,
+      "source_cluster": "arxiv-cs-RO",
+      "stratum": "scientific",
+      "positions_scored": 2047,
+      "mean_kld": 0.0037247019426325445,
+      "median_kld": 0.0027168300637185894,
+      "top1_agreement": 0.9662921348314607
+    },
+    {
+      "index": 96,
+      "source_cluster": "cpython-c-v3.12.8-004",
+      "stratum": "code",
+      "positions_scored": 2047,
+      "mean_kld": 0.0019424987994025816,
+      "median_kld": 0.0001788244087705948,
+      "top1_agreement": 0.9882755251587689
+    },
+    {
+      "index": 97,
+      "source_cluster": "cpython-c-v3.12.8-001",
+      "stratum": "code",
+      "positions_scored": 2047,
+      "mean_kld": 0.004592573422130139,
+      "median_kld": 9.76341869504821e-05,
+      "top1_agreement": 0.9682462139716659
+    },
+    {
+      "index": 98,
+      "source_cluster": "wiki4-ja-003",
+      "stratum": "multilingual",
+      "positions_scored": 2047,
+      "mean_kld": 0.004386095365686425,
+      "median_kld": 0.002142579445717274,
+      "top1_agreement": 0.9653150952613581
+    },
+    {
+      "index": 99,
+      "source_cluster": "wiki4-fr-001",
+      "stratum": "multilingual",
+      "positions_scored": 2047,
+      "mean_kld": 0.0026178502889615944,
+      "median_kld": 0.0014950002613431934,
+      "top1_agreement": 0.9721543722520762
+    },
+    {
+      "index": 100,
+      "source_cluster": "pg1998",
+      "stratum": "literary",
+      "positions_scored": 2047,
+      "mean_kld": 0.00904276345981124,
+      "median_kld": 0.0022316822187349317,
+      "top1_agreement": 0.9716658524670249
+    },
+    {
+      "index": 101,
+      "source_cluster": "arxiv-math-DG",
+      "stratum": "scientific",
+      "positions_scored": 2047,
+      "mean_kld": 0.004053690921858805,
+      "median_kld": 0.0022907058294237004,
+      "top1_agreement": 0.9711773326819736
+    },
+    {
+      "index": 102,
+      "source_cluster": "pg1260",
+      "stratum": "literary",
+      "positions_scored": 2047,
+      "mean_kld": 0.0167849232433741,
+      "median_kld": 0.003791138365158986,
+      "top1_agreement": 0.9501709819247679
+    },
+    {
+      "index": 103,
+      "source_cluster": "wiki4-ja-001",
+      "stratum": "multilingual",
+      "positions_scored": 2047,
+      "mean_kld": 0.003484067660900893,
+      "median_kld": 0.0022808525236541755,
+      "top1_agreement": 0.9706888128969223
+    },
+    {
+      "index": 104,
+      "source_cluster": "arxiv-cond-mat-supr-con",
+      "stratum": "scientific",
+      "positions_scored": 2047,
+      "mean_kld": 0.004944225632962382,
+      "median_kld": 0.002815504742329722,
+      "top1_agreement": 0.9604298974108452
+    },
+    {
+      "index": 105,
+      "source_cluster": "wiki4-it-004",
+      "stratum": "multilingual",
+      "positions_scored": 2047,
+      "mean_kld": 0.0041925501217375,
+      "median_kld": 0.0021748532581113977,
+      "top1_agreement": 0.9614069369809477
+    },
+    {
+      "index": 106,
+      "source_cluster": "wiki4-en-010",
+      "stratum": "encyclopedic",
+      "positions_scored": 2047,
+      "mean_kld": 0.0072527899170894364,
+      "median_kld": 0.0031274678226509423,
+      "top1_agreement": 0.9531021006350757
+    },
+    {
+      "index": 107,
+      "source_cluster": "numpy-py-v2.1.3-005",
+      "stratum": "code",
+      "positions_scored": 2047,
+      "mean_kld": 0.005991655221647747,
+      "median_kld": 0.0013737853571456071,
+      "top1_agreement": 0.9721543722520762
+    },
+    {
+      "index": 108,
+      "source_cluster": "pg1727",
+      "stratum": "literary",
+      "positions_scored": 2047,
+      "mean_kld": 0.039979308011085984,
+      "median_kld": 0.004412220244063292,
+      "top1_agreement": 0.9355153883732291
+    },
+    {
+      "index": 109,
+      "source_cluster": "pg1727",
+      "stratum": "literary",
+      "positions_scored": 2047,
+      "mean_kld": 0.01269379463962756,
+      "median_kld": 0.0033340932218663966,
+      "top1_agreement": 0.9482169027845627
+    },
+    {
+      "index": 110,
+      "source_cluster": "pg996",
+      "stratum": "literary",
+      "positions_scored": 2047,
+      "mean_kld": 0.007844046036611044,
+      "median_kld": 0.0023469170988619226,
+      "top1_agreement": 0.961895456765999
+    },
+    {
+      "index": 111,
+      "source_cluster": "cpython-c-v3.12.8-002",
+      "stratum": "code",
+      "positions_scored": 2047,
+      "mean_kld": 0.0053866496521683795,
+      "median_kld": 6.560928994758797e-06,
+      "top1_agreement": 0.9912066438690766
+    },
+    {
+      "index": 112,
+      "source_cluster": "wiki4-zh-002",
+      "stratum": "multilingual",
+      "positions_scored": 2047,
+      "mean_kld": 0.007854557491296005,
+      "median_kld": 0.003023143144673668,
+      "top1_agreement": 0.9565217391304348
+    },
+    {
+      "index": 113,
+      "source_cluster": "cpython-c-v3.12.8-002",
+      "stratum": "code",
+      "positions_scored": 2047,
+      "mean_kld": 0.006288672340124962,
+      "median_kld": 6.38364912717293e-05,
+      "top1_agreement": 0.9882755251587689
+    },
+    {
+      "index": 114,
+      "source_cluster": "pg5827",
+      "stratum": "literary",
+      "positions_scored": 2047,
+      "mean_kld": 0.004956707336272229,
+      "median_kld": 0.0029109026214655387,
+      "top1_agreement": 0.975085490962384
+    },
+    {
+      "index": 115,
+      "source_cluster": "wiki4-en-002",
+      "stratum": "encyclopedic",
+      "positions_scored": 2047,
+      "mean_kld": 0.003435339092454753,
+      "median_kld": 0.0022819966419262983,
+      "top1_agreement": 0.9721543722520762
+    },
+    {
+      "index": 116,
+      "source_cluster": "wiki4-fr-000",
+      "stratum": "multilingual",
+      "positions_scored": 2047,
+      "mean_kld": 0.004299603281503344,
+      "median_kld": 0.002030749285040656,
+      "top1_agreement": 0.9711773326819736
+    },
+    {
+      "index": 117,
+      "source_cluster": "pg1497",
+      "stratum": "literary",
+      "positions_scored": 2047,
+      "mean_kld": 0.020500140165492103,
+      "median_kld": 0.008073624861481221,
+      "top1_agreement": 0.9389350268685882
+    },
+    {
+      "index": 118,
+      "source_cluster": "arxiv-math-AG",
+      "stratum": "scientific",
+      "positions_scored": 2047,
+      "mean_kld": 0.003662288630041158,
+      "median_kld": 0.0020316361538306182,
+      "top1_agreement": 0.9677576941866145
+    },
+    {
+      "index": 119,
+      "source_cluster": "wiki4-pt-003",
+      "stratum": "multilingual",
+      "positions_scored": 2047,
+      "mean_kld": 0.0036026721440586855,
+      "median_kld": 0.0019039587776887856,
+      "top1_agreement": 0.9745969711773327
+    },
+    {
+      "index": 120,
+      "source_cluster": "numpy-py-v2.1.3-005",
+      "stratum": "code",
+      "positions_scored": 2047,
+      "mean_kld": 0.01717964293226717,
+      "median_kld": 0.0002063759129740106,
+      "top1_agreement": 0.9721543722520762
+    },
+    {
+      "index": 121,
+      "source_cluster": "arxiv-cond-mat-supr-con",
+      "stratum": "scientific",
+      "positions_scored": 2047,
+      "mean_kld": 0.004485844403553965,
+      "median_kld": 0.0026153147839522717,
+      "top1_agreement": 0.9643380556912555
+    },
+    {
+      "index": 122,
+      "source_cluster": "wiki4-pt-001",
+      "stratum": "multilingual",
+      "positions_scored": 2047,
+      "mean_kld": 0.0019265771845080823,
+      "median_kld": 0.0008191582468271008,
+      "top1_agreement": 0.9858329262335125
+    },
+    {
+      "index": 123,
+      "source_cluster": "cpython-c-v3.12.8-000",
+      "stratum": "code",
+      "positions_scored": 2047,
+      "mean_kld": 0.00515245205527373,
+      "median_kld": 0.000258805921099281,
+      "top1_agreement": 0.97361993160723
+    },
+    {
+      "index": 124,
+      "source_cluster": "wiki4-en-000",
+      "stratum": "encyclopedic",
+      "positions_scored": 2047,
+      "mean_kld": 0.005812938641137957,
+      "median_kld": 0.002837341193057341,
+      "top1_agreement": 0.9658036150464093
+    },
+    {
+      "index": 125,
+      "source_cluster": "pg2680",
+      "stratum": "literary",
+      "positions_scored": 2047,
+      "mean_kld": 0.007398568388404844,
+      "median_kld": 0.0037501492321325713,
+      "top1_agreement": 0.9589643380556913
+    },
+    {
+      "index": 126,
+      "source_cluster": "wiki4-en-009",
+      "stratum": "encyclopedic",
+      "positions_scored": 2047,
+      "mean_kld": 0.004239695558183451,
+      "median_kld": 0.002113768030085339,
+      "top1_agreement": 0.97361993160723
+    },
+    {
+      "index": 127,
+      "source_cluster": "numpy-py-v2.1.3-001",
+      "stratum": "code",
+      "positions_scored": 2047,
+      "mean_kld": 0.005836058842291857,
+      "median_kld": 0.0011520683093113604,
+      "top1_agreement": 0.978505129457743
+    },
+    {
+      "index": 128,
+      "source_cluster": "numpy-py-v2.1.3-004",
+      "stratum": "code",
+      "positions_scored": 2047,
+      "mean_kld": 0.006762652210211185,
+      "median_kld": 5.595176119044254e-05,
+      "top1_agreement": 0.9804592085979482
+    },
+    {
+      "index": 129,
+      "source_cluster": "wiki4-en-001",
+      "stratum": "encyclopedic",
+      "positions_scored": 2047,
+      "mean_kld": 0.0030701065129421752,
+      "median_kld": 0.001882604255371234,
+      "top1_agreement": 0.9741084513922814
+    },
+    {
+      "index": 130,
+      "source_cluster": "wiki4-en-016",
+      "stratum": "encyclopedic",
+      "positions_scored": 2047,
+      "mean_kld": 0.007322618480871314,
+      "median_kld": 0.0025620849337002483,
+      "top1_agreement": 0.9687347337567171
+    },
+    {
+      "index": 131,
+      "source_cluster": "pg2591",
+      "stratum": "literary",
+      "positions_scored": 2047,
+      "mean_kld": 0.035730069976260194,
+      "median_kld": 0.01440443655837953,
+      "top1_agreement": 0.9179286761113825
+    },
+    {
+      "index": 132,
+      "source_cluster": "arxiv-physics-geo-ph",
+      "stratum": "scientific",
+      "positions_scored": 2047,
+      "mean_kld": 0.0035397181414902642,
+      "median_kld": 0.002382562980471903,
+      "top1_agreement": 0.966780654616512
+    },
+    {
+      "index": 133,
+      "source_cluster": "arxiv-cs-SE",
+      "stratum": "scientific",
+      "positions_scored": 2047,
+      "mean_kld": 0.0031527736635696313,
+      "median_kld": 0.0024928770899990127,
+      "top1_agreement": 0.9653150952613581
+    },
+    {
+      "index": 134,
+      "source_cluster": "arxiv-quant-ph",
+      "stratum": "scientific",
+      "positions_scored": 2047,
+      "mean_kld": 0.0037488524722915726,
+      "median_kld": 0.0024673192966702118,
+      "top1_agreement": 0.9672691744015632
+    },
+    {
+      "index": 135,
+      "source_cluster": "numpy-py-v2.1.3-000",
+      "stratum": "code",
+      "positions_scored": 2047,
+      "mean_kld": 0.028885609182955897,
+      "median_kld": 0.0016553542168935564,
+      "top1_agreement": 0.9516365412799218
+    },
+    {
+      "index": 136,
+      "source_cluster": "pg120",
+      "stratum": "literary",
+      "positions_scored": 2047,
+      "mean_kld": 0.02010983967164276,
+      "median_kld": 0.0023436221821668823,
+      "top1_agreement": 0.945285784074255
+    },
+    {
+      "index": 137,
+      "source_cluster": "arxiv-q-fin-PR",
+      "stratum": "scientific",
+      "positions_scored": 2047,
+      "mean_kld": 0.0039192613211459825,
+      "median_kld": 0.0028649170809522673,
+      "top1_agreement": 0.9643380556912555
+    },
+    {
+      "index": 138,
+      "source_cluster": "wiki4-en-003",
+      "stratum": "encyclopedic",
+      "positions_scored": 2047,
+      "mean_kld": 0.008608650779736994,
+      "median_kld": 0.0030408085062969548,
+      "top1_agreement": 0.9574987787005373
+    },
+    {
+      "index": 139,
+      "source_cluster": "numpy-py-v2.1.3-006",
+      "stratum": "code",
+      "positions_scored": 2047,
+      "mean_kld": 0.00826377459383913,
+      "median_kld": 0.000435487762043385,
+      "top1_agreement": 0.9731314118221788
+    },
+    {
+      "index": 140,
+      "source_cluster": "wiki4-pt-000",
+      "stratum": "multilingual",
+      "positions_scored": 2047,
+      "mean_kld": 0.0060615151756832734,
+      "median_kld": 0.0024242962754215114,
+      "top1_agreement": 0.9662921348314607
+    },
+    {
+      "index": 141,
+      "source_cluster": "arxiv-cs-CR",
+      "stratum": "scientific",
+      "positions_scored": 2047,
+      "mean_kld": 0.0037781495356682725,
+      "median_kld": 0.0027350636955105756,
+      "top1_agreement": 0.9662921348314607
+    },
+    {
+      "index": 142,
+      "source_cluster": "cpython-c-v3.12.8-006",
+      "stratum": "code",
+      "positions_scored": 2047,
+      "mean_kld": 0.008633040457199447,
+      "median_kld": 0.0011171249251162862,
+      "top1_agreement": 0.9741084513922814
+    },
+    {
+      "index": 143,
+      "source_cluster": "pg1524",
+      "stratum": "literary",
+      "positions_scored": 2047,
+      "mean_kld": 0.011014096345286224,
+      "median_kld": 0.00022481601982704547,
+      "top1_agreement": 0.9804592085979482
+    },
+    {
+      "index": 144,
+      "source_cluster": "wiki4-en-000",
+      "stratum": "encyclopedic",
+      "positions_scored": 2047,
+      "mean_kld": 0.006288803413377742,
+      "median_kld": 0.0025581558364251578,
+      "top1_agreement": 0.9653150952613581
+    },
+    {
+      "index": 145,
+      "source_cluster": "wiki4-es-002",
+      "stratum": "multilingual",
+      "positions_scored": 2047,
+      "mean_kld": 0.003978549803092744,
+      "median_kld": 0.0022356309527822305,
+      "top1_agreement": 0.9648265754763068
+    },
+    {
+      "index": 146,
+      "source_cluster": "numpy-py-v2.1.3-001",
+      "stratum": "code",
+      "positions_scored": 2047,
+      "mean_kld": 0.002694559971872406,
+      "median_kld": 0.00014399941487397427,
+      "top1_agreement": 0.9907181240840254
+    },
+    {
+      "index": 147,
+      "source_cluster": "arxiv-stat-AP",
+      "stratum": "scientific",
+      "positions_scored": 2047,
+      "mean_kld": 0.0036427953238310027,
+      "median_kld": 0.002351751957462511,
+      "top1_agreement": 0.9658036150464093
+    },
+    {
+      "index": 148,
+      "source_cluster": "wiki4-en-019",
+      "stratum": "encyclopedic",
+      "positions_scored": 2047,
+      "mean_kld": 0.005613662649986134,
+      "median_kld": 0.0026887873576129095,
+      "top1_agreement": 0.9633610161211529
+    },
+    {
+      "index": 149,
+      "source_cluster": "wiki4-fr-004",
+      "stratum": "multilingual",
+      "positions_scored": 2047,
+      "mean_kld": 0.0025687475360400185,
+      "median_kld": 0.0014899879606673494,
+      "top1_agreement": 0.9741084513922814
+    },
+    {
+      "index": 150,
+      "source_cluster": "arxiv-physics-geo-ph",
+      "stratum": "scientific",
+      "positions_scored": 2047,
+      "mean_kld": 0.004117358831991644,
+      "median_kld": 0.002601537639975504,
+      "top1_agreement": 0.9545676599902296
+    },
+    {
+      "index": 151,
+      "source_cluster": "arxiv-physics-flu-dyn",
+      "stratum": "scientific",
+      "positions_scored": 2047,
+      "mean_kld": 0.0036113989422926203,
+      "median_kld": 0.0025771203590920777,
+      "top1_agreement": 0.966780654616512
+    },
+    {
+      "index": 152,
+      "source_cluster": "cpython-c-v3.12.8-003",
+      "stratum": "code",
+      "positions_scored": 2047,
+      "mean_kld": 0.003038506508214767,
+      "median_kld": 0.00015835654518792097,
+      "top1_agreement": 0.9853444064484611
+    },
+    {
+      "index": 153,
+      "source_cluster": "arxiv-gr-qc",
+      "stratum": "scientific",
+      "positions_scored": 2047,
+      "mean_kld": 0.004356299738572099,
+      "median_kld": 0.0025463641507599277,
+      "top1_agreement": 0.9653150952613581
+    },
+    {
+      "index": 154,
+      "source_cluster": "arxiv-q-bio-PE",
+      "stratum": "scientific",
+      "positions_scored": 2047,
+      "mean_kld": 0.003981325267579039,
+      "median_kld": 0.0026013906876301007,
+      "top1_agreement": 0.9604298974108452
+    },
+    {
+      "index": 155,
+      "source_cluster": "numpy-py-v2.1.3-003",
+      "stratum": "code",
+      "positions_scored": 2047,
+      "mean_kld": 0.007559829482924327,
+      "median_kld": 0.00042753284645868916,
+      "top1_agreement": 0.9765510503175379
+    },
+    {
+      "index": 156,
+      "source_cluster": "pg2591",
+      "stratum": "literary",
+      "positions_scored": 2047,
+      "mean_kld": 0.0221108276643045,
+      "median_kld": 0.005736514691307093,
+      "top1_agreement": 0.9511480214948705
+    },
+    {
+      "index": 157,
+      "source_cluster": "wiki4-en-001",
+      "stratum": "encyclopedic",
+      "positions_scored": 2047,
+      "mean_kld": 0.0034171132486430817,
+      "median_kld": 0.0007956054299285142,
+      "top1_agreement": 0.9804592085979482
+    },
+    {
+      "index": 158,
+      "source_cluster": "pg205",
+      "stratum": "literary",
+      "positions_scored": 2047,
+      "mean_kld": 0.010084722743461323,
+      "median_kld": 0.004459278631387065,
+      "top1_agreement": 0.9531021006350757
+    },
+    {
+      "index": 159,
+      "source_cluster": "wiki4-en-006",
+      "stratum": "encyclopedic",
+      "positions_scored": 2047,
+      "mean_kld": 0.0033453899168676264,
+      "median_kld": 0.0022671604127157963,
+      "top1_agreement": 0.9794821690278456
+    }
+  ],
+  "per_context": [
+    {
+      "index": 0,
+      "stratum": "encyclopedic",
+      "source_cluster": "wiki4-en-018",
+      "mean_kld": 0.0037880868623250148,
+      "median_kld": 0.0023697501590049797,
+      "max_kld": 0.17140394148009364,
+      "mean_jsd_bits": 0.001362134845899802,
+      "top1_agreement": 0.9706888128969223
+    },
+    {
+      "index": 1,
+      "stratum": "encyclopedic",
+      "source_cluster": "wiki4-en-014",
+      "mean_kld": 0.0030663630702985347,
+      "median_kld": 0.0021748192814641243,
+      "max_kld": 0.07021888227592399,
+      "mean_jsd_bits": 0.0010962718496674525,
+      "top1_agreement": 0.9765510503175379
+    },
+    {
+      "index": 2,
+      "stratum": "code",
+      "source_cluster": "cpython-c-v3.12.8-007",
+      "mean_kld": 0.003236463613023437,
+      "median_kld": 0.0004467350808501358,
+      "max_kld": 0.27629733607136586,
+      "mean_jsd_bits": 0.0011559702899733514,
+      "top1_agreement": 0.9824132877381534
+    },
+    {
+      "index": 3,
+      "stratum": "encyclopedic",
+      "source_cluster": "wiki4-en-007",
+      "mean_kld": 0.01179607420656715,
+      "median_kld": 0.0050055924511980265,
+      "max_kld": 0.4798632336689792,
+      "mean_jsd_bits": 0.004182221874547704,
+      "top1_agreement": 0.95847581827064
+    },
+    {
+      "index": 4,
+      "stratum": "literary",
+      "source_cluster": "pg514",
+      "mean_kld": 0.015836308368622563,
+      "median_kld": 0.005935811481919018,
+      "max_kld": 0.7465514947705927,
+      "mean_jsd_bits": 0.005561356979558956,
+      "top1_agreement": 0.9418661455788959
+    },
+    {
+      "index": 5,
+      "stratum": "multilingual",
+      "source_cluster": "wiki4-es-001",
+      "mean_kld": 0.002244727471726645,
+      "median_kld": 0.0007410277795543152,
+      "max_kld": 0.11034095350670903,
+      "mean_jsd_bits": 0.0008076328112311182,
+      "top1_agreement": 0.9804592085979482
+    },
+    {
+      "index": 6,
+      "stratum": "encyclopedic",
+      "source_cluster": "wiki4-en-011",
+      "mean_kld": 0.007133737751674162,
+      "median_kld": 0.0027412265919792844,
+      "max_kld": 0.6325499002959987,
+      "mean_jsd_bits": 0.002566410296315732,
+      "top1_agreement": 0.9677576941866145
+    },
+    {
+      "index": 7,
+      "stratum": "multilingual",
+      "source_cluster": "wiki4-es-001",
+      "mean_kld": 0.0033508740452324374,
+      "median_kld": 0.0015525631054060796,
+      "max_kld": 0.6395878481562249,
+      "mean_jsd_bits": 0.001208499642166384,
+      "top1_agreement": 0.9755740107474352
+    },
+    {
+      "index": 8,
+      "stratum": "code",
+      "source_cluster": "cpython-c-v3.12.8-005",
+      "mean_kld": 0.0038160197756455716,
+      "median_kld": 0.00045354177713363697,
+      "max_kld": 0.49790348001988605,
+      "mean_jsd_bits": 0.0013583073284019673,
+      "top1_agreement": 0.9765510503175379
+    },
+    {
+      "index": 9,
+      "stratum": "encyclopedic",
+      "source_cluster": "wiki4-en-015",
+      "mean_kld": 0.009277060200117858,
+      "median_kld": 0.002618986184182326,
+      "max_kld": 0.4690419791919034,
+      "mean_jsd_bits": 0.003259573960131291,
+      "top1_agreement": 0.9682462139716659
+    },
+    {
+      "index": 10,
+      "stratum": "literary",
+      "source_cluster": "pg1260",
+      "mean_kld": 0.01507871480561282,
+      "median_kld": 0.0066144401581880174,
+      "max_kld": 0.3471847037144471,
+      "mean_jsd_bits": 0.005368140702229161,
+      "top1_agreement": 0.9413776257938447
+    },
+    {
+      "index": 11,
+      "stratum": "multilingual",
+      "source_cluster": "wiki4-fr-002",
+      "mean_kld": 0.0026892906011799504,
+      "median_kld": 0.0017705835669481473,
+      "max_kld": 0.13550671422854066,
+      "mean_jsd_bits": 0.0009664847429540044,
+      "top1_agreement": 0.9687347337567171
+    },
+    {
+      "index": 12,
+      "stratum": "literary",
+      "source_cluster": "pg120",
+      "mean_kld": 0.011801059764566578,
+      "median_kld": 0.007030328414884934,
+      "max_kld": 0.2237370123330038,
+      "mean_jsd_bits": 0.004224426657351474,
+      "top1_agreement": 0.9394235466536395
+    },
+    {
+      "index": 13,
+      "stratum": "code",
+      "source_cluster": "numpy-py-v2.1.3-000",
+      "mean_kld": 0.02579286121992209,
+      "median_kld": 0.00014997361100918365,
+      "max_kld": 1.502864600631748,
+      "mean_jsd_bits": 0.00864359975706711,
+      "top1_agreement": 0.9614069369809477
+    },
+    {
+      "index": 14,
+      "stratum": "scientific",
+      "source_cluster": "arxiv-nucl-th",
+      "mean_kld": 0.004169416845561827,
+      "median_kld": 0.0024178151783686985,
+      "max_kld": 0.24331064456373497,
+      "mean_jsd_bits": 0.001480966394648638,
+      "top1_agreement": 0.9721543722520762
+    },
+    {
+      "index": 15,
+      "stratum": "literary",
+      "source_cluster": "pg3600",
+      "mean_kld": 0.004874349141825671,
+      "median_kld": 0.00241481253003073,
+      "max_kld": 0.16840234403434806,
+      "mean_jsd_bits": 0.0017493804767457794,
+      "top1_agreement": 0.9614069369809477
+    },
+    {
+      "index": 16,
+      "stratum": "encyclopedic",
+      "source_cluster": "wiki4-en-010",
+      "mean_kld": 0.01015354428936963,
+      "median_kld": 0.0017896614890453577,
+      "max_kld": 1.3286406156985322,
+      "mean_jsd_bits": 0.0035467809364228124,
+      "top1_agreement": 0.9677576941866145
+    },
+    {
+      "index": 17,
+      "stratum": "multilingual",
+      "source_cluster": "wiki4-es-002",
+      "mean_kld": 0.0035575286897411283,
+      "median_kld": 0.002197975184344614,
+      "max_kld": 0.18634568435663823,
+      "mean_jsd_bits": 0.001279672664817261,
+      "top1_agreement": 0.9672691744015632
+    },
+    {
+      "index": 18,
+      "stratum": "encyclopedic",
+      "source_cluster": "wiki4-en-004",
+      "mean_kld": 0.0070062975270209285,
+      "median_kld": 0.002611147976807615,
+      "max_kld": 0.5085104376516938,
+      "mean_jsd_bits": 0.0025301657664910404,
+      "top1_agreement": 0.9677576941866145
+    },
+    {
+      "index": 19,
+      "stratum": "literary",
+      "source_cluster": "pg205",
+      "mean_kld": 0.023116023809372808,
+      "median_kld": 0.010322753440947352,
+      "max_kld": 0.5862440459895879,
+      "mean_jsd_bits": 0.008216355605727648,
+      "top1_agreement": 0.9438202247191011
+    },
+    {
+      "index": 20,
+      "stratum": "scientific",
+      "source_cluster": "arxiv-q-fin-PR",
+      "mean_kld": 0.0040501193821661065,
+      "median_kld": 0.0027747929862016463,
+      "max_kld": 0.05713521878292882,
+      "mean_jsd_bits": 0.001455187771446485,
+      "top1_agreement": 0.9682462139716659
+    },
+    {
+      "index": 21,
+      "stratum": "literary",
+      "source_cluster": "pg145",
+      "mean_kld": 0.00440934552499897,
+      "median_kld": 0.0029117718705293782,
+      "max_kld": 0.07052072486203542,
+      "mean_jsd_bits": 0.0015844057778408812,
+      "top1_agreement": 0.9628724963361016
+    },
+    {
+      "index": 22,
+      "stratum": "literary",
+      "source_cluster": "pg76",
+      "mean_kld": 0.018206359906612866,
+      "median_kld": 0.0074558875003276626,
+      "max_kld": 0.4125232591177337,
+      "mean_jsd_bits": 0.006443351860279927,
+      "top1_agreement": 0.9438202247191011
+    },
+    {
+      "index": 23,
+      "stratum": "multilingual",
+      "source_cluster": "wiki4-es-000",
+      "mean_kld": 0.005965106550542137,
+      "median_kld": 0.001933905004079861,
+      "max_kld": 0.42811541064662606,
+      "mean_jsd_bits": 0.0021253839517515697,
+      "top1_agreement": 0.9648265754763068
+    },
+    {
+      "index": 24,
+      "stratum": "multilingual",
+      "source_cluster": "wiki4-ja-004",
+      "mean_kld": 0.0038803941766208105,
+      "median_kld": 0.0023478538678318728,
+      "max_kld": 0.5479457909823395,
+      "mean_jsd_bits": 0.0013776615609834729,
+      "top1_agreement": 0.9623839765510503
+    },
+    {
+      "index": 25,
+      "stratum": "encyclopedic",
+      "source_cluster": "wiki4-en-006",
+      "mean_kld": 0.01227561745561939,
+      "median_kld": 0.0038461790818473673,
+      "max_kld": 0.5450477319661786,
+      "mean_jsd_bits": 0.004395736040868682,
+      "top1_agreement": 0.9531021006350757
+    },
+    {
+      "index": 26,
+      "stratum": "scientific",
+      "source_cluster": "arxiv-gr-qc",
+      "mean_kld": 0.004711039295713713,
+      "median_kld": 0.0033194514197347758,
+      "max_kld": 0.08008454419723421,
+      "mean_jsd_bits": 0.00168524512849694,
+      "top1_agreement": 0.9609184171958964
+    },
+    {
+      "index": 27,
+      "stratum": "multilingual",
+      "source_cluster": "wiki4-it-000",
+      "mean_kld": 0.00460679096590036,
+      "median_kld": 0.002120076153005357,
+      "max_kld": 0.2458323224934702,
+      "mean_jsd_bits": 0.0016510154391588608,
+      "top1_agreement": 0.9702002931118711
+    },
+    {
+      "index": 28,
+      "stratum": "literary",
+      "source_cluster": "pg1998",
+      "mean_kld": 0.0050311156510974816,
+      "median_kld": 0.0030665330195915885,
+      "max_kld": 0.129860857505264,
+      "mean_jsd_bits": 0.0018077202680082988,
+      "top1_agreement": 0.9550561797752809
+    },
+    {
+      "index": 29,
+      "stratum": "code",
+      "source_cluster": "numpy-py-v2.1.3-007",
+      "mean_kld": 0.007053867766380124,
+      "median_kld": 0.0014445298607084212,
+      "max_kld": 0.2735275555225627,
+      "mean_jsd_bits": 0.0025017762189722655,
+      "top1_agreement": 0.9731314118221788
+    },
+    {
+      "index": 30,
+      "stratum": "code",
+      "source_cluster": "numpy-py-v2.1.3-007",
+      "mean_kld": 0.0072404770699993045,
+      "median_kld": 0.0014167244353302522,
+      "max_kld": 0.8903255355680528,
+      "mean_jsd_bits": 0.0025809102360224386,
+      "top1_agreement": 0.9711773326819736
+    },
+    {
+      "index": 31,
+      "stratum": "multilingual",
+      "source_cluster": "wiki4-ja-000",
+      "mean_kld": 0.006707942490919551,
+      "median_kld": 0.00345413715695031,
+      "max_kld": 0.2831153408624232,
+      "mean_jsd_bits": 0.00240577347445009,
+      "top1_agreement": 0.9574987787005373
+    },
+    {
+      "index": 32,
+      "stratum": "code",
+      "source_cluster": "cpython-c-v3.12.8-005",
+      "mean_kld": 0.002203136982490956,
+      "median_kld": 2.3682454202034187e-05,
+      "max_kld": 3.0608803731715,
+      "mean_jsd_bits": 0.0003112782546789679,
+      "top1_agreement": 0.9965803615046409
+    },
+    {
+      "index": 33,
+      "stratum": "scientific",
+      "source_cluster": "arxiv-math-NT",
+      "mean_kld": 0.003797745287647204,
+      "median_kld": 0.0019766592770906755,
+      "max_kld": 0.10431194898228568,
+      "mean_jsd_bits": 0.001364361307595417,
+      "top1_agreement": 0.9721543722520762
+    },
+    {
+      "index": 34,
+      "stratum": "code",
+      "source_cluster": "cpython-c-v3.12.8-004",
+      "mean_kld": 0.0011064627051951164,
+      "median_kld": 3.589461034342323e-05,
+      "max_kld": 0.07197611367837098,
+      "mean_jsd_bits": 0.00039628909330320807,
+      "top1_agreement": 0.9921836834391793
+    },
+    {
+      "index": 35,
+      "stratum": "encyclopedic",
+      "source_cluster": "wiki4-en-011",
+      "mean_kld": 0.006063237902123135,
+      "median_kld": 0.002517372009350538,
+      "max_kld": 0.3141139474062129,
+      "mean_jsd_bits": 0.002185932588046668,
+      "top1_agreement": 0.9745969711773327
+    },
+    {
+      "index": 36,
+      "stratum": "code",
+      "source_cluster": "cpython-c-v3.12.8-001",
+      "mean_kld": 0.0026463439620657424,
+      "median_kld": 0.00012222485648294423,
+      "max_kld": 0.1780661818010394,
+      "mean_jsd_bits": 0.0009529577052126475,
+      "top1_agreement": 0.9599413776257938
+    },
+    {
+      "index": 37,
+      "stratum": "scientific",
+      "source_cluster": "arxiv-math-NT",
+      "mean_kld": 0.003726528949263646,
+      "median_kld": 0.0020094897359967945,
+      "max_kld": 0.08028355654801089,
+      "mean_jsd_bits": 0.0013413346910432149,
+      "top1_agreement": 0.975085490962384
+    },
+    {
+      "index": 38,
+      "stratum": "literary",
+      "source_cluster": "pg2554",
+      "mean_kld": 0.00401763586702321,
+      "median_kld": 0.0028972758773022633,
+      "max_kld": 0.05635044842233583,
+      "mean_jsd_bits": 0.0014417304355603797,
+      "top1_agreement": 0.9560332193453834
+    },
+    {
+      "index": 39,
+      "stratum": "literary",
+      "source_cluster": "pg2413",
+      "mean_kld": 0.0071846075760773455,
+      "median_kld": 0.004195488847685169,
+      "max_kld": 0.214664284455921,
+      "mean_jsd_bits": 0.0025754465533791306,
+      "top1_agreement": 0.9560332193453834
+    },
+    {
+      "index": 40,
+      "stratum": "literary",
+      "source_cluster": "pg3600",
+      "mean_kld": 0.003869651522728511,
+      "median_kld": 0.002593567282971776,
+      "max_kld": 0.28576419415912824,
+      "mean_jsd_bits": 0.0013894501007663932,
+      "top1_agreement": 0.9687347337567171
+    },
+    {
+      "index": 41,
+      "stratum": "encyclopedic",
+      "source_cluster": "wiki4-en-004",
+      "mean_kld": 0.005510451091510952,
+      "median_kld": 0.002674284380759673,
+      "max_kld": 0.12125564946290979,
+      "mean_jsd_bits": 0.001977207152358769,
+      "top1_agreement": 0.9560332193453834
+    },
+    {
+      "index": 42,
+      "stratum": "literary",
+      "source_cluster": "pg1497",
+      "mean_kld": 0.013389486191540519,
+      "median_kld": 0.006767000778836518,
+      "max_kld": 0.26354899327270687,
+      "mean_jsd_bits": 0.004787471983939408,
+      "top1_agreement": 0.9472398632144602
+    },
+    {
+      "index": 43,
+      "stratum": "multilingual",
+      "source_cluster": "wiki4-pt-002",
+      "mean_kld": 0.005504200327919852,
+      "median_kld": 0.0024583768517913995,
+      "max_kld": 0.150096498208228,
+      "mean_jsd_bits": 0.001973476666422199,
+      "top1_agreement": 0.9662921348314607
+    },
+    {
+      "index": 44,
+      "stratum": "encyclopedic",
+      "source_cluster": "wiki4-en-009",
+      "mean_kld": 0.008317036298394111,
+      "median_kld": 0.00308856226683929,
+      "max_kld": 0.55129774195143,
+      "mean_jsd_bits": 0.002976465509265692,
+      "top1_agreement": 0.9589643380556913
+    },
+    {
+      "index": 45,
+      "stratum": "encyclopedic",
+      "source_cluster": "wiki4-en-008",
+      "mean_kld": 0.014794378418044773,
+      "median_kld": 0.0038538473503706427,
+      "max_kld": 0.35118081909043575,
+      "mean_jsd_bits": 0.00525145489307895,
+      "top1_agreement": 0.9467513434294089
+    },
+    {
+      "index": 46,
+      "stratum": "multilingual",
+      "source_cluster": "wiki4-zh-000",
+      "mean_kld": 0.0060283889902368595,
+      "median_kld": 0.0028202069388498785,
+      "max_kld": 0.4708318301281005,
+      "mean_jsd_bits": 0.0021790678719524844,
+      "top1_agreement": 0.9555446995603322
+    },
+    {
+      "index": 47,
+      "stratum": "literary",
+      "source_cluster": "pg145",
+      "mean_kld": 0.009561398939746788,
+      "median_kld": 0.0037555426973199246,
+      "max_kld": 0.3321147975234453,
+      "mean_jsd_bits": 0.0034124365520633413,
+      "top1_agreement": 0.9604298974108452
+    },
+    {
+      "index": 48,
+      "stratum": "literary",
+      "source_cluster": "pg2554",
+      "mean_kld": 0.012449574834598125,
+      "median_kld": 0.004315399846746004,
+      "max_kld": 1.3386645788832539,
+      "mean_jsd_bits": 0.00437914166164728,
+      "top1_agreement": 0.9496824621397166
+    },
+    {
+      "index": 49,
+      "stratum": "scientific",
+      "source_cluster": "arxiv-math-DG",
+      "mean_kld": 0.004208629606613523,
+      "median_kld": 0.002499360041440468,
+      "max_kld": 0.10130395084706834,
+      "mean_jsd_bits": 0.0015020770035443624,
+      "top1_agreement": 0.9702002931118711
+    },
+    {
+      "index": 50,
+      "stratum": "code",
+      "source_cluster": "cpython-c-v3.12.8-007",
+      "mean_kld": 0.0056068161528890085,
+      "median_kld": 0.00031897179981754675,
+      "max_kld": 1.3935995538845418,
+      "mean_jsd_bits": 0.0019426055212624822,
+      "top1_agreement": 0.9838788470933073
+    },
+    {
+      "index": 51,
+      "stratum": "literary",
+      "source_cluster": "pg2413",
+      "mean_kld": 0.009672299300448049,
+      "median_kld": 0.005857290027499573,
+      "max_kld": 0.3563196142349625,
+      "mean_jsd_bits": 0.0034619654156636476,
+      "top1_agreement": 0.9565217391304348
+    },
+    {
+      "index": 52,
+      "stratum": "scientific",
+      "source_cluster": "arxiv-cs-RO",
+      "mean_kld": 0.004422584686213077,
+      "median_kld": 0.003122457691318914,
+      "max_kld": 0.15087740507442504,
+      "mean_jsd_bits": 0.0015842059440718706,
+      "top1_agreement": 0.9609184171958964
+    },
+    {
+      "index": 53,
+      "stratum": "encyclopedic",
+      "source_cluster": "wiki4-en-005",
+      "mean_kld": 0.006452673124157005,
+      "median_kld": 0.002792316186798871,
+      "max_kld": 0.4112537239561789,
+      "mean_jsd_bits": 0.002288325027333651,
+      "top1_agreement": 0.9658036150464093
+    },
+    {
+      "index": 54,
+      "stratum": "code",
+      "source_cluster": "numpy-py-v2.1.3-003",
+      "mean_kld": 0.003502711109646385,
+      "median_kld": 0.00011553577684697558,
+      "max_kld": 0.3476700106933919,
+      "mean_jsd_bits": 0.0012406699794419724,
+      "top1_agreement": 0.9887640449438202
+    },
+    {
+      "index": 55,
+      "stratum": "scientific",
+      "source_cluster": "arxiv-cs-CR",
+      "mean_kld": 0.0033739950213789597,
+      "median_kld": 0.0023290181645450048,
+      "max_kld": 0.044931379215086054,
+      "mean_jsd_bits": 0.001215239898200412,
+      "top1_agreement": 0.9662921348314607
+    },
+    {
+      "index": 56,
+      "stratum": "multilingual",
+      "source_cluster": "wiki4-zh-003",
+      "mean_kld": 0.005666358314077771,
+      "median_kld": 0.002511391741677471,
+      "max_kld": 0.1911634859013276,
+      "mean_jsd_bits": 0.002015673354220367,
+      "top1_agreement": 0.9628724963361016
+    },
+    {
+      "index": 57,
+      "stratum": "scientific",
+      "source_cluster": "arxiv-astro-ph-SR",
+      "mean_kld": 0.0043803622119014205,
+      "median_kld": 0.002765978089996679,
+      "max_kld": 0.1678497738294027,
+      "mean_jsd_bits": 0.0015758898894541675,
+      "top1_agreement": 0.9692232535417684
+    },
+    {
+      "index": 58,
+      "stratum": "multilingual",
+      "source_cluster": "wiki4-zh-001",
+      "mean_kld": 0.0038483189731547364,
+      "median_kld": 0.0025791779630708334,
+      "max_kld": 0.13903923194447998,
+      "mean_jsd_bits": 0.001375050757587408,
+      "top1_agreement": 0.9662921348314607
+    },
+    {
+      "index": 59,
+      "stratum": "scientific",
+      "source_cluster": "arxiv-astro-ph-SR",
+      "mean_kld": 0.004159017810052252,
+      "median_kld": 0.002613751799799502,
+      "max_kld": 0.17603595727632637,
+      "mean_jsd_bits": 0.0014963853106452337,
+      "top1_agreement": 0.9682462139716659
+    },
+    {
+      "index": 60,
+      "stratum": "code",
+      "source_cluster": "numpy-py-v2.1.3-002",
+      "mean_kld": 0.004898620122027339,
+      "median_kld": 0.0003698318019367264,
+      "max_kld": 0.46161171975836623,
+      "mean_jsd_bits": 0.0017300284309123952,
+      "top1_agreement": 0.978505129457743
+    },
+    {
+      "index": 61,
+      "stratum": "encyclopedic",
+      "source_cluster": "wiki4-en-007",
+      "mean_kld": 0.0035662106630554207,
+      "median_kld": 0.0019857148091944055,
+      "max_kld": 0.1225097425410211,
+      "mean_jsd_bits": 0.0012796808336461042,
+      "top1_agreement": 0.9745969711773327
+    },
+    {
+      "index": 62,
+      "stratum": "scientific",
+      "source_cluster": "arxiv-nucl-th",
+      "mean_kld": 0.0042901040016433654,
+      "median_kld": 0.0025817750140681994,
+      "max_kld": 0.3496610903765287,
+      "mean_jsd_bits": 0.001543665680011144,
+      "top1_agreement": 0.9716658524670249
+    },
+    {
+      "index": 63,
+      "stratum": "code",
+      "source_cluster": "cpython-c-v3.12.8-000",
+      "mean_kld": 0.004151807605279823,
+      "median_kld": 0.00018352010380429107,
+      "max_kld": 0.49790348001988605,
+      "mean_jsd_bits": 0.001453314011997619,
+      "top1_agreement": 0.9721543722520762
+    },
+    {
+      "index": 64,
+      "stratum": "encyclopedic",
+      "source_cluster": "wiki4-en-005",
+      "mean_kld": 0.007774393748411704,
+      "median_kld": 0.0030175821365219235,
+      "max_kld": 0.5189626438559571,
+      "mean_jsd_bits": 0.0027405381325248186,
+      "top1_agreement": 0.9555446995603322
+    },
+    {
+      "index": 65,
+      "stratum": "scientific",
+      "source_cluster": "arxiv-nlin-CD",
+      "mean_kld": 0.003511478637111364,
+      "median_kld": 0.0024486747178116275,
+      "max_kld": 0.2091062049184984,
+      "mean_jsd_bits": 0.0012679369023220993,
+      "top1_agreement": 0.9716658524670249
+    },
+    {
+      "index": 66,
+      "stratum": "multilingual",
+      "source_cluster": "wiki4-it-003",
+      "mean_kld": 0.0032691436612935906,
+      "median_kld": 0.0018826826816233933,
+      "max_kld": 0.19173164131916565,
+      "mean_jsd_bits": 0.0011784510150354038,
+      "top1_agreement": 0.9745969711773327
+    },
+    {
+      "index": 67,
+      "stratum": "multilingual",
+      "source_cluster": "wiki4-es-004",
+      "mean_kld": 0.0032974356023984805,
+      "median_kld": 0.001961948983989714,
+      "max_kld": 0.0900580698507838,
+      "mean_jsd_bits": 0.0011858372473549444,
+      "top1_agreement": 0.9731314118221788
+    },
+    {
+      "index": 68,
+      "stratum": "encyclopedic",
+      "source_cluster": "wiki4-en-017",
+      "mean_kld": 0.004478376649130123,
+      "median_kld": 0.0027835391896360306,
+      "max_kld": 0.12582253854714054,
+      "mean_jsd_bits": 0.0016080531391108519,
+      "top1_agreement": 0.97361993160723
+    },
+    {
+      "index": 69,
+      "stratum": "multilingual",
+      "source_cluster": "wiki4-ja-002",
+      "mean_kld": 0.0040543925915248686,
+      "median_kld": 0.002182334954795806,
+      "max_kld": 0.2143997759987002,
+      "mean_jsd_bits": 0.0014556026759626121,
+      "top1_agreement": 0.9716658524670249
+    },
+    {
+      "index": 70,
+      "stratum": "literary",
+      "source_cluster": "pg1524",
+      "mean_kld": 0.014644723916558265,
+      "median_kld": 0.00027160859145602956,
+      "max_kld": 1.0271950872563593,
+      "mean_jsd_bits": 0.005050634043655737,
+      "top1_agreement": 0.9804592085979482
+    },
+    {
+      "index": 71,
+      "stratum": "encyclopedic",
+      "source_cluster": "wiki4-en-002",
+      "mean_kld": 0.004293262699878729,
+      "median_kld": 0.002244587146805088,
+      "max_kld": 0.2522627591123978,
+      "mean_jsd_bits": 0.0015421939949761456,
+      "top1_agreement": 0.9721543722520762
+    },
+    {
+      "index": 72,
+      "stratum": "code",
+      "source_cluster": "numpy-py-v2.1.3-006",
+      "mean_kld": 0.014625033368604457,
+      "median_kld": 0.0003389458606912754,
+      "max_kld": 2.111805371662143,
+      "mean_jsd_bits": 0.004844819832924357,
+      "top1_agreement": 0.9726428920371275
+    },
+    {
+      "index": 73,
+      "stratum": "multilingual",
+      "source_cluster": "wiki4-pt-004",
+      "mean_kld": 0.0028483521066169945,
+      "median_kld": 0.0019387291140446905,
+      "max_kld": 0.09458606936095748,
+      "mean_jsd_bits": 0.0010192993050058374,
+      "top1_agreement": 0.9716658524670249
+    },
+    {
+      "index": 74,
+      "stratum": "multilingual",
+      "source_cluster": "wiki4-es-000",
+      "mean_kld": 0.0036797518425808686,
+      "median_kld": 0.001980664183065528,
+      "max_kld": 0.6337859181221575,
+      "mean_jsd_bits": 0.0012849071679292639,
+      "top1_agreement": 0.9711773326819736
+    },
+    {
+      "index": 75,
+      "stratum": "encyclopedic",
+      "source_cluster": "wiki4-en-008",
+      "mean_kld": 0.017825095266068926,
+      "median_kld": 0.004025162323942677,
+      "max_kld": 0.6951387559495714,
+      "mean_jsd_bits": 0.006325586137990134,
+      "top1_agreement": 0.9472398632144602
+    },
+    {
+      "index": 76,
+      "stratum": "code",
+      "source_cluster": "numpy-py-v2.1.3-004",
+      "mean_kld": 0.0044730555843571895,
+      "median_kld": 0.00010729802271214339,
+      "max_kld": 0.3546029038629186,
+      "mean_jsd_bits": 0.0015456102415000584,
+      "top1_agreement": 0.9892525647288715
+    },
+    {
+      "index": 77,
+      "stratum": "multilingual",
+      "source_cluster": "wiki4-es-003",
+      "mean_kld": 0.0037216802695086647,
+      "median_kld": 0.0017723154738291669,
+      "max_kld": 0.0767259319218283,
+      "mean_jsd_bits": 0.0013384360533631784,
+      "top1_agreement": 0.9726428920371275
+    },
+    {
+      "index": 78,
+      "stratum": "code",
+      "source_cluster": "cpython-c-v3.12.8-003",
+      "mean_kld": 0.0044340696430418556,
+      "median_kld": 0.00022283025720071237,
+      "max_kld": 0.6137279404571174,
+      "mean_jsd_bits": 0.0015913743281772716,
+      "top1_agreement": 0.9789936492427943
+    },
+    {
+      "index": 79,
+      "stratum": "literary",
+      "source_cluster": "pg1184",
+      "mean_kld": 0.005378748651939598,
+      "median_kld": 0.0030511582224335143,
+      "max_kld": 0.46888622914775624,
+      "mean_jsd_bits": 0.001913872032559164,
+      "top1_agreement": 0.9628724963361016
+    },
+    {
+      "index": 80,
+      "stratum": "literary",
+      "source_cluster": "pg1184",
+      "mean_kld": 0.004415603408461549,
+      "median_kld": 0.0016261854689219035,
+      "max_kld": 0.22646742453798652,
+      "mean_jsd_bits": 0.0015807841717306338,
+      "top1_agreement": 0.9760625305324866
+    },
+    {
+      "index": 81,
+      "stratum": "encyclopedic",
+      "source_cluster": "wiki4-en-013",
+      "mean_kld": 0.013596672076678785,
+      "median_kld": 0.0021035413633114786,
+      "max_kld": 0.5575715317099821,
+      "mean_jsd_bits": 0.004725144628959053,
+      "top1_agreement": 0.9662921348314607
+    },
+    {
+      "index": 82,
+      "stratum": "multilingual",
+      "source_cluster": "wiki4-it-001",
+      "mean_kld": 0.002858062792846107,
+      "median_kld": 0.0012796440139482002,
+      "max_kld": 0.19644511817023158,
+      "mean_jsd_bits": 0.001024468956446546,
+      "top1_agreement": 0.975085490962384
+    },
+    {
+      "index": 83,
+      "stratum": "encyclopedic",
+      "source_cluster": "wiki4-en-012",
+      "mean_kld": 0.0032781136216658573,
+      "median_kld": 0.002245628298183533,
+      "max_kld": 0.1138269887169372,
+      "mean_jsd_bits": 0.001177024094427069,
+      "top1_agreement": 0.9623839765510503
+    },
+    {
+      "index": 84,
+      "stratum": "scientific",
+      "source_cluster": "arxiv-cs-SE",
+      "mean_kld": 0.004671498107353791,
+      "median_kld": 0.0034334511365159415,
+      "max_kld": 0.08238096418551777,
+      "mean_jsd_bits": 0.0016785559127228096,
+      "top1_agreement": 0.95847581827064
+    },
+    {
+      "index": 85,
+      "stratum": "code",
+      "source_cluster": "numpy-py-v2.1.3-002",
+      "mean_kld": 0.00752243252153279,
+      "median_kld": 0.001611456216494389,
+      "max_kld": 0.49663429222896127,
+      "mean_jsd_bits": 0.0026673132713578274,
+      "top1_agreement": 0.9697117733268197
+    },
+    {
+      "index": 86,
+      "stratum": "scientific",
+      "source_cluster": "arxiv-physics-flu-dyn",
+      "mean_kld": 0.003745235714260104,
+      "median_kld": 0.0024534916410630103,
+      "max_kld": 0.3904134776093997,
+      "mean_jsd_bits": 0.0013449160639117,
+      "top1_agreement": 0.9706888128969223
+    },
+    {
+      "index": 87,
+      "stratum": "scientific",
+      "source_cluster": "arxiv-math-AG",
+      "mean_kld": 0.003970053958239134,
+      "median_kld": 0.00238854887652451,
+      "max_kld": 0.12803810923651326,
+      "mean_jsd_bits": 0.0014230304035592516,
+      "top1_agreement": 0.9711773326819736
+    },
+    {
+      "index": 88,
+      "stratum": "multilingual",
+      "source_cluster": "wiki4-fr-003",
+      "mean_kld": 0.004042644468412915,
+      "median_kld": 0.0017113076785904013,
+      "max_kld": 0.9620270326059881,
+      "mean_jsd_bits": 0.0014575152183721012,
+      "top1_agreement": 0.9687347337567171
+    },
+    {
+      "index": 89,
+      "stratum": "scientific",
+      "source_cluster": "arxiv-nlin-CD",
+      "mean_kld": 0.00411106046889316,
+      "median_kld": 0.0025951538116260053,
+      "max_kld": 0.06409108896075821,
+      "mean_jsd_bits": 0.0014797864803677476,
+      "top1_agreement": 0.9643380556912555
+    },
+    {
+      "index": 90,
+      "stratum": "encyclopedic",
+      "source_cluster": "wiki4-en-003",
+      "mean_kld": 0.016699700496708637,
+      "median_kld": 0.004068997300041843,
+      "max_kld": 1.6470336877323746,
+      "mean_jsd_bits": 0.00576412760235339,
+      "top1_agreement": 0.9482169027845627
+    },
+    {
+      "index": 91,
+      "stratum": "literary",
+      "source_cluster": "pg2680",
+      "mean_kld": 0.00843862363624709,
+      "median_kld": 0.003696171638011947,
+      "max_kld": 0.8048421776238683,
+      "mean_jsd_bits": 0.002954117381519204,
+      "top1_agreement": 0.9653150952613581
+    },
+    {
+      "index": 92,
+      "stratum": "scientific",
+      "source_cluster": "arxiv-q-bio-PE",
+      "mean_kld": 0.0035681759131506448,
+      "median_kld": 0.002292101371466515,
+      "max_kld": 0.5914742039894918,
+      "mean_jsd_bits": 0.0012392631632964324,
+      "top1_agreement": 0.97361993160723
+    },
+    {
+      "index": 93,
+      "stratum": "multilingual",
+      "source_cluster": "wiki4-it-002",
+      "mean_kld": 0.0042618395167991424,
+      "median_kld": 0.0022097729370216257,
+      "max_kld": 0.23148261895403266,
+      "mean_jsd_bits": 0.0015250062615837045,
+      "top1_agreement": 0.9711773326819736
+    },
+    {
+      "index": 94,
+      "stratum": "code",
+      "source_cluster": "cpython-c-v3.12.8-006",
+      "mean_kld": 0.005825653196441336,
+      "median_kld": 0.00029411884449359604,
+      "max_kld": 1.5367768720647064,
+      "mean_jsd_bits": 0.002049428065549898,
+      "top1_agreement": 0.9863214460185638
+    },
+    {
+      "index": 95,
+      "stratum": "scientific",
+      "source_cluster": "arxiv-cs-RO",
+      "mean_kld": 0.0037247019426325445,
+      "median_kld": 0.0027168300637185894,
+      "max_kld": 0.12347628869633809,
+      "mean_jsd_bits": 0.0013379766407764949,
+      "top1_agreement": 0.9662921348314607
+    },
+    {
+      "index": 96,
+      "stratum": "code",
+      "source_cluster": "cpython-c-v3.12.8-004",
+      "mean_kld": 0.0019424987994025816,
+      "median_kld": 0.0001788244087705948,
+      "max_kld": 0.49790348001988605,
+      "mean_jsd_bits": 0.0006961415696827505,
+      "top1_agreement": 0.9882755251587689
+    },
+    {
+      "index": 97,
+      "stratum": "code",
+      "source_cluster": "cpython-c-v3.12.8-001",
+      "mean_kld": 0.004592573422130139,
+      "median_kld": 9.76341869504821e-05,
+      "max_kld": 0.49790348001988605,
+      "mean_jsd_bits": 0.001642909532782373,
+      "top1_agreement": 0.9682462139716659
+    },
+    {
+      "index": 98,
+      "stratum": "multilingual",
+      "source_cluster": "wiki4-ja-003",
+      "mean_kld": 0.004386095365686425,
+      "median_kld": 0.002142579445717274,
+      "max_kld": 0.19941319117788225,
+      "mean_jsd_bits": 0.001567604659812802,
+      "top1_agreement": 0.9653150952613581
+    },
+    {
+      "index": 99,
+      "stratum": "multilingual",
+      "source_cluster": "wiki4-fr-001",
+      "mean_kld": 0.0026178502889615944,
+      "median_kld": 0.0014950002613431934,
+      "max_kld": 0.07822257791792708,
+      "mean_jsd_bits": 0.0009418042062648807,
+      "top1_agreement": 0.9721543722520762
+    },
+    {
+      "index": 100,
+      "stratum": "literary",
+      "source_cluster": "pg1998",
+      "mean_kld": 0.00904276345981124,
+      "median_kld": 0.0022316822187349317,
+      "max_kld": 0.7382649308128748,
+      "mean_jsd_bits": 0.0031802972120259115,
+      "top1_agreement": 0.9716658524670249
+    },
+    {
+      "index": 101,
+      "stratum": "scientific",
+      "source_cluster": "arxiv-math-DG",
+      "mean_kld": 0.004053690921858805,
+      "median_kld": 0.0022907058294237004,
+      "max_kld": 0.1368281595525218,
+      "mean_jsd_bits": 0.0014568332624447288,
+      "top1_agreement": 0.9711773326819736
+    },
+    {
+      "index": 102,
+      "stratum": "literary",
+      "source_cluster": "pg1260",
+      "mean_kld": 0.0167849232433741,
+      "median_kld": 0.003791138365158986,
+      "max_kld": 0.9642511766554094,
+      "mean_jsd_bits": 0.005885609797057467,
+      "top1_agreement": 0.9501709819247679
+    },
+    {
+      "index": 103,
+      "stratum": "multilingual",
+      "source_cluster": "wiki4-ja-001",
+      "mean_kld": 0.003484067660900893,
+      "median_kld": 0.0022808525236541755,
+      "max_kld": 0.07527824928547489,
+      "mean_jsd_bits": 0.0012437681137312472,
+      "top1_agreement": 0.9706888128969223
+    },
+    {
+      "index": 104,
+      "stratum": "scientific",
+      "source_cluster": "arxiv-cond-mat-supr-con",
+      "mean_kld": 0.004944225632962382,
+      "median_kld": 0.002815504742329722,
+      "max_kld": 0.21228575805434957,
+      "mean_jsd_bits": 0.0017805885103720578,
+      "top1_agreement": 0.9604298974108452
+    },
+    {
+      "index": 105,
+      "stratum": "multilingual",
+      "source_cluster": "wiki4-it-004",
+      "mean_kld": 0.0041925501217375,
+      "median_kld": 0.0021748532581113977,
+      "max_kld": 0.4447240778575181,
+      "mean_jsd_bits": 0.0014826607017514803,
+      "top1_agreement": 0.9614069369809477
+    },
+    {
+      "index": 106,
+      "stratum": "encyclopedic",
+      "source_cluster": "wiki4-en-010",
+      "mean_kld": 0.0072527899170894364,
+      "median_kld": 0.0031274678226509423,
+      "max_kld": 0.1466667164310138,
+      "mean_jsd_bits": 0.0025951567350473693,
+      "top1_agreement": 0.9531021006350757
+    },
+    {
+      "index": 107,
+      "stratum": "code",
+      "source_cluster": "numpy-py-v2.1.3-005",
+      "mean_kld": 0.005991655221647747,
+      "median_kld": 0.0013737853571456071,
+      "max_kld": 0.2214068867651804,
+      "mean_jsd_bits": 0.0021546392034333278,
+      "top1_agreement": 0.9721543722520762
+    },
+    {
+      "index": 108,
+      "stratum": "literary",
+      "source_cluster": "pg1727",
+      "mean_kld": 0.039979308011085984,
+      "median_kld": 0.004412220244063292,
+      "max_kld": 0.9604371573341268,
+      "mean_jsd_bits": 0.013711875549426381,
+      "top1_agreement": 0.9355153883732291
+    },
+    {
+      "index": 109,
+      "stratum": "literary",
+      "source_cluster": "pg1727",
+      "mean_kld": 0.01269379463962756,
+      "median_kld": 0.0033340932218663966,
+      "max_kld": 0.4305388651773683,
+      "mean_jsd_bits": 0.004508491791829205,
+      "top1_agreement": 0.9482169027845627
+    },
+    {
+      "index": 110,
+      "stratum": "literary",
+      "source_cluster": "pg996",
+      "mean_kld": 0.007844046036611044,
+      "median_kld": 0.0023469170988619226,
+      "max_kld": 0.3955182476029222,
+      "mean_jsd_bits": 0.0027888149633717245,
+      "top1_agreement": 0.961895456765999
+    },
+    {
+      "index": 111,
+      "stratum": "code",
+      "source_cluster": "cpython-c-v3.12.8-002",
+      "mean_kld": 0.0053866496521683795,
+      "median_kld": 6.560928994758797e-06,
+      "max_kld": 0.9848533484341502,
+      "mean_jsd_bits": 0.0017786919190726643,
+      "top1_agreement": 0.9912066438690766
+    },
+    {
+      "index": 112,
+      "stratum": "multilingual",
+      "source_cluster": "wiki4-zh-002",
+      "mean_kld": 0.007854557491296005,
+      "median_kld": 0.003023143144673668,
+      "max_kld": 0.5709803674835712,
+      "mean_jsd_bits": 0.0027800130695698495,
+      "top1_agreement": 0.9565217391304348
+    },
+    {
+      "index": 113,
+      "stratum": "code",
+      "source_cluster": "cpython-c-v3.12.8-002",
+      "mean_kld": 0.006288672340124962,
+      "median_kld": 6.38364912717293e-05,
+      "max_kld": 2.023783269289453,
+      "mean_jsd_bits": 0.0021438978614090275,
+      "top1_agreement": 0.9882755251587689
+    },
+    {
+      "index": 114,
+      "stratum": "literary",
+      "source_cluster": "pg5827",
+      "mean_kld": 0.004956707336272229,
+      "median_kld": 0.0029109026214655387,
+      "max_kld": 0.15037405751195365,
+      "mean_jsd_bits": 0.0017823080946115313,
+      "top1_agreement": 0.975085490962384
+    },
+    {
+      "index": 115,
+      "stratum": "encyclopedic",
+      "source_cluster": "wiki4-en-002",
+      "mean_kld": 0.003435339092454753,
+      "median_kld": 0.0022819966419262983,
+      "max_kld": 0.07008599351001976,
+      "mean_jsd_bits": 0.001233550093537706,
+      "top1_agreement": 0.9721543722520762
+    },
+    {
+      "index": 116,
+      "stratum": "multilingual",
+      "source_cluster": "wiki4-fr-000",
+      "mean_kld": 0.004299603281503344,
+      "median_kld": 0.002030749285040656,
+      "max_kld": 0.30972109487244026,
+      "mean_jsd_bits": 0.00153162016550591,
+      "top1_agreement": 0.9711773326819736
+    },
+    {
+      "index": 117,
+      "stratum": "literary",
+      "source_cluster": "pg1497",
+      "mean_kld": 0.020500140165492103,
+      "median_kld": 0.008073624861481221,
+      "max_kld": 0.34027939300730736,
+      "mean_jsd_bits": 0.007291125633161743,
+      "top1_agreement": 0.9389350268685882
+    },
+    {
+      "index": 118,
+      "stratum": "scientific",
+      "source_cluster": "arxiv-math-AG",
+      "mean_kld": 0.003662288630041158,
+      "median_kld": 0.0020316361538306182,
+      "max_kld": 0.09950166436203745,
+      "mean_jsd_bits": 0.001322889152186652,
+      "top1_agreement": 0.9677576941866145
+    },
+    {
+      "index": 119,
+      "stratum": "multilingual",
+      "source_cluster": "wiki4-pt-003",
+      "mean_kld": 0.0036026721440586855,
+      "median_kld": 0.0019039587776887856,
+      "max_kld": 0.1683976378844818,
+      "mean_jsd_bits": 0.0012917973420089953,
+      "top1_agreement": 0.9745969711773327
+    },
+    {
+      "index": 120,
+      "stratum": "code",
+      "source_cluster": "numpy-py-v2.1.3-005",
+      "mean_kld": 0.01717964293226717,
+      "median_kld": 0.0002063759129740106,
+      "max_kld": 1.8125942947194176,
+      "mean_jsd_bits": 0.005880350418407165,
+      "top1_agreement": 0.9721543722520762
+    },
+    {
+      "index": 121,
+      "stratum": "scientific",
+      "source_cluster": "arxiv-cond-mat-supr-con",
+      "mean_kld": 0.004485844403553965,
+      "median_kld": 0.0026153147839522717,
+      "max_kld": 0.12157842399261654,
+      "mean_jsd_bits": 0.0016122371604422626,
+      "top1_agreement": 0.9643380556912555
+    },
+    {
+      "index": 122,
+      "stratum": "multilingual",
+      "source_cluster": "wiki4-pt-001",
+      "mean_kld": 0.0019265771845080823,
+      "median_kld": 0.0008191582468271008,
+      "max_kld": 0.0668550877526286,
+      "mean_jsd_bits": 0.0006938372053662392,
+      "top1_agreement": 0.9858329262335125
+    },
+    {
+      "index": 123,
+      "stratum": "code",
+      "source_cluster": "cpython-c-v3.12.8-000",
+      "mean_kld": 0.00515245205527373,
+      "median_kld": 0.000258805921099281,
+      "max_kld": 0.46812562372520006,
+      "mean_jsd_bits": 0.0017966411847531027,
+      "top1_agreement": 0.97361993160723
+    },
+    {
+      "index": 124,
+      "stratum": "encyclopedic",
+      "source_cluster": "wiki4-en-000",
+      "mean_kld": 0.005812938641137957,
+      "median_kld": 0.002837341193057341,
+      "max_kld": 0.21665425659739412,
+      "mean_jsd_bits": 0.002072351074268155,
+      "top1_agreement": 0.9658036150464093
+    },
+    {
+      "index": 125,
+      "stratum": "literary",
+      "source_cluster": "pg2680",
+      "mean_kld": 0.007398568388404844,
+      "median_kld": 0.0037501492321325713,
+      "max_kld": 0.20083378057461232,
+      "mean_jsd_bits": 0.002646579397259033,
+      "top1_agreement": 0.9589643380556913
+    },
+    {
+      "index": 126,
+      "stratum": "encyclopedic",
+      "source_cluster": "wiki4-en-009",
+      "mean_kld": 0.004239695558183451,
+      "median_kld": 0.002113768030085339,
+      "max_kld": 0.34936809075588826,
+      "mean_jsd_bits": 0.0015150658694193042,
+      "top1_agreement": 0.97361993160723
+    },
+    {
+      "index": 127,
+      "stratum": "code",
+      "source_cluster": "numpy-py-v2.1.3-001",
+      "mean_kld": 0.005836058842291857,
+      "median_kld": 0.0011520683093113604,
+      "max_kld": 0.165679442946157,
+      "mean_jsd_bits": 0.002077945386451385,
+      "top1_agreement": 0.978505129457743
+    },
+    {
+      "index": 128,
+      "stratum": "code",
+      "source_cluster": "numpy-py-v2.1.3-004",
+      "mean_kld": 0.006762652210211185,
+      "median_kld": 5.595176119044254e-05,
+      "max_kld": 0.5559613734269533,
+      "mean_jsd_bits": 0.0023594272632645524,
+      "top1_agreement": 0.9804592085979482
+    },
+    {
+      "index": 129,
+      "stratum": "encyclopedic",
+      "source_cluster": "wiki4-en-001",
+      "mean_kld": 0.0030701065129421752,
+      "median_kld": 0.001882604255371234,
+      "max_kld": 0.2524684428026376,
+      "mean_jsd_bits": 0.0010998000803918854,
+      "top1_agreement": 0.9741084513922814
+    },
+    {
+      "index": 130,
+      "stratum": "encyclopedic",
+      "source_cluster": "wiki4-en-016",
+      "mean_kld": 0.007322618480871314,
+      "median_kld": 0.0025620849337002483,
+      "max_kld": 0.32756784885896195,
+      "mean_jsd_bits": 0.002615144976297397,
+      "top1_agreement": 0.9687347337567171
+    },
+    {
+      "index": 131,
+      "stratum": "literary",
+      "source_cluster": "pg2591",
+      "mean_kld": 0.035730069976260194,
+      "median_kld": 0.01440443655837953,
+      "max_kld": 0.9166218049467716,
+      "mean_jsd_bits": 0.012458056888913376,
+      "top1_agreement": 0.9179286761113825
+    },
+    {
+      "index": 132,
+      "stratum": "scientific",
+      "source_cluster": "arxiv-physics-geo-ph",
+      "mean_kld": 0.0035397181414902642,
+      "median_kld": 0.002382562980471903,
+      "max_kld": 0.07863288779026334,
+      "mean_jsd_bits": 0.0012782929484469472,
+      "top1_agreement": 0.966780654616512
+    },
+    {
+      "index": 133,
+      "stratum": "scientific",
+      "source_cluster": "arxiv-cs-SE",
+      "mean_kld": 0.0031527736635696313,
+      "median_kld": 0.0024928770899990127,
+      "max_kld": 0.05880302129190795,
+      "mean_jsd_bits": 0.0011332393356111425,
+      "top1_agreement": 0.9653150952613581
+    },
+    {
+      "index": 134,
+      "stratum": "scientific",
+      "source_cluster": "arxiv-quant-ph",
+      "mean_kld": 0.0037488524722915726,
+      "median_kld": 0.0024673192966702118,
+      "max_kld": 0.1570731883366534,
+      "mean_jsd_bits": 0.001349500100229978,
+      "top1_agreement": 0.9672691744015632
+    },
+    {
+      "index": 135,
+      "stratum": "code",
+      "source_cluster": "numpy-py-v2.1.3-000",
+      "mean_kld": 0.028885609182955897,
+      "median_kld": 0.0016553542168935564,
+      "max_kld": 1.5177293953382787,
+      "mean_jsd_bits": 0.009720733778812463,
+      "top1_agreement": 0.9516365412799218
+    },
+    {
+      "index": 136,
+      "stratum": "literary",
+      "source_cluster": "pg120",
+      "mean_kld": 0.02010983967164276,
+      "median_kld": 0.0023436221821668823,
+      "max_kld": 1.0096743602116476,
+      "mean_jsd_bits": 0.007070596659637971,
+      "top1_agreement": 0.945285784074255
+    },
+    {
+      "index": 137,
+      "stratum": "scientific",
+      "source_cluster": "arxiv-q-fin-PR",
+      "mean_kld": 0.0039192613211459825,
+      "median_kld": 0.0028649170809522673,
+      "max_kld": 0.05389727945521372,
+      "mean_jsd_bits": 0.0014094906157998488,
+      "top1_agreement": 0.9643380556912555
+    },
+    {
+      "index": 138,
+      "stratum": "encyclopedic",
+      "source_cluster": "wiki4-en-003",
+      "mean_kld": 0.008608650779736994,
+      "median_kld": 0.0030408085062969548,
+      "max_kld": 0.32219039956544293,
+      "mean_jsd_bits": 0.003074184256376742,
+      "top1_agreement": 0.9574987787005373
+    },
+    {
+      "index": 139,
+      "stratum": "code",
+      "source_cluster": "numpy-py-v2.1.3-006",
+      "mean_kld": 0.00826377459383913,
+      "median_kld": 0.000435487762043385,
+      "max_kld": 0.4405560623144993,
+      "mean_jsd_bits": 0.0029618843420814436,
+      "top1_agreement": 0.9731314118221788
+    },
+    {
+      "index": 140,
+      "stratum": "multilingual",
+      "source_cluster": "wiki4-pt-000",
+      "mean_kld": 0.0060615151756832734,
+      "median_kld": 0.0024242962754215114,
+      "max_kld": 0.2885267953388393,
+      "mean_jsd_bits": 0.002171116713112212,
+      "top1_agreement": 0.9662921348314607
+    },
+    {
+      "index": 141,
+      "stratum": "scientific",
+      "source_cluster": "arxiv-cs-CR",
+      "mean_kld": 0.0037781495356682725,
+      "median_kld": 0.0027350636955105756,
+      "max_kld": 0.12380053205362174,
+      "mean_jsd_bits": 0.0013524516952820944,
+      "top1_agreement": 0.9662921348314607
+    },
+    {
+      "index": 142,
+      "stratum": "code",
+      "source_cluster": "cpython-c-v3.12.8-006",
+      "mean_kld": 0.008633040457199447,
+      "median_kld": 0.0011171249251162862,
+      "max_kld": 0.5803431169911164,
+      "mean_jsd_bits": 0.0030332175782152825,
+      "top1_agreement": 0.9741084513922814
+    },
+    {
+      "index": 143,
+      "stratum": "literary",
+      "source_cluster": "pg1524",
+      "mean_kld": 0.011014096345286224,
+      "median_kld": 0.00022481601982704547,
+      "max_kld": 2.7084973462420976,
+      "mean_jsd_bits": 0.0037634722372815836,
+      "top1_agreement": 0.9804592085979482
+    },
+    {
+      "index": 144,
+      "stratum": "encyclopedic",
+      "source_cluster": "wiki4-en-000",
+      "mean_kld": 0.006288803413377742,
+      "median_kld": 0.0025581558364251578,
+      "max_kld": 0.17196477451216197,
+      "mean_jsd_bits": 0.0022467940780622627,
+      "top1_agreement": 0.9653150952613581
+    },
+    {
+      "index": 145,
+      "stratum": "multilingual",
+      "source_cluster": "wiki4-es-002",
+      "mean_kld": 0.003978549803092744,
+      "median_kld": 0.0022356309527822305,
+      "max_kld": 0.26513120113787636,
+      "mean_jsd_bits": 0.0014273890713272402,
+      "top1_agreement": 0.9648265754763068
+    },
+    {
+      "index": 146,
+      "stratum": "code",
+      "source_cluster": "numpy-py-v2.1.3-001",
+      "mean_kld": 0.002694559971872406,
+      "median_kld": 0.00014399941487397427,
+      "max_kld": 0.2178003412700491,
+      "mean_jsd_bits": 0.0009602251095558223,
+      "top1_agreement": 0.9907181240840254
+    },
+    {
+      "index": 147,
+      "stratum": "scientific",
+      "source_cluster": "arxiv-stat-AP",
+      "mean_kld": 0.0036427953238310027,
+      "median_kld": 0.002351751957462511,
+      "max_kld": 0.3560096847646079,
+      "mean_jsd_bits": 0.0013039469226875605,
+      "top1_agreement": 0.9658036150464093
+    },
+    {
+      "index": 148,
+      "stratum": "encyclopedic",
+      "source_cluster": "wiki4-en-019",
+      "mean_kld": 0.005613662649986134,
+      "median_kld": 0.0026887873576129095,
+      "max_kld": 0.2450123448688828,
+      "mean_jsd_bits": 0.0020091676975244363,
+      "top1_agreement": 0.9633610161211529
+    },
+    {
+      "index": 149,
+      "stratum": "multilingual",
+      "source_cluster": "wiki4-fr-004",
+      "mean_kld": 0.0025687475360400185,
+      "median_kld": 0.0014899879606673494,
+      "max_kld": 0.25878361830029917,
+      "mean_jsd_bits": 0.0009198017808372422,
+      "top1_agreement": 0.9741084513922814
+    },
+    {
+      "index": 150,
+      "stratum": "scientific",
+      "source_cluster": "arxiv-physics-geo-ph",
+      "mean_kld": 0.004117358831991644,
+      "median_kld": 0.002601537639975504,
+      "max_kld": 0.13739162990077602,
+      "mean_jsd_bits": 0.0014789458676483908,
+      "top1_agreement": 0.9545676599902296
+    },
+    {
+      "index": 151,
+      "stratum": "scientific",
+      "source_cluster": "arxiv-physics-flu-dyn",
+      "mean_kld": 0.0036113989422926203,
+      "median_kld": 0.0025771203590920777,
+      "max_kld": 0.18861306561825586,
+      "mean_jsd_bits": 0.0012983811823190996,
+      "top1_agreement": 0.966780654616512
+    },
+    {
+      "index": 152,
+      "stratum": "code",
+      "source_cluster": "cpython-c-v3.12.8-003",
+      "mean_kld": 0.003038506508214767,
+      "median_kld": 0.00015835654518792097,
+      "max_kld": 0.14888298100703423,
+      "mean_jsd_bits": 0.0010874454877008682,
+      "top1_agreement": 0.9853444064484611
+    },
+    {
+      "index": 153,
+      "stratum": "scientific",
+      "source_cluster": "arxiv-gr-qc",
+      "mean_kld": 0.004356299738572099,
+      "median_kld": 0.0025463641507599277,
+      "max_kld": 0.1133722276520075,
+      "mean_jsd_bits": 0.0015680071476080512,
+      "top1_agreement": 0.9653150952613581
+    },
+    {
+      "index": 154,
+      "stratum": "scientific",
+      "source_cluster": "arxiv-q-bio-PE",
+      "mean_kld": 0.003981325267579039,
+      "median_kld": 0.0026013906876301007,
+      "max_kld": 0.4232322942116298,
+      "mean_jsd_bits": 0.0014130857157620123,
+      "top1_agreement": 0.9604298974108452
+    },
+    {
+      "index": 155,
+      "stratum": "code",
+      "source_cluster": "numpy-py-v2.1.3-003",
+      "mean_kld": 0.007559829482924327,
+      "median_kld": 0.00042753284645868916,
+      "max_kld": 0.8065591895110735,
+      "mean_jsd_bits": 0.0027117388527098762,
+      "top1_agreement": 0.9765510503175379
+    },
+    {
+      "index": 156,
+      "stratum": "literary",
+      "source_cluster": "pg2591",
+      "mean_kld": 0.0221108276643045,
+      "median_kld": 0.005736514691307093,
+      "max_kld": 1.1555403797683539,
+      "mean_jsd_bits": 0.007676270126850742,
+      "top1_agreement": 0.9511480214948705
+    },
+    {
+      "index": 157,
+      "stratum": "encyclopedic",
+      "source_cluster": "wiki4-en-001",
+      "mean_kld": 0.0034171132486430817,
+      "median_kld": 0.0007956054299285142,
+      "max_kld": 0.1640057752162818,
+      "mean_jsd_bits": 0.001223429131332739,
+      "top1_agreement": 0.9804592085979482
+    },
+    {
+      "index": 158,
+      "stratum": "literary",
+      "source_cluster": "pg205",
+      "mean_kld": 0.010084722743461323,
+      "median_kld": 0.004459278631387065,
+      "max_kld": 0.6735780023145708,
+      "mean_jsd_bits": 0.0035799644935773033,
+      "top1_agreement": 0.9531021006350757
+    },
+    {
+      "index": 159,
+      "stratum": "encyclopedic",
+      "source_cluster": "wiki4-en-006",
+      "mean_kld": 0.0033453899168676264,
+      "median_kld": 0.0022671604127157963,
+      "max_kld": 0.07165185721123635,
+      "mean_jsd_bits": 0.0012005604964983858,
+      "top1_agreement": 0.9794821690278456
+    }
+  ],
+  "comparator": {
+    "vocab_chunk": 24832,
+    "device": "cuda",
+    "accumulation": "float64",
+    "two_pass": true
+  }
+}

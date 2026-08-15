@@ -28,19 +28,23 @@ of BF16, 1.19 GiB freed at FP8, which is nearly double the 0.63 GiB gap. exllama
 `Linear`, not `Embedding`, and the runtime has no quantized-embedding path, so this is a loader
 feature. It is the highest-value remaining item in this whole plan.
 
-## P0 — the frozen, source-disjoint qualification
+## P0 — DONE: the frozen qualification ran, and the ranking survived
 
-The v3 suite cannot serve as a post-selection test: all 27 qualification clusters also appear
-in the analysis partition that guided every recipe choice. A v4 suite is being built from new
-documents (six Wikipedia languages, new Gutenberg works, arXiv categories and code sources not
-used in v3), with whole-cluster partitioning and `--exclude-suite` refusing every v3 document
-and context hash.
+Built and run once on **160 contexts from 100 documents with zero intersection with the
+development suite** (token hashes 0/160, document names 0/100, content hashes 0/100), whole
+cluster partitioning, `cluster_partition.overlap` empty. Full write-up in
+[docs/31](31-frozen-qualification.md).
 
-**Then:** capture K5/K6-online-K6, K5-overlay, hydrated and official FP8 on it, replay **once**,
-publish whatever it says. No recipe changes may follow from it, or it stops being a test.
+On the 42-context qualification partition: hydrated **0.003029**, K5/K6 0.003395, context
+edition 0.003900, official FP8 0.005720 — **42/42 paired contexts for all three builds**, and
+the relative advantage over FP8 is *larger* on unseen sources (47/41/32 %) than on the
+development suite (44/38/26 %).
 
-**Acceptance:** zero intersection with v3 on document sha256 and on context token hashes;
-`cluster_partition.overlap` empty; one published result per candidate with paired intervals.
+One caveat that must travel with every number: absolute KLD is ~2.4x lower on v4 than v3 for
+every candidate including FP8, so magnitudes are comparable only within a suite.
+
+Remaining discipline: development uses the v4 **analysis** partition only, so the qualification
+partition stays clean for the next frozen run.
 
 ## P1 — RESOLVED: FP8 prefill measured, rejected on fidelity
 

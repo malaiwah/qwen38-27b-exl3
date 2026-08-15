@@ -144,6 +144,28 @@ not in question.
 suite's source clusters are shared with the partition that guided selection. A
 source-disjoint qualification suite is being built to test the frozen recipe once.
 
+## Post-selection qualification
+
+The numbers above come from the suite that guided recipe selection. This is the test that did
+not: **160 new contexts from 100 documents with zero intersection with the development suite**
+(context token hashes 0/160, document names 0/100, content hashes 0/100), partitioned by whole
+source cluster, run **once**, with no recipe changed afterwards.
+
+| candidate | mean KLD | 95 % CI | top-1 | paired vs FP8 |
+|---|---:|---|---:|---|
+| [hydrated](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated) | **0.003029** | [0.002572, 0.003536] | 97.68 % | −0.002691, **42/42** |
+| [K5/K6 online K6](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6) | 0.003395 | [0.002925, 0.003910] | 97.58 % | −0.002325, **42/42** |
+| [context edition](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6-context) | 0.003900 | [0.003275, 0.004588] | 97.43 % | −0.001820, **42/42** |
+| `Qwen/Qwen3.8-27B-FP8` | 0.005720 | [0.004849, 0.006680] | 96.82 % | — |
+
+The ranking is preserved and the advantage over FP8 is **larger** on unseen sources (47 / 41 /
+32 % lower) than on the development suite (44 / 38 / 26 %), which is the opposite of what
+selection bias would produce.
+
+**Absolute magnitudes are suite-specific:** every candidate, FP8 included, measures ~2.4x lower
+on this corpus than on the development one. Quote the suite with the number.
+Details in [docs/31](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/docs/31-frozen-qualification.md).
+
 ## Context capacity
 
 This build carries the same resident weights as the sibling at attention K6 (20.31 vs
