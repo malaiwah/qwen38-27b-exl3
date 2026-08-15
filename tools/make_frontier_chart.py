@@ -21,9 +21,9 @@ FP8_KLD = 0.013126
 
 # label, max context with MTP-3 on a 32 GB card, mean KLD, resident GiB, key, verified needle
 POINTS = [
-    ("K5/K6 hydrated\nattention K6 offline", 180224, 0.007406, 20.31, "hyd", None),
-    ("K5/K6 online K6\n(flexible)", 180224, 0.008157, 20.32, "k6", None),
-    ("context edition\nattention K5 offline", 196608, 0.009673, 19.56, "ctx", 196857),
+    ("K5/K6 hydrated, attention K6 offline", 180224, 0.007406, 20.31, "hyd", None),
+    ("K5/K6 online K6 (flexible)", 180224, 0.008157, 20.32, "k6", None),
+    ("context edition + int8 embeddings", 262144, 0.009738, 18.13, "ctx", 227334),
     ("K5/K6 online K5", 196608, 0.012135, 19.82, "k5", None),
     ("K4 build", 262144, 0.030736, 17.89, "k4", None),
 ]
@@ -71,12 +71,13 @@ def draw(theme: str) -> None:
     ax.set_xticklabels(["64k", "128k", "192k", "262k"])
     ax.set_yticks([0.006, 0.008, 0.01, 0.013126, 0.02, 0.03, 0.04])
     ax.set_yticklabels(["0.006", "0.008", "0.010", "0.0131", "0.020", "0.030", "0.040"])
-    ax.set_xlabel("context served on a 32 GB card with MTP-3 and vision enabled, tokens",
+    ax.set_xlabel("context served on a 32 GB card, vision enabled, tokens "
+                  "(MTP-3 on, except the starred point which needs MTP off)",
                   color=c["fg"], fontsize=10)
     ax.set_ylabel("mean KL divergence from BF16 (log, lower is better)", color=c["fg"],
                   fontsize=10)
-    ax.set_title("Pick by constraint: every build beats official FP8 on divergence, only one "
-                 "reaches native context", color=c["fg"], fontsize=11.5, pad=12)
+    ax.set_title("Native 262,144 context at 26 % below official FP8 divergence, on a 32 GB card",
+                 color=c["fg"], fontsize=11.5, pad=12)
     leg = ax.legend(loc="lower left", fontsize=8.5, framealpha=0.92, labelspacing=0.7)
     leg.get_frame().set_facecolor(c["bg"])
     leg.get_frame().set_edgecolor(c["grid"])
@@ -88,7 +89,8 @@ def draw(theme: str) -> None:
              color=c["muted"], fontsize=7.5)
     fig.text(0.005, 0.012,
              "The star marks the only build whose long context is verified by generation: "
-             "9/9 exact needle retrievals at up to 196,857 tokens, depths 0.1/0.5/0.9.",
+             "exact needle retrieval at three depths from 227,334-token prompts, serving at "
+             "--max-model-len 262144.",
              color=c["muted"], fontsize=7.5)
     fig.tight_layout(rect=(0, 0.05, 1, 1))
     for ext in ("svg", "png"):
