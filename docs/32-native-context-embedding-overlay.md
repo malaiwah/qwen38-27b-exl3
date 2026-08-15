@@ -63,12 +63,38 @@ and the vision tower cannot be quantized in this runtime at all. So the choice o
 is native context **or** speculative decoding at 196,608 — stated on the card rather than
 papered over.
 
+## int4 for the draft table: free, but it does not unlock MTP at native context
+
+Four bits per element only works with fine-grained scales, and even then it is far coarser:
+group-128 int4 carries **13.2x the relative error of per-row int8** (12.6 % against 0.95 %,
+measured on the real distribution). Too much for the input path, where every token pays it —
+but the MTP draft head is a different matter, because its output is *verified* before it is
+accepted, so a coarser draft costs acceptance rate rather than correctness.
+
+Measured with `VLLM_EXL3_MTP_EMBED_BITS=4` on the same server, draft depth 3:
+
+| draft table | resident | TG C1 | TG C4 | drafted | accepted | acceptance |
+|---|---:|---:|---:|---:|---:|---:|
+| int8 | 1.272 GB | 101.5 | 274.4 | 1,434 | 804 | 56.1 % |
+| **int4 group-128** | **0.656 GB** | **104.0** | **344.5** | 1,428 | 809 | **56.7 %** |
+
+**Acceptance is unchanged within noise and throughput is equal or better**, so the draft table
+can be int4 for free — 0.62 GB of resident memory back.
+
+**It still does not make MTP fit at native context**, and the reason is informative: available
+KV stayed at 8.35-8.36 GiB whether the draft table was int8 or int4, against 8.83 GiB needed at
+depth 1 and 9.13 at depth 3. Narrowing the draft's *weights* by 0.62 GB moved the KV budget by
+nothing measurable. **MTP's cost at native context is not its weights** — it is the draft's own
+KV plus its share of the profiled activation peak. So the choice on a 32 GB card remains native
+context **or** speculative decoding at 196,608, and the lever that would change that is not the
+embedding table.
+
 ## Loose ends this created
 
 - The embedding overlay and both model patches should go upstream together; the model change is
   independently useful because it makes the embedding table reachable by *any* backend.
-- Only int8 is implemented. A 4-bit table with per-row scales would free another 0.6 GiB and
-  might make MTP-1 fit at native context; the error would need measuring, and a gather of
-  packed nibbles needs a small kernel.
+- int4 is implemented for the draft table and measured free; the main table stays int8
+  because 12.6 % relative error on every input token is not a trade worth making. A 6-bit
+  option would sit between them if anyone needs 0.3 GB more.
 - The draft head's duplicate embedding table is arguably a bug worth reporting on its own: it
   doubles the cost of MTP for no benefit when the vocabulary is shared.

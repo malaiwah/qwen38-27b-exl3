@@ -1876,7 +1876,7 @@ class Exl3Config(QuantizationConfig):
             self._require_eager_moe_experts(prefix)
             return Exl3MoEMethod(self, layer.moe_config)
         if layer.__class__.__name__ == "VocabParallelEmbedding":
-            if method := _get_embedding_overlay_method():
+            if method := _get_embedding_overlay_method(prefix):
                 return method
             return None
         return None
@@ -2161,9 +2161,10 @@ class Exl3Config(QuantizationConfig):
 
 
 _EMBED_OVERLAY_BITS_ENV = "VLLM_EXL3_EMBED_BITS"
+_MTP_EMBED_OVERLAY_BITS_ENV = "VLLM_EXL3_MTP_EMBED_BITS"
 
 
-def _get_embedding_overlay_method() -> QuantizeMethodBase | None:
+def _get_embedding_overlay_method(prefix: str = "") -> QuantizeMethodBase | None:
     """Quantize the input embedding table, off by default.
 
     On Qwen3.8-27B the table is 248,320 x 5,120 in BF16 = 2.543 GB resident, second only to
@@ -2179,19 +2180,34 @@ def _get_embedding_overlay_method() -> QuantizeMethodBase | None:
 
     ``VLLM_EXL3_EMBED_BITS=8`` enables it. The head is untied on this architecture, so this
     touches inputs only.
+
+    The MTP draft head keeps a *second* full table, and its width is set separately by
+    ``VLLM_EXL3_MTP_EMBED_BITS`` (default: whatever the main table uses). Four bits are viable
+    there and not in the main table: group-128 int4 carries 13x the relative error of per-row
+    int8 (12.6 % against 0.95 %, measured), which is too much for every input token but
+    tolerable for a draft whose output is verified before it is accepted.
     """
+    is_draft = "mtp" in prefix.lower()
     raw = os.environ.get(_EMBED_OVERLAY_BITS_ENV)
+    if is_draft:
+        raw = os.environ.get(_MTP_EMBED_OVERLAY_BITS_ENV, raw)
     if raw is None or not raw.strip():
         return None
     try:
         bits = int(raw)
     except ValueError:
-        raise ValueError(f"{_EMBED_OVERLAY_BITS_ENV} must be 8 or 16, got {raw!r}") from None
+        raise ValueError(
+            f"{_EMBED_OVERLAY_BITS_ENV} must be 4, 8 or 16, got {raw!r}"
+        ) from None
     if bits == 16:
         return None
-    if bits != 8:
-        raise ValueError(f"{_EMBED_OVERLAY_BITS_ENV} supports 8 (int8) or 16 (off), got {bits}")
-    return Exl3Int8EmbeddingMethod()
+    if bits == 8:
+        return Exl3Int8EmbeddingMethod()
+    if bits == 4:
+        return Exl3Int4EmbeddingMethod()
+    raise ValueError(
+        f"{_EMBED_OVERLAY_BITS_ENV} supports 4, 8 (quantized) or 16 (off), got {bits}"
+    )
 
 
 class Exl3Int8EmbeddingMethod(QuantizeMethodBase):
@@ -2258,6 +2274,104 @@ class Exl3Int8EmbeddingMethod(QuantizeMethodBase):
         scales = layer.weight_scale.index_select(0, input_.flatten()).unsqueeze(-1)
         out = rows.to(layer.exl3_embed_out_dtype) * scales
         return out.view(*input_.shape, layer.weight_int8.shape[1])
+
+
+class Exl3Int4EmbeddingMethod(QuantizeMethodBase):
+    """Group-wise symmetric int4 storage for the input embedding table.
+
+    int8 per row already frees 1.18 GiB and unlocks native context on a 32 GB card, but MTP
+    still does not fit there: at 262,144 the engine needs 8.83 GiB of KV with one draft token
+    against 8.37 available, and the draft head keeps a second full table. int4 halves both
+    tables again.
+
+    Four bits per element only works with fine-grained scales - one scale per row would leave
+    16 levels for the whole 5,120-wide vector - so this uses one scale per 128-element group,
+    which is the standard weight-quantization granularity and costs 40 fp16 scales per row,
+    about 3 % overhead. Storage per table: 0.636 GB payload + 0.020 GB scales against 2.543 GB
+    of BF16.
+
+    Nibbles are packed as (lo, hi) = (element 2i, element 2i+1) with a +8 bias so the byte is
+    unsigned; unpacking is two masks and an interleave, which costs nothing next to the
+    gather it replaces.
+    """
+
+    GROUP = 128
+
+    def create_weights(
+        self,
+        layer: torch.nn.Module,
+        input_size_per_partition: int,
+        output_partition_sizes: list[int],
+        input_size: int,
+        output_size: int,
+        params_dtype: torch.dtype,
+        **extra_weight_attrs,
+    ) -> None:
+        weight = torch.nn.Parameter(
+            torch.empty(
+                sum(output_partition_sizes),
+                input_size_per_partition,
+                dtype=params_dtype,
+            ),
+            requires_grad=False,
+        )
+        set_weight_attrs(weight, {"input_dim": 1, "output_dim": 0})
+        layer.register_parameter("weight", weight)
+        set_weight_attrs(weight, extra_weight_attrs)
+
+    def process_weights_after_loading(self, layer: torch.nn.Module) -> None:
+        weight = layer.weight.data
+        if weight.numel() == 0 or getattr(layer, "exl3_embed_int4", False):
+            return
+        rows, hidden = weight.shape
+        if hidden % (self.GROUP * 2):
+            raise ValueError(
+                f"int4 embedding overlay needs a hidden size divisible by {self.GROUP * 2}, "
+                f"got {hidden}"
+            )
+        out_dtype = weight.dtype
+        grouped = weight.float().view(rows, hidden // self.GROUP, self.GROUP)
+        amax = grouped.abs().amax(dim=2, keepdim=True).clamp_(min=1e-8)
+        scale = amax / 7.0
+        q = torch.round(grouped / scale).clamp_(-8, 7).to(torch.int16).view(rows, hidden)
+        nib = (q + 8).to(torch.uint8)
+        packed = (nib[:, 0::2] | (nib[:, 1::2] << 4)).contiguous()
+        layer.register_buffer("weight_int4", packed)
+        layer.register_buffer(
+            "weight_group_scale", scale.squeeze(2).to(out_dtype).contiguous()
+        )
+        layer.exl3_embed_out_dtype = out_dtype
+        layer.exl3_embed_hidden = hidden
+        layer.exl3_embed_int4 = True
+        layer.weight = torch.nn.Parameter(
+            torch.empty(0, dtype=out_dtype, device=weight.device), requires_grad=False
+        )
+        del weight, grouped, q, nib
+        torch.cuda.empty_cache()
+        logger.info(
+            "EXL3 int4 embedding overlay: %d x %d rows narrowed, %.3f GB -> %.3f GB "
+            "(group %d)",
+            rows,
+            hidden,
+            rows * hidden * 2 / 1e9,
+            (packed.numel() + layer.weight_group_scale.numel() * 2) / 1e9,
+            self.GROUP,
+        )
+
+    def apply(self, layer: torch.nn.Module, *args, **kwargs) -> torch.Tensor:
+        raise NotImplementedError("the embedding overlay implements embedding(), not apply()")
+
+    def embedding(self, layer: torch.nn.Module, input_: torch.Tensor) -> torch.Tensor:
+        flat = input_.flatten()
+        packed = layer.weight_int4.index_select(0, flat)
+        lo = (packed & 0x0F).to(torch.int16) - 8
+        hi = (packed >> 4).to(torch.int16) - 8
+        interleaved = torch.stack((lo, hi), dim=2).view(flat.shape[0], layer.exl3_embed_hidden)
+        scales = layer.weight_group_scale.index_select(0, flat)
+        out = interleaved.to(layer.exl3_embed_out_dtype).view(
+            flat.shape[0], -1, Exl3Int4EmbeddingMethod.GROUP
+        ) * scales.unsqueeze(2)
+        return out.view(*input_.shape, layer.exl3_embed_hidden)
 
 
 class Exl3Parameter(BasevLLMParameter):

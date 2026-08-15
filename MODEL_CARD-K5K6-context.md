@@ -182,12 +182,18 @@ quantization config, so the layer's own quant hook is never consulted. Passing
 because the layer falls back to `UnquantizedEmbeddingMethod`. Both patched files ship in the
 [companion repository](https://github.com/malaiwah/qwen38-27b-exl3/tree/main/tools).
 
-**MTP and native context still do not coexist**, and the gap is now small enough to name: at
-262,144 the engine needs 8.83 GiB of KV with a single draft token and 9.13 GiB with three,
-against **8.37 GiB available** — short by 0.46 and 0.77 GiB. Narrowing the draft head's own
-embedding table (it builds a second full copy, which is most of what MTP costs in resident
-memory) was necessary to get that close. Choose: native context, or speculative decoding at
-196,608.
+**The draft head's table can go to int4 for free.** `VLLM_EXL3_MTP_EMBED_BITS=4` narrows the
+second table to 0.656 GB, and because a draft is verified before it is accepted, the cost lands
+on acceptance rather than correctness — measured at depth 3, acceptance is **56.7 % against
+56.1 %** for int8 with throughput equal or better. The main table stays int8: group-128 int4
+carries 13.2x the relative error, which is not a trade worth making on every input token.
+
+**MTP and native context still do not coexist.** At 262,144 the engine needs 8.83 GiB of KV
+with one draft token and 9.13 with three, against **8.36 GiB available** — and that number did
+not move when the draft table went from int8 to int4. So MTP's cost at native context is **not
+its weights**; it is the draft's own KV plus its share of the profiled activation peak. On a
+32 GB card the choice is native context **or** speculative decoding at 196,608, and the
+embedding table is not the lever that changes it.
 
 ## Memory: what fits on a 32 GB card
 

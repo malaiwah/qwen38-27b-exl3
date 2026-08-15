@@ -30,9 +30,13 @@ architecture, and the loader excludes vision by design anyway.
 because `VocabParallelEmbedding` is constructed without a quant config. Write-up in
 [docs/32](32-native-context-embedding-overlay.md).
 
-Remaining on this axis: MTP and native context still do not coexist (short 0.46 GiB at depth 1,
-0.77 at depth 3). A 4-bit embedding table with per-row scales would free another 0.6 GiB and is
-the only lever left that does not cost real fidelity.
+Remaining on this axis, now with the lever eliminated: MTP and native context still do not
+coexist (8.83 GiB needed at depth 1 against 8.36 available). int4 for the draft table is
+implemented and **free** — acceptance 56.7 % against 56.1 %, throughput equal or better, 0.62 GB
+saved — but the KV budget did not move, so **MTP's cost at native context is not its weights**.
+It is the draft's own KV plus its share of the profiled peak. Anyone attacking this next should
+look at the draft's KV allocation and the multimodal profiling peak, not at more weight
+compression.
 
 ## P0 — DONE: the frozen qualification ran, and the ranking survived
 
