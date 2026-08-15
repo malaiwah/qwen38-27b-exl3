@@ -136,7 +136,7 @@ index 4c59860..8e48204 100644
      m.def("exl3_gemm", &exl3_gemm, "exl3_gemm");
      m.def("exl3_gemv", &exl3_gemv, "exl3_gemv");
 diff --git a/exllamav3/exllamav3_ext/quant/reconstruct.cu b/exllamav3/exllamav3_ext/quant/reconstruct.cu
-index 4ed2c16..49e54b3 100644
+index 4ed2c16..b3e0451 100644
 --- a/exllamav3/exllamav3_ext/quant/reconstruct.cu
 +++ b/exllamav3/exllamav3_ext/quant/reconstruct.cu
 @@ -1,4 +1,5 @@
@@ -145,7 +145,7 @@ index 4ed2c16..49e54b3 100644
  #include "reconstruct.cuh"
  #include <c10/cuda/CUDAGuard.h>
  #include <ATen/cuda/CUDAContext.h>
-@@ -92,6 +93,169 @@ constexpr auto reconstruct_kernel_instances = std::array
+@@ -92,6 +93,189 @@ constexpr auto reconstruct_kernel_instances = std::array
  };
  #undef __
  
@@ -171,7 +171,8 @@ index 4ed2c16..49e54b3 100644
 +    int packed_blocks_n,
 +    int packed_n_offset,
 +    int k_total,
-+    float inv_scale
++    float inv_scale,
++    const float* __restrict__ g_inv_scale
 +)
 +{
 +    constexpr int packed_size = 256 * K / 16;
@@ -229,17 +230,23 @@ index 4ed2c16..49e54b3 100644
 +    // row (n + n_local) of the (N, K) buffer, and gathers the 16 K-values of that column
 +    // from shared memory. Lanes read consecutive columns, so each of the 16 gathers is a
 +    // contiguous 64-byte shared read per warp.
++    //
++    // The scale is per output channel when g_inv_scale is non-null. A single per-tensor
++    // scale measured 0.0139 mean KLD worse than the fp16 path on a 27B model - E4M3 has
++    // three mantissa bits, so one scale for a whole matrix wastes most of them on the
++    // channels whose range is small. One scale per column costs one extra load per thread.
 +    if (t < 128)
 +    {
 +        const half* s_tile = reinterpret_cast<const half*>(tile);
 +        __align__(16) __nv_fp8_storage_t out_bytes[16];
++        size_t out_row = (size_t) (n * 16 + t);
++        float scale = g_inv_scale ? g_inv_scale[out_row] : inv_scale;
 +        #pragma unroll
 +        for (int r = 0; r < 16; ++r)
 +        {
-+            float v = __half2float(s_tile[r * 128 + t]) * inv_scale;
++            float v = __half2float(s_tile[r * 128 + t]) * scale;
 +            out_bytes[r] = __nv_cvt_float_to_fp8(v, __NV_SATFINITE, __NV_E4M3);
 +        }
-+        size_t out_row = (size_t) (n * 16 + t);
 +        int4* dst = (int4*) (g_unpacked + out_row * (size_t) k_total + (size_t) k * 16);
 +        *dst = *reinterpret_cast<const int4*>(out_bytes);
 +    }
@@ -265,7 +272,8 @@ index 4ed2c16..49e54b3 100644
 +    bool mcg,
 +    bool mul1,
 +    int64_t n_offset,
-+    double inv_scale
++    double inv_scale,
++    const c10::optional<at::Tensor>& inv_scale_per_column
 +)
 +{
 +    const at::cuda::OptionalCUDAGuard device_guard(unpacked_fp8.device());
@@ -296,6 +304,17 @@ index 4ed2c16..49e54b3 100644
 +    dim3 blockDim(256);
 +    dim3 gridDim(cols / 8, rows);
 +
++    const float* per_column = nullptr;
++    if (inv_scale_per_column.has_value())
++    {
++        const at::Tensor& sc = inv_scale_per_column.value();
++        TORCH_CHECK_DTYPE(sc, kFloat);
++        TORCH_CHECK(sc.is_contiguous(), "inv_scale_per_column must be contiguous");
++        TORCH_CHECK(sc.numel() == unpacked_fp8.size(0),
++            "inv_scale_per_column must hold one scale per output channel of the slice");
++        per_column = (const float*) sc.data_ptr();
++    }
++
 +    int cbi = K - 1;
 +    if (mcg) cbi += 8;
 +    else if (mul1) cbi += 16;
@@ -307,7 +326,8 @@ index 4ed2c16..49e54b3 100644
 +        packed_cols,
 +        packed_n_offset,
 +        k_total,
-+        (float) inv_scale
++        (float) inv_scale,
++        per_column
 +    );
 +    cuda_check(cudaPeekAtLastError());
 +}
@@ -316,10 +336,10 @@ index 4ed2c16..49e54b3 100644
  Reconstruct encoded+packed tensor
  */
 diff --git a/exllamav3/exllamav3_ext/quant/reconstruct.cuh b/exllamav3/exllamav3_ext/quant/reconstruct.cuh
-index 6ce0f55..0c31cab 100644
+index 6ce0f55..5d8e174 100644
 --- a/exllamav3/exllamav3_ext/quant/reconstruct.cuh
 +++ b/exllamav3/exllamav3_ext/quant/reconstruct.cuh
-@@ -21,6 +21,23 @@ void reconstruct_slice
+@@ -21,6 +21,24 @@ void reconstruct_slice
      int64_t n_offset
  );
  
@@ -337,9 +357,37 @@ index 6ce0f55..0c31cab 100644
 +    bool mcg,
 +    bool mul1,
 +    int64_t n_offset,
-+    double inv_scale
++    double inv_scale,
++    const c10::optional<at::Tensor>& inv_scale_per_column
 +);
 +
  void reconstruct_had_slice
  (
      at::Tensor unpacked,
+diff --git a/exllamav3/modules/linear.py b/exllamav3/modules/linear.py
+index 6d806ef..50d908b 100644
+--- a/exllamav3/modules/linear.py
++++ b/exllamav3/modules/linear.py
+@@ -456,10 +456,19 @@ class Linear(Module):
+ 
+     @override
+     def get_tensors(self):
+-        if self.device:
+-            return self.inner.get_tensors(self.key)
+-        else:
++        if not self.device:
++            return {}
++        if self.inner is None:
++            # convert_exl3 destroys the FP16 inner before quantizing and the quantizer
++            # rebuilds it; a module that reaches here with device set and no inner was
++            # consumed and never rebuilt. The side-model path collects tensors from every
++            # submodule, not just the ones it quantized, so this used to be an
++            # AttributeError with no indication of which module was at fault. Name it and
++            # let the caller's topology check decide whether the omission is fatal.
++            print(f" !! {self.key}: inner layer was consumed without being rebuilt, "
++                  f"contributing no tensors", flush = True)
+             return {}
++        return self.inner.get_tensors(self.key)
+ 
+ 
+     def convert_exl3(

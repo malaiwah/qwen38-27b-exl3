@@ -4,38 +4,29 @@ State at this point: three published builds, all headline numbers recomputable f
 dataset, two independent reviews and one hardware test addressed. What follows is ranked by
 what each item would *prove*, not by how hard it is.
 
-## P0 — a build that reaches native context on a 32 GB card while beating FP8
+## P0 — DONE, and the goal it chased is now proven unreachable
 
-This is the one genuinely new capability within reach, and the arithmetic says it is one
-conversion away.
+Built and published as
+[`malaiwah/Qwen3.8-27B-EXL3-K5K6-context`](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6-context):
+attention serialized at K5, 19.31 GiB resident, **mean KLD 0.009673 — 26 % below official FP8,
+135/136 contexts** — and long context verified by generation, **9/9 exact needle retrievals up
+to 196,857 tokens**. Full write-up in [docs/30](30-iteration-4-context-edition.md).
 
-The RTX 5090 test showed K5/K6 short of native 262,144 by 0.83 GiB with MTP-3. Two levers
-close it, and only one needs new code:
+The native-262,144 goal it was built for is **not reachable** and the gap is now exact rather
+than modelled: 8.18 GiB of KV needed against **7.55 GiB available** on a 32 GB card with
+multimodal profiling on. Smaller prefill chunks do not help (1024 and 512 both leave 7.54-7.55).
+MTP's KV cost was measured for the first time — +0.65 GiB for the draft layer, only +0.30 more
+from depth 1 to depth 3 — so speculative decoding is nearly free once you pay for it at all,
+but it still costs 33k tokens of context.
 
-| configuration | resident weights | KV available at util 0.97, seqs 4 | KV needed at 262,144 | verdict |
-|---|---:|---:|---:|---|
-| K5 attention, MTP-3 | 19.40-19.82 GiB | 8.30 | 9.13 | short 0.83 |
-| K5 attention, **MTP off** | 19.40-19.82 GiB | 8.30 | **8.18** | marginal: fits on their footprint, 0.30 short on mine |
-| K5 attention, MTP off, **vision tower K6** | ~18.8-19.3 GiB | **8.41-8.83** | 8.18 | **fits** |
+The vision-tower lever died on measurement: `-vb 6` saves 0.58 GB but the converter splits
+upstream's fused `visual.blocks.N.attn.qkv` into q/k/v, so the checkpoint stops matching the
+architecture, and the loader excludes vision by design anyway.
 
-Turning MTP off is free to try (it is a launch flag) and costs 2x decode throughput. The vision
-tower is 0.921 GB of BF16 that the converter can already quantize with `-vb 6`, saving
-~0.58 GB, and nothing in the recipe justifies BF16 there beyond "untested".
-
-**Build it:** `-vb 6` plus attention serialized at K5 (`EXL3_BITS_FIXED` attention=5), MLP
-unchanged. Expected: ~18.8 GiB resident, ~19.9 GB download, mean KLD near 0.0125 — still below
-official FP8's 0.013126 — and native 262,144 on a 32 GB card.
-
-**Acceptance:** starts at `--max-model-len 262144` inside a 30.44 GiB budget with `--max-num-seqs 4`;
-a 262,144-token prefill plus generation completes; needle retrieval passes at 262k; a
-3,264-vision-token image still answers correctly; mean KLD on the v4 suite below FP8's.
-
-**Why it matters:** it would make the family's fidelity leader *and* its capacity leader the
-same artifact, which is what the K4 build currently wins by default.
-
-Also chase, in the same pass: **our K5 footprint is 19.82 GiB and theirs is 19.40** on the same
-checkpoint and overlay width. A 0.42 GiB unexplained difference is a real finding either way -
-either their flags free memory we are wasting, or one of us is measuring a different thing.
+**The single blocking item for native context on 32 GB is now the embedding table**: 2.543 GB
+of BF16, 1.19 GiB freed at FP8, which is nearly double the 0.63 GiB gap. exllamav3 quantizes
+`Linear`, not `Embedding`, and the runtime has no quantized-embedding path, so this is a loader
+feature. It is the highest-value remaining item in this whole plan.
 
 ## P0 — the frozen, source-disjoint qualification
 
@@ -51,24 +42,20 @@ publish whatever it says. No recipe changes may follow from it, or it stops bein
 **Acceptance:** zero intersection with v3 on document sha256 and on context token hashes;
 `cluster_partition.overlap` empty; one published result per candidate with paired intervals.
 
-## P1 — the FP8 prefill path, end to end and upstreamed
+## P1 — RESOLVED: FP8 prefill measured, rejected on fidelity
 
-The kernel exists and is verified: `reconstruct_fp8_slice` emits E4M3 transposed straight from
-the shared-memory tile, **bit-identical to a fp32 reference across 89 M elements on three
-shapes**, and makes the prefill primitive **1.76-1.98x** faster. The dispatch is already wired
-behind `VLLM_EXL3_PREFILL_FP8=1`.
+The kernel works and is bit-exact; the serving result is **+31 % prefill (5,078 → 6,650 tok/s)
+for +0.0141 mean KLD**, which lands the build at 0.0237 — worse than official FP8. Row-wise
+scaling (per-token activation, per-channel weight) changed nothing, so the loss is FP8
+*activations* rather than scale granularity. Shipped disabled behind
+`VLLM_EXL3_PREFILL_FP8=1` for anyone who wants prefill over fidelity.
 
-What remains is the part that turns a microbenchmark into a claim:
+What did ship from that work: the B12X prefill routing, +3.4 % for no measurable fidelity cost.
 
-1. serve with the flag, measure PP at 2k/6k and TG at C1/C4/C8 (expect PP 5,050 -> 7,500-8,300);
-2. measure the fidelity cost on the sentinel set - both operands narrow to E4M3 on the prefill
-   path only, so this must clear the same bar as the +0.43 % that the fp16 dispatch costs;
-3. PR the kernel to exllamav3 and the dispatch to the vLLM fork, with the numbers and the
-   negative result that motivates it (the Python-only route is 2-4x *slower* because the layout
-   conversion costs more than the GEMM saves).
-
-Then the cheap adjunct: fuse `gate_proj` and `up_proj` into one GEMM. Same input, same shape,
-and the larger N measures slightly more efficient.
+Still open on the prefill axis, in order of remaining value: fuse `gate_proj` and `up_proj`
+into one GEMM (same input, same shape, larger N measures slightly more efficient), and the
+Marlin-shaped fused dequant-in-epilogue kernel that would reach FP8 parity — a real kernel,
+weeks of work, and it belongs in exllamav3.
 
 ## P1 — earn the word "verified" for context, and for tasks
 
@@ -84,6 +71,21 @@ Two gaps where the cards currently say "not done":
   scores, because the point is retention rather than leaderboard placement.
 
 ## P2 — fairness and hygiene
+
+New from iteration 4:
+
+- **File the B12X prefill routing upstream** with #316. It is +3.4 % prefill for a
+  fidelity-neutral change (+0.0000377, CI spans zero) and it fixes a whole class of matrices
+  that run a decode kernel through prefill.
+- **Report `torch._scaled_mm` row-wise + `out_dtype=float16`** returning silently wrong results
+  (~6x relative error, no exception). bfloat16 output is correct.
+- **Patch exllamav3's `quantize_side_model`**: it raises a bare `AttributeError` when a
+  side-model Linear is consumed without being rebuilt, naming nothing. Local fix names the
+  module; upstream it properly.
+- **Keep `reconstruct_fp8_slice`** even though FP8 activations were rejected: it is bit-exact
+  with per-column scales and is the right primitive if a path that keeps activations in fp16
+  ever exists.
+
 
 - **Symmetric MTP matrix.** MTP off/on x draft depth 1-4 x concurrency 1/4/8, for our builds
   *and* for FP8/NVFP4 using their own preserved MTP. The current 113.8 tok/s headline compares

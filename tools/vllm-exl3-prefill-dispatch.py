@@ -824,11 +824,17 @@ def _fp8_scratch(device: torch.device, n: int, k: int) -> torch.Tensor:
 def _fp8_weight_scale(
     trellis: torch.Tensor, bits: int, mcg: bool, mul1: bool
 ) -> torch.Tensor:
-    """Per-tensor E4M3 scale for a trellis, measured once and cached.
+    """Per-output-channel E4M3 scales for a trellis, measured once and cached.
 
-    The reconstructed matrix is the raw decoded weight - suh and svh are applied to the
-    activation and the output, not folded in - so its dynamic range is fixed per matrix
-    and one absmax is enough. Cost is one reconstruct per matrix at first prefill use.
+    Per-tensor scaling was measured and rejected: on this 27B model it cost +0.0139 mean
+    KLD against the fp16 prefill path, which is worse than official FP8. E4M3 carries three
+    mantissa bits, so one scale for a whole matrix spends most of them representing the
+    dynamic range of the loudest channel. One scale per column restores the ordinary
+    row-wise FP8 contract and costs a single float load per output row in the kernel.
+
+    The reconstructed matrix is the raw decoded weight - suh and svh act on the activation
+    and the output - so these scales are a property of the tensor and are computed once at
+    first prefill use.
     """
     key = (trellis.data_ptr(), bits)
     scale = _EXL3_FP8_WEIGHT_SCALE.get(key)
@@ -837,16 +843,17 @@ def _fp8_weight_scale(
         k = trellis.shape[0] * 16
         n = trellis.shape[1] * 16
         probe = _reconstruct_scratch(trellis.device, k, min(n, _EXL3_RECONSTRUCT_SLICE_N))
-        amax = torch.zeros((), dtype=torch.float32, device=trellis.device)
         chunk = probe.shape[1]
+        scale = torch.empty((n,), dtype=torch.float32, device=trellis.device)
         for start in range(0, n, chunk):
-            view = probe[:, : min(chunk, n - start)]
+            width = min(chunk, n - start)
+            view = probe[:, :width]
             if n <= chunk:
                 ext.reconstruct(view, trellis, bits, mcg, mul1)
             else:
                 ext.reconstruct_slice(view, trellis, bits, mcg, mul1, start)
-            torch.maximum(amax, view.abs().amax().float(), out=amax)
-        scale = (amax.clamp_(min=1e-6) / _E4M3_MAX).to(torch.float32)
+            amax = view.abs().amax(dim=0).float().clamp_(min=1e-6)
+            scale[start:start + width] = amax / _E4M3_MAX
         _EXL3_FP8_WEIGHT_SCALE[key] = scale
     return scale
 
@@ -860,7 +867,12 @@ def _reconstruct_fp8_mm_into(
     mcg: bool,
     mul1: bool,
 ) -> bool:
-    """FP8 variant of the prefill path. Returns False if this shape cannot use it."""
+    """FP8 variant of the prefill path. Returns False if this shape cannot use it.
+
+    Row-wise scaling on both operands: one scale per token on the activation and one per
+    output channel on the weight. Per-tensor scaling was measured first and is not viable -
+    it cost +0.0139 mean KLD, more than the whole quantization budget of this checkpoint.
+    """
     ext = _load_exl3_ext()
     if not hasattr(ext, "reconstruct_fp8_slice"):
         return False
@@ -871,32 +883,43 @@ def _reconstruct_fp8_mm_into(
     if chunk % 128 or k % 16:
         return False
 
-    scale_b = _fp8_weight_scale(trellis, bits, mcg, mul1)
-    inv_scale_b = float(1.0 / scale_b.item())
+    scale_b_all = _fp8_weight_scale(trellis, bits, mcg, mul1)
+    if scale_b_all.numel() != n:
+        return False
 
     x_had = torch.empty_like(x)
     ext.had_r_128(x, x_had, suh, None, 1.0)
-    scale_a = (x_had.abs().amax().float().clamp_(min=1e-6) / _E4M3_MAX).to(torch.float32)
-    # _scaled_mm wants both extents padded to 16 rows; prefill chunks are usually 2048
-    # but a prompt remainder is not, so pad rather than fall back.
     rows = x_had.shape[0]
+    row_amax = x_had.abs().amax(dim=1, keepdim=True).float().clamp_(min=1e-6)
+    scale_a_rows = row_amax / _E4M3_MAX
+    # _scaled_mm needs both extents padded to a multiple of 16; prefill chunks usually are,
+    # a prompt remainder is not, so pad rather than fall back to the slower path.
     padded = (rows + 15) // 16 * 16
     x8 = torch.empty((padded, k), dtype=torch.float8_e4m3fn, device=x.device)
-    torch.div(x_had, scale_a, out=x_had)
-    x8[:rows].copy_(x_had)
+    x8[:rows].copy_(x_had / scale_a_rows)
+    scale_a = torch.ones((padded, 1), dtype=torch.float32, device=x.device)
+    scale_a[:rows].copy_(scale_a_rows)
     if padded != rows:
         x8[rows:].zero_()
 
     for start in range(0, n, chunk):
         end = min(start + chunk, n)
         w8 = _fp8_scratch(x.device, end - start, k)
-        ext.reconstruct_fp8_slice(w8, trellis, bits, mcg, mul1, start, inv_scale_b)
+        scale_b = scale_b_all[start:end].contiguous()
+        ext.reconstruct_fp8_slice(
+            w8, trellis, bits, mcg, mul1, start, 1.0, scale_b.reciprocal()
+        )
+        # out_dtype MUST be bfloat16 here. With row-wise scales and out_dtype=float16 this
+        # torch build returns silently wrong results - no error, ~6x relative error, and in
+        # serving it produced KLD 10.8 with 0.1 % top-1. bfloat16 output matches an fp32
+        # reference to 0.040 relative, the same as per-tensor scaling. The copy back into the
+        # fp16 output buffer converts.
         part = torch._scaled_mm(
             x8,
             w8.t(),
             scale_a=scale_a,
-            scale_b=scale_b,
-            out_dtype=torch.float16,
+            scale_b=scale_b.view(1, -1),
+            out_dtype=torch.bfloat16,
         )
         output[:, start:end].copy_(part[:rows])
     ext.had_r_128(output, output, None, svh, 1.0)
@@ -1247,7 +1270,28 @@ def _b12x_trellis_linear_out(
     c_tmp: torch.Tensor,
     rotated_f16: torch.Tensor,
 ) -> None:
-    """Execute dense Trellis into graph-owned output and scratch tensors."""
+    """Execute dense Trellis into graph-owned output and scratch tensors.
+
+    B12X's native K6 kernel is a *decode* kernel and it is excellent at that: measured on
+    SM120 it beats reconstruct+GEMM by ~5x at m=1-8. At prefill row counts the ordering
+    reverses, because the trellis is streamed per output tile instead of materialised once:
+    at m=2048 reconstruct+FP8 is 2.07x faster on down_proj, 1.91x on attention in_proj and
+    1.76x on the head.
+
+    The K6/MCG shards therefore need the same runtime dispatch that PR #316 gave the generic
+    `exl3_gemm` path - and it has to live inside this opaque op, because a Python-level row
+    test around the two calls is resolved once at trace time and would bake the prefill
+    branch into the decode graphs.
+    """
+
+    threshold = _prefill_reconstruct_rows()
+    if threshold and x.shape[0] >= threshold:
+        if _prefill_fp8_enabled() and _reconstruct_fp8_mm_into(
+            output, x, trellis, suh, svh, True, False
+        ):
+            return
+        _reconstruct_hgemm_into(output, x, trellis, suh, svh, True, False)
+        return
 
     api = _load_b12x_trellis_linear()
     weight = _b12x_trellis_weight(trellis, suh, svh, x.dtype)

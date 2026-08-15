@@ -1,0 +1,159 @@
+{
+  "schema": "qwen38-release-evidence/1",
+  "generated_utc": "2026-08-15T07:09:29Z",
+  "artifact": {
+    "hf_repo": "malaiwah/Qwen3.8-27B-EXL3-K5K6-context",
+    "label": "context edition: attention K5 serialized",
+    "recipe": "MLP gate/up K5, down K6, attention K5 serialized (calibrated), lm_head K6/mcg, quantized MTP, BF16 embeddings and vision",
+    "index_sha256": "cd53b8e487b5c70b1ffe26578464a9cfd9bea9d7ed50a39e39ba3e153c1ab1b4",
+    "shard_sha256": {
+      "model-00001-of-00003.safetensors": "c9e837be0dc9ad35fe22a42b9cefb192957767bc83d82bd893aa6b9c036cfa00",
+      "model-00002-of-00003.safetensors": "222fb1aac7254a98799ac852266d9e8e326a535d4292e3341141e03ec662bc03",
+      "model-00003-of-00003.safetensors": "d01bd1d5664382ca1490d3232453d4fbcf6b8bcf1b27bbe69f2a9ef4fc7019fc"
+    },
+    "disk_bytes": 20696053306,
+    "resident_weights_gib": {
+      "mtp_off": 19.31,
+      "mtp_3": 19.56
+    }
+  },
+  "upstream": {
+    "hf_repo": "Qwen/Qwen3.8-27B",
+    "revision": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0",
+    "logical_tensors_verified": 1199
+  },
+  "toolchain": {
+    "research_repo": "https://github.com/malaiwah/qwen38-27b-exl3",
+    "research_commit": "dd7b33b2aabba0f122c33d444852a673990622ed",
+    "exllamav3_commit": "5f3c537ca9d89893d771256f5c43c93656553fbb",
+    "vllm_image": "voipmonitor/vllm@sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b",
+    "patched_module_sha256": "c529547063e8bef4911c0f33fb1e7c7aeb4098c3dab0ddabb2e575af2449525f",
+    "patches": [
+      "https://github.com/local-inference-lab/vllm/pull/314",
+      "https://github.com/local-inference-lab/vllm/pull/316",
+      "b12x prefill routing (this work, not yet filed)"
+    ]
+  },
+  "hardware": {
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Server Edition",
+    "arch": "SM120",
+    "vram_gib": 95.6,
+    "driver": "595.58.03",
+    "tensor_parallel": 1,
+    "context_budget_note": "context numbers measured with the engine budget capped to 30.44 GiB, which is a 32 GB RTX 5090 at utilisation 0.97"
+  },
+  "evaluation": {
+    "suite": "qwen38-27b-fidelity-suite-v3",
+    "partition": "analysis",
+    "suite_token_sha256": "3f9d17f1b55f64872ad3ac19c8711654e09ba70b7ca14b0851525088fe735691",
+    "contexts": 136,
+    "mean_kld": 0.009672824993847544,
+    "ci95": [
+      0.00710878608723887,
+      0.012747934304694062
+    ],
+    "median_kld": 0.0016716444978506217,
+    "top1_agreement": 0.968116899910917,
+    "as_served": {
+      "mean_kld": 0.009795071558388109,
+      "head_cost": 0.00012224656454056418
+    },
+    "paired": {
+      "vs_official_fp8": {
+        "difference": -0.0034527153608708075,
+        "contexts_won": "135/136"
+      },
+      "vs_hydrated": {
+        "difference": 0.0022664024682299225,
+        "contexts_won": "1/136"
+      }
+    },
+    "development_set_caveat": "recipe selection saw this partition; a source-disjoint v4 suite is built and awaiting one frozen run",
+    "captures_published": true
+  },
+  "long_context": {
+    "method": "planted code in held-out literary text, three depths, template applied by hand to bypass the multimodal processor's ~2048-token chat truncation",
+    "results": [
+      {
+        "prompt_tokens": 28613,
+        "retrieved": "3/3",
+        "prefill_tok_s": 4500
+      },
+      {
+        "prompt_tokens": 113345,
+        "retrieved": "3/3",
+        "prefill_tok_s": 3301
+      },
+      {
+        "prompt_tokens": 196857,
+        "retrieved": "3/3",
+        "prefill_tok_s": 2588
+      }
+    ]
+  },
+  "memory": {
+    "kv_bytes_per_token_fp8": 33505,
+    "kv_gib_at_262144": {
+      "mtp_off": 8.18,
+      "mtp_1": 8.83,
+      "mtp_2": 8.98,
+      "mtp_3": 9.13
+    },
+    "max_model_len_on_32gb": {
+      "mtp_off": 229376,
+      "mtp_3": 196608
+    },
+    "native_262144_reachable": false,
+    "blocking_lever": "embedding table is 2.543 GB BF16; quantizing it would free 1.19 GiB and close the 0.63 GiB gap, but the runtime has no quantized-embedding path"
+  },
+  "throughput": {
+    "tg_tok_s": {
+      "c1": 56.0,
+      "c4": 197.0,
+      "c8": 398.8
+    },
+    "pp_tok_s": {
+      "2k": 5250,
+      "6k": 5249
+    },
+    "b12x_prefill_routing": {
+      "gain_pp_pct": 3.4,
+      "fidelity_cost": 3.7661246497902545e-05
+    },
+    "fp8_prefill_rejected": {
+      "gain_pp_pct": 31.0,
+      "fidelity_cost": 0.01406707718429491
+    }
+  },
+  "multimodal": {
+    "digits": {
+      "n": 10,
+      "correct": 8,
+      "accuracy": 0.8
+    },
+    "bars": {
+      "n": 10,
+      "correct": 9,
+      "accuracy": 0.9
+    },
+    "grid": {
+      "n": 10,
+      "correct": 7,
+      "accuracy": 0.7
+    },
+    "overall": {
+      "n": 30,
+      "correct": 24,
+      "accuracy": 0.8
+    }
+  },
+  "not_verified": [
+    "downstream task retention",
+    "OCR/document/video multimodal",
+    "reasoning at length",
+    "YaRN 1M",
+    "tensor parallel > 1",
+    "non-SM120 GPUs",
+    "quant-specific safety regression"
+  ]
+}

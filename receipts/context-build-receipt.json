@@ -1,0 +1,59 @@
+{
+  "schema": "qwen38-build-receipt/2",
+  "artifact": "qwen38-ctx",
+  "source": {
+    "repo": "Qwen/Qwen3.8-27B",
+    "revision": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0"
+  },
+  "converter": "turboderp-org/exllamav3@5f3c537 (1.4.2)",
+  "recipe": "MLP gate/up K5, down K6, attention K5 serialized (calibrated), lm_head K6/mcg, quantized MTP, BF16 embeddings and vision",
+  "command": "convert.py -b 4 -hb 6 -mb 4 -vb 16 -cb mcg with EXL3_BITS_FIXED attention=5 and EXL3_BITS_OVERRIDE mlp gate/up=5 down=6",
+  "scope_note": "SHA256SUMS and immutable_payload cover only the files that define the artifact; README.md, .gitattributes, assets/** and the receipt files themselves are documentation that is rewritten by card edits without rebuilding the weights, so hashing them here would make the receipt go stale while still claiming to describe the build -- they are listed under mutable_documentation and hashed in DOCS-SHA256SUMS instead.",
+  "immutable_payload_bytes": 20696033532,
+  "file_count": 16,
+  "immutable_payload": {
+    "LICENSE": "bbedc3fda3305820b977265f01b8619d87570a6739de3a5582c3464840f1e57a",
+    "chat_template.jinja": "c3cf9e34abf4f9e36c2d72165aa9c132d3e2a725b6c2586aaa3a8af9d7a81041",
+    "config.json": "fbb105334da6554c10784ff1257fda5e3821d4d5426d64469cee2b2ad67ba2b3",
+    "generation_config.json": "e70c136c1b78ddc1fb0905bac8e733a4dc448d4f852a5dd75143fffc70be550e",
+    "merges.txt": "a9d356d7bdf1ef4949e3e748e95b8e10ad9d4e2e838eddc38a0a7b6b94d1db8d",
+    "model-00001-of-00003.safetensors": "c9e837be0dc9ad35fe22a42b9cefb192957767bc83d82bd893aa6b9c036cfa00",
+    "model-00002-of-00003.safetensors": "222fb1aac7254a98799ac852266d9e8e326a535d4292e3341141e03ec662bc03",
+    "model-00003-of-00003.safetensors": "d01bd1d5664382ca1490d3232453d4fbcf6b8bcf1b27bbe69f2a9ef4fc7019fc",
+    "model.safetensors.index.json": "cd53b8e487b5c70b1ffe26578464a9cfd9bea9d7ed50a39e39ba3e153c1ab1b4",
+    "preprocessor_config.json": "27225450ac9c6529872ee1924fcb0962ff5634834f817040f444118116f4e516",
+    "quantization_config.json": "363248c1d5c2dfce210982a43bea9624a97389b73ec6519a75663173fb9ce508",
+    "quantization_manifest.json": "eb1dd3acfdb98059974addb61c05d7a25c5cf09b76ffde473a6d4ef5e798dc9d",
+    "tokenizer.json": "0997f410c57a1f4e53b09e4be8f4a172d90edd9564368fb0847030937229b9f3",
+    "tokenizer_config.json": "b11349aafa7cdc6a320767cf7ceb29ed82f7eda5d65e8e0819e76f0ce947bf27",
+    "video_preprocessor_config.json": "7768af27c1fafa9cc9011c1dc20067e03f8915e03b63504550e11d5066986d13",
+    "vocab.json": "ce99b4cb2983d118806ce0a8b777a35b093e2000a503ebde25853284c9dfa003"
+  },
+  "mutable_documentation": {
+    "bytes": 66820,
+    "file_count": 3,
+    "files": {
+      ".gitattributes": "34448b82c17d60fec9b65b1f093c115ddbaadc04beb1b0140b6bfed2e012a930",
+      "README.md": "57e4bdb258ee1a7d2635c5174ebd4e56abe392505cdb5f8bbb356b0dc4293641",
+      "crc32.txt": "b42dd291f5f98b05807e458f5b47849969a9b3326acbf0c97d28b05826740b83"
+    },
+    "self_excluded": [
+      "SHA256SUMS",
+      "DOCS-SHA256SUMS",
+      "build-receipt.json"
+    ]
+  },
+  "tensor_inventory": {
+    "physical_tensors": 2426,
+    "exl3_modules": 409,
+    "logical_tensors_reconstructed": 1199,
+    "logical_parameter_count": 27781427952
+  },
+  "upstream_check": {
+    "dir": "/work/upstream-index",
+    "index_sha256": "77042094076611b69791a610065f28b7013b8c621795fa86ddccc8bac7d1b9df",
+    "logical_tensors": 1199,
+    "shapes_verified": 0
+  },
+  "host": "Linux 6.8.0-100-generic"
+}
