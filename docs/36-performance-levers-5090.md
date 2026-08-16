@@ -226,8 +226,22 @@ is 0.002755 mean absolute chosen-logprob error against this build's 0.0823 run-t
 builds are far below our resolution. The A/B/null comparison arms were deliberately **not** run:
 they would have produced a null result that looked like evidence of no effect while carrying no
 information. Recommendation is to keep the module as an optional read-only overlay and mount it
-on the recipes that ship prefix caching; it is not needed for the native-window recipe, where the
-rate is bounded below 0.90 per thousand and prefix caching is declined anyway.
+only where a recipe ships prefix caching **and** speculative decoding together.
+
+That last conjunction matters and narrows the recommendation, a precision `CardFinalPass` supplied
+while landing this on the cards: `gdn_attn.py:111` sets `use_spec_decode` from
+`num_speculative_tokens > 0`, and with it false `spec_sequence_masks` is always `None`, so
+`qwen_gdn_linear_attn.py:1293` never enters the speculative path at all and the module is a no-op
+*by construction*. The published 8,192-token commands for K4 and hydrated carry no
+`--speculative-config`, so the overlay buys them nothing until MTP is added. The one shipped
+configuration this measurement actually indicts is **K5K6 Recipe B**, which ships mtp depth 3
+alongside the cache at eight streams. It is likewise not needed for the native-window recipe,
+where the rate is bounded below 0.90 per thousand and prefix caching is declined anyway.
+
+One scope note on the arms themselves: all three served the context edition's weights. That is
+immaterial to this result, because the counter reads only scheduler-side host arrays
+(`spec_sequence_masks_cpu` and `query_start_loc_cpu`), and batch composition is a function of the
+scheduler and the flags rather than of which quantisation is loaded.
 
 **A free mitigation, for anyone who cannot patch.** The token-budget mechanism needs a drafted
 decode clamped to exactly one token: `scheduler.py:518` clamps `num_new_tokens` to the remaining

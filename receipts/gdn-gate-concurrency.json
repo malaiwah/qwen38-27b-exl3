@@ -5225,7 +5225,8 @@
       "reach/R3/reach.1.json": "040572c8803b8fcf48660e466b7d22231292e69f7273541d4a3e800ebb1ed590",
       "reach/R3/reach.198.json": "bdfa61b123890897ce7de720611059b87e9613aa4b3642a166dd920ba8429914",
       "reach/R3-phase1/reach.198.json": "7214b4d33e1ef35e3349fd5055efb98847112a690c3d6282eed7f020be5ca7dd"
-    }
+    },
+    "arms_served_the_context_edition_weights": "all three arms served the context edition's weights. Immaterial to this result: the counter reads only scheduler-side host arrays (spec_sequence_masks_cpu, query_start_loc_cpu), and batch composition is a function of the scheduler and the flags rather than of which quantisation is loaded."
   },
   "verdict": {
     "headline": "The module changes nothing measurable under either published-recipe arm, and it does change the computation in a shipped prefix-caching regime. Reachability, not answer quality, is what this receipt resolves.",
@@ -5271,13 +5272,18 @@
       "Whether the clamp-to-one mechanism is unreachable or merely rarer than our exposure. Two arms and 9027 gather-branch builds bound it below 0.332 per thousand; they do not prove it impossible."
     ],
     "recommendation_for_the_cards": {
-      "decision": "keep it as an optional overlay, and recommend mounting it on the three recipes that ship prefix caching",
+      "decision": "keep it as an optional overlay, and recommend mounting it only where a recipe ships prefix caching AND speculative decoding together, which on current cards is K5K6 Recipe B alone",
       "per_the_pre_registered_rule": "nonzero at any rate means the cards recommend the overlay. The rate is nonzero in a shipped regime, so the recommendation follows without a fresh cost-benefit argument: the module is free, py_compile-clean under the image's Python 3.12.3, diff-identical to upstream's eight changed lines, and a nonzero rate means some forward passes are silently miscomputed with no signal to the operator.",
       "do_not_promote_into_the_image_yet": "the promoted digest sha256:16a936b8... is qualified and this receipt gives no performance or correctness evidence that would survive a re-qualification. Mount it read-only over the vendored file, exactly as arm B would have.",
       "not_needed_for_the_context_edition's_native_window_recipe": "R1 bounds it below 0.90 per thousand there, and prefix caching is declined at 262144 anyway, so the shipped path that fires does not exist in that recipe.",
-      "cards_were_not_edited_by_this_agent": true
+      "cards_were_not_edited_by_this_agent": true,
+      "narrowed_after_publication": {
+        "supplied_by": "CardFinalPass, while landing this receipt on the four cards (78df010)",
+        "correction": "my first wording said 'the three recipes that ship prefix caching', which overstated it. gdn_attn.py:111 sets use_spec_decode from num_speculative_tokens > 0, and with it false spec_sequence_masks is always None, so qwen_gdn_linear_attn.py:1293 never enters the speculative path and the module is a no-op BY CONSTRUCTION. The published 8192-token commands for K4 and hydrated carry no --speculative-config, so the overlay buys them nothing until MTP is added.",
+        "the_one_shipped_configuration_indicted": "K5K6 Recipe B, which ships mtp depth 3 alongside prefix caching at eight streams"
+      }
     },
     "free_mitigation_for_operators_who_cannot_patch": "raise --max-num-batched-tokens. The clamp mechanism's rate scales as roughly max_num_seqs / max_num_batched_tokens per prefill completion, so a larger budget narrows the triggering window proportionally. NOT proposed as a change to our published 2048, which was measured for prefill throughput and memory; trading a measured setting against a mechanism we could not even observe would be backwards."
   },
-  "content_sha256": "119a50947fed9706fdfdd225d1713707098885c111a41098438e81bb46596e98"
+  "content_sha256": "b4e4bb246fc2593223609560d8a0ede157f8a4cffc8013a702d215e0a3b5fd97"
 }
