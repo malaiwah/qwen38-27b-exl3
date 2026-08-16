@@ -731,22 +731,38 @@ rate on every scheduler line), so the absent upstream fix PR #51113 is latent he
 depended on it; the explicit `--no-enable-prefix-caching` control arm is published with the
 receipt.
 
-## P0 / rank 2 — immutable production runtime
+## P0 / rank 2 — immutable production runtime — **CLOSED 2026-08-16**
 
 The published r34 image predates every required patch. Bind-mounting Python modules is
 reproducible but not a production distribution.
 
-**Status: built and verified, serving gates pending.** The immutable image exists —
-`localhost/vllm:gg-r34-patched`, manifest
-`sha256:6eca4c693f01b6f4e112c04eacd30673b7cfbba4150e6fe2ea3ba1bbfde14c27`, with all three patch
-modules verified by digest *inside* the image against the published map, the import machinery
-proven to resolve to them and no stale bytecode (`receipts/production-image.json`, schema
-`qwen38-production-image/2`). Items 1 and 4 below are satisfied there, and item 2 only in its
-no-runtime-package-install part. What is **not** done is the serving half: no recipe has served a
-request from the image, so item 3 and the mount, privilege and endpoint gates in items 5 and 6
-are recorded as `null` rather than passed, and item 7 cannot fire while the cards still document
-the three-mount recipe. Those gates are owned by the current 5090 performance window, so this
-rank stays open until that receipt lands.
+**Status: closed. The image is built, verified, serving-gated and promoted.** The release unit
+is now `localhost/vllm:gg-r34-patched-apc`, manifest
+`sha256:16a936b877b90fc080181e842f47dbafc5cb8e62688799596836e34ba0b79218` — a **four-module**
+superset adding upstream #51113's scheduler fix (`b431c1066d...`) to the three EXL3 overlays,
+with every module digest verified through the import machinery *inside* the image and no stale
+bytecode. All four published recipes now start on it and answer text and image requests exactly
+(context 58 s, hydrated 168 s, k5k6 205 s, k4 163 s), with every runtime gate true: weights
+read-only, no source bind mounts, `podman diff` clean under `/opt` and `/usr`, loopback publish,
+rootless. `receipts/production-image.json` (schema `qwen38-production-image/3`) carries the
+promotion with `release_unit` as a structured pointer naming the promoted digest, its parent and
+the superseded unit.
+
+Two deliberate imperfections are recorded rather than papered over. The image's build-time label
+`io.malaiwah.image.qualified="false"` is now wrong and is **left wrong on purpose**: relabelling
+is a layer, a layer moves the digest, and the promoted bytes must stay identical to the ones the
+reproduction arms measured. The precedence rule — receipt authoritative, label build-time only —
+is recorded in the image declaration, both receipts and one clause on every card beside the
+digest. The general lesson is in the receipt for the next Dockerfile: a boolean `qualified` label
+is unfixable by construction, because qualification happens after the bytes exist; future builds
+should carry a pointer to a receipt or no such label at all. Separately, a conversion-only tag
+`gg-r34-convert` (manifest `sha256:24d498c29112...`) adds `marisa_trie` 1.4.1 from a
+digest-verified wheel with `--no-deps`, inventory 224 -> 225, built **from** the release image so
+the serving digest is untouched; conversions need it and serving does not.
+
+#51812 is deliberately **not** baked in. It stays a documented optional overlay, recommended on
+the three recipes that ship prefix caching and not on the context edition's native-window recipe
+— see the reachability measurement under rank 8.
 
 Build one immutable image from the pinned r34 digest plus reviewed versions of:
 
@@ -949,12 +965,41 @@ file-descriptor/process counts, request status and post-release memory after eve
 Acceptance: no corrupt cache reuse, no silent precision fallback, no unbounded host/GPU growth,
 all expected 4xx/5xx failures are explicit, and the final valid request matches the first.
 
-## P1 / rank 8 — fair speculative-decoding matrix
+## P1 / rank 8 — fair speculative-decoding matrix — **our own knobs closed, model-to-model open**
 
 The 113.8 tok/s headline compared our MTP-enabled path with FP8/NVFP4 target-only runs. It is
 real throughput but not a fair model-to-model speculative comparison.
 
-Run, for every artifact whose preserved MTP head loads:
+**Closed on our own knobs** ([36](36-performance-levers-5090.md),
+`receipts/perf-sweep-5090.json`): 11 configurations on the physical RTX 5090 on the production
+image, each with its verbatim argv, one discarded warm plus three timed repeats, spec-decode
+counters differenced around every repeat. The finding is that **MTP depth is a concurrency
+decision and the right metric is accepted tokens per step divided by step time, not acceptance
+rate.** At one stream keep depth 3 (2.1429 accepted / 25.72 ms = 83.31 beats depth 1's 74.28);
+at eight streams `num_speculative_tokens 1` wins decisively — acceptance falls 22.98 % but step
+time falls 37.25 %, so aggregate rises **30.67 %, 313.28 -> 409.35 tok/s**, it holds 10,911 more
+KV tokens, and it was the only row that ran the full 261,794-token needle. Depth 2 is dominated
+at both ends. Closed as levers: `--attention-backend FLASHINFER` is a no-op (the engine already
+auto-selects it on SM120 with fp8 KV and head_size 256), forcing `TRITON_ATTN` is up to 5.5 %
+worse at C8 with an apparent T=0 gain that reverses at temperature 0.6, `custom_ops:["all"]` is
+2.2-5.2 % worse on step time and not bit-exact, and dynamic speculative decoding cannot run at
+all on this build because either knob downgrades `FULL_DECODE_ONLY` to `PIECEWISE`, which
+`Exl3Config` refuses. Prefill did not move on any lever: that deficit is structural, not untuned.
+
+**Also measured here, because it needed the same concurrency regime:** whether the absent
+upstream fix #51812 is reachable. A CPU-only counter mounted over `gdn_attn.py` recorded whether
+a batch ever places a non-speculative token before a speculative one
+(`receipts/gdn-gate-concurrency.json`). Our eight-stream context profile: **zero events in 3,329
+metadata builds**, 2,112 of them on the gather branch, so below 0.90 per thousand at 95 %. An
+amplifier at `--max-num-batched-tokens 512`: zero in 8,065. But the **shipped 8,192-token
+prefix-caching recipe at eight streams fired three times in 5,825 builds, 0.515 per thousand** —
+the scheduler's speculative padding path, reached when a full prefix-cache hit makes a request
+need exactly one new token. Per the rule fixed before the run, the three cache-shipping cards now
+recommend the overlay and the context card explains why it does not. Answer quality was not
+measured and the A/B was declined on purpose: three events cannot move a statistic whose
+run-to-run floor is thirty times one event's effect.
+
+**Still open: the model-to-model matrix.** Run, for every artifact whose preserved MTP head loads:
 
 - MTP off, depth 1 and depth 3;
 - concurrency 1 / 4 / 8;
