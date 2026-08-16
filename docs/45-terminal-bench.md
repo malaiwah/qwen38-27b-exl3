@@ -73,12 +73,40 @@ Two details carried the whole thing:
 - **harbor shells out to the `docker` CLI and `docker compose`**; it does not use the docker Python
   SDK. So a static user-local docker CLI plus the compose plugin, with `DOCKER_HOST` pointed at the
   rootless podman socket, makes the harness work unmodified — no patching.
-- **The tunnel must survive hours.** `run_terminal_bench.sh tunnel` runs a reconnect loop with
-  `ServerAliveInterval=30`/`CountMax=6` and reclaims the remote listener with
-  `fuser -k -n tcp 18000` after an unclean drop. This was **verified before the GPU window**: with
-  the tunnel up and forwarding, the inner `ssh` was killed to simulate an unclean drop, and the
-  loop re-established the listener and served a request again (HTTP 200) in under 12 s —
-  `attempt 1 … dropped rc=255 … attempt 2` in its own log.
+- **The tunnel must survive hours**, and getting that right required abandoning the obvious form.
+  See below.
+
+### The remote port must not belong to sshd
+
+The obvious tunnel is `ssh -R 18000:127.0.0.1:8000`. It has a failure mode that would have been
+fatal to a multi-hour bench, found in preflight by killing the client uncleanly:
+
+- sshd keeps the remote listener. It then **accepts each connection and immediately resets it** —
+  `curl` exits `rc=56` after 0.29 s. Every request through the tunnel fails.
+- That listener is held by sshd's **root** privsep process (`sshd: mbelleau [priv]`). Confirmed by
+  resolving the listening socket's inode out of `/proc/net/tcp` and finding no readable
+  `/proc/<pid>/fd` match among this user's processes; `fuser -k -n tcp` and `lsof -iTCP` both report
+  nothing at all. An unprivileged agent **cannot reclaim the port**.
+- And the port cannot simply be changed, because harbor bakes `api_base` into the job's
+  `config.json` and resume demands an identical config — so it must stay fixed across all three
+  passes.
+
+So port ownership was taken away from sshd:
+
+- `ssh -R /run/user/1000/tb21-vllm.sock:127.0.0.1:8000 -o StreamLocalBindUnlink=yes` binds a **unix
+  socket**, and that option makes ssh unlink a stale socket file itself. The ssh side can no longer
+  be poisoned.
+- `tools/tb_tunnel_proxy.py` — an ordinary user process — owns `127.0.0.1:18010`, the port harbor
+  actually talks to. It is killable and restartable by us, and it refuses fast when the socket is
+  absent, which is what makes `wait-ready` and `probe` real signals instead of timeouts.
+
+**Verified against the final design**, with the worst case rather than a polite one: with the tunnel
+up and serving (HTTP 200 at 0.5825 s), the ssh client was `SIGKILL`ed. Its log reads
+`attempt 1 … dropped rc=137 … attempt 2`, and ~14 s later the *same* port served `http=200
+ttfb=0.581403`. The proxy kept running across the drop (same pid), so the TCP port was never
+released and therefore could never be poisoned. On a deliberate stop the proxy released 18010 at
+once — while port 18000, poisoned earlier in preflight, was still held by the root sshd. That
+contrast is the whole argument for the design.
 
 ### The tunnel costs ~581 ms per request, and that is not fixable
 

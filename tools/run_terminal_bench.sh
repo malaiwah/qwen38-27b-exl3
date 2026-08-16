@@ -66,7 +66,9 @@ set -euo pipefail
 REMOTE=${TB_REMOTE:-aiboss}
 RDIR=${TB_RDIR:-tb21}                      # remote workdir (under $HOME)
 LPORT=${TB_LOCAL_PORT:-8000}               # vLLM port on the rental
-RPORT=${TB_REMOTE_PORT:-18000}             # tunnel listen port on aiboss
+RPORT=${TB_REMOTE_PORT:-18010}               # tunnel listen port on aiboss, owned by OUR proxy
+                                           # (18000 was poisoned by a stale root-owned sshd listener
+                                           #  during preflight; see tunnel() for why that cannot recur)
 MODELS=${GG_MODELS:-/var/tmp/models}
 HYD=Qwen3.8-27B-EXL3-K5K6-hydrated
 BF16=Qwen3.8-27B
@@ -129,19 +131,37 @@ serve() {
     --host 127.0.0.1 --port "$LPORT"
 }
 
+# The remote TCP port is owned by OUR OWN proxy, not by sshd. Rationale, learned
+# the hard way during preflight: with a plain `ssh -R <port>:...` an unclean
+# client death leaves sshd holding a STALE listener that accepts and then resets
+# (curl rc=56), and that listener belongs to sshd's *root* privsep process --
+# unkillable by this user, invisible to both `fuser` and `lsof`. The port cannot
+# just be changed either, because harbor bakes api_base into the job config and
+# resume demands an identical config, so it must stay fixed across all 3 passes.
+# Therefore: ssh binds a unix SOCKET (with StreamLocalBindUnlink=yes, so ssh
+# itself clears any stale socket file), and tools/tb_tunnel_proxy.py -- an
+# ordinary user process we can kill and restart -- owns 127.0.0.1:$RPORT.
 tunnel() {
-  echo "[tunnel] rental:$LPORT -> $REMOTE:127.0.0.1:$RPORT (reconnect loop, keepalive 30x6)"
-  local n=0
+  local sock=${TB_SOCK:-/run/user/1000/tb21-vllm.sock}
+  echo "[tunnel] rental:$LPORT -> unix:$sock -> $REMOTE:127.0.0.1:$RPORT"
+  # Deploy the proxy and (re)start exactly our own instance.
+  scp -q -o BatchMode=yes "$HERE/tb_tunnel_proxy.py" "$REMOTE:$RDIR/" || {
+    echo "[tunnel] FATAL: cannot deploy the proxy" >&2; return 1; }
+  # rssh already cd's into $HOME/$RDIR, so these paths are relative to it.
+  rssh "if [ -f .tunnel-proxy.pid ]; then kill \$(cat .tunnel-proxy.pid) 2>/dev/null || true; sleep 1; fi;
+        rm -f $sock;
+        nohup python3 tb_tunnel_proxy.py --port $RPORT --socket $sock \
+          --pidfile .tunnel-proxy.pid >> tunnel-proxy.log 2>&1 &
+        sleep 1; tail -3 tunnel-proxy.log"
+  local n=0 rc
   while true; do
     n=$((n+1))
     echo "[tunnel] attempt $n at $(date -Is)"
     ssh -N -o BatchMode=yes -o ExitOnForwardFailure=yes -o ConnectTimeout=15 \
         -o ServerAliveInterval=30 -o ServerAliveCountMax=6 -o TCPKeepAlive=yes \
-        -R "127.0.0.1:$RPORT:127.0.0.1:$LPORT" "$REMOTE" && rc=0 || rc=$?
+        -o StreamLocalBindUnlink=yes \
+        -R "$sock:127.0.0.1:$LPORT" "$REMOTE" && rc=0 || rc=$?
     echo "[tunnel] dropped rc=$rc at $(date -Is); reconnecting in 5s" >&2
-    # Reclaim the remote listener if sshd left it bound after an unclean drop.
-    ssh -o BatchMode=yes -o ConnectTimeout=15 "$REMOTE" \
-        "fuser -k -n tcp $RPORT 2>/dev/null" >/dev/null 2>&1 || true
     sleep 5
   done
 }

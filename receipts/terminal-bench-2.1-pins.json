@@ -26,8 +26,8 @@
       "disk_free_home_gb_at_pin_time": 67
     },
     "tunnel": {
-      "form": "ssh -N -R 127.0.0.1:18000:127.0.0.1:8000 aiboss",
-      "options": "BatchMode=yes ExitOnForwardFailure=yes ConnectTimeout=15 ServerAliveInterval=30 ServerAliveCountMax=6 TCPKeepAlive=yes",
+      "form": "ssh -N -R /run/user/1000/tb21-vllm.sock:127.0.0.1:8000 aiboss  (unix socket, NOT a TCP port), plus tools/tb_tunnel_proxy.py on aiboss owning 127.0.0.1:18010",
+      "options": "BatchMode=yes ExitOnForwardFailure=yes ConnectTimeout=15 ServerAliveInterval=30 ServerAliveCountMax=6 TCPKeepAlive=yes StreamLocalBindUnlink=yes",
       "reconnect": "tools/run_terminal_bench.sh tunnel loops forever, reclaiming the remote listener with `fuser -k -n tcp 18000` after an unclean drop, because the bench is hours long",
       "rtt_measurement": {
         "status": "MEASURED before the GPU window, with a stand-in HTTP endpoint on the same port (python3 -m http.server on rental 127.0.0.1:8000). Re-measured against the LIVE vLLM endpoint at window start by `run_terminal_bench.sh probe`, and that value is what the pass receipt carries.",
@@ -71,16 +71,27 @@
         }
       },
       "reconnect_verified": {
-        "status": "VERIFIED before the GPU window",
-        "method": "Started `run_terminal_bench.sh tunnel`, confirmed aiboss listening on 127.0.0.1:18000 and forwarding (HTTP 200), then killed the inner ssh process to simulate an unclean drop.",
-        "log": [
-          "[tunnel] attempt 1 at 2026-08-16T14:26:12+00:00",
-          "[tunnel] dropped rc=255 at 2026-08-16T14:28:05+00:00; reconnecting in 5s",
-          "[tunnel] attempt 2 at 2026-08-16T14:28:11+00:00"
+        "status": "VERIFIED before the GPU window, against the FINAL unix-socket design",
+        "method": "Brought the tunnel up (proxy listening on 127.0.0.1:18010, unix socket present, HTTP 200 through it at 0.5825 s TTFB), then SIGKILL'd the ssh client to simulate the worst case -- an unclean death, which is exactly what poisoned port 18000 under the old design.",
+        "tunnel_log": [
+          "[proxy] listening 127.0.0.1:18010 -> unix:/run/user/1000/tb21-vllm.sock pid=413688",
+          "[tunnel] attempt 1 at 2026-08-16T14:34:17+00:00",
+          "[tunnel] dropped rc=137 at 2026-08-16T14:34:31+00:00; reconnecting in 5s",
+          "[tunnel] attempt 2 at 2026-08-16T14:34:36+00:00"
         ],
-        "recovery_s": "under 12 s from kill to a served request",
-        "post_recovery_probe": "recovered ttfb=0.580249 http=200",
-        "why_it_matters": "The bench runs for hours across a long-haul link; an unrecovered tunnel drop would otherwise convert into task failures."
+        "recovery": "Recovered on the SAME port within ~14 s of the kill: http=200 ttfb=0.581403.",
+        "proxy_survived_the_drop": "The proxy kept running across the tunnel drop (same pid 413688), so the TCP port was never released and therefore could never be poisoned.",
+        "clean_shutdown_proof": "On deliberate stop, the proxy released 18010 immediately, while port 18000 remained held by the root-owned sshd -- the contrast that motivates the design.",
+        "why_it_matters": "The bench runs for hours over a link with a 266 ms leg; an unrecovered or poisoned tunnel would otherwise convert into a wave of task failures."
+      },
+      "remote_port": 18010,
+      "port_ownership_design": {
+        "problem_found_in_preflight": "With a plain `ssh -R <port>:127.0.0.1:8000`, an unclean client death leaves sshd holding a STALE TCP listener on the remote side. Measured: it accepts the connection and immediately resets it (curl exits rc=56 after 0.29 s), so every request through it fails.",
+        "why_it_could_not_simply_be_cleaned": "That listener is held by sshd's ROOT privsep process (`sshd: mbelleau [priv]`), confirmed by resolving the listening socket's inode from /proc/net/tcp and finding no readable /proc/<pid>/fd match among this user's processes. `fuser -k -n tcp` and `lsof -iTCP` both report nothing. An unprivileged agent cannot reclaim the port; it stays poisoned until sshd happens to reap it.",
+        "why_changing_the_port_is_not_a_general_fix": "harbor bakes `api_base` into the job's config.json, and resume requires an identical config (job.py:246). The port must therefore stay fixed across all three passes, so a poisoned port cannot be worked around by moving.",
+        "fix": "Take port ownership away from sshd. ssh binds a UNIX SOCKET with StreamLocalBindUnlink=yes -- which makes ssh itself unlink any stale socket file before binding, so the ssh side cannot be poisoned -- and tools/tb_tunnel_proxy.py, an ordinary user process, owns the TCP port harbor talks to. That process is killable and restartable by this agent, and it binds with SO_REUSEADDR.",
+        "extra_benefit": "The proxy refuses fast (instead of hanging) whenever the unix socket is absent or not accepting, which is what makes `wait-ready` and `probe` real signals rather than timeouts.",
+        "port_18000_abandoned": "18000 was poisoned during preflight and is still held by the root sshd; the run uses 18010, which our own proxy owns."
       }
     }
   },
@@ -252,7 +263,8 @@
   "tooling": {
     "runner": "tools/run_terminal_bench.sh",
     "row_extractor": "tools/tb_rows.py",
-    "row_schema_source": "field names taken verbatim from a real harbor 0.21.0 result.json (the oracle-smoke trial), not guessed"
+    "row_schema_source": "field names taken verbatim from a real harbor 0.21.0 result.json (the oracle-smoke trial), not guessed",
+    "tunnel_proxy": "tools/tb_tunnel_proxy.py (deployed to aiboss by `run_terminal_bench.sh tunnel`)"
   },
   "protocol": {
     "pass_1": {
