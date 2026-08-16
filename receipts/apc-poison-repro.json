@@ -24734,7 +24734,7 @@
       "pilot/windows-A.json": "128d23327883d0d6210d0cd712efc983966cad03c42bc413da00a88cb5f1aaf8"
     }
   },
-  "content_sha256": "8e2ec7b028b3052229875fa3359b67527bd57718bc6ac6f441a3bcb7ea01ed93",
+  "content_sha256": "d9c1703a844f41cd4d7821fd9336c8920ecbe8facb96c2c03624218cdd241cd7",
   "interpretation": {
     "one_line": "The reporter's exact serving condition, on the same card class, did not reproduce his symptoms in 266 scored requests across seven freshly started servers. The absent PR #51113 is still a real defect proven at source and by upstream's own regression file, but this probe did not make it bite, so it is not yet established as the cause of what he saw.",
     "what_was_clean_and_by_how_much": {
@@ -24823,5 +24823,32 @@
       "only_difference": ".Config.User reads \"\" on the restored container where the snapshot recorded \"root\". No --user was ever passed, so the field is unset and the image default applies; `podman exec qwen38-27b id -un` returns root, confirming no drift in effect.",
       "serving_check": "GET /v1/models returns the Qwen3.8-27B K4 snapshot the unit is pinned to, and nvidia-smi shows the single compute app holding 30,434 MiB"
     }
+  },
+  "digest_provenance_for_downstream_qualification": {
+    "why_this_block_exists": "so a promotion qualification can cite these arms as prior evidence on the same digest, or know plainly that it cannot",
+    "arm_A_and_A2_and_B_and_Bn_and_B2_ran_on": {
+      "tag": "localhost/vllm:gg-r34-patched",
+      "manifest_digest": "sha256:6eca4c693f01b6f4e112c04eacd30673b7cfbba4150e6fe2ea3ba1bbfde14c27",
+      "config_id": "3cd11158a540ff4c23cece491774fecd3e61f6e4784771273e72bd65e44b773c",
+      "modules": "three: exl3.py, qwen3_5.py, qwen3_5_mtp.py. Scheduler is the vendored 1ea341f4..., i.e. PR #51113 ABSENT.",
+      "bind_mounts_over_site_packages": "none"
+    },
+    "arm_C_ran_on": {
+      "tag": "localhost/vllm:gg-r34-patched-apc",
+      "manifest_digest": "sha256:16a936b877b90fc080181e842f47dbafc5cb8e62688799596836e34ba0b79218",
+      "config_id": "5ce31638c0a5c5c5ee4b5cafb7cd29170b9f2f7a5dcf6e2caa6f3b41bc6f8adc",
+      "modules": "four: the release image's three, plus vllm/v1/core/sched/scheduler.py at b431c1066dfee3ed56bfa7e71cc8606f9afadc300f22d7fc542c43835d1b22bf (PR #51113 PRESENT). The PR #51812 GDN gate module is NOT in this image.",
+      "bind_mounts_over_site_packages": "none",
+      "citable_as_prior_evidence_for": "a qualification of exactly this digest, sha256:16a936b8..., run with --enable-prefix-caching --mamba-cache-mode align. Arm C is a statement about that digest and nothing else."
+    },
+    "arm_D_ran_on": {
+      "tag": "localhost/vllm:gg-r34-patched-apc plus one read-only bind mount",
+      "manifest_digest": "sha256:16a936b877b90fc080181e842f47dbafc5cb8e62688799596836e34ba0b79218",
+      "mount": "tools/vllm-qwen-gdn-spec-gates.py (sha256 7cd3f5fe763b621048af4817951a841d99c8b700d9a56ded27ccaca5a56ccbe0) over /opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py",
+      "citable_as_prior_evidence_for": "NOTHING about any image digest. Arm D is a mount, not a build. It shows the module loads and serves 38/38 clean at --max-num-seqs 1; it does not qualify any five-module image, and at seqs 1 there is no mixed batch for PR #51812 to act on."
+    },
+    "arm_E_ran_on": "sha256:16a936b877b90fc080181e842f47dbafc5cb8e62688799596836e34ba0b79218, no bind mounts",
+    "if_a_five_module_image_is_built": "no arm here was measured on it. A five-module tag would be a new digest carrying an untested-in-image module, and this receipt is not evidence for it. Every arm above is either the three-module release digest or the four-module -apc digest.",
+    "verification_method": "the stage phase resolved each module through the import machinery inside the image and sha256'd the resolved origin, with no GPU device attached; it fails closed if the release image already carries b431c106... or if the superset image does not. Transcripts: receipts/apc-repro-raw/out/module-verify-release.txt and module-verify-apc.txt."
   }
 }
