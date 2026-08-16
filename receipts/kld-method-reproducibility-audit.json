@@ -1,0 +1,1102 @@
+{
+  "schema": "qwen38-kld-method-reproducibility-audit/1",
+  "generated_utc": "2026-08-16T12:28:13Z",
+  "auditor": "KldMethodAudit",
+  "question": "is the KLD measurement technique fully documented and reachable from the model cards, how does it actually differ from the other published protocols, and are the numbers credible — where would a hostile expert attack them and does the evidence hold",
+  "stance": "adversarial audit, not a defence. Findings are ordered by how much they would cost us if a hostile reviewer found them first. Every number below was read from the artifact cited beside it or measured by this audit on this machine with no GPU.",
+  "hardware_note": "no GPU used or required; the physical RTX 5090 was held by KvDtypeSweep throughout and was not touched",
+  "what_this_audit_ran": [
+    "fetched the live published card of all 7 model repos and both dataset repos from the Hub and diffed each against its repo source file",
+    "HTTP-checked all 104 distinct URLs appearing in those published cards",
+    "enumerated the full file tree of both datasets (7,890 files at main, 5,837 at the revision the cards pin) and the tree at the pinned revision",
+    "downloaded all 79 published per-shard reports plus the parent suite manifest, the ten shard views, the ladder pin and the corpus fetch log (about 24 MB)",
+    "rebuilt all five published ten-shard cumulative receipts and the published paired receipt with tools/kld_aggregate.py on CPU",
+    "rebuilt a published two-shard tail receipt including all 562 histogram counts and every bin-bounded quantile",
+    "verified the shared BF16 head is downloadable at the digest every published report pins",
+    "diffed tools/fidelity.py function by function across the two harness digests the receipts pin and the file at repository head",
+    "re-ran the repo's own near-duplicate scanner over the full 941-document v5 corpus against the six exllamav3 calibration files",
+    "verified all 941 corpus documents on disk against the published fetch log, and all six calibration files against the digests the receipts pin",
+    "stress-tested the published bootstrap against a cluster-robust analytic interval, a BCa interval and five seeds",
+    "measured the composition and shard robustness of the published ordering from the per-context rows in the published receipts",
+    "checked that the runtime image digest the ladder pins is anonymously pullable from Docker Hub"
+  ],
+  "stranger_path": {
+    "premise": "start on a published model card, follow only links that exist, and try to reach a complete method description plus the materials",
+    "start_points": {
+      "hydrated": "https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated",
+      "k5k6": "https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6",
+      "context": "https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6-context",
+      "k4": "https://huggingface.co/malaiwah/Qwen3.8-27B-K4",
+      "eda": "https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-EDA-research"
+    },
+    "published_cards_match_repo_sources": {
+      "verified": "the published README of all five model repos and the v5 dataset are byte-identical to their repo source files",
+      "exception": "the v3 dataset's published card differs from DATASET_CARD.md in this repo (13,702 vs 13,733 bytes, a rewritten opening paragraph); cosmetic, and both versions document the lm-head path"
+    },
+    "hops": [
+      {
+        "hop": 1,
+        "from": "any of the four main model cards",
+        "to": "https://github.com/malaiwah/qwen38-27b-exl3/blob/main/docs/35-external-protocol-comparability.md",
+        "status": 200,
+        "gets_you": "9 of 12 protocol fields for our method, all twelve deltas against llama.cpp, and the two that are measured",
+        "does_not_get_you": "the bootstrap seed, the 560-bin tail histogram, the capture point on our own side (it is stated for llama.cpp's capture and asserted to be the same point), the sharding rationale, the suite builder's name"
+      },
+      {
+        "hop": 1,
+        "from": "any of the four main model cards",
+        "to": "https://huggingface.co/datasets/malaiwah/qwen38-27b-fidelity-suite-v5",
+        "status": 200,
+        "gets_you": "the materials, the file-by-file inventory, the replay recipe, the shard-0 comparison table and the ten-shard table, and the pointer to where the shared head lives"
+      },
+      {
+        "hop": 1,
+        "from": "any of the four main model cards",
+        "to": "https://github.com/malaiwah/qwen38-27b-exl3/blob/main/tools/fidelity.py",
+        "status": 200,
+        "gets_you": "the harness itself; its module docstring is the most complete single statement of the replay design that existed before this audit"
+      },
+      {
+        "hop": 2,
+        "from": "hop-1 dataset card",
+        "to": "https://huggingface.co/datasets/malaiwah/qwen38-27b-fidelity-suite-v3 (lm-head/weight.safetensors)",
+        "status": 200,
+        "gets_you": "the shared BF16 head, 2,542,796,896 B, LFS digest 25a30fd5f826da0abc4efc4cc71def9f02bcb8085f7175eee284d221dee4cfff",
+        "friction": "the pointer to it sits inside the v5 card's 'what we deliberately do not preserve' list, which is a counter-intuitive place to find a mandatory input; no model card mentions it at all"
+      },
+      {
+        "hop": 2,
+        "from": "any model card",
+        "to": "https://github.com/malaiwah/qwen38-27b-exl3 then its README file map",
+        "status": 200,
+        "gets_you": "the only statement of the bootstrap seed (README:69-70), the 560-bin binning (README:79-81) and the docs index"
+      },
+      {
+        "hop": 3,
+        "from": "README file map",
+        "to": "docs/33-evidence-volume-and-intervals.md",
+        "status": 200,
+        "gets_you": "sharding, the tail histogram constants, contamination counts, the suite arithmetic, and the honest 'what this run still does not give' list"
+      },
+      {
+        "hop": 3,
+        "from": "README file map",
+        "to": "docs/14-fidelity-protocol-v2.md",
+        "status": 200,
+        "gets_you": "the capture point (forward hook on the final RMSNorm) and the ONLY statement anywhere of why the head is shared",
+        "trap": "the file is titled 'protocol v2', describes a 74-context suite built FROM calibration text, and is indexed by README as the protocol that supersedes docs/05 — a reader has no way to know it is still the description of the current capture path"
+      },
+      {
+        "hop": 3,
+        "from": "docs/35 delta row D10",
+        "to": "docs/05-kld-protocol.md",
+        "status": 200,
+        "gets_you": "nothing valid for v5",
+        "defect": "docs/35:189 sources the v5 determinism row from docs/05, but docs/05 describes the SUPERSEDED iteration-1 logits harness (max_num_batched_tokens=256, prompt_logprobs densification, three repeats with a run SD, a window taken from exllamav3 calibration text). README:238 still indexes it as 'Teacher-forced full-vocabulary KLD protocol to be reproduced' with no historical marker. This is the one hop on the stranger's path that actively misinforms."
+      }
+    ],
+    "broken_links_found": [
+      {
+        "url": "https://huggingface.co/collections/qwen38-27b-mixed-precision-exl3-measured-6a7fe0cb27817c23e4a57025",
+        "http": 404,
+        "appears_in": [
+          "MODEL_CARD-K5K6.md:108",
+          "MODEL_CARD-K5K6-hydrated.md",
+          "MODEL_CARD-K5K6-context.md",
+          "MODEL_CARD-K4.md"
+        ],
+        "cause": "the owner namespace is missing from the path",
+        "working_form": "https://huggingface.co/collections/malaiwah/qwen38-27b-mixed-precision-exl3-measured-6a7fe0cb27817c23e4a57025 (verified 200)",
+        "severity": "the single most embarrassing defect on the published surface: a dead link on all four flagship cards, trivially fixed"
+      },
+      {
+        "url": "https://huggingface.co/api/models/unsloth/Qwen3.8-27B-NVFP4/revision/9c73e2daee1d0fd494ffbd1d8753f2174a953796",
+        "http": 404,
+        "appears_in": [
+          "the NVFP4 archival mirror card"
+        ],
+        "verdict": "not a defect — the card cites this 404 as the evidence that the upstream revision was squashed, and the 404 corroborates it"
+      }
+    ],
+    "links_checked": 104,
+    "links_broken": 2
+  },
+  "reproducibility": {
+    "a_read_what_we_did_in_enough_detail_to_criticise": {
+      "answer": "NO as the surface stood at the start of this audit; YES now",
+      "why_no": "no single document described the current v5 method. It had to be assembled from four files, one of which (docs/14) is titled 'protocol v2' and describes a 74-context suite drawn from calibration text, and one of which (docs/05, cited by docs/35 for the v5 determinism row) describes the superseded iteration-1 logits harness. The bootstrap seed existed only in README:69-70. The suite builder is never named on any card and its own docstring says it builds the v3 suite.",
+      "coverage_before": {
+        "KL direction and formula": "docs/35:151, docs/14:42-46",
+        "full-vocabulary + vocab size": "docs/35:151, docs/14:61",
+        "shared head design": "docs/35:151, docs/33:30, README:57",
+        "why the head is shared": "docs/14:15 only",
+        "capture point": "docs/14:33-41 (v2 framing); README:103-104 and docs/35:274-276 state it for llama.cpp's capture and assert ours is the same point",
+        "512-context sharding": "docs/33:21,23-24",
+        "560-bin tail histogram": "docs/33:98-102, README:79-81",
+        "cluster bootstrap resamples": "docs/33:40, docs/35:136-138",
+        "bootstrap seed": "README:69-70 only; absent from every docs/ file",
+        "12-gram pre-exclusion": "docs/33:18, docs/35:149, README:54-56",
+        "suite arithmetic": "docs/33:14-15, docs/35:145-146",
+        "determinism controls": "docs/14:33-34 correct for the current path; docs/35:189 cites docs/05, which is wrong for v5"
+      },
+      "artifact_that_now_makes_it_yes": "docs/42-kld-method.md, written by this audit; it is the method of record and states the harness-pin drift, the floors and the claim boundary in one place",
+      "residual": "docs/42 is not yet linked from any card; a stranger still lands on docs/35 first"
+    },
+    "b_download_the_suite_the_reference_capture_and_the_reports": {
+      "answer": "YES",
+      "evidence": {
+        "dataset": "malaiwah/qwen38-27b-fidelity-suite-v5 at main (commit cbb97445ec562125eb024e7ce23606ab4fe23484), 7,890 files enumerated by this audit",
+        "suite": "suite/suite-manifest.json + suite/ladder-pin.json + 5,120 token id files + ten shard views (12 files each)",
+        "reference_capture": "reference/hidden-bf16/, 513 files = 512 captures plus capture-manifest.json",
+        "reports": "79 as the cards claim: 50 ladder (reports/kld5/shard-0000..0009 x 5 candidates), 10 tail, 15 scored-window, 4 cross-engine",
+        "candidate_captures": "captures/shard-0000/ holds four complete 513-file trees (nvfp4, eda, hyd-rematch, hyd-sibling) plus error-driven-ladder.json = 2,053 files",
+        "shared_head": "obtainable: datasets/malaiwah/qwen38-27b-fidelity-suite-v3 path lm-head/weight.safetensors, 2,542,796,896 B, Hub LFS oid 25a30fd5f826da0abc4efc4cc71def9f02bcb8085f7175eee284d221dee4cfff — equal to the head_sha256 in suite/ladder-pin.json and in every published report. The reference head is NOT only on our disk."
+      },
+      "cross_checks_this_audit_ran": {
+        "all_50_ladder_reports_match_the_digests_the_receipts_pin": true,
+        "all_15_dataset_scored_window_reports_byte_identical_to_receipts_kld5_window": true,
+        "all_4_dataset_gguf_reports_byte_identical_to_receipts_gguf_report": true,
+        "dataset_corpus_fetch_log_byte_identical_to_receipts_kld5_corpus_fetch_log": true
+      },
+      "stale_but_not_wrong": {
+        "what": "all four model cards say the dataset is '5,835 files, 10,826,796,868 B, verified at revision 08bde6cc'",
+        "measured": "at revision 08bde6cc the tree holds 5,837 files, i.e. exactly 5,835 excluding .gitattributes and README.md — the card is precise as pinned",
+        "drift": "main now holds 7,890 files; the delta is exactly the 2,053 files of captures/shard-0000, which the dataset card documents and the model cards do not"
+      },
+      "what_a_stranger_still_cannot_download": "the corpus text — see gap G1"
+    },
+    "c_re_run_the_pipeline_end_to_end": {
+      "answer": "PARTIALLY. A stranger can re-run the scoring half end to end. They cannot rebuild the suite, and they cannot re-run the full ten-shard ladder without a ~96 GB card.",
+      "what_works": {
+        "score a new candidate on shard 0": "YES — one capture plus one replay against the published BF16 reference, exactly as the dataset card documents; the reference, the suite view, the head and the harness are all public",
+        "runtime image": "public. voipmonitor/vllm@sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b returns 200 from registry-1.docker.io on an anonymous pull token",
+        "ladder driver": "tools/kld_ladder.sh is fully env-var parameterised (KLD_ROOT, KLD_SUITE, KLD_HEAD, KLD_QCFG, KLD_HARNESS, GG_WORK, SHARD_SIZE, KLD_CANDIDATES) and ships beside tools/ggrun.sh"
+      },
+      "what_does_not_work": {
+        "rebuild the suite": "NO. tools/suite3.py needs the corpus text, which is not published and not refetchable for 862 of 941 documents (gap G1); and CAL_DIR is hardcoded to /work/exllamav3/exllamav3/conversion/standard_cal_data with no CLI override, so the file must be edited",
+        "re-run the ten-shard ladder": "NOT without a large card and a recapture. The BF16 references for shards 1-9 were deleted after their reports verified (about 6 minutes of GPU each, ~54 minutes total, as receipts/preserved-artifacts.json states); and the BF16 27B reference itself does not fit a 32 GB card, so a 5090-class reader can replay candidates but cannot regenerate the reference",
+        "verify our contamination claim": "NO — see gap G1. Without the corpus text, the 44-of-941 exclusion and the zero-hit result are assertions to a stranger."
+      }
+    },
+    "d_verify_a_published_number_without_a_gpu": {
+      "answer": "YES, comprehensively, and this audit did it",
+      "cost": "61 files, about 24 MB of download, CPU only, no torch, runs in about 6 seconds per candidate",
+      "reproduced_bit_for_bit_from_published_reports": {
+        "hyd": {
+          "token_mean_kld": 0.0027596250151498245,
+          "ci95": [
+            0.0025402354561764456,
+            0.003020322111388249
+          ],
+          "top1_agreement": 0.9770086559599414,
+          "max_kld": 8.257617292998475
+        },
+        "k5k6": {
+          "token_mean_kld": 0.0032098839572023935,
+          "ci95": [
+            0.002982375985931262,
+            0.0034801686041377295
+          ],
+          "top1_agreement": 0.9751796646006351,
+          "max_kld": 22.241084060631692
+        },
+        "ctx": {
+          "token_mean_kld": 0.0035093587497007383,
+          "ci95": [
+            0.003219668861472748,
+            0.003852387533789471
+          ],
+          "top1_agreement": 0.9744316186797752,
+          "max_kld": 5.556983011884979
+        },
+        "fp8": {
+          "token_mean_kld": 0.005293941260388515,
+          "ci95": [
+            0.004927359675336093,
+            0.0057278528546916
+          ],
+          "top1_agreement": 0.9679437515266244,
+          "max_kld": 10.713867968632172
+        },
+        "k4": {
+          "token_mean_kld": 0.010603886897374758,
+          "ci95": [
+            0.009639812390001612,
+            0.011746275946429527
+          ],
+          "top1_agreement": 0.9575907578163165,
+          "max_kld": 14.282896798842598
+        },
+        "note": "every field checked identical to receipts/kld5-10M-<candidate>.json: token mean, context macro mean, both interval endpoints, top-1, exact max, mean JSD, 5,120 contexts, 10,480,640 positions, 842 clusters"
+      },
+      "paired_receipt_reproduced": {
+        "source": "receipts/kld5-10M-paired.json, rebuilt from the five receipts this audit had itself rebuilt",
+        "hyd_vs_fp8": {
+          "difference_a_minus_b": -0.002534316245238691,
+          "a_wins": 5118,
+          "b_wins": 2
+        },
+        "k5k6_vs_fp8": {
+          "difference_a_minus_b": -0.0020840573031861214,
+          "a_wins": 5105,
+          "b_wins": 15
+        },
+        "ctx_vs_fp8": {
+          "difference_a_minus_b": -0.001784582510687777,
+          "a_wins": 5109,
+          "b_wins": 11
+        },
+        "k4_vs_fp8": {
+          "difference_a_minus_b": 0.005309945636986243,
+          "a_wins": 7,
+          "b_wins": 5113
+        },
+        "hyd_vs_k5k6": {
+          "difference_a_minus_b": -0.0004502589420525692,
+          "a_wins": 4922,
+          "b_wins": 198
+        },
+        "note": "all five differences, both interval endpoints, all win counts and cluster counts identical to the published receipt"
+      },
+      "tail_receipt_reproduced": {
+        "source": "receipts/kld5-2M-tail-k5k6.json from reports/kld5-tail/shard-000{0,1}/report-k5k6.json",
+        "identical": [
+          "all 562 histogram counts",
+          "total_count 2096128",
+          "p50/p95/p99/p999 bin-bounded brackets",
+          "exact max 5.506768094147674",
+          "both interval endpoints",
+          "exceedance table"
+        ]
+      },
+      "friction_a_stranger_hits": [
+        {
+          "what": "the dataset card says 'run tools/kld_aggregate.py over reports/kld5/shard-*/report-<name>.json'. Run exactly that and it REJECTS.",
+          "why": "the published ladder reports are schema qwen38-fidelity-report/1 (the ten-shard run predates the tail histogram, which is why the published receipts carry \"tail\": null), so the aggregator demands --allow-legacy-no-tail; and the ten shard views declare ten different suite_token_sha256 values, so it demands --suite to verify parent lineage",
+          "verdict": "the tool is right to fail closed and the messages name the exact flags, but the documented command does not work as written. Fixed in docs/42 section 9."
+        },
+        {
+          "what": "content_sha256 cannot be reproduced by anyone, ever, not even by us from a different directory",
+          "why": "the digest covers the whole payload except generated_unix, and the payload embeds the inputs map keyed by ABSOLUTE report paths, the shards[].report paths and the aggregator's own schema string. Our rebuild produced identical numbers and 499a712a6cf6e6f73e2be7c47d849600e3a164165ea4dd0f417c1f4ea1fbae06 against the published 8d56fdcfc775d87a9d77c58e048b24b4f51e3e2910dbcc68fb2c4942d6c65650; the only differing fields were the ten input paths, suite.parent.path, schema (/2 -> /3, the aggregator having since gained a scored_position_window block) and generated_unix",
+          "why_it_matters": "kld_aggregate.py's own comment claims 're-running the same shard set over the same reports is a digest-comparable reproduction'. That is true only for us, on that box, at that revision. A reviewer who takes the comment at face value, fails to match the digest, and concludes the numbers do not reproduce would be wrong for the right reason.",
+          "fix": "add a numbers_sha256 over the measured fields only, and extend content_sha256_excludes to inputs, shards[].report and suite.parent.path"
+        }
+      ]
+    }
+  },
+  "tool_audit": {
+    "all_named_tools_present_in_the_public_repo": true,
+    "github_main_equals_this_working_copy": {
+      "fidelity.py": true,
+      "suite3.py": true,
+      "kld_ladder.sh": true,
+      "kld_aggregate.py": true,
+      "fetch_corpus_v5.py": true,
+      "preserve_artifacts.sh": true
+    },
+    "digests_at_repository_head": {
+      "fidelity.py": "8ce8fe861c977c856f3263f509878e588caa2eaab29fe310f8c40223941e1294",
+      "suite3.py": "421f3d940b3b961575403887da11e4fdb2c87472982792d44f40f578a92b6ac3",
+      "kld_ladder.sh": "a036d2ade7e1d24727b48a620cd3a040c5cb822f44b294cf322dc85cc4538b41",
+      "kld_aggregate.py": "543441faf0f8924ec92ce0696e2b68e276cd50cf7cb83a12df4c5499fb89057b",
+      "fetch_corpus_v5.py": "6d3571c100d89bf7dcad29d7a1dd29ae58c41172510549dfe55b1c2bf2fbf5b4",
+      "near_duplicate_scan.py": "4220f2af6115ddcabda3a29042a89a9947dc03413d7c19e3c0a3041b12d390e3",
+      "preserve_artifacts.sh": "f1ff72ff01fd30b1ed47b0500932403600b53e2db9f6cce9acecab95541de7f8",
+      "gguf_capture.cpp": "08ffe4a2c08e6f9c1472872088f8dccfd9fea1c5362e14f58951809fe465ab81"
+    },
+    "harness_pin_drift": {
+      "finding": "the harness digest pinned by the published ladder is NOT the file a reader downloads today, and nothing on the published surface says so",
+      "pins": {
+        "804c20a6479df067b1dde0e34c3664f0a7d12d692d59cd5d99ed0e319257a7f6": {
+          "named_by": [
+            "suite/ladder-pin.json harness_sha256 (in the v5 dataset)",
+            "receipts/capture-determinism.json runs.published_ladder.harness_sha256"
+          ],
+          "resolves_to": "tools/fidelity.py at commit a5397469389891e66bc11e6f42c8f9010c81d062",
+          "at_repository_head": false
+        },
+        "f8b1316f411a8ac02ff88144a6fedfeee56f0cc23c1b6887aa09ef9c7f842996": {
+          "named_by": [
+            "receipts/capture-determinism.json runs.tail_rerun.harness_sha256"
+          ],
+          "resolves_to": "tools/fidelity.py at commit b7305219eadf1fa039fd070669a10a37f161195c",
+          "at_repository_head": false
+        },
+        "8ce8fe861c977c856f3263f509878e588caa2eaab29fe310f8c40223941e1294": {
+          "named_by": [
+            "receipts/nvfp4-v5-measurement.json harness.capture_and_replay.sha256"
+          ],
+          "resolves_to": "tools/fidelity.py at repository head (commit 41d0d4cbe579c438042eeaee818af40d7ee24b1a) and on github main",
+          "at_repository_head": true
+        }
+      },
+      "does_the_drift_change_a_number": {
+        "answer": "NO, and this audit proved it at function granularity rather than asserting it",
+        "method": "parsed both revisions and the head revision with ast and compared every function body",
+        "measurement_path_functions_byte_identical_apart_from_a_lazy_import_torch_line": [
+          "normalizers_and_top1",
+          "context_metrics",
+          "bootstrap",
+          "validate_capture_files",
+          "capture_identity",
+          "dense_prompt_logprobs",
+          "qualification_metrics"
+        ],
+        "additive_only_changes": [
+          "lazy torch import so --help and the pure-JSON paired subcommand work with no torch installed",
+          "TailHistogram plus the 560-bin constants, bumping the replay report schema /1 -> /2",
+          "--score-from N, default 0, which slices captured rows before any statistic and emits schema /3 when non-zero"
+        ],
+        "consequence_for_a_reader": "re-running replay at head computes the same statistic but emits a /2 report with a kld_tail block, so its bytes and digest will not match a published /1 report. kld_aggregate.py refuses to mix /1 and /2 in one receipt, which is correct and is why the published cumulative receipts carry tail: null.",
+        "recovery": "git log --all -- tools/fidelity.py, then check the blob digest; no card, receipt or doc tells a reader to do this"
+      },
+      "other_receipt_pinned_digests_that_no_longer_resolve_to_any_repo_file": {
+        "receipts/task-retention-v2-summary.json harness_sha256 dfcf1c330aa53ad1...": "not any current tools/ file (tools/task_retention.py has drifted); outside the KLD path, recorded for completeness",
+        "receipts/production-image.json build_script_sha256 (two values)": "not any current tools/ file; outside the KLD path"
+      },
+      "receipt_pins_that_do_match_head": [
+        "receipts/nvfp4-v5-measurement.json -> fidelity.py, kld_ladder.sh (a036d2ad...)",
+        "receipts/gguf-report-*.json capture_tool_source_sha256 -> tools/gguf_capture.cpp (08ffe4a2...)",
+        "receipts/collection-index.json -> tools/collection_index.py",
+        "receipts/public-capability-*.json -> tools/public_capability.py (870c704f...)",
+        "receipts/converter-determinism.json and sibling-rebuild-fidelity.json -> tools/finalize_checkpoint.py (d1abb85f...)"
+      ]
+    },
+    "tool_naming_defect": {
+      "finding": "the tool that built the published v5 suite is tools/suite3.py, and its own module docstring says 'Build the v3 fidelity suite'",
+      "evidence": "tools/suite3.py:542 emits schema qwen38-distribution-fidelity/6, which is exactly the schema of receipts/kld5-suite-manifest.json and of suite/suite-manifest.json in the dataset. tools/fidelity.py:439 emits qwen38-distribution-fidelity/1 and did not build it.",
+      "why_it_matters": "no model card names suite3.py at all. The four cards name fidelity.py, kld_ladder.sh, kld_aggregate.py and fetch_corpus_v5.py. A reader who wants to rebuild the suite would reasonably reach for `fidelity.py suite` and silently build a different, schema-/1 suite.",
+      "aggravating": "receipts/kld5-suite-manifest-corpus-note-amendment.json already records that suite3.py carried stale hard-coded v3 prose into the v5 manifest, so this is the second instance of the same v3-lineage confusion"
+    },
+    "hardcoded_paths_that_block_a_stranger": {
+      "tools/suite3.py:25": "CAL_DIR = Path('/work/exllamav3/exllamav3/conversion/standard_cal_data'), no CLI override",
+      "tools/suite3.py:168": "--corpus defaults to /work/kld3/corpus",
+      "verdict": "kld_ladder.sh and fidelity.py are clean; suite3.py is the only tool in the path that must be edited to run elsewhere"
+    }
+  },
+  "independent_measurements_made_by_this_audit": {
+    "why": "an audit that only re-reads receipts cannot find a wrong receipt. These are new measurements run on this machine, with no GPU, against the same tools and inputs a stranger would use.",
+    "m1_contamination_reverified_from_the_text": {
+      "what": "re-ran tools/near_duplicate_scan.py at its default settings (exact 12-word shingle, near 5-word shingle, 256-word window, 128-word stride, NFKC+casefold, blake2b-128) over all 941 v5 corpus documents against the six exllamav3 calibration files",
+      "calibration_digests_all_match_the_receipts": true,
+      "corpus_digests_all_match_the_published_fetch_log": "941 of 941, 0 missing, 0 mismatched; totals 70,348,971 B as receipts/kld5-corpus-fetch-log.json states",
+      "result_documents_with_any_exact_12_word_calibration_hit": 44,
+      "result_those_44_are_exactly_the_44_the_manifest_excluded": true,
+      "result_eligible_documents_with_any_exact_hit": 0,
+      "verdict": "the 'contamination is zero by construction' claim is independently confirmed, from the text, by this audit — not merely restated from the manifest",
+      "residual_fuzzy_overlap_among_the_897_eligible_documents": {
+        "statistic": "per-document maximum 5-gram containment over 256-word windows",
+        "mean_of_per_document_maxima": 0.013179,
+        "p50": 0.011905,
+        "p95": 0.035714,
+        "p99": 0.055556,
+        "max": 0.492063,
+        "documents_at_or_above_0.10": 2,
+        "at_or_above_0.25": 1,
+        "at_or_above_0.50": 0,
+        "worst_eligible_document": {
+          "file": "code/cpython5-v3.13.1-python-pyctype-c.txt",
+          "words": 1047,
+          "max_containment": 0.492063,
+          "exact_12_word_hits": 0
+        },
+        "for_contrast_the_44_excluded_documents": {
+          "mean_of_per_document_maxima": 0.287969,
+          "max": 0.912698
+        },
+        "reading": "this is the 'lightly edited text survives an exact 12-gram filter' mechanism appearing in our own data, at small magnitude: two eligible documents share >=10 % of the 5-grams in one 256-word window with calibration text while having zero exact 12-word matches. Both are C/Python source, where the shared 5-grams are generic language idiom rather than copied prose. 895 of 897 stay under 0.10 and none reaches 0.50.",
+        "limitation_from_the_tool_itself": "lexical near-duplicate audit; does not detect semantic paraphrases",
+        "status_change": "this moves the residual-contamination objection from ASSERTED to BOUNDED on the v5 corpus. Before this audit the fuzzy scan had been run on the v3 and v4 corpora only (receipts/near-duplicate-v3.json, near-duplicate-v4.json) and never on v5."
+      },
+      "raw_receipt": {
+        "path": "receipts/near-duplicate-v5.json",
+        "schema": "qwen38-near-duplicate-audit/2",
+        "note": "the scanner's own output over all 941 documents, written verbatim so it sits beside its v3 and v4 siblings. Its summary block is corpus-wide and therefore includes the 44 excluded documents; the eligible-only partition above was derived from its per-document rows against document_scan.excluded_documents in receipts/kld5-suite-manifest.json"
+      },
+      "corpus_wide_summary_from_the_tool": {
+        "documents": 941,
+        "documents_with_exact_hit": 44,
+        "documents_with_exact_run_32_words": 14,
+        "total_exact_ngram_hits": 2484,
+        "longest_exact_run_words": 164,
+        "near_window_containment_mean": 0.00309606599888754,
+        "near_window_containment_p95": 0.011904761904761904,
+        "near_window_containment_p99": 0.023809523809523808,
+        "near_window_containment_max": 0.9126984126984127
+      }
+    },
+    "m2_the_published_interval_stress_tested": {
+      "why": "a percentile cluster bootstrap on a heavy-tailed mean is the obvious place to accuse us of an interval that is too narrow",
+      "method": "recomputed from the per_context_all rows inside the published receipts: (i) the published percentile cluster bootstrap, (ii) an independent cluster-robust analytic interval treating the 842 clusters as iid units, (iii) a BCa interval with jackknife acceleration over clusters",
+      "relative_95pct_width_as_pct_of_the_mean": {
+        "hyd": {
+          "published_percentile": 17.4,
+          "cluster_robust_normal": 17.42,
+          "bca": 18.24
+        },
+        "k5k6": {
+          "published_percentile": 15.51,
+          "cluster_robust_normal": 15.59,
+          "bca": 16.34
+        },
+        "ctx": {
+          "published_percentile": 18.03,
+          "cluster_robust_normal": 18.15,
+          "bca": 19.11
+        },
+        "fp8": {
+          "published_percentile": 15.12,
+          "cluster_robust_normal": 15.19,
+          "bca": 15.87
+        },
+        "k4": {
+          "published_percentile": 19.87,
+          "cluster_robust_normal": 19.86,
+          "bca": 20.68
+        }
+      },
+      "bca_diagnostics": "z0 between +0.048 and +0.053, acceleration between +0.0558 and +0.0599 — mild positive skew, as expected for a KL mean",
+      "verdict": "the published interval is not hiding anything. An independent analytic cluster-robust interval agrees to within 0.1 percentage point of relative width on all five candidates; a hostile statistician's preferred BCa interval is only 0.7 to 1.1 points wider and shifted slightly up. No ordering and no paired conclusion changes.",
+      "one_honest_consequence": "under BCa the marginal intervals of hyd [0.0025689, 0.0030722] and k5k6 [0.0030091, 0.0035336] overlap slightly, which they do not under the published percentile interval. That is why the hydrated-versus-online claim must be made from the PAIRED receipt (-0.0004502589420525692, CI [-0.00046936758672114464, -0.00043254928793987676], 4,922 of 5,120 contexts) and never by eyeballing two marginal intervals. The cards do lead with the paired number.",
+      "seed_sensitivity": {
+        "seeds_tried": [
+          1,
+          2,
+          3,
+          7,
+          42
+        ],
+        "ci95_low": [
+          0.002540235,
+          0.002542104,
+          0.002541419,
+          0.002547556,
+          0.002541247
+        ],
+        "ci95_high": [
+          0.003020322,
+          0.003017003,
+          0.003020989,
+          0.003017884,
+          0.003025981
+        ],
+        "endpoint_sd_as_pct_of_mean": {
+          "low": 0.105,
+          "high": 0.1273
+        },
+        "width_range_pct": [
+          17.043,
+          17.565
+        ],
+        "verdict": "seed 1 is not cherry-picked: Monte-Carlo scatter of the endpoints is about 1/150th of the interval width"
+      }
+    },
+    "m3_how_much_of_the_ordering_survives_a_different_corpus_or_draw": {
+      "why": "the strongest true statement we make is about ORDERING, so the audit should try to break the ordering rather than the mean",
+      "per_stratum_macro_means_10M_from_the_published_receipts": {
+        "hyd": {
+          "code": 0.0029264631472312153,
+          "encyclopedic": 0.002369345312349002,
+          "literary": 0.0038035253762198984,
+          "multilingual": 0.0025888854223262312,
+          "scientific": 0.0021099058176227746,
+          "span": 1.803
+        },
+        "k5k6": {
+          "code": 0.003423,
+          "encyclopedic": 0.002784,
+          "literary": 0.004348,
+          "multilingual": 0.003016,
+          "scientific": 0.002479,
+          "span": 1.754
+        },
+        "ctx": {
+          "code": 0.003906,
+          "encyclopedic": 0.002881,
+          "literary": 0.00489,
+          "multilingual": 0.003242,
+          "scientific": 0.002627,
+          "span": 1.862
+        },
+        "fp8": {
+          "code": 0.005402,
+          "encyclopedic": 0.004861,
+          "literary": 0.007139,
+          "multilingual": 0.005258,
+          "scientific": 0.00381,
+          "span": 1.874
+        },
+        "k4": {
+          "code": 0.011612,
+          "encyclopedic": 0.008897,
+          "literary": 0.014766,
+          "multilingual": 0.010356,
+          "scientific": 0.007389,
+          "span": 1.998
+        },
+        "note": "hyd values are exact from the receipt; the other rows are rounded to 6 decimals from the same receipts. Spans are max/min across the five strata."
+      },
+      "ordering_is_identical_in_all_five_strata": true,
+      "ordering_best_to_worst_in_every_stratum_and_overall": [
+        "hyd",
+        "k5k6",
+        "ctx",
+        "fp8",
+        "k4"
+      ],
+      "per_shard_means_512_contexts_each": {
+        "hyd": {
+          "min": 0.002613,
+          "max": 0.002922,
+          "span": 1.118,
+          "relative_sd_pct": 3.65
+        },
+        "k5k6": {
+          "min": 0.003069,
+          "max": 0.003394,
+          "span": 1.106,
+          "relative_sd_pct": 3.3
+        },
+        "ctx": {
+          "min": 0.003304,
+          "max": 0.003762,
+          "span": 1.139,
+          "relative_sd_pct": 4.04
+        },
+        "fp8": {
+          "min": 0.005057,
+          "max": 0.005584,
+          "span": 1.104,
+          "relative_sd_pct": 3.34
+        },
+        "k4": {
+          "min": 0.010025,
+          "max": 0.011381,
+          "span": 1.135,
+          "relative_sd_pct": 4.14
+        }
+      },
+      "ordering_identical_in_all_ten_independent_shards": "10 of 10",
+      "verdict": "corpus composition alone moves an absolute mean by up to 2.00x within our own five strata, and an independent 512-context draw moves it by 3.3-4.1 % relative SD — yet the ordering is unanimous across all five strata and all ten shards. This is the concrete evidence for the boundary we claim: ordering travels, absolute magnitude does not."
+    },
+    "m4_runtime_image_is_publicly_pullable": {
+      "checked": "registry-1.docker.io manifest for voipmonitor/vllm@sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b with an anonymous pull token",
+      "http": 200,
+      "why_it_matters": "the pinned runtime is not a private dependency, so level (c) is limited by hardware and by the missing corpus, not by an unobtainable image"
+    }
+  },
+  "protocol_comparison": {
+    "protocols": {
+      "ours": "KL(BF16 || candidate) over the v5 held-out suite, hidden-state capture and offline replay through one shared BF16 head",
+      "llamacpp": "llama.cpp llama-perplexity --kl-divergence, the harness behind Unsloth's GGUF KLD numbers; we ran it ourselves (receipts/wikitext-kld-run-a.json)",
+      "turboderp": "the EXL3 author's own published charts for turboderp/Qwen3.8-27B-exl3; we have never run it (docs/35:477-479)",
+      "unsloth_rows": "Unsloth's published per-corpus NVFP4 rows for Qwen3.8-27B"
+    },
+    "citation_convention": "docs/35 line numbers for their protocols and for the delta list; receipts for every one of our numbers",
+    "rows": [
+      {
+        "field": "reference model and precision",
+        "ours": "unquantized BF16 Qwen/Qwen3.8-27B under vLLM; the 18 weight-shard digests, index and config digests are in reference_identity of every cumulative receipt",
+        "llamacpp": "BF16 GGUF in llama.cpp; reference log-probabilities are stored as uint16 over a 16-nat span (docs/35:93-95, [LC:79-100])",
+        "turboderp": "one BF16 reference, FP16-cached (docs/35:393-394, 35:459); checkpoint identity and revision NOT STATED",
+        "unsloth_rows": "reference precision NOT STATED (docs/35:386-387)"
+      },
+      {
+        "field": "whose output head is in the measured path",
+        "ours": "NOBODY'S — both operands go through one shared BF16 head, sha256 25a30fd5f826da0abc4efc4cc71def9f02bcb8085f7175eee284d221dee4cfff. Body-only by construction; the head is excluded from the number by design",
+        "llamacpp": "the CANDIDATE'S OWN head, and it varies by recipe: UD quants typically keep output.weight at Q6_K/Q8_0 while stock quants do not (docs/35:123-125). So their head is both included and inconsistent across their own rows",
+        "turboderp": "NOT STATED. The only head mention is the x-axis convention 'quantized weight size, GiB, excluding embeddings and including the output head' (docs/35:396-397), which is a size axis, not the measured path",
+        "unsloth_rows": "NOT STATED"
+      },
+      {
+        "field": "corpus, licence and availability",
+        "ours": "941 held-out documents, 70,348,971 B, five strata, 842 source clusters. The TOKEN IDS are published Apache-2.0 and are the authoritative input. The TEXT is not redistributed and 862 of 941 rows carry url='preexisting', so the text is not obtainable by a stranger — gap G1",
+        "llamacpp": "WikiText-2 raw test, wikitext-2-raw/wiki.test.raw, 1,290,590 B, sha256 173c87a53759e0201f33e0ccf978e510c2042d7f2cb78229d9a50d79b9e7dd08, dataset of record Salesforce/wikitext rev b08601e04326c79dfdd32d625aee71d232d685c3 config wikitext-2-raw-v1 (docs/35:55-59). Fully public and byte-pinned; licence not recorded in docs/35. THEIR CORPUS IS MORE OBTAINABLE THAN OURS",
+        "turboderp": "subtitle 'openwebtext, 8 x 8192 tokens, formatted' (docs/35:395-396). No split, revision, digest or byte count; values are read off published rasters (docs/35:399-401). Not identifiable",
+        "unsloth_rows": "'No corpus identity, token count, context length, reference precision, KL direction or engine accompanies them' (docs/35:386-388)"
+      },
+      {
+        "field": "context length",
+        "ours": "2,048 tokens, exact-advance, non-overlapping windows",
+        "llamacpp": "512 (docs/35:35, 35:71; their own log 'over 580 chunks, n_ctx=512')",
+        "turboderp": "8,192 by subtitle only (docs/35:396); no stated field",
+        "unsloth_rows": "NOT STATED"
+      },
+      {
+        "field": "positions scored per context, and the rule",
+        "ours": "2,047 of 2,048 — positions 0..2046, i.e. EVERY position including the high-entropy openings with almost no left context. 10,480,640 total",
+        "llamacpp": "255 of 512. first = n_ctx/2, then process_logits(n_ctx - 1 - first) [LC:541-544, LC:616-624], so only positions 256..510 are scored and every scored position carries >=256 tokens of left context. 580 chunks x 255 = 147,900 total (docs/35:64-74). Confirmed independently at the byte level from their published pipeline_base_logits.bin size, 73,455,427,060 B (docs/35:76-80)",
+        "turboderp": "65,536 positions in total (docs/35:459); per-window rule NOT STATED",
+        "unsloth_rows": "NOT STATED"
+      },
+      {
+        "field": "KL direction",
+        "ours": "KL(BF16 reference || candidate)",
+        "llamacpp": "KL(BF16 || candidate), operator gated: sum over i where log p_base(i) > -16 of p_base(i)[log p_base(i) - log p_cand(i)] (docs/35:100)",
+        "turboderp": "NOT STATED for his protocol; docs/35:441-442 says only 'same direction of KL' when comparing his numbers to ours",
+        "unsloth_rows": "NOT STATED"
+      },
+      {
+        "field": "vocabulary coverage",
+        "ours": "exact, all 248,320 entries, two-pass, float32 in 24,832-entry chunks with float64 accumulation, never top-k, never truncated",
+        "llamacpp": "all 248,320 entries MINUS every base-side term with log p <= -16 nats, i.e. p < 1.13e-7 [LC:224-240] (docs/35:95-97, 35:183). Not the operator we call full-vocabulary",
+        "turboderp": "NOT STATED",
+        "unsloth_rows": "NOT STATED"
+      },
+      {
+        "field": "engine",
+        "ours": "vLLM (pinned r34 build inside a pinned public image) for capture; offline replay in torch. GGUF rows only are captured in llama.cpp at pinned commit ece963f41b0b02d7a0d61436ae365762c073a4c8 and replayed through the same head",
+        "llamacpp": "stock llama.cpp CUDA, flash-attn on, f16 KV, batch/ubatch 16384, n_seq=32, on 4x-8x B200 (docs/35:21, 35:189)",
+        "turboderp": "NOT STATED (his qbench, not published as a protocol)",
+        "unsloth_rows": "NOT STATED"
+      },
+      {
+        "field": "how uncertainty is estimated",
+        "ours": "nonparametric percentile bootstrap over 842 SOURCE CLUSTERS, resampled with replacement, 10,000 resamples, seed 1. Paired comparisons use the same cluster bootstrap on per-context differences plus a win count",
+        "llamacpp": "a per-token SEM assuming i.i.d. tokens, e.g. 0.006949 +/- 0.000073 (docs/35:134-136). Tokens inside a 512-token chunk are strongly correlated, so their interval is narrower than an honest one and the two intervals must not be placed side by side",
+        "turboderp": "no interval. He publishes mean and median, and his mean is explicitly a tail statistic — mean/median runs 2.6-7.5 across families (docs/35:403, 35:447-449)",
+        "unsloth_rows": "NOT STATED"
+      },
+      {
+        "field": "contamination handling",
+        "ours": "whole-document pre-exclusion before window selection on any exact NFKC-casefold 12-word shingle match against 859,426 calibration shingles, 10,772,868 corpus shingles scanned, 44 of 941 documents excluded, 897 eligible, 0 emitted-context hits. Independently re-derived from the text by this audit (m1)",
+        "llamacpp": "Unsloth state they deliberately do not evaluate on their own calibration data (docs/35:24-25), but the calibration set is private and no imatrix blob ships in the GGUF repo, so overlap is UNAUDITABLE (docs/35:188 D9). Asymmetry of evidence, not of intent",
+        "turboderp": "NOT STATED",
+        "unsloth_rows": "NOT STATED"
+      },
+      {
+        "field": "engine floor: measured or ignored",
+        "ours": "MEASURED, twice, and both are published. Cross-engine: llama.cpp versus vLLM on the SAME unquantized BF16 weights = 0.0005073550588083691 mean, 99.07 % top-1 (receipts/gguf-report-engine-floor.json). Replay-versus-live: KL(live || replayed) = 0.000654177503134738 on 6 contexts (receipts/v3-qualification-bf16.json)",
+        "llamacpp": "IGNORED by them, and their own logs betray it: Minimum KLD of -0.000140 and -0.000050 are impossible for an exact KL (docs/35:103-105). We measured their floor on our hardware rather than inferring it: Minimum KLD -0.000080 / -0.000056 / -0.000077 across the three GGUFs, i.e. 5.6e-5 to 8.0e-5 (receipts/wikitext-kld-run-a.json results.*.min_kld). Their protocol has no cross-engine term because both operands are in one engine",
+        "turboderp": "no cross-engine floor. He does publish a SYNTHETIC self floor — the BF16 reference perturbed at bf16-rounding scale — with mean 0.0052 and median 0.0007, and his 6.00 bpw point at 0.007 mean is 1.35x that floor (docs/35:419, 35:455-459). His ladder therefore runs out of resolution exactly where the good builds are",
+        "unsloth_rows": "no floor stated"
+      },
+      {
+        "field": "reference-logit numeric precision",
+        "ours": "float64 accumulation through a BF16 head over BF16-stored hidden states; the storage cost of that choice is measured (fp32 storage moved a candidate's KLD by -5.6 %, receipts/v3-qualification-fp32.json and docs/24:81-84)",
+        "llamacpp": "uint16 over a clamped 16-nat span; the round trip moves their own reconstructed Mean PPL(base) from 6.5353 to 6.532929, -0.037 % (docs/35:93-95, 35:105-107). It also breaks near-ties in their top-1 statistic, which is compared against argmax of the QUANTIZED reference with no tie handling (docs/35:190 D11)",
+        "turboderp": "FP16-cached reference (docs/35:459)",
+        "unsloth_rows": "NOT STATED"
+      }
+    ],
+    "material_to_the_number_versus_cosmetic": {
+      "material_and_quantified_by_us": [
+        {
+          "difference": "which positions are scored (their >=256 tokens of left context versus our every-position)",
+          "size": "1.306-2.059 % at their absolute floor, 3.876-4.874 % at their proportional one, per candidate, uniform in sign",
+          "receipt": "receipts/scored-window-offset.json",
+          "reading": "real, small, and it does not touch any ordering — every candidate moves the same way"
+        },
+        {
+          "difference": "engine, when a GGUF row is compared to a vLLM row",
+          "size": "0.0005073550588083691 mean, 0.93 points of top-1, on identical unquantized weights",
+          "receipt": "receipts/gguf-report-engine-floor.json",
+          "reading": "material and asymmetric: it inflates every llama.cpp row and no vLLM row. Q8_0's measured 0.001087 is only about twice this floor, so no ordering closer than a factor of two may be pressed against Q8_0"
+        },
+        {
+          "difference": "the corpus itself",
+          "size": "up to 2.00x within our own five strata; 2.4624986758761565x to 3.0790651709420223x for the same six checkpoints between the corrected v3 suite and v5, a 1.2503824676561468x band",
+          "receipt": "receipts/nvfp4-v5-measurement.json plus this audit's m3",
+          "reading": "THE dominant term. It is why no absolute value crosses a suite boundary and why no cross-protocol ratio is meaningful"
+        },
+        {
+          "difference": "whose head is measured",
+          "size": "body-only versus body+K6-head, paired: -6.778619846896359e-05, CI [-9.014223019177851e-05, -4.632939580981435e-05], but on 74 contexts of the superseded v2 suite and for one head recipe",
+          "receipt": "receipts/paired-head-e2e.json",
+          "reading": "material in SIGN — it is the one delta that pushes THEIR number up relative to ours, so it partly offsets the window and vocabulary deltas — and unquantified on the v5 corpus. docs/35:652-655 labels its own decomposition [INFERENCE]"
+        }
+      ],
+      "material_but_only_signed_not_sized": [
+        {
+          "difference": "their vocabulary gate at log p <= -16",
+          "direction": "theirs lower",
+          "status": "unproved (docs/35:183 'theirs lower (small, unproved)')"
+        },
+        {
+          "difference": "their uint16 reference storage",
+          "direction": "unsigned noise, not bias",
+          "status": "bounded from their logs at >=5e-5 and measured by us at 5.6e-5 to 8.0e-5 on our hardware; matters only near Q8-class means"
+        },
+        {
+          "difference": "their top-1 definition against a quantized reference with no tie handling",
+          "direction": "theirs lower",
+          "status": "asserted, a real contributor at 98-99 % agreement (docs/35:190)"
+        },
+        {
+          "difference": "contamination auditability",
+          "direction": "unknown; overlap would push theirs lower",
+          "status": "unauditable on their side; on ours it is auditable in principle and, until gap G1 is closed, only by us"
+        },
+        {
+          "difference": "window length, 512 versus 2,048",
+          "direction": "unknown",
+          "status": "unmeasured; their windows never exercise long-range behaviour"
+        }
+      ],
+      "cosmetic": [
+        {
+          "difference": "framing — raw text through --file, no chat template, no system prompt",
+          "why": "identical on both sides (docs/35:187 D8 direction 'none')"
+        },
+        {
+          "difference": "tokenizer identity",
+          "why": "MEASURED AS A NULL: the two token streams over wiki.test.raw are bit-identical, 297,194 tokens, same sha256 of the int32 stream (receipts/wikitext-kld-token-identity.json, docs/35:189)"
+        },
+        {
+          "difference": "their uncertainty model, for the point estimate",
+          "why": "no effect on the mean; it only makes their interval incomparable to ours (docs/35:186 D7)"
+        }
+      ],
+      "the_one_honest_summary": "the scoring-window difference accounts for at most about 5 % of the distance between our numbers and externally published ones. Corpus composition, reference-logit precision and head treatment carry the rest, and only the first of those three has been sized on our own data. That is exactly why a cross-protocol ratio is meaningless and why we publish both numbers side by side and never divide them."
+    },
+    "internal_inconsistency_found_in_docs_35": {
+      "what": "docs/35:9-11 says three of the differences are no longer arguments (D1, the cross-engine term, D10) while the section heading at docs/35:198 says 'Two of these deltas are now measured' and 35:200-203 names the two as D1 and the cross-engine term",
+      "severity": "cosmetic, but it is on the one doc all four cards link, and a hostile reader counting to three finds two"
+    }
+  },
+  "attack_our_own_numbers": {
+    "rule": "each item is classified MEASURED (we have a number for the effect), BOUNDED (we have a number that limits it but not on the current suite or not for every candidate), or ASSERTED (we have argued it and not measured it). Where a critic is simply right, it says so.",
+    "items": [
+      {
+        "id": "C1",
+        "critique": "teacher-forced scoring says nothing about generation",
+        "classification": "ASSERTED — and the critic is simply right",
+        "what_we_have": "nothing that closes it. We disclose it: docs/35:297-300 'it is text-only teacher-forced fidelity'; the cards' 'What the v5 numbers do not say' sections repeat it. The only generation-side evidence is a 70-item MMLU-Pro suite (receipts/public-capability-*.json), which is item-paired against BF16 but is three orders of magnitude smaller than the KLD evidence and its own card section admits a 70-item suite cannot certify the pre-registered bar.",
+        "what_a_hostile_reviewer_gets_to_say": "'you measured 10.5 million positions of something nobody asked about, and 70 items of the thing they did'",
+        "honest_position": "correct. KLD is a cheap, high-resolution proxy chosen because it is affordable at this volume; the link to generated quality is an assumption we have not tested at anything like this resolution. It must never be phrased as a quality claim.",
+        "on_the_plan": "P1 — widen the item-paired capability evidence, or stop letting KLD sentences sit next to quality words"
+      },
+      {
+        "id": "C2",
+        "critique": "shared-head replay measures the body and not the head, so it does not measure the artifact a downloader runs",
+        "classification": "BOUNDED",
+        "what_we_have": "receipts/paired-head-e2e.json: body-only versus body+K6-head, paired difference -6.778619846896359e-05, CI [-9.014223019177851e-05, -4.632939580981435e-05], 74 contexts / 23 clusters — on the SUPERSEDED v2 suite, for ONE head recipe. docs/16:82-85 adds its own caveat that at 6.5e-04 replay error a 6.8e-05 effect is below what the storage format resolves and 'must be redone with fp32 captures before it is treated as settled'.",
+        "what_a_hostile_reviewer_gets_to_say": "'your headline number excludes a component you measured once, on a different suite, and then told yourself was unresolved'",
+        "honest_position": "the design choice is right — otherwise every number mixes body quality with each packager's head policy — but the bound is stale. It has never been measured on v5, and it is the one delta that moves in the opposite direction to the others, so it matters for cross-protocol reading, not only for completeness.",
+        "on_the_plan": "P1 — re-run the head-inclusive control on v5 shard 0 with --candidate-head, for at least K5/K6 and K4. One replay per candidate; the captures already exist for shard 0"
+      },
+      {
+        "id": "C3",
+        "critique": "hidden-state capture at post-final-norm assumes the head is linear in what follows",
+        "classification": "MEASURED, and it is not an assumption but a bound: 0.000654177503134738",
+        "what_we_have": "receipts/v3-qualification-bf16.json: replaying a model against its own live logits gives mean KL(live || replayed) = 0.000654177503134738, top-1 0.9899853444064485, max 0.09134614002692976 — over SIX contexts. receipts/v3-qualification-fp32.json shows fp32 storage moves it to 0.0006249375925433911, only -4.5 %, so operand rounding is ~5 % of the gap and the rest is the two implementations' matmul ordering (docs/24:76-89).",
+        "what_a_hostile_reviewer_gets_to_say": "'your replay differs from the engine's own logits by 6.5e-4. Your hydrated build is 2.76e-3 and your hydrated-versus-online difference is 4.5e-4 — smaller than your own replay error. Your headline gap is inside your floor.'",
+        "honest_position": "the reviewer is right about the ABSOLUTE numbers and wrong about the DIFFERENCES. docs/24:93-98 already states the correct reading: both arms traverse the identical replay path so the offset is common-mode, differences below ~1e-3 in absolute terms are not resolvable and the same differences measured pairwise are. But three things are genuinely weak: the floor rests on SIX contexts, it was measured on the v3 suite with the v3 harness, and it has never been restated in the v5 cards or in docs/33 or docs/35 — which publish absolute means to six decimal places without it. A reviewer would have to find docs/24, an iteration-2 document, to learn the resolution limit of an iteration-4 number.",
+        "on_the_plan": "P0 — re-measure the replay floor on v5 with more than six contexts, and put the absolute-resolution caveat next to the absolute numbers on the cards. This is the single most attackable published claim."
+      },
+      {
+        "id": "C4",
+        "critique": "the bootstrap resamples clusters, so the interval is between-document and cannot capture between-suite variance",
+        "classification": "MEASURED for the between-document part; BOUNDED for between-suite; the critic is right that the interval does not contain it",
+        "what_we_have": "receipts/kld5-ladder-convergence.json measures exactly this and says so: relative interval width does NOT fall with volume (hydrated 14.6 % at 1,048,064 positions, 17.4 % at 10,480,640) because 'the estimator resamples source clusters, so its variance is dominated by between-document heterogeneity'. Between-suite is bounded from outside the interval by receipts/nvfp4-v5-measurement.json: the same six checkpoints read 2.4624986758761565x to 3.0790651709420223x apart between corrected v3 and v5, with the ordering identical. This audit adds the within-suite composition bound: up to 2.00x across our own five strata, with the ordering unanimous in all five (m3).",
+        "what_a_hostile_reviewer_gets_to_say": "'your [0.002540, 0.003020] describes sampling from YOUR corpus. Change the corpus and the whole interval moves by more than its own width.'",
+        "honest_position": "entirely correct, and we say it: 'absolute KLD is suite-specific' (docs/33:121-123) and 'never put a v3 and a v5 number in the same sentence'. The interval is a between-document interval and should be read as one. The mitigation that actually works is more independent documents, which is what took the relative width from ~60 % on v3's 39 clusters to 15-20 % on v5's 842.",
+        "on_the_plan": "P2 — say 'between-document 95 % interval' in the tables rather than '95 % interval', so nobody has to infer the scope"
+      },
+      {
+        "id": "C5",
+        "critique": "2,047 positions from a 2,048-token window says nothing about 262,144-token behaviour",
+        "classification": "ASSERTED — the critic is simply right",
+        "what_we_have": "nothing in this protocol. docs/33:129-130 states it plainly: 'Every window is 2,048 tokens. Long-context fidelity at 32k/64k/128k is a separate suite and remains unmeasured.' Long context is evidenced only by a different instrument — the needle receipts at 32,768 / 131,072 / 225,000 tokens and the native-context receipts — which measures retrieval, not distribution fidelity.",
+        "what_a_hostile_reviewer_gets_to_say": "'the context edition is sold on a 262,144-token capability and scored on a 2,048-token window'",
+        "honest_position": "right, and it is the sharpest gap for the context build specifically. A distribution-fidelity number at 32k would cost one suite and a large card; nothing in the current evidence substitutes for it, and the needle results are not a proxy for KLD.",
+        "on_the_plan": "P1 — a small long-context fidelity suite (e.g. 32 contexts x 32,768) would settle the objection cheaply relative to its rhetorical cost"
+      },
+      {
+        "id": "C6",
+        "critique": "contamination exclusion is by exact 12-gram and lightly edited text survives",
+        "classification": "was ASSERTED for v5; MOVED TO BOUNDED by this audit (m1)",
+        "what_we_have": "the exact scan is confirmed from the text: the 44 documents with any exact 12-word calibration hit are exactly the 44 the manifest excluded, and 0 of the 897 eligible documents has a single hit. The fuzzy residual among the eligible 897, from the repo's own scanner: per-document maximum 5-gram containment over 256-word windows has mean 0.013179, p95 0.035714, p99 0.055556, max 0.492063; two documents at or above 0.10, one at or above 0.25, none at 0.50. The same scan had previously been run on the v3 and v4 corpora only.",
+        "what_a_hostile_reviewer_gets_to_say": "'exact 12-grams catch copy-paste, not the paraphrase a scraped corpus is full of'",
+        "honest_position": "the mechanism is real and now sized: two eligible documents show >=10 % 5-gram window containment with zero exact 12-word hits, i.e. the filter did let lexically-similar text through. Both are C/Python source where shared 5-grams are language idiom. The tool itself states it 'does not detect semantic paraphrases', so semantic contamination remains unmeasured and unmeasurable by this method. And a stranger cannot check any of this, because the corpus text is not obtainable (G1).",
+        "on_the_plan": "P0 for G1 (publish the corpus or its shingle digests); P2 to fold this v5 near-duplicate result into the suite evidence"
+      },
+      {
+        "id": "C7",
+        "critique": "the KLD-to-quality link is an assumption",
+        "classification": "ASSERTED",
+        "what_we_have": "no calibration curve between KLD and any task metric. The two instruments coexist without a mapping: the KLD ladder (10,480,640 positions) and MMLU-Pro pass retention (70 items). docs/05:20-22 records an interpretation scale inherited from the upstream GG protocol ('<0.01 near-lossless, 0.01-0.05 good, ...') whose provenance is someone else's methodology document and which has no calibration on this model.",
+        "what_a_hostile_reviewer_gets_to_say": "'you rank artifacts by a quantity you have never shown predicts anything a user experiences'",
+        "honest_position": "correct. The defensible claim is narrow: KLD ranks how closely a candidate reproduces the reference's next-token distribution on this corpus. Any sentence that turns that into 'better quality' is an inference and should be labelled as one. The inherited <0.01 / 0.01-0.05 interpretation scale should not be cited on the cards without saying whose scale it is and that it is uncalibrated here.",
+        "on_the_plan": "P1 — either calibrate KLD against a task metric across the five candidates, or remove every quality-flavoured adjective from the KLD tables"
+      },
+      {
+        "id": "C8",
+        "critique": "the tail is one shard of ten, so the published percentiles are a tenth of the evidence the means rest on",
+        "classification": "MEASURED and disclosed, but the asymmetry is real",
+        "what_we_have": "docs/33:127-128 states it: 'The tail is one shard of ten. The ten-shard run predates the histogram; re-running the other nine with the newer harness is about six hours of GPU time.' The published tail covers 2,096,128 positions over two shards (receipts/kld5-2M-tail-*.json), reproduced bit-for-bit by this audit.",
+        "what_a_hostile_reviewer_gets_to_say": "'your p99.9 comparison table is built on 20 % of the positions your mean table is built on'",
+        "honest_position": "true and disclosed. The tail ordering matches the mean ordering, so nothing hinges on it, but the two tables should not be printed at the same visual weight without their position counts.",
+        "on_the_plan": "P2 — either finish the eight remaining tail shards or print the position count in the tail table's header"
+      },
+      {
+        "id": "C9",
+        "critique": "the paired win-count convention counts a tie as a loss for A",
+        "classification": "MEASURED, disclosed in a receipt, and not on the cards",
+        "what_we_have": "receipts/nvfp4-v5-measurement.json harness.aggregator.tie_convention: 'a_wins counts strict improvements, b_wins is the remainder', and it records that this 'has already misled one reader on a zero-difference control'. It is kept unchanged so the published receipts stay reproducible.",
+        "what_a_hostile_reviewer_gets_to_say": "'4,922 of 5,120 — how many of the other 198 are ties?'",
+        "honest_position": "a fair question with no published answer per comparison. The convention is right to keep and wrong to leave in a receipt footnote.",
+        "on_the_plan": "P2 — state the convention wherever a win count is printed; docs/42 section 7 now does"
+      },
+      {
+        "id": "C10",
+        "critique": "the determinism claim is advertised as three harness generations and the receipt shows two runs",
+        "classification": "MEASURED, and the wording is defensible but loose",
+        "what_we_have": "receipts/capture-determinism.json records TWO runs (published_ladder with harness 804c20a6..., tail_rerun with f8b1316f...) over 5,240,320 positions. The cards say 'different harness generations' and then cite a THIRD generation separately: the --score-from 0 control in receipts/scored-window-offset.json. This audit verified that third leg independently — the window_0 means for all five candidates are bit-identical to the published shard-0 reports.",
+        "honest_position": "the claim is true across three generations, but only two of them are inside the determinism receipt; a reader checking the receipt alone counts two.",
+        "on_the_plan": "P3 — cosmetic; docs/42 section 6 now states the receipt's own scope"
+      }
+    ]
+  },
+  "verdict": {
+    "headline": "the numbers are credible for what they are actually claimed to support, and the machinery around them is unusually strong: every published headline re-derives BIT-FOR-BIT on a CPU from published inputs, and this audit did it for all five cumulative receipts, the paired receipt and a tail receipt. The credibility problem is not the arithmetic. It is that one mandatory input (the corpus text) is not obtainable by a stranger, and that the absolute-resolution limit of the protocol lives in an iteration-2 document while the absolute numbers are printed to six decimals on iteration-4 cards.",
+    "what_the_numbers_support": [
+      "the RELATIVE ORDERING of these specific artifacts — hydrated < online K5/K6 < context edition < official FP8 < K4 — on this corpus, at a 2,048-token window, through one shared BF16 head, teacher-forced, under this engine and this configuration. This audit tried to break the ordering three ways and failed: it is unanimous across all five strata, unanimous across all ten independent 512-context shards, and unchanged when the scored window is moved to 256 or 1,024 tokens of left context",
+      "the PAIRED DIFFERENCES between those artifacts, with their between-document intervals and win counts, because both arms traverse the identical capture and replay path so the implementation offset is common-mode",
+      "the statement that the interval is governed by document diversity rather than token count, which is measured rather than argued",
+      "reproducibility as a property of the artifacts themselves: the reports, the suite, the reference capture and the head are all published, digest-pinned, mutually consistent, and re-derivable without a GPU"
+    ],
+    "what_the_numbers_do_not_support": [
+      "any absolute magnitude to better than about 1e-3 — the replay-versus-live floor is 0.000654177503134738 and the BF16-storage systematic is about 5 % of the level",
+      "any comparison of an absolute value across suite versions: the same six checkpoints read 2.46x to 3.08x apart between corrected v3 and v5",
+      "any cross-protocol ratio against llama.cpp, turboderp or Unsloth numbers. The scoring window explains at most ~5 % of the distance; corpus, reference precision and head treatment carry the rest and only the first is sized",
+      "the quality of the head a downloader actually runs — every number is body-only by construction",
+      "generation quality, or any claim of the form 'lower KLD therefore better model'. The KLD-to-quality link is an assumption, not a measurement",
+      "behaviour at any context length other than 2,048, and specifically nothing about the 262,144-token capability the context build is sold on",
+      "anything outside the pinned determinism configuration: no CUDA graphs, no max_num_seqs > 1, no multi-chunk prefill, no other GPU or driver, nothing downstream of the logits"
+    ],
+    "the_boundary_in_one_sentence": "these are body-only, teacher-forced, next-token distribution distances between specific artifacts on one 941-document held-out corpus at a 2,048-token window, measured through one shared BF16 head; their ORDERING and their PAIRED DIFFERENCES are solid and reproducible to the bit, their ABSOLUTE VALUES are protocol-specific to within a factor that exceeds any gap smaller than 1e-3, and nothing in them is a statement about generated output.",
+    "where_a_hostile_expert_would_attack_first": [
+      "1. the corpus is not obtainable, so the contamination claim is an assertion to everyone but us (G1)",
+      "2. the replay-versus-live floor, 6.5e-4 on six contexts, sits above the hydrated-versus-online paired difference of 4.5e-4 and is not cited anywhere near the absolute numbers (C3)",
+      "3. the head is excluded from every number and bounded only on a superseded 74-context suite (C2)",
+      "4. a dead collection link on all four cards, which costs nothing to fix and buys a reviewer a free shot at our care (broken_links_found)",
+      "5. the harness digest in the ladder pin does not resolve to any file at repository head, with no note saying why (tool_audit)"
+    ]
+  },
+  "prioritised_gaps": [
+    {
+      "id": "G1",
+      "priority": "P0",
+      "title": "the corpus text is neither published nor refetchable, so a stranger cannot verify the contamination claim",
+      "finding": "receipts/kld5-corpus-fetch-log.json carries 941 documents of which 862 have url == 'preexisting' and fetched_this_run == false; only the 79 CPython v3.13.1 tarball members carry a resolvable pinned URL. 0 of the 862 are recoverable by sha256 from receipts/v4-corpus-fetch-log.json (138 documents, none matching). The 599 Wikipedia documents could not reproduce their digests from a later fetch even if URLs were added, because live articles change.",
+      "what_is_wrong_on_the_published_surface": [
+        "DATASET_CARD-v5.md:56-58 — 'corpus/corpus_fetch_log.json: every source document: stratum, stem, URL, bytes, chars, sha256 ... Refetch the corpus from this'. Cannot be done for 862 of 941 documents.",
+        "DATASET_CARD-v5.md:149-151 — the corpus text is placed in tier 3 ('state the recompute cost and delete it freely') on the stated ground that it is 'Refetchable from corpus/corpus_fetch_log.json'. The premise does not hold.",
+        "receipts/kld5-suite-manifest-corpus-note-amendment.json — 'every corpus document appears there with its source URL'. Same overstatement, in a receipt. NOT EDITED by this audit; flagged for the owner."
+      ],
+      "consequence": "the 44-of-941 exclusion, the zero-hit result and every corpus-composition argument are unverifiable by anyone outside this machine. This audit could only check them because /var/tmp/work/kld5/corpus still exists locally.",
+      "fix": "publish the 69 MB corpus tree in the v5 dataset. It is 0.6 % of the 10.83 GB already published, the sources are public (Project Gutenberg, Wikipedia CC-BY-SA, arXiv abstracts, CPython PSF, NumPy BSD), and per-document attribution already exists in the fetch log. If any stratum's licence is judged unredistributable, publish that stratum's per-document blake2b-128 12-word shingle digest sets instead, which lets anyone re-run the exclusion scan against the public calibration files without receiving the text. Either way, correct the two card sentences above.",
+      "cost": "one upload; no GPU",
+      "corpus_breakdown_by_stem_family": {
+        "wiki": 599,
+        "cpython": 178,
+        "numpy": 63,
+        "pg": 59,
+        "arxiv": 42,
+        "total": 941
+      },
+      "all_599_wikipedia_documents_are_preexisting": true,
+      "the_79_with_a_resolvable_url_are": "codeload.github.com tarball members of python/cpython@v3.13.1, i.e. fetched_this_run == true for exactly 79 rows"
+    },
+    {
+      "id": "G2",
+      "priority": "P0",
+      "title": "the absolute-resolution limit is not published beside the absolute numbers",
+      "finding": "docs/24:96-98 establishes that 'absolute values carry two systematics: ~5 % from BF16 storage and an implementation offset of order 6e-04. Differences smaller than ~1e-3 in absolute terms are not resolvable; differences measured pairwise are.' That sentence appears in an iteration-2 results document. It appears nowhere in the four cards, docs/33 or docs/35, all of which print v5 absolute means to six decimals — including cross-family comparisons such as Q6_K net 0.00153 versus hydrated 0.002700, whose gap is close to the stated absolute floor.",
+      "fix": "carry one sentence into every table that prints an absolute KLD: the number is a body-only replay value whose absolute level carries a ~6e-4 implementation offset and a ~5 % storage systematic, so only paired differences and orderings should be read closely. docs/42 section 11 now holds the canonical version. Also re-measure the floor on v5 with more than six contexts.",
+      "cost": "card text plus, for the re-measurement, one replay against live logits on shard 0"
+    },
+    {
+      "id": "G3",
+      "priority": "P1",
+      "title": "dead collection link on all four flagship cards",
+      "finding": "https://huggingface.co/collections/qwen38-27b-mixed-precision-exl3-measured-6a7fe0cb27817c23e4a57025 returns 404; the owner namespace is missing",
+      "fix": "insert 'malaiwah/' — https://huggingface.co/collections/malaiwah/qwen38-27b-mixed-precision-exl3-measured-6a7fe0cb27817c23e4a57025, verified 200",
+      "cost": "one string, four files"
+    },
+    {
+      "id": "G4",
+      "priority": "P1",
+      "title": "the harness digest a reader would check does not resolve to any file they can download",
+      "finding": "suite/ladder-pin.json and receipts/capture-determinism.json pin 804c20a6... and f8b1316f...; neither is any file at repository head, and nothing tells a reader they are historical revisions or how the drift affects a number",
+      "fix": "state, wherever the pin is cited, the commit that carries each digest and that the differences are additive-only (lazy torch import, tail histogram, --score-from). docs/42 section 8 now does this with the function-level evidence. Optionally add a tools/HARNESS-REVISIONS.md mapping digest -> commit.",
+      "cost": "documentation only; no re-measurement, because the measurement path is byte-identical"
+    },
+    {
+      "id": "G5",
+      "priority": "P1",
+      "title": "the documented no-GPU reproduction command does not work as written",
+      "finding": "DATASET_CARD-v5.md:261-262 says to run tools/kld_aggregate.py over reports/kld5/shard-*/report-<name>.json. Run exactly that and it rejects for two reasons: the published reports are schema /1 so --allow-legacy-no-tail is required, and the ten shard views declare ten different suite_token_sha256 values so --suite is required. Both messages name the flag, so a careful reader recovers; a hostile one screenshots the rejection.",
+      "fix": "replace with the verified command in docs/42 section 9, and say why the flag is needed (the ten-shard run predates the histogram, which is why the receipts carry tail: null)",
+      "cost": "one code block"
+    },
+    {
+      "id": "G6",
+      "priority": "P1",
+      "title": "content_sha256 is advertised as a reproduction check and cannot be reproduced by a third party",
+      "finding": "the digest covers the payload including the inputs map keyed by absolute paths, shards[].report and suite.parent.path, and kld_aggregate.py:980-981 comments that 're-running the same shard set over the same reports is a digest-comparable reproduction'. This audit reproduced every measured field and a different content_sha256.",
+      "fix": "add a numbers_sha256 over the measured fields only and extend content_sha256_excludes to inputs, shards[].report and suite.parent.path; keep content_sha256 as-is so published receipts stay self-consistent",
+      "cost": "a few lines in kld_aggregate.py; regenerating receipts is NOT required and should not be done"
+    },
+    {
+      "id": "G7",
+      "priority": "P1",
+      "title": "the head-inclusive control is stale",
+      "finding": "the only head attribution is receipts/paired-head-e2e.json on 74 contexts of the v2 suite, and docs/16:82-85 says it must be redone before being treated as settled",
+      "fix": "re-run replay with --candidate-head on v5 shard 0 for K5/K6 and K4; the shard-0 captures and the reference are already published, so it is replay-only",
+      "cost": "one replay per candidate; no capture"
+    },
+    {
+      "id": "G8",
+      "priority": "P1",
+      "title": "no long-context fidelity number exists for a protocol that scores 2,048-token windows",
+      "finding": "docs/33:129-130 discloses it; the context edition is nonetheless marketed on a 262,144-token capability",
+      "fix": "a small long-context suite (e.g. 32 contexts x 32,768 tokens) would answer the objection; needle results are retrieval, not distribution fidelity, and must not be offered as a substitute",
+      "cost": "one suite plus a large card"
+    },
+    {
+      "id": "G9",
+      "priority": "P2",
+      "title": "docs/05 is indexed as the protocol 'to be reproduced' and is cited by docs/35 for the v5 determinism row",
+      "finding": "docs/05 describes the superseded iteration-1 logits harness; README:238 carries no historical marker while README:246 marks docs/15 'Superseded'; docs/35:189 sources the v5 determinism row from it",
+      "fix": "mark docs/05 superseded in the README file map and repoint docs/35's D10 'ours' cell at docs/42",
+      "cost": "two lines"
+    },
+    {
+      "id": "G10",
+      "priority": "P2",
+      "title": "the suite builder is unnamed on the cards and misnamed in its own docstring",
+      "finding": "tools/suite3.py emits schema qwen38-distribution-fidelity/6 and built the v5 suite; its docstring says 'Build the v3 fidelity suite'; no card lists it; tools/fidelity.py suite emits schema /1 and would build something else",
+      "fix": "name suite3.py in the cards' tool list beside fidelity.py / kld_ladder.sh / kld_aggregate.py / fetch_corpus_v5.py, fix the docstring, and give CAL_DIR a CLI override",
+      "cost": "docstring plus one argparse line plus four card edits"
+    },
+    {
+      "id": "G11",
+      "priority": "P2",
+      "title": "assorted precision defects a hostile reader will find",
+      "items": [
+        "docs/35:9-11 counts three measured deltas; docs/35:198 heading counts two",
+        "the contamination shingle unit is '12-token' in docs/33:18 and README:54-56 and '12-word' in docs/35:149 — the tool's unit is a normalized WORD token, so '12-word' is the correct one",
+        "the four cards say the v5 dataset is 5,835 files at revision 08bde6cc; that is exact as pinned (5,837 minus README.md and .gitattributes) but main now holds 7,890 after the captures/shard-0000 trees were added, and only the dataset card documents them",
+        "the paired tie convention (a tie counts as a b-win) is stated only in receipts/nvfp4-v5-measurement.json",
+        "the published v3 dataset card and this repo's DATASET_CARD.md have diverged (13,702 vs 13,733 bytes); both document the lm-head path, so it is cosmetic",
+        "no card mentions that the shared BF16 head — a mandatory replay input — lives in the v3 dataset; the v5 dataset card mentions it inside a 'what we do not preserve' list"
+      ],
+      "cost": "text only"
+    },
+    {
+      "id": "G12",
+      "priority": "P3",
+      "title": "docs/11 is not marked superseded",
+      "finding": "docs/11 reports our numbers from the superseded single-window protocol (NVFP4 0.091457) with no supersession note; README:248 indexes it without one, while the repo does mark supersession elsewhere",
+      "fix": "one README label and one banner line in docs/11",
+      "cost": "two lines"
+    }
+  ],
+  "card_text_handed_to_the_owner": {
+    "note": "this audit did not touch the four model cards, docs/29, docs/38-41, upstream/ or any existing receipt. The following is drop-in replacement text for the owner to apply.",
+    "edits": [
+      {
+        "applies_to": "all four model cards, the '(collection)' link",
+        "replace": "https://huggingface.co/collections/qwen38-27b-mixed-precision-exl3-measured-6a7fe0cb27817c23e4a57025",
+        "with": "https://huggingface.co/collections/malaiwah/qwen38-27b-mixed-precision-exl3-measured-6a7fe0cb27817c23e4a57025",
+        "reason": "the published form 404s; the namespaced form is verified 200"
+      },
+      {
+        "applies_to": "all four model cards, one sentence to add immediately after the v5 cumulative-means table",
+        "insert": "**How closely these absolute numbers may be read.** Each is a body-only replay value: both operands are projected by one shared BF16 head, and the replay path is not the engine's own logit path. Replaying a model against its own live logits measures `KL(live ‖ replayed)` = 6.54e-04 ([`receipts/v3-qualification-bf16.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/v3-qualification-bf16.json)), and moving hidden-state storage from BF16 to fp32 moves a candidate's KLD by 5.6 % ([`24-p0-results.md`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/docs/24-p0-results.md)). Both offsets are common-mode across candidates, so **paired differences and orderings are resolvable and absolute differences below about 1e-3 are not.** Read the paired table, not the gaps between the means.",
+        "reason": "gap G2 — the resolution limit is currently only in an iteration-2 document"
+      },
+      {
+        "applies_to": "all four model cards, the 'Reproduce this' section",
+        "insert": "Replay needs three published inputs, not two: the suite and the shard-0 BF16 reference from [`qwen38-27b-fidelity-suite-v5`](https://huggingface.co/datasets/malaiwah/qwen38-27b-fidelity-suite-v5), and **the shared BF16 `lm_head`**, which is published once in [`qwen38-27b-fidelity-suite-v3`](https://huggingface.co/datasets/malaiwah/qwen38-27b-fidelity-suite-v3) as `lm-head/weight.safetensors`, sha256 `25a30fd5f826da0abc4efc4cc71def9f02bcb8085f7175eee284d221dee4cfff` — the same digest every report's `head_sha256` records. The exact commands, the harness-revision pin and the floors that bound every number are in [`docs/42-kld-method.md`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/docs/42-kld-method.md), which is the method of record.",
+        "reason": "gaps G11 and the docs/42 link; no card currently names the head or the method doc"
+      },
+      {
+        "applies_to": "all four model cards, the tool list in the Fidelity section",
+        "insert_tool": "tools/suite3.py",
+        "as": "the suite builder (schema `qwen38-distribution-fidelity/6`); `fidelity.py suite` emits schema `/1` and did not build the v5 suite",
+        "reason": "gap G10"
+      },
+      {
+        "applies_to": "DATASET_CARD-v5.md, the corpus lines (currently 'Refetch the corpus from this' and the tier-3 bullet)",
+        "replace_with": "`corpus/corpus_fetch_log.json` pins every source document's stratum, stem, bytes, chars and sha256. It is a **provenance record, not a re-fetch script**: 862 of the 941 rows carry `url: \"preexisting\"` because they were carried forward from an earlier fetch run, and only the 79 CPython `v3.13.1` members resolve to a pinned URL. The corpus text is therefore not reconstructible from this file, and for the 599 Wikipedia documents a later fetch could not reproduce their digests in any case. Until the text or its shingle digests are published, the contamination exclusion is checkable from the manifest's counts but not re-derivable by a third party.",
+        "reason": "gap G1 — the current sentence asserts something that cannot be done"
+      }
+    ]
+  },
+  "what_this_audit_did_not_do": [
+    "did not touch the four model cards, docs/29, docs/38, docs/39, docs/40, docs/41, upstream/ or any existing receipt",
+    "did not run any GPU work; the RTX 5090 was held by KvDtypeSweep and was left alone",
+    "did not run fidelity.py capture or replay, because torch is not installed on this machine and both need it. The harness-drift question was therefore settled by function-level source comparison rather than by execution; the claim that the measurement path is unchanged is [VERIFIED BY SOURCE], not by a run",
+    "did not re-measure the replay-versus-live floor, which needs a GPU (gap G2)",
+    "did not re-fetch the corpus from upstream, because 862 of 941 rows have no URL to fetch (gap G1)",
+    "did not verify the 10.7 GB shard-0 BF16 reference capture byte by byte; its presence, file count and manifest were checked, and receipts/preserved-artifacts.json records a prior end-to-end re-download"
+  ],
+  "inputs": {
+    "receipts/kld5-10M-hyd.json": "2e4a28c487d22b0ed152306443169fe34e1d1c713f8bbd6c75b668812e65ce0e",
+    "receipts/kld5-10M-k5k6.json": "da1da6c34fecd4ba6b814f6de83ac2ea4c47bef9f9cc83e68e65164d1196b038",
+    "receipts/kld5-10M-ctx.json": "2d605b7005f1e0cef1342eb8e939c9e8afa8d3cbb4ed6a427e86842a6921af31",
+    "receipts/kld5-10M-fp8.json": "03b18684e1bacaad3f65300db96e578626fe47cd22e03d34a09a3b9f79951ac3",
+    "receipts/kld5-10M-k4.json": "aff87959aa147e85b78491d3986897bbbfa27003fbb9e976738e71370bea347c",
+    "receipts/kld5-10M-paired.json": "bea8a91ea853257fd3f2bea5d81af600c407142502c7af2a1203fbd8f5baca7d",
+    "receipts/kld5-2M-tail-k5k6.json": "fa5cc9fa69332094ee1ab536d743c4368573a34f63a089824758bfbf17e8f2fa",
+    "receipts/kld5-suite-manifest.json": "c79dfad3767ca5b3015129077f20dbb9282a2e51ca8bca9ed09be8c7a9c73019",
+    "receipts/kld5-corpus-fetch-log.json": "fd44298cb2c6315b5b511c9e81f3b2a5c6c5b124e0f3e16a38279d5680db8322",
+    "receipts/kld5-ladder-convergence.json": "4b137ebbcb9a897fc9ef23f9404365d430780cafd0dd4de01865d1d36970f7d9",
+    "receipts/capture-determinism.json": "be3d6f2949aa62454f89f4f04236185a7b35a995007545487d8cd1457c613e4d",
+    "receipts/scored-window-offset.json": "cedc33ef1c12536dc6752e0dcbd59fd505b80f5564dccc97abce28f263a5d9a3",
+    "receipts/cross-engine-comparator.json": "3fd7e57f76a082276c8d3cbf117cb0137d64cd61e6b5dba13451cf09d7f12acc",
+    "receipts/gguf-report-engine-floor.json": "a57b10a7f9c45eca3695770926325784a63885d7c65d81060e462136f9e283a8",
+    "receipts/wikitext-kld-run-a.json": "4a8fc320222f22f68bc578246b13543885dbffbbef53568cd27a3255c5bb4ca3",
+    "receipts/nvfp4-v5-measurement.json": "1ecd5a0475a8a71a3b974fc89836a82be7d41a334abe796644a23561827933da",
+    "receipts/paired-head-e2e.json": "396dada2b8da74e454e2df571a6237c6730f162ff29bf05302de936491a7fd28",
+    "receipts/v3-qualification-bf16.json": "02a0b168355446ea885a5e3ccadbe29603905d837cea6a09d653d558e43aea5a",
+    "receipts/v3-qualification-fp32.json": "49dc246c474f6a14a42c992146298faab207a858cf27cdf1815bf2f165615355",
+    "receipts/near-duplicate-v4.json": "1bee3e1f73a570333fe3dac02238c020d6549498099f18a96c4960f555c3ab3c",
+    "receipts/kld5-suite-manifest-corpus-note-amendment.json": "bfa71bee98412860cb60663e24e2190f366f6f3bb385f6fccf1f540b1c0ccf96",
+    "tools/fidelity.py": "8ce8fe861c977c856f3263f509878e588caa2eaab29fe310f8c40223941e1294",
+    "tools/suite3.py": "421f3d940b3b961575403887da11e4fdb2c87472982792d44f40f578a92b6ac3",
+    "tools/kld_aggregate.py": "543441faf0f8924ec92ce0696e2b68e276cd50cf7cb83a12df4c5499fb89057b",
+    "tools/kld_ladder.sh": "a036d2ade7e1d24727b48a620cd3a040c5cb822f44b294cf322dc85cc4538b41",
+    "tools/fetch_corpus_v5.py": "6d3571c100d89bf7dcad29d7a1dd29ae58c41172510549dfe55b1c2bf2fbf5b4",
+    "tools/near_duplicate_scan.py": "4220f2af6115ddcabda3a29042a89a9947dc03413d7c19e3c0a3041b12d390e3",
+    "docs/33-evidence-volume-and-intervals.md": "ccd96b06977f219dd1cc205849ec60fff475f0ae6601aa2a6dbd0b907962e28a",
+    "docs/35-external-protocol-comparability.md": "706ce25c8457a3b34535201b206d25ce9570bb5b4762bc5c756e651200ace80d",
+    "docs/24-p0-results.md": "5adcacd9ad880b0baca917f76c71a30282e7ff4b8cbd3a4f2eb52d483f3beecc",
+    "docs/14-fidelity-protocol-v2.md": "44f0d56f79a8eed0ddda181a9a640d04c47df4c2ce89d8131abe3e305d1d9fb0",
+    "docs/05-kld-protocol.md": "779d85aefca06674fd42d7c202786fa2284f17b8c6c333c90038d4aab80f001a",
+    "docs/42-kld-method.md": "6a7125b69c42be090699d69bc556a467d8b4ceee49e9efc5d9f674f24f52c82b",
+    "receipts/near-duplicate-v5.json": "2a9fee14ecb883d2e7027b7ee2bec1d87a0df217177ae070e95ca4cd89401a94"
+  },
+  "produced": {
+    "docs/42-kld-method.md": "the canonical v5 method document this audit found to be missing",
+    "receipts/near-duplicate-v5.json": "the v5 near-duplicate audit this repository was missing: the same scan already published for the v3 and v4 corpora, run for the first time on the v5 corpus"
+  },
+  "files_written_by_this_audit": {
+    "docs/42-kld-method.md": "new. The canonical v5 method document the audit found to be missing; every claim in it was verified against a receipt, a tool source or a run in this audit",
+    "receipts/kld-method-reproducibility-audit.json": "this file",
+    "receipts/near-duplicate-v5.json": "new. tools/near_duplicate_scan.py output over the full v5 corpus, verbatim, beside its v3 and v4 siblings",
+    "README.md": "two surgical edits: the docs/05 file-map row now says Superseded and points at docs/42 (gap G9), and a docs/42 row was added to the file map so the method of record is reachable in one hop from the repository root. Nothing else in README was touched.",
+    "not_touched": [
+      "the four model cards",
+      "MODEL_CARD.md",
+      "MODEL_CARD-EDA-research.md",
+      "DATASET_CARD-v5.md",
+      "DATASET_CARD.md",
+      "docs/29",
+      "docs/38",
+      "docs/39",
+      "docs/40",
+      "docs/41",
+      "upstream/",
+      "every pre-existing receipt",
+      "every tool"
+    ]
+  },
+  "content_sha256": "9e639c7607cbd18aa20dca28507d4f3118d7ee47159fb2c136ae6b78a245f3b4",
+  "content_sha256_excludes": [
+    "content_sha256"
+  ]
+}

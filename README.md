@@ -235,7 +235,7 @@ See [PROGRESS.md](PROGRESS.md) for the full session record.
 | [docs/02-recipe-k4.md](docs/02-recipe-k4.md) | The proposed recipe, footprint arithmetic, and the headroom exchange rates |
 | [docs/03-gg-runtime-contract.md](docs/03-gg-runtime-contract.md) | What the Gilded Gnosis EXL3 loader requires, and what it does *not* support |
 | [docs/04-exllamav3-toolchain.md](docs/04-exllamav3-toolchain.md) | exllamav3 conversion flags, the missing per-module override, and the splice route |
-| [docs/05-kld-protocol.md](docs/05-kld-protocol.md) | Teacher-forced full-vocabulary KLD protocol to be reproduced |
+| [docs/05-kld-protocol.md](docs/05-kld-protocol.md) | **Superseded** iteration-1 protocol: the single-window, full-vocabulary logits KLD inherited from the GG r34 runner. Kept for provenance; the current method is [docs/42](docs/42-kld-method.md) |
 | [docs/06-baseline-validation.md](docs/06-baseline-validation.md) | Running the official GG image with no container runtime, and the two proven baselines |
 | [docs/07-serving-recommendations.md](docs/07-serving-recommendations.md) | Serving-guide differences across upstream / NVIDIA / Unsloth cards, cross-checked against shipped configs |
 | [docs/08-upstream-cards-digest.md](docs/08-upstream-cards-digest.md) | Per-card digest: declared recipe, benchmarks, harnesses, limitations |
@@ -270,6 +270,7 @@ See [PROGRESS.md](PROGRESS.md) for the full session record.
 | [docs/36-performance-levers-5090.md](docs/36-performance-levers-5090.md) | 11 configurations on the physical 5090: what moved throughput, what is a no-op, and the GDN gate reachability rate |
 | [docs/37-error-driven-allocation.md](docs/37-error-driven-allocation.md) | the error-driven allocation experiment that lost, the 3.73x-per-bit law it produced, and why the objective is not a surrogate for KLD |
 | [docs/39-chat-template-audit.md](docs/39-chat-template-audit.md) | every chat template in this model family captured with revision and sha256, diffed by named construct, and the verdict that ours is byte-identical to official; the community "fixed" template measured losing tool-call arguments under `qwen3_coder`, and the loudest complaint traced to the 2.4T flagship's template rather than the 27B's |
+| [docs/42-kld-method.md](docs/42-kld-method.md) | **the KLD method of record**: the metric, the shared BF16 head and why, the capture point, the suite and its contamination policy, the ladder, the bootstrap and the tail histogram, the harness-revision pin, how to re-derive a published number on a CPU in seconds, every floor that bounds an absolute value, and the claim boundary |
 
 Tooling in [tools/](tools/) is what produced the evidence: an unprivileged OCI image
 puller and a proot-based runner for it, the BF16 attention splice and checkpoint
