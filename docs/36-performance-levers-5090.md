@@ -268,3 +268,47 @@ GPU handover: this window took the card from `ShipPrefixCaching` at 06:09 UTC by
 `receipts/aiboss-live-service-snapshot.json`'s `gpu_state_before_stop` to the MiB. Raw server
 logs, probe JSONs, the counter dumps and the frozen prompts are preserved under
 `receipts/gdn-gate-raw/` with digests in the receipt; nothing was deleted.
+
+## The V2 model runner cannot rescue dynamic depth on this build (2026-08-16)
+
+Receipt: `receipts/v2-runner-depth-schedule.json`. This section closes docs/41's rank-1 work item
+(W1: `VLLM_USE_V2_MODEL_RUNNER=1` plus `num_speculative_tokens_per_batch_size=[[1,2,3],[3,8,1]]`,
+the schedule that promised C1 ≈ 83 **and** C8 ≈ 409 from one server) and revises the *prognosis*,
+not the measurement, of *Both dynamic speculative-decoding knobs are closed on this build*: the
+caution there — that MRV2 risks `exl3_gemm` autotuning *inside* graph capture — named the wrong
+failure, and the item closes anyway.
+
+The configuration story works exactly as docs/41 claimed. On the sweep's own image, profile,
+frozen prompts and harness (16 lines added to `tools/perf_sweep_5090.sh` for the two new arms;
+receipt has the patch and both digests), neither arm prints *"Overriding cudagraph_mode … to
+PIECEWISE"*: `FULL_DECODE_ONLY` survives both dynamic-SD knob paths on the V2 runner
+(`config/vllm.py:862-887` skips the downgrade when `use_v2_model_runner` is true), the exl3
+priming pass runs (m=1..32, whose pow2-clamped autotune buckets — docs/41 §5 — cover every
+per-depth shape), and the schedule arm captures **16 target FULL graphs, 8 sizes × 2 depths,
+plus two speculator graph sets of 16 prefill + 8 decode graphs each** — exactly the per-depth
+capture upstream #45953 promises (`v1/worker/gpu/cudagraph_utils.py:392-413`).
+
+Then the engine dies before ever answering `/health`, deterministically on all three starts
+(v2base twice, v2sched once): `warmup_kernels → sample_tokens → speculator.propose →
+_multi_step_decode → decode_cudagraph_manager.run_fullgraph → graphs[desc].replay()` raises
+**`cudaErrorIllegalAddress`**. Under `CUDA_LAUNCH_BLOCKING=1` the fault sits inside the replay
+itself (`cudagraph_utils.py:589`), not in any eager kernel. Two isolation serves finish the
+attribution: **V2 without MTP serves** (ready in 95 s, greedy completion normal) and **V2 with
+MTP-3 under `--enforce-eager` serves** (ready in 49 s, same greedy prefix). So the V2 runner
+tolerates the hybrid-mamba/EXL3/fp8-KV stack, the draft kernels are sound in eager mode, and
+what faults is precisely the captured draft-decode graph W1 needs. That is docs/41's own
+`what_could_break` #2 — V2 owns its own KV/mamba plumbing and the combination had never run —
+materialized as a replay-time illegal access rather than a capture-time one.
+
+No fidelity row exists because nothing served, and there is no salvageable eager variant:
+losing graph decode costs −48 % (measured above), more than any depth schedule can win. **The
+recommendation of *What to change* stands unrevised: a static depth chosen for the expected
+concurrency.** The only route to the single-server schedule is a fix to the V2 speculator's
+draft-graph capture on hybrid models — a runtime bug upstream of any configuration, worth filing
+on `local-inference-lab/vllm` with the receipt's call chain, not another GPU window.
+
+GPU handover: this window took the card from `KvDtypeSweep` at 13:04:44Z (which had restored and
+proven the service healthy at 13:02:33Z), spent ~10 minutes on the refusals and diagnostics, and
+handed it to `ScratchArena` at 13:14:57Z with the GPU idle; per the session queue the final
+`qwen38-27b` restore is owned by `LMCacheTest`. Raw server logs and harness records are kept on
+AIBoss under `/home/mbelleau/v2runner` with digests in the receipt; nothing was deleted.

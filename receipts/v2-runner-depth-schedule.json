@@ -1,0 +1,519 @@
+{
+  "schema": "qwen38-v2-runner-depth-schedule/1",
+  "generated_utc": "2026-08-16T13:16:58Z",
+  "purpose": "measure docs/41 W1 (rank 1): VLLM_USE_V2_MODEL_RUNNER=1 plus the per-batch-size speculative depth schedule num_speculative_tokens_per_batch_size=[[1,2,3],[3,8,1]], against the MRV1 rows of receipts/perf-sweep-5090.json, on the same image, profile, frozen prompts and harness",
+  "measured_on": {
+    "host": "aiboss",
+    "gpu": "NVIDIA GeForce RTX 5090, GPU-506a575d-01d7-b12e-9a0a-c1ab5f38ae0a, 32607 MiB, 610.57.04",
+    "gpu_count": 1,
+    "note": "every number in this receipt was measured on this one physical GeForce RTX 5090. No number here is comparable to the rental RTX PRO 6000 engine-budget receipts, and none was measured on it."
+  },
+  "artifact_under_test": {
+    "image": "localhost/vllm:gg-r34-patched",
+    "image_manifest_digest": "sha256:6eca4c693f01b6f4e112c04eacd30673b7cfbba4150e6fe2ea3ba1bbfde14c27",
+    "image_config_id": "3cd11158a540ff4c23cece491774fecd3e61f6e4784771273e72bd65e44b773c",
+    "patch_modules_verified_inside_image": true,
+    "source_bind_mounts_used": [],
+    "checkpoint": "malaiwah/Qwen3.8-27B-EXL3-K5K6-context",
+    "podman_version": "podman version 4.9.3"
+  },
+  "window_utc": "2026-08-16T13:04:44Z stop of qwen38-27b.service to 13:14:57Z card handover to ScratchArena",
+  "baseline_from": "receipts/perf-sweep-5090.json (MRV1, same host, image, profile, prompts, harness)",
+  "baseline_mrv1": {
+    "base": {
+      "kv_tokens": 272570,
+      "decode_T0": {
+        "T0-C1": {
+          "aggregate_tok_s": 82.94,
+          "accepted_tokens_per_step": 2.1429,
+          "step_time_ms": 25.7213,
+          "decision_metric_tok_s": 83.31
+        },
+        "T0-C4": {
+          "aggregate_tok_s": 263.12,
+          "accepted_tokens_per_step": 2.1902,
+          "step_time_ms": 30.6432,
+          "decision_metric_tok_s": 71.47
+        },
+        "T0-C8": {
+          "aggregate_tok_s": 313.28,
+          "accepted_tokens_per_step": 2.1753,
+          "step_time_ms": 49.5248,
+          "decision_metric_tok_s": 43.92
+        }
+      }
+    },
+    "mtp1": {
+      "kv_tokens": 283481,
+      "decode_T0": {
+        "T0-C1": {
+          "aggregate_tok_s": 74.09,
+          "accepted_tokens_per_step": 1.6558,
+          "step_time_ms": 22.2923,
+          "decision_metric_tok_s": 74.28
+        },
+        "T0-C4": {
+          "aggregate_tok_s": 256.91,
+          "accepted_tokens_per_step": 1.7114,
+          "step_time_ms": 25.5497,
+          "decision_metric_tok_s": 66.98
+        },
+        "T0-C8": {
+          "aggregate_tok_s": 409.35,
+          "accepted_tokens_per_step": 1.6754,
+          "step_time_ms": 31.0749,
+          "decision_metric_tok_s": 53.91
+        }
+      }
+    }
+  },
+  "arms": {
+    "v2base": {
+      "command": {
+        "schema": "qwen38-perf-sweep-command/1",
+        "tag": "v2base",
+        "lever": "W1 v2base: VLLM_USE_V2_MODEL_RUNNER=1, everything else identical to base (MTP-3 static, FULL_DECODE_ONLY [32])",
+        "image": "localhost/vllm:gg-r34-patched",
+        "image_manifest_digest": "sha256:6eca4c693f01b6f4e112c04eacd30673b7cfbba4150e6fe2ea3ba1bbfde14c27",
+        "source_bind_mounts": [],
+        "podman_argv": [
+          "podman",
+          "run",
+          "--rm",
+          "--name",
+          "perfsweep-v2base",
+          "--device",
+          "nvidia.com/gpu=all",
+          "--ipc=host",
+          "--network",
+          "host",
+          "-v",
+          "/mnt/vault/llm/huggingface/hub/models--malaiwah--Qwen3.8-27B-EXL3-K5K6-context:/models/ctx-repo:ro",
+          "-v",
+          "/home/mbelleau/qual5090/cache/jit:/cache/jit:rw",
+          "-v",
+          "/home/mbelleau/qual5090/cache/exl3-online:/cache/exl3-online:rw",
+          "-e",
+          "HF_HUB_OFFLINE=1",
+          "-e",
+          "TRANSFORMERS_OFFLINE=1",
+          "-e",
+          "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True",
+          "-e",
+          "VLLM_EXL3_EMBED_BITS=8",
+          "-e",
+          "VLLM_EXL3_GRAPH_DECODE=1",
+          "-e",
+          "VLLM_EXL3_PREFILL_RECONSTRUCT_M=128",
+          "-e",
+          "VLLM_USE_V2_MODEL_RUNNER=1",
+          "--entrypoint",
+          "/opt/venv/bin/vllm",
+          "localhost/vllm:gg-r34-patched"
+        ],
+        "vllm_argv": [
+          "serve",
+          "/models/ctx-repo/snapshots/c45c273b0d6ef2859cb2d85b36dd52253c80d878",
+          "--served-model-name",
+          "m",
+          "--quantization",
+          "exl3",
+          "--quantization-config",
+          "{\"linear\":{\"weight\":\"mxfp8\"},\"ignore\":[\"re:.*visual\\\\..*\",\"re:.*in_proj_a$\",\"re:.*in_proj_b$\",\"re:.*in_proj_ba$\",\"re:.*mtp\\\\..*\",\"lm_head\"]}",
+          "--max-model-len",
+          "262144",
+          "--gpu-memory-utilization",
+          "0.97",
+          "--kv-cache-dtype",
+          "fp8",
+          "--max-num-seqs",
+          "8",
+          "--max-num-batched-tokens",
+          "2048",
+          "--speculative-config",
+          "{\"method\":\"mtp\",\"num_speculative_tokens\":3}",
+          "--mm-processor-kwargs",
+          "{\"truncation\":false,\"max_pixels\":8388608}",
+          "--compilation-config",
+          "{\"cudagraph_mode\":\"FULL_DECODE_ONLY\",\"cudagraph_capture_sizes\":[32]}",
+          "--host",
+          "127.0.0.1",
+          "--port",
+          "8231"
+        ]
+      },
+      "started": false,
+      "outcome": "engine core died during kernel warmup, after successful config negotiation, weight load, KV allocation and CUDA-graph capture; the /health endpoint was never reachable",
+      "startup": {
+        "engine_banner": [
+          "Initializing a V1 LLM engine (v0.11.2.dev280+gilded.gnosis.v20.vllm4d006a4.b12xcd3ce19.fi1ac6942.cu132.20260810.r34)"
+        ],
+        "v2_banner": [
+          "V2 Model Runner"
+        ],
+        "cudagraph_override_lines": [],
+        "exl3_graph_decode": [
+          "EXL3 graph decode enabled by VLLM_EXL3_GRAPH_DECODE: cudagraph_mode=FULL_DECODE_ONLY captures decode only; priming exl3_gemm for 14 row counts (m=1..32) during weight loading."
+        ],
+        "exl3_priming": [
+          "priming exl3_gemm for 14 row counts (m=1..32)"
+        ],
+        "graph_capture_counts": [
+          "8/8"
+        ],
+        "kv_cache_tokens": [
+          "GPU KV cache size: 274,059 tokens"
+        ],
+        "speculator_capture": [
+          "Capturing model for speculator..."
+        ]
+      },
+      "warmup_crash": {
+        "error": [
+          "torch.AcceleratorError: CUDA error: an illegal memory access was encountered"
+        ],
+        "call_chain": [
+          "warmup_kernels(self.model_runner, self.execute_model, self.sample_tokens)",
+          "File \"/opt/venv/lib/python3.12/site-packages/vllm/v1/worker/gpu/warmup.py\", line 317, in warmup_kernels",
+          "worker_sample_tokens(grammar_output)",
+          "draft_tokens = self.speculator.propose(",
+          "self._multi_step_decode(",
+          "File \"/opt/venv/lib/python3.12/site-packages/vllm/v1/worker/gpu/spec_decode/autoregressive/speculator.py\", line 519, in _multi_step_decode",
+          "attn_metadata = self._build_draft_attn_metadata(",
+          "File \"/opt/venv/lib/python3.12/site-packages/vllm/v1/worker/gpu/spec_decode/speculator.py\", line 312, in _build_draft_attn_metadata",
+          "self._seq_lens_cpu = self.seq_lens.to(\"cpu\")"
+        ]
+      },
+      "harness_failure_record": {
+        "schema": "qwen38-perf-sweep-failure/1",
+        "tag": "v2base",
+        "lever": "W1 v2base: VLLM_USE_V2_MODEL_RUNNER=1, everything else identical to base (MTP-3 static, FULL_DECODE_ONLY [32])",
+        "started": false,
+        "outcome": "server refused to start on this profile",
+        "evidence": {
+          "engine_dead": [
+            "Traceback",
+            "failed"
+          ]
+        },
+        "log_tail": [
+          "(APIServer pid=1)     return cls(",
+          "(APIServer pid=1)            ^^^^",
+          "(APIServer pid=1)   File \"/opt/venv/lib/python3.12/site-packages/vllm/v1/engine/async_llm.py\", line 146, in __init__",
+          "(APIServer pid=1)     self.engine_core = EngineCoreClient.make_async_mp_client(",
+          "(APIServer pid=1)                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+          "(APIServer pid=1)   File \"/opt/venv/lib/python3.12/site-packages/vllm/tracing/otel.py\", line 178, in sync_wrapper",
+          "(APIServer pid=1)     return func(*args, **kwargs)",
+          "(APIServer pid=1)            ^^^^^^^^^^^^^^^^^^^^^",
+          "(APIServer pid=1)   File \"/opt/venv/lib/python3.12/site-packages/vllm/v1/engine/core_client.py\", line 132, in make_async_mp_client",
+          "(APIServer pid=1)     return AsyncMPClient(*client_args)",
+          "(APIServer pid=1)            ^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+          "(APIServer pid=1)   File \"/opt/venv/lib/python3.12/site-packages/vllm/tracing/otel.py\", line 178, in sync_wrapper",
+          "(APIServer pid=1)     return func(*args, **kwargs)",
+          "(APIServer pid=1)            ^^^^^^^^^^^^^^^^^^^^^",
+          "(APIServer pid=1)   File \"/opt/venv/lib/python3.12/site-packages/vllm/v1/engine/core_client.py\", line 963, in __init__",
+          "(APIServer pid=1)     super().__init__(",
+          "(APIServer pid=1)   File \"/opt/venv/lib/python3.12/site-packages/vllm/v1/engine/core_client.py\", line 573, in __init__",
+          "(APIServer pid=1)     with launch_core_engines(",
+          "(APIServer pid=1)   File \"/usr/lib/python3.12/contextlib.py\", line 144, in __exit__",
+          "(APIServer pid=1)     next(self.gen)",
+          "(APIServer pid=1)   File \"/opt/venv/lib/python3.12/site-packages/vllm/v1/engine/utils.py\", line 1213, in launch_core_engines",
+          "(APIServer pid=1)     wait_for_engine_startup(",
+          "(APIServer pid=1)   File \"/opt/venv/lib/python3.12/site-packages/vllm/v1/engine/utils.py\", line 1272, in wait_for_engine_startup",
+          "(APIServer pid=1)     raise RuntimeError(",
+          "(APIServer pid=1) RuntimeError: Engine core initialization failed. See root cause above. Failed core proc(s): {}"
+        ]
+      },
+      "server_log_sha256": "ccb6b533b99152ddcb4460ed80dec58228669c06329641b0b5d96ab011a89f60"
+    },
+    "v2sched": {
+      "command": {
+        "schema": "qwen38-perf-sweep-command/1",
+        "tag": "v2sched",
+        "lever": "W1 v2sched: VLLM_USE_V2_MODEL_RUNNER=1 + num_speculative_tokens_per_batch_size depth 3 at batch 1-2, depth 1 at batch 3-8",
+        "image": "localhost/vllm:gg-r34-patched",
+        "image_manifest_digest": "sha256:6eca4c693f01b6f4e112c04eacd30673b7cfbba4150e6fe2ea3ba1bbfde14c27",
+        "source_bind_mounts": [],
+        "podman_argv": [
+          "podman",
+          "run",
+          "--rm",
+          "--name",
+          "perfsweep-v2sched",
+          "--device",
+          "nvidia.com/gpu=all",
+          "--ipc=host",
+          "--network",
+          "host",
+          "-v",
+          "/mnt/vault/llm/huggingface/hub/models--malaiwah--Qwen3.8-27B-EXL3-K5K6-context:/models/ctx-repo:ro",
+          "-v",
+          "/home/mbelleau/qual5090/cache/jit:/cache/jit:rw",
+          "-v",
+          "/home/mbelleau/qual5090/cache/exl3-online:/cache/exl3-online:rw",
+          "-e",
+          "HF_HUB_OFFLINE=1",
+          "-e",
+          "TRANSFORMERS_OFFLINE=1",
+          "-e",
+          "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True",
+          "-e",
+          "VLLM_EXL3_EMBED_BITS=8",
+          "-e",
+          "VLLM_EXL3_GRAPH_DECODE=1",
+          "-e",
+          "VLLM_EXL3_PREFILL_RECONSTRUCT_M=128",
+          "-e",
+          "VLLM_USE_V2_MODEL_RUNNER=1",
+          "--entrypoint",
+          "/opt/venv/bin/vllm",
+          "localhost/vllm:gg-r34-patched"
+        ],
+        "vllm_argv": [
+          "serve",
+          "/models/ctx-repo/snapshots/c45c273b0d6ef2859cb2d85b36dd52253c80d878",
+          "--served-model-name",
+          "m",
+          "--quantization",
+          "exl3",
+          "--quantization-config",
+          "{\"linear\":{\"weight\":\"mxfp8\"},\"ignore\":[\"re:.*visual\\\\..*\",\"re:.*in_proj_a$\",\"re:.*in_proj_b$\",\"re:.*in_proj_ba$\",\"re:.*mtp\\\\..*\",\"lm_head\"]}",
+          "--max-model-len",
+          "262144",
+          "--gpu-memory-utilization",
+          "0.97",
+          "--kv-cache-dtype",
+          "fp8",
+          "--max-num-seqs",
+          "8",
+          "--max-num-batched-tokens",
+          "2048",
+          "--speculative-config",
+          "{\"method\":\"mtp\",\"num_speculative_tokens\":3,\"num_speculative_tokens_per_batch_size\":[[1,2,3],[3,8,1]]}",
+          "--mm-processor-kwargs",
+          "{\"truncation\":false,\"max_pixels\":8388608}",
+          "--compilation-config",
+          "{\"cudagraph_mode\":\"FULL_DECODE_ONLY\",\"cudagraph_capture_sizes\":[32]}",
+          "--host",
+          "127.0.0.1",
+          "--port",
+          "8231"
+        ]
+      },
+      "started": false,
+      "outcome": "engine core died during kernel warmup, after successful config negotiation, weight load, KV allocation and CUDA-graph capture; the /health endpoint was never reachable",
+      "startup": {
+        "engine_banner": [
+          "Initializing a V1 LLM engine (v0.11.2.dev280+gilded.gnosis.v20.vllm4d006a4.b12xcd3ce19.fi1ac6942.cu132.20260810.r34)"
+        ],
+        "v2_banner": [
+          "V2 Model Runner"
+        ],
+        "cudagraph_override_lines": [],
+        "exl3_graph_decode": [
+          "EXL3 graph decode enabled by VLLM_EXL3_GRAPH_DECODE: cudagraph_mode=FULL_DECODE_ONLY captures decode only; priming exl3_gemm for 14 row counts (m=1..32) during weight loading."
+        ],
+        "exl3_priming": [
+          "priming exl3_gemm for 14 row counts (m=1..32)"
+        ],
+        "graph_capture_counts": [
+          "16/16",
+          "8/8"
+        ],
+        "kv_cache_tokens": [
+          "GPU KV cache size: 271,080 tokens"
+        ],
+        "speculator_capture": [
+          "Capturing model for speculator..."
+        ]
+      },
+      "warmup_crash": {
+        "error": [
+          "torch.AcceleratorError: CUDA error: an illegal memory access was encountered"
+        ],
+        "call_chain": [
+          "warmup_kernels(self.model_runner, self.execute_model, self.sample_tokens)",
+          "File \"/opt/venv/lib/python3.12/site-packages/vllm/v1/worker/gpu/warmup.py\", line 317, in warmup_kernels",
+          "worker_sample_tokens(grammar_output)",
+          "draft_tokens = self.speculator.propose(",
+          "self._multi_step_decode(",
+          "File \"/opt/venv/lib/python3.12/site-packages/vllm/v1/worker/gpu/spec_decode/autoregressive/speculator.py\", line 519, in _multi_step_decode",
+          "attn_metadata = self._build_draft_attn_metadata(",
+          "File \"/opt/venv/lib/python3.12/site-packages/vllm/v1/worker/gpu/spec_decode/speculator.py\", line 312, in _build_draft_attn_metadata",
+          "self._seq_lens_cpu = self.seq_lens.to(\"cpu\")"
+        ]
+      },
+      "harness_failure_record": {
+        "schema": "qwen38-perf-sweep-failure/1",
+        "tag": "v2sched",
+        "lever": "W1 v2sched: VLLM_USE_V2_MODEL_RUNNER=1 + num_speculative_tokens_per_batch_size depth 3 at batch 1-2, depth 1 at batch 3-8",
+        "started": false,
+        "outcome": "server refused to start on this profile",
+        "evidence": {
+          "engine_dead": [
+            "Traceback",
+            "failed"
+          ]
+        },
+        "log_tail": [
+          "(APIServer pid=1)     return cls(",
+          "(APIServer pid=1)            ^^^^",
+          "(APIServer pid=1)   File \"/opt/venv/lib/python3.12/site-packages/vllm/v1/engine/async_llm.py\", line 146, in __init__",
+          "(APIServer pid=1)     self.engine_core = EngineCoreClient.make_async_mp_client(",
+          "(APIServer pid=1)                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+          "(APIServer pid=1)   File \"/opt/venv/lib/python3.12/site-packages/vllm/tracing/otel.py\", line 178, in sync_wrapper",
+          "(APIServer pid=1)     return func(*args, **kwargs)",
+          "(APIServer pid=1)            ^^^^^^^^^^^^^^^^^^^^^",
+          "(APIServer pid=1)   File \"/opt/venv/lib/python3.12/site-packages/vllm/v1/engine/core_client.py\", line 132, in make_async_mp_client",
+          "(APIServer pid=1)     return AsyncMPClient(*client_args)",
+          "(APIServer pid=1)            ^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+          "(APIServer pid=1)   File \"/opt/venv/lib/python3.12/site-packages/vllm/tracing/otel.py\", line 178, in sync_wrapper",
+          "(APIServer pid=1)     return func(*args, **kwargs)",
+          "(APIServer pid=1)            ^^^^^^^^^^^^^^^^^^^^^",
+          "(APIServer pid=1)   File \"/opt/venv/lib/python3.12/site-packages/vllm/v1/engine/core_client.py\", line 963, in __init__",
+          "(APIServer pid=1)     super().__init__(",
+          "(APIServer pid=1)   File \"/opt/venv/lib/python3.12/site-packages/vllm/v1/engine/core_client.py\", line 573, in __init__",
+          "(APIServer pid=1)     with launch_core_engines(",
+          "(APIServer pid=1)   File \"/usr/lib/python3.12/contextlib.py\", line 144, in __exit__",
+          "(APIServer pid=1)     next(self.gen)",
+          "(APIServer pid=1)   File \"/opt/venv/lib/python3.12/site-packages/vllm/v1/engine/utils.py\", line 1213, in launch_core_engines",
+          "(APIServer pid=1)     wait_for_engine_startup(",
+          "(APIServer pid=1)   File \"/opt/venv/lib/python3.12/site-packages/vllm/v1/engine/utils.py\", line 1272, in wait_for_engine_startup",
+          "(APIServer pid=1)     raise RuntimeError(",
+          "(APIServer pid=1) RuntimeError: Engine core initialization failed. See root cause above. Failed core proc(s): {}"
+        ]
+      },
+      "server_log_sha256": "9de234e171c613de1b3d864e9010f13ecc8d66f2c290d707f68cab9ed747b768"
+    }
+  },
+  "diagnostics": {
+    "launch_blocking": {
+      "what": "identical v2base argv plus CUDA_LAUNCH_BLOCKING=1, so the asynchronous fault surfaces at its launch site instead of at the next sync point",
+      "fault_site": [
+        "warmup_kernels(self.model_runner, self.execute_model, self.sample_tokens)",
+        "File \"/opt/venv/lib/python3.12/site-packages/vllm/v1/worker/gpu/warmup.py\", line 317, in warmup_kernels",
+        "worker_sample_tokens(grammar_output)",
+        "draft_tokens = self.speculator.propose(",
+        "self._multi_step_decode(",
+        "File \"/opt/venv/lib/python3.12/site-packages/vllm/v1/worker/gpu/spec_decode/autoregressive/speculator.py\", line 537, in _multi_step_decode",
+        "self.decode_cudagraph_manager.run_fullgraph(batch_desc)",
+        "File \"/opt/venv/lib/python3.12/site-packages/vllm/v1/worker/gpu/cudagraph_utils.py\", line 589, in run_fullgraph",
+        "self.graphs[desc].replay()"
+      ],
+      "error": [
+        "torch.AcceleratorError: CUDA error: an illegal memory access was encountered"
+      ],
+      "conclusion": "the illegal memory access is raised INSIDE decode_cudagraph_manager.run_fullgraph -> self.graphs[desc].replay() (v1/worker/gpu/cudagraph_utils.py:589): the replay of the V2 speculator's captured draft-decode FULL graph itself faults, during warmup, before the server ever answers",
+      "server_log_sha256": "531abaf37db913a217252298f97e5dfea7f4e660ec2a66fc30cb96abf6d0e952"
+    },
+    "v2_without_mtp": {
+      "what": "identical v2base argv minus --speculative-config (no speculator at all), graph decode still on, FULL_DECODE_ONLY [32]",
+      "started": true,
+      "ready_seconds": 95,
+      "greedy_probe": {
+        "prompt": "2+2=",
+        "max_tokens": 8,
+        "temperature": 0,
+        "completion_text": "5?\\n\\n<think>\\nThe user is",
+        "response_id": "cmpl-9704918e918e1e1d"
+      },
+      "conclusion": "V2 runner + hybrid mamba + EXL3 + fp8 KV + FULL_DECODE_ONLY graph decode serves fine without a speculator",
+      "server_log_sha256": "916d31de6dcedf2932cb3587fb461b059ce7be93c5839271ad1fa0a317f6d4e8"
+    },
+    "v2_eager_mtp3": {
+      "what": "V2 runner + MTP-3 with --enforce-eager, cudagraph_mode NONE, VLLM_EXL3_GRAPH_DECODE unset, utilisation 0.95 (the sweep's eager-arm profile)",
+      "started": true,
+      "ready_seconds": 49,
+      "greedy_probe": {
+        "prompt": "2+2=",
+        "max_tokens": 8,
+        "temperature": 0,
+        "completion_text": "5?\\n\\n<think>\\nThe user is",
+        "response_id": "cmpl-a2952cbc792c2132"
+      },
+      "conclusion": "the V2 speculator's draft kernels run correctly in eager mode on this model; only the captured draft-decode graph's replay faults",
+      "server_log_sha256": "d40027a4563ded493806e3ba5a63ec333e63af59ffd4a84acf73999fa1065e43"
+    }
+  },
+  "verdicts": {
+    "q1_starts": {
+      "question": "does VLLM_USE_V2_MODEL_RUNNER=1 with the sweep baseline (MTP-3 static) start at all on our profile?",
+      "answer": false,
+      "form_of_failure": "not a config-time refusal: config negotiation works exactly as docs/41 W1 claimed (V2 selected by env, no 'Overriding cudagraph_mode ... to PIECEWISE' line in either arm, FULL_DECODE_ONLY retained, exl3 priming ran, and v2sched captured 16 target FULL graphs = 8 sizes x 2 depths plus 8 speculator decode graphs per depth). The engine then dies deterministically (3/3 starts) in warmup_kernels: replaying the V2 speculator's captured draft-decode FULL graph raises cudaErrorIllegalAddress"
+    },
+    "q2_clean": {
+      "question": "is the V2 runner swap alone regression-free (>2% on C1/C8/KV closes the item)?",
+      "answer": "not-reached",
+      "reason": "v2base never became ready; no throughput or fidelity row exists to compare"
+    },
+    "q3_schedule_wins": {
+      "question": "does depth 3 at batch 1-2 / depth 1 at batch 3-8 in one server hold C1 within noise of 82.94 AND C8 within noise of 409.35?",
+      "answer": "not-reached",
+      "reason": "v2sched dies in the identical warmup graph replay; no measurement exists"
+    },
+    "fidelity_guard": {
+      "run": false,
+      "reason": "the guard compares served greedy outputs; neither W1 arm ever served"
+    },
+    "closure": "docs/41 W1 is CLOSED AS UNAVAILABLE on this build (gg-r34-patched, vLLM dev280+gilded.gnosis.v20). Mechanism: the V2 draft-decode graph manager (v1/worker/gpu/spec_decode/autoregressive/speculator.py -> cudagraph_utils.py run_fullgraph) captures a draft graph whose replay performs an illegal memory access on this hybrid EXL3 model; V2 serves fine without a speculator and V2+MTP serves fine eagerly, so the breakage is precisely the captured-draft-graph path that W1 needs. Keeping graph decode is worth more than any schedule (eager costs -48% per docs/36), so there is no salvageable eager variant. This is what docs/41 flagged as what_could_break #2 (a never-run combination: V2 owns its own KV/mamba plumbing); its config-level claim was verified correct."
+  },
+  "staging": {
+    "host": "aiboss",
+    "gpu": "NVIDIA GeForce RTX 5090, GPU-506a575d-01d7-b12e-9a0a-c1ab5f38ae0a, 32607 MiB, 610.57.04",
+    "podman_version": "podman version 4.9.3",
+    "image": "localhost/vllm:gg-r34-patched",
+    "image_manifest_digest": "sha256:6eca4c693f01b6f4e112c04eacd30673b7cfbba4150e6fe2ea3ba1bbfde14c27",
+    "image_config_id": "3cd11158a540ff4c23cece491774fecd3e61f6e4784771273e72bd65e44b773c",
+    "patch_modules_verified_inside_image": true,
+    "source_bind_mounts_used": [],
+    "harness_sha256": {
+      "longctx.py": "a63b087d9c63fdb40f6e065619e915c4bee47b75ba89cc8a6e39aadf71a635ab",
+      "longmm.py": "bcd6527f290d89a8442eb2704fb30281b8513cb795dabfd78295dcae2e4c8b31",
+      "perf_probe_5090.py": "45491c57bfce151b4b062537786dee703f51cbdfbdde3daadaf9fe4be6b42f0e",
+      "perf_prompts_5090.py": "610b887c60d3791812e313a4999d71166480fbaae14a0f2850da0e62f887bb4b",
+      "perf_sweep_5090.sh": "804794be5521e06e73168e0fc4de266debaa6ae5d4c48f8c171ef829b808e628",
+      "vision_eval.py": "7bf9a7ebef93b46d9ee52cfc2aa6ee53ff05025ad4562e561f79be0445de0a08"
+    }
+  },
+  "prompts": {
+    "note": "frozen token-id prompts byte-copied from the sweep workspace; identical manifest",
+    "manifest_matches_sweep": true
+  },
+  "harness_provenance": {
+    "base_harness": "tools/perf_sweep_5090.sh @ a3aec04601b00587ef00d450065c47ae58925670cf8b9652c454f583363c2bf5 (the published sweep harness)",
+    "patched_harness_sha256": "804794be5521e06e73168e0fc4de266debaa6ae5d4c48f8c171ef829b808e628",
+    "patch": "16 added lines only: two new configure() cases (v2base = base row + VLLM_USE_V2_MODEL_RUNNER=1; v2sched = v2base + num_speculative_tokens_per_batch_size [[1,2,3],[3,8,1]]) and three extra startup_facts grep lines for the V2 banner, cudagraph override and per-depth capture counts. No measurement code changed.",
+    "probe": "tools/perf_probe_5090.py @ 45491c57bfce151b4b062537786dee703f51cbdfbdde3daadaf9fe4be6b42f0e (byte-identical; never reached, no server became ready)",
+    "diagnostic_serves": "the three diagnostic containers (launch-blocking, no-MTP, eager) reused the recorded v2base podman/vllm argv verbatim with only the stated deltas; raw logs kept and hashed below"
+  },
+  "service_handover": {
+    "inherited_from": "KvDtypeSweep, which restored and proved qwen38-27b healthy at 13:02:33Z against receipts/aiboss-live-service-snapshot.json",
+    "stopped_by_this_window": "systemctl --user stop qwen38-27b.service at 13:04:44Z (unit inactive, GPU 2 MiB used)",
+    "handed_to": "ScratchArena at 13:14:57Z with GPU idle (2 MiB used / 32,149 MiB free), per Main's queue of 2026-08-16; the final service restore is owned by LMCacheTest, the last holder",
+    "restore_owner": "LMCacheTest"
+  },
+  "raw_artifact_sha256": {
+    "host": "aiboss",
+    "dir": "/home/mbelleau/v2runner",
+    "note": "raw server logs, harness records and GPU samplers kept on the host, nothing deleted",
+    "sha256": {
+      "logs/gpu-v2base.csv": "751c6820b2869fda868a5e51c8a7db412cfc584ffad05648a3e48dca491f8f8f",
+      "logs/gpu-v2sched.csv": "28fc7569d497200acecbd29b8f536a24b493be765b9790ce0352b6f9a6a75c62",
+      "logs/server-v2base-launchblocking.log": "531abaf37db913a217252298f97e5dfea7f4e660ec2a66fc30cb96abf6d0e952",
+      "logs/server-v2base.log": "ccb6b533b99152ddcb4460ed80dec58228669c06329641b0b5d96ab011a89f60",
+      "logs/server-v2eager.log": "d40027a4563ded493806e3ba5a63ec333e63af59ffd4a84acf73999fa1065e43",
+      "logs/server-v2nomtp.log": "916d31de6dcedf2932cb3587fb461b059ce7be93c5839271ad1fa0a317f6d4e8",
+      "logs/server-v2sched.log": "9de234e171c613de1b3d864e9010f13ecc8d66f2c290d707f68cab9ed747b768",
+      "out/command-v2base.json": "fbc436d74014fe3680ae448ee436419fd7e23f3c7a562c6372b42555d03e37b3",
+      "out/command-v2sched.json": "a572b20946fd13f6551683e7f72452c9f13f1177a71d46242fe95316b73112bb",
+      "out/engine-config-v2base.txt": "8298dd3adc639e4f30c2d202fd3c256d28bde7503b09758921eb7fb19f4cffc4",
+      "out/engine-config-v2sched.txt": "6903a17432a85a93f47a4e0f3bd3cfa37b2cf211253985bd385d55d64bee035c",
+      "out/failed-v2base.json": "d7853338239e7ad16e82e053593b139a6a6debf4212464691f96882b96e928b1",
+      "out/failed-v2sched.json": "2c6dae04e8740b51771126423c620904d301a9b4258c00b4da5b521084130c81",
+      "out/module-verify.txt": "7f0de93b852ce7fb7ac8fa1fafa7e059ea201c19be769986a2a8cbff6166e98b",
+      "out/stage.json": "503ee8d2d52a1648af490782df95c31b2702750c73166906bc85e11c802e57e6",
+      "out/startup-facts-v2base.txt": "9e43c7059aae36f5dafb6d8401699dbfe43febbe5dba1327e533d8423b2cd710",
+      "out/startup-facts-v2sched.txt": "4fa1586871304ee4e1a8c399b8ed9e1dff05693d093ce027a382a4bd942468f3"
+    }
+  }
+}
