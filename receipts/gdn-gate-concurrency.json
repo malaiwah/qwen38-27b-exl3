@@ -94,7 +94,21 @@
             "refuted_because": "scheduler.py:1245-1257 sets num_computed_tokens = 0 and clears spec_token_ids before returning the request to the waiting queue, so it comes back as a prefill in region 3."
           }
         ],
-        "not_a_mechanism": "a short brand-new prompt on its own does not do it: region 0 requires has_context, and a fresh request has num_computed_tokens == 0, so utils.py:700 puts it in region 3 at the back of the batch."
+        "not_a_mechanism": "a short brand-new prompt on its own does not do it: region 0 requires has_context, and a fresh request has num_computed_tokens == 0, so utils.py:700 puts it in region 3 at the back of the batch.",
+        "does_the_rate_depend_on_max_num_batched_tokens": {
+          "short_answer": "yes, and inversely: the predicted rate scales roughly as max_num_seqs / max_num_batched_tokens per prefill completion, so a LARGER budget is a free partial mitigation and a smaller one is a hazard.",
+          "derivation": [
+            "Within one step the running loop (scheduler.py:480) spends the budget in self.running order. A drafted decode takes 1 + num_spec = 4. A prefilling request takes min(remaining_prompt, budget_left).",
+            "If a prefill takes the whole remaining budget, budget_left reaches 0 and the loop stops, so no decode is clamped and nothing breaks.",
+            "Otherwise it leaves R = budget_left - remaining_prompt, and each later drafted decode takes 4, so budget_left walks R, R-4, R-8, ...",
+            "A decode is clamped to exactly 1 only if that walk lands on 1, i.e. only if R = 1 (mod 4). Landing on 2, 3 or 4 truncates the drafts but leaves num_scheduled_tokens == draft_len + 1, so scheduler.py:637-642 still registers the request as speculative and nothing breaks.",
+            "The walk can only take as many steps as there are drafted decodes after the prefill in self.running order, at most max_num_seqs - 1 = 7, so additionally R <= 1 + 4 * 6 = 25.",
+            "R <= 25 forces remaining_prompt to land in a window of width about 4 * max_num_seqs immediately below the budget. As a fraction of the possible values of remaining_prompt (0 .. max_num_batched_tokens) that window is about max_num_seqs / max_num_batched_tokens, and only one residue class mod 4 inside it qualifies."
+          ],
+          "predicted_rate_at_our_recipe": "order 8 / 2048, further divided by the mod-4 condition, i.e. a fraction of a percent of prefill completions, and then only when the clamped request also happens to hold a lower input_batch slot than a fully scheduled speculative decode",
+          "why_this_is_a_prediction_and_not_a_result": "it assumes prefill remainder lengths are spread arbitrarily and that self.running order mixes prefills and decodes; both are plausible and neither is proven, so arm R3 tests the scaling by shrinking the budget 4x and checking whether the counter rises about 4x",
+          "mitigation_for_an_operator_who_cannot_patch": "raise --max-num-batched-tokens. It does not close the hole (for any budget there is still a qualifying residue class) but it narrows the triggering window proportionally. --mamba-cache-mode align narrows it further because scheduler.py:547-550 rounds chunks to whole mamba blocks, which removes most of the arbitrary remainders."
+        }
       },
       "corroborated_by_executing_the_images_own_code_no_gpu": {
         "tool": "tools/gdn_reorder_sim.py",
@@ -136,7 +150,7 @@
       "file": "tools/vllm-gdn-reach-instrument.py",
       "destination": "vllm/v1/attention/backends/gdn_attn.py",
       "replaces_vendored_sha256": "5cb3f14fbc3461256e985ea80f6329d75ebd721e67cb28155527389a3e726d45",
-      "sha256": "e42c9694a7f538ecd3931f9cdb177108c1c3617fd2ece6af2176e06cdd5afc43",
+      "sha256": "eb61b24b2ab876bb24c433b2dbfd0ad2e6587014765e16d0928239f3c0c5889b",
       "what_it_does": "counts, per GDN metadata build, which of the three branches ran and, on the mixed branch, whether the speculative tokens are the leading tokens of the batch. Reads only spec_sequence_masks_cpu and query_start_loc_cpu, which are already on the host, so there is no device synchronisation, no kernel launch and no extra device allocation: the instrument cannot perturb the schedule or the timing it observes.",
       "why_one_instrumented_server_covers_both_arms": "PR #51812 does not touch gdn_attn.py, so batch composition is identical patched and unpatched. Reachability measured once applies to both arms.",
       "additivity_is_checked_not_asserted": "the stage phase diffs the instrument against the vendored file inside the image, requires every opcode to be an insertion, and requires that deleting the insertions reproduces the vendored sha256 exactly."
@@ -153,10 +167,13 @@
     "committed_before_any_server_started": true,
     "primary_measurement": "tools/vllm-gdn-reach-instrument.py mixed_misordered count",
     "decision_rule": {
-      "if_mixed_misordered_is_zero_in_R1": "the module cannot change any number under our published eight-stream recipe; the comparison arms are not run, because there is nothing for them to detect and their resolution could not detect it anyway",
-      "if_mixed_misordered_is_zero_in_R1_and_R2": "the module is a no-op on this build for both our recipe and adversarial mixed short-prompt traffic; recommend dropping it",
-      "if_mixed_misordered_is_zero_in_R1_but_nonzero_in_R2": "unreachable under our published recipes, reachable under mixed short-prompt traffic; recommend keeping it as an optional overlay documented for that traffic class",
-      "if_mixed_misordered_is_nonzero_in_R1": "run arms A, An and B and report the divergence, acceptance and throughput deltas against the null arm"
+      "fixed_by": "the parent agent, before the GPU window opened, so the measurement decides rather than a later argument",
+      "if_mixed_misordered_is_zero_in_R1": "the cards say the #51812 module is provably unreachable under our published recipes, with the mechanism and the reason it cannot arise. The comparison arms are not run: there is nothing for them to detect and their resolution could not detect it anyway.",
+      "if_mixed_misordered_is_nonzero_in_R1_at_any_rate": "the cards recommend mounting the overlay for concurrent serving. This is fixed in advance and is deliberately not a cost-benefit judgement: the module is free, py_compile-clean and diff-identical to upstream, and a rate above zero means some fraction of forward passes are silently miscomputed with no signal to the operator. A silent wrong computation with a free fix gets the fix.",
+      "R2_is_mechanism_only": "R2 needs prefix caching. If prefix caching is not qualified for shipping then R2 measures a configuration we do not ship, and it is reported as evidence about the mechanism and explicitly not as evidence about our recipes.",
+      "R3_is_the_scaling_test": "R3 shrinks --max-num-batched-tokens by 4x. If the derived scaling is right the counter should rise about 4x. A zero in R1 together with a nonzero in R3 means the mechanism is real and our budget merely makes it rare, which is a weaker claim than unreachable, and the receipt must say which of the two it earned.",
+      "if_R1_and_R3_are_both_zero": "the derivation's own amplifier failed to produce an event, so the receipt reports the mechanism as unobserved on this build and states the resolution rather than claiming absence.",
+      "reporting_requirement": "every count is also reported as a rate per thousand metadata builds, and every zero is accompanied by the smallest rate the run could have detected, one event over the builds observed, so a zero never claims more than the run supports."
     },
     "floor_that_any_claimed_difference_must_beat": 0.08231278,
     "throughput_metric": "accepted tokens per step and step time reported separately, then aggregate tok/s, matching docs/36 and receipts/perf-sweep-5090.json",
@@ -170,5 +187,5 @@
   "measured": {
     "status": "not run"
   },
-  "content_sha256": "3cf577f5c556b5efdb0aa4ea243c2dfd1b984354a05fd87424c466c4115cec00"
+  "content_sha256": "66e270bffb4877f80b3fe34316b3a4c32c9879a79d540b43a77f2e7be672764e"
 }

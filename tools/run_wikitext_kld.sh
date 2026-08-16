@@ -34,13 +34,16 @@
 #   tools/run_wikitext_kld.sh              # print the plan, touch nothing
 #   tools/run_wikitext_kld.sh fetch        # download + verify (network, no GPU)
 #   tools/run_wikitext_kld.sh preflight    # tokenise + assert (CPU, no GPU)
-#   tools/run_wikitext_kld.sh run          # the GPU run; refuses if preflight fails
+#   KLD_GPU_OK=1 tools/run_wikitext_kld.sh run    # the GPU run.  Refuses without
+#     that variable, refuses if the pre-flight arithmetic is off, and refuses if
+#     another job already holds the card.  Resumable: a base logits file already
+#     at the right size is not recaptured.
 set -euo pipefail
 die() { echo "FAILED: $*" >&2; exit 1; }
 say() { echo "== $*"; }
 
 PHASE="${1:-plan}"
-case "$PHASE" in plan|fetch|preflight|run) ;; *) die "usage: ${BASH_SOURCE[0]} [plan|fetch|preflight|run]" ;; esac
+case "$PHASE" in plan|fetch|preflight|tokencheck|run|release) ;; *) die "usage: ${BASH_SOURCE[0]} [plan|fetch|preflight|tokencheck|run|release]" ;; esac
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "$HERE/.." && pwd)"
@@ -65,6 +68,7 @@ CORPUS="$ROOT/corpus"
 MODELS="$ROOT/models"
 LOGS="$ROOT/logs"
 LOGITS="$ROOT/logits/pipeline_base_logits.bin"
+[ "$PHASE" = plan ] || mkdir -p "$RECEIPTS"
 
 # ------------------------------------------------------------ pinned artifacts
 # docs/35-external-protocol-comparability.md, "Pinned artifacts" [HF-WT2, HF-GGUF].
@@ -142,7 +146,7 @@ argv_tokenize() {
   printf '%s\0' "$G_BIN/llama-tokenize" \
     --model "$G_ROOT/models/$(rel_for "$REFERENCE")" \
     --file "$G_ROOT/corpus/wiki.test.raw.perplexity-input" \
-    --ids --show-count
+    --ids --show-count --verbose
 }
 
 # LLAMA_SET_ROWS=1 is in their published command line and no longer read at this
@@ -263,7 +267,12 @@ EOF
   cat <<EOF
 
   # 5. all of 3 and 4, gated on 2, with the receipt written:
-  ${BASH_SOURCE[0]} run
+  KLD_GPU_OK=1 ${BASH_SOURCE[0]} run
+
+  # 6. once the receipt exists, hand the disk back (each scope is separate, and
+  #    the blobs need KLD_MIRROR=<repo>@<commit> naming an archival mirror):
+  KLD_RELEASE_OK=1 RELEASE_SCOPE=logits ${BASH_SOURCE[0]} release
+  KLD_RELEASE_OK=1 RELEASE_SCOPE=blobs KLD_MIRROR=<repo>@<commit> ${BASH_SOURCE[0]} release
 
 Disk high-water mark on $WORK (serialized bytes on disk - not VRAM, not KV):
 EOF
@@ -345,6 +354,14 @@ payload = {
                           " llama-perplexity -f tokenises (common/arg.cpp:1791-1800)"},
     },
     "models": {"repo": "$GGUF_REPO", "revision": "$GGUF_REV", "files": rows},
+    "retention": {
+        "policy": "preserve before delete",
+        "this_pipeline_deletes_nothing": True,
+        "bytes_on_disk": sum(r["bytes"] for r in rows) + $WT2_ZIP_BYTES + $WT2_BYTES + os.path.getsize(ppl_txt),
+        "recovery": "re-obtainable, not recomputable: every file above is a pinned public blob and"
+                    " the digests here make a re-fetch verifiable. Cost of losing them is one"
+                    " 126.8 GB download, about 17 minutes at the rate measured here.",
+    },
     "note": "every size here is serialized bytes on disk; none of it is VRAM, resident weights or KV",
 }
 tmp = out + ".tmp"
@@ -495,11 +512,89 @@ PROV
   echo PREFLIGHTDONE
 }
 
+# Step 5 of Run A: cross-engine token identity (D10).  Two tokenizers, one file.
+# llama.cpp's GGUF BPE tokenised the corpus for the scoring runs; the HF
+# HF tokenizer our whole protocol is built on - the base model's own, digest
+# 0997f410… as recorded in every receipt that names one - is what the rest of
+# this repo tokenised with.  If those two disagree, every cross-citation is
+# comparing different text and no divergence number means anything.  CPU only.
+phase_tokencheck() {
+  local hf_tok="${KLD_HF_TOKENIZER:-/var/tmp/models/Qwen3.8-27B/tokenizer.json}"
+  [ -f "$hf_tok" ] || die "no HF tokenizer at $hf_tok (set KLD_HF_TOKENIZER)"
+  [ -f "$TOKENS_JSON" ] || die "no $TOKENS_JSON -- run: ${BASH_SOURCE[0]} preflight"
+  local g_tok; g_tok="$(guest_path "$PPL_TXT")"
+
+  say "token identity: llama.cpp GGUF BPE vs the HF tokenizer, same bytes"
+  ggrun_cpu python3 - "/models/${hf_tok#/var/tmp/models/}" "$g_tok" \
+    "$(guest_path "$TOKENS_JSON")" "$(guest_path "$ROOT")/token-identity.json" <<'PY'
+import hashlib, json, struct, sys, time
+from tokenizers import Tokenizer
+
+hf_path, text_path, llama_ids_path, out = sys.argv[1:5]
+
+raw = open(text_path, "rb").read()
+hf = Tokenizer.from_file(hf_path)
+# tokenizer.json ships a 2,048-token truncation policy for training use; leaving
+# it on would silently compare 2,048 tokens against 297,194 and call it a
+# mismatch.
+hf.no_truncation()
+hf.no_padding()
+hf_ids = hf.encode(raw.decode("utf-8"), add_special_tokens=False).ids
+llama_ids = json.load(open(llama_ids_path))
+
+def digest(ids):
+    return hashlib.sha256(struct.pack("<%di" % len(ids), *ids)).hexdigest()
+
+n = min(len(hf_ids), len(llama_ids))
+first_diff = next((i for i in range(n) if hf_ids[i] != llama_ids[i]), None)
+scored = 580 * 512
+payload = {
+    "schema": "qwen38-external-protocol-token-identity/1",
+    "purpose": "Run A step 5 / D10: do the two tokenizers produce the same stream?",
+    "checked_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+    "input": {"path": text_path, "bytes": len(raw),
+              "sha256": hashlib.sha256(raw).hexdigest()},
+    "llama_cpp": {"source": "llama-tokenize on the BF16 GGUF's own vocabulary; the same"
+                            " common_tokenize call llama-perplexity makes on the same bytes",
+                  "n_tokens": len(llama_ids), "sha256_int32le": digest(llama_ids)},
+    "huggingface": {"source": hf_path, "add_special_tokens": False,
+                    "tokenizer_sha256": hashlib.sha256(open(hf_path, "rb").read()).hexdigest(),
+                    "truncation": "disabled explicitly; tokenizer.json ships a 2,048 policy",
+                    "n_tokens": len(hf_ids), "sha256_int32le": digest(hf_ids)},
+    "identical": hf_ids == llama_ids,
+    "first_divergence_index": first_diff,
+    "processed_prefix": {
+        "n_tokens": scored,
+        "identical": hf_ids[:scored] == llama_ids[:scored],
+        "sha256_int32le": digest(llama_ids[:scored]),
+        "why": "llama-perplexity stores and scores exactly this prefix, 580 chunks of 512",
+    },
+    "caveat": "compared against the llama-tokenize stream, not against the token block inside"
+              " the base logits file, which was released after the run",
+}
+json.dump(payload, open(out, "w"), indent=2)
+print("identical=%s  llama=%d  hf=%d  prefix_identical=%s" %
+      (payload["identical"], len(llama_ids), len(hf_ids),
+       payload["processed_prefix"]["identical"]))
+PY
+  cp "$ROOT/token-identity.json" "$RECEIPTS/wikitext-kld-token-identity.json"
+  echo "receipt $RECEIPTS/wikitext-kld-token-identity.json"
+  echo TOKENCHECKDONE
+}
+
 phase_run() {
   phase_preflight
 
-  # One card here, and it is shared. A 50 GiB --no-mmap load next to somebody
-  # else's job takes both down.
+  # Two separate gates, because they fail for different reasons.  The card is
+  # shared and its queue is arbitrated elsewhere, so spending it is opt-in and
+  # never a side effect of a resume: KLD_GPU_OK=1 is the operator saying "this
+  # run owns the GPU now".  KLD_FORCE=1 is narrower - it only waives the
+  # occupancy check, for the case where the memory in use is known to be ours.
+  if [ "${KLD_GPU_OK:-0}" != 1 ]; then
+    die "this phase can launch a ~12 minute GPU job (one capture + three scorings).
+       Set KLD_GPU_OK=1 when the card is actually yours.  Everything that can be
+       checked without a GPU has already passed above."
+  fi
   local used; used=$(nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits | head -1)
   if [ "${used:-0}" -gt 1024 ] && [ "${KLD_FORCE:-0}" != 1 ]; then
     die "GPU already holds ${used} MiB - another job owns this card. KLD_FORCE=1 to override."
@@ -621,6 +716,15 @@ payload = {
         "preflight_receipt": pre_path,
     },
     "results": rows,
+    "retention": {
+        "policy": "preserve before delete",
+        "this_pipeline_deletes_nothing": True,
+        "base_logits_recompute_cost": "one full BF16 forward pass over 296,960 tokens of"
+                                      " wikitext-2 raw test on a single card; the inputs are"
+                                      " pinned public blobs, this file is not - if it is ever"
+                                      " removed it has to be recomputed, not re-downloaded.",
+        "inputs_recovery": "see the retention block of the fetch receipt",
+    },
     "note": "every byte size in the inputs is serialized bytes on disk; none of it is VRAM or KV",
 }
 tmp = out + ".tmp"
@@ -634,9 +738,135 @@ PROV
   echo RUNADONE
 }
 
+# Deleting is not the default anywhere in this project - preserve before delete.
+# Two artifact classes here, and they are exceptions for two different reasons,
+# so they are released separately and never in one gesture:
+#
+#   logits  the 68.41 GiB base capture is published nowhere, but it recomputes
+#           from the GGUFs in a single BF16 pass measured at 2 min 54 s on this
+#           card, and its correctness is re-checkable by the byte identity this
+#           run asserted.  Cheaper to remake than to store.
+#   blobs   the five GGUFs are public, but "public" is not the same as durable:
+#           a Hub repo can be squashed and take the cited revision with it, which
+#           is exactly what happened to unsloth/Qwen3.8-27B-NVFP4 on 2026-08-15.
+#           So these are released only against a named archival mirror, passed in
+#           KLD_MIRROR as <repo>@<commit>.  No mirror, no delete.
+#
+# Nothing is released before the receipt that cites it exists and is complete;
+# nothing is released at all unless KLD_RELEASE_OK=1 says so out loud; and each
+# scope writes its own receipt rather than amending one.
+phase_release() {
+  local scope="${RELEASE_SCOPE:-all}"
+  case "$scope" in logits|blobs|all) ;; *) die "RELEASE_SCOPE must be logits, blobs or all" ;; esac
+
+  local receipt="$RECEIPTS/wikitext-kld-run-a.json"
+  [ -f "$receipt" ] || die "no $receipt -- nothing is released before the run it feeds"
+
+  local -a doomed=() ; local spec
+  [ "$scope" = blobs ] || doomed+=("$LOGITS")
+  if [ "$scope" != logits ]; then
+    [ -n "${KLD_MIRROR:-}" ] || die "releasing the GGUFs needs a durable source.
+       Pass KLD_MIRROR=<repo>@<commit> naming the archival mirror that keeps the
+       citation resolvable after an upstream squash.  A pinned upstream revision
+       is not one: unsloth/Qwen3.8-27B-NVFP4 lost its cited revision that way."
+    for spec in "${ARTIFACTS[@]}"; do doomed+=("$MODELS/$(field "$spec" 2)"); done
+  fi
+
+  local total=0 p
+  for p in "${doomed[@]}"; do
+    [ -f "$p" ] && total=$(( total + $(stat -c %s "$p") ))
+  done
+
+  if [ "${KLD_RELEASE_OK:-0}" != 1 ]; then
+    say "print-only, scope=$scope. KLD_RELEASE_OK=1 to actually free $(gib "$total") GiB"
+    for p in "${doomed[@]}"; do [ -f "$p" ] && echo "  rm -f $p"; done
+    return
+  fi
+
+  local out="$RECEIPTS/wikitext-kld-release-$scope.json"
+  python3 - "$out" "$receipt" "$RECEIPTS/wikitext-kld-fetch-verify.json" "$LOGITS" "$scope" \
+    --candidates "${CANDIDATES[@]}" --artifacts "${ARTIFACTS[@]}" <<PROV
+import json, os, sys, time
+out, run_receipt, fetch_receipt, logits_path, scope = sys.argv[1:6]
+argv = sys.argv[6:]
+candidates = argv[argv.index("--candidates") + 1:argv.index("--artifacts")]
+specs = argv[argv.index("--artifacts") + 1:]
+mirror = os.environ.get("KLD_MIRROR", "")
+
+run = json.load(open(run_receipt))
+if not run["base_logits"]["byte_identity_holds"]:
+    raise SystemExit("FAILED: the run receipt does not assert byte identity; nothing is released")
+missing = [t for t in candidates if t not in run["results"]]
+if missing:
+    raise SystemExit("FAILED: %s were never scored; nothing is released" % ", ".join(missing))
+
+freed = []
+if scope != "blobs":
+    freed.append({
+        "what": os.path.basename(logits_path),
+        "bytes": run["base_logits"]["bytes"],
+        "sha256": None,
+        "recovery": "recompute",
+        "source": None,
+        "cost": "one llama-perplexity --save-all-logits pass over the two-part BF16 GGUF,"
+                " measured at 2 min 54 s on an RTX PRO 6000. The remake is self-checking:"
+                " it is correct only if it is again exactly %d B."
+                % run["base_logits"]["bytes"],
+    })
+if scope != "logits":
+    repo, _, commit = mirror.partition("@")
+    for s in specs:
+        tag, rel, nbytes, sha = s.split("|")
+        freed.append({
+            "what": rel, "bytes": int(nbytes), "sha256": sha,
+            "recovery": "re-fetch",
+            "source": {"repo": repo, "commit": commit,
+                       "url": "https://huggingface.co/%s/resolve/%s/%s" % (repo, commit, rel),
+                       "mirrors": "$GGUF_REPO@$GGUF_REV"},
+            "cost": "download only; the digest above makes the re-fetch verifiable",
+        })
+
+payload = {
+    "schema": "qwen38-external-protocol-release/1",
+    "purpose": "records what Run A deleted, and exactly what it costs to get each piece back",
+    "scope": scope,
+    "released_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+    "policy": "preserve before delete; these are the exception because every line below names"
+              " either a durable source with a digest or a measured recompute cost",
+    "measurements_survive_in": [run_receipt, fetch_receipt],
+    "freed_bytes": sum(f["bytes"] for f in freed),
+    "freed": freed,
+    "note": "serialized bytes on disk; none of this was VRAM or KV",
+}
+if scope != "logits":
+    payload["durable_source"] = {
+        "mirror": mirror,
+        "what_it_guarantees": "the citation: a repo id, revision and digest table that stay"
+                              " resolvable if the upstream repo is squashed or deleted, as"
+                              " unsloth/Qwen3.8-27B-NVFP4 was on 2026-08-15",
+        "what_it_does_not_guarantee": "independent byte-level redundancy. Hugging Face Xet storage"
+                                      " is content-addressed, so the mirror and upstream plausibly"
+                                      " reference the same chunks - the 126.8 GB mirror moved"
+                                      " 2.13 GB on the wire. Say re-fetchable, not backed up.",
+        "upstream_status_at_release": "$GGUF_REPO@$GGUF_REV still resolves; this mirror is"
+                                      " insurance, not rescue",
+    }
+tmp = out + ".tmp"
+json.dump(payload, open(tmp, "w"), indent=2)
+os.replace(tmp, out)
+print("receipt " + out)
+PROV
+
+  for p in "${doomed[@]}"; do rm -f "$p" "$p.verified"; done
+  say "freed $(gib "$total") GiB, scope=$scope; every measurement survives in $receipt"
+  echo RELEASEDONE
+}
+
 case "$PHASE" in
   plan)      phase_plan ;;
   fetch)     phase_fetch ;;
   preflight) phase_preflight ;;
+  tokencheck) phase_tokencheck ;;
   run)       phase_run ;;
+  release)   phase_release ;;
 esac

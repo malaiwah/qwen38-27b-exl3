@@ -148,6 +148,11 @@ def main() -> int:
     parser.add_argument("--winner", required=True, help="tag of the recommended configuration")
     parser.add_argument("--winner-rationale", required=True)
     parser.add_argument("--unrun", nargs="*", default=[], help="tags the window did not reach")
+    parser.add_argument(
+        "--production-image-receipt",
+        default=None,
+        help="path to receipts/production-image.json, summarised and referenced by digest",
+    )
     args = parser.parse_args()
 
     art = Path(args.artifacts)
@@ -244,11 +249,31 @@ def main() -> int:
             ),
         }
 
-    gates = {
-        name: load(path)
-        for path in sorted(art.glob("gate-*.json"))
-        if (name := path.stem.replace("gate-", "")) and "mounts" not in path.name
-    }
+    # The four production-image serving gates are owned by receipts/production-image.json
+    # (ImmutableImage's harness wrote it). Summarise and point at it by digest rather than
+    # restating its numbers, so one fact has one owner.
+    gates: dict = {}
+    if args.production_image_receipt:
+        path = Path(args.production_image_receipt)
+        prod = load(path) or {}
+        smoke = prod.get("smoke", {})
+        gates = {
+            "receipt": str(path),
+            "receipt_sha256": sha256(path),
+            "image_manifest_digest": prod.get("image", {}).get("manifest_digest"),
+            "recipes_run": smoke.get("recipes_run"),
+            "all_run_recipes_started": smoke.get("all_run_recipes_started"),
+            "all_run_recipes_text_and_image_exact": smoke.get(
+                "all_run_recipes_text_and_image_exact"
+            ),
+            "acceptance": prod.get("acceptance"),
+            "ran_by": "PerfSweep5090, inside this GPU window, using "
+            "docker/build-image.sh smoke context hydrated k5k6 k4",
+            "harness_defect_found_and_fixed": "docker/smoke_client.py hardcoded model id 'm' "
+            "while the recipes serve qwen38/qwen38-k4, so every request returned HTTP 404 and "
+            "the exact-match gate recorded null; the client now resolves the served id from "
+            "/models. Owned and tightened by ImmutableImage afterwards.",
+        }
     fidelity = {
         path.stem.replace("fidelity-vision-", ""): load(path)
         for path in sorted(art.glob("fidelity-vision-*.json"))
@@ -256,9 +281,6 @@ def main() -> int:
     needles = {
         path.stem.replace("fidelity-needle-", ""): load(path)
         for path in sorted(art.glob("fidelity-needle-*.json"))
-    }
-    smokes = {
-        path.stem.replace("smoke-", ""): load(path) for path in sorted(art.glob("smoke-*.json"))
     }
 
     receipt = {
@@ -294,9 +316,11 @@ def main() -> int:
             "constant_across_every_row": [
                 "--max-model-len 262144",
                 "--kv-cache-dtype fp8",
-                "--gpu-memory-utilization 0.97",
+                "--gpu-memory-utilization 0.97 for every graph-decode row; the three eager rows "
+                "use 0.95 because cudagraph_mode NONE turns the freed graph pool into KV and "
+                "OOMs at 0.97, so they are compared only against each other",
                 "--max-num-batched-tokens 2048",
-                "cudagraph_mode=FULL_DECODE_ONLY",
+                "cudagraph_mode=FULL_DECODE_ONLY for every row except the three eager rows",
                 "VLLM_EXL3_EMBED_BITS=8",
                 "VLLM_EXL3_GRAPH_DECODE=1",
                 "VLLM_EXL3_PREFILL_RECONSTRUCT_M=128",
@@ -322,11 +346,9 @@ def main() -> int:
             "factors so a depth change that buys acceptance and pays in latency is visible",
         },
         "rows": rows,
-        "production_image_gates": {
-            "purpose": "same window, same image: the serving gates receipts/production-image.json "
-            "left null because no recipe had served a request",
-            "recipes": gates,
-            "smoke_results": smokes,
+        "production_image_gates": gates
+        or {
+            "not_run_in_this_window": "no --production-image-receipt was passed",
         },
         "fidelity_guard": {
             "purpose": "a throughput win that breaks correctness is not a win",
@@ -373,6 +395,7 @@ def main() -> int:
         "unrun": args.unrun,
         "raw_artifact_sha256": logs,
         "harness_sha256": stage.get("harness_sha256"),
+        "receipt_assembler_sha256": sha256(Path(__file__)),
     }
 
     out = Path(args.out)

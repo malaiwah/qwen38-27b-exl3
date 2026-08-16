@@ -50,7 +50,7 @@ GDN_SHA=7cd3f5fe763b621048af4817951a841d99c8b700d9a56ded27ccaca5a56ccbe0
 GDN_VENDORED_SHA=663dacd324b6b8224a4cb312b3e9c0bad4322c515e982a85f13c3450ffdb7d61
 GDN_DEST=$VENV/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py
 # the reachability instrument, and the file it replaces
-INSTR_SHA=e42c9694a7f538ecd3931f9cdb177108c1c3617fd2ece6af2176e06cdd5afc43
+INSTR_SHA=eb61b24b2ab876bb24c433b2dbfd0ad2e6587014765e16d0928239f3c0c5889b
 INSTR_VENDORED_SHA=5cb3f14fbc3461256e985ea80f6329d75ebd721e67cb28155527389a3e726d45
 INSTR_DEST=$VENV/v1/attention/backends/gdn_attn.py
 
@@ -275,6 +275,9 @@ ARM_DESC=
 
 configure_arm() {
   ARM_ENV=(); ARM_ARGS=(--no-enable-prefix-caching); ARM_MOUNTS=()
+  # per-arm overrides, reset every call so an arm cannot inherit the previous one's profile
+  ARM_MAXLEN=$MAXLEN
+  ARM_BATCHED=$BATCHED
   case $1 in
   # ---- reachability arms: instrument mounted, gate module NOT mounted. PR #51812 does
   # not touch gdn_attn.py, so batch composition is the same either way and one server
@@ -285,6 +288,23 @@ configure_arm() {
   R2)
     ARM_DESC='adversarial mixed traffic (eight speculative streams plus injected short prompts and full-prefix-cache-hit repeats), prefix caching and align mode ON to open the scheduler spec-padding path, gdn_attn.py instrumented'
     ARM_ARGS=(--enable-prefix-caching --mamba-cache-mode align)
+    # align mode rounds the prefix-cache window up to whole 1600-token mamba blocks and so
+    # needs more KV than plain mode for the same context. ShipPrefixCaching hit exactly
+    # that wall at eight streams, so R2 runs at half the context. R2 is a mechanism probe,
+    # not a comparison arm, and nothing is compared across it, so the context is free to
+    # differ as long as it is recorded.
+    ARM_MAXLEN=131072
+    ;;
+  # R3 is the mechanism amplifier, and it is what turns a zero in R1 from "we saw
+  # nothing" into "we saw nothing where the derivation says the rate is lowest, and we
+  # saw it where the derivation says the rate is highest". The clamp-to-one trigger needs
+  # a prefill final chunk that lands within 4 * max_num_seqs tokens below the remaining
+  # budget and on the right residue mod 1 + num_spec, so its rate scales roughly as
+  # max_num_seqs / max_num_batched_tokens. Shrinking the budget by 4x should raise the
+  # rate by about 4x; if it does not, the derivation is wrong and the receipt says so.
+  R3)
+    ARM_DESC='our recipe with --max-num-batched-tokens 512 instead of 2048, gdn_attn.py instrumented: a deliberate amplifier for the token-budget clamp mechanism, and a test of the predicted 1/max_num_batched_tokens scaling. NOT a configuration we ship.'
+    ARM_BATCHED=512
     ;;
   # ---- comparison arms: no instrument, so timing is untouched.
   A)
@@ -300,7 +320,7 @@ configure_arm() {
   *) die "unknown arm '$1'" ;;
   esac
   case $1 in
-  R1 | R2)
+  R1 | R2 | R3)
     ARM_MOUNTS+=(-v "$TOOLS/vllm-gdn-reach-instrument.py:$INSTR_DEST:ro")
     ARM_ENV=(-e "VLLM_GDN_REACH_OUT=/reach/reach")
     ;;
@@ -330,11 +350,11 @@ compose() {
     serve "/models/ctx-repo/snapshots/$CTX_REV"
     --served-model-name m
     --quantization exl3 --quantization-config "$QUANT_CFG"
-    --max-model-len "$MAXLEN"
+    --max-model-len "$ARM_MAXLEN"
     --gpu-memory-utilization "$GPU_UTIL"
     --max-num-seqs "$SEQS"
     --kv-cache-dtype fp8
-    --max-num-batched-tokens "$BATCHED"
+    --max-num-batched-tokens "$ARM_BATCHED"
     "${ARM_ARGS[@]}"
     --speculative-config "$SPEC"
     --mm-processor-kwargs "$MM_CFG"
@@ -426,20 +446,35 @@ phase_reach() {
   startup_facts "$log" "$arm"
   verify_in_running_container "$arm"
   case $arm in
-  R1)
-    # the same 8-wide wave schedule the comparison arms use, so reachability is measured
-    # under exactly the traffic the comparison would have run
+  R1 | R3)
+    # Phase 1: the same 8-wide wave schedule the comparison arms use, so reachability is
+    # measured under exactly the traffic the comparison would have run.
     python3 "$TOOLS/apc_poison_probe.py" run \
       --base "http://127.0.0.1:$PORT" --model m --prompts "$W/prompts.json" \
       --arm "$arm" --description "$ARM_DESC" --expect-prompts-sha256 "$(prompts_sha)" \
       --concurrency "$SEQS" --out "$OUT/arm-$arm.json" 2>&1 | tee "$LOGS/probe-$arm.out"
+    # Snapshot the counter so phase 1 can be reported on its own. The dumps are
+    # cumulative per worker process, so a copy taken here IS the phase-1 total.
+    mkdir -p "$REACH/$arm-phase1"
+    cp "$REACH/$arm"/*.json "$REACH/$arm-phase1/" 2>/dev/null || true
+    # Phase 2: the SAME server flags, but prefill-heavy sustained traffic. The clamp
+    # trigger fires at most once per prefill completion, and the wave schedule only
+    # completes 38 of them, which would leave the zero-arm bound far too weak to publish.
+    # This changes the traffic, never the configuration.
+    python3 "$TOOLS/gdn_gate_concurrency.py" adversarial \
+      --base "http://127.0.0.1:$PORT" --model m --prompts "$W/prompts.json" \
+      --arm "$arm-sustained" --description "$ARM_DESC (phase 2: prefill-heavy sustained traffic, same server flags)" \
+      --expect-prompts-sha256 "$(prompts_sha)" \
+      --streams "$SEQS" --injectors 3 --duration-s "$ADV_DURATION" \
+      --chunk-tokens "$ARM_BATCHED" --out "$OUT/arm-$arm-sustained.json" 2>&1 |
+      tee "$LOGS/probe-$arm-sustained.out"
     ;;
   R2)
     python3 "$TOOLS/gdn_gate_concurrency.py" adversarial \
       --base "http://127.0.0.1:$PORT" --model m --prompts "$W/prompts.json" \
       --arm "$arm" --description "$ARM_DESC" --expect-prompts-sha256 "$(prompts_sha)" \
       --streams "$SEQS" --injectors 3 --duration-s "$ADV_DURATION" \
-      --chunk-tokens "$BATCHED" --out "$OUT/arm-$arm.json" 2>&1 | tee "$LOGS/probe-$arm.out"
+      --chunk-tokens "$ARM_BATCHED" --out "$OUT/arm-$arm.json" 2>&1 | tee "$LOGS/probe-$arm.out"
     ;;
   esac
   # SIGTERM lets the workers' atexit hook flush; the periodic dump covers a hard kill.
@@ -447,6 +482,12 @@ phase_reach() {
   python3 "$TOOLS/gdn_gate_concurrency.py" reach --dir "$REACH/$arm" \
     --arm "$arm" --description "$ARM_DESC" --instrument-sha256 "$INSTR_SHA" \
     --out "$OUT/reach-$arm.json"
+  if [[ -d $REACH/$arm-phase1 ]]; then
+    python3 "$TOOLS/gdn_gate_concurrency.py" reach --dir "$REACH/$arm-phase1" \
+      --arm "$arm-phase1" --instrument-sha256 "$INSTR_SHA" \
+      --description "$ARM_DESC (phase 1 only: the published 8-wide wave schedule)" \
+      --out "$OUT/reach-$arm-phase1.json"
+  fi
   python3 "$TOOLS/apc_poison_probe.py" scrape --log "$log" --arm "$arm" \
     --out "$OUT/windows-$arm.json"
   say "reachability arm $arm complete"
@@ -475,7 +516,7 @@ phase_arm() {
 phase_verdict() {
   local -a args=()
   local arm
-  for arm in A An B R1; do
+  for arm in A An B R1 R3; do
     [[ -f $OUT/arm-$arm.json ]] && args+=(--arm-file "$arm=$OUT/arm-$arm.json")
   done
   ((${#args[@]} >= 2)) || { say "fewer than two comparison arms; no divergence verdict"; return 0; }
@@ -500,5 +541,5 @@ arm) shift; phase_arm "${1:?arm}" ;;
 verdict) phase_verdict ;;
 receipt) phase_receipt ;;
 restore) phase_restore ;;
-*) die "usage: $0 {stage|reach R1|reach R2|arm A|arm An|arm B|verdict|receipt|restore}" ;;
+*) die "usage: $0 {stage|reach R1|reach R2|reach R3|arm A|arm An|arm B|verdict|receipt|restore}" ;;
 esac

@@ -298,6 +298,53 @@ def reach(args: argparse.Namespace) -> int:
             if total["mixed_branch"]
             else None
         ),
+        # A rate is what another operator can compare against their own traffic; a bare
+        # count only describes this run's length.
+        "misordered_per_thousand_builds": (
+            round(1000.0 * total["mixed_misordered"] / total["builds_total"], 6)
+            if total["builds_total"]
+            else None
+        ),
+        "misordered_per_thousand_mixed_builds": (
+            round(1000.0 * total["mixed_misordered"] / total["mixed_branch"], 6)
+            if total["mixed_branch"]
+            else None
+        ),
+        # If the count is zero, this is the smallest rate the run could have detected:
+        # one event over the builds observed. Reporting a zero without it would claim
+        # more than the run supports.
+        "resolution_one_event_per_thousand_builds": (
+            round(1000.0 / total["builds_total"], 6) if total["builds_total"] else None
+        ),
+        # A zero must be published as an upper bound, not as an absence. With no events
+        # observed the rule of three gives a 95 % upper bound of about 3/N, and N is
+        # quoted alongside so a reader can see what the run could and could not have seen.
+        "zero_arm_95pct_upper_bound_per_thousand_builds": (
+            round(3000.0 / total["builds_total"], 6)
+            if total["builds_total"] and total["mixed_misordered"] == 0
+            else None
+        ),
+        "zero_arm_95pct_upper_bound_per_thousand_mixed_builds": (
+            round(3000.0 / total["mixed_branch"], 6)
+            if total["mixed_branch"] and total["mixed_misordered"] == 0
+            else None
+        ),
+        "how_to_state_this_arm": (
+            (
+                f"below {round(3000.0 / total['builds_total'], 4)} miscomputed metadata "
+                f"builds per thousand (95 % upper bound, rule of three, "
+                f"N = {total['builds_total']} builds observed, "
+                f"{total['mixed_branch']} of them on the gather branch, zero events)"
+            )
+            if total["builds_total"] and total["mixed_misordered"] == 0
+            else (
+                f"{round(1000.0 * total['mixed_misordered'] / total['builds_total'], 4)} "
+                f"miscomputed metadata builds per thousand "
+                f"({total['mixed_misordered']} events over N = {total['builds_total']} builds)"
+            )
+            if total["builds_total"]
+            else "no metadata builds observed"
+        ),
         "max_displaced_spec_tokens": max(
             (d.get("max_displaced_spec_tokens", 0) for d in dumps), default=0
         ),

@@ -1011,6 +1011,244 @@ def cmd_aggregate(args: argparse.Namespace) -> int:
     print(json.dumps(summary), flush=True)
     return 0
 
+# ------------------------------------------------------------------- paired
+# `receipts/kld5-10M-paired.json` was originally built by hand.  This subcommand
+# is that receipt's tool, written afterwards and validated against it: rebuilding
+# the published five comparisons from the same five cumulative receipts reproduces
+# every field bit-for-bit, including `content_sha256`.  So "the same way the
+# published paired receipt was built" is now something a reader can re-run.
+PAIRED_SCHEMA = "qwen38-kld-ladder-paired/1"
+
+# What two cumulative receipts must agree on before their per-context means may be
+# subtracted.  Anything here differing means the two numbers were not measured
+# against the same reference through the same head on the same positions, and the
+# difference would be an artefact rather than a quantization comparison.
+#
+# `schema` is deliberately NOT in this list.  `/2` and `/3` differ only by whether
+# the receipt carries a `scored_position_window` block, and no earlier field
+# changed name or meaning, so refusing to pair them would refuse to compare a
+# receipt built today against one built last week for no measurement reason.  What
+# actually has to match is the window itself, which `paired_window` derives for
+# both generations and `pair_one` compares.
+PAIRED_SHARED_FIELDS = ("head", "head_sha256", "candidate_head",
+                        "candidate_head_sha256", "filter", "vocab_size",
+                        "hidden_size", "comparator", "reference_identity",
+                        "contexts", "scored_positions", "source_clusters")
+
+CUMULATIVE_SCHEMAS = ("qwen38-kld-ladder-cumulative/2", SCHEMA)
+
+
+def load_cumulative(label: str, path: Path, errors: list[str]) -> dict | None:
+    """One candidate's cumulative receipt, with the fields `paired` needs present."""
+    if not path.is_file():
+        errors.append(f"{label}: missing receipt {path}")
+        return None
+    try:
+        payload = json.loads(path.read_text())
+    except (OSError, ValueError) as exc:
+        errors.append(f"{label}: unreadable receipt {path} ({exc})")
+        return None
+    if payload.get("schema") not in CUMULATIVE_SCHEMAS:
+        errors.append(f"{label}: {path} schema {payload.get('schema')!r} is none of "
+                      + ", ".join(repr(s) for s in CUMULATIVE_SCHEMAS))
+        return None
+    rows = payload.get("per_context_all")
+    if not isinstance(rows, list) or not rows:
+        errors.append(f"{label}: {path} carries no per_context_all rows, so nothing "
+                      "can be paired (re-aggregate with --rows)")
+        return None
+    for row in rows:
+        if not isinstance(row, dict) or any(f not in row for f in ("index", "mean_kld",
+                                                                   "source_cluster")):
+            errors.append(f"{label}: {path} per_context_all row lacks index/mean_kld/"
+                          "source_cluster")
+            return None
+    if len({row["index"] for row in rows}) != len(rows):
+        errors.append(f"{label}: {path} repeats a context index")
+        return None
+    return payload
+
+
+def paired_window(payload: dict) -> tuple[int, int | None]:
+    """`(score_from, positions_per_context)` for either receipt generation.
+
+    A `/2` receipt predates the block, and a receipt that predates the block
+    scored every position of every context -- that is what `--score-from 0` means
+    -- so it is read as `score_from = 0` over the parent suite's positions per
+    context.  Comparing this pair, rather than the receipt schema string, is what
+    lets a receipt built by today's tool be paired with a published one while
+    still refusing to subtract a windowed run from a full-context run.
+    """
+    block = payload.get("scored_position_window")
+    if isinstance(block, dict):
+        return int(block.get("score_from") or 0), block.get("positions_per_context")
+    parent = (payload.get("suite") or {}).get("parent") or {}
+    return 0, parent.get("scored_positions_per_context")
+
+
+def pair_one(a_label: str, a: dict, b_label: str, b: dict, samples: int, seed: int,
+             errors: list[str]) -> dict | None:
+    """One A-minus-B comparison over the contexts both receipts scored.
+
+    The unit is a context, not a position: per-context means are already equal-
+    weight (every context scores 2,047 positions), and a context is the level at
+    which the two candidates saw literally the same tokens.
+    """
+    for field in PAIRED_SHARED_FIELDS:
+        if a.get(field) != b.get(field):
+            errors.append(f"{a_label} vs {b_label}: disagree on {field}")
+            return None
+    window_a, window_b = paired_window(a), paired_window(b)
+    if window_a != window_b:
+        errors.append(f"{a_label} vs {b_label}: different scored-position windows "
+                      f"{window_a} vs {window_b}; a windowed run and a full-context "
+                      "run cover different positions and cannot be subtracted")
+        return None
+    rows_a = {row["index"]: row for row in a["per_context_all"]}
+    rows_b = {row["index"]: row for row in b["per_context_all"]}
+    if set(rows_a) != set(rows_b):
+        only_a = sorted(set(rows_a) - set(rows_b))[:8]
+        only_b = sorted(set(rows_b) - set(rows_a))[:8]
+        errors.append(f"{a_label} vs {b_label}: different context sets "
+                      f"(a_only={only_a}, b_only={only_b})")
+        return None
+    shared = sorted(rows_a)
+    mismatched = [i for i in shared
+                  if rows_a[i].get("source_cluster") != rows_b[i].get("source_cluster")]
+    if mismatched:
+        errors.append(f"{a_label} vs {b_label}: source cluster differs at contexts "
+                      f"{mismatched[:8]}")
+        return None
+    diffs = [rows_a[i]["mean_kld"] - rows_b[i]["mean_kld"] for i in shared]
+    clusters = [rows_a[i]["source_cluster"] for i in shared]
+    interval = bootstrap(diffs, clusters, samples, seed)
+    # `a_wins` counts strict improvements and `b_wins` is the remainder, so an exact
+    # TIE is counted as a b-win.  That is the convention `fidelity.py paired` has
+    # always used and it is kept here so the published paired receipt stays
+    # reproducible -- but it makes a zero-difference control read "a_wins 0, b_wins
+    # 512" when the truth is 512 ties, which has already misled one reader.  The
+    # field count is therefore left alone and the tie count is reported on stderr
+    # instead, so a run that CAN tie says so out loud without changing the payload.
+    wins_a = sum(1 for d in diffs if d < 0)
+    ties = sum(1 for d in diffs if d == 0.0)
+    if ties:
+        print(f"note: {a_label} vs {b_label}: {ties} of {len(diffs)} contexts are exact "
+              f"ties, and this schema counts a tie as a b-win, so b_wins "
+              f"({len(diffs) - wins_a}) is not a count of losses", file=sys.stderr)
+    return {
+        "a": a_label,
+        "b": b_label,
+        "contexts": len(shared),
+        "difference_a_minus_b": statistics.fmean(diffs),
+        "ci95_low": interval["ci95_low"],
+        "ci95_high": interval["ci95_high"],
+        "a_wins": wins_a,
+        "b_wins": len(shared) - wins_a,
+        "clusters": interval["clusters"],
+    }
+
+
+def cmd_paired(args: argparse.Namespace) -> int:
+    errors: list[str] = []
+    receipts: dict[str, dict] = {}
+    paths: dict[str, Path] = {}
+    for spec in args.input:
+        label, sep, raw = spec.partition("=")
+        if not sep or not label or not raw:
+            raise SystemExit(f"--input wants LABEL=path, got {spec!r}")
+        if label in receipts:
+            raise SystemExit(f"--input {label} given twice")
+        path = Path(raw)
+        payload = load_cumulative(label, path, errors)
+        if payload is not None:
+            receipts[label] = payload
+            paths[label] = path
+    if errors:
+        raise Rejected(errors)
+
+    comparisons: dict[str, dict] = {}
+    for spec in args.compare:
+        a_label, sep, b_label = spec.partition(":")
+        if not sep or a_label not in receipts or b_label not in receipts:
+            raise SystemExit(f"--compare wants A:B naming two --input labels, got {spec!r}")
+        key = f"{a_label}_vs_{b_label}"
+        if key in comparisons:
+            raise SystemExit(f"--compare {spec} given twice")
+        row = pair_one(a_label, receipts[a_label], b_label, receipts[b_label],
+                       args.bootstrap_samples, args.bootstrap_seed, errors)
+        if row is not None:
+            comparisons[key] = row
+    if errors:
+        raise Rejected(errors)
+    if not comparisons:
+        raise SystemExit("no comparisons requested: pass --compare A:B")
+
+    reference = receipts[next(iter(receipts))]
+    parent = (reference.get("suite") or {}).get("parent") or {}
+    for label, payload in receipts.items():
+        other = (payload.get("suite") or {}).get("parent") or {}
+        if other.get("suite_token_sha256") != parent.get("suite_token_sha256"):
+            errors.append(f"{label}: parent suite token differs from "
+                          f"{next(iter(receipts))}")
+    if errors:
+        raise Rejected(errors)
+
+    # Name the in-repo copy of the suite manifest only when it really is the byte
+    # sequence the receipts were measured against.
+    manifest_name = parent.get("path")
+    repo_manifest = Path(__file__).resolve().parent.parent / "receipts" / "kld5-suite-manifest.json"
+    if repo_manifest.is_file() and sha256_file(repo_manifest) == parent.get("manifest_sha256"):
+        manifest_name = "receipts/kld5-suite-manifest.json"
+
+    clusters = max(row["clusters"] for row in comparisons.values())
+    checkpoint = (reference.get("ladder") or {}).get("checkpoint")
+    payload = {
+        "schema": PAIRED_SCHEMA,
+        "generated_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "scope": args.scope or (
+            f"paired per-context comparison at the {checkpoint} ladder checkpoint "
+            "of the v5 held-out suite"),
+        "suite": {
+            "manifest": manifest_name,
+            "manifest_sha256": parent.get("manifest_sha256"),
+            "suite_token_sha256": parent.get("suite_token_sha256"),
+            "contexts": reference.get("contexts"),
+            "context_length": parent.get("context_length"),
+            "scored_positions": reference.get("scored_positions"),
+            "source_clusters": reference.get("source_clusters"),
+        },
+        "inputs": {
+            label: {
+                "path": str(paths[label]),
+                "sha256": sha256_file(paths[label]),
+                "content_sha256": receipts[label].get("content_sha256"),
+            }
+            for label in receipts
+        },
+        "method": {
+            "unit": f"one {parent.get('context_length', 0):,}-token context, "
+                    f"{parent.get('scored_positions_per_context', 0):,} scored positions",
+            "statistic": "mean over contexts of (candidate A mean KLD - candidate B mean KLD)",
+            "interval": f"source-cluster bootstrap, {args.bootstrap_samples:,} resamples, "
+                        f"seed {args.bootstrap_seed}, {clusters} clusters resampled "
+                        "with replacement",
+            "operands": "both candidates replayed through the same shared BF16 LM head; "
+                        "body-only, no candidate head quantization counted",
+        },
+        "comparisons": comparisons,
+    }
+    payload["content_sha256"] = canonical_sha256(
+        {k: v for k, v in payload.items() if k != "generated_utc"}
+    )
+    atomic_write_json(Path(args.out), payload)
+    print(json.dumps({"out": args.out, "comparisons": {
+        k: {"difference_a_minus_b": v["difference_a_minus_b"],
+            "ci95": [v["ci95_low"], v["ci95_high"]],
+            "a_wins": v["a_wins"], "b_wins": v["b_wins"]}
+        for k, v in comparisons.items()},
+        "content_sha256": payload["content_sha256"]}), flush=True)
+    return 0
+
 
 def main() -> int:
     p = argparse.ArgumentParser(
@@ -1043,6 +1281,18 @@ def main() -> int:
     a.add_argument("--rows", action=argparse.BooleanOptionalAction, default=True,
                    help="store the union of per-context rows in the receipt")
     a.set_defaults(func=cmd_aggregate)
+
+    q = sub.add_parser("paired", help="paired per-context comparison of cumulative receipts")
+    q.add_argument("--input", action="append", required=True, metavar="LABEL=PATH",
+                   help="a cumulative receipt to compare, named; repeatable")
+    q.add_argument("--compare", action="append", required=True, metavar="A:B",
+                   help="one comparison between two --input labels; repeatable")
+    q.add_argument("--out", required=True, help="receipt path (written atomically)")
+    q.add_argument("--scope", default=None,
+                   help="free-text scope; default names the inputs' ladder checkpoint")
+    q.add_argument("--bootstrap-samples", type=int, default=10000)
+    q.add_argument("--bootstrap-seed", type=int, default=1)
+    q.set_defaults(func=cmd_paired)
 
     args = p.parse_args()
     return args.func(args)

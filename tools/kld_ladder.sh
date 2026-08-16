@@ -34,6 +34,20 @@
 #   KLD_HEAD=/var/tmp/work/kld2/lm_head.safetensors
 #   KLD_QCFG=/var/tmp/work/kld4/qcfg.json   KLD_GPU_UTIL=0.85
 #   KLD_HARNESS=<host path to fidelity.py>  GG_WORK=/var/tmp/work
+#   KLD_CANDIDATES="k4 k5k6 hyd ctx fp8"   (or --candidates)
+#   KLD_KEEP_HIDDEN=0
+#
+# Candidate selection: `--candidates` restricts the run to a subset of the known
+# model map, and the BF16 reference is always prepended.  The default is the
+# published five, so a bare invocation still means exactly what it meant when the
+# ten shards behind receipts/kld5-10M-*.json were measured.  A model added to the
+# map later (nvfp4) is therefore never captured by accident: asking for it is
+# explicit, and a root whose reports predate it is not invalidated.
+#
+# KLD_KEEP_HIDDEN=1 keeps each shard's hidden states after its reports verify.
+# The default deletes them, which is what makes a ten-shard run fit in ~135 GB of
+# scratch; keep them only when something downstream preserves or reuses them, and
+# watch the free space yourself.
 set -euo pipefail
 
 HERE=$(cd -- "$(dirname -- "$0")" && pwd)
@@ -48,8 +62,10 @@ GPU_UTIL=${KLD_GPU_UTIL:-0.85}
 GGRUN=${GGRUN:-$HERE/ggrun.sh}
 PROVENANCE=${GG_PROVENANCE:-$WORK/gg-rootfs-provenance.json}
 PY=${PYTHON:-python3}
-NAMES="bf16 k4 k5k6 hyd ctx fp8"
-CANDIDATES="k4 k5k6 hyd ctx fp8"
+# The map below is every checkpoint this ladder knows how to serve; CANDIDATES is
+# what this invocation measures against BF16, and NAMES is that plus the reference.
+CANDIDATES=${KLD_CANDIDATES:-"k4 k5k6 hyd ctx fp8"}
+KEEP_HIDDEN=${KLD_KEEP_HIDDEN:-0}
 DRY=0
 
 die() { echo "FATAL: $*" >&2; exit 1; }
@@ -60,6 +76,11 @@ usage: kld_ladder.sh [--dry-run] <shards>
 
   <shards>   REQUIRED explicit shard list: "0", "1-4", "0,2,5".  There is no
              default: the ladder never guesses how much GPU time to spend.
+  --candidates "a b c"
+             measure this subset of the model map against BF16 instead of the
+             published default "k4 k5k6 hyd ctx fp8".  Known names: k4, k5k6,
+             hyd, ctx, fp8, nvfp4.  BF16 is the reference and is always captured
+             (or reused from a verified capture already in place).
   --dry-run  build and verify the shard suite views, write the capture/replay
              command files, check free space, print what would run.  No GPU
              work and no deletion.
@@ -70,6 +91,7 @@ USAGE
 while [ $# -gt 0 ]; do
   case "$1" in
     --dry-run) DRY=1; shift ;;
+    --candidates) [ $# -ge 2 ] || usage; CANDIDATES=$2; shift 2 ;;
     -h|--help) usage ;;
     --) shift; break ;;
     -*) echo "unknown option: $1" >&2; usage ;;
@@ -78,6 +100,11 @@ while [ $# -gt 0 ]; do
 done
 [ $# -eq 1 ] || usage
 SHARD_SPEC=$1
+
+# The reference is not a candidate: it is the other operand of every replay.
+NAMES="bf16 $CANDIDATES"
+case " $CANDIDATES " in *" bf16 "*) die "bf16 is the reference, not a candidate" ;; esac
+[ -n "${CANDIDATES// /}" ] || die "--candidates is empty: nothing to measure"
 
 # ------------------------------------------------------------------ paths
 # Everything the harness touches must live under GG_WORK or GG_MODELS, because
@@ -98,13 +125,19 @@ host_model_of() {
     k5k6) printf '%s' "$WORK/Qwen3.8-27B-K5K6" ;;
     hyd)  printf '%s' "$WORK/qwen38-hyd" ;;
     ctx)  printf '%s' "$WORK/qwen38-ctx" ;;
+    # unsloth's NVFP4 build of the same base model, served by vLLM's
+    # compressed-tensors path -- same engine as the reference, so its number
+    # carries no cross-engine term (unlike the GGUF rows).
+    nvfp4) printf '%s' "$MODELS_DIR/Qwen3.8-27B-NVFP4" ;;
     *) die "unknown model name: $1" ;;
   esac
 }
 
 env_of() {
   case "$1" in
-    bf16|fp8) printf '%s' '' ;;
+    # NVFP4 needs no environment of ours: the checkpoint carries its own
+    # compressed-tensors config and vLLM reads the scales from the weights.
+    bf16|fp8|nvfp4) printf '%s' '' ;;
     hyd|ctx) printf '%s' 'VLLM_EXL3_PREFILL_RECONSTRUCT_M=128' ;;
     k4|k5k6) printf '%s' 'VLLM_EXL3_ONLINE_TRELLIS_BITS=6 VLLM_EXL3_ONLINE_CACHE_DIR=/cache/exl3-online VLLM_EXL3_PREFILL_RECONSTRUCT_M=128' ;;
     *) die "unknown model name: $1" ;;
@@ -118,7 +151,11 @@ QCFG_GUEST=$(guest "$QCFG")
 EXL3_ARGS='--quantization exl3 --quantization-config "$(cat '"$QCFG_GUEST"')"'
 quant_args_of() {
   case "$1" in
-    bf16|fp8) printf '%s' '' ;;
+    bf16) printf '%s' '' ;;
+    # `--quantization compressed-tensors` verbatim from the v3 capture that first
+    # scored this checkpoint (/var/tmp/work/kld3/run_v3.sh).
+    nvfp4) printf '%s' '--quantization compressed-tensors' ;;
+    fp8) printf '%s' '' ;;
     k4|k5k6|hyd|ctx) printf '%s' "$EXL3_ARGS" ;;
     *) die "unknown model name: $1" ;;
   esac
@@ -147,6 +184,7 @@ else
   mkdir -p "$ROOT"
   cp -f "$REPO_HARNESS" "$ROOT/fidelity.py"
   HARNESS=$ROOT/fidelity.py
+  STAGED_HARNESS=$HARNESS
   echo "note: $WORK/kld2/fidelity.py is not the repository harness; staged $HARNESS instead"
 fi
 for feature in 'def validate_capture_files' 'def capture_contract' 'def atomic_write_json'; do
@@ -224,7 +262,14 @@ print("pin_ok " + json.dumps({"suite_token_sha256": pin["suite"]["suite_token_sh
                               "harness_sha256": harness_sha[:16]}))
 PY
 }
-pin_run || die "run pin rejected the current configuration"
+# Staging happens before the pin can be checked (the pin needs the harness digest),
+# so a rejected run must not leave a harness copy behind in a root it was refused
+# entry to: that file would sit next to a pin naming a different digest and imply
+# it had measured something.
+if ! pin_run; then
+  [ -n "${STAGED_HARNESS:-}" ] && rm -f "$STAGED_HARNESS"
+  die "run pin rejected the current configuration"
+fi
 
 # ------------------------------------------------------------------ shard list
 SHARDS=$("$PY" - "$SHARD_SPEC" "$SUITE/suite-manifest.json" "$SHARD_SIZE" <<'PY'
@@ -559,6 +604,16 @@ exec python $HARNESS_GUEST capture --model $MODEL_GUEST --suite $SUITE_GUEST \\
   --out $HDIR_GUEST/hidden-$name --gpu-memory-utilization $GPU_UTIL $QARGS
 EOF
   done
+  # One place decides whether a shard's hidden states are released, so the
+  # "already verified" path and the "just measured it" path cannot disagree.
+  release_hidden() {  # tag
+    if [ "$KEEP_HIDDEN" = 1 ]; then
+      echo "-- $1: KLD_KEEP_HIDDEN=1, leaving hidden states in $HDIR"
+      return 0
+    fi
+    echo "-- $1 verified; releasing hidden states"
+    rm -rf "$HDIR"
+  }
   for cand in $CANDIDATES; do
     cat > "$SDIR/replay-$cand.sh" <<EOF
 set -uo pipefail
@@ -579,19 +634,23 @@ EOF
   done
   if [ "$READY" = 1 ]; then
     echo "-- $TAG already verified: $SHARD_CONTEXTS contexts, $SHARD_POSITIONS scored positions"
-    rm -rf "$HDIR"
+    release_hidden "$TAG"
     TOTAL_POSITIONS=$((TOTAL_POSITIONS + SHARD_POSITIONS))
     continue
   fi
 
-  require_space "$ROOT" "$((SHARD_BYTES * 6 + SHARD_BYTES / 2))" \
-    || die "$TAG: not enough scratch for six captures of this shard"
+  # Scale the requirement to what this invocation actually captures: NAMES is the
+  # reference plus the selected candidates, not always the published six.
+  NAME_COUNT=$(set -- $NAMES; echo $#)
+  require_space "$ROOT" "$((SHARD_BYTES * NAME_COUNT + SHARD_BYTES / 2))" \
+    || die "$TAG: not enough scratch for $NAME_COUNT captures of this shard"
 
   if [ "$DRY" = 1 ]; then
     echo "-- dry run: would capture $NAMES then replay $CANDIDATES"
     for name in $NAMES; do echo "   $GGRUN bash $(guest "$SDIR")/cap-$name.sh"; done
     for cand in $CANDIDATES; do echo "   $GGRUN bash $(guest "$SDIR")/replay-$cand.sh"; done
-    echo "   rm -rf $HDIR"
+    [ "$KEEP_HIDDEN" = 1 ] && echo "   (KLD_KEEP_HIDDEN=1: $HDIR would be kept)" \
+      || echo "   rm -rf $HDIR"
     TOTAL_POSITIONS=$((TOTAL_POSITIONS + SHARD_POSITIONS))
     continue
   fi
@@ -621,9 +680,8 @@ EOF
       || die "$TAG: replay $cand produced no verifiable report"
   done
 
-  # the reports are verified, so the 64 GB of hidden states are now disposable
-  echo "-- $TAG verified; releasing hidden states"
-  rm -rf "$HDIR"
+  # the reports are verified, so this shard's hidden states are now disposable
+  release_hidden "$TAG"
   TOTAL_POSITIONS=$((TOTAL_POSITIONS + SHARD_POSITIONS))
 done
 

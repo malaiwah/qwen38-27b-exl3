@@ -45,6 +45,12 @@ import os as _reach_os
 import numpy as _reach_np
 
 _REACH_OUT = _reach_os.environ.get("VLLM_GDN_REACH_OUT")
+# Flush cadence. The metadata builder runs once per KV-cache group per step, so at ~50 ms
+# steps this is a ~1 kB host-side JSON write every second or two: negligible against the
+# step, and outside the CUDA path entirely. It is small enough that a mid-run snapshot of
+# the dump is an accurate phase total, which is what lets one server report two traffic
+# phases separately.
+_REACH_DUMP_EVERY = 64
 _REACH = {
     "builds_total": 0,
     # spec_sequence_masks is None: no speculative sequence in the batch at all,
@@ -99,7 +105,7 @@ def _reach_record(
     key = f"{num_spec_decodes}s/{num_prefills}p/{num_decodes}d"
     _REACH["compositions"][key] = _REACH["compositions"].get(key, 0) + 1
     if branch != "mixed_branch":
-        if _REACH["builds_total"] % 2048 == 1:
+        if _REACH["builds_total"] % _REACH_DUMP_EVERY == 1:
             _reach_dump()
         return
     # Token-level speculative mask in batch order, host side.
@@ -127,7 +133,7 @@ def _reach_record(
             _REACH["misordered_compositions"].get(key, 0) + 1
         )
         _reach_dump()
-    if _REACH["builds_total"] % 2048 == 1:
+    if _REACH["builds_total"] % _REACH_DUMP_EVERY == 1:
         _reach_dump()
 
 

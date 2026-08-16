@@ -140,16 +140,22 @@ startup_facts() {
 # A configuration that refuses to start is a result, not a harness error: the caller records
 # it and moves on, so one closed lever does not cost the rest of the window.
 wait_ready() {
-  local log=$1 i
+  local log=$1 i seen=0
   for ((i = 0; i < READY_TIMEOUT; i++)); do
     if curl -sf --max-time 5 "http://127.0.0.1:$PORT/health" >/dev/null 2>&1; then
       say "server ready after ${i}s"
       return 0
     fi
-    podman container exists "$CONTAINER" 2>/dev/null || {
+    if podman container exists "$CONTAINER" 2>/dev/null; then
+      seen=1
+    elif ((seen == 1)); then
       say "container $CONTAINER exited before readiness"
       return 1
-    }
+    elif ((i > 60)); then
+      # podman never created it: an argv or image problem, not a model problem.
+      say "container $CONTAINER was never created"
+      return 1
+    fi
     sleep 1
   done
   say "server not ready within ${READY_TIMEOUT}s"
@@ -319,13 +325,23 @@ configure() {
   esac
 }
 
+# 0.955 is the qualified single-sequence utilisation, but at --max-num-seqs 8 the wider graph
+# pool and the extra mamba blocks push the KV requirement for 262,144 tokens to 9.13 GiB while
+# 0.955 leaves 9.07 GiB, so the engine refuses to start (measured: the recorded base startup
+# refusal in the receipt). This concurrency profile therefore needs 0.97, and a 0.97 profile
+# cannot serve a large image, so these rows are a text-throughput comparison and not a
+# publishable serving profile. It is constant across every row, so the A/Bs stay valid.
+# The eager arms need UTIL=0.95: with cudagraph_mode NONE the engine converts the freed 0.55
+# GiB graph pool straight into more KV, which left 76 MiB free and OOMed on the first
+# 2,048-token prefill at 0.97 (measured). They are therefore compared within the eager family
+# only, never across it.
 perf_serve_argv() {
   serve_argv=(
     serve "/models/ctx-repo/snapshots/$CTX_REV"
     --served-model-name m
     --quantization exl3 --quantization-config "$QUANT_CFG"
     --max-model-len 262144
-    --gpu-memory-utilization 0.955
+    --gpu-memory-utilization "${UTIL:-0.97}"
     --kv-cache-dtype fp8
     --max-num-seqs "$SEQS"
     --max-num-batched-tokens 2048
