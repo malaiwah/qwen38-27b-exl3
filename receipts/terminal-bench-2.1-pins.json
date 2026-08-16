@@ -226,7 +226,41 @@
       "why": "Terminus-2 summarises when free context falls below its threshold; an 8k window would thrash on Terminal-Bench's long tool-output transcripts and would measure the summariser, not the model."
     },
     "sampling": "The agent sends no temperature, so vLLM applies each checkpoint's generation_config. Those two files are BYTE-IDENTICAL between the hydrated and BF16 checkpoints (verified by diff in this session), which is what makes pass 3 like-for-like.",
-    "known_caveat_carried_from_the_image": "The un-merged #51812 GDN spec-gate defect ships with this promoted image (upper bound 0.515/1000 builds under adversarial traffic)."
+    "known_caveat_carried_from_the_image": "The un-merged #51812 GDN spec-gate defect ships with this promoted image (upper bound 0.515/1000 builds under adversarial traffic).",
+    "flags_validated_against_this_build_without_a_gpu": {
+      "why": "`serve` is the one runner path that cannot be exercised before the handover, so a bad flag or an unregistered parser name would surface only while holding a queued, shared card. argparse and vLLM's registries can be checked on CPU, so they were.",
+      "method": "`vllm serve --help=all` inside the promoted rootfs via ggrun with CUDA_VISIBLE_DEVICES emptied (no GPU allocation, courteous to the current holder), plus direct registry lookups in the same interpreter.",
+      "all_16_flags_exist": [
+        "--quantization",
+        "--quantization-config",
+        "--mm-processor-kwargs",
+        "--reasoning-parser",
+        "--enable-auto-tool-choice",
+        "--tool-call-parser",
+        "--max-model-len",
+        "--gpu-memory-utilization",
+        "--max-num-seqs",
+        "--kv-cache-dtype",
+        "--max-num-batched-tokens",
+        "--enable-prefix-caching",
+        "--mamba-cache-mode",
+        "--speculative-config",
+        "--enforce-eager",
+        "--served-model-name"
+      ],
+      "enum_values_confirmed": {
+        "--mamba-cache-mode": "align is an accepted choice",
+        "--kv-cache-dtype": "fp8 is an accepted choice"
+      },
+      "registry_values_confirmed": {
+        "quantization exl3": "present in QUANTIZATION_METHODS; Exl3Config resolves and exposes from_config, get_name and _require_enforce_eager (the method that makes --enforce-eager mandatory)",
+        "reasoning-parser qwen3": "registered LAZILY (vllm.reasoning.qwen3_engine_reasoning_parser); get_reasoning_parser('qwen3') imports and returns Qwen3ParserReasoningAdapter",
+        "tool-call-parser qwen3_coder": "registered LAZILY (vllm.tool_parsers.qwen3_engine_tool_parser); get_tool_parser('qwen3_coder') imports and returns Qwen3EngineToolParser"
+      },
+      "a_false_alarm_worth_recording": "A first check read ReasoningParserManager.reasoning_parsers and ToolParserManager.tool_parsers directly, found both dicts EMPTY, and looked like proof that 'qwen3' was unavailable in this build. It was not: both managers populate lazily, and the names live in a lazy_parsers map until first use. Forcing the lazy import is what actually settles it -- reading the eager dict would have raised a false blocker.",
+      "speculative_config_schema": "SpeculativeConfig accepts both keys used ('method', 'num_speculative_tokens')",
+      "still_unvalidated_until_the_card_arrives": "The actual weight load, whether the exl3 --quantization-config JSON is accepted for this specific checkpoint, and whether MTP-3 initialises. Those need the GPU and are the first thing the dry run covers."
+    }
   },
   "checkpoints": {
     "pass_1_and_2": {
