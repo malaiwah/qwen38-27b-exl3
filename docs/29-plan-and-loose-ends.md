@@ -500,6 +500,17 @@ Use paid time only for work that the 31.39 GiB RTX 5090 cannot perform, chiefly 
 Qwen3.8-27B controls. Preserve each control as a reusable reference so candidate-side runs
 can move to the free local card.
 
+**Status 2026-08-16.** R1 is closed — every receipt, tool, card and doc in this session is
+committed and pushed to both remotes, and the artifacts that were only on rental disk are now
+public: dataset [`malaiwah/qwen38-27b-fidelity-suite-v5`](https://huggingface.co/datasets/malaiwah/qwen38-27b-fidelity-suite-v5)
+(the v5 suite, all ten shard views, the shard-0 BF16 reference, three shard-0 candidate
+captures, 79 per-shard reports), the research checkpoint
+`malaiwah/Qwen3.8-27B-EXL3-EDA-research`, and two archival mirrors of third-party artifacts our
+published numbers cite. R6 is closed and negative — [37](37-error-driven-allocation.md), the
+3.73x-per-bit law, and the finding that equal-weighted relative proxy error is not a monotone
+surrogate for KLD. R2-R5, the BF16 baselines for capability, multimodal, context quality and
+safety, are the rental work that remains and none of them has started.
+
 | rental rank | global rank | investigation | why it belongs here | closeout before moving on |
 |---:|---:|---|---|---|
 | R1 | prerequisite | freeze and publish this session | `/var/tmp` models, rootfs, logs and caches are ephemeral | Git commit plus pushed receipts/cards/tools; no evidence only on rental disk |
@@ -520,6 +531,17 @@ every accepted or negative result into `receipts/`, update the corresponding sec
 
 The local session starts here after pulling the pushed `main`; it must not infer state from
 this rental's `/var/tmp` paths.
+
+**Status 2026-08-16.** L1 closed (all seven gates at utilisation 0.955). L4 closed: the image
+is built, module-verified, promoted to the release unit as
+`localhost/vllm:gg-r34-patched-apc` (manifest `sha256:16a936b8...`, four modules) and its
+four-recipe serving smoke passes. L5 is partly closed — 11 configurations measured on the
+physical 5090 ([36](36-performance-levers-5090.md),
+`receipts/perf-sweep-5090.json`), which found that MTP depth is concurrency-dependent
+(`num_speculative_tokens 1` gives +30.67 % aggregate at eight streams while depth 3 wins at one
+stream) and closed FLASHINFER, `TRITON_ATTN`, `custom_ops:["all"]` and dynamic speculative
+decoding as levers; what remains is the *fair model-to-model* matrix against other artifacts,
+not our own knobs. L2, L3, L7 and L8 are unstarted.
 
 | local rank | global rank | investigation | first action | push target |
 |---:|---:|---|---|---|
