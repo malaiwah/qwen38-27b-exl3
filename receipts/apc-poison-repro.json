@@ -1,0 +1,160 @@
+{
+  "schema": "qwen38-apc-poison-repro/1",
+  "generated_utc": "2026-08-16T02:52:00Z",
+  "status": "PRE-REGISTERED. Thresholds, arms and decision rules are frozen here before any GPU arm has been started. The results block is null and will be filled by a later commit; git history is the proof of ordering.",
+  "purpose": "Turn the source-level claim in receipts/mamba-align-defect.json into a measurement on the reporter's own hardware class: does the pinned r34 release image, run in the reporter's --enable-prefix-caching --mamba-cache-mode align condition, actually produce corrupted output on a physical RTX 5090, and does the ported vLLM PR #51113 stop it. Separately, and kept apart from that verdict, measure what prefix reuse buys so that shipping it can be justified with numbers.",
+
+  "reported_by": {
+    "where": "https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6-context/discussions/1",
+    "user": "cosmicnag",
+    "symptoms": "intermittent multilingual token soup with repeated blocks and replacement characters after 1-2 turns, HTTP 200, no crash; SpecDecoding acceptance walking 39.4 % -> 0.0 % -> 64.5 % -> 20.4 % -> 0.0 %",
+    "his_stack_not_fully_modelled_here": "LMCache 0.5.2 in kv_both disk mode with chunk 1600, and a custom chat template. Neither is exercised by this probe; see unproven_after_this_receipt."
+  },
+
+  "established_before_this_run_not_re_derived": {
+    "mamba_align_defect": {
+      "receipt": "receipts/mamba-align-defect.json",
+      "upstream_pr": "https://github.com/vllm-project/vllm/pull/51113",
+      "absent_from_pinned_image": true,
+      "vendored_scheduler_sha256": "1ea341f4cc28d282452597c25d97eea84be8b5f984d2e1a6b548356c8417fdce",
+      "patched_module": "tools/vllm-mamba-align-scheduler.py",
+      "patched_module_sha256": "b431c1066dfee3ed56bfa7e71cc8606f9afadc300f22d7fc542c43835d1b22bf",
+      "cpu_evidence": "upstream's own regression file fails 14 of 20 against the vendored scheduler and passes 20 of 20 against the patched module",
+      "exposed_window_tokens": "(P mod B) + B for prompt length P and mamba block size B"
+    },
+    "gdn_spec_gate_defect": {
+      "receipt": "receipts/gdn-spec-gate-defect.json",
+      "upstream_pr": "https://github.com/vllm-project/vllm/pull/51812",
+      "absent_from_pinned_image": true,
+      "patched_module": "tools/vllm-qwen-gdn-spec-gates.py",
+      "patched_module_sha256": "7cd3f5fe763b621048af4817951a841d99c8b700d9a56ded27ccaca5a56ccbe0",
+      "upstream_measured_effect": "sub-argmax chosen-logprob drift, identical greedy token ids in upstream's repro"
+    },
+    "model_facts": {
+      "mamba_block_tokens": 1600,
+      "enable_prefix_caching_default": "off for this hybrid model, so --enable-prefix-caching must be passed explicitly",
+      "measured_where": "startup banner of this edition on this card"
+    }
+  },
+
+  "hardware": {
+    "host": "aiboss",
+    "address": "10.15.0.151",
+    "gpu": "NVIDIA GeForce RTX 5090, GPU-506a575d-01d7-b12e-9a0a-c1ab5f38ae0a, 32607 MiB, driver 610.57.04, Exclusive_Process",
+    "container_engine": "podman version 4.9.3 (rootless, user mbelleau)",
+    "note": "same card class as the reporter's; the user's live qwen38-27b service is stopped for this window and is restored and proven healthy by the restore phase"
+  },
+
+  "images": {
+    "release": {
+      "tag": "localhost/vllm:gg-r34-patched",
+      "manifest_digest": "sha256:6eca4c693f01b6f4e112c04eacd30673b7cfbba4150e6fe2ea3ba1bbfde14c27",
+      "config_id": "3cd11158a540ff4c23cece491774fecd3e61f6e4784771273e72bd65e44b773c",
+      "role": "the qualified release digest, three baked modules, PR #51113 ABSENT",
+      "scheduler_sha256_measured_inside_image": "1ea341f4cc28d282452597c25d97eea84be8b5f984d2e1a6b548356c8417fdce"
+    },
+    "apc_superset": {
+      "tag": "localhost/vllm:gg-r34-patched-apc",
+      "manifest_digest": "sha256:16a936b877b90fc080181e842f47dbafc5cb8e62688799596836e34ba0b79218",
+      "config_id": "5ce31638c0a5c5c5ee4b5cafb7cd29170b9f2f7a5dcf6e2caa6f3b41bc6f8adc",
+      "role": "superset, four modules, PR #51113 PRESENT, labelled io.malaiwah.image.qualified=false",
+      "scheduler_sha256_measured_inside_image": "b431c1066dfee3ed56bfa7e71cc8606f9afadc300f22d7fc542c43835d1b22bf"
+    },
+    "common_base": "docker.io/voipmonitor/vllm@sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b",
+    "asymmetry_asserted_by_the_harness": "the stage phase fails closed if the release image already carries b431c106... or if the superset image does not; arms A and C are otherwise not distinct"
+  },
+
+  "harness": {
+    "probe": "tools/apc_poison_probe.py",
+    "probe_sha256": "3019f4d8d7f61824826211179800de62c542b86ac84e09c2a055ef6fdb99f24b",
+    "driver": "tools/run_apc_repro.sh",
+    "driver_sha256": "be31d44886d382829ae26c57da8ffa052fc9b05668c83c310819dfde108f224c",
+    "probe_dependencies": "standard library only for every mode that talks to a server; the one-off build mode uses the model's own tokenizer inside the image, CPU only, because exact token lengths are the whole point of the experiment",
+    "prompts_sha256": "c1dae2341718d8dc521a26c8d16ee0e0d025333828487a50234e0a2096521d9a",
+    "prompts_not_committed": "prompts.json is ~5 MB of token ids and is fully deterministic from seed 20260816 plus the edition's tokenizer; rebuild with `run_apc_repro.sh stage` (~30 s, CPU only) and compare prompts_sha256. Every arm asserts this digest before issuing a request, so no two arms can differ by prompt."
+  },
+
+  "trigger_model": {
+    "why_a_single_request_is_accidentally_safe": "align mode skips null blocks, so the defect needs mixed-length requests over a shared prefix; the probe drives that condition deliberately rather than hoping for it",
+    "construction": [
+      "One ASCII English document per experiment. Every request is a nested token prefix of it, so all requests share a token-identical prefix and a later, longer request's prefix hit reaches blocks published by an earlier, shorter one.",
+      "Ten document prefix lengths, none a multiple of the 1600-token mamba block: 3000, 4100, 5300, 6500, 7700, 8200, 9900, 11000, 12300, 15400. With the 35-token chat head and the question tail the ten prompt lengths are 3141, 4241, 5441, 6641, 7841, 8341, 10041, 11141, 12441, 15541 and their residues mod 1600 are 1541, 641, 1041, 1441, 241, 441, 341, 1241, 1541, 1141 - no prompt is block aligned.",
+      "--max-num-batched-tokens 2048 puts chunk ends at multiples of 2048; between 1 and 7 chunk ends per request land mid-block, which is exactly the window the vendored guard fails to align.",
+      "Three passes of thirty requests total: pass 1 interleaved short/long/shorter/longer, pass 2 the same order replayed against a warm cache, pass 3 ascending as a persistence check, because a poisoned entry survives until process restart.",
+      "Sampling is greedy: temperature 0, top_p 1, seed 0, max_tokens 220, OpenAI-compatible /v1/completions with explicit token ids."
+    ],
+    "ground_truth_per_request": "two planted needle codes that must be retrieved verbatim (one shallow, always inside the shortest prefix; one as deep as the request's own prefix allows), one arithmetic answer, and a 40-60 word English summary that gives the corruption detector material. 16 needles are planted at measured token depths 891 through 12722."
+  },
+
+  "pre_registration": {
+    "written_before_any_gpu_arm_was_started": true,
+    "thresholds": {
+      "out_of_script_fraction_gt": 0.02,
+      "replacement_char_count_ge": 1,
+      "longest_repeated_block_chars_ge": 80,
+      "ngram5_repetition_ratio_ge": 0.5,
+      "ngram5_min_words": 30,
+      "answer_noise_band_requests": 1
+    },
+    "threshold_notes": {
+      "out_of_script_fraction_gt": "fraction of response characters outside the expected script set (ASCII printable plus a short list of English typographic characters). Prompt, document and answer format are pure ASCII English, so appreciable non-ASCII mass is the reported multilingual token soup. 2 % of a ~600 character answer is ~12 characters, well above an occasional curly quote.",
+      "replacement_char_count_ge": "U+FFFD in the decoded response. The reporter names replacement characters explicitly; one is already a defect.",
+      "longest_repeated_block_chars_ge": "longest substring occurring at least twice in the response, overlaps allowed. The reporter names repeated blocks. 80 characters is far longer than the answer scaffold and longer than any phrase a 60-word summary repeats by chance.",
+      "ngram5_repetition_ratio_ge": "1 - unique_5grams / total_5grams over whitespace-split words, computed only at 30 words or more. Catches degenerate looping that does not produce one single long verbatim block.",
+      "answer_noise_band_requests": "how many differing requests out of the thirty are tolerated when asking whether the patched arm matches the prefix-caching-off arm. Greedy decoding is deterministic per state, but cached and uncached paths take different kernel routes, so one differing request out of thirty is treated as probe noise."
+    },
+    "a_request_fails_if": "the corruption detector fires on its response, or any of the three checkable answers is wrong",
+    "verdict_rules": {
+      "reproduced": "arm A has at least one failing request AND arm B has none on the identical prompt set",
+      "partially_reproduced": "neither arm is clean but arm A fails at least three more requests than arm B; recorded as degradation, not as the reported defect",
+      "not_reproduced": "arm A has no failing request. This is a publishable negative and will be published as one: it would mean the reporter's trigger needs something this probe did not model, most plausibly LMCache 0.5.2's kv_both disk reuse path, which restores state from outside vLLM's own prefix cache and is named here in advance as the next experiment.",
+      "fixed": "arm A reproduced AND arm C has zero corrupted requests AND arm C fails at most one more request than arm B",
+      "fix_not_exercised": "arm A did not reproduce, so a clean arm C cannot be read as the fix working",
+      "arm_d_reporting": "arm D is reported on its own row and is never folded into the arm C verdict, so the two absent upstream fixes are never conflated",
+      "arm_e_is_not_part_of_the_correctness_verdict": "arm E measures prefix-reuse economics only; it can neither create nor rescue a correctness verdict"
+    }
+  },
+
+  "arms": {
+    "shared_serving_profile": {
+      "model": "/models/ctx-repo/snapshots/c45c273b0d6ef2859cb2d85b36dd52253c80d878 (malaiwah/Qwen3.8-27B-EXL3-K5K6-context)",
+      "flags_from_the_reporter_verbatim": [
+        "--max-model-len 196608",
+        "--gpu-memory-utilization 0.92",
+        "--max-num-seqs 1",
+        "--kv-cache-dtype fp8",
+        "--max-num-batched-tokens 2048",
+        "--speculative-config {\"method\":\"mtp\",\"num_speculative_tokens\":3}",
+        "--mm-processor-kwargs {\"truncation\":false,\"max_pixels\":8388608}",
+        "--compilation-config {\"cudagraph_mode\":\"FULL_DECODE_ONLY\",\"cudagraph_capture_sizes\":[4]}"
+      ],
+      "env_from_the_reporter_verbatim": [
+        "VLLM_EXL3_EMBED_BITS=8",
+        "VLLM_EXL3_GRAPH_DECODE=1",
+        "VLLM_EXL3_PREFILL_RECONSTRUCT_M=128"
+      ]
+    },
+    "A": "release image, --enable-prefix-caching --mamba-cache-mode align (the reporter's condition, PR #51113 absent)",
+    "B": "release image, --no-enable-prefix-caching (the condition every published measurement ran in)",
+    "C": "superset image, --enable-prefix-caching --mamba-cache-mode align (PR #51113 present)",
+    "D": "arm C plus tools/vllm-qwen-gdn-spec-gates.py bind-mounted read-only over the GDN attention module (PR #51812), reported separately",
+    "E": "superset image, prefix caching on: prefix-reuse economics only. Cold versus warm TTFT and recomputed prompt tokens at 32,842 and 131,146 prompt tokens on two documents with disjoint prefixes, so the long case is genuinely cold.",
+    "one_variable_at_a_time": "each arm is a freshly started server on the same card and changes exactly one thing against the arm before it",
+    "deviations_from_the_reporter_and_why": [
+      "--quantization exl3 with this edition's mxfp8 quantization-config ignore list: required for the model to load at all.",
+      "--served-model-name m, --host 127.0.0.1, --network host: harness plumbing.",
+      "the edition's own chat template with enable_thinking=false, not the reporter's custom template: his template is not published and a reasoning preamble would spend the answer budget.",
+      "NO LMCache. The reporter runs LMCache 0.5.2 in kv_both disk mode with chunk 1600. This probe exercises only vLLM's own prefix cache. This is the single largest gap between his stack and this measurement and it is called out in the verdict either way.",
+      "arm B additionally passes --no-enable-prefix-caching and no --mamba-cache-mode, which is the point of that arm."
+    ]
+  },
+
+  "results": null,
+
+  "unproven_after_this_receipt": [
+    "LMCache 0.5.2 kv_both disk reuse is not exercised at all; it is a second, independent state-restore path on top of vLLM's prefix cache.",
+    "The reporter's custom chat template is not used.",
+    "Multimodal input is not exercised; every request here is text.",
+    "Arm D measures the PR #51812 GDN gate module only as a mounted module, not as part of any image digest."
+  ]
+}
