@@ -1,0 +1,3400 @@
+{
+ "schema": "qwen38-sibling-rebuild-fidelity/1",
+ "question": "does a sibling rebuild of the published hydrated recipe land inside the published fidelity interval?",
+ "answered_here": true,
+ "left_open_by": "receipts/converter-determinism.json -> answer.what_it_means_for_reconstruction_claims[1]",
+ "verdict": {
+  "outcome": "indistinguishable",
+  "paired_difference_published_minus_sibling": -3.7550331881264944e-06,
+  "paired_ci95_low": -2.8539685967031816e-05,
+  "paired_ci95_high": 2.061765920895481e-05,
+  "paired_interval_contains_zero": true,
+  "paired_difference_exactly_zero": false,
+  "sibling_mean": 0.002703638192873069,
+  "published_mean": 0.002699883159684943,
+  "sibling_mean_inside_published_interval": true,
+  "sibling_mean_inside_published_interval_note": "a weak check kept for completeness: the published interval is a bootstrap over source clusters of ONE model's per-context means, so it describes corpus sampling, not run-to-run spread. The paired interval is the test.",
+  "a_wins_published_as_scored": 257,
+  "b_wins_sibling_as_scored": 255,
+  "tie_convention": "`fidelity.py paired` counts strict improvements as a_wins and the remainder as b_wins, so an exact tie is scored as a b-win. The three-way recount below comes from the same per-context means the paired tool subtracted.",
+  "recount": {
+   "contexts": 512,
+   "published_strictly_better": 257,
+   "sibling_strictly_better": 255,
+   "exact_ties": 0
+  }
+ },
+ "siblinghood": {
+  "verified": true,
+  "what_a_sibling_must_reproduce": [
+   "composition: every role's module count and storage formats",
+   "declared widths: bits, head_bits, mtp_bits, codebook, out_scales, calibration",
+   "the ten per-role byte totals and the total payload bytes",
+   "physical and logical tensor counts and the tensor_storage table",
+   "per shard: tensor names, dtypes, shapes, data offsets and the shard's size"
+  ],
+  "which_outcome": "SIBLING: identical recipe, different trellis payloads",
+  "byte_identical_to_published": false,
+  "pinned_files_compared": 16,
+  "pinned_files_identical": [
+   "LICENSE",
+   "chat_template.jinja",
+   "config.json",
+   "generation_config.json",
+   "merges.txt",
+   "model.safetensors.index.json",
+   "preprocessor_config.json",
+   "quantization_config.json",
+   "quantization_manifest.json",
+   "tokenizer.json",
+   "tokenizer_config.json",
+   "video_preprocessor_config.json",
+   "vocab.json"
+  ],
+  "pinned_files_differing": [
+   "model-00001-of-00003.safetensors",
+   "model-00002-of-00003.safetensors",
+   "model-00003-of-00003.safetensors"
+  ],
+  "published_sha256": {
+   "LICENSE": "bbedc3fda3305820b977265f01b8619d87570a6739de3a5582c3464840f1e57a",
+   "chat_template.jinja": "c3cf9e34abf4f9e36c2d72165aa9c132d3e2a725b6c2586aaa3a8af9d7a81041",
+   "config.json": "fbb105334da6554c10784ff1257fda5e3821d4d5426d64469cee2b2ad67ba2b3",
+   "generation_config.json": "e70c136c1b78ddc1fb0905bac8e733a4dc448d4f852a5dd75143fffc70be550e",
+   "merges.txt": "a9d356d7bdf1ef4949e3e748e95b8e10ad9d4e2e838eddc38a0a7b6b94d1db8d",
+   "model-00001-of-00003.safetensors": "792b46b54a79871030a5a029a483b8938ff509912169a1c7627913d614365f0d",
+   "model-00002-of-00003.safetensors": "1902a7425fb7e36b45f1c65e5aa0d6e159a6dd8b79b7810e54ab33457ed1ccd2",
+   "model-00003-of-00003.safetensors": "6fa500e4bebf04917ede2ee7b1379ded7aa85aa37110e103d36d9ad330fc0e96",
+   "model.safetensors.index.json": "ea6e0e1064efbb72d89b4a6f9e0ee76c909a94b3f25047487a2ffb282896a26c",
+   "preprocessor_config.json": "27225450ac9c6529872ee1924fcb0962ff5634834f817040f444118116f4e516",
+   "quantization_config.json": "bdf00572254e104c61474e8006054e8666f03c24be523e4ddfb52766fefeffee",
+   "quantization_manifest.json": "db9b03fb2bb8fa9219e266a825ee028f6ed1420f4de2617d752143dee9ed4c4d",
+   "tokenizer.json": "0997f410c57a1f4e53b09e4be8f4a172d90edd9564368fb0847030937229b9f3",
+   "tokenizer_config.json": "b11349aafa7cdc6a320767cf7ceb29ed82f7eda5d65e8e0819e76f0ce947bf27",
+   "video_preprocessor_config.json": "7768af27c1fafa9cc9011c1dc20067e03f8915e03b63504550e11d5066986d13",
+   "vocab.json": "ce99b4cb2983d118806ce0a8b777a35b093e2000a503ebde25853284c9dfa003"
+  },
+  "sibling_sha256": {
+   "LICENSE": "bbedc3fda3305820b977265f01b8619d87570a6739de3a5582c3464840f1e57a",
+   "chat_template.jinja": "c3cf9e34abf4f9e36c2d72165aa9c132d3e2a725b6c2586aaa3a8af9d7a81041",
+   "config.json": "fbb105334da6554c10784ff1257fda5e3821d4d5426d64469cee2b2ad67ba2b3",
+   "generation_config.json": "e70c136c1b78ddc1fb0905bac8e733a4dc448d4f852a5dd75143fffc70be550e",
+   "merges.txt": "a9d356d7bdf1ef4949e3e748e95b8e10ad9d4e2e838eddc38a0a7b6b94d1db8d",
+   "model-00001-of-00003.safetensors": "92c4a33456e68ca6417c90f51d6e954fc2af49d9d1e6510dcd2c32fd68fcb736",
+   "model-00002-of-00003.safetensors": "4a0a01563836b98d90c42827ec68e173690c0a321fd7666f3ab4c13364730d4f",
+   "model-00003-of-00003.safetensors": "1ad3da4492eed7237620eec680d72335a74441617379a6d0be1edb8ad6fe5238",
+   "model.safetensors.index.json": "ea6e0e1064efbb72d89b4a6f9e0ee76c909a94b3f25047487a2ffb282896a26c",
+   "preprocessor_config.json": "27225450ac9c6529872ee1924fcb0962ff5634834f817040f444118116f4e516",
+   "quantization_config.json": "bdf00572254e104c61474e8006054e8666f03c24be523e4ddfb52766fefeffee",
+   "quantization_manifest.json": "db9b03fb2bb8fa9219e266a825ee028f6ed1420f4de2617d752143dee9ed4c4d",
+   "tokenizer.json": "0997f410c57a1f4e53b09e4be8f4a172d90edd9564368fb0847030937229b9f3",
+   "tokenizer_config.json": "b11349aafa7cdc6a320767cf7ceb29ed82f7eda5d65e8e0819e76f0ce947bf27",
+   "video_preprocessor_config.json": "7768af27c1fafa9cc9011c1dc20067e03f8915e03b63504550e11d5066986d13",
+   "vocab.json": "ce99b4cb2983d118806ce0a8b777a35b093e2000a503ebde25853284c9dfa003"
+  },
+  "shard_headers": {
+   "model-00001-of-00003.safetensors": {
+    "tensors_published": 705,
+    "tensors_sibling": 705,
+    "names_identical": true,
+    "only_in_published": [],
+    "only_in_sibling": [],
+    "dtype_mismatches": [],
+    "shape_mismatches": [],
+    "offset_mismatches": [],
+    "metadata_identical": true,
+    "header_identical": true,
+    "published_bytes": 8351643585,
+    "sibling_bytes": 8351643585,
+    "size_identical": true
+   },
+   "model-00002-of-00003.safetensors": {
+    "tensors_published": 1024,
+    "tensors_sibling": 1024,
+    "names_identical": true,
+    "only_in_published": [],
+    "only_in_sibling": [],
+    "dtype_mismatches": [],
+    "shape_mismatches": [],
+    "offset_mismatches": [],
+    "metadata_identical": true,
+    "header_identical": true,
+    "published_bytes": 8442742474,
+    "sibling_bytes": 8442742474,
+    "size_identical": true
+   },
+   "model-00003-of-00003.safetensors": {
+    "tensors_published": 697,
+    "tensors_sibling": 697,
+    "names_identical": true,
+    "only_in_published": [],
+    "only_in_sibling": [],
+    "dtype_mismatches": [],
+    "shape_mismatches": [],
+    "offset_mismatches": [],
+    "metadata_identical": true,
+    "header_identical": true,
+    "published_bytes": 4792879451,
+    "sibling_bytes": 4792879451,
+    "size_identical": true
+   }
+  },
+  "recipe_reproduction": {
+   "per_role_bytes": {
+    "embed_tokens": {
+     "published_bytes": 2542796800,
+     "sibling_bytes": 2542796800,
+     "modules": 0,
+     "formats": {
+      "BF16": 1
+     },
+     "identical": true
+    },
+    "full_attention": {
+     "published_bytes": 1259618560,
+     "sibling_bytes": 1259618560,
+     "modules": 64,
+     "formats": {
+      "exl3_K6_mcg": 64,
+      "BF16": 32
+     },
+     "identical": true
+    },
+    "linear_attention": {
+     "published_bytes": 4207138368,
+     "sibling_bytes": 4207138368,
+     "modules": 144,
+     "formats": {
+      "exl3_K6_mcg": 144,
+      "F16": 96,
+      "BF16": 192
+     },
+     "identical": true
+    },
+    "lm_head": {
+     "published_bytes": 954055684,
+     "sibling_bytes": 954055684,
+     "modules": 1,
+     "formats": {
+      "exl3_K6_mcg": 1
+     },
+     "identical": true
+    },
+    "mlp_down_proj": {
+     "published_bytes": 4281073920,
+     "sibling_bytes": 4281073920,
+     "modules": 64,
+     "formats": {
+      "exl3_K6_mcg": 64
+     },
+     "identical": true
+    },
+    "mlp_gate_proj": {
+     "published_bytes": 3568042240,
+     "sibling_bytes": 3568042240,
+     "modules": 64,
+     "formats": {
+      "exl3_K5_mcg": 64
+     },
+     "identical": true
+    },
+    "mlp_up_proj": {
+     "published_bytes": 3568042240,
+     "sibling_bytes": 3568042240,
+     "modules": 64,
+     "formats": {
+      "exl3_K5_mcg": 64
+     },
+     "identical": true
+    },
+    "mtp_draft": {
+     "published_bytes": 283415584,
+     "sibling_bytes": 283415584,
+     "modules": 8,
+     "formats": {
+      "exl3_K4_mcg": 1,
+      "exl3_K6_mcg": 5,
+      "exl3_K5_mcg": 2,
+      "BF16": 7
+     },
+     "identical": true
+    },
+    "norms_and_small": {
+     "published_bytes": 1320960,
+     "sibling_bytes": 1320960,
+     "modules": 0,
+     "formats": {
+      "BF16": 129
+     },
+     "identical": true
+    },
+    "vision_tower": {
+     "published_bytes": 921460192,
+     "sibling_bytes": 921460192,
+     "modules": 0,
+     "formats": {
+      "BF16": 333
+     },
+     "identical": true
+    }
+   },
+   "roles_disagreeing": [],
+   "roles_identical": true,
+   "payload_bytes_published": 21586964548,
+   "payload_bytes_sibling": 21586964548,
+   "manifest_scalars": {
+    "physical_tensor_count": {
+     "published": 2426,
+     "sibling": 2426,
+     "identical": true
+    },
+    "logical_tensor_count": {
+     "published": 1199,
+     "sibling": 1199,
+     "identical": true
+    },
+    "logical_parameter_count": {
+     "published": 27781427952,
+     "sibling": 27781427952,
+     "identical": true
+    },
+    "exl3_modules": {
+     "published": 409,
+     "sibling": 409,
+     "identical": true
+    },
+    "converter": {
+     "published": "turboderp-org/exllamav3@5f3c537 (1.4.2)",
+     "sibling": "turboderp-org/exllamav3@5f3c537 (1.4.2)",
+     "identical": true
+    },
+    "recipe": {
+     "published": "MLP gate/up K5, down K6, attention K6 serialized (calibrated), lm_head K6/mcg, quantized MTP, BF16 embed+vision",
+     "sibling": "MLP gate/up K5, down K6, attention K6 serialized (calibrated), lm_head K6/mcg, quantized MTP, BF16 embed+vision",
+     "identical": true
+    },
+    "command": {
+     "published": "convert.py -i Qwen3.8-27B -b 4 -hb 6 -mb 4 -vb 16 -cb mcg with EXL3_BITS_FIXED attention=6 and EXL3_BITS_OVERRIDE mlp gate/up=5 down=6",
+     "sibling": "convert.py -i Qwen3.8-27B -b 4 -hb 6 -mb 4 -vb 16 -cb mcg with EXL3_BITS_FIXED attention=6 and EXL3_BITS_OVERRIDE mlp gate/up=5 down=6",
+     "identical": true
+    }
+   },
+   "declared_widths": {
+    "bits": {
+     "published": 4.0,
+     "sibling": 4.0,
+     "identical": true
+    },
+    "head_bits": {
+     "published": 6,
+     "sibling": 6,
+     "identical": true
+    },
+    "mtp_bits": {
+     "published": 4,
+     "sibling": 4,
+     "identical": true
+    },
+    "codebook": {
+     "published": "mcg",
+     "sibling": "mcg",
+     "identical": true
+    },
+    "out_scales": {
+     "published": "always",
+     "sibling": "always",
+     "identical": true
+    },
+    "calibration": {
+     "published": {
+      "rows": 250,
+      "cols": 2048
+     },
+     "sibling": {
+      "rows": 250,
+      "cols": 2048
+     },
+     "identical": true
+    },
+    "quant_method": {
+     "published": "exl3",
+     "sibling": "exl3",
+     "identical": true
+    },
+    "version": {
+     "published": "1.4.2",
+     "sibling": "1.4.2",
+     "identical": true
+    }
+   },
+   "tensor_storage_entries_published": 715,
+   "tensor_storage_entries_sibling": 715,
+   "tensor_storage_identical": true
+  },
+  "payload_divergence": {
+   "tensors_compared": 2426,
+   "tensors_identical": 2027,
+   "trellis_tensors_differing": 399,
+   "non_trellis_differences": [],
+   "non_trellis_differing_count": 0,
+   "differing_byte_fraction_min": 0.3940778305951287,
+   "differing_byte_fraction_max": 0.9176272074381511,
+   "differing_byte_fraction_mean": 0.8229908216560932,
+   "payloads_differ": true,
+   "trellis_tensors_differing_detail": [
+    {
+     "tensor": "lm_head.trellis",
+     "bytes": 953548800,
+     "differing_bytes": 758940074,
+     "differing_fraction": 0.7959110996731368
+    },
+    {
+     "tensor": "model.language_model.layers.0.linear_attn.out_proj.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 14480172,
+     "differing_fraction": 0.6137496948242187
+    },
+    {
+     "tensor": "model.language_model.layers.0.mlp.down_proj.trellis",
+     "bytes": 66846720,
+     "differing_bytes": 54458168,
+     "differing_fraction": 0.8146722531786152
+    },
+    {
+     "tensor": "model.language_model.layers.0.mlp.gate_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 21952342,
+     "differing_fraction": 0.3940778305951287
+    },
+    {
+     "tensor": "model.language_model.layers.0.mlp.up_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 22449772,
+     "differing_fraction": 0.4030074534696691
+    },
+    {
+     "tensor": "model.language_model.layers.1.linear_attn.in_proj_qkv.trellis",
+     "bytes": 39321600,
+     "differing_bytes": 32520089,
+     "differing_fraction": 0.8270286305745442
+    },
+    {
+     "tensor": "model.language_model.layers.1.linear_attn.in_proj_z.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 19365145,
+     "differing_fraction": 0.8208018408881294
+    },
+    {
+     "tensor": "model.language_model.layers.1.linear_attn.out_proj.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 20930744,
+     "differing_fraction": 0.8871605767144097
+    },
+    {
+     "tensor": "model.language_model.layers.1.mlp.down_proj.trellis",
+     "bytes": 66846720,
+     "differing_bytes": 57801712,
+     "differing_fraction": 0.8646903243719363
+    },
+    {
+     "tensor": "model.language_model.layers.1.mlp.gate_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 48481430,
+     "differing_fraction": 0.8703151927274816
+    },
+    {
+     "tensor": "model.language_model.layers.1.mlp.up_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 48444179,
+     "differing_fraction": 0.8696464807846966
+    },
+    {
+     "tensor": "model.language_model.layers.10.linear_attn.in_proj_qkv.trellis",
+     "bytes": 39321600,
+     "differing_bytes": 31350668,
+     "differing_fraction": 0.7972887166341146
+    },
+    {
+     "tensor": "model.language_model.layers.10.linear_attn.in_proj_z.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 18820231,
+     "differing_fraction": 0.7977053748236762
+    },
+    {
+     "tensor": "model.language_model.layers.10.linear_attn.out_proj.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 21087547,
+     "differing_fraction": 0.8938067542182074
+    },
+    {
+     "tensor": "model.language_model.layers.10.mlp.down_proj.trellis",
+     "bytes": 66846720,
+     "differing_bytes": 55640284,
+     "differing_fraction": 0.8323562322878371
+    },
+    {
+     "tensor": "model.language_model.layers.10.mlp.gate_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 45096272,
+     "differing_fraction": 0.8095464728860294
+    },
+    {
+     "tensor": "model.language_model.layers.10.mlp.up_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 45027514,
+     "differing_fraction": 0.808312162511489
+    },
+    {
+     "tensor": "model.language_model.layers.11.mlp.down_proj.trellis",
+     "bytes": 66846720,
+     "differing_bytes": 55639976,
+     "differing_fraction": 0.832351624731924
+    },
+    {
+     "tensor": "model.language_model.layers.11.mlp.gate_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44615672,
+     "differing_fraction": 0.8009189740349265
+    },
+    {
+     "tensor": "model.language_model.layers.11.mlp.up_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44700277,
+     "differing_fraction": 0.8024377620921416
+    },
+    {
+     "tensor": "model.language_model.layers.11.self_attn.k_proj.trellis",
+     "bytes": 3932160,
+     "differing_bytes": 3092448,
+     "differing_fraction": 0.7864501953125
+    },
+    {
+     "tensor": "model.language_model.layers.11.self_attn.o_proj.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 21430643,
+     "differing_fraction": 0.9083490583631727
+    },
+    {
+     "tensor": "model.language_model.layers.11.self_attn.q_proj.trellis",
+     "bytes": 47185920,
+     "differing_bytes": 37195121,
+     "differing_fraction": 0.7882673687405056
+    },
+    {
+     "tensor": "model.language_model.layers.11.self_attn.v_proj.trellis",
+     "bytes": 3932160,
+     "differing_bytes": 3084136,
+     "differing_fraction": 0.7843363444010417
+    },
+    {
+     "tensor": "model.language_model.layers.12.linear_attn.in_proj_qkv.trellis",
+     "bytes": 39321600,
+     "differing_bytes": 31008649,
+     "differing_fraction": 0.7885907236735026
+    },
+    {
+     "tensor": "model.language_model.layers.12.linear_attn.in_proj_z.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 18644906,
+     "differing_fraction": 0.7902741326226128
+    },
+    {
+     "tensor": "model.language_model.layers.12.linear_attn.out_proj.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 20861344,
+     "differing_fraction": 0.8842190212673611
+    },
+    {
+     "tensor": "model.language_model.layers.12.mlp.down_proj.trellis",
+     "bytes": 66846720,
+     "differing_bytes": 55665464,
+     "differing_fraction": 0.832732914943321
+    },
+    {
+     "tensor": "model.language_model.layers.12.mlp.gate_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44842756,
+     "differing_fraction": 0.8049954762178309
+    },
+    {
+     "tensor": "model.language_model.layers.12.mlp.up_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44848846,
+     "differing_fraction": 0.8051048009535846
+    },
+    {
+     "tensor": "model.language_model.layers.13.linear_attn.in_proj_qkv.trellis",
+     "bytes": 39321600,
+     "differing_bytes": 30858354,
+     "differing_fraction": 0.7847685241699218
+    },
+    {
+     "tensor": "model.language_model.layers.13.linear_attn.in_proj_z.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 18522304,
+     "differing_fraction": 0.7850775824652778
+    },
+    {
+     "tensor": "model.language_model.layers.13.linear_attn.out_proj.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 20327822,
+     "differing_fraction": 0.8616054111056858
+    },
+    {
+     "tensor": "model.language_model.layers.13.mlp.down_proj.trellis",
+     "bytes": 66846720,
+     "differing_bytes": 55108169,
+     "differing_fraction": 0.8243960062662761
+    },
+    {
+     "tensor": "model.language_model.layers.13.mlp.gate_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44769485,
+     "differing_fraction": 0.8036801506491268
+    },
+    {
+     "tensor": "model.language_model.layers.13.mlp.up_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44712143,
+     "differing_fraction": 0.8026507747874541
+    },
+    {
+     "tensor": "model.language_model.layers.14.linear_attn.in_proj_qkv.trellis",
+     "bytes": 39321600,
+     "differing_bytes": 30826443,
+     "differing_fraction": 0.7839569854736328
+    },
+    {
+     "tensor": "model.language_model.layers.14.linear_attn.in_proj_z.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 18458962,
+     "differing_fraction": 0.7823927985297309
+    },
+    {
+     "tensor": "model.language_model.layers.14.linear_attn.out_proj.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 20880804,
+     "differing_fraction": 0.8850438435872395
+    },
+    {
+     "tensor": "model.language_model.layers.14.mlp.down_proj.trellis",
+     "bytes": 66846720,
+     "differing_bytes": 55217776,
+     "differing_fraction": 0.8260356828278186
+    },
+    {
+     "tensor": "model.language_model.layers.14.mlp.gate_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44666198,
+     "differing_fraction": 0.8018259923598345
+    },
+    {
+     "tensor": "model.language_model.layers.14.mlp.up_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44643278,
+     "differing_fraction": 0.8014145436006433
+    },
+    {
+     "tensor": "model.language_model.layers.15.mlp.down_proj.trellis",
+     "bytes": 66846720,
+     "differing_bytes": 54626409,
+     "differing_fraction": 0.8171890707576976
+    },
+    {
+     "tensor": "model.language_model.layers.15.mlp.gate_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44421349,
+     "differing_fraction": 0.7974305814855239
+    },
+    {
+     "tensor": "model.language_model.layers.15.mlp.up_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44392759,
+     "differing_fraction": 0.7969173476275275
+    },
+    {
+     "tensor": "model.language_model.layers.15.self_attn.k_proj.trellis",
+     "bytes": 3932160,
+     "differing_bytes": 3093506,
+     "differing_fraction": 0.7867192586263021
+    },
+    {
+     "tensor": "model.language_model.layers.15.self_attn.o_proj.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 21387392,
+     "differing_fraction": 0.9065158420138889
+    },
+    {
+     "tensor": "model.language_model.layers.15.self_attn.q_proj.trellis",
+     "bytes": 47185920,
+     "differing_bytes": 37329869,
+     "differing_fraction": 0.7911230511135525
+    },
+    {
+     "tensor": "model.language_model.layers.15.self_attn.v_proj.trellis",
+     "bytes": 3932160,
+     "differing_bytes": 3105926,
+     "differing_fraction": 0.7898778279622396
+    },
+    {
+     "tensor": "model.language_model.layers.16.linear_attn.in_proj_qkv.trellis",
+     "bytes": 39321600,
+     "differing_bytes": 30508284,
+     "differing_fraction": 0.7758657836914062
+    },
+    {
+     "tensor": "model.language_model.layers.16.linear_attn.in_proj_z.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 18291428,
+     "differing_fraction": 0.7752917819552951
+    },
+    {
+     "tensor": "model.language_model.layers.16.linear_attn.out_proj.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 21005058,
+     "differing_fraction": 0.8903104146321614
+    },
+    {
+     "tensor": "model.language_model.layers.16.mlp.down_proj.trellis",
+     "bytes": 66846720,
+     "differing_bytes": 55517457,
+     "differing_fraction": 0.8305187898523667
+    },
+    {
+     "tensor": "model.language_model.layers.16.mlp.gate_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44506961,
+     "differing_fraction": 0.7989674467198989
+    },
+    {
+     "tensor": "model.language_model.layers.16.mlp.up_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44483285,
+     "differing_fraction": 0.7985424266142004
+    },
+    {
+     "tensor": "model.language_model.layers.17.linear_attn.in_proj_qkv.trellis",
+     "bytes": 39321600,
+     "differing_bytes": 30597515,
+     "differing_fraction": 0.7781350453694661
+    },
+    {
+     "tensor": "model.language_model.layers.17.linear_attn.in_proj_z.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 18415525,
+     "differing_fraction": 0.7805516984727647
+    },
+    {
+     "tensor": "model.language_model.layers.17.linear_attn.out_proj.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 20859060,
+     "differing_fraction": 0.8841222127278646
+    },
+    {
+     "tensor": "model.language_model.layers.17.mlp.down_proj.trellis",
+     "bytes": 66846720,
+     "differing_bytes": 55892671,
+     "differing_fraction": 0.8361318401261872
+    },
+    {
+     "tensor": "model.language_model.layers.17.mlp.gate_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44571369,
+     "differing_fraction": 0.8001236679974725
+    },
+    {
+     "tensor": "model.language_model.layers.17.mlp.up_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44705912,
+     "differing_fraction": 0.8025389188878677
+    },
+    {
+     "tensor": "model.language_model.layers.18.linear_attn.in_proj_qkv.trellis",
+     "bytes": 39321600,
+     "differing_bytes": 30781927,
+     "differing_fraction": 0.7828248850504558
+    },
+    {
+     "tensor": "model.language_model.layers.18.linear_attn.in_proj_z.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 18488028,
+     "differing_fraction": 0.783624776204427
+    },
+    {
+     "tensor": "model.language_model.layers.18.linear_attn.out_proj.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 20968777,
+     "differing_fraction": 0.8887726253933377
+    },
+    {
+     "tensor": "model.language_model.layers.18.mlp.down_proj.trellis",
+     "bytes": 66846720,
+     "differing_bytes": 57247790,
+     "differing_fraction": 0.8564038744159773
+    },
+    {
+     "tensor": "model.language_model.layers.18.mlp.gate_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 45769856,
+     "differing_fraction": 0.8216383272058824
+    },
+    {
+     "tensor": "model.language_model.layers.18.mlp.up_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 45682140,
+     "differing_fraction": 0.8200636919806985
+    },
+    {
+     "tensor": "model.language_model.layers.19.mlp.down_proj.trellis",
+     "bytes": 66846720,
+     "differing_bytes": 56637216,
+     "differing_fraction": 0.8472699333639706
+    },
+    {
+     "tensor": "model.language_model.layers.19.mlp.gate_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44950627,
+     "differing_fraction": 0.8069319242589614
+    },
+    {
+     "tensor": "model.language_model.layers.19.mlp.up_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44938922,
+     "differing_fraction": 0.8067218017578125
+    },
+    {
+     "tensor": "model.language_model.layers.19.self_attn.k_proj.trellis",
+     "bytes": 3932160,
+     "differing_bytes": 3218583,
+     "differing_fraction": 0.8185279846191407
+    },
+    {
+     "tensor": "model.language_model.layers.19.self_attn.o_proj.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 21345080,
+     "differing_fraction": 0.9047224256727431
+    },
+    {
+     "tensor": "model.language_model.layers.19.self_attn.q_proj.trellis",
+     "bytes": 47185920,
+     "differing_bytes": 38890777,
+     "differing_fraction": 0.824203003777398
+    },
+    {
+     "tensor": "model.language_model.layers.19.self_attn.v_proj.trellis",
+     "bytes": 3932160,
+     "differing_bytes": 3221018,
+     "differing_fraction": 0.819147237141927
+    },
+    {
+     "tensor": "model.language_model.layers.2.linear_attn.in_proj_qkv.trellis",
+     "bytes": 39321600,
+     "differing_bytes": 32353230,
+     "differing_fraction": 0.8227851867675782
+    },
+    {
+     "tensor": "model.language_model.layers.2.linear_attn.in_proj_z.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 19376630,
+     "differing_fraction": 0.8212886386447482
+    },
+    {
+     "tensor": "model.language_model.layers.2.linear_attn.out_proj.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 20996079,
+     "differing_fraction": 0.8899298350016276
+    },
+    {
+     "tensor": "model.language_model.layers.2.mlp.down_proj.trellis",
+     "bytes": 66846720,
+     "differing_bytes": 58578506,
+     "differing_fraction": 0.8763108496572457
+    },
+    {
+     "tensor": "model.language_model.layers.2.mlp.gate_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 47313644,
+     "differing_fraction": 0.8493516630284926
+    },
+    {
+     "tensor": "model.language_model.layers.2.mlp.up_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 47331831,
+     "differing_fraction": 0.8496781472598806
+    },
+    {
+     "tensor": "model.language_model.layers.20.linear_attn.in_proj_qkv.trellis",
+     "bytes": 39321600,
+     "differing_bytes": 30985594,
+     "differing_fraction": 0.7880044047037761
+    },
+    {
+     "tensor": "model.language_model.layers.20.linear_attn.in_proj_z.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 18547787,
+     "differing_fraction": 0.786157692803277
+    },
+    {
+     "tensor": "model.language_model.layers.20.linear_attn.out_proj.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 20836625,
+     "differing_fraction": 0.8831712934705946
+    },
+    {
+     "tensor": "model.language_model.layers.20.mlp.down_proj.trellis",
+     "bytes": 66846720,
+     "differing_bytes": 55891869,
+     "differing_fraction": 0.8361198425292968
+    },
+    {
+     "tensor": "model.language_model.layers.20.mlp.gate_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44623643,
+     "differing_fraction": 0.8010620655732996
+    },
+    {
+     "tensor": "model.language_model.layers.20.mlp.up_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44703579,
+     "differing_fraction": 0.8024970379997702
+    },
+    {
+     "tensor": "model.language_model.layers.21.linear_attn.in_proj_qkv.trellis",
+     "bytes": 39321600,
+     "differing_bytes": 30901067,
+     "differing_fraction": 0.7858547719319662
+    },
+    {
+     "tensor": "model.language_model.layers.21.linear_attn.in_proj_z.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 18562926,
+     "differing_fraction": 0.7867993672688802
+    },
+    {
+     "tensor": "model.language_model.layers.21.linear_attn.out_proj.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 20965021,
+     "differing_fraction": 0.8886134253607856
+    },
+    {
+     "tensor": "model.language_model.layers.21.mlp.down_proj.trellis",
+     "bytes": 66846720,
+     "differing_bytes": 54689834,
+     "differing_fraction": 0.8181378832050398
+    },
+    {
+     "tensor": "model.language_model.layers.21.mlp.gate_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44521815,
+     "differing_fraction": 0.7992340985466452
+    },
+    {
+     "tensor": "model.language_model.layers.21.mlp.up_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44471836,
+     "differing_fraction": 0.7983368997012867
+    },
+    {
+     "tensor": "model.language_model.layers.22.linear_attn.in_proj_qkv.trellis",
+     "bytes": 39321600,
+     "differing_bytes": 30556585,
+     "differing_fraction": 0.7770941416422527
+    },
+    {
+     "tensor": "model.language_model.layers.22.linear_attn.in_proj_z.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 18337088,
+     "differing_fraction": 0.7772271050347223
+    },
+    {
+     "tensor": "model.language_model.layers.22.linear_attn.out_proj.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 20656976,
+     "differing_fraction": 0.8755567762586806
+    },
+    {
+     "tensor": "model.language_model.layers.22.mlp.down_proj.trellis",
+     "bytes": 66846720,
+     "differing_bytes": 56647821,
+     "differing_fraction": 0.8474285798914293
+    },
+    {
+     "tensor": "model.language_model.layers.22.mlp.gate_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44306103,
+     "differing_fraction": 0.7953617410098806
+    },
+    {
+     "tensor": "model.language_model.layers.22.mlp.up_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44275233,
+     "differing_fraction": 0.7948075776941637
+    },
+    {
+     "tensor": "model.language_model.layers.23.mlp.down_proj.trellis",
+     "bytes": 66846720,
+     "differing_bytes": 55248040,
+     "differing_fraction": 0.8264884200750613
+    },
+    {
+     "tensor": "model.language_model.layers.23.mlp.gate_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44052904,
+     "differing_fraction": 0.7908164349724265
+    },
+    {
+     "tensor": "model.language_model.layers.23.mlp.up_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44078480,
+     "differing_fraction": 0.7912755629595588
+    },
+    {
+     "tensor": "model.language_model.layers.23.self_attn.k_proj.trellis",
+     "bytes": 3932160,
+     "differing_bytes": 3184284,
+     "differing_fraction": 0.8098052978515625
+    },
+    {
+     "tensor": "model.language_model.layers.23.self_attn.o_proj.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 21165723,
+     "differing_fraction": 0.8971202850341797
+    },
+    {
+     "tensor": "model.language_model.layers.23.self_attn.q_proj.trellis",
+     "bytes": 47185920,
+     "differing_bytes": 38564505,
+     "differing_fraction": 0.8172883987426758
+    },
+    {
+     "tensor": "model.language_model.layers.23.self_attn.v_proj.trellis",
+     "bytes": 3932160,
+     "differing_bytes": 3190056,
+     "differing_fraction": 0.811273193359375
+    },
+    {
+     "tensor": "model.language_model.layers.24.linear_attn.in_proj_qkv.trellis",
+     "bytes": 39321600,
+     "differing_bytes": 31371827,
+     "differing_fraction": 0.7978268178304037
+    },
+    {
+     "tensor": "model.language_model.layers.24.linear_attn.in_proj_z.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 18909000,
+     "differing_fraction": 0.8014678955078125
+    },
+    {
+     "tensor": "model.language_model.layers.24.linear_attn.out_proj.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 20267803,
+     "differing_fraction": 0.8590614742702908
+    },
+    {
+     "tensor": "model.language_model.layers.24.mlp.down_proj.trellis",
+     "bytes": 66846720,
+     "differing_bytes": 55741037,
+     "differing_fraction": 0.8338634565764782
+    },
+    {
+     "tensor": "model.language_model.layers.24.mlp.gate_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 43971361,
+     "differing_fraction": 0.7893526144588695
+    },
+    {
+     "tensor": "model.language_model.layers.24.mlp.up_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44005073,
+     "differing_fraction": 0.7899577959846048
+    },
+    {
+     "tensor": "model.language_model.layers.25.linear_attn.in_proj_qkv.trellis",
+     "bytes": 39321600,
+     "differing_bytes": 31398341,
+     "differing_fraction": 0.7985011037190756
+    },
+    {
+     "tensor": "model.language_model.layers.25.linear_attn.in_proj_z.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 18870637,
+     "differing_fraction": 0.7998418596055773
+    },
+    {
+     "tensor": "model.language_model.layers.25.linear_attn.out_proj.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 20658548,
+     "differing_fraction": 0.8756234063042535
+    },
+    {
+     "tensor": "model.language_model.layers.25.mlp.down_proj.trellis",
+     "bytes": 66846720,
+     "differing_bytes": 55002374,
+     "differing_fraction": 0.8228133556889553
+    },
+    {
+     "tensor": "model.language_model.layers.25.mlp.gate_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44275912,
+     "differing_fraction": 0.7948197667738971
+    },
+    {
+     "tensor": "model.language_model.layers.25.mlp.up_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44171734,
+     "differing_fraction": 0.7929496136833639
+    },
+    {
+     "tensor": "model.language_model.layers.26.linear_attn.in_proj_qkv.trellis",
+     "bytes": 39321600,
+     "differing_bytes": 31630710,
+     "differing_fraction": 0.8044105529785156
+    },
+    {
+     "tensor": "model.language_model.layers.26.linear_attn.in_proj_z.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 18946591,
+     "differing_fraction": 0.8030612097846137
+    },
+    {
+     "tensor": "model.language_model.layers.26.linear_attn.out_proj.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 20729831,
+     "differing_fraction": 0.878644773695204
+    },
+    {
+     "tensor": "model.language_model.layers.26.mlp.down_proj.trellis",
+     "bytes": 66846720,
+     "differing_bytes": 55126114,
+     "differing_fraction": 0.8246644562365962
+    },
+    {
+     "tensor": "model.language_model.layers.26.mlp.gate_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44529648,
+     "differing_fraction": 0.7993747127757352
+    },
+    {
+     "tensor": "model.language_model.layers.26.mlp.up_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44406422,
+     "differing_fraction": 0.7971626191980699
+    },
+    {
+     "tensor": "model.language_model.layers.27.mlp.down_proj.trellis",
+     "bytes": 66846720,
+     "differing_bytes": 54992613,
+     "differing_fraction": 0.8226673350614659
+    },
+    {
+     "tensor": "model.language_model.layers.27.mlp.gate_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44105963,
+     "differing_fraction": 0.7917689244887408
+    },
+    {
+     "tensor": "model.language_model.layers.27.mlp.up_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 43970135,
+     "differing_fraction": 0.7893306058995864
+    },
+    {
+     "tensor": "model.language_model.layers.27.self_attn.k_proj.trellis",
+     "bytes": 3932160,
+     "differing_bytes": 3210463,
+     "differing_fraction": 0.8164629618326823
+    },
+    {
+     "tensor": "model.language_model.layers.27.self_attn.o_proj.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 20951735,
+     "differing_fraction": 0.888050291273329
+    },
+    {
+     "tensor": "model.language_model.layers.27.self_attn.q_proj.trellis",
+     "bytes": 47185920,
+     "differing_bytes": 38835034,
+     "differing_fraction": 0.8230216556125217
+    },
+    {
+     "tensor": "model.language_model.layers.27.self_attn.v_proj.trellis",
+     "bytes": 3932160,
+     "differing_bytes": 3233024,
+     "differing_fraction": 0.8222005208333333
+    },
+    {
+     "tensor": "model.language_model.layers.28.linear_attn.in_proj_qkv.trellis",
+     "bytes": 39321600,
+     "differing_bytes": 31130640,
+     "differing_fraction": 0.791693115234375
+    },
+    {
+     "tensor": "model.language_model.layers.28.linear_attn.in_proj_z.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 18643885,
+     "differing_fraction": 0.7902308570014106
+    },
+    {
+     "tensor": "model.language_model.layers.28.linear_attn.out_proj.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 19839743,
+     "differing_fraction": 0.8409179263644748
+    },
+    {
+     "tensor": "model.language_model.layers.28.mlp.down_proj.trellis",
+     "bytes": 66846720,
+     "differing_bytes": 55247485,
+     "differing_fraction": 0.8264801174986596
+    },
+    {
+     "tensor": "model.language_model.layers.28.mlp.gate_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44426102,
+     "differing_fraction": 0.7975159050436581
+    },
+    {
+     "tensor": "model.language_model.layers.28.mlp.up_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44402983,
+     "differing_fraction": 0.7971008839326746
+    },
+    {
+     "tensor": "model.language_model.layers.29.linear_attn.in_proj_qkv.trellis",
+     "bytes": 39321600,
+     "differing_bytes": 30993161,
+     "differing_fraction": 0.7881968434651693
+    },
+    {
+     "tensor": "model.language_model.layers.29.linear_attn.in_proj_z.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 18653969,
+     "differing_fraction": 0.7906582726372613
+    },
+    {
+     "tensor": "model.language_model.layers.29.linear_attn.out_proj.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 19861235,
+     "differing_fraction": 0.841828876071506
+    },
+    {
+     "tensor": "model.language_model.layers.29.mlp.down_proj.trellis",
+     "bytes": 66846720,
+     "differing_bytes": 54687658,
+     "differing_fraction": 0.8181053311217065
+    },
+    {
+     "tensor": "model.language_model.layers.29.mlp.gate_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44437941,
+     "differing_fraction": 0.7977284330480239
+    },
+    {
+     "tensor": "model.language_model.layers.29.mlp.up_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44440778,
+     "differing_fraction": 0.7977793615004596
+    },
+    {
+     "tensor": "model.language_model.layers.3.mlp.down_proj.trellis",
+     "bytes": 66846720,
+     "differing_bytes": 58566522,
+     "differing_fraction": 0.8761315738453584
+    },
+    {
+     "tensor": "model.language_model.layers.3.mlp.gate_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 46263525,
+     "differing_fraction": 0.8305004344267004
+    },
+    {
+     "tensor": "model.language_model.layers.3.mlp.up_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 46220926,
+     "differing_fraction": 0.8297357177734375
+    },
+    {
+     "tensor": "model.language_model.layers.3.self_attn.k_proj.trellis",
+     "bytes": 3932160,
+     "differing_bytes": 2963836,
+     "differing_fraction": 0.7537424723307292
+    },
+    {
+     "tensor": "model.language_model.layers.3.self_attn.o_proj.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 21567131,
+     "differing_fraction": 0.9141341739230686
+    },
+    {
+     "tensor": "model.language_model.layers.3.self_attn.q_proj.trellis",
+     "bytes": 47185920,
+     "differing_bytes": 35495878,
+     "differing_fraction": 0.7522557152642144
+    },
+    {
+     "tensor": "model.language_model.layers.3.self_attn.v_proj.trellis",
+     "bytes": 3932160,
+     "differing_bytes": 2964191,
+     "differing_fraction": 0.753832753499349
+    },
+    {
+     "tensor": "model.language_model.layers.30.linear_attn.in_proj_qkv.trellis",
+     "bytes": 39321600,
+     "differing_bytes": 31020735,
+     "differing_fraction": 0.7888980865478515
+    },
+    {
+     "tensor": "model.language_model.layers.30.linear_attn.in_proj_z.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 18741281,
+     "differing_fraction": 0.7943590376112196
+    },
+    {
+     "tensor": "model.language_model.layers.30.linear_attn.out_proj.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 20228035,
+     "differing_fraction": 0.8573758867051866
+    },
+    {
+     "tensor": "model.language_model.layers.30.mlp.down_proj.trellis",
+     "bytes": 66846720,
+     "differing_bytes": 54281844,
+     "differing_fraction": 0.812034517176011
+    },
+    {
+     "tensor": "model.language_model.layers.30.mlp.gate_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44782619,
+     "differing_fraction": 0.8039159258674172
+    },
+    {
+     "tensor": "model.language_model.layers.30.mlp.up_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44693793,
+     "differing_fraction": 0.8023213644588695
+    },
+    {
+     "tensor": "model.language_model.layers.31.mlp.down_proj.trellis",
+     "bytes": 66846720,
+     "differing_bytes": 54312909,
+     "differing_fraction": 0.8124992370605468
+    },
+    {
+     "tensor": "model.language_model.layers.31.mlp.gate_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44287947,
+     "differing_fraction": 0.7950358132755055
+    },
+    {
+     "tensor": "model.language_model.layers.31.mlp.up_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44359541,
+     "differing_fraction": 0.7963210341509651
+    },
+    {
+     "tensor": "model.language_model.layers.31.self_attn.k_proj.trellis",
+     "bytes": 3932160,
+     "differing_bytes": 3154114,
+     "differing_fraction": 0.8021326700846354
+    },
+    {
+     "tensor": "model.language_model.layers.31.self_attn.o_proj.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 20676283,
+     "differing_fraction": 0.8763751135932074
+    },
+    {
+     "tensor": "model.language_model.layers.31.self_attn.q_proj.trellis",
+     "bytes": 47185920,
+     "differing_bytes": 38100166,
+     "differing_fraction": 0.8074477725558811
+    },
+    {
+     "tensor": "model.language_model.layers.31.self_attn.v_proj.trellis",
+     "bytes": 3932160,
+     "differing_bytes": 3151272,
+     "differing_fraction": 0.801409912109375
+    },
+    {
+     "tensor": "model.language_model.layers.32.linear_attn.in_proj_qkv.trellis",
+     "bytes": 39321600,
+     "differing_bytes": 30453443,
+     "differing_fraction": 0.7744711049397787
+    },
+    {
+     "tensor": "model.language_model.layers.32.linear_attn.in_proj_z.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 18315381,
+     "differing_fraction": 0.7763070424397787
+    },
+    {
+     "tensor": "model.language_model.layers.32.linear_attn.out_proj.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 20287465,
+     "differing_fraction": 0.8598948584662544
+    },
+    {
+     "tensor": "model.language_model.layers.32.mlp.down_proj.trellis",
+     "bytes": 66846720,
+     "differing_bytes": 54662491,
+     "differing_fraction": 0.817728842940985
+    },
+    {
+     "tensor": "model.language_model.layers.32.mlp.gate_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44377909,
+     "differing_fraction": 0.7966507676068474
+    },
+    {
+     "tensor": "model.language_model.layers.32.mlp.up_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44385357,
+     "differing_fraction": 0.796784470502068
+    },
+    {
+     "tensor": "model.language_model.layers.33.linear_attn.in_proj_qkv.trellis",
+     "bytes": 39321600,
+     "differing_bytes": 30540560,
+     "differing_fraction": 0.7766866048177083
+    },
+    {
+     "tensor": "model.language_model.layers.33.linear_attn.in_proj_z.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 18484392,
+     "differing_fraction": 0.7834706624348958
+    },
+    {
+     "tensor": "model.language_model.layers.33.linear_attn.out_proj.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 19732350,
+     "differing_fraction": 0.8363660176595052
+    },
+    {
+     "tensor": "model.language_model.layers.33.mlp.down_proj.trellis",
+     "bytes": 66846720,
+     "differing_bytes": 55289565,
+     "differing_fraction": 0.8271096173454734
+    },
+    {
+     "tensor": "model.language_model.layers.33.mlp.gate_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44618291,
+     "differing_fraction": 0.8009659890567555
+    },
+    {
+     "tensor": "model.language_model.layers.33.mlp.up_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44624457,
+     "differing_fraction": 0.8010766781077665
+    },
+    {
+     "tensor": "model.language_model.layers.34.linear_attn.in_proj_qkv.trellis",
+     "bytes": 39321600,
+     "differing_bytes": 30834710,
+     "differing_fraction": 0.784167226155599
+    },
+    {
+     "tensor": "model.language_model.layers.34.linear_attn.in_proj_z.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 18562345,
+     "differing_fraction": 0.7867747412787544
+    },
+    {
+     "tensor": "model.language_model.layers.34.linear_attn.out_proj.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 20226637,
+     "differing_fraction": 0.8573166317409939
+    },
+    {
+     "tensor": "model.language_model.layers.34.mlp.down_proj.trellis",
+     "bytes": 66846720,
+     "differing_bytes": 56436163,
+     "differing_fraction": 0.8442622614841835
+    },
+    {
+     "tensor": "model.language_model.layers.34.mlp.gate_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 46178225,
+     "differing_fraction": 0.8289691700654871
+    },
+    {
+     "tensor": "model.language_model.layers.34.mlp.up_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 46125475,
+     "differing_fraction": 0.8280222275677849
+    },
+    {
+     "tensor": "model.language_model.layers.35.mlp.down_proj.trellis",
+     "bytes": 66846720,
+     "differing_bytes": 57126949,
+     "differing_fraction": 0.8545961417403876
+    },
+    {
+     "tensor": "model.language_model.layers.35.mlp.gate_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 45392927,
+     "differing_fraction": 0.8148718800264246
+    },
+    {
+     "tensor": "model.language_model.layers.35.mlp.up_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 45368320,
+     "differing_fraction": 0.8144301470588236
+    },
+    {
+     "tensor": "model.language_model.layers.35.self_attn.k_proj.trellis",
+     "bytes": 3932160,
+     "differing_bytes": 3199984,
+     "differing_fraction": 0.8137980143229167
+    },
+    {
+     "tensor": "model.language_model.layers.35.self_attn.o_proj.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 20786660,
+     "differing_fraction": 0.8810535007052951
+    },
+    {
+     "tensor": "model.language_model.layers.35.self_attn.q_proj.trellis",
+     "bytes": 47185920,
+     "differing_bytes": 38901060,
+     "differing_fraction": 0.8244209289550781
+    },
+    {
+     "tensor": "model.language_model.layers.35.self_attn.v_proj.trellis",
+     "bytes": 3932160,
+     "differing_bytes": 3203893,
+     "differing_fraction": 0.8147921244303385
+    },
+    {
+     "tensor": "model.language_model.layers.36.linear_attn.in_proj_qkv.trellis",
+     "bytes": 39321600,
+     "differing_bytes": 31760178,
+     "differing_fraction": 0.8077030944824218
+    },
+    {
+     "tensor": "model.language_model.layers.36.linear_attn.in_proj_z.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 19025008,
+     "differing_fraction": 0.8063849555121527
+    },
+    {
+     "tensor": "model.language_model.layers.36.linear_attn.out_proj.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 20928610,
+     "differing_fraction": 0.8870701260036893
+    },
+    {
+     "tensor": "model.language_model.layers.36.mlp.down_proj.trellis",
+     "bytes": 66846720,
+     "differing_bytes": 56560233,
+     "differing_fraction": 0.8461182986988741
+    },
+    {
+     "tensor": "model.language_model.layers.36.mlp.gate_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 45258791,
+     "differing_fraction": 0.8124639354032629
+    },
+    {
+     "tensor": "model.language_model.layers.36.mlp.up_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 45292457,
+     "differing_fraction": 0.8130682911592372
+    },
+    {
+     "tensor": "model.language_model.layers.37.linear_attn.in_proj_qkv.trellis",
+     "bytes": 39321600,
+     "differing_bytes": 32095738,
+     "differing_fraction": 0.816236826578776
+    },
+    {
+     "tensor": "model.language_model.layers.37.linear_attn.in_proj_z.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 19226601,
+     "differing_fraction": 0.8149295806884765
+    },
+    {
+     "tensor": "model.language_model.layers.37.linear_attn.out_proj.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 21015254,
+     "differing_fraction": 0.8907425774468316
+    },
+    {
+     "tensor": "model.language_model.layers.37.mlp.down_proj.trellis",
+     "bytes": 66846720,
+     "differing_bytes": 55164204,
+     "differing_fraction": 0.8252342672909008
+    },
+    {
+     "tensor": "model.language_model.layers.37.mlp.gate_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44860841,
+     "differing_fraction": 0.8053201293945312
+    },
+    {
+     "tensor": "model.language_model.layers.37.mlp.up_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44866583,
+     "differing_fraction": 0.8054232070025276
+    },
+    {
+     "tensor": "model.language_model.layers.38.linear_attn.in_proj_qkv.trellis",
+     "bytes": 39321600,
+     "differing_bytes": 31184190,
+     "differing_fraction": 0.7930549621582031
+    },
+    {
+     "tensor": "model.language_model.layers.38.linear_attn.in_proj_z.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 18710159,
+     "differing_fraction": 0.7930399152967665
+    },
+    {
+     "tensor": "model.language_model.layers.38.linear_attn.out_proj.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 20593502,
+     "differing_fraction": 0.8728663974338108
+    },
+    {
+     "tensor": "model.language_model.layers.38.mlp.down_proj.trellis",
+     "bytes": 66846720,
+     "differing_bytes": 56416310,
+     "differing_fraction": 0.8439652686025582
+    },
+    {
+     "tensor": "model.language_model.layers.38.mlp.gate_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44576029,
+     "differing_fraction": 0.800207322064568
+    },
+    {
+     "tensor": "model.language_model.layers.38.mlp.up_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44542132,
+     "differing_fraction": 0.799598819508272
+    },
+    {
+     "tensor": "model.language_model.layers.39.mlp.down_proj.trellis",
+     "bytes": 66846720,
+     "differing_bytes": 56100955,
+     "differing_fraction": 0.8392476848527497
+    },
+    {
+     "tensor": "model.language_model.layers.39.mlp.gate_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44216421,
+     "differing_fraction": 0.793751813103171
+    },
+    {
+     "tensor": "model.language_model.layers.39.mlp.up_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44213513,
+     "differing_fraction": 0.7936996100930607
+    },
+    {
+     "tensor": "model.language_model.layers.39.self_attn.k_proj.trellis",
+     "bytes": 3932160,
+     "differing_bytes": 3209408,
+     "differing_fraction": 0.8161946614583333
+    },
+    {
+     "tensor": "model.language_model.layers.39.self_attn.o_proj.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 21077691,
+     "differing_fraction": 0.8933890024820964
+    },
+    {
+     "tensor": "model.language_model.layers.39.self_attn.q_proj.trellis",
+     "bytes": 47185920,
+     "differing_bytes": 38633362,
+     "differing_fraction": 0.8187476687961155
+    },
+    {
+     "tensor": "model.language_model.layers.39.self_attn.v_proj.trellis",
+     "bytes": 3932160,
+     "differing_bytes": 3189151,
+     "differing_fraction": 0.8110430399576823
+    },
+    {
+     "tensor": "model.language_model.layers.4.linear_attn.in_proj_qkv.trellis",
+     "bytes": 39321600,
+     "differing_bytes": 31368404,
+     "differing_fraction": 0.7977397664388021
+    },
+    {
+     "tensor": "model.language_model.layers.4.linear_attn.in_proj_z.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 18753004,
+     "differing_fraction": 0.7948559231228298
+    },
+    {
+     "tensor": "model.language_model.layers.4.linear_attn.out_proj.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 20472458,
+     "differing_fraction": 0.8677358839246961
+    },
+    {
+     "tensor": "model.language_model.layers.4.mlp.down_proj.trellis",
+     "bytes": 66846720,
+     "differing_bytes": 56552827,
+     "differing_fraction": 0.8460075079226026
+    },
+    {
+     "tensor": "model.language_model.layers.4.mlp.gate_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 45592753,
+     "differing_fraction": 0.8184590597713695
+    },
+    {
+     "tensor": "model.language_model.layers.4.mlp.up_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 45712446,
+     "differing_fraction": 0.8206077306410846
+    },
+    {
+     "tensor": "model.language_model.layers.40.linear_attn.in_proj_qkv.trellis",
+     "bytes": 39321600,
+     "differing_bytes": 31932286,
+     "differing_fraction": 0.8120800272623698
+    },
+    {
+     "tensor": "model.language_model.layers.40.linear_attn.in_proj_z.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 19144483,
+     "differing_fraction": 0.8114489661322699
+    },
+    {
+     "tensor": "model.language_model.layers.40.linear_attn.out_proj.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 20189244,
+     "differing_fraction": 0.855731709798177
+    },
+    {
+     "tensor": "model.language_model.layers.40.mlp.down_proj.trellis",
+     "bytes": 66846720,
+     "differing_bytes": 56746400,
+     "differing_fraction": 0.8489032820159313
+    },
+    {
+     "tensor": "model.language_model.layers.40.mlp.gate_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44118322,
+     "differing_fraction": 0.7919907872817096
+    },
+    {
+     "tensor": "model.language_model.layers.40.mlp.up_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44104539,
+     "differing_fraction": 0.791743361529182
+    },
+    {
+     "tensor": "model.language_model.layers.41.linear_attn.in_proj_qkv.trellis",
+     "bytes": 39321600,
+     "differing_bytes": 31541750,
+     "differing_fraction": 0.802148183186849
+    },
+    {
+     "tensor": "model.language_model.layers.41.linear_attn.in_proj_z.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 18967843,
+     "differing_fraction": 0.8039619869656033
+    },
+    {
+     "tensor": "model.language_model.layers.41.linear_attn.out_proj.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 20477243,
+     "differing_fraction": 0.8679386986626519
+    },
+    {
+     "tensor": "model.language_model.layers.41.mlp.down_proj.trellis",
+     "bytes": 66846720,
+     "differing_bytes": 55127050,
+     "differing_fraction": 0.8246784584195006
+    },
+    {
+     "tensor": "model.language_model.layers.41.mlp.gate_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44299929,
+     "differing_fraction": 0.7952509083467372
+    },
+    {
+     "tensor": "model.language_model.layers.41.mlp.up_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44268380,
+     "differing_fraction": 0.7946845559512867
+    },
+    {
+     "tensor": "model.language_model.layers.42.linear_attn.in_proj_qkv.trellis",
+     "bytes": 39321600,
+     "differing_bytes": 31683551,
+     "differing_fraction": 0.8057543690999349
+    },
+    {
+     "tensor": "model.language_model.layers.42.linear_attn.in_proj_z.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 19091925,
+     "differing_fraction": 0.8092212677001953
+    },
+    {
+     "tensor": "model.language_model.layers.42.linear_attn.out_proj.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 20588057,
+     "differing_fraction": 0.8726356082492405
+    },
+    {
+     "tensor": "model.language_model.layers.42.mlp.down_proj.trellis",
+     "bytes": 66846720,
+     "differing_bytes": 55107944,
+     "differing_fraction": 0.8243926403569241
+    },
+    {
+     "tensor": "model.language_model.layers.42.mlp.gate_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 45002449,
+     "differing_fraction": 0.8078622077493106
+    },
+    {
+     "tensor": "model.language_model.layers.42.mlp.up_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44970993,
+     "differing_fraction": 0.8072975248448989
+    },
+    {
+     "tensor": "model.language_model.layers.43.mlp.down_proj.trellis",
+     "bytes": 66846720,
+     "differing_bytes": 55877663,
+     "differing_fraction": 0.8359073264926088
+    },
+    {
+     "tensor": "model.language_model.layers.43.mlp.gate_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44389994,
+     "differing_fraction": 0.796867711684283
+    },
+    {
+     "tensor": "model.language_model.layers.43.mlp.up_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44331856,
+     "differing_fraction": 0.7958240464154411
+    },
+    {
+     "tensor": "model.language_model.layers.43.self_attn.k_proj.trellis",
+     "bytes": 3932160,
+     "differing_bytes": 3234494,
+     "differing_fraction": 0.8225743611653645
+    },
+    {
+     "tensor": "model.language_model.layers.43.self_attn.o_proj.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 21146741,
+     "differing_fraction": 0.8963157229953342
+    },
+    {
+     "tensor": "model.language_model.layers.43.self_attn.q_proj.trellis",
+     "bytes": 47185920,
+     "differing_bytes": 38952846,
+     "differing_fraction": 0.8255184173583985
+    },
+    {
+     "tensor": "model.language_model.layers.43.self_attn.v_proj.trellis",
+     "bytes": 3932160,
+     "differing_bytes": 3234350,
+     "differing_fraction": 0.8225377400716146
+    },
+    {
+     "tensor": "model.language_model.layers.44.linear_attn.in_proj_qkv.trellis",
+     "bytes": 39321600,
+     "differing_bytes": 31537368,
+     "differing_fraction": 0.8020367431640625
+    },
+    {
+     "tensor": "model.language_model.layers.44.linear_attn.in_proj_z.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 18953151,
+     "differing_fraction": 0.8033392588297527
+    },
+    {
+     "tensor": "model.language_model.layers.44.linear_attn.out_proj.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 20047962,
+     "differing_fraction": 0.849743398030599
+    },
+    {
+     "tensor": "model.language_model.layers.44.mlp.down_proj.trellis",
+     "bytes": 66846720,
+     "differing_bytes": 56155037,
+     "differing_fraction": 0.8400567297841989
+    },
+    {
+     "tensor": "model.language_model.layers.44.mlp.gate_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44831098,
+     "differing_fraction": 0.8047861974379595
+    },
+    {
+     "tensor": "model.language_model.layers.44.mlp.up_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44897052,
+     "differing_fraction": 0.8059701717601103
+    },
+    {
+     "tensor": "model.language_model.layers.45.linear_attn.in_proj_qkv.trellis",
+     "bytes": 39321600,
+     "differing_bytes": 31192838,
+     "differing_fraction": 0.7932748921712239
+    },
+    {
+     "tensor": "model.language_model.layers.45.linear_attn.in_proj_z.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 18778780,
+     "differing_fraction": 0.7959484524197049
+    },
+    {
+     "tensor": "model.language_model.layers.45.linear_attn.out_proj.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 19865759,
+     "differing_fraction": 0.8420206281873915
+    },
+    {
+     "tensor": "model.language_model.layers.45.mlp.down_proj.trellis",
+     "bytes": 66846720,
+     "differing_bytes": 56287587,
+     "differing_fraction": 0.8420396243824678
+    },
+    {
+     "tensor": "model.language_model.layers.45.mlp.gate_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44875198,
+     "differing_fraction": 0.8055778593175551
+    },
+    {
+     "tensor": "model.language_model.layers.45.mlp.up_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44861231,
+     "differing_fraction": 0.8053271304859835
+    },
+    {
+     "tensor": "model.language_model.layers.46.linear_attn.in_proj_qkv.trellis",
+     "bytes": 39321600,
+     "differing_bytes": 31493090,
+     "differing_fraction": 0.8009106953938802
+    },
+    {
+     "tensor": "model.language_model.layers.46.linear_attn.in_proj_z.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 18945580,
+     "differing_fraction": 0.8030183580186632
+    },
+    {
+     "tensor": "model.language_model.layers.46.linear_attn.out_proj.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 20572465,
+     "differing_fraction": 0.8719747331407335
+    },
+    {
+     "tensor": "model.language_model.layers.46.mlp.down_proj.trellis",
+     "bytes": 66846720,
+     "differing_bytes": 56733354,
+     "differing_fraction": 0.8487081191119026
+    },
+    {
+     "tensor": "model.language_model.layers.46.mlp.gate_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 45249487,
+     "differing_fraction": 0.8122969144933364
+    },
+    {
+     "tensor": "model.language_model.layers.46.mlp.up_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 45164416,
+     "differing_fraction": 0.8107697610294118
+    },
+    {
+     "tensor": "model.language_model.layers.47.mlp.down_proj.trellis",
+     "bytes": 66846720,
+     "differing_bytes": 57428952,
+     "differing_fraction": 0.8591139849494486
+    },
+    {
+     "tensor": "model.language_model.layers.47.mlp.gate_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 45137009,
+     "differing_fraction": 0.8102777638154871
+    },
+    {
+     "tensor": "model.language_model.layers.47.mlp.up_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 45171598,
+     "differing_fraction": 0.8108986888212316
+    },
+    {
+     "tensor": "model.language_model.layers.47.self_attn.k_proj.trellis",
+     "bytes": 3932160,
+     "differing_bytes": 3228800,
+     "differing_fraction": 0.8211263020833334
+    },
+    {
+     "tensor": "model.language_model.layers.47.self_attn.o_proj.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 21185030,
+     "differing_fraction": 0.8979386223687066
+    },
+    {
+     "tensor": "model.language_model.layers.47.self_attn.q_proj.trellis",
+     "bytes": 47185920,
+     "differing_bytes": 38806434,
+     "differing_fraction": 0.822415542602539
+    },
+    {
+     "tensor": "model.language_model.layers.47.self_attn.v_proj.trellis",
+     "bytes": 3932160,
+     "differing_bytes": 3206677,
+     "differing_fraction": 0.8155001322428386
+    },
+    {
+     "tensor": "model.language_model.layers.48.linear_attn.in_proj_qkv.trellis",
+     "bytes": 39321600,
+     "differing_bytes": 31446094,
+     "differing_fraction": 0.7997155253092448
+    },
+    {
+     "tensor": "model.language_model.layers.48.linear_attn.in_proj_z.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 18938883,
+     "differing_fraction": 0.8027345021565755
+    },
+    {
+     "tensor": "model.language_model.layers.48.linear_attn.out_proj.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 20894590,
+     "differing_fraction": 0.885628170437283
+    },
+    {
+     "tensor": "model.language_model.layers.48.mlp.down_proj.trellis",
+     "bytes": 66846720,
+     "differing_bytes": 57855153,
+     "differing_fraction": 0.8654897802016315
+    },
+    {
+     "tensor": "model.language_model.layers.48.mlp.gate_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 45708186,
+     "differing_fraction": 0.8205312571806066
+    },
+    {
+     "tensor": "model.language_model.layers.48.mlp.up_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 45779498,
+     "differing_fraction": 0.8218114157284008
+    },
+    {
+     "tensor": "model.language_model.layers.49.linear_attn.in_proj_qkv.trellis",
+     "bytes": 39321600,
+     "differing_bytes": 31478369,
+     "differing_fraction": 0.8005363210042318
+    },
+    {
+     "tensor": "model.language_model.layers.49.linear_attn.in_proj_z.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 19003798,
+     "differing_fraction": 0.8054859585232205
+    },
+    {
+     "tensor": "model.language_model.layers.49.linear_attn.out_proj.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 20543018,
+     "differing_fraction": 0.8707266065809461
+    },
+    {
+     "tensor": "model.language_model.layers.49.mlp.down_proj.trellis",
+     "bytes": 66846720,
+     "differing_bytes": 58669689,
+     "differing_fraction": 0.8776749106014476
+    },
+    {
+     "tensor": "model.language_model.layers.49.mlp.gate_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 46298259,
+     "differing_fraction": 0.8311239624023438
+    },
+    {
+     "tensor": "model.language_model.layers.49.mlp.up_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 46214193,
+     "differing_fraction": 0.829614850212546
+    },
+    {
+     "tensor": "model.language_model.layers.5.linear_attn.in_proj_qkv.trellis",
+     "bytes": 39321600,
+     "differing_bytes": 31332308,
+     "differing_fraction": 0.7968217976888021
+    },
+    {
+     "tensor": "model.language_model.layers.5.linear_attn.in_proj_z.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 18782993,
+     "differing_fraction": 0.7961270226372613
+    },
+    {
+     "tensor": "model.language_model.layers.5.linear_attn.out_proj.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 20810394,
+     "differing_fraction": 0.8820594787597656
+    },
+    {
+     "tensor": "model.language_model.layers.5.mlp.down_proj.trellis",
+     "bytes": 66846720,
+     "differing_bytes": 56274039,
+     "differing_fraction": 0.8418369517606847
+    },
+    {
+     "tensor": "model.language_model.layers.5.mlp.gate_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44975262,
+     "differing_fraction": 0.8073741598690257
+    },
+    {
+     "tensor": "model.language_model.layers.5.mlp.up_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 45135534,
+     "differing_fraction": 0.8102512853285846
+    },
+    {
+     "tensor": "model.language_model.layers.50.linear_attn.in_proj_qkv.trellis",
+     "bytes": 39321600,
+     "differing_bytes": 32043240,
+     "differing_fraction": 0.8149017333984375
+    },
+    {
+     "tensor": "model.language_model.layers.50.linear_attn.in_proj_z.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 19313254,
+     "differing_fraction": 0.8186024136013454
+    },
+    {
+     "tensor": "model.language_model.layers.50.linear_attn.out_proj.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 20598180,
+     "differing_fraction": 0.8730646769205729
+    },
+    {
+     "tensor": "model.language_model.layers.50.mlp.down_proj.trellis",
+     "bytes": 66846720,
+     "differing_bytes": 59290592,
+     "differing_fraction": 0.8869633693321078
+    },
+    {
+     "tensor": "model.language_model.layers.50.mlp.gate_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 47196286,
+     "differing_fraction": 0.8472449089499081
+    },
+    {
+     "tensor": "model.language_model.layers.50.mlp.up_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 47175155,
+     "differing_fraction": 0.8468655754538144
+    },
+    {
+     "tensor": "model.language_model.layers.51.mlp.down_proj.trellis",
+     "bytes": 66846720,
+     "differing_bytes": 59632899,
+     "differing_fraction": 0.8920841441434972
+    },
+    {
+     "tensor": "model.language_model.layers.51.mlp.gate_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 47009297,
+     "differing_fraction": 0.8438881728228401
+    },
+    {
+     "tensor": "model.language_model.layers.51.mlp.up_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 46956233,
+     "differing_fraction": 0.842935593548943
+    },
+    {
+     "tensor": "model.language_model.layers.51.self_attn.k_proj.trellis",
+     "bytes": 3932160,
+     "differing_bytes": 3335608,
+     "differing_fraction": 0.8482889811197917
+    },
+    {
+     "tensor": "model.language_model.layers.51.self_attn.o_proj.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 21375044,
+     "differing_fraction": 0.9059924655490451
+    },
+    {
+     "tensor": "model.language_model.layers.51.self_attn.q_proj.trellis",
+     "bytes": 47185920,
+     "differing_bytes": 40232090,
+     "differing_fraction": 0.852629131740994
+    },
+    {
+     "tensor": "model.language_model.layers.51.self_attn.v_proj.trellis",
+     "bytes": 3932160,
+     "differing_bytes": 3330131,
+     "differing_fraction": 0.8468961079915365
+    },
+    {
+     "tensor": "model.language_model.layers.52.linear_attn.in_proj_qkv.trellis",
+     "bytes": 39321600,
+     "differing_bytes": 32750078,
+     "differing_fraction": 0.8328775533040365
+    },
+    {
+     "tensor": "model.language_model.layers.52.linear_attn.in_proj_z.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 19706279,
+     "differing_fraction": 0.835260984632704
+    },
+    {
+     "tensor": "model.language_model.layers.52.linear_attn.out_proj.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 21380136,
+     "differing_fraction": 0.9062082926432292
+    },
+    {
+     "tensor": "model.language_model.layers.52.mlp.down_proj.trellis",
+     "bytes": 66846720,
+     "differing_bytes": 59711234,
+     "differing_fraction": 0.8932560041839002
+    },
+    {
+     "tensor": "model.language_model.layers.52.mlp.gate_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 46980223,
+     "differing_fraction": 0.8433662504308364
+    },
+    {
+     "tensor": "model.language_model.layers.52.mlp.up_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 46986693,
+     "differing_fraction": 0.8434823967428768
+    },
+    {
+     "tensor": "model.language_model.layers.53.linear_attn.in_proj_qkv.trellis",
+     "bytes": 39321600,
+     "differing_bytes": 32456505,
+     "differing_fraction": 0.825411605834961
+    },
+    {
+     "tensor": "model.language_model.layers.53.linear_attn.in_proj_z.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 19557180,
+     "differing_fraction": 0.8289413452148438
+    },
+    {
+     "tensor": "model.language_model.layers.53.linear_attn.out_proj.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 21509260,
+     "differing_fraction": 0.9116812811957465
+    },
+    {
+     "tensor": "model.language_model.layers.53.mlp.down_proj.trellis",
+     "bytes": 66846720,
+     "differing_bytes": 59616396,
+     "differing_fraction": 0.8918372659122242
+    },
+    {
+     "tensor": "model.language_model.layers.53.mlp.gate_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 46696960,
+     "differing_fraction": 0.83828125
+    },
+    {
+     "tensor": "model.language_model.layers.53.mlp.up_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 46645501,
+     "differing_fraction": 0.8373574829101562
+    },
+    {
+     "tensor": "model.language_model.layers.54.linear_attn.in_proj_qkv.trellis",
+     "bytes": 39321600,
+     "differing_bytes": 32255619,
+     "differing_fraction": 0.8203028106689453
+    },
+    {
+     "tensor": "model.language_model.layers.54.linear_attn.in_proj_z.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 19453219,
+     "differing_fraction": 0.82453490363227
+    },
+    {
+     "tensor": "model.language_model.layers.54.linear_attn.out_proj.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 21644138,
+     "differing_fraction": 0.9173981560601129
+    },
+    {
+     "tensor": "model.language_model.layers.54.mlp.down_proj.trellis",
+     "bytes": 66846720,
+     "differing_bytes": 59961890,
+     "differing_fraction": 0.8970057169596354
+    },
+    {
+     "tensor": "model.language_model.layers.54.mlp.gate_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 46565446,
+     "differing_fraction": 0.8359203742532169
+    },
+    {
+     "tensor": "model.language_model.layers.54.mlp.up_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 46547995,
+     "differing_fraction": 0.8356071023380055
+    },
+    {
+     "tensor": "model.language_model.layers.55.mlp.down_proj.trellis",
+     "bytes": 66846720,
+     "differing_bytes": 60112759,
+     "differing_fraction": 0.8992626564175474
+    },
+    {
+     "tensor": "model.language_model.layers.55.mlp.gate_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 46124989,
+     "differing_fraction": 0.8280135031307445
+    },
+    {
+     "tensor": "model.language_model.layers.55.mlp.up_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 46146360,
+     "differing_fraction": 0.8283971449908089
+    },
+    {
+     "tensor": "model.language_model.layers.55.self_attn.k_proj.trellis",
+     "bytes": 3932160,
+     "differing_bytes": 3345171,
+     "differing_fraction": 0.8507209777832031
+    },
+    {
+     "tensor": "model.language_model.layers.55.self_attn.o_proj.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 21374420,
+     "differing_fraction": 0.9059660169813368
+    },
+    {
+     "tensor": "model.language_model.layers.55.self_attn.q_proj.trellis",
+     "bytes": 47185920,
+     "differing_bytes": 40281618,
+     "differing_fraction": 0.8536787668863932
+    },
+    {
+     "tensor": "model.language_model.layers.55.self_attn.v_proj.trellis",
+     "bytes": 3932160,
+     "differing_bytes": 3338782,
+     "differing_fraction": 0.849096171061198
+    },
+    {
+     "tensor": "model.language_model.layers.56.linear_attn.in_proj_qkv.trellis",
+     "bytes": 39321600,
+     "differing_bytes": 31971013,
+     "differing_fraction": 0.8130649058024089
+    },
+    {
+     "tensor": "model.language_model.layers.56.linear_attn.in_proj_z.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 19167789,
+     "differing_fraction": 0.8124368031819661
+    },
+    {
+     "tensor": "model.language_model.layers.56.linear_attn.out_proj.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 21575819,
+     "differing_fraction": 0.9145024193657769
+    },
+    {
+     "tensor": "model.language_model.layers.56.mlp.down_proj.trellis",
+     "bytes": 66846720,
+     "differing_bytes": 60159974,
+     "differing_fraction": 0.899968973795573
+    },
+    {
+     "tensor": "model.language_model.layers.56.mlp.gate_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 45791379,
+     "differing_fraction": 0.8220246976964614
+    },
+    {
+     "tensor": "model.language_model.layers.56.mlp.up_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 45749739,
+     "differing_fraction": 0.8212771965475644
+    },
+    {
+     "tensor": "model.language_model.layers.57.linear_attn.in_proj_qkv.trellis",
+     "bytes": 39321600,
+     "differing_bytes": 31816478,
+     "differing_fraction": 0.8091348775227865
+    },
+    {
+     "tensor": "model.language_model.layers.57.linear_attn.in_proj_z.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 19007486,
+     "differing_fraction": 0.8056422763400608
+    },
+    {
+     "tensor": "model.language_model.layers.57.linear_attn.out_proj.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 21414231,
+     "differing_fraction": 0.9076534271240234
+    },
+    {
+     "tensor": "model.language_model.layers.57.mlp.down_proj.trellis",
+     "bytes": 66846720,
+     "differing_bytes": 59735388,
+     "differing_fraction": 0.8936173382927389
+    },
+    {
+     "tensor": "model.language_model.layers.57.mlp.gate_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 45364884,
+     "differing_fraction": 0.8143684656479779
+    },
+    {
+     "tensor": "model.language_model.layers.57.mlp.up_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 45384212,
+     "differing_fraction": 0.8147154325597427
+    },
+    {
+     "tensor": "model.language_model.layers.58.linear_attn.in_proj_qkv.trellis",
+     "bytes": 39321600,
+     "differing_bytes": 31350176,
+     "differing_fraction": 0.7972762044270834
+    },
+    {
+     "tensor": "model.language_model.layers.58.linear_attn.in_proj_z.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 18829040,
+     "differing_fraction": 0.7980787489149306
+    },
+    {
+     "tensor": "model.language_model.layers.58.linear_attn.out_proj.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 21438430,
+     "differing_fraction": 0.9086791144476997
+    },
+    {
+     "tensor": "model.language_model.layers.58.mlp.down_proj.trellis",
+     "bytes": 66846720,
+     "differing_bytes": 59045419,
+     "differing_fraction": 0.883295680027382
+    },
+    {
+     "tensor": "model.language_model.layers.58.mlp.gate_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44939887,
+     "differing_fraction": 0.8067391249712775
+    },
+    {
+     "tensor": "model.language_model.layers.58.mlp.up_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44975794,
+     "differing_fraction": 0.8073837100758272
+    },
+    {
+     "tensor": "model.language_model.layers.59.mlp.down_proj.trellis",
+     "bytes": 66846720,
+     "differing_bytes": 58982511,
+     "differing_fraction": 0.882354601691751
+    },
+    {
+     "tensor": "model.language_model.layers.59.mlp.gate_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44488830,
+     "differing_fraction": 0.7986419677734375
+    },
+    {
+     "tensor": "model.language_model.layers.59.mlp.up_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44529520,
+     "differing_fraction": 0.7993724149816176
+    },
+    {
+     "tensor": "model.language_model.layers.59.self_attn.k_proj.trellis",
+     "bytes": 3932160,
+     "differing_bytes": 3331358,
+     "differing_fraction": 0.8472081502278646
+    },
+    {
+     "tensor": "model.language_model.layers.59.self_attn.o_proj.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 21397255,
+     "differing_fraction": 0.9069338904486762
+    },
+    {
+     "tensor": "model.language_model.layers.59.self_attn.q_proj.trellis",
+     "bytes": 47185920,
+     "differing_bytes": 40041585,
+     "differing_fraction": 0.8485918045043945
+    },
+    {
+     "tensor": "model.language_model.layers.59.self_attn.v_proj.trellis",
+     "bytes": 3932160,
+     "differing_bytes": 3303605,
+     "differing_fraction": 0.8401501973470052
+    },
+    {
+     "tensor": "model.language_model.layers.6.linear_attn.in_proj_qkv.trellis",
+     "bytes": 39321600,
+     "differing_bytes": 30734247,
+     "differing_fraction": 0.7816123199462891
+    },
+    {
+     "tensor": "model.language_model.layers.6.linear_attn.in_proj_z.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 18467410,
+     "differing_fraction": 0.7827508714463975
+    },
+    {
+     "tensor": "model.language_model.layers.6.linear_attn.out_proj.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 20397780,
+     "differing_fraction": 0.8645706176757812
+    },
+    {
+     "tensor": "model.language_model.layers.6.mlp.down_proj.trellis",
+     "bytes": 66846720,
+     "differing_bytes": 56407372,
+     "differing_fraction": 0.8438315597234988
+    },
+    {
+     "tensor": "model.language_model.layers.6.mlp.gate_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 45336847,
+     "differing_fraction": 0.8138651589786305
+    },
+    {
+     "tensor": "model.language_model.layers.6.mlp.up_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 45470093,
+     "differing_fraction": 0.816257126752068
+    },
+    {
+     "tensor": "model.language_model.layers.60.linear_attn.in_proj_qkv.trellis",
+     "bytes": 39321600,
+     "differing_bytes": 31006357,
+     "differing_fraction": 0.7885324350992838
+    },
+    {
+     "tensor": "model.language_model.layers.60.linear_attn.in_proj_z.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 18657994,
+     "differing_fraction": 0.7908288743760851
+    },
+    {
+     "tensor": "model.language_model.layers.60.linear_attn.out_proj.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 21525408,
+     "differing_fraction": 0.91236572265625
+    },
+    {
+     "tensor": "model.language_model.layers.60.mlp.down_proj.trellis",
+     "bytes": 66846720,
+     "differing_bytes": 59691781,
+     "differing_fraction": 0.8929649951411228
+    },
+    {
+     "tensor": "model.language_model.layers.60.mlp.gate_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44598990,
+     "differing_fraction": 0.8006195068359375
+    },
+    {
+     "tensor": "model.language_model.layers.60.mlp.up_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44627321,
+     "differing_fraction": 0.8011280912511489
+    },
+    {
+     "tensor": "model.language_model.layers.61.linear_attn.in_proj_qkv.trellis",
+     "bytes": 39321600,
+     "differing_bytes": 30725789,
+     "differing_fraction": 0.781397221883138
+    },
+    {
+     "tensor": "model.language_model.layers.61.linear_attn.in_proj_z.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 18429562,
+     "differing_fraction": 0.7811466640896267
+    },
+    {
+     "tensor": "model.language_model.layers.61.linear_attn.out_proj.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 21641718,
+     "differing_fraction": 0.9172955830891927
+    },
+    {
+     "tensor": "model.language_model.layers.61.mlp.down_proj.trellis",
+     "bytes": 66846720,
+     "differing_bytes": 60364150,
+     "differing_fraction": 0.903023364497166
+    },
+    {
+     "tensor": "model.language_model.layers.61.mlp.gate_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44626947,
+     "differing_fraction": 0.8011213773839614
+    },
+    {
+     "tensor": "model.language_model.layers.61.mlp.up_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44582325,
+     "differing_fraction": 0.8003203448127297
+    },
+    {
+     "tensor": "model.language_model.layers.62.linear_attn.in_proj_qkv.trellis",
+     "bytes": 39321600,
+     "differing_bytes": 31062035,
+     "differing_fraction": 0.7899483998616537
+    },
+    {
+     "tensor": "model.language_model.layers.62.linear_attn.in_proj_z.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 18694193,
+     "differing_fraction": 0.7923631880018446
+    },
+    {
+     "tensor": "model.language_model.layers.62.linear_attn.out_proj.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 21489786,
+     "differing_fraction": 0.9108558654785156
+    },
+    {
+     "tensor": "model.language_model.layers.62.mlp.down_proj.trellis",
+     "bytes": 66846720,
+     "differing_bytes": 60515703,
+     "differing_fraction": 0.9052905363195083
+    },
+    {
+     "tensor": "model.language_model.layers.62.mlp.gate_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44807428,
+     "differing_fraction": 0.8043612850413603
+    },
+    {
+     "tensor": "model.language_model.layers.62.mlp.up_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44699623,
+     "differing_fraction": 0.8024260218003217
+    },
+    {
+     "tensor": "model.language_model.layers.63.mlp.down_proj.trellis",
+     "bytes": 66846720,
+     "differing_bytes": 56571408,
+     "differing_fraction": 0.8462854721966911
+    },
+    {
+     "tensor": "model.language_model.layers.63.mlp.gate_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44851868,
+     "differing_fraction": 0.8051590504365809
+    },
+    {
+     "tensor": "model.language_model.layers.63.mlp.up_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 44855074,
+     "differing_fraction": 0.8052166029986213
+    },
+    {
+     "tensor": "model.language_model.layers.63.self_attn.k_proj.trellis",
+     "bytes": 3932160,
+     "differing_bytes": 3223228,
+     "differing_fraction": 0.8197092692057292
+    },
+    {
+     "tensor": "model.language_model.layers.63.self_attn.o_proj.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 21642619,
+     "differing_fraction": 0.9173337724473741
+    },
+    {
+     "tensor": "model.language_model.layers.63.self_attn.q_proj.trellis",
+     "bytes": 47185920,
+     "differing_bytes": 38714582,
+     "differing_fraction": 0.8204689449734158
+    },
+    {
+     "tensor": "model.language_model.layers.63.self_attn.v_proj.trellis",
+     "bytes": 3932160,
+     "differing_bytes": 3219077,
+     "differing_fraction": 0.8186536153157552
+    },
+    {
+     "tensor": "model.language_model.layers.7.mlp.down_proj.trellis",
+     "bytes": 66846720,
+     "differing_bytes": 55896479,
+     "differing_fraction": 0.8361888062720205
+    },
+    {
+     "tensor": "model.language_model.layers.7.mlp.gate_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 45434317,
+     "differing_fraction": 0.8156148932961856
+    },
+    {
+     "tensor": "model.language_model.layers.7.mlp.up_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 45490677,
+     "differing_fraction": 0.8166266407686121
+    },
+    {
+     "tensor": "model.language_model.layers.7.self_attn.k_proj.trellis",
+     "bytes": 3932160,
+     "differing_bytes": 3036164,
+     "differing_fraction": 0.7721364339192708
+    },
+    {
+     "tensor": "model.language_model.layers.7.self_attn.o_proj.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 21649542,
+     "differing_fraction": 0.9176272074381511
+    },
+    {
+     "tensor": "model.language_model.layers.7.self_attn.q_proj.trellis",
+     "bytes": 47185920,
+     "differing_bytes": 36629392,
+     "differing_fraction": 0.7762780083550347
+    },
+    {
+     "tensor": "model.language_model.layers.7.self_attn.v_proj.trellis",
+     "bytes": 3932160,
+     "differing_bytes": 3034167,
+     "differing_fraction": 0.7716285705566406
+    },
+    {
+     "tensor": "model.language_model.layers.8.linear_attn.in_proj_qkv.trellis",
+     "bytes": 39321600,
+     "differing_bytes": 31119522,
+     "differing_fraction": 0.7914103698730469
+    },
+    {
+     "tensor": "model.language_model.layers.8.linear_attn.in_proj_z.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 18665237,
+     "differing_fraction": 0.7911358727349176
+    },
+    {
+     "tensor": "model.language_model.layers.8.linear_attn.out_proj.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 20678690,
+     "differing_fraction": 0.8764771355523003
+    },
+    {
+     "tensor": "model.language_model.layers.8.mlp.down_proj.trellis",
+     "bytes": 66846720,
+     "differing_bytes": 56004156,
+     "differing_fraction": 0.8377996108111213
+    },
+    {
+     "tensor": "model.language_model.layers.8.mlp.gate_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 45345694,
+     "differing_fraction": 0.8140239760454964
+    },
+    {
+     "tensor": "model.language_model.layers.8.mlp.up_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 45339300,
+     "differing_fraction": 0.8139091940487132
+    },
+    {
+     "tensor": "model.language_model.layers.9.linear_attn.in_proj_qkv.trellis",
+     "bytes": 39321600,
+     "differing_bytes": 31188035,
+     "differing_fraction": 0.7931527455647787
+    },
+    {
+     "tensor": "model.language_model.layers.9.linear_attn.in_proj_z.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 18760814,
+     "differing_fraction": 0.7951869540744357
+    },
+    {
+     "tensor": "model.language_model.layers.9.linear_attn.out_proj.trellis",
+     "bytes": 23592960,
+     "differing_bytes": 20789634,
+     "differing_fraction": 0.8811795552571614
+    },
+    {
+     "tensor": "model.language_model.layers.9.mlp.down_proj.trellis",
+     "bytes": 66846720,
+     "differing_bytes": 55497020,
+     "differing_fraction": 0.8302130605660233
+    },
+    {
+     "tensor": "model.language_model.layers.9.mlp.gate_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 45074621,
+     "differing_fraction": 0.8091578046013327
+    },
+    {
+     "tensor": "model.language_model.layers.9.mlp.up_proj.trellis",
+     "bytes": 55705600,
+     "differing_bytes": 45156135,
+     "differing_fraction": 0.81062110452091
+    }
+   ]
+  }
+ },
+ "protocol": {
+  "identical_to_the_published_score": true,
+  "fields": {
+   "suite_token_sha256": {
+    "published": "caef8a4628d6c07c162100895096f890cdf9cafc8e4c48b3d66035d737ee7cf7",
+    "sibling": "caef8a4628d6c07c162100895096f890cdf9cafc8e4c48b3d66035d737ee7cf7",
+    "identical": true
+   },
+   "filter": {
+    "published": "all",
+    "sibling": "all",
+    "identical": true
+   },
+   "head_sha256": {
+    "published": "25a30fd5f826da0abc4efc4cc71def9f02bcb8085f7175eee284d221dee4cfff",
+    "sibling": "25a30fd5f826da0abc4efc4cc71def9f02bcb8085f7175eee284d221dee4cfff",
+    "identical": true
+   },
+   "contexts": {
+    "published": 512,
+    "sibling": 512,
+    "identical": true
+   },
+   "scored_positions": {
+    "published": 1048064,
+    "sibling": 1048064,
+    "identical": true
+   },
+   "comparator": {
+    "published": {
+     "vocab_chunk": 24832,
+     "device": "cuda",
+     "accumulation": "float64",
+     "two_pass": true
+    },
+    "sibling": {
+     "vocab_chunk": 24832,
+     "device": "cuda",
+     "accumulation": "float64",
+     "two_pass": true
+    },
+    "identical": true
+   },
+   "reference_identity_index_sha256": {
+    "published": "77042094076611b69791a610065f28b7013b8c621795fa86ddccc8bac7d1b9df",
+    "sibling": "77042094076611b69791a610065f28b7013b8c621795fa86ddccc8bac7d1b9df",
+    "identical": true
+   }
+  },
+  "reference_capture_published": "/work/kld5/hidden/shard-0000/hidden-bf16",
+  "reference_capture_used_here": "/work/gguf/hidden-bf16",
+  "reference_capture_interchangeability": {
+   "why": "the published ladder deleted its BF16 capture after verifying its reports, so this run replayed against a surviving capture of the same reference. That is only sound if the two are interchangeable, which this control measures.",
+   "control_report": "/var/tmp/work/kld6/reports/report-hyd-rematch.json",
+   "control_reference_capture": "/work/gguf/hidden-bf16",
+   "control_candidate_capture": "/work/kld6/hidden/hyd-rematch",
+   "control_scores_the_published_checkpoint": true,
+   "control_uses_the_same_reference_as_the_sibling": true,
+   "control_mean": 0.002699883159684943,
+   "published_mean": 0.002699883159684943,
+   "reproduces_published_mean_bitwise": true,
+   "conclusion": "the reference capture used for the sibling returns the published number, to every digit, for the published checkpoint: the reference swap is a no-op",
+   "source": "receipts/capture-determinism.json"
+  },
+  "note": "the published number and the sibling's number are the same measurement run twice with one operand swapped: same v5 shard-0 suite, same BF16 reference content, same shared head, same comparator, same 512 contexts and 1,048,064 scored positions. The reference capture DIRECTORY differs, because the published ladder deleted its own; reference_capture_interchangeability measures that this is a no-op."
+ },
+ "published_score": {
+  "report": "/var/tmp/work/kld5/reports/shard-0000/report-hyd.json",
+  "schema": "qwen38-fidelity-report/1",
+  "reference_capture": "/work/kld5/hidden/shard-0000/hidden-bf16",
+  "candidate_capture": "/work/kld5/hidden/shard-0000/hidden-hyd",
+  "head": "/work/kld2/lm_head.safetensors",
+  "head_sha256": "25a30fd5f826da0abc4efc4cc71def9f02bcb8085f7175eee284d221dee4cfff",
+  "suite_token_sha256": "caef8a4628d6c07c162100895096f890cdf9cafc8e4c48b3d66035d737ee7cf7",
+  "filter": "all",
+  "contexts": 512,
+  "scored_positions": 1048064,
+  "token_mean_kld": 0.002699883159684943,
+  "context_macro_mean_kld": 0.002699883159684943,
+  "context_bootstrap": {
+   "mean": 0.002699883159684943,
+   "ci95_low": 0.0025165341342532257,
+   "ci95_high": 0.0029118291286379205,
+   "clusters": 330,
+   "samples": 10000
+  },
+  "token_median_kld": 0.0010904027048752596,
+  "p95_kld": 0.008207095996885981,
+  "p99_kld": 0.02758407759672991,
+  "p999_kld": 0.13126287966486647,
+  "max_kld": 3.7348466556786946,
+  "mean_jsd_bits": 0.0009602631900925122,
+  "top1_agreement": 0.9779689026624329,
+  "candidate_identity_shards": {
+   "model-00001-of-00003.safetensors": "792b46b54a79871030a5a029a483b8938ff509912169a1c7627913d614365f0d",
+   "model-00002-of-00003.safetensors": "1902a7425fb7e36b45f1c65e5aa0d6e159a6dd8b79b7810e54ab33457ed1ccd2",
+   "model-00003-of-00003.safetensors": "6fa500e4bebf04917ede2ee7b1379ded7aa85aa37110e103d36d9ad330fc0e96"
+  },
+  "reference_identity_index_sha256": "77042094076611b69791a610065f28b7013b8c621795fa86ddccc8bac7d1b9df",
+  "comparator": {
+   "vocab_chunk": 24832,
+   "device": "cuda",
+   "accumulation": "float64",
+   "two_pass": true
+  }
+ },
+ "sibling_score": {
+  "report": "/var/tmp/work/kld8/reports/report-hyd-sibling.json",
+  "schema": "qwen38-fidelity-report/2",
+  "reference_capture": "/work/gguf/hidden-bf16",
+  "candidate_capture": "/work/kld8/hidden/hidden-hyd-sibling",
+  "head": "/work/kld2/lm_head.safetensors",
+  "head_sha256": "25a30fd5f826da0abc4efc4cc71def9f02bcb8085f7175eee284d221dee4cfff",
+  "suite_token_sha256": "caef8a4628d6c07c162100895096f890cdf9cafc8e4c48b3d66035d737ee7cf7",
+  "filter": "all",
+  "contexts": 512,
+  "scored_positions": 1048064,
+  "token_mean_kld": 0.0027036381928730695,
+  "context_macro_mean_kld": 0.002703638192873069,
+  "context_bootstrap": {
+   "mean": 0.002703638192873069,
+   "ci95_low": 0.002522924575021421,
+   "ci95_high": 0.002911402410638929,
+   "clusters": 330,
+   "samples": 10000
+  },
+  "token_median_kld": 0.001092177749860923,
+  "p95_kld": 0.00820473592548296,
+  "p99_kld": 0.028078925816398797,
+  "p999_kld": 0.13355251176225633,
+  "max_kld": 4.056026374256078,
+  "mean_jsd_bits": 0.0009619485144419261,
+  "top1_agreement": 0.9778057446873474,
+  "candidate_identity_shards": {
+   "model-00001-of-00003.safetensors": "92c4a33456e68ca6417c90f51d6e954fc2af49d9d1e6510dcd2c32fd68fcb736",
+   "model-00002-of-00003.safetensors": "4a0a01563836b98d90c42827ec68e173690c0a321fd7666f3ab4c13364730d4f",
+   "model-00003-of-00003.safetensors": "1ad3da4492eed7237620eec680d72335a74441617379a6d0be1edb8ad6fe5238"
+  },
+  "reference_identity_index_sha256": "77042094076611b69791a610065f28b7013b8c621795fa86ddccc8bac7d1b9df",
+  "comparator": {
+   "vocab_chunk": 24832,
+   "device": "cuda",
+   "accumulation": "float64",
+   "two_pass": true
+  }
+ },
+ "sibling_interval": {
+  "mean": 0.002703638192873069,
+  "ci95_low": 0.002522924575021421,
+  "ci95_high": 0.002911402410638929,
+  "clusters": 330,
+  "samples": 10000
+ },
+ "paired": {
+  "schema": "qwen38-fidelity-paired/2",
+  "suite_token_sha256": "caef8a4628d6c07c162100895096f890cdf9cafc8e4c48b3d66035d737ee7cf7",
+  "filter": "all",
+  "head_sha256": "25a30fd5f826da0abc4efc4cc71def9f02bcb8085f7175eee284d221dee4cfff",
+  "a": {
+   "report": "/work/kld5/reports/shard-0000/report-hyd.json",
+   "label": "hydrated-published",
+   "mean": 0.002699883159684943
+  },
+  "b": {
+   "report": "/work/kld8/reports/report-hyd-sibling.json",
+   "label": "hydrated-sibling",
+   "mean": 0.002703638192873069
+  },
+  "contexts": 512,
+  "difference_a_minus_b": -3.7550331881264944e-06,
+  "median_difference": -4.975964064473596e-07,
+  "bootstrap_difference": {
+   "mean": -3.7550331881264944e-06,
+   "ci95_low": -2.8539685967031816e-05,
+   "ci95_high": 2.061765920895481e-05,
+   "clusters": 330,
+   "samples": 10000
+  },
+  "a_wins": 257,
+  "b_wins": 255,
+  "largest_a_advantage": [
+   [
+    408,
+    -0.0020531672488887844
+   ],
+   [
+    402,
+    -0.0019077727181629482
+   ],
+   [
+    468,
+    -0.001705016543743847
+   ],
+   [
+    438,
+    -0.0013596523078500452
+   ],
+   [
+    103,
+    -0.0010253903153340134
+   ],
+   [
+    129,
+    -0.0010055050245263842
+   ],
+   [
+    279,
+    -0.0009537142171436985
+   ],
+   [
+    83,
+    -0.0009271705478171854
+   ],
+   [
+    61,
+    -0.0008826677909546674
+   ],
+   [
+    391,
+    -0.000744378661888096
+   ]
+  ],
+  "largest_b_advantage": [
+   [
+    33,
+    0.003750502746915317
+   ],
+   [
+    503,
+    0.001430058000617863
+   ],
+   [
+    152,
+    0.0012338228392022475
+   ],
+   [
+    399,
+    0.0011589835832594032
+   ],
+   [
+    330,
+    0.0010103149641595994
+   ],
+   [
+    17,
+    0.0007872599935409598
+   ],
+   [
+    204,
+    0.0007759627331708121
+   ],
+   [
+    94,
+    0.0006287872338472419
+   ],
+   [
+    120,
+    0.0005493502439427181
+   ],
+   [
+    178,
+    0.0005446236613802224
+   ]
+  ]
+ },
+ "bytes_comparison": "/var/tmp/work/kld8/sibling-bytes.json",
+ "paired_aggregate": {
+  "schema": "qwen38-kld-ladder-paired/1",
+  "generated_utc": "2026-08-16T09:26:11Z",
+  "scope": "v5 shard 0 only: 512 contexts, 1,048,064 scored positions",
+  "suite": {
+   "manifest": "receipts/kld5-suite-manifest.json",
+   "manifest_sha256": "c79dfad3767ca5b3015129077f20dbb9282a2e51ca8bca9ed09be8c7a9c73019",
+   "suite_token_sha256": "510541f6861b589d44932db253ec25d96d6daaeeee4ea2ab9b65329209482b88",
+   "contexts": 512,
+   "context_length": 2048,
+   "scored_positions": 1048064,
+   "source_clusters": 330
+  },
+  "inputs": {
+   "hydrated-published": {
+    "path": "/var/tmp/work/kld8/cum-hydpub-shard0.json",
+    "sha256": "94f9cf3297d6968a5f173a1af3b01b26e4672173b440ce3fb13b6b89987e6dfa",
+    "content_sha256": "f80812ba6a850623eaf8725fa1c4bfca6fbb69d7eb9abe3fcc9a0e88c106573b"
+   },
+   "hydrated-sibling": {
+    "path": "/var/tmp/work/kld8/cum-hydsib-shard0.json",
+    "sha256": "0fd34caa04188047dffcbd403b4a24a07d3034a088c01756d3974549fe2fd8bb",
+    "content_sha256": "1485aa663c7c1b4d88c2790fb3d3b823973d6625ec69b33de5f5988630b1f2bb"
+   }
+  },
+  "method": {
+   "unit": "one 2,048-token context, 2,047 scored positions",
+   "statistic": "mean over contexts of (candidate A mean KLD - candidate B mean KLD)",
+   "interval": "source-cluster bootstrap, 10,000 resamples, seed 1, 330 clusters resampled with replacement",
+   "operands": "both candidates replayed through the same shared BF16 LM head; body-only, no candidate head quantization counted"
+  },
+  "comparisons": {
+   "hydrated-published_vs_hydrated-sibling": {
+    "a": "hydrated-published",
+    "b": "hydrated-sibling",
+    "contexts": 512,
+    "difference_a_minus_b": -3.7550331881264944e-06,
+    "ci95_low": -2.8539685967031816e-05,
+    "ci95_high": 2.061765920895481e-05,
+    "a_wins": 257,
+    "b_wins": 255,
+    "clusters": 330
+   }
+  },
+  "content_sha256": "43987a01f076bc3c76c59f03f066829872476cd13c61cc6b0569b80ef8e3f8b9"
+ },
+ "scale": {
+  "why": "a converter draw only matters if it is comparable to a distinction we draw conclusions from. These are published paired margins at the identical resolution, so the ratio is directly meaningful.",
+  "sibling_abs_difference": 3.7550331881264944e-06,
+  "anchors": {
+   "hydrated_vs_k5k6": {
+    "paired": "/var/tmp/work/kld6/reports/paired-hyd-vs-k5k6.json",
+    "a": "hyd",
+    "b": "k5k6",
+    "difference_a_minus_b": -0.00044147719544927196,
+    "ci95_low": -0.00047424818631859925,
+    "ci95_high": -0.00041193206710189094,
+    "clusters": 330,
+    "abs_margin": 0.00044147719544927196,
+    "sibling_difference_as_fraction_of_this_margin": 0.008505610769555519
+   },
+   "hydrated_vs_error_driven": {
+    "paired": "/var/tmp/work/kld6/reports/paired-hydpub-vs-eda.json",
+    "a": "hydrated-published",
+    "b": "error-driven",
+    "difference_a_minus_b": -0.0003662964754934233,
+    "ci95_low": -0.0003977921395768962,
+    "ci95_high": -0.00033476706949517353,
+    "clusters": 330,
+    "abs_margin": 0.0003662964754934233,
+    "sibling_difference_as_fraction_of_this_margin": 0.01025134949242479
+   },
+   "context_vs_error_driven": {
+    "paired": "/var/tmp/work/kld6/reports/paired-ctx-vs-eda.json",
+    "a": "ctx",
+    "b": "eda",
+    "difference_a_minus_b": 0.0003432303220081932,
+    "ci95_low": 0.00027552728345752207,
+    "ci95_high": 0.0004189721427002162,
+    "clusters": 330,
+    "abs_margin": 0.0003432303220081932,
+    "sibling_difference_as_fraction_of_this_margin": 0.010940272310896991
+   },
+   "k5k6_vs_k4": {
+    "paired": "/var/tmp/work/kld6/reports/paired-k5k6-vs-k4.json",
+    "a": "k5k6",
+    "b": "k4",
+    "difference_a_minus_b": -0.007203988181548545,
+    "ci95_low": -0.007886658856856325,
+    "ci95_high": -0.0066135596813721685,
+    "clusters": 330,
+    "abs_margin": 0.007203988181548545,
+    "sibling_difference_as_fraction_of_this_margin": 0.0005212436630232402
+   }
+  },
+  "tightest_published_margin": {
+   "label": "context_vs_error_driven",
+   "abs_margin": 0.0003432303220081932,
+   "sibling_difference_as_fraction": 0.010940272310896991
+  }
+ },
+ "capture_noise_floor": {
+  "what": "the same published checkpoint captured and replayed a SECOND time, paired against the published report",
+  "paired": {
+   "schema": "qwen38-fidelity-paired/2",
+   "suite_token_sha256": "caef8a4628d6c07c162100895096f890cdf9cafc8e4c48b3d66035d737ee7cf7",
+   "filter": "all",
+   "head_sha256": "25a30fd5f826da0abc4efc4cc71def9f02bcb8085f7175eee284d221dee4cfff",
+   "a": {
+    "report": "/work/kld5/reports/shard-0000/report-hyd.json",
+    "label": "hydrated-published",
+    "mean": 0.002699883159684943
+   },
+   "b": {
+    "report": "/work/kld6/reports/report-hyd-rematch.json",
+    "label": "hydrated-rematched",
+    "mean": 0.002699883159684943
+   },
+   "contexts": 512,
+   "difference_a_minus_b": 0.0,
+   "median_difference": 0.0,
+   "bootstrap_difference": {
+    "mean": 0.0,
+    "ci95_low": 0.0,
+    "ci95_high": 0.0,
+    "clusters": 330,
+    "samples": 10000
+   },
+   "a_wins": 0,
+   "b_wins": 512,
+   "largest_a_advantage": [
+    [
+     0,
+     0.0
+    ],
+    [
+     1,
+     0.0
+    ],
+    [
+     2,
+     0.0
+    ],
+    [
+     3,
+     0.0
+    ],
+    [
+     4,
+     0.0
+    ],
+    [
+     5,
+     0.0
+    ],
+    [
+     6,
+     0.0
+    ],
+    [
+     7,
+     0.0
+    ],
+    [
+     8,
+     0.0
+    ],
+    [
+     9,
+     0.0
+    ]
+   ],
+   "largest_b_advantage": [
+    [
+     0,
+     0.0
+    ],
+    [
+     1,
+     0.0
+    ],
+    [
+     2,
+     0.0
+    ],
+    [
+     3,
+     0.0
+    ],
+    [
+     4,
+     0.0
+    ],
+    [
+     5,
+     0.0
+    ],
+    [
+     6,
+     0.0
+    ],
+    [
+     7,
+     0.0
+    ],
+    [
+     8,
+     0.0
+    ],
+    [
+     9,
+     0.0
+    ]
+   ]
+  },
+  "why_it_matters": "this comparison's floor is exactly zero, not a tolerance: recapture reproduces the published mean bitwise, so any nonzero paired difference measured against a sibling is attributable to the sibling's weights and to nothing in the capture or replay path.",
+  "source": "receipts/capture-determinism.json"
+ },
+ "toolchain": {
+  "what_this_run_did": [
+   "converted the PUBLISHED hydrated recipe a second time, on the rental card, with the toolchain receipts/converter-determinism.json measured as the working one",
+   "verified the result is a SIBLING (identical recipe, different trellis payloads) rather than a twin or a different recipe",
+   "captured it on v5 shard 0 and replayed it against the published BF16 reference through the shared head, with the identical protocol the published number used",
+   "paired it per context against the published shard-0 report"
+  ],
+  "sibling_build": {
+   "local_tree": "/var/tmp/work/kld8/qwen38-hyd-sibling",
+   "build_script": {
+    "path": "/var/tmp/work/kld8/build_hyd_sibling.sh",
+    "sha256": "b16989c4c74848a2bffb039ee5b1faad4128e51ec4408b0e9e317b9e94478ba8",
+    "derived_from": {
+     "path": "/var/tmp/work/kld7/build_hyd_rebuild.sh",
+     "sha256": "df70f712861a2eb7523052d363fd3ad1d5033271daa84e8bbc454ca050c25043",
+     "substitution": "the output and working directories move from /work/kld7 to /work/kld8 and the tree is named -sibling instead of -rebuild; nothing that can reach the output bytes moves."
+    }
+   },
+   "flags": "convert.py -i /models/Qwen3.8-27B -o <out> -w <wd> -b 4 -hb 6 -mb 4 -vb 16 -cb mcg (no -cpi, no --resume)",
+   "env": {
+    "EXL3_BITS_FIXED": "{\"^.*self_attn\\\\..*$\": 6, \"^.*linear_attn\\\\..*$\": 6}",
+    "EXL3_BITS_OVERRIDE": "{\"^.*mlp\\\\.down_proj$\": 6, \"^.*mlp\\\\.(gate|up)_proj$\": 5}",
+    "TORCH_CUDA_ARCH_LIST": "12.0",
+    "TORCH_EXTENSIONS_DIR": "/work/torch-ext",
+    "VLLM_ALLOW_INSECURE_SERIALIZATION": "1",
+    "PATH": "/usr/local/cuda/bin prepended"
+   },
+   "finalize_chain": [
+    "util/add_safetensors_index.py -m <out> --force",
+    "util/add_quant_config.py -m <out>",
+    "finalize_checkpoint.py -m <out> --recipe <recipe> --command <command>"
+   ],
+   "finalize_tool_sha256": "d1abb85f7d2fb0e336b98fe67c5500bbf3f3620d4f7c68e7afd114b0e90da941",
+   "finalize_deviation": {
+    "what_happened": "the scripted finalize step FAILED, exactly as it did for the rebuild in receipts/converter-determinism.json: finalize_checkpoint.py requires --upstream and neither build script passes it. Compare /var/tmp/work/kld7/step-finalize-070835.log, which holds the identical argparse usage error.",
+    "why_it_did_not_affect_the_bytes": "convert.py had already written all three shards, config.json and quantization_config.json, and add_safetensors_index.py and add_quant_config.py had already run. What finalize adds is quantization_manifest.json, SHA256SUMS, DOCS-SHA256SUMS and build-receipt.json; it rewrites quantization_config.json only to add missing exl3 tensor_storage entries.",
+    "how_it_was_completed": "re-run by hand with --upstream /models/Qwen3.8-27B and the published --recipe and --command, all other arguments left at the tool's defaults, which are the source repo, revision and converter string the published manifest records.",
+    "retry_log": "/var/tmp/work/kld8/step-finalize-retry.log",
+    "result": "quantization_manifest.json and quantization_config.json both came out byte-identical to the published ones, which is the check that this deviation changed nothing that the comparison reads."
+   },
+   "converter": {
+    "repo": "turboderp-org/exllamav3",
+    "commit": "5f3c537ca9d89893d771256f5c43c93656553fbb",
+    "version": "1.4.2",
+    "worktree_diff_sha256": "578066cda60415e0376f261b7c907baea2baa8239076260013208d8e70c192f2",
+    "worktree_diff_files": [
+     "exllamav3/conversion/allocation.py",
+     "exllamav3/exllamav3_ext/bindings.cpp",
+     "exllamav3/exllamav3_ext/quant/reconstruct.cu",
+     "exllamav3/exllamav3_ext/quant/reconstruct.cuh",
+     "exllamav3/modules/linear.py"
+    ],
+    "same_worktree_as": "receipts/converter-determinism.json -> toolchain.rebuild_run.converter.worktree_diff_sha256 (578066cda60415e0376f261b7c907baea2baa8239076260013208d8e70c192f2); verified equal at run time, so this sibling and that rebuild came out of the same converter source."
+   },
+   "runtime": {
+    "image": "voipmonitor/vllm@sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b",
+    "how_it_runs": "tools/ggrun.sh, proot over /var/tmp/gg-rootfs (no container runtime on this box)",
+    "rootfs_provenance_utc": "2026-08-15T12:56:03.860822+00:00",
+    "rootfs_file_manifest_sha256": "9f2456247b6d527c379e427c9bae4eef000edde24254ffcb9d61c2020c0e5aac"
+   },
+   "marisa_trie": {
+    "available_at": "/work/convertdeps/site (PYTHONPATH), not in the shared immutable rootfs",
+    "wheel": "marisa_trie-1.4.1-cp312-cp312-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl",
+    "wheel_sha256": "4d51bdd22a7238ef4d681effd7c224a267ddae054b64b1cec9ce95bbcd2b6a88",
+    "steps_that_needed_it": [
+     "convert",
+     "quantconfig"
+    ],
+    "note": "seeded from receipts/converter-determinism.json -> toolchain.rebuild_run.marisa_trie.steps_that_needed_it, which measured these two steps by letting each die on the import first. This run paid the PYTHONPATH up front rather than re-buying that measurement with another 40 minutes of GPU.",
+    "conversion_capable_image": "docker/Dockerfile.gg-r34-convert installs this exact wheel and digest; that tag is local to another host and was never pushed, so the dependency is supplied beside the rootfs."
+   },
+   "hardware": {
+    "name": "NVIDIA RTX PRO 6000 Blackwell Server Edition",
+    "driver_version": "595.58.03",
+    "memory.total": "97887 MiB",
+    "uuid": "GPU-a1c308e7-fdd4-7130-9e3a-045ded2c20fd",
+    "vbios_version": "98.02.67.00.0A"
+   },
+   "convert_log": {
+    "log": "/var/tmp/work/kld8/convert-hyd-sibling.log",
+    "log_sha256": "265bb03c7d13273eea47afaae9916fc6be59bd79f02fd4f069407eea372ed5b9",
+    "modules_quantized_lines": 479,
+    "timed_blocks": 70,
+    "timed_block_seconds_total": 2371.91
+   }
+  },
+  "scoring": {
+   "harness": {
+    "path": "tools/fidelity.py",
+    "staged_at": "/work/kld8/tools/fidelity.py",
+    "sha256": "8ce8fe861c977c856f3263f509878e588caa2eaab29fe310f8c40223941e1294",
+    "why_this_one": "it is the harness that produced /work/kld6/reports/report-hyd-rematch.json, which scored the published checkpoint against the same reference capture used here and returned the published mean bitwise. So the sibling's number and the published number are not merely protocol-compatible: the harness has been shown to reproduce the published value on this exact reference."
+   },
+   "driver_script": {
+    "path": "/var/tmp/work/kld8/score_sibling.sh",
+    "sha256": "543870f6b757bf0e522547a9d13eca84687a535a62adda86bf0b5586375d0b42"
+   },
+   "suite": "/work/kld5/shards/shard-0000/suite (v5 shard 0: 512 contexts, 1,048,064 scored positions, suite token caef8a4628d6c07c162100895096f890cdf9cafc8e4c48b3d66035d737ee7cf7)",
+   "reference_capture": "/work/gguf/hidden-bf16",
+   "head": "/work/kld2/lm_head.safetensors",
+   "quantization_config": "{\"linear\":{\"weight\":\"mxfp8\"},\"ignore\":[\"re:.*visual\\\\..*\",\"re:.*in_proj_a$\",\"re:.*in_proj_b$\",\"re:.*in_proj_ba$\",\"re:.*mtp\\\\..*\",\"lm_head\"]}",
+   "capture_env": "VLLM_ALLOW_INSECURE_SERIALIZATION=1 TORCH_EXTENSIONS_DIR=/work/torch-ext VLLM_EXL3_PREFILL_RECONSTRUCT_M=128, --gpu-memory-utilization 0.85, --quantization exl3",
+   "paired_tools": [
+    "tools/fidelity.py paired (report level, schema qwen38-fidelity-paired/2, source-cluster bootstrap, 10,000 resamples, seed 1)",
+    "tools/kld_aggregate.py paired (cumulative-receipt level over the same single shard, --bootstrap-samples 10000 --bootstrap-seed 1)"
+   ]
+  },
+  "research_repo_commit": "fc13b07337ba69fc6f7a0a34cb98060cb01aaa66",
+  "research_repo_dirty": true
+ },
+ "preservation": {
+  "sibling_capture": {
+   "tier": "PRESERVE (tools/preserve_artifacts.sh tier 2, case (b): an input ceases to exist, so it cannot be regenerated at all)",
+   "what": "the hydrated SIBLING's hidden states over v5 shard 0, 512 contexts of 2,047 scored rows at hidden size 5,120, bfloat16",
+   "repo": "malaiwah/qwen38-27b-fidelity-suite-v5",
+   "repo_type": "dataset",
+   "revision": "1afb136276a0efa94b68500e4878c0f1253b909f",
+   "path": "captures/shard-0000/hidden-hyd-sibling",
+   "url": "https://huggingface.co/datasets/malaiwah/qwen38-27b-fidelity-suite-v5/tree/1afb136276a0efa94b68500e4878c0f1253b909f/captures/shard-0000/hidden-hyd-sibling/",
+   "files": 513,
+   "bytes": 10732324117,
+   "capture_elapsed_sec": 243.37262105941772,
+   "verification": "--deep: 507 files checked against the Hub's LFS oid (sha256 of the full bytes), 1 non-LFS file and 5 spot-checked LFS files re-downloaded and re-hashed from what the CDN actually serves. All 513 verified.",
+   "full_inventory": "/var/tmp/work/kld8/preserved-capture-sibling.json (per-file sha256, git blob id, bytes and check kind)",
+   "why_preserved_rather_than_recomputed": "the capture itself is about 6 minutes of GPU, which alone would put it in the state-the-cost tier. What moves it to PRESERVE is that recomputing it requires the sibling CHECKPOINT, and re-running the conversion does not reproduce that checkpoint -- it produces a THIRD distinct sibling, which is the finding of receipts/converter-determinism.json. So once the local checkpoint goes, this capture is the only surviving object from which the number in this receipt can be recomputed, and it is not reproducible at any price."
+  },
+  "sibling_checkpoint": {
+   "tier": "STATE THE COST (not published)",
+   "local_tree": "/var/tmp/work/kld8/qwen38-hyd-sibling",
+   "bytes_over_the_16_pinned_files": 21610916123,
+   "recompute_cost": "about 40 minutes of GPU on one RTX PRO 6000 Blackwell Server Edition for the conversion, plus its compile and finalize chain. This run measured 2,371.91 s (39.5 min) of converter-timed blocks and about 40 min of wall clock, and it completed on the first attempt because receipts/converter-determinism.json had already paid to discover which two steps need marisa_trie.",
+   "and_recomputing_it_does_not_reproduce_it": "a re-run yields a different sibling, so the 40 minutes buys a NEW draw from the converter, not this one. The recompute cost of THIS checkpoint is therefore infinite; 40 minutes is the cost of another sample from the same distribution.",
+   "not_published_because": "the measurement came back INDISTINGUISHABLE from the published checkpoint, which makes the sibling uninteresting as an artifact: it is 21.6 GB whose entire content as evidence is that it scored the same, and that fact is in this receipt together with the digests of all 16 of its files and the names of all 399 tensors that differ. Publishing a second checkpoint indistinguishable from the first would invite readers to download 21.6 GB to learn nothing, and would add a second artifact that our SHA256SUMS do not pin. Had the result been distinguishable the checkpoint would have been the evidence and would have had to be published.",
+   "what_survives_it": "its per-file sha256 digests and the full list of differing tensors in this receipt's `siblinghood` block, its capture (preserved above, and sufficient to recompute the score without the weights), and its conversion log at /var/tmp/work/kld8/convert-hyd-sibling.log."
+  },
+  "reference_capture_reused": {
+   "what": "/work/gguf/hidden-bf16, the published shard-0 BF16 reference",
+   "already_preserved_at": "malaiwah/qwen38-27b-fidelity-suite-v5 -> reference/hidden-bf16",
+   "verified_here": "all 512 hidden files re-hashed against the capture manifest before the replay: 10,732,224,512 B, zero mismatches. The harness re-verifies every digest again on the way in and fails closed.",
+   "not_re_uploaded_because": "it is unchanged and already published; this run consumed it."
+  }
+ },
+ "implications": {
+  "outcome": "indistinguishable",
+  "this_run": {
+   "measured": "INDISTINGUISHABLE FROM ZERO",
+   "plain": "A sibling rebuild lands inside the published fidelity interval. The paired 95 % interval on the per-context difference contains zero, so at this protocol's resolution -- 512 contexts, 1,048,064 scored positions, a source-cluster bootstrap over 330 clusters with 10,000 resamples at seed 1 -- the published checkpoint and a sibling of it are the same measurement.",
+   "for_every_published_fidelity_number": [
+    "Unchanged, and now for a second reason. Every published number was already a measurement of the PUBLISHED bytes, which is what SHA256SUMS pins and what a downloader receives; that never depended on this test.",
+    "What this adds is the reconstruction claim receipts/converter-determinism.json had to leave as an expectation: 'rebuild this recipe and you will land on our numbers' is now measured, on one sibling, at this resolution. It is a tested expectation, not an identity -- the bytes still differ.",
+    "No extra variance term has to be added to any published interval, and no published claim needs amending."
+   ],
+   "what_it_does_not_license": [
+    "It is one sibling, not a distribution. A single paired comparison bounds the converter's fidelity variance at this resolution; it does not estimate it.",
+    "It says nothing about recipes other than the hydrated one, nor about resolutions finer than this protocol's, nor about the tail statistics, which are reported here but were not the test."
+   ]
+  },
+  "the_other_outcome_would_have_meant": {
+   "measured": "DISTINGUISHABLE FROM ZERO",
+   "plain": "A sibling rebuild does NOT land inside the published fidelity interval. The paired 95 % interval on the per-context difference excludes zero, so converter nondeterminism is fidelity-relevant: which of two equally valid solutions to the same recipe a conversion happens to find changes the measured distributional fidelity by an amount this protocol can see.",
+   "for_every_published_fidelity_number": [
+    "Still correct as measurements OF THE PUBLISHED BYTES: they describe the artifact a downloader gets, and SHA256SUMS pins it. Nothing published becomes wrong.",
+    "But every one of them now carries a SECOND source of variance beside corpus sampling -- the conversion that produced the checkpoint -- and the published intervals do not contain it, because a bootstrap over source clusters resamples the corpus and holds the weights fixed.",
+    "That term has to be quantified (several siblings, not one) and disclosed wherever an interval is quoted, and any comparison BETWEEN checkpoints whose margin is of the same order as the sibling difference measured here has to be re-read as possibly a converter draw rather than a recipe effect."
+   ],
+   "what_it_does_not_license": [
+    "It does not make any published number an overclaim, and it does not mean a rebuild is worse -- the sign of a single draw carries no information about which recipe is better.",
+    "One sibling gives the difference for one draw. It does not give the spread, which is what disclosure would need."
+   ]
+  },
+  "both_were_publishable": "Neither outcome was the hoped-for one. The two readings above were written into this tool before the score existed, and which one the receipt reports is decided by whether `paired.bootstrap_difference` brackets zero."
+ },
+ "errors": [],
+ "content_sha256": "c7a1f651f3c94f2ff8c838607a90daf0eed7fb2df68cba3453425d5ffc44b6e3"
+}

@@ -650,3 +650,61 @@ proven by re-fetch with `DOCS-SHA256SUMS` refreshed in the same commit: 92,326 /
 restored and proven: systemd active, podman healthy, `/health` 200, `Qwen3.8-27B` served, GPU back
 to 30,449 MiB, all twelve compared `podman inspect` fields identical to
 `receipts/aiboss-live-service-snapshot.json`.
+
+## 2026-08-16: a sibling rebuild scores the same as the published hydrated checkpoint
+
+`receipts/converter-determinism.json` closed the byte question and deliberately left the
+measurement one open: a rebuild of the published hydrated recipe reproduces the recipe exactly
+and the weights not at all, so anyone who rebuilds gets a *sibling*, and **nobody had ever scored
+one**. That is now measured, in `receipts/sibling-rebuild-fidelity.json`, and the answer is that
+**the recipe determines fidelity to within our resolution**: paired over the 512 contexts of v5
+shard 0, published minus sibling is **-3.755e-06 with a 95 % interval of [-2.854e-05,
++2.062e-05]**, which brackets zero. The sibling's own shard-0 mean is **0.002703638192873069**
+against the published **0.002699883159684943**, and the per-context split is **257 to 255 with
+zero ties** — a coin flip, with no direction to it. Both tools agree to every digit: report-level
+`fidelity.py paired` and receipt-level `kld_aggregate.py paired` return the same difference,
+interval and win counts.
+
+**The siblinghood was verified, not assumed, and the check found a sibling rather than a twin.**
+All ten per-role byte totals match (21,586,964,548 B of payload), as do the module composition and
+formats, the declared widths, 2,426 physical and 1,199 logical tensors, all 715 `tensor_storage`
+entries, and per shard the entire safetensors header — names, dtypes, shapes, data offsets — and
+the shard sizes to the byte (8,351,643,585 / 8,442,742,474 / 4,792,879,451). 13 of the 16 pinned
+files are byte-identical, `quantization_manifest.json` and `quantization_config.json` among them.
+The three shards are not: of 2,426 tensors, **399 differ and every one is a `.trellis` payload**,
+zero non-trellis tensors moved, and inside a differing payload 39.4-91.8 % of the bytes differ
+(mean 82.3 %). That independently reproduces the earlier rebuild's 399-of-409 result on a third
+distinct checkpoint, and it means a byte-identical rebuild — which would have been the bigger
+finding — is not what happened.
+
+**Two controls make the zero credible rather than merely convenient.** The published ladder
+deleted its own BF16 capture, so this run replayed against the surviving `/work/gguf/hidden-bf16`;
+`/work/kld6/reports/report-hyd-rematch.json` scored the *published* checkpoint against that same
+capture and returned the published mean and **every one of its 512 per-context rows bitwise**, so
+the reference swap is a measured no-op and not an assumption. And because recapture reproduces the
+published number exactly (`receipts/capture-determinism.json`), this comparison's floor is exactly
+zero rather than a tolerance — the -3.755e-06 is attributable to the sibling's weights and to
+nothing in the capture or replay path.
+
+**Scale, because "distinguishable" and "matters" are different questions.** At this same
+resolution the tightest distinction we publish is context-vs-error-driven at 3.432e-04; the
+sibling difference is **1.09 % of it**, 0.85 % of hydrated-vs-K5K6 and 0.05 % of K5K6-vs-K4. So no
+published comparison is threatened, and no published interval needs a second variance term. What
+this does *not* license is a distribution: it is one sibling, so it bounds converter fidelity
+variance at this resolution without estimating it, and the reconstruction claim is now a **tested
+expectation** rather than an identity — the bytes still differ.
+
+The capture is preserved and deep-verified at
+`malaiwah/qwen38-27b-fidelity-suite-v5:captures/shard-0000/hidden-hyd-sibling` (513 files,
+10,732,324,117 B, revision `1afb136276a0efa94b68500e4878c0f1253b909f`), because recomputing it
+needs the sibling checkpoint and a re-conversion yields a *different* sibling — its recompute cost
+is not 40 minutes but infinite, and 40 minutes buys another draw. The 21.6 GB checkpoint is
+**not** published: an artifact indistinguishable from the published one is 21.6 GB that teaches a
+downloader nothing, and its evidential content — all 16 file digests and all 399 differing tensor
+names with their byte fractions — is in the receipt. Two latent parse defects were fixed in
+passing: `tools/kld_aggregate.py`'s `paired_window` refused to pair a receipt built from legacy
+`/1` shards against a current one because the window block carries a null `positions_per_context`
+(the published 10M paired receipt still reproduces exactly, and a windowed-vs-full pairing is
+still refused), and `tools/preserve_artifacts.sh` parsed only the machine-readable shape of
+`hf auth whoami` and `hf upload`, so it reported "not logged in" against an authenticated cache,
+and discarded a *successful* 10.7 GB upload as unverified, whenever it ran outside an agent shell.

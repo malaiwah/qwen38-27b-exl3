@@ -1078,12 +1078,25 @@ def paired_window(payload: dict) -> tuple[int, int | None]:
     context.  Comparing this pair, rather than the receipt schema string, is what
     lets a receipt built by today's tool be paired with a published one while
     still refusing to subtract a windowed run from a full-context run.
+
+    `positions_per_context` falls back to the parent suite whenever the block does
+    not carry one, not only when the block is absent entirely.  A `/3` receipt
+    aggregated from `qwen38-fidelity-report/1` shards HAS the block -- the tool
+    always emits it -- but leaves that field null, because null there means "no
+    shard declared it", never "the window is unknown": `windowed` is derived from
+    `score_from` alone, and every legacy report scored every position.  Returning
+    the null would make a published receipt unpairable with one built today for a
+    reason that is purely generational, which is the case this function exists to
+    permit.
     """
     block = payload.get("scored_position_window")
-    if isinstance(block, dict):
-        return int(block.get("score_from") or 0), block.get("positions_per_context")
     parent = (payload.get("suite") or {}).get("parent") or {}
-    return 0, parent.get("scored_positions_per_context")
+    fallback = parent.get("scored_positions_per_context")
+    if isinstance(block, dict):
+        declared = block.get("positions_per_context")
+        return (int(block.get("score_from") or 0),
+                declared if declared is not None else fallback)
+    return 0, fallback
 
 
 def pair_one(a_label: str, a: dict, b_label: str, b: dict, samples: int, seed: int,

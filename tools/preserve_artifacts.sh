@@ -129,7 +129,16 @@ HFPY=$(sed -n '1s|^#!||p' "$HF")
 [ -x "$HFPY" ] || die "cannot find the interpreter behind $HF"
 
 [ -n "${HF_HOME:-}" ] || die "HF_HOME is unset; point it at the authenticated cache"
-WHO=$("$HF" auth whoami 2>/dev/null | sed -n 's/^user=//p') \
+# `hf auth whoami` has two output shapes and picks between them on its own: the
+# machine-readable `user=NAME`, and a decorated block whose second line is
+# `  user: NAME`.  Which one you get depends on whether the CLI thinks it is talking to
+# an agent -- setting AGENT or CLAUDECODE flips it -- so a script that parses only
+# `user=` works from an agent harness and reports "not logged in" against a perfectly
+# authenticated cache when a human runs it. Both shapes are accepted, and the strip of
+# any ANSI colouring happens first because the decorated form is colourised.
+WHO=$("$HF" auth whoami 2>/dev/null \
+  | sed -e 's/\x1b\[[0-9;]*m//g' -e 's/[[:space:]]*$//' \
+  | sed -n -e 's/^user=//p' -e 's/^[[:space:]]*user:[[:space:]]*//p' | head -1) \
   || die "hf auth whoami failed; is HF_HOME=$HF_HOME authenticated?"
 [ -n "$WHO" ] || die "not logged in under HF_HOME=$HF_HOME"
 
@@ -200,7 +209,12 @@ UPLOAD_LOG=$(mktemp); trap 'rm -f "$INVENTORY" "$REMOTE" "$UPLOAD_LOG"' EXIT
 "$HF" upload "$REPO" "$LOCAL_DIR" "$DEST" \
   --repo-type "$REPO_TYPE" \
   --commit-message "${MESSAGE:-preserve $DEST before local deletion}" 2>&1 | tee "$UPLOAD_LOG"
-grep -q '^url=' "$UPLOAD_LOG" || die "upload did not report a commit url; nothing was verified"
+# Same two output shapes as `auth whoami`: `url=https://...` when the CLI thinks it is
+# talking to a machine, and a decorated `  url: https://...` otherwise.  What this guard
+# is really asserting is that a commit URL came back at all, so it tests for the URL
+# rather than for one of its two spellings -- REVISION below parses either.
+grep -qE '^(url=|[[:space:]]*url:[[:space:]]*)https?://.*/commit/' "$UPLOAD_LOG" \
+  || die "upload did not report a commit url; nothing was verified"
 REVISION=$(sed -n 's|.*/commit/||p' "$UPLOAD_LOG" | tail -1)
 [ -n "$REVISION" ] || die "could not read the resulting revision from the upload output"
 say "uploaded at revision $REVISION"
