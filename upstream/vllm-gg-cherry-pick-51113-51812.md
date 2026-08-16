@@ -1,8 +1,17 @@
 # Cherry-pick request: upstream vLLM #51113 and #51812 into `dev/gilded-gnosis`
 
-**Filed 2026-08-16.** Issue <https://github.com/local-inference-lab/vllm/issues/392> · PR
-<https://github.com/local-inference-lab/vllm/pull/393>. The issue body below is verbatim what
-was filed; `upstream/filed.json` has the machine-readable record.
+**Filed 2026-08-16, amended the same day.** Issue
+<https://github.com/local-inference-lab/vllm/issues/392> · PR
+<https://github.com/local-inference-lab/vllm/pull/393>. The issue body below is verbatim the
+current live body, re-fetched after the amendment; `upstream/filed.json` has the machine-readable
+record.
+
+**What the amendment changed.** The physical-RTX-5090 reproduction
+(`receipts/apc-poison-repro.json`) came back **NOT REPRODUCED**. The user report is therefore no
+longer offered as evidence that #51113 bites in practice, and the suggestion to gate
+`--enable-prefix-caching` is withdrawn. The ask itself stands unchanged, on the source defect and
+on upstream's own regression file failing 14 of 20 against the branch. The retraction is also
+posted as a visible comment rather than only as a body edit.
 
 ---
 
@@ -138,15 +147,49 @@ multilingual token soup after 1-2 turns — HTTP 200, no crash — and MTP accep
 
 Prefix caching is default-**off** for hybrid models
 (`engine/arg_utils.py:2532-2534`: `default_prefix_caching = is_prefix_caching_supported and not
-is_hybrid`), which is why the defect is latent for everyone who does not opt in — and why
-enabling prefix caching on this branch is unsafe until #51113 lands. A GPU reproduction on a
-physical RTX 5090 is in flight; its receipt will be `receipts/apc-poison-repro.json`.
+is_hybrid`), so the defect is latent for everyone who does not opt in.
+
+**Amended 2026-08-16 — GPU reproduction: NOT reproduced.** Read this as a blast-radius bound, not
+as an absence. 266 scored requests across seven freshly started servers on a physical RTX 5090, in
+the reporter's exact condition (`--enable-prefix-caching --mamba-cache-mode align`, MTP depth 3,
+`--max-model-len 196608`, `--gpu-memory-utilization 0.92`, `--max-num-seqs 1`) against the
+**unpatched** release image, over deliberately mid-block shared prefixes: zero corrupted
+responses, zero wrong planted answers, zero acceptance collapses (68 SpecDecoding windows, min
+56.0 %, max 94.7 %). Receipt `receipts/apc-poison-repro.json`, content sha256
+`e0d628144e8d5fb995f30aaa8b681a2e6b35f0d444a12d36d18d87a436eaa2f6`, pre-registered before the
+first scored arm ran.
+
+This does not weaken the cherry-pick case, and I am not withdrawing anything above. #51113 is
+still absent from this branch, upstream's own regression file still fails 14 of 20 against the
+branch's scheduler, and the patched arm was clean while prefix reuse delivered **11.6x and 29.3x
+TTFT** speedups (12.07 s -> 1.04 s and 67.60 s -> 2.31 s) — i.e. the fix unlocks a large
+performance lever safely. What the GPU run establishes is that the defect did not perturb that
+one workload measurably: text-only, single-sequence, nested-document prefix, one card. It does
+not show the defect is unreachable, and the source-level defect and the failing regression file
+stand on their own.
+
+Two corrections I owe you about the user report, in the interest of not overselling it:
+
+- **It is not established that #51113 caused it.** Not shown to be, not shown not to be. The
+  reporter's own "it's fixed" control removed LMCache, prefix caching and align mode all at once,
+  so it is confounded. Our run decomposes it: prefix caching + align *without* LMCache stayed
+  clean. That makes **LMCache 0.5.2 in `kv_both` disk mode** — a second, independent state-restore
+  path layered on vLLM's prefix cache — the leading suspect rather than #51113. It is untested and
+  is the named next experiment.
+- At `--max-num-seqs 1` there is no mixed batch, which upstream says is the only condition where
+  #51812 acts, so that arm did not exercise the GDN fix either way.
 
 ### Ask
 
-Cherry-pick both upstream commits onto `dev/gilded-gnosis`, #51113 first. Until #51113 lands,
-consider refusing or warning on `--enable-prefix-caching` for hybrid models rather than serving
-silently corrupted output.
+Cherry-pick both upstream commits onto `dev/gilded-gnosis`, #51113 first. The case rests on the
+source defect and on upstream's own regression file failing 14 of 20 against this branch — not on
+the user report, which our GPU probe did not reproduce and which currently points more at LMCache
+than at #51113.
+
+I am **not** asking you to gate `--enable-prefix-caching`: measured on the patched image it is a
+large win (11.6x / 29.3x TTFT) and it was clean on the unpatched image over the one workload we
+probed. The honest statement is that its safety on the unpatched branch is unbounded rather than
+disproven, and that #51113 is what makes it sound.
 
 ### How to verify
 
@@ -211,3 +254,17 @@ unmodified on CPU with `CUDA_VISIBLE_DEVICES` empty, gives **14 failed / 6 passe
 branch head and **20 passed** against the PR tree; both changed files `py_compile` clean under
 Python 3.12.3. The cherry-picked results are `cmp`-equal to the already-published modules
 `tools/vllm-mamba-align-scheduler.py` and `tools/vllm-qwen-gdn-spec-gates.py`. No GPU was used.
+
+### Amendment 2026-08-16
+
+| item | value |
+| --- | --- |
+| trigger | `receipts/apc-poison-repro.json` landed, content sha256 `e0d628144e8d5fb995f30aaa8b681a2e6b35f0d444a12d36d18d87a436eaa2f6` |
+| verdict | reproduction **NOT REPRODUCED**; fix **not exercised** |
+| evidence | 266 scored requests, 7 fresh servers, physical RTX 5090, reporter's exact condition on the *unpatched* image: 0 corrupted, 0 wrong planted answers, 0 acceptance collapses (68 windows, 56.0–94.7 %) |
+| retracted | the user report as proof that #51113 bites; the suggestion to gate `--enable-prefix-caching` |
+| retained | #51113 and #51812 both still absent at `fa033bd4e`; regression file still 14/20 fail vs branch, 20/20 pass vs PR tree; patched arm not worse on any axis and unlocked 11.6x / 29.3x TTFT |
+| new leading suspect for the user report | LMCache 0.5.2 `kv_both` disk reuse — the reporter's own control removed LMCache, prefix caching and align mode at once, so it is confounded; our run held prefix caching + align *without* LMCache and stayed clean. Untested, named next experiment. |
+| caveat | `--max-num-seqs 1` means no mixed batch, the only condition upstream says #51812 acts under, so that arm did not exercise the GDN fix |
+| issue comment | <https://github.com/local-inference-lab/vllm/issues/392#issuecomment-5305736361> |
+| PR comment | <https://github.com/local-inference-lab/vllm/pull/393#issuecomment-5305736420> |

@@ -31,6 +31,23 @@
       "additions": 264,
       "deletions": 13,
       "closes_issue": 392
+    },
+    "amendment_2026_08_16": {
+      "issue_body_patched": true,
+      "issue_comment": "https://github.com/local-inference-lab/vllm/issues/392#issuecomment-5305736361",
+      "pr_comment": "https://github.com/local-inference-lab/vllm/pull/393#issuecomment-5305736420",
+      "issue_body_length_after": 11441,
+      "local_markdown_resynced_from_live_body": true,
+      "retracted": [
+        "the user report as proof that #51113 bites in practice",
+        "the suggestion to gate --enable-prefix-caching for hybrid models"
+      ],
+      "retained": [
+        "both fixes still absent at fa033bd4e",
+        "regression file 14/20 fail vs branch head, 20/20 pass vs PR tree",
+        "patched arm not worse on any measured axis; prefix reuse gave 11.6x and 29.3x TTFT (12.07->1.04 s, 67.60->2.31 s)"
+      ],
+      "source_receipt": "receipts/apc-poison-repro.json (owned by ApcPoisonRepro; not recomputed by me)"
     }
   },
   "commits": [
@@ -97,7 +114,7 @@
     }
   },
   "notes": {
-    "apc_poison_repro": "receipts/apc-poison-repro.json did not exist at filing time; the issue cites the physical-RTX-5090 reproduction as in flight. ApcPoisonRepro confirmed pending (harness done, GPU window held by PerfSweep5090).",
+    "apc_poison_repro": "AMENDED 2026-08-16. receipts/apc-poison-repro.json landed (content sha256 e0d628144e8d5fb995f30aaa8b681a2e6b35f0d444a12d36d18d87a436eaa2f6) with verdict: reproduction NOT REPRODUCED, fix not exercised. 266 scored requests across 7 freshly started servers on a physical RTX 5090 in the reporter's exact condition against the unpatched release image: 0 corrupted, 0 wrong planted answers, 0 acceptance collapses (68 SpecDecoding windows, 56.0-94.7 %). Issue 392 body was patched and a visible retraction comment posted; the user report is no longer offered as evidence that #51113 bites, and the suggestion to gate --enable-prefix-caching is withdrawn. The ask is unchanged and rests on the source defect plus upstream's regression file (14/20 fail vs branch, 20/20 pass vs PR tree). Leading suspect for the user report is now LMCache 0.5.2 kv_both disk reuse, untested. At --max-num-seqs 1 there was no mixed batch, the only condition upstream says #51812 acts under.",
     "no_gpu_work": "No GPU was used by this filing; both cards remained occupied by other jobs.",
     "rootfs_not_written": "/var/tmp/gg-rootfs was read only; the PR tree was cloned separately to /var/tmp/gg-vllm-pr.",
     "artifact_preservation": {

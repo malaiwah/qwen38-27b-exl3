@@ -220,28 +220,34 @@ physical 5090 logged 18.19 GiB for the same configuration, and the verdict uses 
 On the constants the physical qualification measured — 31.4 GiB usable of a 32 GB board,
 `--gpu-memory-utilization` 0.955, 1.78 + 0.27 + 0.45 = 2.50 GiB of non-KV overheads
 (`receipts/qualification-5090-context.json`) — a 24 GB board leaves
-`24 × 0.98125 × 0.955 − 2.50 − 18.41 = 1.58 GiB` of KV **[P]**. At the per-token cost derived from
-that receipt's own measured pool — its 9.28 GiB holding 265,122 tokens, so
-`(9.28 − 0.20) GiB ÷ 265,122 = 36,773.9 B/token` — that is 40,293 tokens
-**[P]**, published at **32,768** with MTP-3 and fp8 KV, or **45,056** with MTP off, under the
-≥15 % headroom rule — but see the third open item below: that rate is fitted at one window, and a
-preliminary datapoint at a 32,768 window disagrees by 1.51×, which would take the number to
-24,576. The class decision does not depend on it; the printed window does.
-Fidelity is the already-measured **0.003409** on shard 0
+`24 × 0.98125 × 0.955 − 2.50 − 18.41 = 1.58 GiB` of KV **[P]**. Turning that into a window needs
+the engine's real capacity law, which is **not** pool ÷ per-token cost: `vllm/v1/core/kv_cache_utils.py`
+in the pinned image computes `GPU KV cache size` as `int(max_concurrency × max_model_len)`, so the
+pool one request needs is affine in the window, `P(L) = a·L + M`, and a logged
+`(pool, tokens, window)` triple satisfies `P = a·T + M·(T/L)`. Our single measured window
+(9.28 GiB, 265,122 tokens, 262,144) is one equation in two unknowns, bounded by the fp8 tensor
+floor below and the engine's own "may waste at most 6.25 % KV cache memory" line above:
+`a ∈ [32,768, 34,816]` B/token, `M ∈ [1.176, 0.676]` GiB. That gives a 24 GB MTP-3 window of
+**20,480 [P]**, bounded 13,246-27,887, and **49,152 [P]** with MTP off — where the fixed term is at
+most 0.039 GiB, which independently confirms that the residual over the tensor floor is MTP-driven,
+not GDN-driven. Fidelity is the already-measured **0.003409** on shard 0
 (`receipts/kld5-1M-tail-ctx.json`) and 0.003509 over 10,480,640 positions
 (`receipts/kld5-10M-ctx.json`), carried unchanged because it is the same weights: the class adds
 **no new fidelity risk**. So this is a serving profile over an existing artifact plus one
-qualification —
-not a conversion project. `--max-model-len 40960`, which [34](34-vram-class-profiles.md) §5.3
-predicted at utilisation 0.97, is retired: at 0.955 it needs 1.603 GiB against 1.580 available.
+qualification — not a conversion project. Two lengths are retired:
+`--max-model-len 40960` from [34](34-vram-class-profiles.md) §5.3, which fails under every
+admissible parameter pair, and **32,768**, which this item itself published earlier today — it
+needs about 1.73 GiB against 1.58 available, and its implied 36,765 B/token exceeds the 34,816
+padding ceiling.
 
 **16 GB: no-go as a SKU; published as a design study.** The byte law puts the cheapest
 multimodal build that keeps the MLP stack at 4 bits at 13.58 GiB resident **[P]** against a 12.70
 GiB budget — **0.88 GiB over before a single KV byte**, and 1.09 GiB over at the measured 0.955
 utilisation. Every remaining path is sub-4-bit, and **no width below 4 bits has ever been measured
-for KLD in this family**. The S16-V candidate is all prediction: 11.94 GiB resident **[P]**,
-16,384 tokens MTP-off **[P]** at [34](34-vram-class-profiles.md) §3's constants and 12,288 **[P]**
-re-derived at 0.955, with fidelity unknown — the nearest measured neighbour is K4 at 0.010604
+for KLD in this family**. The S16-V candidate is all prediction: 11.94 GiB resident **[P]** and
+**16,384 tokens [P]** with MTP off; **MTP-3 is impossible at this class at any window**, because
+its fixed per-request KV term of 0.676-1.176 GiB exceeds the entire 0.55 GiB pool. Fidelity is
+unknown — the nearest measured neighbour is K4 at 0.010604
 (`receipts/kld5-10M-k4.json`) with p99.9 0.5555 (`receipts/kld5-1M-tail-k4.json`), already the
 worst published candidate, and S16-V is below it on every role. Two
 reader reports run the same way and are not ours: a ~12 GB `IQ3_XXS` on a 16 GB RTX 5070 Ti gives
@@ -272,18 +278,20 @@ profile.
   (`receipts/qualification-5090-context.json` → `identity.host`), while the rental RTX PRO 6000
   measurements are **595.58.03**. Both are SM120, TP1, and the 24 GB class spans more than one
   architecture.
-- **Settle whether the KV pool's per-token cost depends on the window before printing 32,768.**
-  The rate above is fitted at one window, 262,144. A preliminary capped-budget proxy datapoint at a
-  32,768 window allocated 62,557 tokens from a 3.30 GiB pool — 56,642 B/token, **1.51× the
-  37,584 B/token** the qualification implies at native length. If that holds, 32,768 tokens needs
-  about 1.73 GiB against the 1.58 GiB a 24 GB board has at 0.955, so it **would not fit**, and the
-  recommendation drops to **24,576**. It is not adopted yet because a two-point fit puts the
-  per-token term at 31,698 B/token, *below* the 32,768 B fp8 tensor floor, which is impossible for
-  pure KV tensors — so the two configurations differ in page geometry, not in a fixed cost, and the
-  engine's own `attention block size 1600` / `Add 3 padding layers` / `Padding mamba page size`
-  lines are where to look. A single startup at a 22.49 GiB budget settles it outright
-  (`receipts/vram-class-verdict.json` → `open_risks_to_this_verdict`); until it reports, the
-  24 GB **class** decision stands and only the **window** is open.
+- **Pin the two KV cost terms with one logged second window.** The capacity law itself is settled:
+  the engine reports `concurrency × window`, so pool-per-request is `a·L + M`
+  (`vllm/v1/core/kv_cache_utils.py`, read out of the pinned image). What is not settled is the
+  split — one measured window leaves `a ∈ [32,768, 34,816]` B/token and `M ∈ [1.176, 0.676]` GiB,
+  which is why the 24 GB MTP-3 window is published as **20,480, bounded 13,246-27,887**, instead of
+  a single number. **Any** startup that logs a `(pool, tokens, window)` triple at a window other
+  than 262,144 closes it exactly, since two triples are two equations in two unknowns — the 24 GiB
+  proxy run in progress supplies one, and its preliminary datapoint already puts the answer at the
+  padding-ceiling corner (`a` ≈ 34,861, `M` ≈ 0.665 GiB), which is the plausible end. Note what
+  this correction did in both directions: MTP-3 rows fell (24 GB 32,768 → 20,480; 16 GB withdrawn
+  entirely) while MTP-off rows rose (24 GB 45,056 → 49,152; 16 GB 12,288 → 16,384), because the old
+  `H = 0.20 GiB` reserve was simultaneously too small for MTP-3 and too large for MTP-off
+  (`receipts/vram-class-verdict.json` → `open_risks_to_this_verdict`). Neither class decision moved:
+  24 GB rests on weights, 16 GB on fidelity.
 
 ### F4 — collection presentation
 
@@ -657,8 +665,12 @@ Build one immutable image from the pinned r34 digest plus reviewed versions of:
   r34 vendored copies. Upstream's own CPU-only regression file gives 14 failed / 6 passed
   against that head and 20 passed against the PR tree, whose outputs are `cmp`-equal to
   `tools/vllm-mamba-align-scheduler.py` and `tools/vllm-qwen-gdn-spec-gates.py`. Artefacts in
-  `upstream/`. Until #51113 lands, `--enable-prefix-caching` stays unsafe for this model; it is
-  default-off for hybrids, which is why every published measurement is unaffected.
+  `upstream/`. Amended the same day after `receipts/apc-poison-repro.json` came back **not
+  reproduced**: the user report is no longer offered as evidence that #51113 bites, and the
+  suggestion to gate `--enable-prefix-caching` was withdrawn on the issue. Prefix caching is
+  default-off for hybrids, so every published measurement is unaffected either way; its safety
+  on the *unpatched* image is unbounded rather than disproven, and #51113 is what makes it
+  sound. Leading suspect for the user's symptoms is now LMCache 0.5.2 `kv_both` disk reuse.
 
 Acceptance:
 
