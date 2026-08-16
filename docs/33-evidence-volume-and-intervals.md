@@ -143,3 +143,33 @@ measured quantile, and K4 is heavier than FP8 at every one. Quantiles are bin-bo
 - **Comparator breadth.** FP8 is a throughput-oriented format; GGUF `Q5_K_XL`/`Q6_K`/`Q8_0`
   and stock uniform-bitrate EXL3 controls are the comparisons that would settle where these
   builds really sit. See [29](29-plan-and-loose-ends.md) F2.
+
+## Appendix: benchmark leakage scan
+
+The capability numbers now carry the same contamination statement the fidelity numbers do
+([receipt](../receipts/benchmark-leakage-scan.json)). The corpus audits' all-position
+normalized 12-token method (`tools/near_duplicate_scan.py`, imported unchanged: Unicode words
+plus one token per Han/Kana character, NFKC + casefold, blake2b-128) hashed every shingle of
+the six conversion calibration corpora — 859,426 distinct 12-grams — and tested every item
+text of every public benchmark the capability evidence touches, each pinned by revision.
+
+- **MMLU-Pro, the pinned 70-item draw** (TIGER-Lab/MMLU-Pro @ `b189ec76`, suite
+  `46fac6d3…`): scanned and clean — 70/70 items, 69,709 shingles covering both the bare
+  question-plus-options text and the full rendered five-shot prompts, zero overlaps.
+- **GPQA Diamond** (Idavidrein/gpqa @ `633f5ee8`): scanned and clean — 198/198 items,
+  question plus all four answer options, 18,796 shingles, zero overlaps.
+- **The 40-task deterministic retention suite** (regenerated from seed 20260815 and bound to
+  the published `suite_sha256 e1eccaaf…`): scanned and clean — 40/40 prompts, 855 shingles,
+  zero overlaps.
+- **HumanEval+** (evalplus/humanevalplus @ `d32357cf`, prompt + canonical solution + test
+  scanned): the one benchmark with hits — 19/164 items, 3,721 matched shingles. Every matched
+  shingle consists solely of numeric tokens and sits in the machine-generated `test`-input
+  lists (sampled matches are ascending integer runs such as "1 2 3 4 5 6 7 8 9 10 11 12",
+  matching c4.utf8, once also code.utf8; longest run 30 words). The `prompt` and
+  `canonical_solution` fields are clean on all 164 items.
+
+No hit lands in anything a published capability number was computed from. If HumanEval+
+graduates into the capability matrix, the numeric `test`-field collisions are a
+tokenizer-artifact disclosure, not evidence the calibration data contains the benchmark. As
+with every scan in this project, this is a lexical overlap audit; it does not detect semantic
+paraphrases.

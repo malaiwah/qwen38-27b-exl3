@@ -170,6 +170,32 @@ names. The two differ by construction, not by measurement.
   512 contexts** to both the context edition and official FP8 with zero ties
   ([`receipts/kld5-1M-paired-nvfp4.json`](../receipts/kld5-1M-paired-nvfp4.json)). Over the full
   ten shards it reads 0.031059 [0.027916, 0.034795] with 92.90 % top-1 and loses 5,120 of 5,120.
+- **The build that attacks this headline by name has now been measured on the identical
+  protocol, and it finishes last.** `gittensor-model-hub/Qwen3.8-27B-NVFP4-RTX5090` (ModelOpt
+  W4A4, MTP and vision intact in BF16, FP8 KV baked into its config) claims the full native
+  262,144-token context on one 32 GB RTX 5090 with a 20-item smoke as its only fidelity
+  evidence, and its own card says not to treat those as scores. On v5 shard 0 it measures
+  **0.062163** mean KLD [0.058491, 0.066360] at **89.85 %** top-1: the weakest row on the
+  table, **2.1x unsloth's NVFP4 in the same weight format**. Paired per context it loses
+  **512/512** to the context edition, official FP8, hydrated, online and K4, and **511/512 to
+  unsloth** (+0.032048 [+0.030711, +0.033583]). Its resident weights measure **18.77 GiB**
+  under the docs/22 protocol against unsloth's 21.34 — so the two NVFP4 rows now bound a real
+  trade inside one format: **2.57 GiB of resident memory bought at roughly double the KLD**,
+  and a bf16-KV control pins its baked FP8 KV term at +0.000365 [+0.000058, +0.000679], about
+  1 % of the gap — the price is the weight conversion, not the KV dtype. Its serving envelope
+  remains its own unverified claim; we measured fidelity and resident bytes
+  (`receipts/gittensor-nvfp4-rtx5090.json`, mirror
+  `malaiwah/Qwen3.8-27B-NVFP4-RTX5090-archival-69274a0d`).
+- **The Q6_K loss is a byte gap, not an engineering gap — and that is testable.** Q6_K spends
+  **+1.183 GiB** over hydrated's payload across ~25.6B quantized weights = **+0.397 bpw**; our
+  own 3.73x-per-bit law predicts a **1.69x** KLD advantage for that spend, and the observed
+  advantage is **1.77x** (net-of-floor) / 1.33x (measured upper bound) — Q6_K sits on our own
+  scaling curve, within the floor estimate's slack. The test is the **K6-parity build**:
+  hydrated with gate/up promoted K5→K6 (+1.328 GiB, landing 21.45 GiB vs Q6_K's 21.31),
+  law-predicted mean ≈ **0.0016** against Q6_K's measured 0.002035 / net ~0.001528. A uniform
+  role-group promotion is exactly the prediction class the EDA calibration validated, unlike
+  the between-role reallocation that failed. Queued as `Q6K parity` in the todo list;
+  pre-register the prediction before converting.
 - So the format advantage at this bitrate is real at 5 bits, negative at 6 bits, and far short of
   a full bit. turboderp's own chart reads "about a bit ahead" on *his* protocol
   ([35](35-external-protocol-comparability.md)); that is a difference between protocols, not a
