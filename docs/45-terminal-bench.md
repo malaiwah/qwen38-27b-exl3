@@ -75,11 +75,45 @@ Two details carried the whole thing:
   rootless podman socket, makes the harness work unmodified — no patching.
 - **The tunnel must survive hours.** `run_terminal_bench.sh tunnel` runs a reconnect loop with
   `ServerAliveInterval=30`/`CountMax=6` and reclaims the remote listener with
-  `fuser -k -n tcp 18000` after an unclean drop.
+  `fuser -k -n tcp 18000` after an unclean drop. This was **verified before the GPU window**: with
+  the tunnel up and forwarding, the inner `ssh` was killed to simulate an unclean drop, and the
+  loop re-established the listener and served a request again (HTTP 200) in under 12 s —
+  `attempt 1 … dropped rc=255 … attempt 2` in its own log.
 
-Because the endpoint crosses a tunnel, its round-trip is measured once at window start
-(`run_terminal_bench.sh probe`, 1-token completions from AIBoss vs. rental loopback) and recorded,
-so the agent timeouts are known to account for it rather than assumed to.
+### The tunnel costs ~581 ms per request, and that is not fixable
+
+Measured before the window with a stand-in HTTP endpoint on the same port (re-measured against the
+live vLLM endpoint at window start by `probe`):
+
+| Path | Time to first byte |
+|---|---|
+| AIBoss → tunnel → rental | **0.579–0.587 s** |
+| rental loopback, same fetch | 0.00072–0.00088 s |
+
+It is **not** connection setup. With five requests on one reused connection, `time_connect` was
+0.0001 s while `time_starttransfer` stayed ~0.582 s on every one — so LiteLLM's connection pooling
+cannot amortise it. The cause is distance: the rental's TCP round-trip to the jump host is
+**266 ms** (median), AIBoss's is **12 ms**, and the rental has no direct route to AIBoss at all
+(TCP connect simply times out, which is why the jump host is in the path). One
+AIBoss→jump→rental round trip is ~278 ms, and an HTTP request/response through the reverse channel
+costs about two of them. The latency is the topology, not the implementation.
+
+Three consequences, all of which shaped the design:
+
+- **It is a time-to-first-token cost, not a per-token cost.** Tokens after the first arrive inside
+  the same stream. A task using 100 agent turns pays ~58 s of pure latency, against per-task agent
+  timeouts of 360–12,000 s (most are 900–3,600 s).
+- **It cannot corrupt the attribution.** Passes 1–2 and pass 3 cross the *same* tunnel and pay the
+  *same* penalty, so latency is common-mode and cannot move a task between the `capability` and
+  `quantization-suspect` buckets.
+- **Throughput is therefore read server-side.** tok/s comes from vLLM's own `/metrics` counters on
+  the rental's loopback, never from agent-side wall clock, so the tunnel cannot depress the
+  reported number.
+
+`TB_TIMEOUT_MULT` stays at **1.0**, keeping the run comparable to stock Terminal-Bench. Contingency,
+recorded in advance rather than applied silently: if pass 1 produces a material number of
+`AgentTimeoutError` rows, those tasks are flagged latency-suspect in the pass receipt and pass 2 may
+raise the multiplier — with the change recorded.
 
 ## 3. No task container ever touches a GPU
 

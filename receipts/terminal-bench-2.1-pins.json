@@ -29,7 +29,59 @@
       "form": "ssh -N -R 127.0.0.1:18000:127.0.0.1:8000 aiboss",
       "options": "BatchMode=yes ExitOnForwardFailure=yes ConnectTimeout=15 ServerAliveInterval=30 ServerAliveCountMax=6 TCPKeepAlive=yes",
       "reconnect": "tools/run_terminal_bench.sh tunnel loops forever, reclaiming the remote listener with `fuser -k -n tcp 18000` after an unclean drop, because the bench is hours long",
-      "rtt_measurement": "PENDING -- recorded by `run_terminal_bench.sh probe` at window start into receipts/terminal-bench-2.1-hyd.json"
+      "rtt_measurement": {
+        "status": "MEASURED before the GPU window, with a stand-in HTTP endpoint on the same port (python3 -m http.server on rental 127.0.0.1:8000). Re-measured against the LIVE vLLM endpoint at window start by `run_terminal_bench.sh probe`, and that value is what the pass receipt carries.",
+        "method": "curl from aiboss to 127.0.0.1:18000 (the tunnel's remote end) vs the same fetch on the rental's own loopback; 5 samples each, plus a 5-request single-connection run to separate connection setup from per-request cost",
+        "through_tunnel_ttfb_s": {
+          "min": 0.579076,
+          "max": 0.587156,
+          "typical": 0.582
+        },
+        "rental_loopback_ttfb_s": {
+          "min": 0.000723,
+          "max": 0.000878
+        },
+        "added_round_trip_s": 0.581,
+        "connection_reuse_does_not_help": {
+          "observed": "With 5 requests on ONE reused connection, time_connect was 0.0001 s but time_starttransfer stayed ~0.582 s on every request.",
+          "reading": "The ~581 ms is genuine path round-trip, not TCP/SSH channel setup, so LiteLLM's connection pooling cannot amortise it."
+        },
+        "why_581_ms": {
+          "rental_to_jump_host_tcp_rtt_ms": {
+            "min": 255.6,
+            "median": 266.4,
+            "max": 303.4
+          },
+          "aiboss_to_jump_host_tcp_rtt_ms": {
+            "min": 10.1,
+            "median": 11.6,
+            "max": 13.1
+          },
+          "no_direct_route": "The rental cannot reach 10.15.0.151 at all (TCP connect times out), which is why the jump host is in the path.",
+          "arithmetic": "One aiboss->jump->rental round trip is about 266 + 12 = 278 ms; an HTTP request/response through the reverse channel costs about two of those, which accounts for the observed ~581 ms.",
+          "conclusion": "The latency is the rental's distance from the jump host, not overhead added by the tunnel implementation. It is irreducible for route (c)."
+        },
+        "impact_on_the_bench": {
+          "per_llm_call_penalty_s": 0.581,
+          "note_on_streaming": "The penalty is a time-to-first-token cost per request. Tokens after the first arrive inside the same stream, so it is NOT paid per token.",
+          "worked_example": "A task using 100 agent turns pays about 58 s of pure latency, against per-task agent timeouts of 360-12000 s (smallest 360 s, most 900-3600 s).",
+          "why_it_cannot_corrupt_the_attribution": "Both the hydrated arm (passes 1-2) and the BF16 arm (pass 3) cross the SAME tunnel and pay the SAME penalty. Latency is common-mode, so it cannot move a task between the `capability` and `quantization-suspect` buckets.",
+          "why_tok_s_is_read_server_side": "Because the penalty inflates client-observed latency, throughput is taken from vLLM's own /metrics counters on the rental (localhost, no tunnel), not from agent-side wall clock.",
+          "timeout_decision": "TB_TIMEOUT_MULT stays 1.0, keeping the run comparable to stock Terminal-Bench. Contingency, recorded in advance: if pass 1 produces a material number of AgentTimeoutError rows, those tasks are flagged latency-suspect in the pass receipt and pass 2 may raise the multiplier -- any such change is recorded rather than applied silently."
+        }
+      },
+      "reconnect_verified": {
+        "status": "VERIFIED before the GPU window",
+        "method": "Started `run_terminal_bench.sh tunnel`, confirmed aiboss listening on 127.0.0.1:18000 and forwarding (HTTP 200), then killed the inner ssh process to simulate an unclean drop.",
+        "log": [
+          "[tunnel] attempt 1 at 2026-08-16T14:26:12+00:00",
+          "[tunnel] dropped rc=255 at 2026-08-16T14:28:05+00:00; reconnecting in 5s",
+          "[tunnel] attempt 2 at 2026-08-16T14:28:11+00:00"
+        ],
+        "recovery_s": "under 12 s from kill to a served request",
+        "post_recovery_probe": "recovered ttfb=0.580249 http=200",
+        "why_it_matters": "The bench runs for hours across a long-haul link; an unrecovered tunnel drop would otherwise convert into task failures."
+      }
     }
   },
   "harness_pins": {
@@ -231,5 +283,5 @@
       "nvidia-smi process lists on both hosts"
     ]
   },
-  "status": "Pins frozen and all CPU-side infrastructure verified. Passes 1-3 PENDING the rental GPU handover (queued behind RentalFidelityBatch2 then SixteenFlipCalib2). No GPU has been taken by this agent."
+  "status": "Pins frozen; all CPU-side infrastructure verified INCLUDING the reverse tunnel (forwarding, measured round-trip and automatic reconnect after a forced drop). Passes 1-3 PENDING the rental GPU handover, queued behind RentalFidelityBatch2 then SixteenFlipCalib2. No GPU has been taken by this agent."
 }
