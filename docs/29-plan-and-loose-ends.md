@@ -1004,6 +1004,32 @@ contributes **zero** (it is priced on both sides), and the gap is exactly the nu
 PR now +470/-3 over two commits, ruff/typos/mypy clean, 7/7 on the new tests where the isolated revert
 fails 1 and stock `main` fails 5.
 
+**Correction to our own upstream comments, 2026-08-16 - the bounded-arm root cause was misattributed.**
+While clearing LMCache for the campaign image, source-level analysis (CPU-only) found that the L1cold/L2warm
+failures were **not** LMCache delivering wrong bytes: our downstream GG vLLM base lacks the
+[vllm-project/vllm#48425](https://github.com/vllm-project/vllm/pull/48425)-class fix, so its scheduler takes
+`num_new_local_computed_tokens = max(per_group_hits)` unconditionally whenever *any* KV connector is attached
+to a hybrid (Mamba/GDN + full-attention) model, relying on the connector to restore the lagging recurrent
+state at the hit boundary - a contract only nixl's `_apply_prefix_caching` fulfils. `LMCacheMPConnector`
+supplied **zero tokens** for all 14 bounded failures; LMCache's own wheel pipeline (lookup, bitmap, fold
+kernel, hash chaining) was CPU-verified honest end to end. The measured localisation rule stands
+unchanged - it is exactly the divergence window between the full-attention hit and the last Mamba state
+checkpoint - but the mechanism is scheduler-side state loss, not LMCache data delivery. **Corrections posted
+on both threads**:
+[#4247](https://github.com/LMCache/LMCache/issues/4247#issuecomment-5310090975),
+[#4492](https://github.com/LMCache/LMCache/issues/4492#issuecomment-5310092581). A genuine LMCache-side
+defect was also found and fixed: the MP path silently ACKs a failed retrieve as a successful load; fixed
+upstream as [LMCache#4600](https://github.com/LMCache/LMCache/pull/4600), CPU tests fail-before/pass-after,
+prior art #2865/#2898/#3388 cited. Our deployed wheel already carries an equivalent guard, so **no wheel
+change ships**. A real GG scheduler defect was found and is being filed separately (patch
+`patches/gg-vllm-hybrid-divergent-hit-gate.patch`, gates the divergent path on a capability flag mirroring
+upstream's contract) - **this does not affect the current campaign**: it triggers only when a hybrid model
+has an external KV connector attached, and the sr1 image and every in-flight TB pass use native prefix
+caching only, no connector. LMCache stays excluded from sr1 until the 4-arm ladder re-runs clean on the
+2x lab with the scheduler gate applied, including a fresh-L2 restart arm to separate poison replay from any
+remaining restart-path defect. One blind spot remains unexplained and is named as such: `p1s1` in L3restart
+failed with zero hit tokens retrieved.
+
 **LMCache corruption landed upstream 2026-08-16 - as corroboration, not a new issue.** Owner granted standing
 approval to post on the LMCache project (and any other upstream project) on his behalf. A duplicate search
 (six queries, recorded in [`receipts/lmcache-upstream-filing.json`](../receipts/lmcache-upstream-filing.json))
