@@ -468,6 +468,44 @@ this build's — equivalently this build is **20 % below** it — and official F
 `UD-Q5_K_XL`'s 0.2144 and FP8's 0.2440, heavier than `Q6_K`'s 0.0794. `Q8_0` leads everything at
 27.05 GiB.
 
+**Correction, 2026-08-16 — the byte axis in the table above is not one axis, and every mixed
+comparison flattered us.** A GGUF row is the **whole file** of a **text-only** artifact; our row is
+**tensor payload** of a **multimodal** tree that also carries an MTP draft. Read from each artifact's
+own tensor table, without downloading any payload
+([`cross-candidate-byte-accounting.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/cross-candidate-byte-accounting.json)):
+
+| candidate | file | tensor total | `token_embd` | `output` | transformer body | multimodal deployed |
+|---|---:|---:|---:|---:|---:|---:|
+| GGUF `Q8_0` | 27.05 | 27.04 | 1.258 (Q8_0) | 1.258 (Q8_0) | **24.526** | 27.92 (+ `mmproj-BF16` 0.867) |
+| GGUF `Q6_K` | 21.31 | 21.30 | 0.971 (Q6_K) | 0.971 (Q6_K) | **19.360** | 22.18 (+ `mmproj-BF16` 0.867) |
+| GGUF `UD-Q5_K_XL` | 18.83 | 18.82 | 0.814 (Q5_K) | 0.971 (Q6_K) | **17.034** | 19.70 (+ `mmproj-BF16` 0.867) |
+| online K5/K6 | 28.50 | 28.47 | 2.368 (BF16) | 0.889 (K6) | **24.119** | 28.50, vision inside |
+| K4 | 26.37 | 26.37 | 2.368 (BF16) | 0.593 (K4) | **21.463** | 26.37, vision inside |
+| hydrated K5/K6 | 20.13 | 20.10 | 2.368 (BF16) | 0.889 (K6) | **15.726** | 20.13, vision inside |
+| context edition | 19.27 | 19.25 | 2.368 (BF16) | 0.889 (K6) | **14.886** | 19.27, vision inside |
+
+All figures GiB. The embedding and head widths are **not** uniform across GGUF tiers, and the vision
+encoder is **absent from every GGUF text file** - it ships separately as `mmproj-BF16.gguf`, which no
+earlier comparison of ours counted. What that does to the four published claims, two against us and
+two for us:
+
+1. **6 bits, `Q6_K` against hydrated: our sentence understated their byte spend roughly threefold.**
+   "+1.186 GiB more file" is +1.198 on tensors and **+3.634 GiB of transformer body (23.1 % more than
+   ours)**. Their fidelity win at 6 bits stands exactly as published - it is the *price* we
+   mis-stated, in our own favour.
+2. **6 bits, deployed: a multimodal `Q6_K` deployment is 22.18 GiB against our 20.13 GiB whole tree,
+   so ours is 2.053 GiB smaller** and needs no second file.
+3. **5 bits, `UD-Q5_K_XL` against the context edition: this claim was wrong against us.** We do not
+   pay "0.445 GiB more" for the win - on transformer body **they** carry 2.148 GiB more (+14.4 %),
+   and our deployed multimodal artifact is 0.422 GiB **smaller**.
+4. **8 bits, `Q8_0` against online K5/K6: the bodies agree to 1.7 %** (24.526 against 24.119), the
+   most format-comparable pair on the table, and **they win it cleanly**. That row is the reason the
+   others are worth reading: this is not a table where every axis favours the author.
+
+**Rule from here on, and it is printed rather than footnoted:** "at equal file bytes", "at equal
+tensor bytes", "at equal transformer body" and "as a deployed multimodal artifact" are four different
+claims, and whichever one a sentence means is written into the sentence. No fidelity number changes.
+
 **The two conclusions worth stating plainly:**
 
 1. **At the 6-bit operating point GGUF `Q6_K` is genuinely better than our best build** —

@@ -213,7 +213,7 @@
     "nvfp4_is_the_weakest_point_on_the_table": "unsloth's NVFP4 build measures 0.030115 with 93.16 % top-1 agreement on these same 512 contexts: 5.8x official FP8, 11.2x our hydrated build and 6.8x UD-Q5_K_XL, and it carries no cross-engine term, so none of that gap is engine numerics. It is the size-class competitor most often proposed against these builds, and on teacher-forced distribution fidelity it is not close. It is also the only 4-bit-weight row here, so the bitrate-honest comparison is against K4 (0.010345), which it still loses by 2.9x. This says nothing about its throughput on NVFP4-native hardware, which is the reason the format exists.",
     "nvfp4_conversion_quality_is_a_variable": "gittensor-model-hub/Qwen3.8-27B-NVFP4-RTX5090 measures 0.062163 with 89.85 % top-1 on these same 512 contexts: 12.0x official FP8, 18.2x the context edition, 6.0x K4 and -- the comparison its own card invites -- 2.1x unsloth's NVFP4 of the same base model in the same weight format. It is now the weakest row on this table, displacing unsloth's NVFP4 (the finding above it predates this row and describes the table as it stood). Paired per context it loses 512/512 to the context edition, 512/512 to official FP8, and 511/512 to unsloth's NVFP4 (paired difference +0.032048, 95 % CI [+0.030711, +0.033583]). Its measured resident weights are 18.77 GiB against unsloth's 21.34 GiB under the identical protocol, so the two NVFP4 rows bound a real trade inside one format: 2.57 GiB of resident memory bought at roughly double the KLD. Same-format conversions are not interchangeable, and neither NVFP4 row's gap is engine numerics -- both were captured under the reference's own vLLM build. This says nothing about either build's throughput or serving envelope, which is what their cards compete on."
   },
-  "content_sha256": "f195995883bd407ae8785d184642102168f88ec47d25130d59df72887529118a",
+  "content_sha256": "2bf83391026ae5945cb9b9612a582483c9e767b04010e04aa0389ee1b4dd7966",
   "engine_floor": {
     "what": "llama.cpp BF16 GGUF versus the vLLM BF16 reference, identical tokens, identical shared BF16 head, same 512 contexts",
     "artifact": "unsloth/Qwen3.8-27B-GGUF@f1bfb127c64f7072bdd2cad55f258b9c8b2910fe:BF16/Qwen3.8-27B-BF16-00001-of-00002.gguf (two-part, 54,657,735,616 B total)",
@@ -266,6 +266,27 @@
       "measurement_receipt": "receipts/gittensor-nvfp4-rtx5090.json",
       "measured_values_unchanged": true,
       "note": "every pre-existing candidate row, the engine floor, the suite block and every other finding are byte-identical to the prior revision; this script verifies that before writing"
+    },
+    {
+      "amended_utc": "2026-08-16T15:06:56Z",
+      "what": "the serialized-bytes column of this table mixes four axes, and every mixed comparison flattered us; corrected in prose on all four cards, the README and docs/35, with the per-artifact accounting published separately",
+      "the_four_axes": [
+        "GGUF rows are whole-FILE bytes; our rows are tensor PAYLOAD",
+        "GGUF text files are TEXT-ONLY - the vision encoder ships separately as mmproj-BF16.gguf, 931,146,432 B, which no earlier comparison of ours counted; our payload is multimodal in one tree and also carries an MTP draft",
+        "embedding and head widths are not uniform across GGUF tiers: Q8_0 embeds and heads at Q8_0 (1.2581 GiB each), Q6_K at Q6_K (0.9713 each), UD-Q5_K_XL embeds at Q5_K (0.8141) and heads at Q6_K (0.9713)",
+        "transformer-body-only is the axis that isolates format from packaging: Q8_0 24.5258, online K5/K6 24.1194, K4 21.4632, Q6_K 19.3599, UD-Q5_K_XL 17.034, hydrated 15.7256, context 14.8858 GiB"
+      ],
+      "effect_on_published_claims": {
+        "6bit_q6k_vs_hydrated": "our '43 % lower divergence for 1.186 GiB more file' understated their byte spend roughly threefold: +1.198 GiB on tensors, +3.634 GiB (23.1 %) on transformer body. Generous to us. Their fidelity win is unchanged",
+        "6bit_deployed": "a multimodal Q6_K deployment is 22.18 GiB against our hydrated whole tree at 20.1268, so ours is 2.053 GiB smaller and needs no second file",
+        "5bit_udq5kxl_vs_context": "our 'about 13 % better fidelity for 0.445 GiB more payload' was wrong against us: on transformer body they carry 2.148 GiB more (+14.4 %) and our deployed multimodal artifact is 0.422 GiB smaller",
+        "8bit_q8_0_vs_online_k5k6": "bodies agree to 1.7 % (24.5258 against 24.1194) - the most format-comparable pair on the table, and they win it cleanly; recorded prominently because a table whose every axis favours its author is not evidence"
+      },
+      "measured_values_unchanged": true,
+      "fidelity_numbers_unchanged": true,
+      "accounting_receipt": "receipts/cross-candidate-byte-accounting.json",
+      "reading_rule_now_published": "'at equal file bytes', 'at equal tensor bytes', 'at equal transformer body' and 'as a deployed multimodal artifact' are four different claims; whichever a sentence means is written into the sentence",
+      "found_by": "SixteenFlipCalib2, reading each artifact's own tensor table over HTTP range requests while blocked on a GPU"
     }
   ]
 }
