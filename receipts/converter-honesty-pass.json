@@ -354,7 +354,42 @@
   },
   "docs29_prose_for_main": "## Converter determinism \u2014 measured, and it changes what \"reproduce\" can mean\n\nA fresh conversion of the published hydrated recipe, on the same box with the same flags and\nthe same source, does **not** return the published checkpoint. 13 of the 16 pinned payload\nfiles come back identical \u2014 every config, the tokenizer, the safetensors index,\n`quantization_config.json`, `quantization_manifest.json` \u2014 and the three safetensors shards do\nnot. The difference reaches tensor bytes and stops there: byte-identical headers, the same\n2,426 physical tensors with the same names, dtypes, shapes and offsets, the same three-shard\npacking to the byte. 399 tensors differ, every one a `.trellis` payload \u2014 399 of the 409\nquantized modules, 97.6 %, with 41-92 % of the bytes differing inside each, mean 82 %. No\nscale, norm, embedding, vision or BF16 companion tensor moved, and everything a recipe fixes\ncame out exact: all ten per-role byte totals, 21,586,964,548 B of payload, 1,199 logical\ntensors, 715 `tensor_storage` entries, every assigned width. The mechanism was measured, not\ninferred: a failed first attempt left one log holding the same conversion twice, minutes apart,\nwith identical widths and identical global scales but different `proxy_err` for 6 of the 212\nmodules the comparison reaches. Two identical float computations round identically, so the\nconverter is nondeterministic. `receipts/converter-determinism.json`.\n\n**Consequence 1 \u2014 the published bytes are the artifact, the recipe is not.** The recipe fixes\ncomposition, widths and byte budget exactly and does not fix the weights, so a rebuild is a\nsibling of the published checkpoint rather than the checkpoint: a different valid artifact of\nthe same recipe, not a broken one. Every published fidelity number measures the bytes a\ndownloader receives and is unaffected. What no longer holds is any \"rebuild this and you get\nour numbers\" reading \u2014 that is now an expectation to test, and it is untested.\n\n**Consequence 2 \u2014 there is a floor under byte comparisons.** A diff between a rebuild and a\npublished tree cannot be read as tampering, corruption or a changed recipe until it exceeds\nthis floor, and the checkable claim is the digest of the published tree \u2014 each repo's\n`SHA256SUMS` \u2014 rather than the output of anyone's conversion. This lands directly on\n**P0 / rank 3 \u2014 clean-room release reproduction**: rung 2 still stands as written, but its\nacceptance clause \"build differences are either byte-identical or explicitly reduced to a\nmeasured numerical equivalence contract\" now has a dead first branch. For a rebuilt checkpoint\nthe only reachable acceptance is the equivalence contract, and the contract needs a stated\ntolerance: identical composition, widths, per-role byte totals, tensor names, dtypes, shapes,\noffsets and shard sizes, with trellis payload differences permitted up to the measured floor.\nNothing else about that item changes.\n\nNone of this touches the runtime's weight-reconstruction path (`reconstruct_fp8_slice`, the\nreconstructed-prefill kernels), which turns stored trellis bytes back into weights at load. The\ntwo senses of \"reconstruction\" have to stay apart wherever both appear.\n\n**Loose end A \u2014 a complete environment record for future builds.** Separate finding from the\nsame run: the published build's environment is not reconstructible. This recipe reaches\n`import marisa_trie` twice on unconditional paths, and the pinned image\n`release-evidence-hydrated.json` records has no `marisa_trie`, so that image provably cannot run\nthe conversion to completion. Something in the published run supplied it and nothing recorded\nwhat. The published environment record is therefore incomplete; the conversion-capable image is\n`gg-r34-convert`, which installs the same verified wheel the rebuild used. What is owed is a\nbuild-time environment record that is sufficient on its own \u2014 image digest plus every\ndependency supplied beside it, captured at build time rather than reconstructed afterwards \u2014 so\nthe next build is re-enterable and not merely re-attemptable.\n\n**Loose end B \u2014 does a sibling rebuild land inside our interval?** Open experiment, never run.\nThe sibling built for this measurement was never scored: scoring it answers a different question\nthan the one that was asked, and it was released with the rest of the working tree. The test is\ncheap now that the shard-0 BF16 reference is published \u2014 one candidate capture plus one replay,\nabout 6 minutes of GPU on shard 0 \u2014 but it costs a full ~40-minute conversion first to have a\nsibling to score. Until someone runs it, the honest statement on the cards is the one now\npublished: a sibling should land within measurement resolution, and that has not been tested.\n",
   "docs29_prose_note": "handed over, not applied. docs/29 belongs to Main. The block also flags that P0/rank 3's acceptance clause has a dead first branch.",
-  "content_sha256": "8b431e4ca62ce66973fe7766da82aebcd53d88004a53b879b0e6191071f2e606",
+  "post_push_independent_refetch": {
+    "method": "fresh throwaway HF_HOME (/var/tmp/proof/hf), each README.md downloaded again and compared to the local card byte for byte, after the git push",
+    "all_byte_identical": true,
+    "per_repo": {
+      "malaiwah/Qwen3.8-27B-EXL3-K5K6-context": {
+        "bytes": 100532,
+        "sha256": "fcec3d7fcd0e07cfd917b117995622ae42bb92d9e5d5afd650c91c47a6f3b302"
+      },
+      "malaiwah/Qwen3.8-27B-EXL3-K5K6": {
+        "bytes": 96353,
+        "sha256": "cd60c3c20ef5cfa886296f7daa4171932bc4a37ba7c28932a7475440935011fd"
+      },
+      "malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated": {
+        "bytes": 86283,
+        "sha256": "64da3eefdf608d91dd393dc2637ab0e48d21c6ebac56f0ee6c94b9452fe0a846"
+      },
+      "malaiwah/Qwen3.8-27B-K4": {
+        "bytes": 91777,
+        "sha256": "fcf4e2b22c69e5b52ba837f3ddf8ce5aafd6c572e44de2abdfd1b1249a5826b6"
+      },
+      "malaiwah/Qwen3.8-27B-EXL3-EDA-research": {
+        "bytes": 20436,
+        "sha256": "34865c19184618bee2fdd06336e6f9e44c3c5bb3dbf35868b5c51830350ed63f"
+      },
+      "malaiwah/qwen38-27b-fidelity-suite-v5": {
+        "bytes": 17332,
+        "sha256": "ddcb826115cf1adf4eabd6d903e8a70cb01a0bf193eb58fb63cefcfce7560c59"
+      }
+    }
+  },
+  "git": {
+    "commit": "494cd5b converter honesty: a rebuild is a sibling, not the published bytes",
+    "origin_gitea_main": "494cd5beb0d67fe1b4f50665eeb92ad7d78af85a",
+    "github_main": "494cd5beb0d67fe1b4f50665eeb92ad7d78af85a"
+  },
+  "content_sha256": "4583917e38b51358f796fefe0092f2c62ecd04e80d71fa47a17d1711cc234afc",
   "content_sha256_excludes": [
     "content_sha256"
   ]
