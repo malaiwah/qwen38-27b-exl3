@@ -1110,3 +1110,21 @@ fully on the 1x endpoint under `--gpus all`. Canonical tar
 `ubuntu@151.185.34.98:~/images/gg-r34-tb21-sr1.tar.zst` sha `1e5711f4…`; interim unpatched base also
 loaded on the endpoint for gate rehearsal. Receipt `receipts/tb21-image-sr1.json`. No GPU used;
 TB pass 2 untouched. Registry push (ghcr vs docker.io) awaits an owner token — Main's question.
+
+## 2026-08-16 — LMCacheFix: root cause found, upstream PR #4600 filed, CPU gates green
+The lmcache-reuse-test corruption is root-caused. Bounded arms (7/38+7/38): NOT wrong bytes from
+LMCache — the GG vLLM scheduler's hybrid+connector path takes the full-attention group's cache hit
+as computed for the whole model (`max(per_group_hits)`, scheduler.py:727-764 in the promoted image)
+and delegates Mamba/GDN state restoration to the connector; only nixl fulfils that contract, so with
+LMCacheMPConnector generation resumes on a stale/uninitialized recurrent state at the hit boundary.
+All 76 bounded rows reconcile (hit = L0+1600 pattern, both failure signatures, 7/7 control, universal
+logprob divergence); upstream vLLM fixed this class in PR #48425 (capability gate), our GG base lacks
+it. L3restart 38/38 = poison propagation of bounded-arm stores + no local masking; p1s1-L3 zero-hit
+failure stays a named blind spot. LMCache-side: the silent-corruption channel (failed retrieve ACKed
+as loaded, #2865/#3388) is real upstream; filed https://github.com/LMCache/LMCache/pull/4600
+(fail-closed error_block_ids propagation, DCO, fail-before 3F/pass-after 30P CPU tests; minimal
+subset of stalled #2898, all prior art cited). Image wheel needs NO change — it already carries the
+fork's equivalent guard (wheel == fork fix/lmcache-mp-retrieve-recovery-20260729). Campaign fix =
+patches/gg-vllm-hybrid-divergent-hit-gate.patch (sha 5f9ad10b…, applies+compiles; routed to Main,
+vLLM-side). GPU ladder re-run remains the gate for any LMCache default-config decision. No GPU used.
+Receipt: receipts/lmcache-fix.json (+ receipts/lmcache-fix-raw/).

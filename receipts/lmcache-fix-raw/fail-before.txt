@@ -1,0 +1,173 @@
+[32;20m[2026-08-16 22:53:14,213] LMCache INFO:[0m torch_dev=StubCPUDevice(device_type=cpu), torch_device_type=cpu [3m(_device_detect.py:143:lmcache.v1.platform._device_detect)[0m
+[33;20m[2026-08-16 22:53:14,214] LMCache WARNING:[0m No compute backend loaded; CLI-only mode (torch/numba not installed). Reason: No module named 'lmcache.lmcache_native' [3m(__init__.py:30:lmcache)[0m
+
+tests/v1/test_vllm_mp_adapter.py::test_failed_retrieve_marks_blocks_as_load_errors 
+-------------------------------- live log setup --------------------------------
+INFO     lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:1100 LMCache MP worker adapter created with instance_id=4345160197044996308
+-------------------------------- live log call ---------------------------------
+ERROR    lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:1663 Something went wrong when processing the retrieve request for request_id=req-1, result=False
+FAILED                                                                   [ 25%]
+tests/v1/test_vllm_mp_adapter.py::test_successful_retrieve_reports_no_load_errors 
+-------------------------------- live log setup --------------------------------
+INFO     lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:1100 LMCache MP worker adapter created with instance_id=3117000044083019988
+PASSED                                                                   [ 50%]
+tests/v1/test_vllm_mp_adapter.py::test_raising_retrieve_future_is_contained_and_marks_blocks 
+-------------------------------- live log setup --------------------------------
+INFO     lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:1100 LMCache MP worker adapter created with instance_id=1055522077552167402
+FAILED                                                                   [ 75%]
+tests/v1/test_vllm_mp_adapter.py::test_failed_retrieve_marks_blocks_with_lazy_offload 
+-------------------------------- live log setup --------------------------------
+INFO     lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:1100 LMCache MP worker adapter created with instance_id=2596015146019347618
+-------------------------------- live log call ---------------------------------
+INFO     lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:124 lmcache.mp.mq_timeout = 300.0
+INFO     lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:124 lmcache.mp.heartbeat_interval = 10.0
+INFO     lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:124 lmcache.mp.mp_transfer_mode = auto
+INFO     lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:1100 LMCache MP worker adapter created with instance_id=1725810780218133983
+ERROR    lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:1783 Something went wrong when processing the retrieve request for request_id=req-1, result=False
+FAILED                                                                   [100%]
+
+=================================== FAILURES ===================================
+_______________ test_failed_retrieve_marks_blocks_as_load_errors _______________
+
+fake_adapter = (<lmcache.integration.vllm.vllm_multi_process_adapter.LMCacheMPWorkerAdapter object at 0x7e7ad6c4e210>, <MagicMock name='send_lmcache_request' id='139066054329408'>, <MagicMock name='future' id='139066054177424'>)
+
+>   ???
+E   assert set() == {3, 4}
+E     
+E     Extra items in the right set:
+E     3
+E     4
+E     
+E     Full diff:
+E     + set()
+E     - {
+E     -     3,
+E     -     4,
+E     - }
+
+tests/v1/test_vllm_mp_adapter.py:557: AssertionError
+---------------------------- Captured stderr setup -----------------------------
+[32;20m[2026-08-16 22:53:14,399] LMCache INFO:[0m LMCache MP worker adapter created with instance_id=4345160197044996308 [3m(vllm_multi_process_adapter.py:1100:lmcache.integration.vllm.vllm_multi_process_adapter)[0m
+------------------------------ Captured log setup ------------------------------
+INFO     lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:1100 LMCache MP worker adapter created with instance_id=4345160197044996308
+----------------------------- Captured stderr call -----------------------------
+[31;20m[2026-08-16 22:53:14,401] LMCache ERROR:[0m Something went wrong when processing the retrieve request for request_id=req-1, result=False [3m(vllm_multi_process_adapter.py:1663:lmcache.integration.vllm.vllm_multi_process_adapter)[0m
+------------------------------ Captured log call -------------------------------
+ERROR    lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:1663 Something went wrong when processing the retrieve request for request_id=req-1, result=False
+__________ test_raising_retrieve_future_is_contained_and_marks_blocks __________
+
+fake_adapter = (<lmcache.integration.vllm.vllm_multi_process_adapter.LMCacheMPWorkerAdapter object at 0x7e7ad6c89a00>, <MagicMock name='send_lmcache_request' id='139066054556752'>, <MagicMock name='future' id='139066054549216'>)
+
+>   ???
+
+tests/v1/test_vllm_mp_adapter.py:586: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+lmcache/integration/vllm/vllm_multi_process_adapter.py:1659: in get_finished
+    ???
+/home/mbelleau/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/unittest/mock.py:1139: in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/mbelleau/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/unittest/mock.py:1143: in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <MagicMock name='retrieve_future_req-1.result' id='139066052597504'>
+args = (), kwargs = {'timeout': 60}
+
+    def _execute_mock_call(self, /, *args, **kwargs):
+        # separate from _increment_mock_call so that awaited functions are
+        # executed separately from their call, also AsyncMock overrides this method
+    
+        effect = self.side_effect
+        if effect is not None:
+            if _is_exception(effect):
+>               raise effect
+E               RuntimeError: ipc event import failed
+
+/home/mbelleau/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/unittest/mock.py:1198: RuntimeError
+---------------------------- Captured stderr setup -----------------------------
+[32;20m[2026-08-16 22:53:14,413] LMCache INFO:[0m LMCache MP worker adapter created with instance_id=1055522077552167402 [3m(vllm_multi_process_adapter.py:1100:lmcache.integration.vllm.vllm_multi_process_adapter)[0m
+------------------------------ Captured log setup ------------------------------
+INFO     lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:1100 LMCache MP worker adapter created with instance_id=1055522077552167402
+_____________ test_failed_retrieve_marks_blocks_with_lazy_offload ______________
+
+fake_adapter = (<lmcache.integration.vllm.vllm_multi_process_adapter.LMCacheMPWorkerAdapter object at 0x7e7ad6b0fec0>, <MagicMock name='send_lmcache_request' id='139066053026080'>, <MagicMock name='future' id='139066053018544'>)
+
+    def test_failed_retrieve_marks_blocks_with_lazy_offload(fake_adapter) -> None:
+        """The lazy-offload variant of get_finished applies the same
+        fail-closed contract for failed retrieves."""
+        _adapter, _send_mock, _ = fake_adapter
+        adapter = _make_worker_adapter(
+            extra_config={"lmcache.mp.lazy_offload": True},
+        )
+        r_future = _submit_retrieve_with_future(adapter, "req-1", [[9, 10]])
+        r_future.result.return_value = False
+    
+        _stores, finished_retrieves = adapter.get_finished_with_lazy_offload()
+    
+        assert finished_retrieves == {"req-1"}
+>       assert adapter.get_block_ids_with_load_errors() == {9, 10}
+E       assert set() == {9, 10}
+E         
+E         Extra items in the right set:
+E         9
+E         10
+E         
+E         Full diff:
+E         + set()
+E         - {
+E         -     9,
+E         -     10,
+E         - }
+
+tests/v1/test_vllm_mp_adapter.py:605: AssertionError
+---------------------------- Captured stderr setup -----------------------------
+[32;20m[2026-08-16 22:53:14,441] LMCache INFO:[0m LMCache MP worker adapter created with instance_id=2596015146019347618 [3m(vllm_multi_process_adapter.py:1100:lmcache.integration.vllm.vllm_multi_process_adapter)[0m
+------------------------------ Captured log setup ------------------------------
+INFO     lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:1100 LMCache MP worker adapter created with instance_id=2596015146019347618
+----------------------------- Captured stderr call -----------------------------
+[32;20m[2026-08-16 22:53:14,443] LMCache INFO:[0m lmcache.mp.mq_timeout = 300.0 [3m(vllm_multi_process_adapter.py:124:lmcache.integration.vllm.vllm_multi_process_adapter)[0m
+[32;20m[2026-08-16 22:53:14,443] LMCache INFO:[0m lmcache.mp.heartbeat_interval = 10.0 [3m(vllm_multi_process_adapter.py:124:lmcache.integration.vllm.vllm_multi_process_adapter)[0m
+[32;20m[2026-08-16 22:53:14,443] LMCache INFO:[0m lmcache.mp.mp_transfer_mode = auto [3m(vllm_multi_process_adapter.py:124:lmcache.integration.vllm.vllm_multi_process_adapter)[0m
+[32;20m[2026-08-16 22:53:14,443] LMCache INFO:[0m LMCache MP worker adapter created with instance_id=1725810780218133983 [3m(vllm_multi_process_adapter.py:1100:lmcache.integration.vllm.vllm_multi_process_adapter)[0m
+[31;20m[2026-08-16 22:53:14,444] LMCache ERROR:[0m Something went wrong when processing the retrieve request for request_id=req-1, result=False [3m(vllm_multi_process_adapter.py:1783:lmcache.integration.vllm.vllm_multi_process_adapter)[0m
+------------------------------ Captured log call -------------------------------
+INFO     lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:124 lmcache.mp.mq_timeout = 300.0
+INFO     lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:124 lmcache.mp.heartbeat_interval = 10.0
+INFO     lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:124 lmcache.mp.mp_transfer_mode = auto
+INFO     lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:1100 LMCache MP worker adapter created with instance_id=1725810780218133983
+ERROR    lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:1783 Something went wrong when processing the retrieve request for request_id=req-1, result=False
+=============================== warnings summary ===============================
+../lmc-repro/lib/python3.12/site-packages/opentelemetry/sdk/_logs/_internal/__init__.py:580: 45 warnings
+  /var/tmp/lmc-repro/lib/python3.12/site-packages/opentelemetry/sdk/_logs/_internal/__init__.py:580: DeprecationWarning: `LoggingHandler` in `opentelemetry-sdk` is deprecated. Use the handler from `opentelemetry-instrumentation-logging` instead.
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/v1/test_vllm_mp_adapter.py::test_failed_retrieve_marks_blocks_as_load_errors - assert set() == {3, 4}
+  
+  Extra items in the right set:
+  3
+  4
+  
+  Full diff:
+  + set()
+  - {
+  -     3,
+  -     4,
+  - }
+FAILED tests/v1/test_vllm_mp_adapter.py::test_raising_retrieve_future_is_contained_and_marks_blocks - RuntimeError: ipc event import failed
+FAILED tests/v1/test_vllm_mp_adapter.py::test_failed_retrieve_marks_blocks_with_lazy_offload - assert set() == {9, 10}
+  
+  Extra items in the right set:
+  9
+  10
+  
+  Full diff:
+  + set()
+  - {
+  -     9,
+  -     10,
+  - }
+=========== 3 failed, 1 passed, 26 deselected, 45 warnings in 0.19s ============

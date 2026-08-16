@@ -1,0 +1,78 @@
+{
+  "schema": "qwen38-lmcache-fix/1",
+  "generated_utc": "2026-08-16T23:15:00Z",
+  "agent": "LMCacheFix",
+  "status": "CPU GATES PASSED; UPSTREAM PR FILED; GPU LADDER RE-RUN PENDING (separately gated, 2x lab)",
+  "purpose": "Root-cause the corruption measured in receipts/lmcache-reuse-test.json (posted upstream as corroboration on LMCache#4247 and LMCache#4492) and land a real fix, honestly: fail-before/pass-after CPU tests, upstream PR, full provenance, blind spots named.",
+
+  "root_cause": {
+    "headline": "The bounded-arm corruption (L1cold 7/38, L2warm 7/38) is NOT wrong bytes delivered by LMCache. It is the downstream (GG) vLLM scheduler's hybrid+connector path taking the full-attention group's prefix-cache hit as the model-wide computed prefix whenever ANY KV connector is attached, while delegating restoration of the lagging recurrent (Mamba/GDN) state to the connector -- a contract only nixl fulfils (_apply_prefix_caching transfers the SSM state block unconditionally). LMCacheMPConnector does not restore state for locally-cached prefixes, so generation resumes with an uninitialized or stale GDN recurrent state at the hit boundary. Upstream vLLM has since gated this path on a connector capability flag (supports_divergent_local_hybrid_hits, default False, only nixl opts in) and reconciles to the min-across-groups hit when the connector adds no external tokens; the pinned GG build (vllm 0.11.2.dev280+gilded.gnosis.v20.vllm4d006a4) takes the path unconditionally: vllm/v1/core/sched/scheduler.py lines 727-764 in the promoted image, 'if self.connector is not None and self.has_mamba_layers and isinstance(..., HybridKVCacheCoordinator): ... num_new_local_computed_tokens = max(per_group_hits)'.",
+    "independent_confirmation": "LMCache#4247's reporter hit the identical scheduler bug on upstream vLLM 0.26.0 and cited its upstream fix explicitly: vLLM PR #48425 (commit 229e01e9e), which he backported as 'patch 1' during his bisect ('fixes an unrelated hybrid+KV-connector scheduler bug (num_new_local_computed_tokens = max(per_group_hits))'). His remaining corruption was a different, LMCache-side defect (the rank-4 fused-KV layout edit not firing), fixed by LMCache PR #4253 and validated e2e in that thread. Our GG base carries NEITHER the #48425-class gate NOR needs #4253 (different KV layout path).",
+    "signature_reconciliation_line_by_line": {
+      "rule_as_measured": "a request fails iff a scored needle lies inside [hit_tokens - 1600, hit_tokens): under this root cause that window is exactly the span covered by valid full-attention KV but NOT integrated into any restored recurrent state -- the divergence window between the FA-group hit and the last position where a Mamba state checkpoint exists (one 1600-token block earlier, block size 1600 inferred from every hit in all four arms being a 1600-multiple).",
+      "hit_plus_1600_pattern": "all 76 bounded LMCache-arm rows reconcile as hit_arm = hit_L0 + 1600 OR (hit_L0 == 0 and hit_arm == 0, the first-ever request) OR (L2warm full self-match at the request's own full-chunk cap): verified programmatically against the receipt rows, 76/76. Mechanism: without a connector the recorded hit is vLLM's reconciled min-across-groups (mamba lags the FA frontier by one block); with a connector it is the FA-group hit. The delta is a measurement-path difference inside vLLM, not an LMCache lookup overstatement.",
+      "signature_1_wrong_needle": "resume with a stale recurrent state block (LRU-reused from a freed earlier request whose state encoded the document window containing needle N03) makes state-borne recall answer with the other needle's value; deterministic because block reuse order is deterministic. p1s1-L2warm (legitimate self-match, correct FA KV, still failed) discriminates FOR this mechanism and AGAINST any wrong-bytes-from-LMCache mechanism: the bytes vLLM reused were its own and correct; only the state was missing.",
+      "signature_2_needle_vanishes": "a garbage/washed state at the boundary carries no binding for the needle inside the divergence window; content deeper in the prompt is recomputed (state rebuilt forward), so only needles inside [hit-1600, hit) are lost. Matches p1s5/p2s5/p3s4 exactly (failed at 6400 where L0 was correct at 4800).",
+      "control_7_of_7": "without a connector the scheduler takes get_computed_blocks (min across groups): it only resumes where the mamba state exists. Identical FA geometry, valid state, correct 7/7.",
+      "universal_logprob_divergence": "mean |chosen logprob delta| ~0.245 vs L0 on EVERY bounded-arm request including passers (identical_text_requests: 0) -- every request with a nonzero hit ran with a corrupted boundary state; only requests with scored needles inside the divergence window failed the scoring. Unexplainable by any per-chunk data defect, fully explained by this one.",
+      "L3restart_38_of_38": "bounded arms stored KV and state computed under the corrupted-boundary regime into LMCache (kv_both); after restart vLLM's APC is empty, hits come from LMCache retrieves that re-serve the poisoned stores, and nothing local masks them: poison propagation plus the same missing-state mechanics at greater depth. The wild per-request hit-counter values in the L3 rows for family p1 (e.g. 134400 on a 15570-token prompt) are a counter artifact under async loads, noted, not load-bearing.",
+      "unexplained_remainder": "p1s1 in L3restart failed with ZERO hit tokens and nothing retrieved. Named blind spot, exactly as the original receipt left it; candidates (first-request race with the MP server's CUDA context under Default compute mode; MTP drafter state) are uninstrumented. The GPU ladder re-run below will show whether it persists once the scheduler gate removes the poison source."
+    },
+    "what_this_corrects_in_our_earlier_upstream_comments": "our #4247/#4492 comments attributed the bounded failures to 'the last chunk LMCache supplied'. The measured rule stands, but in the bounded arms LMCache supplied no KV at all for the failing requests (need_to_load was 0; the hit shown by the counter is the FA-group hit). The attribution 'connector present vs absent' was correct operationally; the mechanism is scheduler-side state loss, not LMCache data delivery. Correction posted on both threads."
+  },
+
+  "what_we_ruled_out_by_cpu_experiment": {
+    "lmcache_lookup_overstatement": "drove the pinned wheel's real fs_native L2 adapter + PrefetchController + storage arithmetic on CPU (stub L1, planted keys): reported hits were exactly honest (true-prefix 2 -> 2, 0 -> 0, full 4 -> 4). Harness: /var/tmp/lmc-repro/repro_wheel_lookup.py (runner and outputs mirrored in receipts/lmcache-fix-raw/).",
+    "native_bitmap_off_by_one": "wheel native_storage_ops.Bitmap semantics verified correct on CPU (count_leading_ones, prefix constructor, batched_set, gather).",
+    "upstream_dev_fold_kernel": "csrc/lmcache_native/fold.cpp implements bit j == prefix length j+1 correctly; the contradictory pybind docstring ('size num_chunks + 1 ... bit L == length L') is stale documentation, not behavior.",
+    "hash_chain_false_positives": "chunk keys are prefix-chained (blake3 over (prefix_hash, tokens)); cross-request false hits are content-impossible, which is what forced the attribution off LMCache delivery and onto the scheduler once the wheel pipeline measured honest."
+  },
+
+  "fixes": {
+    "lmcache_upstream_pr": {
+      "url": "https://github.com/LMCache/LMCache/pull/4600",
+      "branch": "malaiwah/LMCache fix/mp-retrieve-failure-error-blocks @ abdf7bcbcb118b96b19ea9ffc984e5dc1fdadc68 (DCO signed)",
+      "what": "fail-closed retrieve-failure propagation in LMCacheMPWorkerAdapter: a retrieve future resolving False (or raising) adds the op's block ids to error_block_ids so get_block_ids_with_load_errors() makes the scheduler invalidate and recompute; raising futures are contained instead of aborting the engine step; single _poll_finished_retrieves() shared by get_finished and get_finished_with_lazy_offload.",
+      "honest_scope": "this does NOT fix our bounded-arm root cause (that is vLLM-side, below). It removes the MP path's silent-corruption channel: today ANY server-side retrieve failure (eviction/lock race between lookup and retrieve, load failure, handler exception) is ACKed to vLLM as a successful load. It is the missing hop named by LMCache#2865 and #3388 and is the minimal, protocol-unchanged, forward-compatible subset of stalled PR #2898; all three cited in the PR.",
+      "applicability": "upstream dev: this PR. Upstream v0.5.2: same two expressions, applies with trivial context adjustment. Our fork/wheel: ALREADY carries an equivalent guard -- the deployed wheel 0.5.2+glm52dcp.4 is byte-identical to fork branch fix/lmcache-mp-retrieve-recovery-20260729 (commit 3cf1e8a5 'fix(vllm): surface MP retrieve failures to the scheduler', Refs #2898/#3388) = base 9cebd405 + 3 commits. Therefore NO cherry-pick onto 9cebd405 is needed for the image; the shipped wheel is already fail-closed and stays untouched.",
+      "cpu_test_matrix": {
+        "how_run": "tests/v1/test_vllm_mp_adapter.py from the source tree, CPU-only venv (torch 2.12.0+cpu), native device kernels stubbed by a local runner (upstream CI runs the same file with the full native build); runner mirrored in receipts/lmcache-fix-raw/run_mp_tests.py",
+        "fail_before_on_unpatched_dev_e8f93818": [
+          "test_failed_retrieve_marks_blocks_as_load_errors FAILED: error_block_ids stayed empty (the silent-corruption behavior)",
+          "test_raising_retrieve_future_is_contained_and_marks_blocks FAILED: RuntimeError escaped get_finished (would abort the engine step)",
+          "test_failed_retrieve_marks_blocks_with_lazy_offload FAILED: error_block_ids stayed empty",
+          "test_successful_retrieve_reports_no_load_errors passed (control)"
+        ],
+        "pass_after": "30 passed (26 pre-existing + 4 new), ruff check and ruff format clean on both changed files"
+      }
+    },
+    "gg_vllm_scheduler_patch": {
+      "file": "patches/gg-vllm-hybrid-divergent-hit-gate.patch",
+      "sha256": "5f9ad10bedff87c4f37ce61bfe9be5cc9ed84dce99d9d3685c54b0341529839f",
+      "what": "gates the GG scheduler's per-group hybrid+connector path on getattr(connector, 'supports_divergent_local_hybrid_hits', False), mirroring upstream vLLM's #48425-lineage contract. With LMCacheMPConnector (no opt-in) the scheduler falls back to get_computed_blocks (min across groups), which resumes only where every group's state exists -- the exact configuration the clean L0 control ran.",
+      "gates_passed_cpu": "patch applies cleanly to the pinned image's scheduler.py and round-trips byte-identically to the reviewed edit; patched file py_compiles. Behavioral proof is GPU-ladder-only by nature and is the named pending item.",
+      "tradeoff_stated": "a GG deployment using nixl P/D with hybrid models would lose the FA-hit optimization until GG rebases the full upstream capability plumbing; the campaign image does not use nixl.",
+      "routing": "handed to Main for the GG-vLLM tree (owner of downstream vLLM patches); ImageForge consumes it as an image layer only if Main approves; it is a vLLM patch, not an LMCache wheel change."
+    }
+  },
+
+  "duplicate_search": {
+    "lmcache": "#2865 (open: MP mode lacks error-handling impl -- the defect), #2898 (open PR since 2026-03-28, superset with protocol change, merge conflicts since May -- cited, not duplicated: ours is its minimal correctness subset and says so), #3388 (open/stale: production confirmation + the same one-hop analysis), #1835 (single-process equivalent, merged), #4253 (fixes #4247's own layout defect, validated in-thread), #4206, #3448/#3631 (instance-identity hardening relevant to #4492's suspicion), #2206/#2207 (V1-adapter-only mitigation, does not reach MP -- as we already posted)",
+    "vllm": "#48425 (the scheduler fix our GG base lacks; confirmed via #4247 reporter's bisect notes and present-in-upstream capability gate supports_divergent_local_hybrid_hits), #19329/#19330 (get_block_ids_with_load_errors contract), #51766 (adjacent mamba-CoW fix, still not the same defect)"
+  },
+
+  "unproven_until_gpu_ladder": [
+    "that the four-arm ladder (same frozen probe, same thresholds) on the GG image + scheduler gate patch turns L1cold/L2warm to 0/38 -- predicted by the root cause, not yet measured",
+    "that L3restart over a FRESH L2 (poison-free stores) is clean with the gate applied; L3 over the existing poisoned L2 directory is expected to stay dirty until wiped -- the re-run must record both",
+    "the p1s1-L3restart zero-hit failure: mechanism uninstrumented, may or may not persist",
+    "PR #4600's behavioral effect end-to-end (CPU tests prove the contract, not GPU transfer correctness); a wheel carrying it should be one arm of the re-run",
+    "whether LMCache retrieves restore hybrid GDN state correctly when they DO supply tokens (ext > 0 with honest stores): our bounded arms never exercised ext > 0, so this remains an open LMCache-side question for the ladder (upstream vLLM's gate makes ext > 0 the only reachable divergent case)"
+  ],
+  "gpu_not_touched": "all work this session was CPU: source reading (pinned image rootfs, upstream dev, upstream v0.5.2, fork), CPU harnesses against the wheel's real modules, unit tests, patch production. The 5090 and the rental card were not used.",
+  "artifacts": {
+    "upstream_pr": "https://github.com/LMCache/LMCache/pull/4600",
+    "upstream_comments": "posted on #4247 and #4492 after this receipt's first commit (URLs appended in a follow-up field by amend commit)",
+    "patch_file": "patches/gg-vllm-hybrid-divergent-hit-gate.patch",
+    "raw": "receipts/lmcache-fix-raw/ (CPU repro harness, test runner, fail-before/pass-after transcripts, row-reconciliation script output)"
+  }
+}

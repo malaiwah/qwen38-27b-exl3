@@ -1,0 +1,20 @@
+Row-level reconciliation of receipts/lmcache-reuse-test.json bounded arms
+Theory: L0 hit = reconciled min-across-groups; LMCache-arm hit = FA-group hit
+Predicted: arm = L0 + 1600, or (L0==0 and arm==0, first-ever request),
+or L2warm full self-match at the request's own full-chunk cap.
+consistent rows: 76/76; inconsistent: []
+all 14 bounded failures (arm, id, L0hit, armhit):
+   ('L1cold', 'p1s2', 0, 1600)
+   ('L1cold', 'p1s5', 4800, 6400)
+   ('L1cold', 'p2s1', 0, 1600)
+   ('L1cold', 'p2s5', 4800, 6400)
+   ('L1cold', 'p3s1', 0, 1600)
+   ('L1cold', 'p3s4', 4800, 6400)
+   ('L1cold', 'p4s1', 0, 1600)
+   ('L2warm', 'p1s1', 0, 1600)
+   ('L2warm', 'p1s5', 4800, 6400)
+   ('L2warm', 'p2s1', 0, 1600)
+   ('L2warm', 'p2s5', 4800, 6400)
+   ('L2warm', 'p3s1', 0, 1600)
+   ('L2warm', 'p3s4', 4800, 6400)
+   ('L2warm', 'p4s1', 0, 1600)

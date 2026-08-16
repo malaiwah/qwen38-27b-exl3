@@ -1,0 +1,220 @@
+[32;20m[2026-08-16 22:52:56,435] LMCache INFO:[0m torch_dev=StubCPUDevice(device_type=cpu), torch_device_type=cpu [3m(_device_detect.py:143:lmcache.v1.platform._device_detect)[0m
+[33;20m[2026-08-16 22:52:56,435] LMCache WARNING:[0m No compute backend loaded; CLI-only mode (torch/numba not installed). Reason: No module named 'lmcache.lmcache_native' [3m(__init__.py:30:lmcache)[0m
+
+tests/v1/test_vllm_mp_adapter.py::test_register_kv_caches_updates_kv_caches_and_submits 
+-------------------------------- live log setup --------------------------------
+INFO     lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:1100 LMCache MP worker adapter created with instance_id=4161028311957980593
+-------------------------------- live log call ---------------------------------
+INFO     lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:1255 Registering kv caches
+INFO     lmcache.v1.multiprocess.transfer_context.worker_transfer:worker_transfer.py:879 Creating transfer context (device_type=cuda, mode=auto)
+ERROR    lmcache.integration.vllm.utils:utils.py:68 vLLM is not available but tried to query kv cache layout information, cannot get KV cache layout
+PASSED                                                                   [  3%]
+tests/v1/test_vllm_mp_adapter.py::test_register_kv_caches_raises_connection_error_on_timeout 
+-------------------------------- live log setup --------------------------------
+INFO     lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:1100 LMCache MP worker adapter created with instance_id=1307893521638403621
+-------------------------------- live log call ---------------------------------
+INFO     lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:1255 Registering kv caches
+INFO     lmcache.v1.multiprocess.transfer_context.worker_transfer:worker_transfer.py:879 Creating transfer context (device_type=cuda, mode=auto)
+ERROR    lmcache.integration.vllm.utils:utils.py:68 vLLM is not available but tried to query kv cache layout information, cannot get KV cache layout
+PASSED                                                                   [  6%]
+tests/v1/test_vllm_mp_adapter.py::test_register_kv_caches_cpu_submits_engine_driven_context_registration 
+-------------------------------- live log setup --------------------------------
+INFO     lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:1100 LMCache MP worker adapter created with instance_id=2858893520414000994
+-------------------------------- live log call ---------------------------------
+INFO     lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:1255 Registering kv caches
+INFO     lmcache.v1.multiprocess.transfer_context.worker_transfer:worker_transfer.py:879 Creating transfer context (device_type=cpu, mode=auto)
+INFO     lmcache.v1.multiprocess.transfer_context.worker_transfer:worker_transfer.py:108 Using EngineDrivenTransferContext (sync) for store path
+ERROR    lmcache.integration.vllm.utils:utils.py:68 vLLM is not available but tried to query kv cache layout information, cannot get KV cache layout
+INFO     lmcache.v1.gpu_connector.kv_format.detection:detection.py:69 Engine KV Format: 13 NL x [2, NB, NH, BS, HS]
+INFO     lmcache.v1.multiprocess.transfer_context.base:base.py:255 Creating EngineDrivenContextPickle (pickle transport)
+INFO     lmcache.v1.multiprocess.transfer_context.worker_transfer:worker_transfer.py:745 Worker non-GPU transfer context registered (instance_id=2858893520414000994, mode=pickle)
+PASSED                                                                   [ 10%]
+tests/v1/test_vllm_mp_adapter.py::test_submit_store_request_tracks_returned_future 
+-------------------------------- live log setup --------------------------------
+INFO     lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:1100 LMCache MP worker adapter created with instance_id=68856432658512550
+PASSED                                                                   [ 13%]
+tests/v1/test_vllm_mp_adapter.py::test_submit_store_request_expands_block_ids_to_views 
+-------------------------------- live log setup --------------------------------
+INFO     lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:1100 LMCache MP worker adapter created with instance_id=4593706226266634199
+PASSED                                                                   [ 16%]
+tests/v1/test_vllm_mp_adapter.py::test_submit_retrieve_request_tracks_returned_future 
+-------------------------------- live log setup --------------------------------
+INFO     lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:1100 LMCache MP worker adapter created with instance_id=3059135237323612130
+PASSED                                                                   [ 20%]
+tests/v1/test_vllm_mp_adapter.py::test_load_store_op_accepts_per_group_block_ids PASSED [ 23%]
+tests/v1/test_vllm_mp_adapter.py::test_store_keeps_event_until_future_finishes 
+-------------------------------- live log setup --------------------------------
+INFO     lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:1100 LMCache MP worker adapter created with instance_id=2353805108750770550
+PASSED                                                                   [ 26%]
+tests/v1/test_vllm_mp_adapter.py::test_retrieve_keeps_event_until_future_finishes 
+-------------------------------- live log setup --------------------------------
+INFO     lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:1100 LMCache MP worker adapter created with instance_id=4168213250403785304
+PASSED                                                                   [ 30%]
+tests/v1/test_vllm_mp_adapter.py::test_instance_id_is_uuid_derived_63_bit_int 
+-------------------------------- live log setup --------------------------------
+INFO     lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:1100 LMCache MP worker adapter created with instance_id=3747937626827778417
+-------------------------------- live log call ---------------------------------
+INFO     lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:1100 LMCache MP worker adapter created with instance_id=1003323195222339487
+PASSED                                                                   [ 33%]
+tests/v1/test_vllm_mp_adapter.py::test_instance_id_logged_at_info_on_construction 
+-------------------------------- live log setup --------------------------------
+INFO     lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:1100 LMCache MP worker adapter created with instance_id=107161005045705308
+PASSED                                                                   [ 36%]
+tests/v1/test_vllm_mp_adapter.py::test_heartbeat_lazy_start_wires_callback_before_start 
+-------------------------------- live log setup --------------------------------
+INFO     lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:1100 LMCache MP worker adapter created with instance_id=1015160531328913106
+PASSED                                                                   [ 40%]
+tests/v1/test_vllm_mp_adapter.py::test_heartbeat_first_ping_runs_callback_before_setting_event 
+-------------------------------- live log call ---------------------------------
+INFO     lmcache.v1.periodic_thread:periodic_thread.py:304 PeriodicThread lmcache-heartbeat entering main loop (interval=60.0s)
+INFO     lmcache.v1.periodic_thread:periodic_thread.py:248 Started PeriodicThread: lmcache-heartbeat (level=critical, interval=60.0s, init_wait=0.0s)
+WARNING  lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:458 LMCache server is healthy again, triggering recovery callback
+WARNING  lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:467 LMCache server is healthy again — resuming normal operation
+INFO     lmcache.v1.periodic_thread:periodic_thread.py:267 Stopping PeriodicThread: lmcache-heartbeat
+INFO     lmcache.v1.periodic_thread:periodic_thread.py:371 PeriodicThread lmcache-heartbeat loop stopped
+PASSED                                                                   [ 43%]
+tests/v1/test_vllm_mp_adapter.py::test_dropped_retrieve_reported_once_via_unhealthy_get_finished 
+-------------------------------- live log setup --------------------------------
+INFO     lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:1100 LMCache MP worker adapter created with instance_id=4396789573525765844
+PASSED                                                                   [ 46%]
+tests/v1/test_vllm_mp_adapter.py::test_dropped_retrieve_reported_once_via_healthy_get_finished 
+-------------------------------- live log setup --------------------------------
+INFO     lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:1100 LMCache MP worker adapter created with instance_id=1829763387102230210
+PASSED                                                                   [ 50%]
+tests/v1/test_vllm_mp_adapter.py::test_failed_retrieve_marks_blocks_as_load_errors 
+-------------------------------- live log setup --------------------------------
+INFO     lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:1100 LMCache MP worker adapter created with instance_id=3778773715646239747
+-------------------------------- live log call ---------------------------------
+ERROR    lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:1595 Retrieve failed for request_id=req-1: 2 block id(s) flagged for engine recompute.
+PASSED                                                                   [ 53%]
+tests/v1/test_vllm_mp_adapter.py::test_successful_retrieve_reports_no_load_errors 
+-------------------------------- live log setup --------------------------------
+INFO     lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:1100 LMCache MP worker adapter created with instance_id=3222614300073658393
+PASSED                                                                   [ 56%]
+tests/v1/test_vllm_mp_adapter.py::test_raising_retrieve_future_is_contained_and_marks_blocks 
+-------------------------------- live log setup --------------------------------
+INFO     lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:1100 LMCache MP worker adapter created with instance_id=343912027755260523
+-------------------------------- live log call ---------------------------------
+ERROR    lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:1585 Retrieve future raised for request_id=req-1; treating it as a failed retrieve.
+Traceback (most recent call last):
+  File "/var/tmp/lmcache-upstream/lmcache/integration/vllm/vllm_multi_process_adapter.py", line 1581, in _poll_finished_retrieves
+    r_result = r_future.result(timeout=60)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mbelleau/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/unittest/mock.py", line 1139, in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mbelleau/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/unittest/mock.py", line 1143, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mbelleau/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/unittest/mock.py", line 1198, in _execute_mock_call
+    raise effect
+RuntimeError: ipc event import failed
+ERROR    lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:1595 Retrieve failed for request_id=req-1: 1 block id(s) flagged for engine recompute.
+PASSED                                                                   [ 60%]
+tests/v1/test_vllm_mp_adapter.py::test_failed_retrieve_marks_blocks_with_lazy_offload 
+-------------------------------- live log setup --------------------------------
+INFO     lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:1100 LMCache MP worker adapter created with instance_id=401595630494356162
+-------------------------------- live log call ---------------------------------
+INFO     lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:124 lmcache.mp.mq_timeout = 300.0
+INFO     lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:124 lmcache.mp.heartbeat_interval = 10.0
+INFO     lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:124 lmcache.mp.mp_transfer_mode = auto
+INFO     lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:1100 LMCache MP worker adapter created with instance_id=3163272002172249742
+ERROR    lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:1595 Retrieve failed for request_id=req-1: 2 block id(s) flagged for engine recompute.
+PASSED                                                                   [ 63%]
+tests/v1/test_vllm_mp_adapter.py::test_shutdown_stops_heartbeat_before_unregister 
+-------------------------------- live log setup --------------------------------
+INFO     lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:1100 LMCache MP worker adapter created with instance_id=753919496002237228
+-------------------------------- live log call ---------------------------------
+INFO     lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:1897 Unregistering kv caches
+PASSED                                                                   [ 66%]
+tests/v1/test_vllm_mp_adapter.py::test_shutdown_without_heartbeat_sends_unregister 
+-------------------------------- live log setup --------------------------------
+INFO     lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:1100 LMCache MP worker adapter created with instance_id=3362614789676215515
+-------------------------------- live log call ---------------------------------
+INFO     lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:1897 Unregistering kv caches
+PASSED                                                                   [ 70%]
+tests/v1/test_vllm_mp_adapter.py::test_straggler_cycle_after_stop_skips_callback_and_event 
+-------------------------------- live log call ---------------------------------
+INFO     lmcache.v1.periodic_thread:periodic_thread.py:304 PeriodicThread lmcache-heartbeat entering main loop (interval=60.0s)
+INFO     lmcache.v1.periodic_thread:periodic_thread.py:248 Started PeriodicThread: lmcache-heartbeat (level=critical, interval=60.0s, init_wait=0.0s)
+INFO     lmcache.v1.periodic_thread:periodic_thread.py:267 Stopping PeriodicThread: lmcache-heartbeat
+WARNING  lmcache.v1.periodic_thread:periodic_thread.py:276 PeriodicThread lmcache-heartbeat did not terminate within 0.1s timeout
+INFO     lmcache.v1.periodic_thread:periodic_thread.py:371 PeriodicThread lmcache-heartbeat loop stopped
+PASSED                                                                   [ 73%]
+tests/v1/test_vllm_mp_adapter.py::test_recover_callback_skips_register_after_stop_requested 
+-------------------------------- live log setup --------------------------------
+INFO     lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:1100 LMCache MP worker adapter created with instance_id=175940836548522085
+-------------------------------- live log call ---------------------------------
+INFO     lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:1255 Registering kv caches
+ERROR    lmcache.integration.vllm.utils:utils.py:68 vLLM is not available but tried to query kv cache layout information, cannot get KV cache layout
+INFO     lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:1369 Heartbeat stop requested; skipping KV cache re-registration
+PASSED                                                                   [ 76%]
+tests/v1/test_vllm_mp_adapter.py::test_register_uses_local_context_when_self_transfer_ctx_nulled 
+-------------------------------- live log call ---------------------------------
+INFO     lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:1100 LMCache MP worker adapter created with instance_id=4607264479170786203
+INFO     lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:1255 Registering kv caches
+ERROR    lmcache.integration.vllm.utils:utils.py:68 vLLM is not available but tried to query kv cache layout information, cannot get KV cache layout
+PASSED                                                                   [ 80%]
+tests/v1/test_vllm_mp_adapter.py::test_startup_warns_when_heartbeat_interval_exceeds_reap_floor 
+-------------------------------- live log setup --------------------------------
+INFO     lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:1100 LMCache MP worker adapter created with instance_id=2012558145522337166
+-------------------------------- live log call ---------------------------------
+INFO     lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:124 lmcache.mp.mq_timeout = 300.0
+INFO     lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:116 lmcache.mp.heartbeat_interval = 15.0 (overridden, default: 10.0)
+INFO     lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:124 lmcache.mp.mp_transfer_mode = auto
+INFO     lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:1100 LMCache MP worker adapter created with instance_id=1449668953361239738
+PASSED                                                                   [ 83%]
+tests/v1/test_vllm_mp_adapter.py::test_startup_does_not_warn_for_default_heartbeat_interval 
+-------------------------------- live log setup --------------------------------
+INFO     lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:1100 LMCache MP worker adapter created with instance_id=2032734638102650797
+-------------------------------- live log call ---------------------------------
+INFO     lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:1100 LMCache MP worker adapter created with instance_id=4319833725922146924
+PASSED                                                                   [ 86%]
+tests/v1/test_vllm_mp_adapter.py::test_recover_callback_rebuilds_transfer_ctx_without_closing_previous 
+-------------------------------- live log setup --------------------------------
+INFO     lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:1100 LMCache MP worker adapter created with instance_id=4120026169235454797
+-------------------------------- live log call ---------------------------------
+INFO     lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:1255 Registering kv caches
+ERROR    lmcache.integration.vllm.utils:utils.py:68 vLLM is not available but tried to query kv cache layout information, cannot get KV cache layout
+ERROR    lmcache.integration.vllm.utils:utils.py:68 vLLM is not available but tried to query kv cache layout information, cannot get KV cache layout
+WARNING  lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:1386 Finished re-registering KV caches after server recovery
+ERROR    lmcache.integration.vllm.utils:utils.py:68 vLLM is not available but tried to query kv cache layout information, cannot get KV cache layout
+WARNING  lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:1386 Finished re-registering KV caches after server recovery
+PASSED                                                                   [ 90%]
+tests/v1/test_vllm_mp_adapter.py::test_enabled_feature_receives_reclaim_and_shutdown 
+-------------------------------- live log setup --------------------------------
+INFO     lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:1100 LMCache MP worker adapter created with instance_id=3332518599881771902
+-------------------------------- live log call ---------------------------------
+INFO     lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:1897 Unregistering kv caches
+PASSED                                                                   [ 93%]
+tests/v1/test_vllm_mp_adapter.py::test_recovery_reports_the_ring_re_registration_result[True] 
+-------------------------------- live log setup --------------------------------
+INFO     lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:1100 LMCache MP worker adapter created with instance_id=3734061040324559164
+-------------------------------- live log call ---------------------------------
+INFO     lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:1255 Registering kv caches
+INFO     lmcache.v1.multiprocess.transfer_context.worker_transfer:worker_transfer.py:879 Creating transfer context (device_type=cuda, mode=auto)
+ERROR    lmcache.integration.vllm.utils:utils.py:68 vLLM is not available but tried to query kv cache layout information, cannot get KV cache layout
+INFO     lmcache.v1.multiprocess.transfer_context.worker_transfer:worker_transfer.py:879 Creating transfer context (device_type=cuda, mode=auto)
+ERROR    lmcache.integration.vllm.utils:utils.py:68 vLLM is not available but tried to query kv cache layout information, cannot get KV cache layout
+WARNING  lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:1386 Finished re-registering KV caches after server recovery
+PASSED                                                                   [ 96%]
+tests/v1/test_vllm_mp_adapter.py::test_recovery_reports_the_ring_re_registration_result[False] 
+-------------------------------- live log setup --------------------------------
+INFO     lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:1100 LMCache MP worker adapter created with instance_id=3887515690688862042
+-------------------------------- live log call ---------------------------------
+INFO     lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:1255 Registering kv caches
+INFO     lmcache.v1.multiprocess.transfer_context.worker_transfer:worker_transfer.py:879 Creating transfer context (device_type=cuda, mode=auto)
+ERROR    lmcache.integration.vllm.utils:utils.py:68 vLLM is not available but tried to query kv cache layout information, cannot get KV cache layout
+INFO     lmcache.v1.multiprocess.transfer_context.worker_transfer:worker_transfer.py:879 Creating transfer context (device_type=cuda, mode=auto)
+ERROR    lmcache.integration.vllm.utils:utils.py:68 vLLM is not available but tried to query kv cache layout information, cannot get KV cache layout
+WARNING  lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:1386 Finished re-registering KV caches after server recovery
+WARNING  lmcache.integration.vllm.vllm_multi_process_adapter:vllm_multi_process_adapter.py:1390 Failed to re-register dispatcher after server recovery; will retry on next heartbeat
+PASSED                                                                   [100%]
+
+=============================== warnings summary ===============================
+../lmc-repro/lib/python3.12/site-packages/opentelemetry/sdk/_logs/_internal/__init__.py:580: 45 warnings
+  /var/tmp/lmc-repro/lib/python3.12/site-packages/opentelemetry/sdk/_logs/_internal/__init__.py:580: DeprecationWarning: `LoggingHandler` in `opentelemetry-sdk` is deprecated. Use the handler from `opentelemetry-instrumentation-logging` instead.
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================= 30 passed, 45 warnings in 0.48s ========================
