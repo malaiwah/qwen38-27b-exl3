@@ -495,6 +495,8 @@ and the byte-law-at-`Q6_K`'s-surplus form best, the opposite of what the surroga
 implied. The published point prediction of ~0.0016 was within 2.1 % of measurement, the most accurate
 advance prediction this project has made — and the miss is printed beside it rather than dropped.
 
+**Related artifact:** the measured answer to "what if one bit lower" is published as [`malaiwah/Qwen3.8-27B-EXL3-S16-V-research`](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-S16-V-research) — a **rejected** sub-4-bit build at **0.045374** [0.041959, 0.049351], **4.39x** this build's 0.010345, losing 512 of 512 contexts to it. It is published so the 16 GB no-go can be audited rather than taken on trust.
+
 **Correction, 2026-08-16 — the byte axis in the table above is not one axis, and every mixed
 comparison flattered us.** A GGUF row is the **whole file** of a **text-only** artifact; our row is
 **tensor payload** of a **multimodal** tree that also carries an MTP draft. Read from each artifact's

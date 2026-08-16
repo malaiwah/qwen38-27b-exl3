@@ -22,6 +22,22 @@
 > published as a [dataset](https://huggingface.co/datasets/malaiwah/qwen38-27b-fidelity-suite-v5),
 > with archival mirrors of the third-party artifacts our numbers cite.
 >
+> **Two more artifacts published 2026-08-16, both from pre-registered conversions.**
+> [`malaiwah/Qwen3.8-27B-EXL3-K6-parity`](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K6-parity)
+> spends the bytes GGUF `Q6_K` spends on the body - the hydrated recipe with `gate_proj`/`up_proj`
+> promoted K5 -> K6 - and **matches it**: mean KLD **0.001634** [0.001541, 0.001742], between
+> `Q6_K`'s net-of-floor 0.001528 and its measured 0.002035, beating our hydrated build on 511 of
+> 512 contexts (-39.5 % for +1.348 GiB) while carrying **2.31 GiB less transformer body** than
+> `Q6_K`. So the 6-bit-class loss was a byte gap, not an engineering one.
+> [`malaiwah/Qwen3.8-27B-EXL3-S16-V-research`](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-S16-V-research)
+> is the opposite: the **rejected** sub-4-bit 16 GB candidate at **0.045374** [0.041959, 0.049351],
+> 1.5x its pre-registered NO threshold, losing 512/512 contexts to K4 (4.39x) and to the context
+> edition (13.31x). It is published *because* it failed - a NO nobody can audit is an assertion -
+> and it is the empirical anchor for the K3 rung of the per-bit law
+> ([docs/37](docs/37-error-driven-allocation.md) §3.3). Both payloads were predicted to the **byte**
+> by the affine law before conversion, and both registered intervals are reported with their
+> misses: S16-V's point estimate was 1.52x too high, K6-parity's interval fell 2.0 % short.
+>
 > The earlier headline — 0.007945 body-only on 136 v3 contexts / 278,392 positions
 > ([docs/22](docs/22-results-iteration-2.md)) — stands exactly as measured and is superseded only
 > as *the* headline; v5 absolute KLD is **not** comparable to v3 (the two suites differ by a

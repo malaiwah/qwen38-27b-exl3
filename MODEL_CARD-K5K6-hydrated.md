@@ -572,6 +572,8 @@ and the byte-law-at-`Q6_K`'s-surplus form best, the opposite of what the surroga
 implied. The published point prediction of ~0.0016 was within 2.1 % of measurement, the most accurate
 advance prediction this project has made — and the miss is printed beside it rather than dropped.
 
+**Related artifact:** the byte-parity variant of *this* recipe — `gate_proj` and `up_proj` promoted K5 -> K6 — is published as [`malaiwah/Qwen3.8-27B-EXL3-K6-parity`](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K6-parity) and measures **0.001634** [0.001541, 0.001742], matching GGUF `Q6_K` at equal file bytes for +1.348 GiB over this build.
+
 **The two conclusions worth stating plainly:**
 
 1. **At the 6-bit operating point GGUF `Q6_K` is genuinely better than this build** — 0.001528 net
