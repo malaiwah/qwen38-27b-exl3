@@ -1135,21 +1135,25 @@ never run it, and it is the outstanding suspect in the one user report of prefix
 corruption we have. Nothing here says LMCache is safe; the evidence above covers vLLM's own
 prefix cache and nothing else.
 
-**#51812 is measured as a no-op for the recipes on this card, and it is not recommended here.**
-Upstream #51812 (Qwen GDN speculative gate ordering: the vendored code gathers the speculative
+**#51812 was not observed to do anything on the recipes on this card, and it is not recommended
+here.** Upstream #51812 (Qwen GDN speculative gate ordering: the vendored code gathers the speculative
 Q/K/V rows but hands the recurrent update the ungathered `a`/`b` gate tensors, so gate row *i* can
 belong to a different token than Q/K/V row *i*) merged 2026-08-11 and is absent from the promoted
 image. A CPU-only counter mounted over the engine's GDN metadata builder measured whether that path
 is ever entered on **this edition's own eight-stream concurrent profile** — the native 262,144
 window, `--max-num-seqs 8`, MTP-3, fp8 KV, `--max-num-batched-tokens 2048`, utilisation 0.97, and
-**prefix caching off**, as both recipes here ship it. **Zero events in 3,329 metadata builds**,
-which bounds it below **0.90 miscomputed metadata builds per thousand** (95 % upper bound, rule of
-three)
+**prefix caching off**, as both recipes here ship it. **Zero events in 3,329 metadata builds**, which
+bounds the rate below **0.90 miscomputed metadata builds per thousand** — and below **1.42 per
+thousand gather-branch builds** — at 95 % by the rule of three
 ([`receipts/gdn-gate-concurrency.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/gdn-gate-concurrency.json)).
-This is not a rare window that a short run missed: the suspect gather branch ran **2,112 times**,
+**Read that as a bound, not as an absence.** A zero over 3,329 builds says the rate is small, not
+that the composition cannot occur: the smallest rate this run could have resolved is one event in
+3,329 builds, 0.30 per thousand, and the traffic was ours rather than yours. What the run does rule
+out is a rare-window excuse, because the suspect gather branch was not rare — it ran **2,112 times**,
 63 % of all builds, and the speculative tokens were the leading tokens of the batch every single
-time, which is what the engine's batch reorder guarantees when no non-speculative request shares
-their region. Mixed batches are the normal steady state here and they are harmless.
+time, which is what the engine's batch reorder gives you when no non-speculative request shares
+their region. Mixed batches are the normal steady state here, and in that ordering the gather is
+aligned and the module changes nothing.
 
 **Reachable elsewhere, though — this is a statement about this recipe, not about the defect.** The
 same instrument entered the defective path in the siblings' shipped 8,192-token prefix-caching

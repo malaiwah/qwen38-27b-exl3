@@ -287,5 +287,24 @@
     ],
     "note": "other agents' uncommitted work in the tree (docker/smoke_client.py, docs/35, the qualification-24gib-capped raw artefacts) was deliberately left alone"
   },
-  "content_sha256": "f65159283bafc7adeb6f69f208eb10fa08ba16804063d777f616b4285999a685"
+  "revision_2": {
+    "when": "after GdnGateAtConcurrency reviewed the landed wording",
+    "trigger": "GdnGateAtConcurrency asked that R1's zero on the context card must not read as 'the defect cannot happen'; it also corrected its own docs/36 and receipt wording (commit f00d153) to match the two precision notes I sent, since with num_speculative_tokens = 0 the module is structurally inert rather than merely unmeasured",
+    "change": "MODEL_CARD-K5K6-context.md only: the paragraph heading moved from '#51812 is measured as a no-op for the recipes on this card' to '#51812 was not observed to do anything on the recipes on this card', and the zero is now explicitly a bound: below 0.90 per thousand metadata builds AND below 1.42 per thousand gather-branch builds at 95 % by the rule of three, with the run's own resolution stated (one event in 3,329 builds, 0.30 per thousand) and a note that the traffic was ours. The closing sentence no longer says mixed batches 'are harmless' full stop; it says that in that ordering the gather is aligned and the module changes nothing.",
+    "numbers_added_and_where_read": {
+      "below 1.42 per thousand gather-branch builds": "measured.arms.R1.reachability.zero_arm_95pct_upper_bound_per_thousand_mixed_builds = 1.420455",
+      "resolution one event in 3,329 builds, 0.30 per thousand": "measured.arms.R1.reachability.resolution_one_event_per_thousand_builds = 0.300391"
+    },
+    "the_other_three_cards": "unchanged; their R1/R3 zeros were already written as 95 % upper bounds",
+    "republished": {
+      "generated_utc": "2026-08-16T07:16:20Z",
+      "all_byte_identical": true,
+      "context_card": {
+        "bytes": 98107,
+        "sha256": "ce0cdd5de600f35c9ebc949a0e83403db71c60b1023421ac1f7a930ac4fe6710"
+      },
+      "other_three": "already_current, re-fetched byte-identical again"
+    }
+  },
+  "content_sha256": "3145255f1ed9dbd4f7635d8cbc90732dc6ec5875b0ab0e51d2a012fd70108b19"
 }
