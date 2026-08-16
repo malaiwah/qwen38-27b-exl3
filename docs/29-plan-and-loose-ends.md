@@ -864,12 +864,33 @@ the conversion to completion. Something in the published run supplied it and not
 what. The conversion-capable image is now `gg-r34-convert`, which installs the same verified
 wheel the rebuild used; what is owed is an environment record captured at build time — image
 digest plus every dependency supplied beside it — so the next build is re-enterable rather than
-merely re-attemptable. **(b) Does a sibling rebuild land inside our interval?** Never run. The
-sibling built for this measurement was released with its working tree unscored. The test is now
-cheap on the scoring side because the shard-0 BF16 reference is published — one candidate
-capture plus one replay, about 6 minutes of GPU — but it needs a ~40-minute conversion first to
-have a sibling to score. Until then the published statement stands as written: a sibling should
-land within measurement resolution, and that has not been tested.
+merely re-attemptable. **(b) Does a sibling rebuild land inside our interval? — CLOSED, yes.**
+A third distinct checkpoint was built from the same converter worktree (diff digest
+`578066cda60415e0...`, equal to the one the determinism receipt recorded), verified to be a
+sibling rather than a twin — identical per-role byte totals, 21,586,964,548 B of payload, 2,426
+physical and 1,199 logical tensors, all 715 `tensor_storage` entries, per-shard headers and
+shard sizes identical to the byte, with **399 `.trellis` payloads differing at 39.41-91.76 % of
+their bytes, mean 82.30 %**, independently reproducing the 399-of-409 result on a third
+checkpoint — and then scored on the identical protocol. Sibling **0.002703638** [0.0025229,
+0.0029114] against the published **0.002699883** [0.0025165, 0.0029118]; **paired difference
+−3.755e-06 with a 95 % interval of [−2.854e-05, +2.062e-05] that brackets zero**, 330 clusters,
+10,000 resamples, seed 1, and a 257-to-255 win split with no ties — a coin flip with no
+direction. Top-1 97.80 % versus 97.78 %
+([`receipts/sibling-rebuild-fidelity.json`](../receipts/sibling-rebuild-fidelity.json)).
+
+Two controls put the comparison's floor at exactly zero rather than at a tolerance: replaying
+the **published** checkpoint against the same surviving BF16 capture returned the published mean
+and all 512 per-context rows bitwise, so the reference swap is a measured no-op; and recapture
+reproduces the published mean exactly. The −3.755e-06 is therefore attributable to the sibling's
+weights and to nothing in the harness.
+
+**So the recipe determines fidelity to within this protocol's resolution: 97.6 % of quantized
+modules come back with different bytes and the measured quality is the same.** No published
+fidelity number acquires a converter-variance term and none needs amending. Stated with its
+limits: one rebuild, one recipe, one shard, at this protocol's resolution — this is not a general
+claim that converter nondeterminism is fidelity-neutral. Read beside rank 9, where a
+byte-budget-identical *reallocation* moved KLD by +0.000366 and lost, the pair says the
+allocation is what matters and the trellis bytes are not.
 
 ## P1 / rank 4 — public capability retention
 
