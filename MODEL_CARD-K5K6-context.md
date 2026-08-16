@@ -807,6 +807,51 @@ bench unchanged
 requires the declared-superset image that adds #51113 (`localhost/vllm:gg-r34-patched-apc`,
 not the qualified digest) plus a qualification run of its own.
 
+### 24 GB class
+
+This checkpoint has a 24 GB-class serving profile. **No new conversion is required** — it is the
+same weights, so every fidelity number above carries over unchanged.
+
+| profile | context window | KV dtype | MTP | `max_num_seqs` | image cap | KV pool required |
+|---|---:|---|---|---:|---:|---:|
+| speculative | **24,576** | fp8 | 3 draft tokens | 1 | 8.4 MP | 1.43 GiB |
+| non-speculative | **45,056** | fp8 | off | 1 | 8.4 MP | 1.52 GiB |
+
+Both windows are **predictions**, not measurements on a 24 GB board. They rest on a
+**capped-budget proxy**: an RTX 5090 whose engine budget was restricted to 22.49 GiB *and* whose
+card was ballasted down to 23.55 GiB free — a 24 GiB board's budget and its card together. On that
+proxy, **32,768 with MTP-3 and 45,056 with MTP off were each started and passed 7/7 gates**:
+startup, needle retrieval at the profile's own length, a combined long-text plus 7 MP image
+request, the 30-case vision suite, warmed throughput, a second long request in the same process,
+and receipt completeness. **24,576 was not itself started.** It is derived from those measurements
+as the largest 4,096-multiple clearing the ≥15 % KV-headroom rule, and it is safe *a fortiori*: it
+requires **1.4269 GiB** against the **1.6925 GiB** the gated 32,768 window actually demanded, at a
+measured 1.79 GiB pool. **The physical-board gate remains open.** No 24 GB board has been started,
+and until one is, "predicted" and "allocated" are different words.
+
+**A budget cap on a big card is not a substitute for a small board.** The control arm, which
+capped the engine's budget but left the card whole, peaked 1,496 MiB *above* the total memory a
+24 GB board has — it passed the image gates on memory no such board owns, which is precisely why
+the ballasted arm exists and why this profile is labelled a proxy.
+
+Serving flags — the qualified 32 GB configuration with the window changed and nothing else:
+
+```bash
+VLLM_EXL3_EMBED_BITS=8 VLLM_EXL3_GRAPH_DECODE=1 \
+PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
+vllm serve <ctx-checkpoint> --gpu-memory-utilization 0.955 \
+  --max-model-len 24576 --max-num-seqs 1 --kv-cache-dtype fp8 \
+  --max-num-batched-tokens 2048 \
+  --speculative-config '{"method":"mtp","num_speculative_tokens":3}' \
+  --mm-processor-kwargs '{"truncation":false,"max_pixels":8388608}' \
+  --compilation-config '{"cudagraph_mode":"FULL_DECODE_ONLY","cudagraph_capture_sizes":[4]}'
+```
+
+For the non-speculative profile, drop `--speculative-config` and set `--max-model-len 45056`.
+
+Evidence: `receipts/qualification-24gib-capped.json` (proxy qualification, `physical_board_gate:
+open`) and `receipts/vram-class-verdict.json` (class decision and arithmetic).
+
 ## Throughput
 
 Median of 3 runs on one **rental RTX PRO 6000 Blackwell**, `--max-num-seqs 8`, greedy,
@@ -1090,16 +1135,47 @@ never run it, and it is the outstanding suspect in the one user report of prefix
 corruption we have. Nothing here says LMCache is safe; the evidence above covers vLLM's own
 prefix cache and nothing else.
 
-**#51812 stays an optional overlay, deliberately.** Upstream #51812 (Qwen GDN speculative gate
-ordering: gathered Q/K/V rows and unsorted `a`/`b` gate rows can belong to different tokens in
-a mixed batch, which drifts logits) merged 2026-08-11 and is absent from the same images. It is
-**not** in the promoted release unit, because a mixed batch is the only condition it bites in
-and `--max-num-seqs 1` never produces one — the run that served 38/38 clean with it mounted
-therefore shows it is harmless, not that it fixes anything, and at concurrency it is unmeasured
-by us and rests on upstream's own numbers. If you serve concurrently, mount it as well:
-`tools/vllm-qwen-gdn-spec-gates.py` (`sha256 7cd3f5fe…`) over
-`/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py`
-([`receipts/gdn-spec-gate-defect.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/gdn-spec-gate-defect.json)).
+**#51812 is measured as a no-op for the recipes on this card, and it is not recommended here.**
+Upstream #51812 (Qwen GDN speculative gate ordering: the vendored code gathers the speculative
+Q/K/V rows but hands the recurrent update the ungathered `a`/`b` gate tensors, so gate row *i* can
+belong to a different token than Q/K/V row *i*) merged 2026-08-11 and is absent from the promoted
+image. A CPU-only counter mounted over the engine's GDN metadata builder measured whether that path
+is ever entered on **this edition's own eight-stream concurrent profile** — the native 262,144
+window, `--max-num-seqs 8`, MTP-3, fp8 KV, `--max-num-batched-tokens 2048`, utilisation 0.97, and
+**prefix caching off**, as both recipes here ship it. **Zero events in 3,329 metadata builds**,
+which bounds it below **0.90 miscomputed metadata builds per thousand** (95 % upper bound, rule of
+three)
+([`receipts/gdn-gate-concurrency.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/gdn-gate-concurrency.json)).
+This is not a rare window that a short run missed: the suspect gather branch ran **2,112 times**,
+63 % of all builds, and the speculative tokens were the leading tokens of the batch every single
+time, which is what the engine's batch reorder guarantees when no non-speculative request shares
+their region. Mixed batches are the normal steady state here and they are harmless.
+
+**Reachable elsewhere, though — this is a statement about this recipe, not about the defect.** The
+same instrument entered the defective path in the siblings' shipped 8,192-token prefix-caching
+recipe at eight streams: **three events in 5,825 builds, 0.515 per thousand**. The three cards that
+ship `--enable-prefix-caching --mamba-cache-mode align` now recommend mounting the overlay for
+concurrent serving; this card does not, because the flag that opens the path is the one both recipes
+here decline. Two consequences worth stating plainly. If you take the **capped-window prefix-caching
+option** described above — `--max-model-len 256000` with `--enable-prefix-caching --mamba-cache-mode
+align` — and run it at more than one sequence, you are in the regime that fired, and you should
+mount the overlay; its rate at that window is unmeasured. And the token-budget clamp mechanism
+specifically was not observed at all: 9,027 gather-branch builds across two token budgets bound it
+below 0.332 per thousand, which is rarer-than-our-exposure, not impossible.
+
+If you want it anyway, it is one more read-only mount: `tools/vllm-qwen-gdn-spec-gates.py`
+(`sha256 7cd3f5fe763b621048af4817951a841d99c8b700d9a56ded27ccaca5a56ccbe0`) over
+`/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py`,
+diff-identical to upstream's eight changed lines and `py_compile`-clean under the image's Python
+3.12.3. It stays an **overlay and deliberately not part of the qualified digest**:
+`sha256:16a936b877b90f…` is what was qualified, and a reachability count is not evidence that would
+survive a re-qualification. **The effect on answers was measured in neither direction**, and
+measuring it was declined on resolution grounds: upstream's per-event effect is **0.002755** mean
+absolute chosen-logprob error against this project's measured **0.0823** run-to-run floor — a noise
+floor about thirty times the size of one event — so no A/B at these rates could return anything but
+its own noise
+([`receipts/gdn-spec-gate-defect.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/gdn-spec-gate-defect.json)
+is the source-level defect analysis).
 
 **What is still qualified here, and at what.** The recipe above is unchanged apart from the
 fourth mount, and the fourth mount changes nothing while prefix caching is off:

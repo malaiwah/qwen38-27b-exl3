@@ -1,0 +1,250 @@
+{
+  "schema": "qwen38-card-final-pass/1",
+  "generated_utc": "2026-08-16T07:12:27Z",
+  "agent": "CardFinalPass",
+  "purpose": "land two late measurements on the four model cards, re-publish, prove byte-identity, and record which checks were no-ops",
+  "gpu_use": "none. No CUDA process, no nvidia-smi, no container started; the physical RTX 5090 was left free for RentalCloseout's converter-determinism rebuild. Every number here was read out of a receipt on disk.",
+  "source_receipts": {
+    "receipts/gdn-gate-concurrency.json": {
+      "content_sha256": "119a50947fed9706fdfdd225d1713707098885c111a41098438e81bb46596e98",
+      "generated_utc": "2026-08-16T06:56:56Z",
+      "what_it_justifies": "the #51812 overlay recommendation on the three prefix-caching cards and its explicit non-recommendation on the context edition"
+    },
+    "receipts/vram-class-verdict.json": {
+      "content_sha256": "ed5283aa2eb0648f57b8c78fa30743dbfa52236247bedf7fae9c9ab48de3900a",
+      "expected_prefix_from_assignment": "ed5283aa2eb0648f5",
+      "prefix_matches": true,
+      "what_it_justifies": "the 24 GB-class block's windows, KV requirements and class decision"
+    },
+    "receipts/qualification-24gib-capped.json": {
+      "content_sha256_as_cited_by_the_verdict": "d336df53786f1b0aa7efa63a527871f19b7e80c10e0b6e3e2375ce78d38eb4c1",
+      "what_it_justifies": "the capped-budget proxy figures in that block: budget, ballasted card, gate passes, the 1,496 MiB control-arm excess and the measured KV law"
+    }
+  },
+  "changes": [
+    {
+      "id": "C1",
+      "change": "GDN #51812 overlay recommendation added beside the existing module discussion on the three cards whose recipes ship prefix caching",
+      "cards": [
+        "MODEL_CARD-K4.md",
+        "MODEL_CARD-K5K6.md",
+        "MODEL_CARD-K5K6-hydrated.md"
+      ],
+      "justified_by": "receipts/gdn-gate-concurrency.json",
+      "numbers_landed_and_where_each_was_read": {
+        "3 events in 5825 metadata builds": "measured.arms.R2.reachability.counts (builds_total 5825, mixed_misordered 3)",
+        "0.515 per thousand metadata builds": "measured.arms.R2.reachability.misordered_per_thousand_builds = 0.515021",
+        "regime: window 8192, --enable-prefix-caching --mamba-cache-mode align, util 0.85, --max-num-seqs 8, fp8 KV, MTP-3, --max-num-batched-tokens 2048": "measured.arms.R2.vllm_argv, and arms.R2.description records that the first three flags were taken from MODEL_CARD-K4.md",
+        "468 requests, zero errors": "measured.arms.R2.load.requests / .errors",
+        "prefix-cache hit rate reaching 50.1 %": "verdict.R2_a_shipped_prefix_caching_regime.why_this_regime_is_not_hypothetical",
+        "composition 6 speculative decodes + 1 non-speculative, displacement 4, first bad index 20": "verdict.R2...the_composition_that_fired (key 6s/1p/0d, max_displaced_spec_tokens 4, first_misordered_token_index_min 20)",
+        "zero in 3329 builds with prefix caching off, below 0.90 per thousand": "measured.arms.R1.reachability (builds_total 3329, zero_arm_95pct_upper_bound_per_thousand_builds 0.901172)",
+        "zero in 8065 builds at a quarter of the token budget": "measured.arms.R3.reachability (builds_total 8065; vllm_argv --max-num-batched-tokens 512 against R1/R2's 2048)",
+        "module sha256 7cd3f5fe763b621048af4817951a841d99c8b700d9a56ded27ccaca5a56ccbe0": "analysis.module_under_test.sha256, and re-verified by sha256sum of tools/vllm-qwen-gdn-spec-gates.py on disk: identical",
+        "destination vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py": "analysis.module_under_test.destination",
+        "diff-identical to upstream's eight changed lines, py_compile-clean under Python 3.12.3": "verdict.recommendation_for_the_cards.per_the_pre_registered_rule",
+        "per-event effect 0.002755 against a 0.0823 run-to-run floor": "verdict.what_was_NOT_resolved[0] and pre_registration.floor_that_any_claimed_difference_must_beat = 0.08231278"
+      },
+      "what_the_cards_now_say": [
+        "mount tools/vllm-qwen-gdn-spec-gates.py read-only over the vendored qwen_gdn_linear_attn.py, with its full digest",
+        "why: the defective path was entered three times in 5,825 metadata builds, 0.515 per thousand, in this shipped regime",
+        "the mechanism in one actionable sentence: at eight streams with prefix caching on a short non-speculative request can land between speculative ones and the unpatched gather then misaligns the gates",
+        "it is an overlay and deliberately NOT promoted into the qualified digest sha256:16a936b8..., because a reachability count is not evidence that would survive a re-qualification",
+        "the effect on answers was not measured and measuring it was declined: three events in 5,825 builds cannot move a statistic whose noise floor is about thirty times the per-event effect, so the A/B was not run and no claim is made either way"
+      ],
+      "pre_registration_named_on_the_cards": "the recommendation is attributed to the rule fixed before the GPU window opened (pre_registration.decision_rule.if_mixed_misordered_is_nonzero_in_R1_at_any_rate), not to a fresh cost-benefit argument"
+    },
+    {
+      "id": "C1b",
+      "change": "two accuracy corrections I had to make to my own C1 text before publishing, after reading each card's actual recipe",
+      "detail": [
+        "MODEL_CARD-K4.md and MODEL_CARD-K5K6-hydrated.md publish their 8,192-token prefix-caching command with NO --speculative-config, and the defect requires speculative tokens (analysis.exact_condition...why[0]: the speculative branch is entered only when spec_sequence_masks is not None). Those two cards therefore state both conditions explicitly: with no MTP the module is a no-op by construction, and at --max-num-seqs 1 no mixed batch can form. An earlier draft of my text had listed fp8 KV and MTP-3 as part of 'this card's flag set', which they are not; the published text attributes them to the measurement arm instead. Only MODEL_CARD-K5K6.md's Recipe B ships --speculative-config mtp/3 together with prefix caching and eight streams.",
+        "R2 (and R1/R3) served the context edition's weights, not the card's own checkpoint. All three cards now say so, with the reason it is still the right evidence: the counter reads only the scheduler's host-side arrays, so composition follows the flags and the traffic, and the checkpoint enters only through the size of the KV pool."
+      ]
+    },
+    {
+      "id": "C2",
+      "change": "the opposite statement on the context edition's card: the overlay is NOT recommended for its recipes",
+      "cards": [
+        "MODEL_CARD-K5K6-context.md"
+      ],
+      "justified_by": "receipts/gdn-gate-concurrency.json arm R1",
+      "numbers_landed_and_where_each_was_read": {
+        "zero events in 3329 metadata builds": "measured.arms.R1.reachability.counts",
+        "below 0.90 miscomputed metadata builds per thousand, 95 % upper bound": "measured.arms.R1.reachability.zero_arm_95pct_upper_bound_per_thousand_builds = 0.901172",
+        "gather branch ran 2112 times, 63 % of builds, speculative tokens leading every time": "measured.arms.R1.reachability.counts.mixed_branch / mixed_identity and verdict.R1_our_published_eight_stream_recipe.reading",
+        "R1 regime: native 262144, --max-num-seqs 8, MTP-3, fp8 KV, --max-num-batched-tokens 2048, utilisation 0.97, --no-enable-prefix-caching": "measured.arms.R1.vllm_argv",
+        "9027 gather-branch builds bound the token-budget clamp mechanism below 0.332 per thousand": "verdict.what_was_resolved[4]"
+      },
+      "not_implied_to_be_unreachable_in_general": "the card states that the same instrument entered the path three times in 5,825 builds in the siblings' 8,192-token prefix-caching recipe, that the three cards which ship the cache now recommend the overlay, that the clamp mechanism is bounded rather than proven impossible, and that anyone taking this card's own capped-window prefix-caching option (--max-model-len 256000 with --enable-prefix-caching --mamba-cache-mode align) at more than one sequence is in the regime that fired and should mount the overlay, its rate at that window being unmeasured."
+    },
+    {
+      "id": "C3",
+      "change": "docs/34 section 11 lift-verbatim block landed on the context edition's card only",
+      "cards": [
+        "MODEL_CARD-K5K6-context.md"
+      ],
+      "placement": "as '### 24 GB class', last subsection of '## Native 262,144, qualified on a physical RTX 5090', immediately before '## Throughput'",
+      "identity": "the 44 lines between the BEGIN/END CARD BLOCK markers were compared line-for-line against the card after insertion: identical",
+      "absent_from": [
+        "MODEL_CARD-K4.md",
+        "MODEL_CARD-K5K6.md",
+        "MODEL_CARD-K5K6-hydrated.md"
+      ],
+      "figures_verified_before_pasting": {
+        "24,576 with MTP-3, fp8 KV, max_num_seqs 1, 8.4 MP image cap, 1.43 GiB KV pool": "vram-class-verdict class_24_gib.context.mtp_3_fp8.published_recommendation = 24576, requirement_gib = 1.4269",
+        "45,056 with MTP off, fp8 KV, 1.52 GiB KV pool": "vram-class-verdict class_24_gib.context.mtp_off_fp8.published_recommendation = 45056, requirement_gib = 1.522; qualification-24gib-capped published_prediction_outcomes.prediction_2.board_arm_measured.kv_needed_for_one_request_gib = 1.5219",
+        "engine budget capped to 22.49 GiB": "qualification-24gib-capped arms.board.expected_budget_gib = 22.49 and the logged startup line 'Desired GPU memory utilization is (0.7164, 22.49 GiB)'",
+        "card ballasted to 23.55 GiB free": "qualification-24gib-capped runs.b*.ballast.target_free_gib 23.553, cuda_free_after_ballast_gib 23.551",
+        "control arm peaked 1,496 MiB above a 24 GiB board's CUDA total": "qualification-24gib-capped memory_component_comparison.outside_the_budget.the_finding and runs.a32m.engine_only_peak_mib.gate4_vision.margin_against_a_24gib_board_mib = -1496",
+        "both labelled predictions, physical-board gate open": "qualification-24gib-capped physical_board_gate and vram-class-verdict class_24_gib.what_go_means"
+      },
+      "all_figures_agreed": true,
+      "one_wording_defect_found_and_corrected": {
+        "as_written_in_docs_34": "\"All seven qualification gates passed at both windows\", printed directly beneath a table publishing 24,576 and 45,056",
+        "why_that_is_wrong": "the MTP-3 window the proxy started and gated was 32,768 (qualification-24gib-capped runs.a32e/a32m/b32e/b32m, profile mtp3_32768); there is no 24,576 run anywhere in that receipt. 24,576 was derived afterwards, in docs/34 section 10.1's superseding note, as the largest 4,096-multiple clearing the >= 15 % KV-headroom rule.",
+        "what_was_published_instead": "the clause now names the two windows that were started and gated 7/7 (32,768 with MTP-3 and 45,056 with MTP off), says plainly that 24,576 was not itself started, and states why the derivation is conservative rather than optimistic: 24,576 requires 1.4269 GiB against the 1.6925 GiB the gated 32,768 window demanded, at a measured 1.79 GiB pool.",
+        "the_source_was_fixed_too": "docs/34 section 11's block carries the corrected clause, so the card and the lift-verbatim source are identical and nobody re-publishes the old sentence; a dated correction note under the block records the change and the reason.",
+        "same_phrasing_audited_elsewhere": "section 10.1's heading 'Both published lengths pass' had the same defect once 24,576 replaced 32,768 as a published length, and was reworded to 'Both windows the proxy started pass'. Every other gate claim in sections 10 and 11 is already attached to a started window (10.1 body: four configurations, both of them started windows x two arms; 10.1 item 3 and 10.4: the 68 MiB and 1,496 MiB margins, both at 32,768 with MTP-3).",
+        "escalated": "flagged to Main before publishing; Main directed the amendment and the source fix rather than a verbatim paste."
+      },
+      "three_constraints_from_the_measuring_agent_respected": {
+        "do_not_raise_45,056": "not raised; the block's 45,056 is unchanged and the receipt-level headroom discussion was not lifted",
+        "no_24_GB_row_on_the_hydrated_card": "none added; grep for '### 24 GB class' returns 1 match across the four cards, on the context card",
+        "if_the_card_names_a_board_it_names_the_measured_one": "the block names a capped RTX 5090, not a 24 GB product; the card already carries that board's driver 610.57.04 with CUDA UMD 13.3"
+      }
+    }
+  ],
+  "checked_and_already_correct_no_edit_made": [
+    {
+      "id": "N1",
+      "check": "driver strings match the machine they belong to",
+      "found": "already correct on all four cards, no edit made",
+      "evidence": [
+        "MODEL_CARD-K4.md: 'All measured on 1x RTX PRO 6000 Blackwell Server Edition (SM120, 96 GB), driver 595.58.03' - the rental, correct string",
+        "all four cards: 'the user's own physical GeForce RTX 5090 (32,607 MiB, driver 610.57.04)' - correct string",
+        "MODEL_CARD-K5K6-context.md: '31.4 GiB usable; driver 610.57.04, CUDA UMD 13.3' - correct pairing",
+        "no occurrence of 595.58.03 attached to a 5090, and none of 610.57.04 attached to the rental RTX PRO 6000, in any of the four cards"
+      ],
+      "cross_check": "the physical 5090's driver is also 610.57.04 in gdn-gate-concurrency.json measured.stage.gpu, which is the machine that ran the arms landed today"
+    },
+    {
+      "id": "N2",
+      "check": "any KV per-token figure is labelled a ratio at one measured window, not a coefficient",
+      "found": "already correct where such a figure is published, no edit made",
+      "evidence": [
+        "MODEL_CARD-K5K6.md: publishes 34,816 B/token with MTP-3 and 32,932 without, states the law is affine as a*L + M with M = 0.63 GiB under MTP-3 and 0.14 GiB without, says M is charged per request so raising --max-num-seqs pays it again per slot, and describes the retired 37.4 KB/token as pool / reported tokens at one 262,144 window that overstated the coefficient by about 8 %",
+        "MODEL_CARD-K5K6-hydrated.md: same content, written as 34,816 B/token x 262,144 + 0.63 GiB, with the same per-request warning and the same retirement of 37.4 KB/token",
+        "MODEL_CARD-K4.md and MODEL_CARD-K5K6-context.md: publish no KV per-token coefficient at all, so there was nothing to label; their KV figures are pool requirements (for example 9.13 GiB at 262,144), which are per-request quantities already",
+        "no card contains the string 37,584, 37.4 KB/token as a live figure, 36,773.9 or 36,765"
+      ],
+      "cross_check": "34,816 B/token, 32,931.8 B/token, M = 0.63 GiB and M = 0.14 GiB all read from vram-class-verdict.json kv_model.mtp3_fp8_parameters / mtp_off_fp8_parameters, both labelled MEASURED there, and reproduced in qualification-24gib-capped.json kv_law_measured.law"
+    },
+    {
+      "id": "N3",
+      "check": "does the overlay recommendation already exist on the cards from the previous pass",
+      "found": "no. All four carried the older paragraph '#51812 stays an optional overlay, deliberately', which said the module is unmeasured at concurrency and rests on upstream's own numbers. That is now false, and it was replaced on all four rather than added beside.",
+      "verification": "the strings \"rests on upstream's own numbers\" and \"38/38 clean with it mounted\" no longer occur in any of the four cards"
+    }
+  ],
+  "publication": {
+    "schema": "qwen38-apc-card-publication/1",
+    "generated_utc": "2026-08-16T07:10:55Z",
+    "tool": "hf upload, HF_HOME=/var/tmp/hf-home-3, user malaiwah",
+    "what_changed": "GDN #51812 overlay recommendation on the three prefix-caching recipes, its measured absence on the context edition, and the 24 GB-class block (corrected gate clause) on the context card",
+    "per_repo": [
+      {
+        "repo": "malaiwah/Qwen3.8-27B-EXL3-K5K6-context",
+        "local_card": "MODEL_CARD-K5K6-context.md",
+        "local_bytes": 97683,
+        "local_sha256": "ecde7c8f9fc2a774b67b923a054dea5c2fa6bf34155a1edb0bae2523daa055d5",
+        "local_lines": 1279,
+        "published_before": {
+          "bytes": 92326,
+          "sha256": "b41ccd6611b376fda303d4d35921161049499b69ab9090106b4eda1e47802b66"
+        },
+        "docs_sha256sums_had_readme_line": true,
+        "published_bytes": 97683,
+        "published_sha256": "ecde7c8f9fc2a774b67b923a054dea5c2fa6bf34155a1edb0bae2523daa055d5",
+        "published_lines": 1279,
+        "byte_identical": true,
+        "docs_sha256sums_readme_current": true,
+        "docs_sha256sums_byte_identical": true
+      },
+      {
+        "repo": "malaiwah/Qwen3.8-27B-EXL3-K5K6",
+        "local_card": "MODEL_CARD-K5K6.md",
+        "local_bytes": 93937,
+        "local_sha256": "6a44ab36e169b5879a86993dcdad33aa00b18a15c3e300e01ad3351845c362d0",
+        "local_lines": 1207,
+        "published_before": {
+          "bytes": 90916,
+          "sha256": "8fc129ba7b5388441055622f5f73f1426f3eb98a66371466abe922ebb36a2b6b"
+        },
+        "docs_sha256sums_had_readme_line": true,
+        "published_bytes": 93937,
+        "published_sha256": "6a44ab36e169b5879a86993dcdad33aa00b18a15c3e300e01ad3351845c362d0",
+        "published_lines": 1207,
+        "byte_identical": true,
+        "docs_sha256sums_readme_current": true,
+        "docs_sha256sums_byte_identical": true
+      },
+      {
+        "repo": "malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated",
+        "local_card": "MODEL_CARD-K5K6-hydrated.md",
+        "local_bytes": 82293,
+        "local_sha256": "34b3e3cf18046dc3806b3f6e437c7aeaac30b53c56d34a8b6c3733eaf75dcdd9",
+        "local_lines": 1047,
+        "published_before": {
+          "bytes": 78707,
+          "sha256": "76ff63f4b0b665e9a5353ceb95956c1334609df48af2c2f996180583e6bc3c28"
+        },
+        "docs_sha256sums_had_readme_line": true,
+        "published_bytes": 82293,
+        "published_sha256": "34b3e3cf18046dc3806b3f6e437c7aeaac30b53c56d34a8b6c3733eaf75dcdd9",
+        "published_lines": 1047,
+        "byte_identical": true,
+        "docs_sha256sums_readme_current": true,
+        "docs_sha256sums_byte_identical": true
+      },
+      {
+        "repo": "malaiwah/Qwen3.8-27B-K4",
+        "local_card": "MODEL_CARD-K4.md",
+        "local_bytes": 89306,
+        "local_sha256": "92d97773f1e7c9f7cf227c49fb752d37595fc35ed53ff66bcd0ea805f908ac95",
+        "local_lines": 1179,
+        "published_before": {
+          "bytes": 85741,
+          "sha256": "1277156f0dcc186b29da6c5003d5847920ebac1693462aa56a92daa3ca022175"
+        },
+        "docs_sha256sums_had_readme_line": true,
+        "published_bytes": 89306,
+        "published_sha256": "92d97773f1e7c9f7cf227c49fb752d37595fc35ed53ff66bcd0ea805f908ac95",
+        "published_lines": 1179,
+        "byte_identical": true,
+        "docs_sha256sums_readme_current": true,
+        "docs_sha256sums_byte_identical": true
+      }
+    ],
+    "all_byte_identical": true
+  },
+  "byte_identity_proof": "tools/publish_cards.py uploads the local card as README.md, refreshes that repo's DOCS-SHA256SUMS README line, then re-fetches both files from the hub into a throwaway cache under HF_HOME=/var/tmp/hf-home-3 and compares bytes. all_byte_identical is true for the four repos; published_before hashes matched receipts/apc-card-publication.json exactly, so nothing else had moved the cards since the previous pass.",
+  "files_written": [
+    "MODEL_CARD-K4.md",
+    "MODEL_CARD-K5K6.md",
+    "MODEL_CARD-K5K6-hydrated.md",
+    "MODEL_CARD-K5K6-context.md",
+    "docs/34-vram-class-profiles.md",
+    "receipts/card-final-pass.json"
+  ],
+  "not_touched": [
+    "docs/29-*",
+    "docs/36-*",
+    "PROGRESS.md",
+    "receipts/gdn-gate-concurrency.json",
+    "receipts/vram-class-verdict.json",
+    "receipts/qualification-24gib-capped.json",
+    "tools/publish_cards.py"
+  ],
+  "content_sha256": "42f93c253b40dc5ec0fd189203f43e2d46f3d647a7f24de58fb1403cdca6bef9"
+}

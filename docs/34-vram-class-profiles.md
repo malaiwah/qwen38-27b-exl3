@@ -771,7 +771,7 @@ that board's 23.5527 GiB CUDA total less the engine's measured 0.496 GiB context
 0.7643 was tried first and rejected: it prints "24.0 GiB", which is 23.995 rounded to the engine's
 two decimals and therefore evidence of nothing.
 
-### 10.1 Both published lengths pass, and one of them passes on the edge
+### 10.1 Both windows the proxy started pass, and one of them passes on the edge
 
 All seven gates pass in all four configurations — startup, needle at the profile's own length,
 combined long-text-plus-7 MP image, the 30-case image suite, three warmed decode runs, a second
@@ -929,14 +929,17 @@ same weights, so every fidelity number above carries over unchanged.
 | speculative | **24,576** | fp8 | 3 draft tokens | 1 | 8.4 MP | 1.43 GiB |
 | non-speculative | **45,056** | fp8 | off | 1 | 8.4 MP | 1.52 GiB |
 
-Both windows are **predictions**, not measurements on a 24 GB board. They were validated on a
+Both windows are **predictions**, not measurements on a 24 GB board. They rest on a
 **capped-budget proxy**: an RTX 5090 whose engine budget was restricted to 22.49 GiB *and* whose
-card was ballasted down to 23.55 GiB free — a 24 GiB board's budget and its card together. All
-seven qualification gates passed at both windows: startup, needle retrieval at the profile's own
-length, a combined long-text plus 7 MP image request, the 30-case vision suite, warmed throughput,
-a second long request in the same process, and receipt completeness. **The physical-board gate
-remains open.** No 24 GB board has been started, and until one is, "predicted" and "allocated"
-are different words.
+card was ballasted down to 23.55 GiB free — a 24 GiB board's budget and its card together. On that
+proxy, **32,768 with MTP-3 and 45,056 with MTP off were each started and passed 7/7 gates**:
+startup, needle retrieval at the profile's own length, a combined long-text plus 7 MP image
+request, the 30-case vision suite, warmed throughput, a second long request in the same process,
+and receipt completeness. **24,576 was not itself started.** It is derived from those measurements
+as the largest 4,096-multiple clearing the ≥15 % KV-headroom rule, and it is safe *a fortiori*: it
+requires **1.4269 GiB** against the **1.6925 GiB** the gated 32,768 window actually demanded, at a
+measured 1.79 GiB pool. **The physical-board gate remains open.** No 24 GB board has been started,
+and until one is, "predicted" and "allocated" are different words.
 
 **A budget cap on a big card is not a substitute for a small board.** The control arm, which
 capped the engine's budget but left the card whole, peaked 1,496 MiB *above* the total memory a
@@ -973,3 +976,15 @@ Three notes for whoever lands it, **not** part of the block:
 3. **If the card names a board, it must name the one that was measured**, which is an RTX 5090 at
    SM120 / TP1 / driver 610.57.04 with CUDA UMD 13.3, capped — not any 24 GB product, and not
    the 595.58.03 the rental measurements used. §5.4 is the rule.
+
+**Correction, 2026-08-16 (CardFinalPass, landing the block).** The block's validation clause used to
+read "All seven qualification gates passed at both windows" directly beneath a table publishing
+24,576, which a careful reader takes as a gate pass at a window nobody started: the MTP-3 window the
+proxy started and gated was 32,768 (`runs.a32*`/`runs.b32*` in
+`receipts/qualification-24gib-capped.json`; there is no 24,576 run), and 24,576 was derived
+afterwards in §10.1's superseding note. The clause now names the two started windows and says
+plainly that 24,576 is derived and conservative — it needs 1.4269 GiB against the 1.6925 GiB the
+gated window demanded. §10.1's heading was reworded from "Both published lengths pass" for the same
+reason: what passed were the two windows the proxy started, and one of the two published lengths has
+since changed. The version landed on `MODEL_CARD-K5K6-context.md` is the corrected text, and the two
+are identical; `receipts/card-final-pass.json` records the reading and the amendment.

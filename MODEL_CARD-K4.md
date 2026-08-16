@@ -726,16 +726,58 @@ never run it, and it is the outstanding suspect in the one user report of prefix
 corruption we have. Nothing here says LMCache is safe; the evidence above covers vLLM's own
 prefix cache and nothing else.
 
-**#51812 stays an optional overlay, deliberately.** Upstream #51812 (Qwen GDN speculative gate
-ordering: gathered Q/K/V rows and unsorted `a`/`b` gate rows can belong to different tokens in
-a mixed batch, which drifts logits) merged 2026-08-11 and is absent from the same images. It is
-**not** in the promoted release unit, because a mixed batch is the only condition it bites in
-and `--max-num-seqs 1` never produces one — the run that served 38/38 clean with it mounted
-therefore shows it is harmless, not that it fixes anything, and at concurrency it is unmeasured
-by us and rests on upstream's own numbers. If you serve concurrently, mount it as well:
-`tools/vllm-qwen-gdn-spec-gates.py` (`sha256 7cd3f5fe…`) over
-`/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py`
-([`receipts/gdn-spec-gate-defect.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/gdn-spec-gate-defect.json)).
+**#51812 is now recommended if you serve this recipe concurrently with MTP, and it stays an
+overlay.** Upstream #51812 (Qwen GDN speculative gate ordering: the vendored code gathers the
+speculative Q/K/V rows but hands the recurrent update the ungathered `a`/`b` gate tensors, so gate
+row *i* can belong to a different token than Q/K/V row *i*) merged 2026-08-11 and is absent from the
+promoted image. Whether that path is ever entered is no longer an argument — it was counted. A
+CPU-only instrument over the engine's GDN metadata builder ran the three flags **this card**
+publishes for prefix caching (`--max-model-len 8192`, `--enable-prefix-caching --mamba-cache-mode
+align`, `--gpu-memory-utilization 0.85`) at **eight** concurrent streams, with MTP-3, fp8 KV and
+`--max-num-batched-tokens 2048` supplied by the arm, and the defective path **was entered: three
+events in 5,825 metadata builds, 0.515 per thousand**, over 468 requests with zero errors and a
+prefix-cache hit rate reaching 50.1 %
+([`receipts/gdn-gate-concurrency.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/gdn-gate-concurrency.json)).
+The mechanism, in one sentence you can act on: at eight streams with prefix caching on, a short
+non-speculative request can land between speculative ones in the same batch, and the unpatched
+gather then misaligns the gates. All three firings had one shape — six speculative decodes plus one
+non-speculative request, that request beginning at token index 20 and displacing one four-token
+speculative decode, whose four gate rows were read from the wrong tokens. Two boundaries on that
+number. The same instrument saw **zero** events in 3,329 builds at eight streams with prefix caching
+**off** (below 0.90 per thousand, 95 % upper bound) and zero in 8,065 builds at a quarter of the
+token budget, so it is the cache path that opens this rather than concurrency alone. And the arm
+served the context edition's weights: the counter reads only the scheduler's host-side arrays, so
+what it measures is a function of flags and traffic, with the checkpoint entering only through the
+size of the KV pool.
+
+**Two conditions gate all of this, and the command below is missing one of them.** The changed code
+runs only when a batch carries speculative tokens at all — the vendored file takes its speculative
+branch only when `spec_sequence_masks is not None` — so with **no `--speculative-config`, as the
+command below ships, the module is a no-op by construction**; and at `--max-num-seqs 1` no mixed
+batch can form either. Add MTP to this recipe and the measurement above is what applies. The command
+below ships `--max-num-seqs 4`, four streams rather than the eight that were measured, where the
+same mechanism exists and its rate is unmeasured. When both conditions hold, mount it read-only:
+`tools/vllm-qwen-gdn-spec-gates.py`
+(`sha256 7cd3f5fe763b621048af4817951a841d99c8b700d9a56ded27ccaca5a56ccbe0`) over
+`/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py`.
+It is diff-identical to upstream's eight changed lines and `py_compile`-clean under the image's
+Python 3.12.3, and it is an **overlay deliberately not part of the qualified digest**:
+`sha256:16a936b877b90f…` is what was qualified, and a reachability count is not evidence that would
+survive a re-qualification, so it is mounted over the vendored file rather than promoted into the
+image.
+
+**The effect on answers was not measured, and measuring it was declined on resolution grounds.**
+Three events in 5,825 builds cannot move a statistic whose run-to-run floor is **0.0823** mean
+absolute chosen-logprob error against a per-event effect of **0.002755** — a noise floor about
+thirty times the size of one event — so an A/B would have returned its own noise and was
+deliberately not run. Nothing here claims the overlay changes an answer, or that it does not. The
+recommendation follows a rule fixed before the GPU window opened instead: a nonzero rate in a
+regime we ship gets the free fix, because a silently miscomputed forward pass gives the operator no
+signal at all. Traffic in that arm was adversarial by design — eight speculative streams plus
+injected short prompts and full-cache-hit repeats — so 0.515 per thousand is an upper bound on a
+shipped regime, not a forecast for your workload
+([`receipts/gdn-spec-gate-defect.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/gdn-spec-gate-defect.json)
+is the source-level defect analysis).
 
 **Scope on this build, stated narrowly.** What was measured on this profile is that the recipe
 starts healthy on the promoted image with the cache on, answers a text and an image request
