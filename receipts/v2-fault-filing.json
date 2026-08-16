@@ -1,0 +1,40 @@
+{
+  "schema": "qwen38-upstream-filing/1",
+  "generated_utc": "2026-08-16T13:23:26Z",
+  "target_repo": "local-inference-lab/vllm",
+  "filed": {
+    "issue": {
+      "number": 396,
+      "url": "https://github.com/local-inference-lab/vllm/issues/396",
+      "title": "[Bug] V2 model runner: replay of the speculator's captured draft-decode FULL graph raises `cudaErrorIllegalAddress` on a hybrid GDN+attention EXL3 model (MTP-3)",
+      "state_at_verification": "open",
+      "created_at": "2026-08-16T13:23:26Z",
+      "author": "malaiwah",
+      "body_source": "upstream/v2-runner-replay-fault.md",
+      "verified_by_get": true
+    }
+  },
+  "access": {
+    "gh_cli": "not installed",
+    "credential_used": "~/.git-credentials entry for github.com, user malaiwah, classic PAT — same credential as the prior #392/#394 filings",
+    "api": "GitHub REST v3 (POST /repos/local-inference-lab/vllm/issues, then GET back)"
+  },
+  "evidence_cited": {
+    "receipts/v2-runner-depth-schedule.json": {
+      "commit": "4d3cade",
+      "role": "the two faulting warmup arms (v2base static MTP-3, v2sched per-batch depth schedule), the CUDA_LAUNCH_BLOCKING pin to cudagraph_utils.py:589 graphs[desc].replay(), and the no-MTP / eager attribution serves"
+    },
+    "receipts/perf-sweep-5090.json": {
+      "commit": "b8c72cc",
+      "role": "MRV1 depth-3 vs depth-1 numbers: C1 83.31 vs 74.28 per-request tok/s, C8 409.35 vs 313.28 aggregate tok/s (+30.67 %)"
+    }
+  },
+  "cross_link_pr_393": {
+    "posted": false,
+    "reason": "read PR #393 first as instructed: it is the #51113/#51812 scheduler + GDN-gate cherry-pick and does not discuss the V2 model runner or the speculator draft-graph path, so the conditional cross-link comment was skipped"
+  },
+  "scope_notes": {
+    "advocacy": "none beyond the measured numbers; honest-scope section states no minimal reproducer outside our model family, no stock-vLLM test, and that the faulting buffer is not identified",
+    "no_gpu_work": "no GPU was used by this filing; all numbers are quoted from existing committed receipts"
+  }
+}
