@@ -142,19 +142,55 @@ V2 runner accounts for most of that delta, but the extra wrappers are part of
 it, and at `--gpu-memory-utilization 0.97` the engine is left with tens of MiB
 of headroom.
 
-## Explicitly open (does not affect this fix)
+## Not upstream
 
-* **A second, independent fault is under investigation on the same profile.**
-  With this fix applied, both V2 arms serve, but the throughput probe's first
-  2048-token prefill kills the engine with
+`upstream/main` @ `fe1c31715` cannot reach this. Its gate is
+`enable_cuda_graph and pure_decode and num_decode_tokens <= _decode_cudagraph_max_bs`
+(flashinfer.py:1678-1682) with **no** `q_len` term, it calls `fast_plan_decode`
+**without** `q_len_per_req` (1697-1718), and it keys `_get_decode_wrapper` by
+`num_decode_tokens` (1685) — upstream flattens a spec-decode batch into
+single-token rows, so row count equals token count and capture/replay always
+resolve to the same persistent wrapper. `persistent_decode_wrapper_eligible`,
+`decode_q_len_from_indptr` and
+`flashinfer_supports_uniform_multi_token_decode` do not exist upstream. The
+regression arrived with this fork's uniform multi-token decode support, so this
+PR is the right and only venue. (The *family* is public: FlashInfer documents
+that `plan()` cannot be captured by a CUDA graph, and
+flashinfer-ai/flashinfer#1832 documents non-uniform `q_len` in speculative
+decode. Neither is this gate.)
+
+## Measured after filing
+
+Same box, same harness and frozen prompts as the fork's perf receipts; medians
+of 3 timed repeats after a warm repeat; full probe completed `rc=0` in every
+arm. Because the V2 runner needs ~800 MiB more than MRV1 on this profile (see
+*Cost*), these arms run `--gpu-memory-utilization 0.95 --max-model-len 131072`,
+with an **MRV1 baseline measured at the identical setting in the same window**:
+
+| T=0 aggregate decode | C1 | C4 | C8 | accepted tok/step (C1 → C8) |
+|---|---|---|---|---|
+| MRV1 baseline (matched) | 82.78 | 255.75 | 301.63 | 2.16 → 2.14 |
+| V2 + fix, static depth 3 | 82.75 | 273.36 | 312.89 | 2.11 → 2.14 |
+| V2 + fix + depth schedule | **87.35** | 251.74 | **416.29 (+38.0 %)** | 2.25 → 1.69 |
+
+The depth schedule is visibly doing what it claims: depth 3 at batch 1
+(2.25 accepted tokens/step, 25.5 ms steps) and depth 1 at batch 8 (1.69,
+31.3 ms steps). Greedy T=0 completions for 8 frozen prompts are identical
+across two runs **within** each engine process in all four arms; cross-process
+bit-exactness is not claimable on this stack and predates this change
+(`exl3_gemm` autotune selects kernel configs by measured time per process:
+baseline-vs-baseline restarts differ 7/8, within-instance repeats 8/8
+identical), so the guard is within-process plus an acceptance-rate comparison.
+
+## Still open (does not affect this fix)
+
+* At `--gpu-memory-utilization 0.97` the V2 runner leaves tens of MiB free and
+  the probe's first 2048-token prefill kills the engine with
   `torch.OutOfMemoryError: ... Tried to allocate 68.00 MiB ... 58.56 MiB is
   free` inside the EXL3 prefill reconstruct (`_reconstruct_hgemm_into` →
-  `torch.empty_like(x)`), in **both** the static-depth and depth-schedule arms.
-  That is a memory-budget problem at `--gpu-memory-utilization 0.97` under the
-  V2 runner, not a plan-buffer problem; it is being measured separately.
-* The per-batch-size speculative depth schedule this unblocks is **still under
-  measurement**; no throughput number is claimed here.
-* Greedy output on this stack is not reproducible across engine restarts
-  (`exl3_gemm` autotune selects kernel configs by measured time per process;
-  baseline-vs-baseline restarts differ 7/8, within-instance repeats are 8/8
-  identical). Any fidelity comparison here is within-process by necessity.
+  `torch.empty_like(x)`), in **both** arms, with the depth schedule off and on.
+  That is a memory-budget problem under the V2 runner, not a plan-buffer
+  problem, and it means the throughput above is currently only reachable with a
+  context/KV concession (234,256 KV tokens at 131072/0.95 against 272,570 on
+  the published 262144/0.97 profile, -14.1 %). Serving the published profile
+  under the V2 runner on a 32 GB card is **not** demonstrated.
