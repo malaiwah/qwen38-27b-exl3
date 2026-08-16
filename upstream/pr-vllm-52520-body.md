@@ -173,6 +173,38 @@ On `main` the self-preemption path does increment `request.num_preemptions` and 
 one. (With this PR the point is moot for this defect: nothing is preempted, because
 nothing is admitted, and the operator gets two `ERROR` lines naming the limit.)
 
+### The decode case, added in the second commit
+
+Review raised it and I measured it on the same stock-`main` harness: the admission
+gate bounds a request on `num_tokens + 1`, but a generate request grows to
+`prompt + max_tokens`. With `block_size` 16, `max_model_len` 1024 and the 69-block
+pool above (`max_servable_num_tokens` 1008), `prompt=1000, max_tokens=24` clears the
+frontend (`1000 + 24 <= 1024`, `vllm/renderers/params.py:210,442`) and clears
+admission (`1000 + 1 <= 1008`), and then reaches 1009 tokens at output token 9. On
+`main` it is preempted there, is now too long to re-prefill, and the next **3987
+scheduler steps schedule zero tokens, produce no output and leave all 68 blocks
+free** — the same terminal state as the prefill case, reached through decode.
+
+Bounding admission on `num_tokens + max_tokens` would close it, but would refuse
+requests that stop well before the wall: on that same pool, `max_tokens=8` runs to
+completion in 12 steps. So the ceiling is applied where it belongs, as a length cap:
+`check_stop` takes `max_servable_num_tokens` instead of `max_model_len`. Those are
+equal on every pool that covers its window — `_estimate_max_model_len_from_groups`
+searches with `right = original_max` (`vllm/v1/core/kv_cache_utils.py:1960`), and the
+scheduler falls back to `max_model_len` when there is no per-block bound — so the
+common path is unchanged. Where they differ the request stops on the ceiling and
+returns its tokens with `finish_reason: length`, exactly as if `max_model_len` had
+been set to what the pool can serve.
+
+That is one bound with three call sites: startup sizing, admission, and the length
+cap.
+
+The spec-decode lookahead can also reach past the ceiling, because the running path
+asks for `1 + len(spec_token_ids)` slots. Measured on stock `main` with drafts
+injected: it preempts twice and then finishes, because preemption clears
+`spec_token_ids` and the retry decodes into the cap. Bounded and self-correcting, so
+`sched/scheduler.py:605` is left alone.
+
 ## Test Plan
 
 ```bash
@@ -185,7 +217,7 @@ pytest tests/v1/core/
 (`pytestmark = pytest.mark.cpu_test`), built the same way as
 `tests/v1/core/test_mamba_align_chunk_split.py`: a real `Scheduler` over a hand-built
 hybrid `KVCacheConfig`, driven with `schedule()` / `update_from_output()`. No model
-weights, no GPU. Five cases:
+weights, no GPU. Seven cases:
 
 1. `test_max_servable_num_tokens_reserves_the_null_block` — the bound is
    `(69 - 1 - 5) * 16 = 1008` at the startup minimum, and `>= max_model_len` with one
@@ -203,6 +235,13 @@ weights, no GPU. Five cases:
    over-reject.
 5. `test_pool_with_headroom_serves_the_whole_window` — 1023 tokens on a 70-block pool
    behaves exactly as before this PR.
+6. `test_generation_stops_at_the_bound_instead_of_stalling_mid_decode` — the decode
+   regression test. `prompt=1000, max_tokens=24` on the 69-block pool clears both
+   length checks, then must finish `FINISHED_LENGTH_CAPPED` at 1008 tokens with
+   `num_preemptions == 0` and nothing left unfinished.
+7. `test_generation_is_not_capped_when_the_pool_covers_the_window` — the same request
+   with one block of headroom must still produce all 24 tokens, so the length cap
+   cannot silently truncate generation on the common path.
 
 ## Test Result
 
@@ -217,27 +256,42 @@ FAILED test_unservable_request_is_failed_not_prefilled_and_retried
   - AssertionError: assert not {'0': 256}
 FAILED test_request_at_the_bound_is_failed_because_it_needs_an_output_slot
   - AssertionError: assert not {'0': 256}
-3 failed, 2 passed, 14 warnings in 3.48s
+FAILED test_generation_stops_at_the_bound_instead_of_stalling_mid_decode
+  - AttributeError: 'Scheduler' object has no attribute 'max_servable_num_tokens'
+FAILED test_generation_is_not_capped_when_the_pool_covers_the_window
+  - AttributeError: 'Scheduler' object has no attribute 'max_servable_num_tokens'
+5 failed, 2 passed, 14 warnings in 4.81s
 ```
 
 `{'0': 256}` is `main` admitting the unservable request and scheduling the first
 256-token prefill chunk of the sequence it will then throw away. The two that pass
 before and after are the two "must still work" directions — they are there to catch
-over-rejection, and they must never have gone red.
+over-rejection and over-capping, and they must never have gone red.
+
+Reverting only the one-line length cap and keeping everything else isolates the
+decode case:
+
+```text
+$ sed -i 's/self.max_servable_num_tokens)/self.max_model_len)/' <the check_stop call>
+$ pytest tests/v1/core/test_kv_pool_unservable_requests.py -q
+FAILED test_generation_stops_at_the_bound_instead_of_stalling_mid_decode
+  - assert <RequestStatus.PREEMPTED: 6> == <RequestStatus.FINISHED_LENGTH_CAPPED: 8>
+1 failed, 6 passed, 14 warnings in 4.92s
+```
 
 With the fix:
 
 ```text
 $ pytest tests/v1/core/test_kv_pool_unservable_requests.py -q
-.....                                                                    [100%]
-5 passed, 14 warnings in 3.83s
+.......                                                                  [100%]
+7 passed, 14 warnings in 4.71s
 ```
 
 Surrounding suite, same command on `4d2a68d6` and on this branch:
 
 ```text
 main @ 4d2a68d6 : 2 failed, 495 passed, 2 errors in 348.75s
-this branch     : 2 failed, 500 passed, 2 errors in 351.08s
+this branch     : 2 failed, 502 passed, 2 errors in 375.92s
 ```
 
 The same two failures and the same two setup errors occur on both, all environmental
@@ -245,10 +299,11 @@ in my CPU-only sandbox and unrelated to this change: failures in
 `test_scheduler.py::test_async_scheduling_pp_allows_rescheduling_with_output_placeholders`
 and `test_reset_prefix_cache_e2e.py::test_reset_prefix_cache_e2e`, and setup errors on
 `test_concurrent_partial_prefill` and `test_prefix_cache_stats_is_recorded` — all four
-need a GPU-backed engine core. The +5 are the new tests.
+need a GPU-backed engine core. The +7 are the new tests.
 
 Two existing tests build a `Scheduler` with `object.__new__` and set its attributes by
-hand; they each gain one line for the new `unservable_reqs` set
+hand; they each gain one line for the new `unservable_reqs` set and one for
+`max_servable_num_tokens`
 (`tests/v1/core/test_scheduler.py`, `tests/v1/core/test_async_scheduler.py`).
 
 Lint gates on the changed files:

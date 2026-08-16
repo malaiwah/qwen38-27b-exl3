@@ -1065,3 +1065,30 @@ which grew five pre-conversion addenda as the prep turned up problems.
 - Open, no GPU needed: upload both checkpoints (37 GB, digested in the receipts) and write the
   S16-V research-artifact card. Alt-calibration handed to `ShortlistScore` with
   `local://altcal-handover.md`.
+
+## 2026-08-16 — The decode case on PR #52530, measured rather than argued (`Pr52530Decode`)
+
+`brianosaurus` asked on the PR whether the decode case was deliberately out of scope: `_is_unservable`
+bounds admission on `num_tokens + 1`, but a generate request grows to `prompt + max_tokens`, so a
+request can clear both length checks and then need a block the pool does not have. Reproduced on
+unmodified upstream `main` @ `4d2a68d6`, CPU only, on the gate-zero harness with the sequence split
+across the prefill/decode boundary: `block_size=16`, `max_model_len=1024`, 69-block pool
+(`max_servable_num_tokens=1008`), `prompt=1000, max_tokens=24`. **It livelocks.** The sequence reaches
+1009 tokens at output token 9, is preempted there, is then too long to re-prefill, and the following
+3987 scheduler steps schedule zero tokens, produce no output and leave all 68 blocks free. Two controls
+in the same run finish normally (70 blocks: 24/24 in 28 steps; same pool with `max_tokens=8`: 8/8 in 12
+steps), so it is the ceiling and nothing else. One correction to the expected signature:
+`num_preemptions_total` increments **once** and then stops — the decode case collapses into the prefill
+case rather than having a shape of its own.
+
+Fixed at the point of exhaustion rather than at admission — `check_stop` now takes
+`max_servable_num_tokens` instead of `max_model_len`, one line — because the reviewer's
+`num_tokens + max_tokens` bound would refuse requests that stop before the wall, which the third row of
+the control table literally is. Second commit `479413a` on the same branch; PR now 2 commits, +470/−3,
+DCO green, `tests/v1/core/` 2 failed / 502 passed / 2 errors (the same four GPU-only cases).
+
+Gap width, since he asked: **exactly one block, never more**, `((max_model_len - 1) mod block_size) + 1`
+tokens, and 0 as soon as the pool has one spare block — measured over 14 configurations, largest gap 256
+tokens at `block_size=256`. The speculative reserve is **not** a contributor: it is priced identically on
+both sides, which retracts what our acknowledgement comment claimed. Reply posted at
+`#issuecomment-5309046330`; receipt `receipts/upstream-pr-52520-decode-case.json`. No GPU at any point.

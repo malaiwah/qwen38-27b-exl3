@@ -1,0 +1,390 @@
+{
+ "schema": "qwen38-upstream-pr/1",
+ "generated_utc": "2026-08-16T18:45:00Z",
+ "agent": "Pr52530Decode",
+ "purpose": "Answer brianosaurus's scoping question on vllm-project/vllm#52530 (pullrequestreview-4946863171): does the decode case -- prompt + max_tokens crossing max_servable_num_tokens after admission -- livelock like #52520, or is it bounded? Measure on unmodified upstream main, then make the PR's scope match the measurement.",
+ "reviewer_question": {
+  "review_url": "https://github.com/vllm-project/vllm/pull/52530#pullrequestreview-4946863171",
+  "reviewer": "brianosaurus",
+  "substance": "_is_unservable bounds on request.num_tokens + 1, but a generate request grows to prompt + max_tokens. With max_model_len=8192 and max_servable_num_tokens=8000, prompt=7000/max_tokens=1000 clears the frontend and clears _is_unservable, then needs a block the pool does not have at token 8000. Deliberately out of scope? If the gap can be wide, bound on num_tokens + max_tokens for generate requests.",
+  "prior_acknowledgement": "https://github.com/vllm-project/vllm/pull/52530#issuecomment-5308876923"
+ },
+ "measurement": {
+  "verdict": "(a) LIVELOCK -- reproduced on unmodified upstream main. The decode case is the same defect, not a deliberate exclusion.",
+  "upstream_commit": "4d2a68d64d9e05921ed5c4099146e768a92d71d5",
+  "vllm_version_string": "0.11.2.dev0+g4d2a68d6",
+  "hardware": "CPU only, no GPU, no model weights (CUDA_VISIBLE_DEVICES=\"\"); scheduler driven directly through schedule()/update_from_output()",
+  "how_main_was_restored": "git checkout 4d2a68d64d9e05921ed5c4099146e768a92d71d5 -- vllm/ in /var/tmp/vllm-52520 (branch tests kept, no vllm/ source from the branch present); verified 0 occurrences of max_servable_num_tokens in vllm/ before each stock run",
+  "script": "upstream/repro-52520-decode-stock-main.py",
+  "transcript_stock_main": "upstream/repro-52520-decode-stock-main.out",
+  "transcript_branch_with_fix": "upstream/repro-52520-decode-branch.out",
+  "argv": "EXTRA_PYTHONPATH=/var/tmp/vllm-52520 /var/tmp/rootfs-shim/py3 /home/mbelleau/research/upstream/repro-52520-decode-stock-main.py  (cwd /var/tmp/vllm-52520; HF_HOME=/var/tmp/hf-home-3 on the reruns, to stop the 429 that the sweep's ModelConfig constructions trigger)",
+  "configuration": {
+   "note": "the gate-zero config from upstream/repro-52520-stock-main.py, scaled only by splitting the sequence across the prefill/decode boundary",
+   "model_config": "facebook/opt-125m, skip_tokenizer_init, dtype float16, max_model_len 1024",
+   "kv_cache_groups": "KVCacheGroupSpec(['fa'], FullAttentionSpec(block_size=16, num_kv_heads=1, head_size=1, float32)) + KVCacheGroupSpec(['mamba'], MambaSpec(block_size=16, shapes=((1,1),), float32, mamba_cache_mode='align', num_speculative_blocks=3, page_size_padded=fa.page_size_bytes))",
+   "block_size": 16,
+   "max_model_len": 1024,
+   "num_speculative_blocks": 3,
+   "max_num_batched_tokens": 256,
+   "max_num_seqs": 1,
+   "enable_chunked_prefill": true,
+   "enable_prefix_caching": true,
+   "watermark": 0.0,
+   "speculative_config": "ngram, num_speculative_tokens=3, prompt_lookup_min=1, prompt_lookup_max=3",
+   "pool_blocks": 69,
+   "pool_blocks_rationale": "cdiv(1024,16)=64 attention + (2+3)=5 mamba = 69; get_kv_cache_configs accepts exactly 69",
+   "max_servable_num_tokens": 1008,
+   "request": "prompt=1000, max_tokens=24, ignore_eos=True",
+   "why_that_request": "frontend 1000+24=1024 <= max_model_len 1024 -> accepted; _is_unservable 1000+1=1001 <= 1008 -> admitted; sequence reaches 1024 > 1008 during decode. brianosaurus's 7000/1000/8000/8192 example, one order of magnitude down."
+  },
+  "observation_window": "4000 scheduler steps for every run; each run stops early only when the request finishes. Steps 13..3999 (3987 steps) of the failing run scheduled zero tokens, produced zero output tokens and freed nothing.",
+  "raw_counters_stock_main": {
+   "decode-over-ceiling": {
+    "num_blocks": 69,
+    "prompt_len": 1000,
+    "max_tokens": 24,
+    "steps_run": 4000,
+    "finished": false,
+    "status": "PREEMPTED",
+    "output_tokens": 9,
+    "num_preemptions": 1,
+    "preempted_events": 1,
+    "first_wall_step": 13,
+    "output_stalled_since_step": 13,
+    "final_seq_len": 1009
+   },
+   "control-pool+1": {
+    "num_blocks": 70,
+    "prompt_len": 1000,
+    "max_tokens": 24,
+    "steps_run": 28,
+    "finished": true,
+    "status": "FINISHED_LENGTH_CAPPED",
+    "output_tokens": 24,
+    "num_preemptions": 0,
+    "preempted_events": 0,
+    "first_wall_step": null,
+    "output_stalled_since_step": null,
+    "final_seq_len": 1024
+   },
+   "control-under-ceiling": {
+    "num_blocks": 69,
+    "prompt_len": 1000,
+    "max_tokens": 8,
+    "steps_run": 12,
+    "finished": true,
+    "status": "FINISHED_LENGTH_CAPPED",
+    "output_tokens": 8,
+    "num_preemptions": 0,
+    "preempted_events": 0,
+    "first_wall_step": null,
+    "output_stalled_since_step": null,
+    "final_seq_len": 1008
+   },
+   "spec-lookahead-under-ceiling": {
+    "num_blocks": 69,
+    "prompt_len": 1000,
+    "max_tokens": 8,
+    "steps_run": 14,
+    "finished": true,
+    "status": "FINISHED_LENGTH_CAPPED",
+    "output_tokens": 8,
+    "num_preemptions": 2,
+    "preempted_events": 0,
+    "first_wall_step": 10,
+    "output_stalled_since_step": null,
+    "final_seq_len": 1008
+   }
+  },
+  "trace_at_the_wall_stock_main": [
+   "step 11 sched=1 computed=1007 seq_len=1008 out=8 free=1  RUNNING   preempt=0 ev=0",
+   "step 12 sched=1 computed=1008 seq_len=1009 out=9 free=1  RUNNING   preempt=0 ev=0",
+   "step 13 sched=0 computed=0    seq_len=1009 out=9 free=68 PREEMPTED preempt=1 ev=1",
+   "step 14..3999 identical to step 13"
+  ],
+  "preemption_counter_note": "vllm:num_preemptions_total increments exactly ONCE and then stops -- it does not climb. metrics/stats.py:449 counts EngineCoreEventType.PREEMPTED events; the request records one at scheduler.py:1404 and is then 1009 tokens long, which is past the 1008 the pool can re-prefill, so it is never scheduled again. The decode case collapses into the prefill case of #52520 rather than having a distinct signature. This corrects the 'num_preemptions_total climbing' shape assumed in the acknowledgement comment.",
+  "controls": "control-pool+1 (70 blocks, same request) finishes 24/24 in 28 steps with 0 preemptions; control-under-ceiling (69 blocks, max_tokens=8) finishes 8/8 in 12 steps with 0 preemptions. So neither the harness nor the 69-block pool is what fails -- only crossing the ceiling.",
+  "spec_lookahead_probe": "With drafts injected (request.spec_token_ids = [7,7,7] each step, which the scheduler reads at sched/scheduler.py:737 and turns into 1+len slots), the running path CAN reach past the ceiling before the length cap fires. Measured on stock main: 2 preemptions, then FINISHED_LENGTH_CAPPED 8/8 at step 13. Bounded and self-correcting, because preemption clears spec_token_ids (sched/scheduler.py:1389) and the retry decodes one token at a time. Identical on the branch. Therefore scheduler.py:605 was NOT changed."
+ },
+ "gap_width": {
+  "question": "how wide can max_model_len - max_servable_num_tokens get, as a function of configuration",
+  "answer": "Exactly one block, never more, and only when the pool is at the startup minimum. gap = ((max_model_len - 1) mod block_size) + 1 tokens, i.e. whatever max_model_len occupies in its last block; 0 as soon as the pool has one block more. Measured across 14 configurations on unmodified main; the largest gap observed was 256 tokens at block_size=256, and every gap was exactly 1.00 blocks or 0.",
+  "max_gap_tokens_observed": 256,
+  "max_gap_blocks_observed": 1.0,
+  "max_gap_tokens_with_one_spare_block": 0,
+  "sweep": [
+   {
+    "block_size": 16,
+    "max_model_len": 1024,
+    "num_speculative_blocks": 3,
+    "startup_min_blocks": 69,
+    "smallest_accepted_blocks": 69,
+    "max_servable_num_tokens": 1008,
+    "gap_tokens": 16,
+    "gap_blocks": 1.0,
+    "max_servable_num_tokens_one_block_more": 1024,
+    "gap_tokens_one_block_more": 0
+   },
+   {
+    "block_size": 16,
+    "max_model_len": 1024,
+    "num_speculative_blocks": 0,
+    "startup_min_blocks": 66,
+    "smallest_accepted_blocks": 69,
+    "max_servable_num_tokens": 1008,
+    "gap_tokens": 16,
+    "gap_blocks": 1.0,
+    "max_servable_num_tokens_one_block_more": 1024,
+    "gap_tokens_one_block_more": 0
+   },
+   {
+    "block_size": 16,
+    "max_model_len": 1000,
+    "num_speculative_blocks": 3,
+    "startup_min_blocks": 68,
+    "smallest_accepted_blocks": 68,
+    "max_servable_num_tokens": 992,
+    "gap_tokens": 8,
+    "gap_blocks": 0.5,
+    "max_servable_num_tokens_one_block_more": 1000,
+    "gap_tokens_one_block_more": 0
+   },
+   {
+    "block_size": 16,
+    "max_model_len": 1009,
+    "num_speculative_blocks": 3,
+    "startup_min_blocks": 69,
+    "smallest_accepted_blocks": 69,
+    "max_servable_num_tokens": 1008,
+    "gap_tokens": 1,
+    "gap_blocks": 0.0625,
+    "max_servable_num_tokens_one_block_more": 1009,
+    "gap_tokens_one_block_more": 0
+   },
+   {
+    "block_size": 16,
+    "max_model_len": 4096,
+    "num_speculative_blocks": 3,
+    "startup_min_blocks": 261,
+    "smallest_accepted_blocks": 261,
+    "max_servable_num_tokens": 4080,
+    "gap_tokens": 16,
+    "gap_blocks": 1.0,
+    "max_servable_num_tokens_one_block_more": 4096,
+    "gap_tokens_one_block_more": 0
+   },
+   {
+    "block_size": 32,
+    "max_model_len": 1024,
+    "num_speculative_blocks": 3,
+    "startup_min_blocks": 37,
+    "smallest_accepted_blocks": 37,
+    "max_servable_num_tokens": 992,
+    "gap_tokens": 32,
+    "gap_blocks": 1.0,
+    "max_servable_num_tokens_one_block_more": 1024,
+    "gap_tokens_one_block_more": 0
+   },
+   {
+    "block_size": 64,
+    "max_model_len": 1024,
+    "num_speculative_blocks": 3,
+    "startup_min_blocks": 21,
+    "smallest_accepted_blocks": 21,
+    "max_servable_num_tokens": 960,
+    "gap_tokens": 64,
+    "gap_blocks": 1.0,
+    "max_servable_num_tokens_one_block_more": 1024,
+    "gap_tokens_one_block_more": 0
+   },
+   {
+    "block_size": 128,
+    "max_model_len": 1024,
+    "num_speculative_blocks": 3,
+    "startup_min_blocks": 13,
+    "smallest_accepted_blocks": 13,
+    "max_servable_num_tokens": 896,
+    "gap_tokens": 128,
+    "gap_blocks": 1.0,
+    "max_servable_num_tokens_one_block_more": 1024,
+    "gap_tokens_one_block_more": 0
+   },
+   {
+    "block_size": 128,
+    "max_model_len": 8192,
+    "num_speculative_blocks": 3,
+    "startup_min_blocks": 69,
+    "smallest_accepted_blocks": 69,
+    "max_servable_num_tokens": 8064,
+    "gap_tokens": 128,
+    "gap_blocks": 1.0,
+    "max_servable_num_tokens_one_block_more": 8192,
+    "gap_tokens_one_block_more": 0
+   },
+   {
+    "block_size": 128,
+    "max_model_len": 8192,
+    "num_speculative_blocks": 16,
+    "startup_min_blocks": 82,
+    "smallest_accepted_blocks": 78,
+    "max_servable_num_tokens": 8192,
+    "gap_tokens": 0,
+    "gap_blocks": 0.0,
+    "max_servable_num_tokens_one_block_more": 8192,
+    "gap_tokens_one_block_more": 0
+   },
+   {
+    "block_size": 16,
+    "max_model_len": 8192,
+    "num_speculative_blocks": 16,
+    "startup_min_blocks": 530,
+    "smallest_accepted_blocks": 526,
+    "max_servable_num_tokens": 8192,
+    "gap_tokens": 0,
+    "gap_blocks": 0.0,
+    "max_servable_num_tokens_one_block_more": 8192,
+    "gap_tokens_one_block_more": 0
+   },
+   {
+    "block_size": 256,
+    "max_model_len": 8192,
+    "num_speculative_blocks": 8,
+    "startup_min_blocks": 42,
+    "smallest_accepted_blocks": 38,
+    "max_servable_num_tokens": 8192,
+    "gap_tokens": 0,
+    "gap_blocks": 0.0,
+    "max_servable_num_tokens_one_block_more": 8192,
+    "gap_tokens_one_block_more": 0
+   },
+   {
+    "block_size": 256,
+    "max_model_len": 8192,
+    "num_speculative_blocks": 0,
+    "startup_min_blocks": 34,
+    "smallest_accepted_blocks": 37,
+    "max_servable_num_tokens": 7936,
+    "gap_tokens": 256,
+    "gap_blocks": 1.0,
+    "max_servable_num_tokens_one_block_more": 8192,
+    "gap_tokens_one_block_more": 0
+   },
+   {
+    "block_size": 512,
+    "max_model_len": 32768,
+    "num_speculative_blocks": 8,
+    "startup_min_blocks": 74,
+    "smallest_accepted_blocks": 70,
+    "max_servable_num_tokens": 32768,
+    "gap_tokens": 0,
+    "gap_blocks": 0.0,
+    "max_servable_num_tokens_one_block_more": 32768,
+    "gap_tokens_one_block_more": 0
+   }
+  ],
+  "contributors": [
+   {
+    "contributor": "null block",
+    "worth": "the entire gap: one block, always",
+    "file_line": [
+     "vllm/v1/core/block_pool.py:190 (self.null_block = self.free_block_queue.popleft())",
+     "vllm/v1/core/kv_cache_utils.py:2193 (_check_enough_kv_cache_memory is handed the byte count for ALL blocks)"
+    ],
+    "evidence": "the same check also refuses any pool below the minimum, so the shortfall is one block or nothing"
+   },
+   {
+    "contributor": "block rounding",
+    "worth": "decides how many of that block's tokens are lost: block_size when max_model_len divides evenly, ((max_model_len-1) mod block_size)+1 otherwise",
+    "file_line": [
+     "vllm/v1/core/kv_cache_utils.py:1933 (blocks_needed = sum(cdiv(spec_bytes, page_size)))",
+     "vllm/v1/kv_cache_interface.py:305 (FullAttentionSpec.max_memory_usage_bytes = cdiv(max_model_len, block_size) * page_size)"
+    ],
+    "evidence": "sweep rows max_model_len 1000 -> gap 8 and 1009 -> gap 1 at block_size 16"
+   },
+   {
+    "contributor": "speculative reserve",
+    "worth": "ZERO -- not a contributor",
+    "file_line": [
+     "vllm/v1/kv_cache_interface.py:694 (MambaSpec.max_memory_usage_bytes = page_size * (2 + num_speculative_blocks) in align mode)"
+    ],
+    "evidence": "priced identically on both sides of the comparison, so it moves the requirement and the ceiling together; sweep rows block_size 16 / max_model_len 1024 with num_speculative_blocks 3 and 0 both give gap 16. This corrects the claim in issuecomment-5308876923 that the speculative reserve widens the gap."
+   },
+   {
+    "contributor": "one spare block closes it entirely",
+    "worth": "gap 0",
+    "file_line": [
+     "vllm/v1/core/kv_cache_utils.py:1960 (_estimate_max_model_len_from_groups: left, right = 1, original_max)"
+    ],
+    "evidence": "every sweep row's +1blk_gap column is 0"
+   }
+  ],
+  "frontend_check_for_reference": [
+   "vllm/renderers/params.py:210 (max_input_tokens = max_total_tokens - max_output_tokens)",
+   "vllm/renderers/params.py:442 (if len(tokens) > max_input_tokens: reject)"
+  ],
+  "verdict_on_reviewer_framing": "The reviewer's magnitude was right and his mechanism was not: 8064 vs 8192 at block_size=128 is within touching distance of the 8000/8192 he wrote by hand, but it comes from one block, not from an accumulation of null block + speculative reserve + rounding."
+ },
+ "decision": {
+  "chosen": "Apply the pool's ceiling as a LENGTH CAP at the point of exhaustion: check_stop(request, self.max_servable_num_tokens) instead of check_stop(request, self.max_model_len).",
+  "rejected_option_a": "Bound admission on num_tokens + max_tokens for generate requests (the reviewer's suggestion). Rejected because it refuses requests that would stop long before the wall: control-under-ceiling above is exactly that request (prompt=1000, max_tokens=8) and it runs to completion on the same pool. Callers routinely set max_tokens an order of magnitude above what the model emits, so this is a behaviour change on a common path, not a bug fix.",
+  "rejected_option_b": "Fail the request with an error at the point of exhaustion. Rejected because by then the client has already been streamed 8 tokens; finish_reason 'length' is the truthful reason (the sequence hit a context limit, just a lower one than advertised), and the actionable operator-facing form already exists once, at startup, in the logger.error that names the ceiling.",
+  "why_it_is_safe": "max_servable_num_tokens <= max_model_len by construction (_estimate_max_model_len_from_groups searches with right = original_max, kv_cache_utils.py:1960) and the scheduler falls back to max_model_len when there is no per-block bound to price, so on every pool that covers its window this is the same call it was.",
+  "shape": "one bound, three call sites: startup sizing, admission, length cap"
+ },
+ "change": {
+  "commit": "479413adcf65dc11cea474a7a2327f527d07ce56",
+  "message_title": "[Bugfix][Core] Stop generation at the pool's servable ceiling, not max_model_len",
+  "diffstat": "4 files changed, 100 insertions(+), 12 deletions(-)",
+  "source_diff": "vllm/v1/core/sched/scheduler.py: check_stop(request, self.max_servable_num_tokens) at _update_request_with_output, plus the comment block and the startup logger.error now naming the generation ceiling",
+  "test_diff": "tests/v1/core/test_kv_pool_unservable_requests.py +2 cases; tests/v1/core/test_scheduler.py and test_async_scheduler.py each +1 line setting max_servable_num_tokens on the hand-built mock Scheduler",
+  "not_changed_and_why": "sched/scheduler.py:605 (the spec-decode position cap) -- measured bounded, see spec_lookahead_probe"
+ },
+ "test_evidence": {
+  "fail_before_isolated": "branch with ONLY the check_stop line reverted: 1 failed, 6 passed -- test_generation_stops_at_the_bound_instead_of_stalling_mid_decode, assert <RequestStatus.PREEMPTED: 6> == <RequestStatus.FINISHED_LENGTH_CAPPED: 8>",
+  "fail_before_stock_main": "vllm/ reverted to 4d2a68d6, tests kept: 5 failed, 2 passed (the 2 over-rejection / over-capping guards pass on both sides and must never go red)",
+  "pass_after": "7 passed, 14 warnings in 4.71s",
+  "surrounding_suite": "tests/v1/core/ on the branch: 2 failed, 502 passed, 2 errors in 375.92s -- the same four GPU-requiring cases as before (test_async_scheduling_pp_allows_rescheduling_with_output_placeholders, test_reset_prefix_cache_e2e, and setup errors on test_concurrent_partial_prefill / test_prefix_cache_stats_is_recorded)",
+  "suite_run_hygiene": "an earlier run of the same suite showed 16 failures, all huggingface_hub 429 rate-limit errors caused by a concurrent repro run hammering the anonymous HF API; rerun serially with HF_HOME=/var/tmp/hf-home-3 to get the number above"
+ },
+ "gates": {
+  "dco": "DCO check reports success on head 479413adcf65dc11cea474a7a2327f527d07ce56; Signed-off-by: Michel Belleau <michel.belleau@malaiwah.com> matches the commit author",
+  "ruff_check": "0.14.0 (pinned): All checks passed!",
+  "ruff_format": "5 files already formatted",
+  "typos": "1.43.5 --force-exclude: clean",
+  "mypy": "tools/pre_commit/mypy.py 3.12 with mypy 1.20.2: Success, 2 source files in the default group and 3 in the tests/v1/core group",
+  "pre_run_check": "still failure -- repo policy gate for a contributor with 0 merged PRs and no 'ready' label, unchanged by this commit; this is why the pinned gates are run locally"
+ },
+ "pull_request_after": {
+  "url": "https://github.com/vllm-project/vllm/pull/52530",
+  "state": "open",
+  "commits": 2,
+  "head_sha": "479413adcf65dc11cea474a7a2327f527d07ce56",
+  "diffstat": "+470 / -3",
+  "body_updated": "yes -- new 'The decode case, added in the second commit' section, and the Test Plan / Test Result counts updated to 7 cases; upstream/pr-vllm-52520-body.md byte-verified against the posted body",
+  "scope_matches_measurement": "yes -- the PR now covers both ends of the same bound because the measurement showed the decode case livelocks; it did not stay admission-only"
+ },
+ "comment": {
+  "url": "https://github.com/vllm-project/vllm/pull/52530#issuecomment-5309046330",
+  "id": 5309046330,
+  "created_utc": "2026-08-16T18:38:43Z",
+  "source": "upstream/pr-52530-decode-comment.md",
+  "leads_with": "Measured: it livelocks.",
+  "corrections_stated_plainly": [
+   "num_preemptions_total increments once rather than climbing",
+   "the speculative reserve does not widen the gap -- explicitly retracting that claim from the acknowledgement comment"
+  ]
+ },
+ "environment": {
+  "clone": "/var/tmp/vllm-52520, branch fix/kv-pool-unservable-request-admission on malaiwah/vllm-voipmonitor, branch point 4d2a68d64d9e05921ed5c4099146e768a92d71d5",
+  "python": "3.12 from the extracted r34 rootfs at /var/tmp/gg-rootfs via /var/tmp/rootfs-shim/py3 with CUDA_VISIBLE_DEVICES empty",
+  "gpu_used": "none at any point"
+ },
+ "artifacts": {
+  "upstream/repro-52520-decode-stock-main.py": "f846d266f3042725088512311e0db307231fcf969741f363e53d52d9f2e6e61c",
+  "upstream/repro-52520-decode-stock-main.out": "7169e24c1741ba2c29d5594232ef989acad81be378b30436e33db4103d3ab91d",
+  "upstream/repro-52520-decode-branch.out": "2cdb846417341b9cba25b664b041e25b69ac5a739a24c03fd17ee90fa785cf1c",
+  "upstream/pr-52530-decode-comment.md": "d2f816f14b11058454dced064b3bf6da1ad26b5a3a0049aed4eb613ff06697c7",
+  "upstream/pr-vllm-52520-body.md": "c4e6a3ee346f184f46402e5e6e2bec1ed071c3251cfbeb6ac83310a5ef25303b"
+ }
+}

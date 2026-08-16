@@ -1,0 +1,2293 @@
+W0816 18:23:22.660000 1625502 torch/utils/cpp_extension.py:140] No CUDA runtime is found, using CUDA_HOME='/usr/local/cuda'
+vLLM 0.11.2.dev0+g4d2a68d6
+INFO 08-16 18:23:23 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:23 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:23 [scheduler.py:242] Chunked prefill is enabled with max_num_batched_tokens=256.
+WARNING 08-16 18:23:24 [vllm.py:1187] Async scheduling not supported with ngram-based speculative decoding and will be disabled.
+INFO 08-16 18:23:24 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+WARNING 08-16 18:23:24 [vllm.py:1845] max_num_scheduled_tokens is set to 256 based on the speculative decoding settings. This may lead to suboptimal performance. Consider increasing max_num_batched_tokens to accommodate the additional draft token slots, or decrease num_speculative_tokens.
+WARNING 08-16 18:23:24 [vllm.py:653] Model Runner V2 does not yet support ngram/ngram_gpu speculative decoding; using the V1 model runner instead.
+INFO 08-16 18:23:24 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:24 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:24 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+config: block_size=16 max_model_len=1024 num_speculative_blocks=3 max_num_batched_tokens=256
+startup bound: cdiv(1024,16)=64 + mamba-align (2+3)=5 -> 69 blocks; startup accepts=True (num_blocks=69)
+max_servable_num_tokens(69 blocks) = 1008 (gap to max_model_len = 16 tokens)
+
+request: prompt=1000 max_tokens=24
+  frontend  : 1000 + 24 = 1024 <= 1024 -> accepted
+  _is_unservable: 1000 + 1 = 1001 <= 1008 -> admitted
+  wall          : reaches 1024 > 1008 during decode
+INFO 08-16 18:23:24 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:24 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:24 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+  [decode-over-ceiling] pool=69 blocks free_at_start=68 admitted_to_a_queue=True
+    step    0 sched=  256 computed=  256 seq_len= 1000 out=  0 free= 48 RUNNING              preempt=   0 ev=   0
+    step    1 sched=  256 computed=  512 seq_len= 1000 out=  0 free= 31 RUNNING              preempt=   0 ev=   0
+    step    2 sched=  256 computed=  768 seq_len= 1000 out=  0 free= 15 RUNNING              preempt=   0 ev=   0
+    step    3 sched=  224 computed=  992 seq_len= 1000 out=  0 free=  1 RUNNING              preempt=   0 ev=   0
+    step    4 sched=    8 computed= 1000 seq_len= 1001 out=  1 free=  0 RUNNING              preempt=   0 ev=   0
+    step    5 sched=    1 computed= 1001 seq_len= 1002 out=  2 free=  1 RUNNING              preempt=   0 ev=   0
+    step    6 sched=    1 computed= 1002 seq_len= 1003 out=  3 free=  1 RUNNING              preempt=   0 ev=   0
+    step    7 sched=    1 computed= 1003 seq_len= 1004 out=  4 free=  1 RUNNING              preempt=   0 ev=   0
+    step    8 sched=    1 computed= 1004 seq_len= 1005 out=  5 free=  1 RUNNING              preempt=   0 ev=   0
+    step    9 sched=    1 computed= 1005 seq_len= 1006 out=  6 free=  1 RUNNING              preempt=   0 ev=   0
+    step   10 sched=    1 computed= 1006 seq_len= 1007 out=  7 free=  1 RUNNING              preempt=   0 ev=   0
+    step   11 sched=    1 computed= 1007 seq_len= 1008 out=  8 free=  1 RUNNING              preempt=   0 ev=   0
+    step   12 sched=    1 computed= 1008 seq_len= 1009 out=  9 free=  1 RUNNING              preempt=   0 ev=   0
+    step   13 sched=    0 computed=    0 seq_len= 1009 out=  9 free= 68 PREEMPTED            preempt=   1 ev=   1
+    step   14 sched=    0 computed=    0 seq_len= 1009 out=  9 free= 68 PREEMPTED            preempt=   1 ev=   1
+    step   15 sched=    0 computed=    0 seq_len= 1009 out=  9 free= 68 PREEMPTED            preempt=   1 ev=   1
+    step   16 sched=    0 computed=    0 seq_len= 1009 out=  9 free= 68 PREEMPTED            preempt=   1 ev=   1
+    step   17 sched=    0 computed=    0 seq_len= 1009 out=  9 free= 68 PREEMPTED            preempt=   1 ev=   1
+    step   18 sched=    0 computed=    0 seq_len= 1009 out=  9 free= 68 PREEMPTED            preempt=   1 ev=   1
+    step   19 sched=    0 computed=    0 seq_len= 1009 out=  9 free= 68 PREEMPTED            preempt=   1 ev=   1
+    step   20 sched=    0 computed=    0 seq_len= 1009 out=  9 free= 68 PREEMPTED            preempt=   1 ev=   1
+    step   21 sched=    0 computed=    0 seq_len= 1009 out=  9 free= 68 PREEMPTED            preempt=   1 ev=   1
+    step   22 sched=    0 computed=    0 seq_len= 1009 out=  9 free= 68 PREEMPTED            preempt=   1 ev=   1
+    step   23 sched=    0 computed=    0 seq_len= 1009 out=  9 free= 68 PREEMPTED            preempt=   1 ev=   1
+    ... 3966 steps elided ...
+    step 3990 sched=    0 computed=    0 seq_len= 1009 out=  9 free= 68 PREEMPTED            preempt=   1 ev=   1
+    step 3991 sched=    0 computed=    0 seq_len= 1009 out=  9 free= 68 PREEMPTED            preempt=   1 ev=   1
+    step 3992 sched=    0 computed=    0 seq_len= 1009 out=  9 free= 68 PREEMPTED            preempt=   1 ev=   1
+    step 3993 sched=    0 computed=    0 seq_len= 1009 out=  9 free= 68 PREEMPTED            preempt=   1 ev=   1
+    step 3994 sched=    0 computed=    0 seq_len= 1009 out=  9 free= 68 PREEMPTED            preempt=   1 ev=   1
+    step 3995 sched=    0 computed=    0 seq_len= 1009 out=  9 free= 68 PREEMPTED            preempt=   1 ev=   1
+    step 3996 sched=    0 computed=    0 seq_len= 1009 out=  9 free= 68 PREEMPTED            preempt=   1 ev=   1
+    step 3997 sched=    0 computed=    0 seq_len= 1009 out=  9 free= 68 PREEMPTED            preempt=   1 ev=   1
+    step 3998 sched=    0 computed=    0 seq_len= 1009 out=  9 free= 68 PREEMPTED            preempt=   1 ev=   1
+    step 3999 sched=    0 computed=    0 seq_len= 1009 out=  9 free= 68 PREEMPTED            preempt=   1 ev=   1
+  [decode-over-ceiling] VERDICT after 4000 steps: finished=False status=PREEMPTED output_tokens=9/24 num_preemptions=1 preempted_events=1 first_wall_step=13 output_stalled_since_step=13
+INFO 08-16 18:23:25 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:25 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:25 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+  [control-pool+1] pool=70 blocks free_at_start=69 admitted_to_a_queue=True
+    step    0 sched=  256 computed=  256 seq_len= 1000 out=  0 free= 49 RUNNING              preempt=   0 ev=   0
+    step    1 sched=  256 computed=  512 seq_len= 1000 out=  0 free= 32 RUNNING              preempt=   0 ev=   0
+    step    2 sched=  256 computed=  768 seq_len= 1000 out=  0 free= 16 RUNNING              preempt=   0 ev=   0
+    step    3 sched=  224 computed=  992 seq_len= 1000 out=  0 free=  2 RUNNING              preempt=   0 ev=   0
+    step    4 sched=    8 computed= 1000 seq_len= 1001 out=  1 free=  1 RUNNING              preempt=   0 ev=   0
+    step    5 sched=    1 computed= 1001 seq_len= 1002 out=  2 free=  2 RUNNING              preempt=   0 ev=   0
+    step    6 sched=    1 computed= 1002 seq_len= 1003 out=  3 free=  2 RUNNING              preempt=   0 ev=   0
+    step    7 sched=    1 computed= 1003 seq_len= 1004 out=  4 free=  2 RUNNING              preempt=   0 ev=   0
+    step    8 sched=    1 computed= 1004 seq_len= 1005 out=  5 free=  2 RUNNING              preempt=   0 ev=   0
+    step    9 sched=    1 computed= 1005 seq_len= 1006 out=  6 free=  2 RUNNING              preempt=   0 ev=   0
+    step   10 sched=    1 computed= 1006 seq_len= 1007 out=  7 free=  2 RUNNING              preempt=   0 ev=   0
+    step   11 sched=    1 computed= 1007 seq_len= 1008 out=  8 free=  2 RUNNING              preempt=   0 ev=   0
+    step   12 sched=    1 computed= 1008 seq_len= 1009 out=  9 free=  2 RUNNING              preempt=   0 ev=   0
+    step   13 sched=    1 computed= 1009 seq_len= 1010 out= 10 free=  0 RUNNING              preempt=   0 ev=   0
+    step   14 sched=    1 computed= 1010 seq_len= 1011 out= 11 free=  1 RUNNING              preempt=   0 ev=   0
+    step   15 sched=    1 computed= 1011 seq_len= 1012 out= 12 free=  1 RUNNING              preempt=   0 ev=   0
+    step   16 sched=    1 computed= 1012 seq_len= 1013 out= 13 free=  1 RUNNING              preempt=   0 ev=   0
+    step   17 sched=    1 computed= 1013 seq_len= 1014 out= 14 free=  1 RUNNING              preempt=   0 ev=   0
+    step   18 sched=    1 computed= 1014 seq_len= 1015 out= 15 free=  1 RUNNING              preempt=   0 ev=   0
+    step   19 sched=    1 computed= 1015 seq_len= 1016 out= 16 free=  1 RUNNING              preempt=   0 ev=   0
+    step   20 sched=    1 computed= 1016 seq_len= 1017 out= 17 free=  1 RUNNING              preempt=   0 ev=   0
+    step   21 sched=    1 computed= 1017 seq_len= 1018 out= 18 free=  1 RUNNING              preempt=   0 ev=   0
+    step   22 sched=    1 computed= 1018 seq_len= 1019 out= 19 free=  1 RUNNING              preempt=   0 ev=   0
+    step   23 sched=    1 computed= 1019 seq_len= 1020 out= 20 free=  1 RUNNING              preempt=   0 ev=   0
+    step   24 sched=    1 computed= 1020 seq_len= 1021 out= 21 free=  1 RUNNING              preempt=   0 ev=   0
+    step   25 sched=    1 computed= 1021 seq_len= 1022 out= 22 free=  1 RUNNING              preempt=   0 ev=   0
+    step   26 sched=    1 computed= 1022 seq_len= 1023 out= 23 free=  1 RUNNING              preempt=   0 ev=   0
+    step   27 sched=    1 computed= 1023 seq_len= 1024 out= 24 free= 69 FINISHED_LENGTH_CAPPED preempt=   0 ev=   0
+  [control-pool+1] VERDICT after 28 steps: finished=True status=FINISHED_LENGTH_CAPPED output_tokens=24/24 num_preemptions=0 preempted_events=0 first_wall_step=None output_stalled_since_step=None
+INFO 08-16 18:23:25 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:25 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:25 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+  [control-under-ceiling] pool=69 blocks free_at_start=68 admitted_to_a_queue=True
+    step    0 sched=  256 computed=  256 seq_len= 1000 out=  0 free= 48 RUNNING              preempt=   0 ev=   0
+    step    1 sched=  256 computed=  512 seq_len= 1000 out=  0 free= 31 RUNNING              preempt=   0 ev=   0
+    step    2 sched=  256 computed=  768 seq_len= 1000 out=  0 free= 15 RUNNING              preempt=   0 ev=   0
+    step    3 sched=  224 computed=  992 seq_len= 1000 out=  0 free=  1 RUNNING              preempt=   0 ev=   0
+    step    4 sched=    8 computed= 1000 seq_len= 1001 out=  1 free=  0 RUNNING              preempt=   0 ev=   0
+    step    5 sched=    1 computed= 1001 seq_len= 1002 out=  2 free=  1 RUNNING              preempt=   0 ev=   0
+    step    6 sched=    1 computed= 1002 seq_len= 1003 out=  3 free=  1 RUNNING              preempt=   0 ev=   0
+    step    7 sched=    1 computed= 1003 seq_len= 1004 out=  4 free=  1 RUNNING              preempt=   0 ev=   0
+    step    8 sched=    1 computed= 1004 seq_len= 1005 out=  5 free=  1 RUNNING              preempt=   0 ev=   0
+    step    9 sched=    1 computed= 1005 seq_len= 1006 out=  6 free=  1 RUNNING              preempt=   0 ev=   0
+    step   10 sched=    1 computed= 1006 seq_len= 1007 out=  7 free=  1 RUNNING              preempt=   0 ev=   0
+    step   11 sched=    1 computed= 1007 seq_len= 1008 out=  8 free= 68 FINISHED_LENGTH_CAPPED preempt=   0 ev=   0
+  [control-under-ceiling] VERDICT after 12 steps: finished=True status=FINISHED_LENGTH_CAPPED output_tokens=8/8 num_preemptions=0 preempted_events=0 first_wall_step=None output_stalled_since_step=None
+INFO 08-16 18:23:25 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:25 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:25 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+  [spec-lookahead-under-ceiling] pool=69 blocks free_at_start=68 admitted_to_a_queue=True
+    step    0 sched=  256 computed=  256 seq_len= 1000 out=  0 free= 48 RUNNING              preempt=   0 ev=   0
+    step    1 sched=  256 computed=  512 seq_len= 1000 out=  0 free= 31 RUNNING              preempt=   0 ev=   0
+    step    2 sched=  256 computed=  768 seq_len= 1000 out=  0 free= 15 RUNNING              preempt=   0 ev=   0
+    step    3 sched=  224 computed=  992 seq_len= 1000 out=  0 free=  1 RUNNING              preempt=   0 ev=   0
+    step    4 sched=   11 computed= 1000 seq_len= 1001 out=  1 free=  0 RUNNING              preempt=   0 ev=   0
+    step    5 sched=    4 computed= 1001 seq_len= 1002 out=  2 free=  1 RUNNING              preempt=   0 ev=   0
+    step    6 sched=    4 computed= 1002 seq_len= 1003 out=  3 free=  1 RUNNING              preempt=   0 ev=   0
+    step    7 sched=    4 computed= 1003 seq_len= 1004 out=  4 free=  1 RUNNING              preempt=   0 ev=   0
+    step    8 sched=    4 computed= 1004 seq_len= 1005 out=  5 free=  1 RUNNING              preempt=   0 ev=   0
+    step    9 sched=    4 computed= 1005 seq_len= 1006 out=  6 free=  1 RUNNING              preempt=   0 ev=   0
+    step   10 sched=    0 computed=    0 seq_len= 1006 out=  6 free= 68 PREEMPTED            preempt=   1 ev=   1
+    step   11 sched=   14 computed= 1006 seq_len= 1007 out=  7 free=  0 RUNNING              preempt=   1 ev=   0
+    step   12 sched=    0 computed=    0 seq_len= 1007 out=  7 free= 68 PREEMPTED            preempt=   2 ev=   1
+    step   13 sched=   15 computed= 1007 seq_len= 1008 out=  8 free= 68 FINISHED_LENGTH_CAPPED preempt=   2 ev=   0
+  [spec-lookahead-under-ceiling] VERDICT after 14 steps: finished=True status=FINISHED_LENGTH_CAPPED output_tokens=8/8 num_preemptions=2 preempted_events=0 first_wall_step=10 output_stalled_since_step=None
+INFO 08-16 18:23:25 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:25 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:25 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:26 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:26 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:26 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:26 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:26 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:26 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:26 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:26 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:26 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:26 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:26 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:26 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:27 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:27 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:27 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:27 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:27 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:27 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:27 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:27 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:27 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:27 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:27 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:27 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:27 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:27 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:27 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:28 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:28 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:28 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:28 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:28 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:28 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:28 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:28 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:28 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:29 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:29 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:29 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:29 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:29 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:29 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:29 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:29 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:29 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:29 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:29 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:29 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:30 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:30 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:30 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:30 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:30 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:30 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:30 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:30 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:30 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:30 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:30 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:30 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:30 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:30 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:30 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:31 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:31 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:31 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:31 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:31 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:31 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:31 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:31 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:31 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:31 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:31 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:31 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:32 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:32 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:32 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:32 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:32 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:32 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:32 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:32 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:32 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:32 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:32 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:32 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:33 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:33 [model.py:1965] Using max model len 1000
+INFO 08-16 18:23:33 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:33 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:33 [model.py:1965] Using max model len 1000
+INFO 08-16 18:23:33 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:33 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:33 [model.py:1965] Using max model len 1000
+INFO 08-16 18:23:33 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:33 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:33 [model.py:1965] Using max model len 1000
+INFO 08-16 18:23:33 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:34 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:34 [model.py:1965] Using max model len 1000
+INFO 08-16 18:23:34 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:34 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:34 [model.py:1965] Using max model len 1000
+INFO 08-16 18:23:34 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:34 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:34 [model.py:1965] Using max model len 1000
+INFO 08-16 18:23:34 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:34 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:34 [model.py:1965] Using max model len 1000
+INFO 08-16 18:23:34 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:35 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:35 [model.py:1965] Using max model len 1000
+INFO 08-16 18:23:35 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:35 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:35 [model.py:1965] Using max model len 1000
+INFO 08-16 18:23:35 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:35 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:35 [model.py:1965] Using max model len 1000
+INFO 08-16 18:23:35 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:35 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:35 [model.py:1965] Using max model len 1000
+INFO 08-16 18:23:35 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:35 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:35 [model.py:1965] Using max model len 1000
+INFO 08-16 18:23:35 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:36 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:36 [model.py:1965] Using max model len 1000
+INFO 08-16 18:23:36 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:36 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:36 [model.py:1965] Using max model len 1000
+INFO 08-16 18:23:36 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:36 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:36 [model.py:1965] Using max model len 1009
+INFO 08-16 18:23:36 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:36 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:36 [model.py:1965] Using max model len 1009
+INFO 08-16 18:23:36 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:37 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:37 [model.py:1965] Using max model len 1009
+INFO 08-16 18:23:37 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:37 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:37 [model.py:1965] Using max model len 1009
+INFO 08-16 18:23:37 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:37 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:37 [model.py:1965] Using max model len 1009
+INFO 08-16 18:23:37 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:37 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:37 [model.py:1965] Using max model len 1009
+INFO 08-16 18:23:37 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:38 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:38 [model.py:1965] Using max model len 1009
+INFO 08-16 18:23:38 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:38 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:38 [model.py:1965] Using max model len 1009
+INFO 08-16 18:23:38 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:38 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:38 [model.py:1965] Using max model len 1009
+INFO 08-16 18:23:38 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:38 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:38 [model.py:1965] Using max model len 1009
+INFO 08-16 18:23:38 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:38 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:38 [model.py:1965] Using max model len 1009
+INFO 08-16 18:23:38 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:39 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:39 [model.py:1965] Using max model len 1009
+INFO 08-16 18:23:39 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:39 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:39 [model.py:1965] Using max model len 1009
+INFO 08-16 18:23:39 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:39 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:39 [model.py:1965] Using max model len 1009
+INFO 08-16 18:23:39 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:39 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:39 [model.py:1965] Using max model len 1009
+INFO 08-16 18:23:39 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:40 [model.py:672] Resolved architecture: OPTForCausalLM
+WARNING 08-16 18:23:40 [model.py:2459] User-specified max_model_len (4096) is greater than the derived max_model_len (max_position_embeddings=2048.0 or model_max_length=None in model's config.json). VLLM_ALLOW_LONG_MAX_MODEL_LEN must be used with extreme caution. If the model uses relative position encoding (RoPE), positions exceeding derived_max_model_len lead to nan. If the model uses absolute position encoding, positions exceeding derived_max_model_len will cause a CUDA array out-of-bounds error.
+INFO 08-16 18:23:40 [model.py:1965] Using max model len 4096
+INFO 08-16 18:23:40 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:40 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:40 [model.py:1965] Using max model len 4096
+INFO 08-16 18:23:40 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:40 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:40 [model.py:1965] Using max model len 4096
+INFO 08-16 18:23:40 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:40 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:40 [model.py:1965] Using max model len 4096
+INFO 08-16 18:23:40 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:41 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:41 [model.py:1965] Using max model len 4096
+INFO 08-16 18:23:41 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:41 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:41 [model.py:1965] Using max model len 4096
+INFO 08-16 18:23:41 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:41 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:41 [model.py:1965] Using max model len 4096
+INFO 08-16 18:23:41 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:41 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:41 [model.py:1965] Using max model len 4096
+INFO 08-16 18:23:41 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:42 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:42 [model.py:1965] Using max model len 4096
+INFO 08-16 18:23:42 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:42 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:42 [model.py:1965] Using max model len 4096
+INFO 08-16 18:23:42 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:42 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:42 [model.py:1965] Using max model len 4096
+INFO 08-16 18:23:42 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:42 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:42 [model.py:1965] Using max model len 4096
+INFO 08-16 18:23:42 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:42 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:42 [model.py:1965] Using max model len 4096
+INFO 08-16 18:23:42 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:43 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:43 [model.py:1965] Using max model len 4096
+INFO 08-16 18:23:43 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:43 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:43 [model.py:1965] Using max model len 4096
+INFO 08-16 18:23:43 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:43 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:43 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:43 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:43 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:43 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:43 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:44 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:44 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:44 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:44 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:44 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:44 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:44 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:44 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:44 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:44 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:44 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:44 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:45 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:45 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:45 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:45 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:45 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:45 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:45 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:45 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:45 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:45 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:45 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:45 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:45 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:45 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:45 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:46 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:46 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:46 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:46 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:46 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:46 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:46 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:46 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:46 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:46 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:46 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:46 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:47 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:47 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:47 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:47 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:47 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:47 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:47 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:47 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:47 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:47 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:47 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:47 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:48 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:48 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:48 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:48 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:48 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:48 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:48 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:48 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:48 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:48 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:48 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:48 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:49 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:49 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:49 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:49 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:49 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:49 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:49 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:49 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:49 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:49 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:49 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:49 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:49 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:49 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:49 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:50 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:50 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:50 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:50 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:50 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:50 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:50 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:50 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:50 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:50 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:50 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:50 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:51 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:51 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:51 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:51 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:51 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:51 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:51 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:51 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:51 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:51 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:51 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:51 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:52 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:52 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:52 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:52 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:52 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:52 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:52 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:52 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:52 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:52 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:52 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:52 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:53 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:53 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:53 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:53 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:53 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:53 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:53 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:53 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:53 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:53 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:53 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:53 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:53 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:53 [model.py:1965] Using max model len 1024
+INFO 08-16 18:23:53 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:54 [model.py:672] Resolved architecture: OPTForCausalLM
+WARNING 08-16 18:23:54 [model.py:2459] User-specified max_model_len (8192) is greater than the derived max_model_len (max_position_embeddings=2048.0 or model_max_length=None in model's config.json). VLLM_ALLOW_LONG_MAX_MODEL_LEN must be used with extreme caution. If the model uses relative position encoding (RoPE), positions exceeding derived_max_model_len lead to nan. If the model uses absolute position encoding, positions exceeding derived_max_model_len will cause a CUDA array out-of-bounds error.
+INFO 08-16 18:23:54 [model.py:1965] Using max model len 8192
+INFO 08-16 18:23:54 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:54 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:54 [model.py:1965] Using max model len 8192
+INFO 08-16 18:23:54 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:54 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:54 [model.py:1965] Using max model len 8192
+INFO 08-16 18:23:54 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:54 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:54 [model.py:1965] Using max model len 8192
+INFO 08-16 18:23:54 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:55 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:55 [model.py:1965] Using max model len 8192
+INFO 08-16 18:23:55 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:55 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:55 [model.py:1965] Using max model len 8192
+INFO 08-16 18:23:55 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:55 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:55 [model.py:1965] Using max model len 8192
+INFO 08-16 18:23:55 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:55 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:55 [model.py:1965] Using max model len 8192
+INFO 08-16 18:23:55 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:56 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:56 [model.py:1965] Using max model len 8192
+INFO 08-16 18:23:56 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:56 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:56 [model.py:1965] Using max model len 8192
+INFO 08-16 18:23:56 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:56 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:56 [model.py:1965] Using max model len 8192
+INFO 08-16 18:23:56 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:56 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:56 [model.py:1965] Using max model len 8192
+INFO 08-16 18:23:56 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:57 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:57 [model.py:1965] Using max model len 8192
+INFO 08-16 18:23:57 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:57 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:57 [model.py:1965] Using max model len 8192
+INFO 08-16 18:23:57 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:57 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:57 [model.py:1965] Using max model len 8192
+INFO 08-16 18:23:57 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:57 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:57 [model.py:1965] Using max model len 8192
+INFO 08-16 18:23:57 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:57 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:57 [model.py:1965] Using max model len 8192
+INFO 08-16 18:23:57 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:58 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:58 [model.py:1965] Using max model len 8192
+INFO 08-16 18:23:58 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:58 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:58 [model.py:1965] Using max model len 8192
+INFO 08-16 18:23:58 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:58 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:58 [model.py:1965] Using max model len 8192
+INFO 08-16 18:23:58 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:58 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:58 [model.py:1965] Using max model len 8192
+INFO 08-16 18:23:58 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:59 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:59 [model.py:1965] Using max model len 8192
+INFO 08-16 18:23:59 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:59 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:59 [model.py:1965] Using max model len 8192
+INFO 08-16 18:23:59 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:59 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:59 [model.py:1965] Using max model len 8192
+INFO 08-16 18:23:59 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:23:59 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:23:59 [model.py:1965] Using max model len 8192
+INFO 08-16 18:23:59 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:24:00 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:24:00 [model.py:1965] Using max model len 8192
+INFO 08-16 18:24:00 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:24:00 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:24:00 [model.py:1965] Using max model len 8192
+INFO 08-16 18:24:00 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:24:00 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:24:00 [model.py:1965] Using max model len 8192
+INFO 08-16 18:24:00 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:24:00 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:24:00 [model.py:1965] Using max model len 8192
+INFO 08-16 18:24:00 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:24:00 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:24:00 [model.py:1965] Using max model len 8192
+INFO 08-16 18:24:00 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:24:01 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:24:01 [model.py:1965] Using max model len 8192
+INFO 08-16 18:24:01 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:24:01 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:24:01 [model.py:1965] Using max model len 8192
+INFO 08-16 18:24:01 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:24:01 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:24:01 [model.py:1965] Using max model len 8192
+INFO 08-16 18:24:01 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:24:01 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:24:01 [model.py:1965] Using max model len 8192
+INFO 08-16 18:24:01 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:24:02 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:24:02 [model.py:1965] Using max model len 8192
+INFO 08-16 18:24:02 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:24:02 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:24:02 [model.py:1965] Using max model len 8192
+INFO 08-16 18:24:02 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:24:02 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:24:02 [model.py:1965] Using max model len 8192
+INFO 08-16 18:24:02 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:24:02 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:24:02 [model.py:1965] Using max model len 8192
+INFO 08-16 18:24:02 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:24:03 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:24:03 [model.py:1965] Using max model len 8192
+INFO 08-16 18:24:03 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:24:03 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:24:03 [model.py:1965] Using max model len 8192
+INFO 08-16 18:24:03 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:24:03 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:24:03 [model.py:1965] Using max model len 8192
+INFO 08-16 18:24:03 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:24:03 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:24:03 [model.py:1965] Using max model len 8192
+INFO 08-16 18:24:03 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:24:04 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:24:04 [model.py:1965] Using max model len 8192
+INFO 08-16 18:24:04 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:24:04 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:24:04 [model.py:1965] Using max model len 8192
+INFO 08-16 18:24:04 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:24:04 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:24:04 [model.py:1965] Using max model len 8192
+INFO 08-16 18:24:04 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:24:04 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:24:04 [model.py:1965] Using max model len 8192
+INFO 08-16 18:24:04 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:24:04 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:24:04 [model.py:1965] Using max model len 8192
+INFO 08-16 18:24:04 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:24:05 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:24:05 [model.py:1965] Using max model len 8192
+INFO 08-16 18:24:05 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:24:05 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:24:05 [model.py:1965] Using max model len 8192
+INFO 08-16 18:24:05 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:24:05 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:24:05 [model.py:1965] Using max model len 8192
+INFO 08-16 18:24:05 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:24:05 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:24:05 [model.py:1965] Using max model len 8192
+INFO 08-16 18:24:05 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:24:06 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:24:06 [model.py:1965] Using max model len 8192
+INFO 08-16 18:24:06 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:24:06 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:24:06 [model.py:1965] Using max model len 8192
+INFO 08-16 18:24:06 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:24:06 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:24:06 [model.py:1965] Using max model len 8192
+INFO 08-16 18:24:06 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:24:06 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:24:06 [model.py:1965] Using max model len 8192
+INFO 08-16 18:24:06 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:24:07 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:24:07 [model.py:1965] Using max model len 8192
+INFO 08-16 18:24:07 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:24:07 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:24:07 [model.py:1965] Using max model len 8192
+INFO 08-16 18:24:07 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:24:07 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:24:07 [model.py:1965] Using max model len 8192
+INFO 08-16 18:24:07 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:24:07 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:24:07 [model.py:1965] Using max model len 8192
+INFO 08-16 18:24:07 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:24:07 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:24:07 [model.py:1965] Using max model len 8192
+INFO 08-16 18:24:07 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:24:08 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:24:08 [model.py:1965] Using max model len 8192
+INFO 08-16 18:24:08 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:24:08 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:24:08 [model.py:1965] Using max model len 8192
+INFO 08-16 18:24:08 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:24:08 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:24:08 [model.py:1965] Using max model len 8192
+INFO 08-16 18:24:08 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:24:09 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:24:09 [model.py:1965] Using max model len 8192
+INFO 08-16 18:24:09 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:24:09 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:24:09 [model.py:1965] Using max model len 8192
+INFO 08-16 18:24:09 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:24:09 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:24:09 [model.py:1965] Using max model len 8192
+INFO 08-16 18:24:09 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:24:09 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:24:09 [model.py:1965] Using max model len 8192
+INFO 08-16 18:24:09 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:24:09 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:24:09 [model.py:1965] Using max model len 8192
+INFO 08-16 18:24:09 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:24:10 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:24:10 [model.py:1965] Using max model len 8192
+INFO 08-16 18:24:10 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:24:10 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:24:10 [model.py:1965] Using max model len 8192
+INFO 08-16 18:24:10 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:24:10 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:24:10 [model.py:1965] Using max model len 8192
+INFO 08-16 18:24:10 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:24:10 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:24:10 [model.py:1965] Using max model len 8192
+INFO 08-16 18:24:10 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:24:11 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:24:11 [model.py:1965] Using max model len 8192
+INFO 08-16 18:24:11 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:24:11 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:24:11 [model.py:1965] Using max model len 8192
+INFO 08-16 18:24:11 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:24:11 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:24:11 [model.py:1965] Using max model len 8192
+INFO 08-16 18:24:11 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:24:11 [model.py:672] Resolved architecture: OPTForCausalLM
+WARNING 08-16 18:24:11 [model.py:2459] User-specified max_model_len (32768) is greater than the derived max_model_len (max_position_embeddings=2048.0 or model_max_length=None in model's config.json). VLLM_ALLOW_LONG_MAX_MODEL_LEN must be used with extreme caution. If the model uses relative position encoding (RoPE), positions exceeding derived_max_model_len lead to nan. If the model uses absolute position encoding, positions exceeding derived_max_model_len will cause a CUDA array out-of-bounds error.
+INFO 08-16 18:24:11 [model.py:1965] Using max model len 32768
+INFO 08-16 18:24:11 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:24:12 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:24:12 [model.py:1965] Using max model len 32768
+INFO 08-16 18:24:12 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:24:12 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:24:12 [model.py:1965] Using max model len 32768
+INFO 08-16 18:24:12 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:24:12 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:24:12 [model.py:1965] Using max model len 32768
+INFO 08-16 18:24:12 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:24:12 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:24:12 [model.py:1965] Using max model len 32768
+INFO 08-16 18:24:12 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:24:13 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:24:13 [model.py:1965] Using max model len 32768
+INFO 08-16 18:24:13 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:24:13 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:24:13 [model.py:1965] Using max model len 32768
+INFO 08-16 18:24:13 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:24:13 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:24:13 [model.py:1965] Using max model len 32768
+INFO 08-16 18:24:13 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:24:13 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:24:13 [model.py:1965] Using max model len 32768
+INFO 08-16 18:24:13 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:24:14 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:24:14 [model.py:1965] Using max model len 32768
+INFO 08-16 18:24:14 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:24:14 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:24:14 [model.py:1965] Using max model len 32768
+INFO 08-16 18:24:14 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:24:14 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:24:14 [model.py:1965] Using max model len 32768
+INFO 08-16 18:24:14 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:24:14 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:24:14 [model.py:1965] Using max model len 32768
+INFO 08-16 18:24:14 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:24:14 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:24:14 [model.py:1965] Using max model len 32768
+INFO 08-16 18:24:14 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+INFO 08-16 18:24:15 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 18:24:15 [model.py:1965] Using max model len 32768
+INFO 08-16 18:24:15 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+
+=== gap sweep: smallest startup-accepted pool vs its servable ceiling ===
+  block max_model_len nspec  need smallest_ok servable  gap_tok gap_blk | +1blk_servable +1blk_gap
+     16          1024     3    69          69     1008       16    1.00 |           1024         0
+     16          1024     0    66          69     1008       16    1.00 |           1024         0
+     16          1000     3    68          68      992        8    0.50 |           1000         0
+     16          1009     3    69          69     1008        1    0.06 |           1009         0
+     16          4096     3   261         261     4080       16    1.00 |           4096         0
+     32          1024     3    37          37      992       32    1.00 |           1024         0
+     64          1024     3    21          21      960       64    1.00 |           1024         0
+    128          1024     3    13          13      896      128    1.00 |           1024         0
+    128          8192     3    69          69     8064      128    1.00 |           8192         0
+    128          8192    16    82          78     8192        0    0.00 |           8192         0
+     16          8192    16   530         526     8192        0    0.00 |           8192         0
+    256          8192     8    42          38     8192        0    0.00 |           8192         0
+    256          8192     0    34          37     7936      256    1.00 |           8192         0
+    512         32768     8    74          70    32768        0    0.00 |          32768         0
+
+=== JSON ===
+{
+ "vllm_version": "0.11.2.dev0+g4d2a68d6",
+ "block_size": 16,
+ "max_model_len": 1024,
+ "num_speculative_blocks": 3,
+ "max_num_batched_tokens": 256,
+ "pool_blocks": 69,
+ "max_servable_num_tokens": 1008,
+ "steps_budget": 4000,
+ "runs": [
+  {
+   "label": "decode-over-ceiling",
+   "num_blocks": 69,
+   "prompt_len": 1000,
+   "max_tokens": 24,
+   "steps_run": 4000,
+   "finished": false,
+   "status": "PREEMPTED",
+   "output_tokens": 9,
+   "num_preemptions": 1,
+   "preempted_events": 1,
+   "first_wall_step": 13,
+   "output_stalled_since_step": 13,
+   "final_seq_len": 1009,
+   "history_head": [
+    [
+     0,
+     256,
+     256,
+     1000,
+     0,
+     48,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     1,
+     256,
+     512,
+     1000,
+     0,
+     31,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     2,
+     256,
+     768,
+     1000,
+     0,
+     15,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     3,
+     224,
+     992,
+     1000,
+     0,
+     1,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     4,
+     8,
+     1000,
+     1001,
+     1,
+     0,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     5,
+     1,
+     1001,
+     1002,
+     2,
+     1,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     6,
+     1,
+     1002,
+     1003,
+     3,
+     1,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     7,
+     1,
+     1003,
+     1004,
+     4,
+     1,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     8,
+     1,
+     1004,
+     1005,
+     5,
+     1,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     9,
+     1,
+     1005,
+     1006,
+     6,
+     1,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     10,
+     1,
+     1006,
+     1007,
+     7,
+     1,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     11,
+     1,
+     1007,
+     1008,
+     8,
+     1,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     12,
+     1,
+     1008,
+     1009,
+     9,
+     1,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     13,
+     0,
+     0,
+     1009,
+     9,
+     68,
+     "PREEMPTED",
+     1,
+     1
+    ],
+    [
+     14,
+     0,
+     0,
+     1009,
+     9,
+     68,
+     "PREEMPTED",
+     1,
+     1
+    ],
+    [
+     15,
+     0,
+     0,
+     1009,
+     9,
+     68,
+     "PREEMPTED",
+     1,
+     1
+    ],
+    [
+     16,
+     0,
+     0,
+     1009,
+     9,
+     68,
+     "PREEMPTED",
+     1,
+     1
+    ],
+    [
+     17,
+     0,
+     0,
+     1009,
+     9,
+     68,
+     "PREEMPTED",
+     1,
+     1
+    ],
+    [
+     18,
+     0,
+     0,
+     1009,
+     9,
+     68,
+     "PREEMPTED",
+     1,
+     1
+    ],
+    [
+     19,
+     0,
+     0,
+     1009,
+     9,
+     68,
+     "PREEMPTED",
+     1,
+     1
+    ],
+    [
+     20,
+     0,
+     0,
+     1009,
+     9,
+     68,
+     "PREEMPTED",
+     1,
+     1
+    ],
+    [
+     21,
+     0,
+     0,
+     1009,
+     9,
+     68,
+     "PREEMPTED",
+     1,
+     1
+    ],
+    [
+     22,
+     0,
+     0,
+     1009,
+     9,
+     68,
+     "PREEMPTED",
+     1,
+     1
+    ],
+    [
+     23,
+     0,
+     0,
+     1009,
+     9,
+     68,
+     "PREEMPTED",
+     1,
+     1
+    ]
+   ],
+   "history_tail": [
+    [
+     3990,
+     0,
+     0,
+     1009,
+     9,
+     68,
+     "PREEMPTED",
+     1,
+     1
+    ],
+    [
+     3991,
+     0,
+     0,
+     1009,
+     9,
+     68,
+     "PREEMPTED",
+     1,
+     1
+    ],
+    [
+     3992,
+     0,
+     0,
+     1009,
+     9,
+     68,
+     "PREEMPTED",
+     1,
+     1
+    ],
+    [
+     3993,
+     0,
+     0,
+     1009,
+     9,
+     68,
+     "PREEMPTED",
+     1,
+     1
+    ],
+    [
+     3994,
+     0,
+     0,
+     1009,
+     9,
+     68,
+     "PREEMPTED",
+     1,
+     1
+    ],
+    [
+     3995,
+     0,
+     0,
+     1009,
+     9,
+     68,
+     "PREEMPTED",
+     1,
+     1
+    ],
+    [
+     3996,
+     0,
+     0,
+     1009,
+     9,
+     68,
+     "PREEMPTED",
+     1,
+     1
+    ],
+    [
+     3997,
+     0,
+     0,
+     1009,
+     9,
+     68,
+     "PREEMPTED",
+     1,
+     1
+    ],
+    [
+     3998,
+     0,
+     0,
+     1009,
+     9,
+     68,
+     "PREEMPTED",
+     1,
+     1
+    ],
+    [
+     3999,
+     0,
+     0,
+     1009,
+     9,
+     68,
+     "PREEMPTED",
+     1,
+     1
+    ]
+   ]
+  },
+  {
+   "label": "control-pool+1",
+   "num_blocks": 70,
+   "prompt_len": 1000,
+   "max_tokens": 24,
+   "steps_run": 28,
+   "finished": true,
+   "status": "FINISHED_LENGTH_CAPPED",
+   "output_tokens": 24,
+   "num_preemptions": 0,
+   "preempted_events": 0,
+   "first_wall_step": null,
+   "output_stalled_since_step": null,
+   "final_seq_len": 1024,
+   "history_head": [
+    [
+     0,
+     256,
+     256,
+     1000,
+     0,
+     49,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     1,
+     256,
+     512,
+     1000,
+     0,
+     32,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     2,
+     256,
+     768,
+     1000,
+     0,
+     16,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     3,
+     224,
+     992,
+     1000,
+     0,
+     2,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     4,
+     8,
+     1000,
+     1001,
+     1,
+     1,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     5,
+     1,
+     1001,
+     1002,
+     2,
+     2,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     6,
+     1,
+     1002,
+     1003,
+     3,
+     2,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     7,
+     1,
+     1003,
+     1004,
+     4,
+     2,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     8,
+     1,
+     1004,
+     1005,
+     5,
+     2,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     9,
+     1,
+     1005,
+     1006,
+     6,
+     2,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     10,
+     1,
+     1006,
+     1007,
+     7,
+     2,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     11,
+     1,
+     1007,
+     1008,
+     8,
+     2,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     12,
+     1,
+     1008,
+     1009,
+     9,
+     2,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     13,
+     1,
+     1009,
+     1010,
+     10,
+     0,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     14,
+     1,
+     1010,
+     1011,
+     11,
+     1,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     15,
+     1,
+     1011,
+     1012,
+     12,
+     1,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     16,
+     1,
+     1012,
+     1013,
+     13,
+     1,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     17,
+     1,
+     1013,
+     1014,
+     14,
+     1,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     18,
+     1,
+     1014,
+     1015,
+     15,
+     1,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     19,
+     1,
+     1015,
+     1016,
+     16,
+     1,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     20,
+     1,
+     1016,
+     1017,
+     17,
+     1,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     21,
+     1,
+     1017,
+     1018,
+     18,
+     1,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     22,
+     1,
+     1018,
+     1019,
+     19,
+     1,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     23,
+     1,
+     1019,
+     1020,
+     20,
+     1,
+     "RUNNING",
+     0,
+     0
+    ]
+   ],
+   "history_tail": [
+    [
+     18,
+     1,
+     1014,
+     1015,
+     15,
+     1,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     19,
+     1,
+     1015,
+     1016,
+     16,
+     1,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     20,
+     1,
+     1016,
+     1017,
+     17,
+     1,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     21,
+     1,
+     1017,
+     1018,
+     18,
+     1,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     22,
+     1,
+     1018,
+     1019,
+     19,
+     1,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     23,
+     1,
+     1019,
+     1020,
+     20,
+     1,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     24,
+     1,
+     1020,
+     1021,
+     21,
+     1,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     25,
+     1,
+     1021,
+     1022,
+     22,
+     1,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     26,
+     1,
+     1022,
+     1023,
+     23,
+     1,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     27,
+     1,
+     1023,
+     1024,
+     24,
+     69,
+     "FINISHED_LENGTH_CAPPED",
+     0,
+     0
+    ]
+   ]
+  },
+  {
+   "label": "control-under-ceiling",
+   "num_blocks": 69,
+   "prompt_len": 1000,
+   "max_tokens": 8,
+   "steps_run": 12,
+   "finished": true,
+   "status": "FINISHED_LENGTH_CAPPED",
+   "output_tokens": 8,
+   "num_preemptions": 0,
+   "preempted_events": 0,
+   "first_wall_step": null,
+   "output_stalled_since_step": null,
+   "final_seq_len": 1008,
+   "history_head": [
+    [
+     0,
+     256,
+     256,
+     1000,
+     0,
+     48,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     1,
+     256,
+     512,
+     1000,
+     0,
+     31,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     2,
+     256,
+     768,
+     1000,
+     0,
+     15,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     3,
+     224,
+     992,
+     1000,
+     0,
+     1,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     4,
+     8,
+     1000,
+     1001,
+     1,
+     0,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     5,
+     1,
+     1001,
+     1002,
+     2,
+     1,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     6,
+     1,
+     1002,
+     1003,
+     3,
+     1,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     7,
+     1,
+     1003,
+     1004,
+     4,
+     1,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     8,
+     1,
+     1004,
+     1005,
+     5,
+     1,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     9,
+     1,
+     1005,
+     1006,
+     6,
+     1,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     10,
+     1,
+     1006,
+     1007,
+     7,
+     1,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     11,
+     1,
+     1007,
+     1008,
+     8,
+     68,
+     "FINISHED_LENGTH_CAPPED",
+     0,
+     0
+    ]
+   ],
+   "history_tail": [
+    [
+     2,
+     256,
+     768,
+     1000,
+     0,
+     15,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     3,
+     224,
+     992,
+     1000,
+     0,
+     1,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     4,
+     8,
+     1000,
+     1001,
+     1,
+     0,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     5,
+     1,
+     1001,
+     1002,
+     2,
+     1,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     6,
+     1,
+     1002,
+     1003,
+     3,
+     1,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     7,
+     1,
+     1003,
+     1004,
+     4,
+     1,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     8,
+     1,
+     1004,
+     1005,
+     5,
+     1,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     9,
+     1,
+     1005,
+     1006,
+     6,
+     1,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     10,
+     1,
+     1006,
+     1007,
+     7,
+     1,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     11,
+     1,
+     1007,
+     1008,
+     8,
+     68,
+     "FINISHED_LENGTH_CAPPED",
+     0,
+     0
+    ]
+   ]
+  },
+  {
+   "label": "spec-lookahead-under-ceiling",
+   "num_blocks": 69,
+   "prompt_len": 1000,
+   "max_tokens": 8,
+   "steps_run": 14,
+   "finished": true,
+   "status": "FINISHED_LENGTH_CAPPED",
+   "output_tokens": 8,
+   "num_preemptions": 2,
+   "preempted_events": 0,
+   "first_wall_step": 10,
+   "output_stalled_since_step": null,
+   "final_seq_len": 1008,
+   "history_head": [
+    [
+     0,
+     256,
+     256,
+     1000,
+     0,
+     48,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     1,
+     256,
+     512,
+     1000,
+     0,
+     31,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     2,
+     256,
+     768,
+     1000,
+     0,
+     15,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     3,
+     224,
+     992,
+     1000,
+     0,
+     1,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     4,
+     11,
+     1000,
+     1001,
+     1,
+     0,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     5,
+     4,
+     1001,
+     1002,
+     2,
+     1,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     6,
+     4,
+     1002,
+     1003,
+     3,
+     1,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     7,
+     4,
+     1003,
+     1004,
+     4,
+     1,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     8,
+     4,
+     1004,
+     1005,
+     5,
+     1,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     9,
+     4,
+     1005,
+     1006,
+     6,
+     1,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     10,
+     0,
+     0,
+     1006,
+     6,
+     68,
+     "PREEMPTED",
+     1,
+     1
+    ],
+    [
+     11,
+     14,
+     1006,
+     1007,
+     7,
+     0,
+     "RUNNING",
+     1,
+     0
+    ],
+    [
+     12,
+     0,
+     0,
+     1007,
+     7,
+     68,
+     "PREEMPTED",
+     2,
+     1
+    ],
+    [
+     13,
+     15,
+     1007,
+     1008,
+     8,
+     68,
+     "FINISHED_LENGTH_CAPPED",
+     2,
+     0
+    ]
+   ],
+   "history_tail": [
+    [
+     4,
+     11,
+     1000,
+     1001,
+     1,
+     0,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     5,
+     4,
+     1001,
+     1002,
+     2,
+     1,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     6,
+     4,
+     1002,
+     1003,
+     3,
+     1,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     7,
+     4,
+     1003,
+     1004,
+     4,
+     1,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     8,
+     4,
+     1004,
+     1005,
+     5,
+     1,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     9,
+     4,
+     1005,
+     1006,
+     6,
+     1,
+     "RUNNING",
+     0,
+     0
+    ],
+    [
+     10,
+     0,
+     0,
+     1006,
+     6,
+     68,
+     "PREEMPTED",
+     1,
+     1
+    ],
+    [
+     11,
+     14,
+     1006,
+     1007,
+     7,
+     0,
+     "RUNNING",
+     1,
+     0
+    ],
+    [
+     12,
+     0,
+     0,
+     1007,
+     7,
+     68,
+     "PREEMPTED",
+     2,
+     1
+    ],
+    [
+     13,
+     15,
+     1007,
+     1008,
+     8,
+     68,
+     "FINISHED_LENGTH_CAPPED",
+     2,
+     0
+    ]
+   ]
+  }
+ ],
+ "gap_sweep": [
+  {
+   "block_size": 16,
+   "max_model_len": 1024,
+   "num_speculative_blocks": 3,
+   "startup_min_blocks": 69,
+   "smallest_accepted_blocks": 69,
+   "max_servable_num_tokens": 1008,
+   "gap_tokens": 16,
+   "gap_blocks": 1.0,
+   "max_servable_num_tokens_one_block_more": 1024,
+   "gap_tokens_one_block_more": 0
+  },
+  {
+   "block_size": 16,
+   "max_model_len": 1024,
+   "num_speculative_blocks": 0,
+   "startup_min_blocks": 66,
+   "smallest_accepted_blocks": 69,
+   "max_servable_num_tokens": 1008,
+   "gap_tokens": 16,
+   "gap_blocks": 1.0,
+   "max_servable_num_tokens_one_block_more": 1024,
+   "gap_tokens_one_block_more": 0
+  },
+  {
+   "block_size": 16,
+   "max_model_len": 1000,
+   "num_speculative_blocks": 3,
+   "startup_min_blocks": 68,
+   "smallest_accepted_blocks": 68,
+   "max_servable_num_tokens": 992,
+   "gap_tokens": 8,
+   "gap_blocks": 0.5,
+   "max_servable_num_tokens_one_block_more": 1000,
+   "gap_tokens_one_block_more": 0
+  },
+  {
+   "block_size": 16,
+   "max_model_len": 1009,
+   "num_speculative_blocks": 3,
+   "startup_min_blocks": 69,
+   "smallest_accepted_blocks": 69,
+   "max_servable_num_tokens": 1008,
+   "gap_tokens": 1,
+   "gap_blocks": 0.0625,
+   "max_servable_num_tokens_one_block_more": 1009,
+   "gap_tokens_one_block_more": 0
+  },
+  {
+   "block_size": 16,
+   "max_model_len": 4096,
+   "num_speculative_blocks": 3,
+   "startup_min_blocks": 261,
+   "smallest_accepted_blocks": 261,
+   "max_servable_num_tokens": 4080,
+   "gap_tokens": 16,
+   "gap_blocks": 1.0,
+   "max_servable_num_tokens_one_block_more": 4096,
+   "gap_tokens_one_block_more": 0
+  },
+  {
+   "block_size": 32,
+   "max_model_len": 1024,
+   "num_speculative_blocks": 3,
+   "startup_min_blocks": 37,
+   "smallest_accepted_blocks": 37,
+   "max_servable_num_tokens": 992,
+   "gap_tokens": 32,
+   "gap_blocks": 1.0,
+   "max_servable_num_tokens_one_block_more": 1024,
+   "gap_tokens_one_block_more": 0
+  },
+  {
+   "block_size": 64,
+   "max_model_len": 1024,
+   "num_speculative_blocks": 3,
+   "startup_min_blocks": 21,
+   "smallest_accepted_blocks": 21,
+   "max_servable_num_tokens": 960,
+   "gap_tokens": 64,
+   "gap_blocks": 1.0,
+   "max_servable_num_tokens_one_block_more": 1024,
+   "gap_tokens_one_block_more": 0
+  },
+  {
+   "block_size": 128,
+   "max_model_len": 1024,
+   "num_speculative_blocks": 3,
+   "startup_min_blocks": 13,
+   "smallest_accepted_blocks": 13,
+   "max_servable_num_tokens": 896,
+   "gap_tokens": 128,
+   "gap_blocks": 1.0,
+   "max_servable_num_tokens_one_block_more": 1024,
+   "gap_tokens_one_block_more": 0
+  },
+  {
+   "block_size": 128,
+   "max_model_len": 8192,
+   "num_speculative_blocks": 3,
+   "startup_min_blocks": 69,
+   "smallest_accepted_blocks": 69,
+   "max_servable_num_tokens": 8064,
+   "gap_tokens": 128,
+   "gap_blocks": 1.0,
+   "max_servable_num_tokens_one_block_more": 8192,
+   "gap_tokens_one_block_more": 0
+  },
+  {
+   "block_size": 128,
+   "max_model_len": 8192,
+   "num_speculative_blocks": 16,
+   "startup_min_blocks": 82,
+   "smallest_accepted_blocks": 78,
+   "max_servable_num_tokens": 8192,
+   "gap_tokens": 0,
+   "gap_blocks": 0.0,
+   "max_servable_num_tokens_one_block_more": 8192,
+   "gap_tokens_one_block_more": 0
+  },
+  {
+   "block_size": 16,
+   "max_model_len": 8192,
+   "num_speculative_blocks": 16,
+   "startup_min_blocks": 530,
+   "smallest_accepted_blocks": 526,
+   "max_servable_num_tokens": 8192,
+   "gap_tokens": 0,
+   "gap_blocks": 0.0,
+   "max_servable_num_tokens_one_block_more": 8192,
+   "gap_tokens_one_block_more": 0
+  },
+  {
+   "block_size": 256,
+   "max_model_len": 8192,
+   "num_speculative_blocks": 8,
+   "startup_min_blocks": 42,
+   "smallest_accepted_blocks": 38,
+   "max_servable_num_tokens": 8192,
+   "gap_tokens": 0,
+   "gap_blocks": 0.0,
+   "max_servable_num_tokens_one_block_more": 8192,
+   "gap_tokens_one_block_more": 0
+  },
+  {
+   "block_size": 256,
+   "max_model_len": 8192,
+   "num_speculative_blocks": 0,
+   "startup_min_blocks": 34,
+   "smallest_accepted_blocks": 37,
+   "max_servable_num_tokens": 7936,
+   "gap_tokens": 256,
+   "gap_blocks": 1.0,
+   "max_servable_num_tokens_one_block_more": 8192,
+   "gap_tokens_one_block_more": 0
+  },
+  {
+   "block_size": 512,
+   "max_model_len": 32768,
+   "num_speculative_blocks": 8,
+   "startup_min_blocks": 74,
+   "smallest_accepted_blocks": 70,
+   "max_servable_num_tokens": 32768,
+   "gap_tokens": 0,
+   "gap_blocks": 0.0,
+   "max_servable_num_tokens_one_block_more": 32768,
+   "gap_tokens_one_block_more": 0
+  }
+ ]
+}
