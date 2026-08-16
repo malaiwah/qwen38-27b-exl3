@@ -268,10 +268,95 @@ for n in (1, 2, 4, 8, 16):
 best = max(res["arms"], key=lambda a: a["aggregate_output_tok_per_s"])
 res["peak_aggregate_concurrency"] = best["concurrency"]
 res["peak_aggregate_output_tok_per_s"] = best["aggregate_output_tok_per_s"]
+
+# -n SELECTION RULE, fixed in advance so the number is derived and not chosen to
+# suit a result. Terminal-Bench charges each task a wall-clock timeout, so raising
+# concurrency past the point where per-request speed collapses does not just stop
+# helping -- it starts spending the agent's own timeout budget and manufactures
+# AgentTimeoutErrors that look like task failures. So:
+#   1. Never exceed the server's max_num_seqs (16): beyond it requests queue.
+#   2. Take the largest arm whose PER-REQUEST throughput still holds at or above
+#      50 % of the single-stream rate. That caps the per-task slowdown at 2x,
+#      which the stock 1.0 timeout multiplier absorbs.
+#   3. Among arms passing (2), prefer the one with the highest aggregate
+#      throughput -- that is the one that finishes 89 tasks soonest.
+single = next(a for a in res["arms"] if a["concurrency"] == 1)
+floor = 0.5 * single["per_request_tok_per_s"]
+eligible = [a for a in res["arms"]
+            if a["concurrency"] <= 16 and a["per_request_tok_per_s"] >= floor]
+pick = max(eligible, key=lambda a: a["aggregate_output_tok_per_s"]) if eligible else single
+res["n_selection_rule"] = (
+    "largest arm with per-request tok/s >= 50% of single-stream (cap per-task "
+    "slowdown at 2x, absorbed by the stock 1.0 timeout multiplier), capped at "
+    "max_num_seqs=16, then highest aggregate throughput among those")
+res["single_stream_per_request_tok_per_s"] = single["per_request_tok_per_s"]
+res["per_request_floor_tok_per_s"] = round(floor, 2)
+res["eligible_concurrencies"] = [a["concurrency"] for a in eligible]
+res["recommended_n_concurrent_trials"] = pick["concurrency"]
+res["recommended_n_aggregate_tok_per_s"] = pick["aggregate_output_tok_per_s"]
 open(out, "w").write(json.dumps(res, indent=2))
 print("peak aggregate throughput at concurrency", best["concurrency"])
+print("RECOMMENDED -n =", pick["concurrency"],
+      f"(per-request {pick['per_request_tok_per_s']} >= floor {floor:.2f} tok/s,"
+      f" aggregate {pick['aggregate_output_tok_per_s']} tok/s)")
 EOF
   echo "[headroom] -> $out"
+}
+
+# Page-cache the checkpoint before serving. This box has ~1.3 TB of free RAM
+# against 20.1 GiB of hydrated and 51.7 GiB of BF16 safetensors, so both fit with
+# room to spare, and vLLM's weight load then reads from RAM instead of disk.
+# Purpose is narrow and worth stating: it shortens the GPU window, which is the
+# scarce, queued, shared resource -- warming costs only wall time we are spending
+# waiting anyway. Run it again immediately before `serve`: another agent's IO over
+# a multi-hour queue can evict the cache.
+warm() {
+  local which=${1:-hydrated} dir
+  case $which in
+    hydrated) dir=$MODELS/$HYD ;;
+    bf16)     dir=$MODELS/$BF16 ;;
+    both)     warm hydrated; warm bf16; return ;;
+    *) usage ;;
+  esac
+  local bytes t0 t1 secs
+  # Only the weight shards matter, and du -sb would also count SHA256SUMS etc.
+  bytes=$(du -cb "$dir"/*.safetensors 2>/dev/null | tail -1 | cut -f1)
+  t0=$(date +%s)
+  cat "$dir"/*.safetensors > /dev/null
+  t1=$(date +%s)
+  secs=$(( t1 - t0 ))
+  [ "$secs" -gt 0 ] || secs=1
+  # awk, not bc: bc is not installed on this box.
+  awk -v b="$bytes" -v s="$secs" -v w="$which" 'BEGIN {
+    printf "[warm] %s: %.1f GiB of safetensors read in %ds (%.2f GiB/s effective)\n",
+           w, b/1073741824, s, b/1073741824/s }'
+  free -g | awk '/^Mem:/ {print "[warm] RAM: " $3 "G used, " $6 "G buff/cache, " $7 "G available"}'
+}
+
+# Warm a bounded set of Terminal-Bench task images so pass 1 does not spend GPU
+# time on its first pulls. Deliberately NOT all 89: the full set projects to
+# ~42 GB against ~68 GB free on a box holding other agents' work, and a mid-pass
+# disk-full is the one failure resume cannot make cheap. Stops at a 30 GB floor.
+warm_images() {
+  local count=${1:-20} floor=${TB_IMAGE_FLOOR_GB:-30}
+  echo "[warm-images] pulling up to $count task images, stopping below ${floor}G free"
+  rssh "n=0; pulled=0; skipped=0;
+        for t in \$(ls -d tasks/*/ | sed 's|tasks/||; s|/||' | sort | head -$count); do
+          free_g=\$(df --output=avail -BG \$HOME | tail -1 | tr -dc 0-9);
+          if [ \"\$free_g\" -lt $floor ]; then
+            echo \"[warm-images] STOP: \${free_g}G free is below the ${floor}G floor\"; break;
+          fi;
+          img=\$(grep -m1 -oE 'alexgshaw/[a-z0-9._-]+:[0-9]+' tasks/\$t/*.yaml tasks/\$t/task.toml 2>/dev/null | head -1 | cut -d: -f2-);
+          [ -n \"\$img\" ] || img=\"alexgshaw/\$t:20251031\";
+          if podman image exists \"docker.io/\$img\" 2>/dev/null; then
+            skipped=\$((skipped+1));
+          else
+            podman pull -q \"docker.io/\$img\" >/dev/null 2>&1 && pulled=\$((pulled+1)) || echo \"  pull failed: \$img\";
+          fi;
+        done;
+        echo \"[warm-images] pulled=\$pulled already-warm=\$skipped\";
+        df -h \$HOME | tail -1;
+        echo \"TB images cached: \$(podman images --format '{{.Repository}}' | grep -c alexgshaw)\""
 }
 
 # vLLM counters, including MTP draft/accept so acceptance is per-pass evidence.
@@ -498,7 +583,9 @@ publish_meta() {                  # push the dataset card + the receipt snapshot
   local stage=$OUTDIR/stage/meta
   rm -rf "$stage"; mkdir -p "$stage/receipts"
   cp "$HERE/../receipts/terminal-bench-2.1-"*.json "$stage/receipts/" 2>/dev/null || true
-  [ -f "$OUTDIR/README.md" ] && cp "$OUTDIR/README.md" "$stage/README.md"
+  # The dataset card is versioned in the repo, not in the scratch output dir, so
+  # it survives a decommission of this box like every other deliverable.
+  cp "$HERE/../receipts/terminal-bench-2.1-dataset-card.md" "$stage/README.md"
   echo "[publish-meta] staging $(find "$stage" -type f | wc -l) files"
   hf upload "$DATASET" "$stage" . --repo-type dataset \
      --commit-message "Terminal-Bench 2.1: dataset card + receipts" 2>&1 | tail -3
@@ -551,6 +638,8 @@ case $cmd in
   wait-ready)    wait_ready "${args[@]:-2400}" ;;
   probe)         probe "${args[@]:-probe}" ;;
   headroom)      headroom "${args[@]:-headroom}" ;;
+  warm)          warm "${args[@]:-hydrated}" ;;
+  warm-images)   warm_images "${args[@]:-20}" ;;
   metrics)       metrics "${args[@]}" ;;
   gpu-evidence)  gpu_evidence "${args[@]}" ;;
   no-gpu-assert) no_gpu_assert "${args[@]:-}" ;;

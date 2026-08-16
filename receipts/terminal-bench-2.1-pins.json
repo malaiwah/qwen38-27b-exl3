@@ -468,5 +468,40 @@
       "nvidia-smi process lists on both hosts"
     ]
   },
-  "status": "Pins frozen; all CPU-side infrastructure verified INCLUDING the reverse tunnel (forwarding, measured round-trip and automatic reconnect after a forced drop). Passes 1-3 PENDING the rental GPU handover, queued behind RentalFidelityBatch2 then SixteenFlipCalib2. No GPU has been taken by this agent."
+  "status": "Pins frozen; all CPU-side infrastructure verified INCLUDING the reverse tunnel (forwarding, measured round-trip and automatic reconnect after a forced drop). Passes 1-3 PENDING the rental GPU handover, queued behind RentalFidelityBatch2 then SixteenFlipCalib2. No GPU has been taken by this agent.",
+  "window_shortening_levers": {
+    "purpose": "The GPU is the scarce, queued, shared resource; wall time spent waiting for it is free. These convert queue time into saved window time.",
+    "page_cache_warming": {
+      "command": "run_terminal_bench.sh warm hydrated|bf16|both",
+      "why_it_fits": "The serving box has ~1.5 TB RAM with ~1.35 TB available, against 20.1 GiB of hydrated and 51.7 GiB of BF16 safetensors.",
+      "measured": {
+        "cold_read_s": 37,
+        "warm_read_s": 5,
+        "warm_rate_gib_s": 4.02,
+        "speedup": "7.4x on the weight read"
+      },
+      "caveat": "Page cache can be evicted by another agent's IO across a multi-hour queue, so this is re-run immediately before `serve` rather than relied on from now."
+    },
+    "task_image_warm_set": {
+      "command": "run_terminal_bench.sh warm-images N",
+      "policy": "Deliberately a BOUNDED subset, not all 89: the full set projects to ~42 GB against ~66-68 GB free on a box holding other agents' ~192 GB, and a mid-pass disk-full is the one failure resume cannot make cheap. Stops at a 30 GB floor (TB_IMAGE_FLOOR_GB).",
+      "result_so_far": "pulled 8, already-warm 4, 14 Terminal-Bench images cached, 66 GB free -- comfortably above the floor."
+    },
+    "n_selection_rule_fixed_in_advance": {
+      "where": "encoded in headroom(), so -n is derived rather than chosen to suit a result",
+      "rule": [
+        "never exceed the server's max_num_seqs (16), beyond which requests merely queue",
+        "take arms whose PER-REQUEST throughput still holds at >= 50% of the single-stream rate, capping per-task slowdown at 2x -- which the stock 1.0 timeout multiplier absorbs",
+        "among those, pick the highest aggregate throughput, i.e. the one that finishes 89 tasks soonest"
+      ],
+      "why_the_per_request_floor_matters": "Terminal-Bench charges each task a wall-clock timeout. Pushing concurrency past the point where per-request speed collapses does not merely stop helping: it spends the agent's own timeout budget and manufactures AgentTimeoutErrors that would read as task failures.",
+      "emits": [
+        "single_stream_per_request_tok_per_s",
+        "per_request_floor_tok_per_s",
+        "eligible_concurrencies",
+        "recommended_n_concurrent_trials",
+        "recommended_n_aggregate_tok_per_s"
+      ]
+    }
+  }
 }
