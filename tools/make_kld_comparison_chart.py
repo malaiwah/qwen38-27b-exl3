@@ -1,13 +1,30 @@
 #!/usr/bin/env python3
-"""Two-protocol quant-family comparison for the Hugging Face cards.
+"""Quant-family comparison for the Hugging Face cards.
 
-The two panels are deliberately NOT one chart. Left is our v5 held-out suite,
-body-only through one shared BF16 head, x = weights actually resident under
-vLLM. Right is turboderp's published chart labels for his own protocol
+The left column and the right panel are deliberately NOT one chart.
+
+Left column is ONE measurement protocol for every family we have measured:
+shard 0 of the v5 held-out suite, the same 512 contexts and the same 1,048,064
+scored positions for every point, KL(BF16 reference || candidate) over the full
+vocabulary with both operands through one shared BF16 head
+(receipts/cross-engine-comparator.json). GGUF points are captured under
+llama.cpp, so they carry the measured cross-engine floor
+(receipts/gguf-report-engine-floor.json) that is drawn as a horizontal
+reference line; vLLM points do not.
+
+The left column is split into two stacked sub-panels sharing the y-axis because
+the two families do not have one common size measurement: we measured resident
+weights under vLLM for our own builds and official FP8, and we have serialized
+bytes for the GGUF files and for our published payloads. Resident weights and
+serialized bytes are different quantities, so they get different x-axes rather
+than being merged into one dishonest axis.
+
+Right panel is turboderp's published chart labels for his own protocol
 (OpenWebText, 8 x 8192 formatted tokens, his own BF16 reference), x = quantized
 decoder weight excluding embeddings and including the output head. Nothing is
-drawn across the two axes: our builds appear on his panel only as a vertical
-decoder-weight marker, with no y-value, because we have never run his protocol.
+drawn across the two protocols: our builds appear on his panel only as a
+vertical decoder-weight marker, with no y-value, because we have never run his
+protocol.
 
 Emits light and dark SVG + PNG.
 """
@@ -26,30 +43,98 @@ OUT = Path("/var/tmp/work/charts")
 RECEIPTS = Path(__file__).resolve().parent.parent / "receipts"
 
 # ---------------------------------------------------------------- our protocol
-# v5 held-out suite, 10,480,640 scored positions, 842 source clusters
-# (receipts/kld5-10M-*.json). Body-only, both operands through one shared BF16
-# head. Intervals are 95% source-cluster bootstrap. Resident GiB is weights
-# measured resident under vLLM -- not serialized bytes on disk.
-# label, resident GiB, mean, ci_low, ci_high, p99.9, colour key,
-# mean-label (dx, dy, ha), tail-label (dx, dy, ha), interval cap width.
+# Every y-value in the left column comes from this one receipt, so the panel
+# cannot drift from the published table. Shard 0 of the v5 ladder: the same 512
+# contexts and 1,048,064 positions for all eight candidates, one shared BF16
+# head, source-cluster bootstrap intervals.
+COMPARATOR = json.loads((RECEIPTS / "cross-engine-comparator.json").read_text())
+CAND = COMPARATOR["candidates"]
+SUITE = COMPARATOR["suite"]
+FLOOR = COMPARATOR["engine_floor"]
+POSITIONS = SUITE["scored_positions"]
+CONTEXTS = SUITE["contexts"]
+CLUSTERS = SUITE["source_clusters"]
+
+# Table name, marker label, colour key, engine (engine picks the marker shape).
+# The marker label is deliberately short: every number lives in the panel's own
+# table, so nothing has to be crammed next to a point.
+IDENTITY = {
+    "gguf-q8_0": ("GGUF Q8_0", "Q8_0", "gguf", "llama.cpp"),
+    "gguf-q6_k": ("GGUF Q6_K", "Q6_K", "gguf", "llama.cpp"),
+    "gguf-q5_k_xl": ("GGUF UD-Q5_K_XL", "UD-Q5_K_XL", "gguf", "llama.cpp"),
+    "hyd": ("hydrated K5/K6", "hydrated", "hyd", "vLLM"),
+    "k5k6": ("online K5/K6", "online", "k6", "vLLM"),
+    "ctx": ("context edition", "context", "ctx", "vLLM"),
+    "fp8": ("official Qwen FP8", "official FP8", "fp8", "vLLM"),
+    "k4": ("K4", "K4", "k4", "vLLM"),
+}
+MARKER = {"vLLM": "o", "llama.cpp": "s"}
+
+# Upper sub-panel: x = weights measured resident under vLLM. No GGUF point can
+# appear here -- we never measured llama.cpp resident weights, and inventing one
+# from serialized bytes would be a guess.
+# Every value is read from the receipt; this table only carries placement.
+# id, resident GiB, short label (dx, dy, ha, va), p99.9 label (dx, dy, ha, va),
+# interval cap width.
 # hydrated and online sit 0.01 GiB apart with overlapping intervals, so their
-# caps get different widths to stay tellable apart. The x values are measured
-# and are never nudged to make room.
-OURS = [
-    ("hydrated K5/K6", 20.31, 0.002760, 0.002540, 0.003020, 0.1413, "hyd",
-     (0, -20, "center"), (-8, -3, "right"), 9.0),
-    ("online K5/K6", 20.32, 0.003210, 0.002982, 0.003480, 0.1527, "k6",
-     (11, 6, "left"), (8, 4, "left"), 4.0),
-    ("context edition", 18.41, 0.003509, 0.003220, 0.003852, 0.1803, "ctx",
-     (0, 11, "center"), (0, 10, "center"), 6.0),
-    ("official Qwen FP8", 28.51, 0.005294, 0.004927, 0.005728, 0.2560, "fp8",
-     (-9, 8, "right"), (0, 10, "center"), 6.0),
-    ("K4", 17.89, 0.010604, 0.009640, 0.011746, 0.5933, "k4",
-     (11, 2, "left"), (0, 10, "center"), 6.0),
+# caps get different widths and their labels opposite sides to stay tellable
+# apart. The x values are measured and are never nudged to make room.
+RESIDENT = [
+    ("hyd", 20.31, (-10, -1, "right", "center"), (-8, 0, "right", "center"),
+     9.0),
+    ("k5k6", 20.32, (10, 2, "left", "center"), (8, 0, "left", "center"), 4.0),
+    ("ctx", 18.41, (0, 9, "center", "bottom"), (0, 10, "center", "bottom"),
+     6.0),
+    ("fp8", 28.51, (-10, 0, "right", "center"), (-8, 0, "right", "center"), 6.0),
+    ("k4", 17.89, (10, -1, "left", "center"), (0, 10, "center", "bottom"), 6.0),
 ]
-OUR_POSITIONS = 10_480_640
-OUR_CLUSTERS = 842
-TAIL_POSITIONS = 2_096_128  # receipts/kld5-2M-tail-*.json, p99.9 window
+RESIDENT_TABLE = (23.7, 0.0034)  # x, y of the table's top row
+
+# Lower sub-panel: x = serialized bytes. GGUF x comes from the pinned file
+# sizes in the comparator receipt; ours comes from the immutable payload of the
+# published build receipt, which is the same kind of quantity -- bytes that
+# exist on disk. Online K5/K6 ships BF16 attention and is quantized at load, so
+# its serialized bytes are not its operating point, and K4 has no published
+# payload receipt; both are therefore absent here rather than estimated.
+# id, build receipt for our payload (None = GGUF, size from the comparator),
+# short label (dx, dy, ha, va), p99.9 label (dx, dy, ha, va), cap width
+SERIALIZED = [
+    ("gguf-q8_0", None, (0, 9, "center", "bottom"),
+     (-8, 0, "right", "center"), 6.0),
+    ("gguf-q6_k", None, (9, 0, "left", "center"), (-8, 0, "right", "center"),
+     6.0),
+    ("gguf-q5_k_xl", None, (0, 9, "center", "bottom"),
+     (0, 10, "center", "bottom"), 6.0),
+    ("hyd", "hydrated-build-receipt.json", (10, 6, "left", "bottom"),
+     (8, 0, "left", "center"), 9.0),
+    ("ctx", "context-build-receipt.json", (9, 0, "left", "center"),
+     (8, 0, "left", "center"), 6.0),
+]
+SERIALIZED_TABLE = (21.9, 0.85)
+
+# The two crossings that decide the honest reading, both inside the serialized
+# sub-panel so no cross-axis comparison is implied.
+# (id, which y) pairs, text box anchor, arrow shrink at each end, arc. The
+# shrink at a mean end has to clear that point's interval caps, which are
+# wider, and the 5-bit pair is close enough together that a straight arrow
+# between them collapses into its own two heads, so it gets an arc.
+CROSSINGS = [
+    ("6-bit crossing — GGUF Q6_K wins", ("hyd", "mean"), ("gguf-q6_k", "net"),
+     (22.4, 0.00190), (13, 9), 0.0),
+    ("5-bit crossing — our context edition wins",
+     ("gguf-q5_k_xl", "net"), ("ctx", "mean"), (17.88, 0.00190), (5, 6), 1.1),
+]
+
+# Our five vLLM builds also have full-suite means over ten shards. The left
+# column plots shard 0 only, because that is the shard every GGUF candidate was
+# scored on; this table exists so the footer can state how far the full suite
+# moves those five numbers instead of asserting it.
+# id -> full-suite mean (receipts/kld5-10M-*.json)
+FULL_SUITE = {
+    "hyd": 0.002760, "k5k6": 0.003210, "ctx": 0.003509,
+    "fp8": 0.005294, "k4": 0.010604,
+}
+FULL_SUITE_POSITIONS = 10_480_640
 
 # --------------------------------------------------------------- his protocol
 # turboderp/Qwen3.8-27B-exl3 published chart labels: his printed numbers, read
@@ -102,15 +187,21 @@ OUR_ON_HIS_AXIS = [
 THEMES = {
     "light": dict(bg="#ffffff", fg="#1a1a1a", grid="#d0d0d0", muted="#8a8a8a",
                   hyd="#0b5d1e", k6="#0969da", ctx="#8250df", k4="#a40e26",
-                  fp8="#b08800", exl3="#0b5d1e", udq="#0969da", iq="#8250df",
-                  nvfp4="#a40e26", tail="#57606a", floor="#8a8a8a",
+                  fp8="#b08800", gguf="#bf3989", exl3="#0b5d1e", udq="#0969da",
+                  iq="#8250df", nvfp4="#a40e26", tail="#57606a", floor="#8a8a8a",
                   ann="#1a1a1a"),
     "dark": dict(bg="#0d1117", fg="#e6edf3", grid="#30363d", muted="#8b949e",
                  hyd="#56d364", k6="#58a6ff", ctx="#bc8cff", k4="#f85149",
-                 fp8="#d29922", exl3="#56d364", udq="#58a6ff", iq="#bc8cff",
-                 nvfp4="#f85149", tail="#8b949e", floor="#8b949e",
+                 fp8="#d29922", gguf="#f778ba", exl3="#56d364", udq="#58a6ff",
+                 iq="#bc8cff", nvfp4="#f85149", tail="#8b949e", floor="#8b949e",
                  ann="#e6edf3"),
 }
+
+# One shared y-range for both left sub-panels: it has to reach from below the
+# cross-engine floor, which needs a clear lane for its own label, up to K4's
+# p99.9 at the top.
+LEFT_YLIM = (0.00030, 0.95)
+LEFT_YTICKS = [0.0005, 0.001, 0.002, 0.003, 0.005, 0.01, 0.03, 0.1, 0.3, 0.5]
 
 
 def decoder_weight_gib(manifest: Path) -> tuple[int, float]:
@@ -118,6 +209,15 @@ def decoder_weight_gib(manifest: Path) -> tuple[int, float]:
     roles = json.loads(manifest.read_text())["roles"]
     total = sum(roles[r]["bytes"] for r in HIS_AXIS_ROLES)
     return total, total / 1024 ** 3
+
+
+def serialized_gib(cid: str, receipt: str | None) -> tuple[int, float]:
+    """Serialized bytes and GiB for one candidate, from its own receipt."""
+    if receipt is None:
+        raw = CAND[cid]["serialized_bytes"]
+    else:
+        raw = json.loads((RECEIPTS / receipt).read_text())["immutable_payload_bytes"]
+    return raw, raw / 1024 ** 3
 
 
 def style_axes(ax, c: dict) -> None:
@@ -128,62 +228,181 @@ def style_axes(ax, c: dict) -> None:
     ax.grid(True, color=c["grid"], lw=0.6, alpha=0.45, zorder=0)
 
 
-def draw_ours(ax, c: dict) -> None:
+def draw_point(ax, c: dict, cid: str, x: float, cap: float,
+               mean_off, tail_off) -> None:
+    """One candidate: mean with its interval, its p99.9 tail, and its name."""
+    _name, short, key, engine = IDENTITY[cid]
+    d = CAND[cid]
+    mean, (lo, hi), p999 = d["mean_kld"], d["ci95"], d["p999_kld"]
+    dx, dy, ha, va = mean_off
+    tdx, tdy, tha, tva = tail_off
+    # The vertical spine shows how far this candidate's tail runs past its mean.
+    ax.plot([x, x], [mean, p999], color=c[key], lw=1.0, alpha=0.38, zorder=2)
+    ax.errorbar([x], [mean], yerr=[[mean - lo], [hi - mean]], fmt="none",
+                ecolor=c[key], elinewidth=2.0, capsize=cap, capthick=1.9,
+                zorder=3)
+    ax.scatter([x], [mean], s=70, marker=MARKER[engine], color=c[key], zorder=4,
+               edgecolor=c["bg"], linewidth=0.9)
+    ax.scatter([x], [p999], s=150, marker="v", facecolor=c["bg"],
+               edgecolor=c[key], linewidth=1.5, zorder=4)
+    ax.annotate(short, (x, mean), textcoords="offset points", xytext=(dx, dy),
+                ha=ha, va=va, fontsize=8.5, color=c[key], zorder=5,
+                bbox=dict(boxstyle="round,pad=0.12", facecolor=c["bg"],
+                          edgecolor="none", alpha=0.85))
+    ax.annotate(f"p99.9 {p999:.4f}", (x, p999), textcoords="offset points",
+                xytext=(tdx, tdy), ha=tha, va=tva, fontsize=7.5, color=c[key],
+                zorder=5)
+
+
+def draw_table(ax, c: dict, anchor: tuple[float, float], rows: list) -> None:
+    """A monospaced value table inside a panel: every plotted number in text.
+
+    rows is a list of (colour key or None, text). None is a header or note.
+    """
+    x, y = anchor
+    for i, (key, text) in enumerate(rows):
+        ax.annotate(text, (x, y), textcoords="offset points",
+                    xytext=(0, -i * 10.2), ha="left", va="top", fontsize=7.0,
+                    family="DejaVu Sans Mono",
+                    color=c[key] if key else c["muted"], zorder=6,
+                    bbox=dict(boxstyle="square,pad=0.22", facecolor=c["bg"],
+                              edgecolor="none", alpha=0.92))
+
+
+def draw_resident(ax, c: dict) -> None:
+    """Upper left sub-panel: x = weights measured resident under vLLM."""
     style_axes(ax, c)
-    for (label, gib, mean, lo, hi, p999, key,
-         (dx, dy, ha), (tdx, tdy, tha), cap) in OURS:
-        # The vertical spine shows how far this build's tail runs past its mean.
-        ax.plot([gib, gib], [mean, p999], color=c[key], lw=1.0, alpha=0.38,
-                zorder=2)
-        # The bootstrap interval is only a few points tall on a range that has
-        # to reach the tail, so the mean marker stays small enough for the caps
-        # to clear it.
-        ax.errorbar([gib], [mean], yerr=[[mean - lo], [hi - mean]], fmt="none",
-                    ecolor=c[key], elinewidth=2.0, capsize=cap, capthick=1.9,
-                    zorder=3)
-        ax.scatter([gib], [mean], s=62, marker="o", color=c[key], zorder=4,
-                   edgecolor=c["bg"], linewidth=0.9)
-        ax.scatter([gib], [p999], s=150, marker="v", facecolor=c["bg"],
-                   edgecolor=c[key], linewidth=1.5, zorder=4)
-        ax.annotate(f"{label}\n{mean:.6f} at {gib:.2f} GiB", (gib, mean),
-                    textcoords="offset points", xytext=(dx, dy), ha=ha,
-                    fontsize=8.5, color=c["fg"], zorder=5)
-        ax.annotate(f"p99.9 {p999:.4f}", (gib, p999), textcoords="offset points",
-                    xytext=(tdx, tdy), ha=tha, fontsize=7.5, color=c[key],
-                    zorder=5)
+    rows = [(None, f"{'resident weights':<23}{'mean':<10}"
+                   f"{'p99.9':<8}{'top-1':<9}{'GiB':<7}")]
+    for cid, gib, mean_off, tail_off, cap in RESIDENT:
+        name, _short, key, _engine = IDENTITY[cid]
+        d = CAND[cid]
+        draw_point(ax, c, cid, gib, cap, mean_off, tail_off)
+        top1 = f"{d['top1_agreement'] * 100:.2f} %"
+        rows.append((key, f"{name:<23}{d['mean_kld']:<10.6f}"
+                          f"{d['p999_kld']:<8.4f}{top1:<9}{gib:<7.2f}"))
+    rows.append((None, "circle = captured under vLLM, carries no engine term"))
+    draw_table(ax, c, RESIDENT_TABLE, rows)
 
     ax.set_yscale("log")
-    ax.set_xlim(16.8, 30.5)
-    ax.set_ylim(0.0016, 1.25)
-    ax.set_xticks([18, 20, 22, 24, 26, 28, 30])
-    ax.set_yticks([0.002, 0.003, 0.005, 0.01, 0.03, 0.05, 0.1, 0.3, 0.5, 1.0])
-    ax.set_yticklabels(["0.002", "0.003", "0.005", "0.010", "0.030", "0.050",
-                        "0.100", "0.300", "0.500", "1.000"])
+    ax.set_xlim(17.1, 29.9)
+    ax.set_ylim(*LEFT_YLIM)
+    ax.set_xticks([18, 20, 22, 24, 26, 28])
+    ax.set_yticks(LEFT_YTICKS)
+    ax.set_yticklabels([f"{v:g}" for v in LEFT_YTICKS])
     ax.set_xlabel("weights measured resident under vLLM (GiB) — resident "
                   "weights, not serialized disk bytes", color=c["fg"],
-                  fontsize=10)
-    ax.set_ylabel("our v5 KL divergence, nats/token (log, lower is better)",
-                  color=c["fg"], fontsize=10)
+                  fontsize=9.5)
+    ax.set_ylabel("KL divergence on shard 0, nats/token\n(log, lower is better)",
+                  color=c["fg"], fontsize=9.5)
     ax.set_title(
-        "Our protocol: v5 held-out suite, body-only through one shared BF16 head\n"
-        f"mean over {OUR_POSITIONS:,} positions; p99.9 over the "
-        f"{TAIL_POSITIONS:,}-position tail window",
-        color=c["fg"], fontsize=10.5, pad=10)
+        "One protocol for every family: shard 0 of our v5 held-out suite\n"
+        f"same {CONTEXTS} contexts, same {POSITIONS:,} scored positions, "
+        f"{CLUSTERS} source clusters, one shared BF16 head for both operands\n"
+        "upper: x = weights measured resident under vLLM (no GGUF point: "
+        "llama.cpp resident weights never measured)",
+        color=c["fg"], fontsize=9.4, pad=9)
 
-    handles = [
-        Line2D([], [], marker="o", ls="none", color=c["tail"], markersize=6,
-               markeredgecolor=c["bg"],
-               label=f"mean, 95% source-cluster bootstrap bars ({OUR_POSITIONS:,} positions)"),
-        Line2D([], [], marker="v", ls="none", markerfacecolor=c["bg"],
-               markeredgecolor=c["tail"], color=c["tail"], markersize=9,
-               label=f"p99.9 tail, histogram-bin estimate ({TAIL_POSITIONS:,} positions)"),
-    ]
-    leg = ax.legend(handles=handles, loc="upper right", fontsize=8,
-                    framealpha=0.92)
-    leg.get_frame().set_facecolor(c["bg"])
-    leg.get_frame().set_edgecolor(c["grid"])
-    for t in leg.get_texts():
-        t.set_color(c["fg"])
+
+def draw_serialized(ax, c: dict) -> None:
+    """Lower left sub-panel: x = serialized bytes, same y as the panel above."""
+    style_axes(ax, c)
+    xs: dict[str, float] = {}
+    rows = [(None, f"{'serialized bytes':<18}{'mean':<10}{'net of floor':<14}"
+                   f"{'p99.9':<8}{'top-1':<9}{'GiB':<7}")]
+    for cid, receipt, mean_off, tail_off, cap in SERIALIZED:
+        name, _short, key, engine = IDENTITY[cid]
+        raw, gib = serialized_gib(cid, receipt)
+        xs[cid] = gib
+        d = CAND[cid]
+        mean = d["mean_kld"]
+        net = d.get("engine_floor_subtracted_estimate")
+        print(f"  {cid}: {raw:,} B serialized = {gib:.4f} GiB, "
+              f"mean {mean:.6f}" + (f", net {net:.6f}" if net else ""))
+        draw_point(ax, c, cid, gib, cap, mean_off, tail_off)
+        top1 = f"{d['top1_agreement'] * 100:.2f} %"
+        net_txt = f"≈{net:.6f}" if net else "—"
+        rows.append((key, f"{name:<18}{mean:<10.6f}{net_txt:<14}"
+                          f"{d['p999_kld']:<8.4f}{top1:<9}{gib:<7.3f}"))
+        if net is not None:
+            # Measured value is an upper bound; the open square is the naive
+            # floor subtraction. Dotted, so it cannot be read as an interval.
+            ax.plot([gib, gib], [net, mean], color=c[key], lw=1.3,
+                    ls=(0, (1.6, 1.6)), zorder=3)
+            ax.scatter([gib], [net], s=58, marker=MARKER[engine],
+                       facecolor=c["bg"], edgecolor=c[key], linewidth=1.5,
+                       zorder=4)
+    rows.append((None, "square = llama.cpp: the mean contains the engine floor"))
+    rows.append((None, "hollow square = net of that floor, an estimate, not an "
+                       "identity"))
+    draw_table(ax, c, SERIALIZED_TABLE, rows)
+
+    # The measured cross-engine floor: what two engines disagree by on the SAME
+    # unquantized BF16 weights. Every square above carries it; no circle does.
+    fmean, fp999 = FLOOR["mean_kld"], FLOOR["p999_kld"]
+    ax.axhline(fmean, color=c["floor"], lw=1.4, ls=(0, (5, 3)), zorder=1)
+    ax.annotate(
+        f"engine floor: llama.cpp ↔ vLLM on the SAME unquantized BF16 weights, "
+        f"mean {fmean:.6f}",
+        (17.88, fmean), textcoords="offset points", xytext=(0, -11),
+        va="top", fontsize=7.6, color=c["floor"], zorder=5)
+    ax.axhline(fp999, color=c["floor"], lw=1.1, ls=(0, (2, 3)), zorder=1)
+    ax.annotate(f"same engine floor, p99.9 {fp999:.4f}", (17.88, fp999),
+                textcoords="offset points", xytext=(0, 5), va="bottom",
+                fontsize=7.6, color=c["floor"], zorder=5)
+
+    def y_of(cid: str, which: str) -> float:
+        d = CAND[cid]
+        return d["mean_kld"] if which == "mean" else \
+            d["engine_floor_subtracted_estimate"]
+
+    def fmt(p) -> str:
+        # Marker labels, not full names: the panel's table carries the long
+        # form, and a wide box here would cover a neighbouring point.
+        cid, which, gib, y = p
+        tag = " net" if which == "net" else ""
+        return f"{IDENTITY[cid][1]} {y:.6f}{tag}, {gib:.3f} GiB"
+
+    for title, a, b, (bx, by), (shrink_a, shrink_b), rad in CROSSINGS:
+        pts = [(cid, which, xs[cid], y_of(cid, which)) for cid, which in (a, b)]
+        (_, _, x0, y0), (_, _, x1, y1) = pts
+        ax.annotate("", xy=(x1, y1), xytext=(x0, y0),
+                    arrowprops=dict(arrowstyle="<|-|>", color=c["ann"], lw=1.2,
+                                    shrinkA=shrink_a, shrinkB=shrink_b,
+                                    alpha=0.85,
+                                    connectionstyle=f"arc3,rad={rad}"),
+                    zorder=6)
+        # Which one wins is the whole point, so the box names both values and
+        # the size difference in the same breath.
+        win, lose = sorted(pts, key=lambda p: p[3])
+        pct = (lose[3] - win[3]) / lose[3] * 100
+        dgib = win[2] - lose[2]
+        text = "\n".join([
+            title, fmt(win), fmt(lose),
+            f"{pct:.0f} % lower KL, {abs(dgib):.2f} GiB "
+            f"{'more' if dgib > 0 else 'less'} weight",
+        ])
+        ax.annotate(text, (bx, by), ha="left", va="top", fontsize=7.6,
+                    color=c["fg"], zorder=6,
+                    bbox=dict(boxstyle="round,pad=0.32", facecolor=c["bg"],
+                              edgecolor=c["ann"], alpha=0.94, linewidth=0.8))
+
+    ax.set_yscale("log")
+    ax.set_xlim(17.8, 27.9)
+    ax.set_ylim(*LEFT_YLIM)
+    ax.set_xticks([18, 20, 22, 24, 26])
+    ax.set_yticks(LEFT_YTICKS)
+    ax.set_yticklabels([f"{v:g}" for v in LEFT_YTICKS])
+    ax.set_xlabel("serialized bytes on disk (GiB) — GGUF files as published, "
+                  "our immutable payload as published; never VRAM",
+                  color=c["fg"], fontsize=9.5)
+    ax.set_ylabel("KL divergence on shard 0, nats/token\n(log, lower is better)",
+                  color=c["fg"], fontsize=9.5)
+    ax.set_title(
+        "lower: same suite, same y-axis, x = serialized bytes on disk\n"
+        "online K5/K6 (BF16 attention, quantized at load) and K4 (no payload "
+        "receipt) are absent rather than estimated",
+        color=c["fg"], fontsize=9.4, pad=9)
 
 
 def draw_his(ax, c: dict) -> None:
@@ -253,10 +472,12 @@ def draw_his(ax, c: dict) -> None:
     ax.set_ylabel("his published KL divergence (log, lower is better)",
                   color=c["fg"], fontsize=10)
     ax.set_title(
-        "His protocol: turboderp's published labels, his own BF16 reference\n"
+        "A different protocol: turboderp's published labels, his own BF16 "
+        "reference\n"
         f"OpenWebText, 8 x 8192 = {HIS_POSITIONS:,} formatted positions; "
-        "filled = mean, hollow = median",
-        color=c["fg"], fontsize=10.5, pad=10)
+        "filled = mean, hollow = median\n"
+        "nothing here is comparable to the left column",
+        color=c["fg"], fontsize=9.8, pad=9)
 
     # One entry per family: the fill convention is in the title, so the legend
     # stays narrow enough to clear the decoder-weight markers on the left.
@@ -274,38 +495,64 @@ def draw_his(ax, c: dict) -> None:
 
 def draw(theme: str) -> list[Path]:
     c = THEMES[theme]
-    fig, (ax_l, ax_r) = plt.subplots(1, 2, figsize=(16.4, 7.4),
-                                     facecolor=c["bg"])
-    draw_ours(ax_l, c)
-    draw_his(ax_r, c)
+    fig = plt.figure(figsize=(16.8, 12.2), facecolor=c["bg"])
+    # tight_layout cannot handle the right panel spanning both rows, so the
+    # margins are set once, here, and the footer owns everything below them.
+    gs = fig.add_gridspec(2, 2, left=0.070, right=0.995, top=0.888,
+                          bottom=0.158, hspace=0.40, wspace=0.145)
+    ax_res = fig.add_subplot(gs[0, 0])
+    ax_ser = fig.add_subplot(gs[1, 0], sharey=ax_res)
+    ax_his = fig.add_subplot(gs[:, 1])
+    print(f"{theme}:")
+    draw_resident(ax_res, c)
+    draw_serialized(ax_ser, c)
+    draw_his(ax_his, c)
 
-    fig.suptitle("Quantization families, two protocols, side by side — the "
-                 "panels are not interchangeable",
-                 color=c["fg"], fontsize=12.5, y=0.985)
-    fig.text(0.005, 0.048,
-             f"Left (ours): v5 held-out suite, {OUR_POSITIONS:,} scored "
-             f"positions across {OUR_CLUSTERS} source clusters, body-only "
-             "through one shared BF16 head, weights resident under vLLM; "
-             f"p99.9 from the {TAIL_POSITIONS:,}-position tail window.",
-             color=c["muted"], fontsize=7.5)
-    fig.text(0.005, 0.028,
-             f"Right (his): turboderp's OpenWebText protocol, 8 x 8192 = "
-             f"{HIS_POSITIONS:,} formatted positions, his own BF16 reference. "
-             "His values are chart labels read off his published images, not a "
-             "published data file.",
-             color=c["muted"], fontsize=7.5)
-    fig.text(0.005, 0.008,
-             "The two panels are NOT interchangeable and no ratio between them "
-             "is meaningful: different corpus, window, reference numerics, "
-             "vocabulary handling and head placement. The same NVFP4 "
-             "checkpoint reads 0.041 on his protocol and 0.0927 on ours.",
-             color=c["muted"], fontsize=7.5)
-    fig.tight_layout(rect=(0, 0.065, 1, 0.965))
+    drift = max(abs(FULL_SUITE[k] - CAND[k]["mean_kld"]) / FULL_SUITE[k]
+                for k in FULL_SUITE) * 100
+    fmean = FLOOR["mean_kld"]
+
+    fig.suptitle("Quantization families: every family we have measured, one "
+                 "protocol, two size axes (left) — and one published protocol "
+                 "we have never run (right)",
+                 color=c["fg"], fontsize=12.5, y=0.986)
+    footer = [
+        f"Left column, ONE protocol: shard 0 of the v5 held-out suite — the "
+        f"same {CONTEXTS} contexts, the same {POSITIONS:,} scored positions and "
+        f"the same {CLUSTERS} source clusters for every candidate, "
+        "KL(BF16 reference || candidate) over the full 248,320-entry vocabulary, "
+        "both operands through one shared BF16 head.",
+        "Receipt: receipts/cross-engine-comparator.json. Shard 0 is one tenth of "
+        f"the suite: our five vLLM means over {FULL_SUITE_POSITIONS:,} positions "
+        f"differ from these shard-0 values by at most {drift:.1f} % and change "
+        "no ordering.",
+        "Engine floor, measured the same way: llama.cpp against vLLM on the SAME "
+        f"unquantized BF16 weights is {fmean:.6f} mean, "
+        f"{FLOOR['top1_agreement'] * 100:.2f} % top-1, p99.9 "
+        f"{FLOOR['p999_kld']:.4f} (receipts/gguf-report-engine-floor.json).",
+        "Every GGUF value above contains that term and no vLLM value does, so "
+        "the squares are upper bounds; the hollow squares subtract it naively, "
+        "and KL is not additive, so they are estimates and not identities.",
+        "The two left sub-panels share a y-axis and deliberately do NOT share an "
+        "x-axis: resident weights and serialized bytes are different quantities, "
+        "and merging them would be a false axis.",
+        "Our serialized bytes carry a BF16 embedding, the BF16 vision tower and "
+        "the quantized MTP draft; the GGUF bytes are the published single-file "
+        "GGUF. Serialized bytes are never VRAM, resident weights or KV.",
+        f"Right panel, a different protocol: turboderp's OpenWebText run, "
+        f"8 x 8192 = {HIS_POSITIONS:,} formatted positions, his own BF16 "
+        "reference, values read off his published images rather than a data "
+        "file. No ratio between the columns is meaningful — different corpus, "
+        "window, reference numerics, vocabulary handling and head placement.",
+    ]
+    for i, line in enumerate(footer):
+        fig.text(0.005, 0.108 - i * 0.0152, line, color=c["muted"],
+                 fontsize=7.4)
 
     written = []
     for ext in ("svg", "png"):
         p = OUT / f"kld-family-comparison-{theme}.{ext}"
-        fig.savefig(p, facecolor=c["bg"], dpi=170 if ext == "png" else None)
+        fig.savefig(p, facecolor=c["bg"], dpi=150 if ext == "png" else None)
         if ext == "svg":
             p.write_text(
                 "\n".join(line.rstrip() for line in p.read_text().splitlines()) + "\n"

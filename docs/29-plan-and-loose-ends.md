@@ -58,32 +58,134 @@ stops being reasonable on this hardware, and publish the point at which it stopp
 
 "A comparison to Q8 instead of FP8 would've looked differently... someone would need to run
 a KLD/top-1 test on the same dataset for all of them in the same size/performance range."
-That is correct and currently unanswered. Required:
+That was correct. The GGUF half of it is now **measured**; the rest is still open.
 
-- GGUF `Q5_K_XL`, `Q6_K` and `Q8_0` in our suite, which means a second engine (llama.cpp)
-  with the same tokenizer, same token IDs, same BF16 teacher and the same shared head;
-- stock EXL3 uniform-bitrate controls, at least `turboderp/Qwen3.8-27B-exl3` 5.00bpw
-  (`a35e75a7`) and 6.00bpw (`d32ba0bb`), to separate our role-aware allocation from EXL3
-  itself;
-- a cross-dataset run on the corpus other publishers use. Two corrections to what this
-  section said earlier. **First, the NVFP4 range was wrong here.** The same checkpoint reads
-  0.094978 on our v3 suite and 0.092727 after contamination correction
-  ([`receipts/v3-report-nvfp4-analysis.json`](../receipts/v3-report-nvfp4-analysis.json),
-  [`receipts/analysis-v3-contamination-corrected.json`](../receipts/analysis-v3-contamination-corrected.json)),
-  while Unsloth's own published per-corpus rows are **0.01628** zh, **0.02600** code,
-  **0.03993** refgen, **0.05818** chat and **0.0124-0.0155** ja/ko/ru/es — a range of
-  **0.0124-0.05818**, not the "0.016-0.068" written here before. Those rows carry no corpus
-  identity, token count, context length, reference precision, KL direction or engine, so
-  they are not reproducible by us or by anyone else. **Second, there is no upstream GGUF
-  ladder to compare against.** Unsloth publishes no per-quant KLD table for Qwen3.8-27B
-  GGUFs at all — one prose figure ("82.5% accuracy (IQ2_XXS 9GB)"), one top-1-versus-size
-  chart, and "More benchmarks coming soon!" — so the `Q5_K_XL` / `Q6_K` / `Q8_0` comparison
-  cannot be closed by citation and has to be run by us. Their nearest published exact ladder
-  is Qwen3.5-35B-A3B on wikitext-2 at ctx 512 (Q5_K_XL 0.0069, Q6_K_XL 0.0041, Q8_K_XL
-  0.0026). Protocol identity, the ordered delta list, pinned artifacts and the two-run
-  execution plan are in
-  [35-external-protocol-comparability.md](35-external-protocol-comparability.md). Whichever
-  way it lands, both numbers get published.
+**Done — the three GGUFs are in our suite.** `Q8_0`, `Q6_K` and `UD-Q5_K_XL` from
+`unsloth/Qwen3.8-27B-GGUF@f1bfb127c64f7072bdd2cad55f258b9c8b2910fe` were captured under
+llama.cpp pinned at commit `ece963f41b0b02d7a0d61436ae365762c073a4c8` through
+[`tools/gguf_capture.cpp`](../tools/gguf_capture.cpp), which reads the post-final-norm state —
+the same mathematical point the vLLM hook takes — with bf16 rounding verified bit-identical to
+torch on 2,012,449 probe values; manifests from
+[`tools/gguf_manifest.py`](../tools/gguf_manifest.py), build from
+[`tools/build_llamacpp.sh`](../tools/build_llamacpp.sh), and every capture manifest carries the
+GGUF digest and the llama.cpp identity. They were then scored against the same BF16 teacher,
+through the same shared BF16 head, on **shard 0 of the v5 suite — the same 512 contexts and the
+same 1,048,064 scored positions every other candidate saw**. Receipt
+[`receipts/cross-engine-comparator.json`](../receipts/cross-engine-comparator.json),
+per-candidate reports `receipts/gguf-report-{q8_0,q6_k,q5_k_xl}.json`.
+
+| candidate | engine | measured mean KLD | net of engine floor | top-1 | p99.9 | serialized |
+|---|---|---:|---:|---:|---:|---:|
+| GGUF `Q8_0` | llama.cpp | 0.001087 | ~0.000579 | 98.53 % | 0.0351 | 27.05 GiB |
+| GGUF `Q6_K` | llama.cpp | 0.002035 | ~0.001528 | 97.98 % | 0.0794 | 21.31 GiB |
+| hydrated EXL3 | vLLM | **0.002700** | n/a, same engine | 97.80 % | 0.1313 | 20.12 GiB payload |
+| online K5/K6 EXL3 | vLLM | **0.003141** | n/a, same engine | 97.61 % | 0.1447 | — |
+| context EXL3 | vLLM | **0.003409** | n/a, same engine | 97.55 % | 0.1632 | 19.27 GiB payload |
+| GGUF `UD-Q5_K_XL` | llama.cpp | 0.004444 | ~0.003936 | 97.20 % | 0.2144 | 18.83 GiB |
+| official FP8 | vLLM | 0.005197 | n/a, same engine | 96.92 % | 0.2440 | 28.51 GiB resident |
+| K4 EXL3 | vLLM | 0.010345 | n/a, same engine | 95.91 % | 0.5576 | — |
+
+The **cross-engine floor** is measured the same way, not assumed: the unquantized BF16 GGUF
+against the vLLM BF16 reference, identical tokens, identical shared head, the same 512 contexts,
+reads **0.000507** mean, 99.07 % top-1, p99.9 0.0113
+([`receipts/gguf-report-engine-floor.json`](../receipts/gguf-report-engine-floor.json)). Every
+GGUF row above contains that term; no vLLM row does. KL is not additive, so the net column is an
+estimate, not an identity — the measured GGUF value is an upper bound and the net figure is the
+naive lower one. The two `—` cells are the two builds that ship BF16 attention for the runtime to
+encode at load, so their disk bytes are not a like-for-like payload; the payload figures are
+`immutable_payload_bytes` from
+[`receipts/collection-index.json`](../receipts/collection-index.json) (hydrated 21,610,916,123 B =
+20.127 GiB, context 20,696,033,532 B = 19.275 GiB; the table truncates both to two decimals) and are
+serialized bytes, never VRAM. The FP8 figure is resident
+weights, labelled as such, because that artifact has no payload row of ours.
+
+The p99.9 column is each report's **exact** shard-0 value; the tail table in F5 below quotes the
+bin-bounded cumulative estimate from the 560-bin histogram (bins about 5.6 % wide), which is why
+hydrated reads 0.1319 there and 0.1313 here — the exact value lies inside the bin its estimate
+names. The two differ by construction, not by measurement.
+
+**What it found, including the half that is not flattering.**
+
+- **At the 6-bit operating point we lose.** GGUF `Q6_K` is genuinely better than our best build:
+  0.001528 net at 21.31 GiB against hydrated's 0.002700 at 20.12 GiB of payload. That is a
+  1.2 GiB-larger file measuring better, on our own suite, and it is the first published
+  measurement in this project where an off-the-shelf artifact beats the recipe.
+- **At the 5-bit operating point we win.** The context edition reads 0.003409 at 19.27 GiB
+  against `UD-Q5_K_XL`'s 0.003936 net at 18.83 GiB — about 13 % better fidelity for about
+  0.44 GiB more payload.
+- **`Q8_0` is the fidelity leader**, 0.001087 at 27.05 GiB, and its measured value is only about
+  twice the engine floor, so its own number sits near the resolution limit of any cross-engine
+  comparison: the net column is an estimate and not an identity, so **no ordering closer than a
+  factor of two should be pressed against `Q8_0`**. Anyone who can spare 27 GiB of weights and does
+  not need a long context on a 32 GB card should use it.
+- **Official FP8 is a weak bar.** Every GGUF point at or above 5 bits beats it. Our published
+  "34-48 % below FP8" is true and a weaker achievement than it sounds.
+- **K4 is the weakest point in the table**, 0.010345 mean and 0.5576 at p99.9 — worse than every
+  GGUF measured here and worse than official FP8.
+- So the format advantage at this bitrate is real at 5 bits, negative at 6 bits, and far short of
+  a full bit. turboderp's own chart reads "about a bit ahead" on *his* protocol
+  ([35](35-external-protocol-comparability.md)); that is a difference between protocols, not a
+  contradiction to settle by dividing one by the other.
+
+**Scope, stated with the result.** This is text-only teacher-forced fidelity on one shard, and it
+says nothing about serving 262,144 tokens with vision and MTP on a 32 GB card, which is where
+these artifacts actually differ. llama.cpp KV-quant behaviour, prefill and decode speed are
+separate axes and none of them is measured here.
+
+**One protocol objection bounded at the same time.** The largest structural difference between our
+protocol and `llama-perplexity`'s is which positions each scores: theirs floors every scored
+position at 256 tokens of left context, ours scores from position 0. Re-scoring our own captures
+under that restriction — no new capture, `tools/fidelity.py replay --score-from N` — lowers every
+candidate's mean by **1.3-2.1 %** at a 256-token floor and **3.9-4.9 %** second-half-only,
+uniformly enough to change no ordering
+([`receipts/scored-window-offset.json`](../receipts/scored-window-offset.json), fifteen reports
+`receipts/kld5-window-{hyd,k5k6,ctx,fp8,k4}-from{0,256,1024}.json`). So the external protocol's
+scoring floor explains at most about 5 % of any cross-protocol gap, and none of the ordering above.
+
+**Still open in F2:**
+
+- **Their protocol, for cross-citation.** wikitext-2 raw test at ctx 512 under
+  `llama-perplexity --kl-divergence`, so the three GGUFs also carry a number citable next to
+  Unsloth's own published rows. Run A of
+  [35-external-protocol-comparability.md](35-external-protocol-comparability.md); not run.
+- **Stock EXL3 uniform-bitrate controls**, at least `turboderp/Qwen3.8-27B-exl3` 5.00bpw
+  (`a35e75a7`) and 6.00bpw (`d32ba0bb`), to separate our role-aware allocation from EXL3 itself.
+  Not run — and after the GGUF result this is the more interesting of the two, because it is the
+  control that says whether the 6-bit loss is our allocation or the format.
+- **An ik_llama comparator.** Reader-suggested: `cHunter789/Qwen3.8-27B-i1-IQ4_KS_KT-GGUF` under
+  `ik_llama.cpp` (r/LocalLLaMA megathread `1voojjz`, comment `p3uk494`, "Try this with
+  ik-llama"). A name and a link only — no KLD, no top-1, no protocol. It is an **unmeasured
+  candidate, not a result**, and nothing about it may be published as a comparison until it is run
+  through the harness above.
+- **An NVFP4-NInfer comparator.** `Ostfralla/Qwen3.8-27B-NVFP4-NInfer` on the NInfer engine
+  (`github.com/Neroued/ninfer`), announced as a single-RTX-5090 native-262,144 build in the same
+  megathread, comment `p3xf3qf`. It carries no KLD either: its fidelity evidence is HumanEval+
+  152/164 and AIME25+AIME26 55/60, identical to the int4 artifact it was benchmarked against, and
+  its 1.56-1.98x is wall clock. Two traps for whoever writes it up: its "reconstruction error
+  0.09471 → 0.09470" is a **weight-space** error, numerically adjacent to our NVFP4 KLD (0.094978
+  v3, 0.092727 corrected) and therefore certain to be misread as confirmation of it — it is not;
+  and its "16.8 GiB" is a weight payload, not measured resident weights, so it must not be placed
+  on the same axis as our 20.31 / 20.32 / 18.41 / 28.51 / 17.89 GiB resident figures. It is
+  Blackwell-only and needs a patch its author says is not upstream, so it is not reproducible from
+  a released tree today.
+
+Two corrections to what this section said earlier stand unchanged. **First, the NVFP4 range was
+wrong here.** The same checkpoint reads 0.094978 on our v3 suite and 0.092727 after contamination
+correction ([`receipts/v3-report-nvfp4-analysis.json`](../receipts/v3-report-nvfp4-analysis.json),
+[`receipts/analysis-v3-contamination-corrected.json`](../receipts/analysis-v3-contamination-corrected.json)),
+while Unsloth's own published per-corpus rows are **0.01628** zh, **0.02600** code, **0.03993**
+refgen, **0.05818** chat and **0.0124-0.0155** ja/ko/ru/es — a range of **0.0124-0.05818**, not
+the "0.016-0.068" written here before. Those rows carry no corpus identity, token count, context
+length, reference precision, KL direction or engine, so they are not reproducible by us or by
+anyone else. **Second, there is no upstream GGUF ladder to compare against.** Unsloth publishes
+no per-quant KLD table for Qwen3.8-27B GGUFs at all — one prose figure ("82.5% accuracy (IQ2_XXS
+9GB)"), one top-1-versus-size chart, and "More benchmarks coming soon!" — so the `Q5_K_XL` /
+`Q6_K` / `Q8_0` comparison could not be closed by citation and had to be run by us, which is what
+the receipt above is. Their nearest published exact ladder is Qwen3.5-35B-A3B on wikitext-2 at
+ctx 512 (Q5_K_XL 0.0069, Q6_K_XL 0.0041, Q8_K_XL 0.0026), a scale anchor for their protocol and
+not a prediction for these artifacts. Protocol identity, the ordered delta list, pinned artifacts
+and the execution plan are in
+[35-external-protocol-comparability.md](35-external-protocol-comparability.md).
 
 Report confidence-conditioned buckets alongside the mean: a KLD below 0.01 is the threshold
 readers already associate with "practically BF16", so the distribution shape matters as much
@@ -93,10 +195,9 @@ as the mean.
 70-question run scores all six models on identical prompts against the BF16 control
 (`receipts/public-capability-{bf16,ctx,k4,hyd,fp8,k5k6}.json`): BF16 **57/70**, context
 **58/70**, K4 **57/70**, official FP8 **56/70**, hydrated **56/70**, online K5/K6 **55/70**. So
-the comparator no longer exists only on the KLD axis. This does **not** close F2: the missing
-comparators are still GGUF `Q5_K_XL` / `Q6_K` / `Q8_0` and stock uniform-bitrate EXL3, and at 70
-items every candidate interval overlaps every other, so the run separates nothing. The bar it
-missed, and why more items are the fix, is in the rank-4 section below.
+the comparator no longer exists only on the KLD axis. At 70 items every candidate interval
+overlaps every other, so the run separates nothing; the bar it missed, and why more items are the
+fix, is in the rank-4 section below.
 
 ### F3 — VRAM-class SKUs: 24 GB, then 16 GB
 

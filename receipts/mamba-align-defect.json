@@ -285,12 +285,56 @@
     "patch_ported": true,
     "patch_applies_to_recorded_vendored_digest": true,
     "module_shipped_for_image_inclusion": "tools/vllm-mamba-align-scheduler.py",
-    "handed_to": "ImmutableImage, for inclusion as a fourth content-pinned patch alongside vllm-exl3-prefill-dispatch.py, vllm-qwen3_5-embed-quant-config.py and vllm-qwen3_5_mtp-embed-quant-config.py",
+    "handed_to": "ImmutableImage, as a fourth content-pinned patch alongside vllm-exl3-prefill-dispatch.py, vllm-qwen3_5-embed-quant-config.py and vllm-qwen3_5_mtp-embed-quant-config.py",
     "image_destination": "/opt/venv/lib/python3.12/site-packages/vllm/v1/core/sched/scheduler.py",
+    "shipped_in_image": {
+      "decision": "Main ruled ship both, clearly separated: this module ships as a second image, NOT inside the hardware-qualified release unit. Qualify5090 was qualifying rank 1 against the three-module profile whose digests are published in receipts/native-mtp-8mp-amendment.json, and docs/29 rank 2 names exactly five PRs (#312, #314, #316, #318, #319) as the release unit, so a fourth COPY would have decoupled the immutable runtime from the artifact that was qualified.",
+      "image_tag": "localhost/vllm:gg-r34-patched-apc",
+      "image_config_sha256_prefix": "sha256:5ce31638c0a5",
+      "built_from": "the three-module release image via podman --build-arg PARENT, so the three qualified modules are byte-identical in the superset by construction rather than by assertion",
+      "built_by": "ImmutableImage, on AIBoss",
+      "verified_inside_the_image": [
+        "all four patch digests match, including b431c1066dfee3ed56bfa7e71cc8606f9afadc300f22d7fc542c43835d1b22bf at vllm/v1/core/sched/scheduler.py",
+        "the .py manifest differs from the parent image by exactly one file, vllm/v1/core/sched/scheduler.py",
+        "Python's import machinery resolves vllm.v1.core.sched.scheduler to the patched file, with no stale bytecode",
+        "pip freeze and dpkg lists byte-identical to the release image (package_lists_identical_to_release_image: true)"
+      ],
+      "qualified_digest_is_still_the_three_module_image": true,
+      "authoritative_receipt": "receipts/production-image.json (owned by ImmutableImage)"
+    },
+    "duplicate_source_tree_cannot_shadow_the_patch": {
+      "why_it_matters": "The image carries a second, unimported copy of the vLLM sources at /opt/vllm, including an unpatched /opt/vllm/vllm/v1/core/sched/scheduler.py. Console-script launches are safe by construction (/opt/venv/bin/vllm puts the script directory at sys.path[0]; cwd is never added for script execution, and that is what every shipped recipe uses), but `python -m` and `python -c` both prepend the working directory. Had WorkingDir been /opt/vllm, such an entry would have resolved `import vllm` to the unpatched tree and silently defeated all four patch modules, not just this one.",
+      "resolved": true,
+      "measured_by_ImmutableImage_inside_both_images": {
+        "image_config_working_dir": "/",
+        "image_config_working_dir_is_the_duplicate_source_tree": false,
+        "probe_invocation": "podman run --entrypoint /opt/venv/bin/python IMAGE - with the script on stdin and no -w, so cwd was the image's own WorkingDir",
+        "sys_path_0": "\"\" (the cwd-prepending case that would expose a shadow)",
+        "second_source_tree_on_sys_path": false,
+        "second_source_tree_reachable_from_cwd": false,
+        "resolution": "cwd is / and /vllm does not exist, so the probe exercised the exact hazard and still resolved to site-packages"
+      },
+      "independent_static_confirmation_from_the_extracted_rootfs": {
+        "vllm_dist_info_direct_url": "{\"dir_info\": {}, \"url\": \"file:///opt/vllm\"}",
+        "dir_info_empty_means_non_editable_install": true,
+        "editable_install_pth_present": false,
+        "only_pth_files_in_site_packages": [
+          "_pynvml_redirector.pth",
+          "distutils-precedence.pth",
+          "nvidia_cutlass_dsl_packages.pth"
+        ],
+        "none_reference_opt_vllm": true
+      },
+      "acceptance_gates_added_by_ImmutableImage": [
+        "duplicate_source_tree_unreachable_from_working_dir",
+        "vllm_is_not_an_editable_install"
+      ],
+      "gates_true_for_both_release_image_and_apc": true,
+      "residual_operator_risk": "Only an operator explicitly passing -w /opt/vllm together with a `python -m` entry could still shadow the patched modules. No shipped recipe does either. Pre-existing and equally applicable to the three qualified modules; not introduced by this patch."
+    },
     "published_measurements_requiring_re_measurement": [],
     "published_measurements_requiring_a_caveat": [],
     "open": [
-      "The fourth patch is not yet in any built image; docker/Dockerfile.gg-r34-patched and docker/build-image.sh still carry a three-entry patch map.",
       "The fix is not exercised end to end on a GPU with --enable-prefix-caching, because prefix caching has never been enabled for this model in this repository and the card was unavailable. Enabling it is a separate, unstarted piece of work with its own acceptance gate.",
       "r34 also lacks the later read-side mitigations (kv_cache_coordinator.py:892 MambaSpec margin skip, MambaManager's unused drop_eagle_block). PR #51113 is the scheduler-side fix only; whether those two are additionally required before enabling prefix caching is not established here."
     ]

@@ -106,7 +106,9 @@ case $VARIANT in
     "vendored_scheduler_sha256_in_r34": "1ea341f4cc28d282452597c25d97eea84be8b5f984d2e1a6b548356c8417fdce",
     "patch": "patches/vllm-51113-mamba-align.patch",
     "patch_reproduces_module_byte_identically": true,
-    "evidence_receipt": "receipts/mamba-align-defect.json"
+    "evidence_receipt": "receipts/mamba-align-defect.json",
+    "evidence_receipt_sha256": "a654f3df5776466575a6706a73f3ea369b73587e6fb832a6ea5917f617c31e82",
+    "evidence_receipt_owner": "MambaAlignProof; that receipt is authoritative for the defect and the CPU-only test result, this one for the image identities"
   },
   "cpu_only_evidence": {
     "test_file": "upstream tests/v1/core/test_mamba_align_chunk_split.py, run unmodified",
@@ -300,10 +302,11 @@ stage_verify() {
 
   python3 - "$VARIANT_STAGE" "$modules" <<'PY' \
     "$cfg_new" "$cfg_parent" "$env_added" "$added_history" "$installer_hits" \
-    "$changed_parent" "$changed_base" "$expected_adds" "$PARENT_REF"
+    "$changed_parent" "$changed_base" "$expected_adds" "$PARENT_REF" \
+    "$(podman image inspect "$IMAGE_TAG" --format '{{.Config.WorkingDir}}')"
 import json, sys
 (stage, modules, cfg_new, cfg_parent, env_added, history, installer_hits,
- changed_parent, changed_base, expected_adds, parent_ref) = sys.argv[1:12]
+ changed_parent, changed_base, expected_adds, parent_ref, working_dir) = sys.argv[1:13]
 PREFIX = "/opt/venv/lib/python3.12/site-packages/vllm"
 patch_modules = json.loads("[" + modules.rstrip(",") + "]")
 
@@ -327,6 +330,9 @@ payload = {
             changed_from_base == expected_from_base,
         "image_config_entrypoint_cmd_user_workdir_unchanged": cfg_new == cfg_parent,
         "image_config_inherited": cfg_new,
+        "image_config_working_dir": working_dir or "/",
+        "image_config_working_dir_is_the_duplicate_source_tree":
+            (working_dir or "/").rstrip("/") == "/opt/vllm",
         "env_vars_added_vs_base_image": [e for e in env_added.splitlines() if e.strip()],
         "added_history_entries_vs_base": [h for h in history.splitlines() if h.strip()],
         "package_manager_invocations_in_added_layers": int(installer_hits or 0),
@@ -352,24 +358,78 @@ PY
     module_names+=("${dotted//\//.}")
     find_names+=(-o -name "$(basename "$dest")")
   done
+  # The image also carries an unimported second copy of the vLLM sources at /opt/vllm.
+  # An auditor will find it, so measure it: record its digests and prove it is not on
+  # sys.path, rather than leaving "only the imported tree is patched" as an assertion.
   local resolution_json duplicates
   resolution_json=$(podman run --rm -i --network none \
     --entrypoint /opt/venv/bin/python "$IMAGE_TAG" - "${module_names[@]}" <<'PY'
 import hashlib, importlib.util, json, os, sys
+
+
+def digest(path):
+    with open(path, "rb") as handle:
+        return hashlib.sha256(handle.read()).hexdigest()
+
+
+SECOND_TREE = "/opt/vllm"
 rows = {}
 for module in sys.argv[1:]:
     try:
         spec = importlib.util.find_spec(module)
+        relative = module.replace(".", "/") + ".py"
+        duplicate = os.path.join(SECOND_TREE, relative)
         rows[module] = {
             "resolved_origin": spec.origin,
-            "resolved_origin_sha256":
-                hashlib.sha256(open(spec.origin, "rb").read()).hexdigest(),
+            "resolved_origin_sha256": digest(spec.origin),
             "cached_bytecode_path": spec.cached,
             "stale_bytecode_present": os.path.exists(spec.cached or ""),
+            "unimported_duplicate_path": duplicate if os.path.exists(duplicate) else None,
+            "unimported_duplicate_sha256":
+                digest(duplicate) if os.path.exists(duplicate) else None,
         }
     except Exception as exc:
         rows[module] = {"error": f"{type(exc).__name__}: {exc}"}
-print(json.dumps(rows))
+# A console-script launch (/opt/venv/bin/vllm, what every recipe uses) puts the script
+# directory at sys.path[0]. `python -m` and `python -c` instead prepend the working
+# directory, so if the inherited WORKDIR were /opt/vllm, `import vllm` would silently
+# resolve to the unpatched duplicate tree and defeat every patched module. This probe is
+# deliberately run as `python -` with no -w, i.e. with cwd-prepending semantics and the
+# image's own WorkingDir, so it exercises exactly that case.
+site = os.path.dirname(os.path.dirname(importlib.util.find_spec("vllm").origin))
+path_files = {}
+for name in sorted(os.listdir(site)):
+    if name.endswith(".pth"):
+        with open(os.path.join(site, name), encoding="utf-8", errors="replace") as handle:
+            path_files[name] = [line.strip() for line in handle if line.strip()]
+direct_url = None
+for name in os.listdir(site):
+    if name.startswith("vllm-") and name.endswith(".dist-info"):
+        candidate = os.path.join(site, name, "direct_url.json")
+        if os.path.exists(candidate):
+            direct_url = json.load(open(candidate))
+print(json.dumps({
+    "probe_invocation": "podman run --entrypoint /opt/venv/bin/python IMAGE - "
+                        "(script on stdin, no -w), so sys.path[0] is derived from the "
+                        "working directory exactly as `python -m` or `python -c` would be",
+    "cwd": os.getcwd(),
+    "sys_path_0": sys.path[0],
+    "sys_path": sys.path,
+    "site_packages": site,
+    "path_configuration_files": path_files,
+    "editable_install_pth_present":
+        any(name.startswith("__editable__") for name in path_files),
+    "vllm_dist_info_direct_url": direct_url,
+    "vllm_installed_editable": bool((direct_url or {}).get("dir_info", {}).get("editable")),
+    "second_source_tree": SECOND_TREE,
+    "second_source_tree_on_sys_path":
+        any(os.path.realpath(entry) == os.path.realpath(SECOND_TREE)
+            for entry in sys.path if entry),
+    "second_source_tree_reachable_from_cwd":
+        os.path.realpath(os.path.join(os.getcwd(), "vllm"))
+        == os.path.realpath(os.path.join(SECOND_TREE, "vllm")),
+    "modules": rows,
+}))
 PY
 )
   duplicates=$(podman run --rm --network none --entrypoint /bin/bash "$IMAGE_TAG" -lc \
@@ -381,7 +441,7 @@ PY
 {
   "import_resolution": {
     "measured_in": "$IMAGE_TAG",
-    "modules": $resolution_json,
+    "measured": $resolution_json,
     "other_copies_of_these_filenames_on_the_filesystem": $duplicates
   }
 }
@@ -454,6 +514,22 @@ stage_sbom() {
     podman run --rm --network none --entrypoint /bin/bash "$IMAGE_TAG" \
       -lc "dpkg-query -W -f='\${Package}\t\${Version}\t\${Architecture}\n' | sort" > "$dpkg_file"
   fi
+  # A source-only overlay cannot change the package inventory. Prove it rather than assert
+  # it: if a variant's lists are byte-identical to the release image's, drop the duplicate
+  # files and point at the release ones.
+  local identical=null release_pip release_dpkg
+  release_pip=$REPO_ROOT/receipts/production-image-sbom-pip.txt
+  release_dpkg=$REPO_ROOT/receipts/production-image-sbom-dpkg.txt
+  if [[ -n $SBOM_INFIX && -f $release_pip && -f $release_dpkg ]]; then
+    if cmp -s "$pip_file" "$release_pip" && cmp -s "$dpkg_file" "$release_dpkg"; then
+      identical=true
+      rm -f "$pip_file" "$dpkg_file"
+      pip_file=$release_pip
+      dpkg_file=$release_dpkg
+    else
+      identical=false
+    fi
+  fi
   json_fragment sbom <<JSON
 {
   "sbom": {
@@ -465,7 +541,8 @@ stage_sbom() {
     "python_packages_sha256": "$( [[ -f $pip_file ]] && digest_of "$pip_file" || echo null )",
     "debian_packages": $( [[ -f $dpkg_file ]] && wc -l < "$dpkg_file" || echo null ),
     "debian_packages_file": "receipts/$(basename "$dpkg_file")",
-    "debian_packages_sha256": "$( [[ -f $dpkg_file ]] && digest_of "$dpkg_file" || echo null )"
+    "debian_packages_sha256": "$( [[ -f $dpkg_file ]] && digest_of "$dpkg_file" || echo null )",
+    "package_lists_identical_to_release_image": $identical
   }
 }
 JSON
@@ -505,7 +582,7 @@ recipe_args() {
         --served-model-name qwen38 --quantization exl3 \
         --quantization-config "{\"linear\":{\"weight\":\"mxfp8\"},\"ignore\":$ignore}" \
         --max-model-len "${CONTEXT_MAX_MODEL_LEN:-262144}" \
-        --gpu-memory-utilization 0.97 --max-num-seqs 1 \
+        --gpu-memory-utilization "${CONTEXT_GPU_UTIL:-0.97}" --max-num-seqs 1 \
         --kv-cache-dtype fp8 --max-num-batched-tokens 2048 \
         --speculative-config '{"method":"mtp","num_speculative_tokens":3}' \
         --mm-processor-kwargs '{"truncation":false,"max_pixels":8388608}' \
@@ -534,8 +611,13 @@ recipe_env() {
           -e VLLM_EXL3_ONLINE_CACHE_DIR=/cache/exl3-online \
           -e VLLM_EXL3_GRAPH_DECODE=1 -e VLLM_EXL3_PREFILL_RECONSTRUCT_M=128 ;;
     hydrated) : ;;
+    # expandable_segments is NOT baked into the image env; the live launcher passes it, and
+    # rank 1 found the native-context profile needs it (plus a slightly lower utilisation)
+    # to survive a multi-megapixel image on a physical 5090. Override with CONTEXT_GPU_UTIL
+    # and CONTEXT_ALLOC_CONF; the exact argv used is recorded verbatim in the receipt.
     context) printf '%s\n' -e VLLM_EXL3_EMBED_BITS=8 -e VLLM_EXL3_GRAPH_DECODE=1 \
-          -e VLLM_EXL3_PREFILL_RECONSTRUCT_M=128 ;;
+          -e VLLM_EXL3_PREFILL_RECONSTRUCT_M=128 \
+          -e "PYTORCH_CUDA_ALLOC_CONF=${CONTEXT_ALLOC_CONF:-expandable_segments:True}" ;;
   esac
 }
 
@@ -753,40 +835,79 @@ PY
 
 # ------------------------------------------------------------------------- receipt
 stage_receipt() {
-  python3 - "$STAGE" "$RECEIPT" "$REPO_ROOT" <<'PY'
+  python3 - "$STAGE" "$RECEIPT" <<'PY'
 import json, os, sys, time
-stage, out, repo = sys.argv[1:4]
+stage, out = sys.argv[1:3]
 
-def fragment(name):
-    path = os.path.join(stage, name + ".json")
+
+def fragment(variant, name):
+    path = os.path.join(stage, variant, name + ".json")
     return json.load(open(path)) if os.path.exists(path) else {}
 
-build, verify, resolution, sbom, tool, smoke = (
-    fragment(n) for n in ("build", "verify", "resolution", "sbom", "toolchain", "smoke"))
-if not build:
-    raise SystemExit("no build fragment: run `build` first")
 
-recipes = smoke.get("recipes", [])
-ran = [r for r in recipes if r.get("ran")]
-payload = {
-    "schema": "qwen38-production-image/1",
-    "generated_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-    "purpose": "P0 / rank 2 immutable production runtime: the three content-pinned patch "
-               "modules folded into the pinned r34 digest, replacing the read-only "
-               "source bind mounts the model cards' patched recipes required",
-    "hardware_scope": "built and smoke-tested on AIBoss, one physical RTX 5090 (32,607 MiB); "
-                      "no throughput number here is comparable to the rental RTX PRO 6000 "
-                      "engine-budget receipts",
-    "operational_scope": "the host's live qwen38-27b service (K4 at 262,144 on the r34 "
-                         "digest with one bind-mounted module) was never stopped, altered "
-                         "or reconfigured by this receipt; smoke recipes ran as separate "
-                         "short-lived containers on a distinct loopback port",
-    **build,
-    **verify,
-    **resolution,
-    **tool,
-    **sbom,
-    "smoke": {
+def acceptance_for(verify, resolution, sbom, tool, build, recipes):
+    """Every gate is either measured or null. Runtime gates need a recipe that served."""
+    published_by_dest = {m["dest"]: m["published_sha256"]
+                         for m in verify.get("patch_modules", [])}
+    measured = resolution.get("import_resolution", {}).get("measured", {})
+    resolved = measured.get("modules", {})
+    immutability = verify.get("immutability", {})
+    ran = [r for r in recipes if r.get("ran")]
+    healthy = [r for r in ran if r.get("started_healthy")]
+    return {
+        "modules_in_image_match_published_map":
+            immutability.get("python_files_changed_are_exactly_the_patch_set")
+            and all(m["matches_published_map"] for m in verify.get("patch_modules", []))
+            if verify else None,
+        "layer_adds_exactly_its_declared_files":
+            immutability.get("python_files_changed_vs_parent_are_exactly_this_layers_adds")
+            if verify else None,
+        "import_machinery_resolves_to_patched_modules": (
+            all(m.get("resolved_origin") in published_by_dest
+                and m.get("resolved_origin_sha256")
+                    == published_by_dest[m["resolved_origin"]]
+                for m in resolved.values())
+            and len(resolved) == len(published_by_dest))
+            if resolved else None,
+        "no_stale_bytecode_for_patched_modules":
+            all(m.get("stale_bytecode_present") is False for m in resolved.values())
+            if resolved else None,
+        "only_the_imported_tree_is_patched":
+            measured.get("second_source_tree_on_sys_path") is False
+            if measured else None,
+        "duplicate_source_tree_unreachable_from_working_dir": (
+            measured.get("second_source_tree_reachable_from_cwd") is False
+            and immutability.get("image_config_working_dir_is_the_duplicate_source_tree")
+                is False)
+            if measured and immutability else None,
+        "vllm_is_not_an_editable_install": (
+            measured.get("vllm_installed_editable") is False
+            and measured.get("editable_install_pth_present") is False)
+            if measured else None,
+        "sbom_generated": bool(sbom.get("sbom")) if sbom else False,
+        "no_runtime_source_bind_mounts":
+            all(not r.get("source_bind_mounts") for r in healthy) if healthy else None,
+        "no_startup_file_copies": all(
+            not (r.get("container_filesystem_changes_vs_image") or {}).get("under_opt")
+            and not (r.get("container_filesystem_changes_vs_image") or {}).get(
+                "under_usr_lib_or_bin")
+            for r in healthy) if healthy else None,
+        "no_runtime_package_installs":
+            immutability.get("runtime_package_installs") is False if verify else None,
+        "weights_read_only":
+            all(r["weights_mount"] == "read-only" for r in healthy) if healthy else None,
+        "service_loopback_or_api_key":
+            all("127.0.0.1" in r["published_port"] for r in healthy) if healthy else None,
+        "no_host_root_privilege":
+            all(r["host_root_privilege"] is False for r in healthy) if healthy else None,
+        "image_digest_and_toolchain_recorded":
+            bool(build.get("image", {}).get("manifest_digest")) and bool(tool.get("toolchain")),
+    }
+
+
+def smoke_section(recipes):
+    ran = [r for r in recipes if r.get("ran")]
+    return {
         "client": "docker/smoke_client.py, one text and one image request per recipe, "
                   "exact match; image fixture drawn by tools/vision_eval.draw_digits",
         "recipes_attempted": [r["recipe"] for r in recipes],
@@ -794,66 +915,95 @@ payload = {
         "recipes_skipped": {r["recipe"]: r.get("skipped_because")
                             for r in recipes if not r.get("ran")},
         "all_run_recipes_started": bool(ran) and all(r["started_healthy"] for r in ran),
-        "all_run_recipes_text_and_image_exact": bool(ran)
-            and all(r["text_and_image_pass"] for r in ran),
+        "all_run_recipes_text_and_image_exact":
+            bool(ran) and all(r["text_and_image_pass"] for r in ran),
         "results": recipes,
-    },
+    }
+
+
+def caveats(recipes, acceptance):
+    ran = [r for r in recipes if r.get("ran")]
+    healthy = [r for r in ran if r.get("started_healthy")]
+    notes = []
+    if not healthy:
+        notes.append("no recipe served a request, so every runtime gate (mounts, writes, "
+                     "endpoint) is recorded as null rather than passed")
+    missing = [r["recipe"] for r in recipes if not r.get("ran")]
+    if missing:
+        notes.append("recipes with no attempt recorded: " + ", ".join(missing))
+    failed = [r["recipe"] for r in ran if not r.get("started_healthy")]
+    if failed:
+        notes.append("recipes attempted but not healthy within the start timeout: "
+                     + ", ".join(failed))
+    return notes
+
+
+release = {name: fragment("release", name) for name in
+           ("build", "verify", "resolution", "sbom", "toolchain", "smoke")}
+if not release["build"]:
+    raise SystemExit("no release build fragment: run `build` first")
+release_recipes = release["smoke"].get("recipes", [])
+
+payload = {
+    "schema": "qwen38-production-image/2",
+    "generated_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+    "purpose": "P0 / rank 2 immutable production runtime: the three content-pinned patch "
+               "modules folded into the pinned r34 digest, replacing the read-only source "
+               "bind mounts the model cards' patched recipes required",
+    "release_unit": "the image described at the top level of this receipt. Any image under "
+                    "superset_images is explicitly not the qualified artifact.",
+    "hardware_scope": "built and smoke-tested on AIBoss, one physical RTX 5090 (32,607 MiB); "
+                      "no throughput number here is comparable to the rental RTX PRO 6000 "
+                      "engine-budget receipts",
+    "operational_scope": "the host's live qwen38-27b service (K4 at 262,144 on the r34 "
+                         "digest with one bind-mounted module) was never stopped, altered "
+                         "or reconfigured by this receipt; smoke recipes ran as separate "
+                         "short-lived containers on a distinct loopback port",
+    **release["build"],
+    **release["verify"],
+    **release["resolution"],
+    **release["toolchain"],
+    **release["sbom"],
+    "smoke": smoke_section(release_recipes),
 }
-published_by_dest = {m["dest"]: m["published_sha256"] for m in verify.get("patch_modules", [])}
-resolved = resolution.get("import_resolution", {}).get("modules", {})
-# Runtime gates may only be asserted from recipes that actually served: a container that
-# never became healthy proves nothing about mounts, writes or endpoints.
-healthy = [r for r in ran if r.get("started_healthy")]
-payload["acceptance"] = {
-    "modules_in_image_match_published_map":
-        verify.get("immutability", {}).get("python_files_changed_are_exactly_the_patch_set")
-        and all(m["matches_published_map"] for m in verify.get("patch_modules", [])),
-    "import_machinery_resolves_to_patched_modules": (
-        all(m.get("resolved_origin") in published_by_dest
-            and m.get("resolved_origin_sha256") == published_by_dest[m["resolved_origin"]]
-            for m in resolved.values())
-        and len(resolved) == len(published_by_dest))
-        if resolved else None,
-    "no_stale_bytecode_for_patched_modules": all(
-        m.get("stale_bytecode_present") is False
-        for m in resolution.get("import_resolution", {}).get("modules", {}).values())
-        if resolution.get("import_resolution") else None,
-    "sbom_generated": bool(sbom.get("sbom")),
-    "no_runtime_source_bind_mounts":
-        all(not r.get("source_bind_mounts") for r in healthy) if healthy else None,
-    "no_startup_file_copies": all(
-        not (r.get("container_filesystem_changes_vs_image") or {}).get("under_opt")
-        and not (r.get("container_filesystem_changes_vs_image") or {}).get("under_usr_lib_or_bin")
-        for r in healthy) if healthy else None,
-    "no_runtime_package_installs":
-        verify.get("immutability", {}).get("runtime_package_installs") is False,
-    "weights_read_only":
-        all(r["weights_mount"] == "read-only" for r in healthy) if healthy else None,
-    "service_loopback_or_api_key":
-        all("127.0.0.1" in r["published_port"] for r in healthy) if healthy else None,
-    "no_host_root_privilege":
-        all(r["host_root_privilege"] is False for r in healthy) if healthy else None,
-    "image_digest_and_toolchain_recorded":
-        bool(build.get("image", {}).get("manifest_digest")) and bool(tool.get("toolchain")),
-}
+payload["acceptance"] = acceptance_for(release["verify"], release["resolution"],
+                                       release["sbom"], release["toolchain"],
+                                       release["build"], release_recipes)
 payload["not_claimed"] = [
-    "the image has not been pushed to any public registry: repo_digests is empty and the "
-    "release unit here is the local manifest digest plus the verified source map",
+    "no image here has been pushed to any public registry: repo_digests are local, and the "
+    "release unit is the local manifest digest plus the verified source map",
     "the model cards still document the three-mount patched recipe: collapsing their "
     "unmodified and patched recipes into one command needs a digest a reader can pull, "
     "and this digest is local to the build host",
-]
-if not healthy:
-    payload["not_claimed"].append(
-        "no recipe served a request in this receipt, so every runtime gate (mounts, "
-        "writes, endpoint) is recorded as null rather than passed")
-missing = [r["recipe"] for r in recipes if not r.get("ran")]
-if missing:
-    payload["not_claimed"].append("recipes with no attempt recorded: " + ", ".join(missing))
-failed = [r["recipe"] for r in ran if not r.get("started_healthy")]
-if failed:
-    payload["not_claimed"].append(
-        "recipes attempted but not healthy within the start timeout: " + ", ".join(failed))
+] + caveats(release_recipes, payload["acceptance"])
+
+supersets = []
+for variant in ("apc",):
+    frags = {name: fragment(variant, name) for name in
+             ("build", "verify", "resolution", "sbom", "toolchain", "smoke")}
+    if not frags["build"]:
+        continue
+    recipes = frags["smoke"].get("recipes", [])
+    entry = {
+        "variant": variant,
+        **frags["build"],
+        **frags["verify"],
+        **frags["resolution"],
+        **frags["sbom"],
+        "smoke": smoke_section(recipes),
+    }
+    entry["acceptance"] = acceptance_for(frags["verify"], frags["resolution"], frags["sbom"],
+                                         frags["toolchain"] or release["toolchain"],
+                                         frags["build"], recipes)
+    entry["not_claimed"] = [
+        "this is not the hardware-qualified digest; the release unit at the top level is",
+        "no published measurement depends on this image's extra module",
+        "using --enable-prefix-caching requires this image and a qualification run of its "
+        "own; that run has not been done",
+    ] + caveats(recipes, entry["acceptance"])
+    supersets.append(entry)
+if supersets:
+    payload["superset_images"] = supersets
 
 temporary = out + ".tmp"
 with open(temporary, "w") as handle:
@@ -861,7 +1011,8 @@ with open(temporary, "w") as handle:
     handle.write("\n")
 os.replace(temporary, out)
 print(f"wrote {out}")
-print(json.dumps(payload["acceptance"], indent=2))
+print(json.dumps({"release": payload["acceptance"],
+                  "supersets": {s["variant"]: s["acceptance"] for s in supersets}}, indent=2))
 PY
 }
 

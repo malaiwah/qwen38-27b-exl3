@@ -19,7 +19,7 @@
     "reference": "BF16 Qwen/Qwen3.8-27B captured under vLLM at the final norm",
     "exl3_candidates": "captured under the same vLLM build as the reference, so they carry no cross-engine term",
     "gguf_candidates": "captured with llama.cpp at pinned commit ece963f41b0b02d7a0d61436ae365762c073a4c8 through tools/gguf_capture.cpp, which reads the post-final-norm state (res->t_embd, src/models/qwen35.cpp) \u2014 the same mathematical point the vLLM hook takes; bf16 rounding verified bit-identical to torch on 2,012,449 probe values",
-    "cross_engine_caveat": "a GGUF number therefore contains llama.cpp-versus-vLLM numerics in addition to quantization error, which can only inflate it; the BF16-GGUF engine-floor control that would subtract it is queued, so GGUF rows here are upper bounds and our EXL3 rows are not",
+    "cross_engine_caveat": "a GGUF number therefore contains llama.cpp-versus-vLLM numerics in addition to quantization error, which can only inflate it; that term is now measured \u2014 see engine_floor below, 0.000507 mean \u2014 so every GGUF row is reported both as measured and net of the floor, while the EXL3 and FP8 rows share the reference's engine and carry no such term",
     "interval": "source-cluster bootstrap, 10,000 resamples"
   },
   "candidates": {
@@ -39,7 +39,9 @@
       "p999_kld": 0.03511761959961298,
       "max_kld": 3.2689112438820302,
       "carries_cross_engine_term": true,
-      "report": "receipts/gguf-report-q8_0.json"
+      "report": "receipts/gguf-report-q8_0.json",
+      "engine_floor_subtracted_estimate": 0.0005794503201991574,
+      "engine_floor_note": "KL is not additive, so this subtraction is an estimate, not an identity; the measured value is an upper bound and this is the naive lower estimate"
     },
     "gguf-q6_k": {
       "family": "GGUF (unsloth)",
@@ -57,7 +59,9 @@
       "p999_kld": 0.07944353984230398,
       "max_kld": 3.0882506367051974,
       "carries_cross_engine_term": true,
-      "report": "receipts/gguf-report-q6_k.json"
+      "report": "receipts/gguf-report-q6_k.json",
+      "engine_floor_subtracted_estimate": 0.0015278671188742878,
+      "engine_floor_note": "KL is not additive, so this subtraction is an estimate, not an identity; the measured value is an upper bound and this is the naive lower estimate"
     },
     "gguf-q5_k_xl": {
       "family": "GGUF (unsloth)",
@@ -75,7 +79,9 @@
       "p999_kld": 0.214432893005265,
       "max_kld": 4.969763278826321,
       "carries_cross_engine_term": true,
-      "report": "receipts/gguf-report-q5_k_xl.json"
+      "report": "receipts/gguf-report-q5_k_xl.json",
+      "engine_floor_subtracted_estimate": 0.003936170795822309,
+      "engine_floor_note": "KL is not additive, so this subtraction is an estimate, not an identity; the measured value is an upper bound and this is the naive lower estimate"
     },
     "hyd": {
       "family": "EXL3 (ours)",
@@ -166,9 +172,35 @@
   "findings": {
     "q8_is_the_fidelity_leader": "Q8_0 measures 0.001087 at 27.05 GiB of serialized weight \u2014 2.5x better than our best build and 4.8x better than official FP8. Anyone who can spare 27 GiB of weights and does not need a long context on a 32 GB card should use it. The critique that Q8 is the honest bar is correct.",
     "fp8_is_a_weak_bar": "official FP8 measures 0.005197 while Q6_K measures 0.002035 at 7.2 GiB less serialized weight; on this suite FP8 is beaten by every GGUF point at or above 5 bits. Our published claim of 34-48 % below FP8 stands, and it is a smaller achievement than it sounds.",
-    "our_builds_sit_where_a_5_to_6_bit_build_should": "hydrated 0.002700 at 20.12 GiB of payload lands between Q6_K (0.002035 at 21.31 GiB) and UD-Q5_K_XL (0.004444 at 18.83 GiB), and slightly better than a log-linear interpolation of those two at its own size; the context edition 0.003409 at 19.27 GiB beats UD-Q5_K_XL by 23 % at 0.44 GiB more. So the format advantage at this bitrate is real but modest \u2014 nothing like a full bit on this suite.",
+    "our_builds_sit_where_a_5_to_6_bit_build_should": "hydrated 0.002700 at 20.12 GiB of payload lands between Q6_K net 0.00153 at 21.31 GiB and UD-Q5_K_XL net 0.00394 at 18.83 GiB. Honest reading: we win the 5-bit-class comparison and lose the 6-bit-class one. The format advantage at this bitrate is real at 5 bits and negative at 6 bits on this suite, which is far short of a full bit.",
     "tail_ordering_matches_mean_ordering": "p99.9 runs 0.0351 (Q8_0) < 0.0794 (Q6_K) < 0.1313 (hydrated) < 0.1447 (online) < 0.1632 (context) < 0.2144 (Q5_K_XL) < 0.2440 (FP8) < 0.5576 (K4), i.e. the same order as the means with one crossing: our three builds are lighter-tailed than UD-Q5_K_XL and FP8 despite the context build being close to Q5_K_XL on the mean.",
-    "what_this_does_not_settle": "the GGUF rows are upper bounds until the BF16-GGUF engine-floor control is measured; the comparison is text-only teacher-forced fidelity and says nothing about serving a 262,144-token multimodal context on a 32 GB card, which is where these artifacts actually differ."
+    "what_this_does_not_settle": "the comparison is text-only teacher-forced fidelity and says nothing about serving a 262,144-token multimodal context on a 32 GB card, which is where these artifacts actually differ; llama.cpp KV-quant behaviour, prefill and decode speed are separate axes; and the net-of-floor column is an estimate because KL is not additive, so at Q8_0's level \u2014 about twice the floor \u2014 the ordering against anything nearer than a factor of two should not be pressed",
+    "engine_floor_changes_the_reading": "the cross-engine floor is 0.000507. Net of it, Q8_0 is roughly 0.00058, Q6_K 0.00153 and UD-Q5_K_XL 0.00394. So at the 6-bit operating point GGUF Q6_K (21.31 GiB) is genuinely better than our hydrated build (0.002700 at 20.12 GiB), while at the 5-bit operating point our context edition (0.003409 at 19.27 GiB) is about 13 % better than UD-Q5_K_XL (0.00394 net at 18.83 GiB). Q8_0's measured 0.001087 is only about twice the floor, so its own number sits near the resolution limit of any cross-engine comparison."
   },
-  "content_sha256": "e56af922025ca068915dce1142ae5574c3f0e7590a4507cfa0d4485f07260e9a"
+  "content_sha256": "076d56f3931158fa92c816e1f0d1812b563c9e530fc735da0de0382c2fe04598",
+  "engine_floor": {
+    "what": "llama.cpp BF16 GGUF versus the vLLM BF16 reference, identical tokens, identical shared BF16 head, same 512 contexts",
+    "artifact": "unsloth/Qwen3.8-27B-GGUF@f1bfb127c64f7072bdd2cad55f258b9c8b2910fe:BF16/Qwen3.8-27B-BF16-00001-of-00002.gguf (two-part, 54,657,735,616 B total)",
+    "mean_kld": 0.0005073550588083691,
+    "ci95": [
+      0.0004920784160918636,
+      0.0005232596504821224
+    ],
+    "top1_agreement": 0.9906713712139716,
+    "p999_kld": 0.011291127059530762,
+    "max_kld": 1.5186729206470773,
+    "report": "receipts/gguf-report-engine-floor.json",
+    "meaning": "this is what two engines disagree by on the SAME unquantized weights: 0.000507 mean, 99.07 % top-1. Every GGUF row above contains this term; no EXL3 or FP8 row does."
+  },
+  "amendments": [
+    {
+      "amended_utc": "2026-08-16T01:25:04Z",
+      "what": "two prose fields still described the engine floor as queued after it had been measured and added to this same file",
+      "fields": [
+        "method.cross_engine_caveat",
+        "findings.what_this_does_not_settle"
+      ],
+      "measured_values_unchanged": true
+    }
+  ]
 }

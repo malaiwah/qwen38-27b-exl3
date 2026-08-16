@@ -83,6 +83,77 @@ lighter tail than official FP8 at **every** measured quantile, and K4 is worse t
 every quantile. Receipts are schema `qwen38-kld-ladder-cumulative/2`, welded by
 `tools/kld_aggregate.py` from `/2` replay reports.
 
+**Against GGUF, measured, including the part that goes against us.** The standing critique is
+that official FP8 is a throughput format whose quality is Q4-to-Q5 class, so beating it is a weak
+claim, and that `Q8_0` and `Q6_K` are the honest bar. That is now measured rather than argued.
+Three GGUFs from `unsloth/Qwen3.8-27B-GGUF@f1bfb127c64f7072bdd2cad55f258b9c8b2910fe` were
+captured under llama.cpp pinned at commit `ece963f41b0b02d7a0d61436ae365762c073a4c8` with
+`tools/gguf_capture.cpp`, which reads the post-final-norm state — the same mathematical point our
+vLLM hook takes, with bf16 rounding verified bit-identical to torch on 2,012,449 probe values —
+and scored through **the same shared BF16 head** on **shard 0 of the v5 suite: the same 512
+contexts and the same 1,048,064 positions every candidate above saw** (`tools/gguf_manifest.py`,
+`tools/build_llamacpp.sh`; receipt `receipts/cross-engine-comparator.json`, per-candidate reports
+`receipts/gguf-report-{q8_0,q6_k,q5_k_xl}.json`).
+
+| candidate | engine | measured mean KLD | net of engine floor | top-1 | p99.9 | serialized |
+|---|---|---:|---:|---:|---:|---:|
+| GGUF `Q8_0` | llama.cpp | 0.001087 | ~0.000579 | 98.53 % | 0.0351 | 27.05 GiB |
+| GGUF `Q6_K` | llama.cpp | 0.002035 | ~0.001528 | 97.98 % | 0.0794 | 21.31 GiB |
+| hydrated EXL3 | vLLM | **0.002700** | n/a, same engine | 97.80 % | 0.1313 | 20.12 GiB payload |
+| online K5/K6 EXL3 | vLLM | **0.003141** | n/a, same engine | 97.61 % | 0.1447 | — |
+| context EXL3 | vLLM | **0.003409** | n/a, same engine | 97.55 % | 0.1632 | 19.27 GiB payload |
+| GGUF `UD-Q5_K_XL` | llama.cpp | 0.004444 | ~0.003936 | 97.20 % | 0.2144 | 18.83 GiB |
+| official FP8 | vLLM | 0.005197 | n/a, same engine | 96.92 % | 0.2440 | 28.51 GiB resident |
+| K4 EXL3 | vLLM | 0.010345 | n/a, same engine | 95.91 % | 0.5576 | — |
+
+The **cross-engine floor** is measured the same way, not assumed: the unquantized BF16 GGUF
+against the vLLM BF16 reference, identical tokens, identical shared head, the same 512 contexts,
+reads **0.000507** mean, 99.07 % top-1, p99.9 0.0113
+(`receipts/gguf-report-engine-floor.json`). Every GGUF row carries that term; no vLLM row does.
+KL is not additive, so the net column is an estimate and not an identity — the measured GGUF value
+is an upper bound, the net figure the naive lower one. The two `—` cells are the builds that ship
+BF16 attention for the runtime to encode at load, so their disk bytes are not a like-for-like
+payload; payload figures are `immutable_payload_bytes` from `receipts/collection-index.json`
+(hydrated 21,610,916,123 B = 20.127 GiB, context 20,696,033,532 B = 19.275 GiB; the table truncates
+both to two decimals) and are serialized bytes, never VRAM. The
+FP8 figure is resident weights and is labelled as such.
+
+The p99.9 column is each report's **exact** shard-0 p99.9 as the comparator receipt read them; the
+tail table above quotes the **bin-bounded cumulative estimate** from the 560-bin histogram (bins
+about 5.6 % wide), which is why hydrated reads 0.1319 there and 0.1313 here — each exact value lies
+inside the bin its estimate names. The two differ by construction, not by measurement.
+
+What that table says, in the order that matters:
+
+- **At the 6-bit operating point GGUF `Q6_K` is genuinely better than our best build** — 0.001528
+  net at 21.31 GiB against hydrated's 0.002700 at 20.12 GiB of payload. We lose that comparison
+  on our own suite, and it is the first measurement here where an off-the-shelf artifact beats
+  the recipe.
+- **At the 5-bit operating point our context edition wins** — 0.003409 at 19.27 GiB against
+  `UD-Q5_K_XL`'s 0.003936 net at 18.83 GiB, about 13 % better fidelity for about 0.44 GiB more
+  payload.
+- **`Q8_0` is the fidelity leader**, 0.001087 at 27.05 GiB, and only about twice the engine floor,
+  so its own number sits near the resolution limit of any cross-engine comparison: the net column is
+  an estimate and not an identity, so **no ordering closer than a factor of two should be pressed
+  against `Q8_0`**. Anyone who can spare 27 GiB of weights and does not need a long context on a
+  32 GB card should use it.
+- **Official FP8 is beaten by every GGUF point at or above 5 bits**, so our published "34-48 %
+  below FP8" is true and a weaker achievement than it sounds.
+- **K4 is the weakest point in the table**, worse than every GGUF measured here and worse than
+  official FP8.
+
+What it does **not** settle: this is text-only teacher-forced fidelity on one shard. It says
+nothing about serving 262,144 tokens with vision and MTP on a 32 GB card, which is where these
+artifacts actually differ, and llama.cpp KV-quant behaviour, prefill and decode speed are separate
+axes that were not measured. A separate control bounds the protocol objection instead of arguing
+it: restricting scoring to positions with at least 256 tokens of left context — the floor
+`llama-perplexity` enforces — lowers every candidate's mean by 1.3-2.1 %, and second-half-only
+scoring by 3.9-4.9 %, uniformly enough to change no ordering
+(`receipts/scored-window-offset.json`), so the external protocol's scoring floor explains at most
+about 5 % of any cross-protocol gap. Protocol identity and the remaining open comparators are in
+[docs/35](docs/35-external-protocol-comparability.md) and
+[docs/29](docs/29-plan-and-loose-ends.md) F2.
+
 **Public capability, all six models on one pinned MMLU-Pro subset.** 70 questions, 14 official
 categories x 5, official five-shot prefixes,
 `TIGER-Lab/MMLU-Pro@b189ec765aa7ed75c8acfea42df31fdae71f97be`, greedy, thinking at low effort,
@@ -168,6 +239,7 @@ See [PROGRESS.md](PROGRESS.md) for the full session record.
 | [docs/32-native-context-embedding-overlay.md](docs/32-native-context-embedding-overlay.md) | int8 input table, native MTP-3 plus 8.4 MP engine-budget proof, and corrected draft accounting |
 | [docs/33-evidence-volume-and-intervals.md](docs/33-evidence-volume-and-intervals.md) | the 10,480,640-position rerun, the measured tail, and why ten times the positions did not narrow the interval |
 | [docs/29-plan-and-loose-ends.md](docs/29-plan-and-loose-ends.md) | ranked open work and acceptance gates, including the evidence-volume objection (F1) this session closed |
+| [docs/35-external-protocol-comparability.md](docs/35-external-protocol-comparability.md) | why our KLD and Unsloth's are not interchangeable, the twelve deltas, and the two of them now measured: the scoring-window offset and the cross-engine floor |
 
 Tooling in [tools/](tools/) is what produced the evidence: an unprivileged OCI image
 puller and a proot-based runner for it, the BF16 attention splice and checkpoint
@@ -187,6 +259,9 @@ collection index are these files:
 | [tools/public_capability.py](tools/public_capability.py) | paired MMLU-Pro run against a pinned dataset revision, official five-shot prefixes, greedy, with Wilson intervals and BF16-pass retention | `receipts/public-capability-{plan,suite-mmlupro-70,bf16,ctx,k4,hyd,fp8,k5k6}.json`, superseded 2,048-cap control kept as `receipts/public-capability-bf16-superseded-cap2048.json` |
 | [tools/run_public_capability.sh](tools/run_public_capability.sh) | drives the six-model sweep one server at a time against the frozen BF16 reference, with the per-candidate environment each build needs (every EXL3 candidate requires `VLLM_EXL3_GRAPH_DECODE=1`) | the five candidate receipts above |
 | [tools/collection_index.py](tools/collection_index.py) | one immutable row per published checkpoint, every field carrying its receipt path, sha256 and RFC 6901 pointer; disk bytes and `resident_weights` kept strictly distinct | `receipts/collection-index.json` (`qwen38-collection-index/1`) |
+| [tools/gguf_capture.cpp](tools/gguf_capture.cpp) | llama.cpp-side capture of the post-final-norm state for a GGUF at pinned commit `ece963f4`, so a GGUF can be replayed through our shared BF16 head; bf16 rounding verified bit-identical to torch on 2,012,449 probe values | `receipts/gguf-report-{q8_0,q6_k,q5_k_xl,engine-floor}.json`, `receipts/cross-engine-comparator.json` |
+| [tools/gguf_manifest.py](tools/gguf_manifest.py) | pins each capture to its GGUF blob digest and the llama.cpp identity that produced it | the four `receipts/gguf-report-*.json` |
+| [tools/build_llamacpp.sh](tools/build_llamacpp.sh) | builds the capture binary against the pinned llama.cpp commit | `engine_identity` in every GGUF report |
 
 ## Status
 
@@ -208,3 +283,6 @@ collection index are these files:
 - [x] Exact tail now aggregable for future runs: a fixed log-spaced KLD histogram in `tools/fidelity.py` (`qwen38-fidelity-report/2`) plus bin-bounded cumulative quantiles in `tools/kld_aggregate.py`; this run kept only per-shard percentiles and the exact global maximum, and says so in its receipts
 - [x] First public-benchmark matrix, all six models: paired MMLU-Pro (70 questions, pinned `TIGER-Lab/MMLU-Pro@b189ec76`) — BF16 **57/70**, context **58/70** at **56/57** retention (Wilson lower **90.7 %**, the only candidate clearing the pre-registered 0.90 bar), K4 **57/70** and official FP8 **56/70** at **55/57** (88.1 %), hydrated **56/70** and online K5/K6 **55/70** at **54/57** (85.6 %); the four shortfalls are a 70-item power limit — 56/57 is the smallest count that can clear 0.90 — not a broken build, so the next step is item volume and task diversity
 - [x] Collection index published: `receipts/collection-index.json` from `tools/collection_index.py`, four immutable rows, receipt-traced fields, one disclosed divergence left unfixed rather than rewriting a published receipt
+- [x] Comparator breadth (F2) half-closed by measurement, and the unflattering half published: GGUF `Q8_0` **0.001087**, `Q6_K` **0.002035** and `UD-Q5_K_XL` **0.004444** scored on shard 0 of the v5 suite through the same shared BF16 head, against a measured llama.cpp-versus-vLLM engine floor of **0.000507** — so at the 6-bit point `Q6_K` (0.001528 net, 21.31 GiB) **beats our best build** (0.002700, 20.12 GiB payload), at the 5-bit point our context edition (0.003409, 19.27 GiB) is ~13 % better than `UD-Q5_K_XL` (0.003936 net, 18.83 GiB), `Q8_0` leads on fidelity at 27.05 GiB, and K4 is the weakest point in the table (`receipts/cross-engine-comparator.json`, `receipts/gguf-report-*.json`)
+- [x] The largest cross-protocol objection bounded instead of argued: restricting scoring to their 256-token left-context floor lowers every candidate's mean by 1.3-2.1 % and second-half-only by 3.9-4.9 %, uniformly, changing no ordering (`receipts/scored-window-offset.json`)
+- [ ] Still open in F2: their wikitext-2 protocol run for cross-citation, stock uniform-bitrate EXL3 controls, and the reader-suggested ik_llama (`IQ4_KS_KT`) and NVFP4-NInfer comparators — neither of which has any KLD number today ([docs/29](docs/29-plan-and-loose-ends.md) F2)

@@ -6,8 +6,9 @@ model. The numbers are still not interchangeable, because the two protocols diff
 scoring geometry, reference numerics, what is inside the measured path, and how uncertainty is
 computed. Neither protocol is wrong. They measure different things, and this file says exactly
 which things, so that both numbers can be published side by side without either being quoted
-as a refutation of the other. It ends with the two runs that convert the largest structural
-difference from an argument into a measured offset.
+as a refutation of the other. Two of the differences it lists are no longer arguments: the
+scoring window (D1) and the cross-engine term have both been measured on our own data, and this
+file reports both. One run — theirs, on their corpus — is still open.
 
 Every external number below carries a source tag defined in [Sources](#sources). Every
 internal number carries a receipt path. Every byte size is serialized bytes on disk — never
@@ -158,7 +159,9 @@ Current ladder on that suite, cumulative over all ten shards:
 | official FP8 | 0.005294 | [0.004927, 0.005728] | 96.79 % | 10.714 | [`kld5-10M-fp8.json`](../receipts/kld5-10M-fp8.json) |
 | K4 | 0.010604 | [0.009640, 0.011746] | 95.76 % | 14.283 | [`kld5-10M-k4.json`](../receipts/kld5-10M-k4.json) |
 
-The GGUFs are absent from that table, which is the whole point of the runs below. Note also
+The GGUFs are no longer absent from our protocol, but they cannot join *that* table: they were
+run on **shard 0** of the same suite, not on all ten shards, so their numbers belong in the
+shard-0 table below and never in a column welded from 10,480,640 positions. Note also
 that our FP8 row records `model_path: /models/Qwen3.8-27B-FP8` with
 `model_revision_source: "none"` ([`kld5-10M-fp8.json`](../receipts/kld5-10M-fp8.json)); the
 upstream repo and revision behind it must be named in any cross-published table, since
@@ -172,7 +175,7 @@ measurement.
 
 | # | delta | theirs | ours | direction | note |
 |---|---|---|---|---|---|
-| **D1** | scoring floor on positions | positions 256-510 of each 512-token window only; every scored token has ≥256 tokens of left context [LC:541-544] | positions 0-2046 of a 2,048-token window; low-context positions are scored | **theirs lower** | largest structural difference; directly controllable on our data with `--score-from` (below) |
+| **D1** | scoring floor on positions | positions 256-510 of each 512-token window only; every scored token has ≥256 tokens of left context [LC:541-544] | positions 0-2046 of a 2,048-token window; low-context positions are scored | **theirs lower** | largest structural difference; **now measured** on our own data with `--score-from` — worth 1.3-2.1 % at their absolute floor and 3.9-4.9 % at their proportional one ([below](#d1-resolved-the-scoring-window-moves-every-mean-by-at-most-about-5-percent)) |
 | **D2** | corpus | WikiText-2 raw test only: English encyclopedic, 1,290,590 B [HF-WT2] | 941 documents, 70,348,971 B, five strata ([`kld5-corpus-fetch-log.json`](../receipts/kld5-corpus-fetch-log.json)) | **theirs lower** | their own NVFP4 rows span 4.7x across domains, 0.0124 → 0.05818 [U-Q38]; our own encyclopedic stratum sits below our all-strata mean, 0.004889 vs 0.005197 on the first shard ([`kld5-1M-tail-fp8.json`](../receipts/kld5-1M-tail-fp8.json)) |
 | **D3** | reference numerics | BF16 GGUF in llama.cpp, logits stored `uint16` over a 16-nat span [LC:79-100]; observed `Minimum KLD: -0.000140` [U-LOG-Q8], so floor ≥5e-5 nats/token | float64 two-pass replay of BF16 hidden states ([`tools/fidelity.py`](../tools/fidelity.py)); own floor 6.54e-04 measured, not assumed ([`v3-qualification-bf16.json`](../receipts/v3-qualification-bf16.json)) | unknown, bounded | a noise floor, not a bias: it can push individual positions negative. Matters only near Q8-class means |
 | **D4** | vocabulary coverage | all 248,320 entries **minus** base-side terms with `log p ≤ -16` [LC:224-240] | exact, all 248,320 entries, no truncation | theirs lower (small, unproved) | the dropped region carries positive divergence when a quantization under-represents rare tokens, which is the usual failure mode; the operator is not the one we call "full vocabulary" |
@@ -187,8 +190,112 @@ measurement.
 
 D1, D2, D4 and D11 push their number down relative to ours; D5 pushes it up; D3, D6, D9 and
 D10 are unsigned. That is why the gap between their NVFP4 rows and ours cannot be attributed
-to a single cause, and why only D1 is worth spending GPU time to isolate: it is the one that
-is both large and exactly reproducible on our own data.
+to a single cause, and why D1 was the only one worth isolating first: it is the one that is both
+large and exactly reproducible on our own data — which is what the next section does.
+
+## Two of these deltas are now measured
+
+D1 and the cross-engine term were the two items in this file that were arguments rather than
+numbers. Both were run on **shard 0 of the v5 ladder — 512 contexts, 1,048,064 scored positions**,
+the identical contexts and one shared BF16 head for every candidate, so both are measured on the
+same data the rest of this project publishes.
+
+### D1 resolved: the scoring window moves every mean by at most about 5 percent
+
+`tools/fidelity.py replay --score-from N` was run at **N = 0 / 256 / 1024** over the five
+existing candidates. It slices already-captured hidden states, so it cost no new capture and no
+GPU. Receipt
+[`receipts/scored-window-offset.json`](../receipts/scored-window-offset.json), schema
+`qwen38-scored-position-window-offset/1`; the fifteen underlying reports are
+`receipts/kld5-window-{hyd,k5k6,ctx,fp8,k4}-from{0,256,1024}.json`, schema
+`qwen38-fidelity-report/3`.
+
+| candidate | `--score-from 0`, 2,047 pos/ctx | `--score-from 256`, 1,791 | change | `--score-from 1024`, 1,023 | change |
+|---|---:|---:|---:|---:|---:|
+| hydrated | 0.002700 | 0.002660 | **-1.5 %** | 0.002580 | **-4.5 %** |
+| online K5/K6 | 0.003141 | 0.003100 | **-1.3 %** | 0.003020 | **-3.9 %** |
+| context edition | 0.003409 | 0.003342 | **-2.0 %** | 0.003243 | **-4.9 %** |
+| official FP8 | 0.005197 | 0.005090 | **-2.1 %** | 0.004955 | **-4.7 %** |
+| K4 | 0.010345 | 0.010154 | **-1.9 %** | 0.009876 | **-4.5 %** |
+
+D1's predicted sign was right and its size is now bounded. Restricting our measurement to
+**their absolute 256-token left-context floor** lowers every candidate's mean by **1.3-2.1 %**;
+restricting it to **their proportional second-half rule** at our window length lowers it by
+**3.9-4.9 %**. Top-1 agreement rises by 0.03 to 0.13 points over the same restriction. The effect
+is nearly uniform across candidates, so **every ordering, every ratio between our own rows and
+every paired conclusion is unchanged** — the windowed columns rank the five candidates exactly as
+the full one does.
+
+The consequence for cross-protocol reading is the point of the control: **the scoring floor
+explains at most about 5 % of the distance between our numbers and externally published ones.**
+Whatever remains is D2 (corpus composition), D3/D4/D11 (reference numerics, vocabulary gating,
+top-1 definition) and D5 (head placement), which is exactly why a cross-protocol ratio must never
+be computed in either direction. A windowed number of ours is also not a number on their axis: it
+is our corpus, our window length, our reference numerics and our body-only head, with only the
+position selection changed.
+
+### The cross-engine term resolved: two engines disagree by 0.000507 on identical weights
+
+Scoring a GGUF on our suite means capturing hidden states in llama.cpp and comparing them against
+a reference captured in vLLM, so a GGUF number carries engine numerics on top of quantization
+error. That term is now measured rather than waved at: the **unquantized BF16 GGUF**
+(`unsloth/Qwen3.8-27B-GGUF@f1bfb127…`, two-part, 54,657,735,616 B) against the vLLM BF16
+reference, identical token ids, the same shared BF16 head, the same 512 contexts.
+
+| control | mean KLD | 95 % CI | top-1 | p99.9 | exact max | receipt |
+|---|---:|---|---:|---:|---:|---|
+| llama.cpp BF16 vs vLLM BF16, same weights | **0.000507** | [0.000492, 0.000523] | 99.07 % | 0.0113 | 1.519 | [`gguf-report-engine-floor.json`](../receipts/gguf-report-engine-floor.json) |
+
+That is the floor of this comparison: two engines running the *same unquantized weights* disagree
+by 0.000507 mean and 0.93 points of top-1. **Every GGUF row below contains that term; no vLLM row
+— ours or official FP8's — does.** It is the asymmetry that had to be measured before any
+cross-engine ranking could be published at all.
+
+The three GGUF targets, on shard 0 of our suite, through the same shared BF16 head, with the naive
+net-of-floor estimate beside each measured value
+([`receipts/cross-engine-comparator.json`](../receipts/cross-engine-comparator.json); per-candidate
+reports `receipts/gguf-report-{q8_0,q6_k,q5_k_xl}.json`):
+
+| GGUF | measured mean KLD | net of the 0.000507 floor | top-1 | p99.9 | serialized bytes | GiB |
+|---|---:|---:|---:|---:|---:|---:|
+| `Q8_0` | 0.001087 | ~0.000579 | 98.53 % | 0.0351 | 29,047,086,048 | 27.052 |
+| `Q6_K` | 0.002035 | ~0.001528 | 97.98 % | 0.0794 | 22,884,408,288 | 21.313 |
+| `UD-Q5_K_XL` | 0.004444 | ~0.003936 | 97.20 % | 0.2144 | 20,218,178,624 | 18.830 |
+
+**KL is not additive, so the net column is an estimate, not an identity.** The measured value is
+an upper bound on each GGUF's quantization error and the net figure is the naive lower one; the
+truth is between them, and `Q8_0`'s measured 0.001087 is only about twice the floor, so its own
+number sits near the resolution limit of any cross-engine comparison: **no ordering closer than a
+factor of two should be pressed against `Q8_0`**. Sizes above are serialized
+disk bytes [HF-GGUF] — never VRAM, resident weights or KV.
+
+Harness provenance, so the capture point is auditable rather than asserted:
+[`tools/gguf_capture.cpp`](../tools/gguf_capture.cpp) reads the **post-final-norm** state
+(`res->t_embd`, `src/models/qwen35.cpp`) — the same mathematical point our vLLM hook takes — with
+llama.cpp pinned at commit `ece963f41b0b02d7a0d61436ae365762c073a4c8`, built by
+[`tools/build_llamacpp.sh`](../tools/build_llamacpp.sh), manifests by
+[`tools/gguf_manifest.py`](../tools/gguf_manifest.py), each manifest carrying the GGUF blob digest
+and the llama.cpp identity, and bf16 rounding verified **bit-identical to torch on 2,012,449 probe
+values**.
+
+### What the two measurements change about the reading
+
+Net of the floor, `Q6_K` reads ~0.001528 at 21.31 GiB against our hydrated build's 0.002700 at
+20.12 GiB of payload, and `UD-Q5_K_XL` reads ~0.003936 at 18.83 GiB against our context edition's
+0.003409 at 19.27 GiB. Our two payload figures are `immutable_payload_bytes` from
+[`receipts/collection-index.json`](../receipts/collection-index.json) — hydrated 21,610,916,123 B =
+20.127 GiB, context 20,696,033,532 B = 19.275 GiB, quoted above truncated to two decimals —
+serialized disk bytes on the same axis as the GGUF sizes, and never
+resident weights. **At the 6-bit operating point GGUF is genuinely better than our best
+build; at the 5-bit operating point ours is about 13 % better than theirs.** The full eight-row
+comparison, including official FP8 and K4, is in
+[29-plan-and-loose-ends.md](29-plan-and-loose-ends.md) F2 and on every model card. The format
+advantage at this bitrate is therefore real at 5 bits and negative at 6 bits on this suite — far
+short of the "about a bit ahead" that turboderp's own chart shows on *his* protocol, which is a
+difference between protocols and not a contradiction to settle by division. What none of this
+settles: it is text-only teacher-forced fidelity, and it says nothing about serving 262,144 tokens
+with vision and MTP on a 32 GB card, nor about llama.cpp KV-quant behaviour, prefill or decode
+speed, which are separate axes.
 
 ## What they actually publish for this model family
 
@@ -198,8 +305,10 @@ The entire published content of the Qwen3.8 "Quantization Analysis" section is o
 figure — *"We ran top-1% and KLD for Qwen3.8 GGUFs, and we retain 82.5% accuracy (IQ2_XXS
 9GB) whilst being 83.5% smaller (BF16 54.7GB)"* — one top-1-versus-size figure, and *"More
 benchmarks coming soon!"* [U-Q38]. There is no per-quant KLD table, and no protocol metadata
-for the figure. So the F2 comparison against `Q5_K_XL` / `Q6_K` / `Q8_0` cannot be closed by
-citation; it has to be run ([29-plan-and-loose-ends.md](29-plan-and-loose-ends.md) F2).
+for the figure. So the F2 comparison against `Q5_K_XL` / `Q6_K` / `Q8_0` could not be closed by
+citation and was run instead — on our suite, in the section above
+([29-plan-and-loose-ends.md](29-plan-and-loose-ends.md) F2). What citation still cannot give us,
+and Run A below still would, is a number on *their* axis.
 
 ### The Qwen3.8 top-1 chart: digitized, therefore not a published number
 
@@ -364,8 +473,9 @@ and against his GGUF ladder that same 16.61 GiB undercuts UD-Q6_K_XL by 6.5 GiB 
 FP8 by 8.5 GiB of decoder weight.
 
 What we still cannot say is where our y-value would land on his chart, because we have never
-run his protocol. Run A below is what would settle it, and his qbench is the natural second
-harness to add after the GGUF work, since it already contains every comparator we care about.
+run his protocol. Run A below is what would settle it; with the GGUF work now done on our own
+axis, his qbench is the natural second harness to add, since it already contains every
+comparator we care about.
 
 ## Pinned artifacts
 
@@ -389,9 +499,9 @@ The three targets alone are 72,149,672,960 B = 67.19 GiB; adding the BF16 refere
 serialized disk bytes; none of them is VRAM, resident weights or KV, and the size-class labels
 above refer to the card a build is intended for, not to what these files occupy in memory.
 
-## Execution plan: two runs and one control
+## Execution plan: two runs and one control — B and C are done, A is open
 
-### Run A — their protocol, exactly, for cross-citation
+### Run A — their protocol, exactly, for cross-citation (open, not run)
 
 1. Fetch the corpus pinned at [HF-WT2] and verify `wiki.test.raw` against
    sha256 `173c87a53759e0201f33e0ccf978e510c2042d7f2cb78229d9a50d79b9e7dd08`, 1,290,590 B.
@@ -409,7 +519,7 @@ Output: three rows on the same axis as their Qwen3.5 ladder [U-Q35] and as any t
 `llama-perplexity` row (bartowski, AesSedai, ubergarm), plus their `Minimum KLD` values for
 our own build, which measures their harness floor on our hardware rather than assuming it.
 
-### Run B — our v5 suite, for placement on our axis
+### Run B — our v5 suite, for placement on our axis (**done**, shard 0)
 
 Score the same three GGUFs through `tools/fidelity.py` against the same BF16 teacher, shared
 BF16 head, exact float64 two-pass, on the frozen v5 suite
@@ -419,7 +529,17 @@ intervals and paired per-context differences. This requires the llama.cpp-side l
 the final-norm hidden states for the same token ids; the shared head and the suite are
 unchanged, so a GGUF row is directly paired against every existing row.
 
-### Control C — isolate D1 on our own data
+**Run, and reported above.** All three GGUFs plus the BF16 engine-floor control were captured
+with [`tools/gguf_capture.cpp`](../tools/gguf_capture.cpp) at the pinned llama.cpp commit and
+scored on **shard 0** of the frozen suite — 512 contexts, 1,048,064 positions, the same contexts
+every candidate saw — receipt
+[`receipts/cross-engine-comparator.json`](../receipts/cross-engine-comparator.json). Two
+deviations from the plan as written, both stated in the receipt: it is one shard of ten rather than
+the full 10,480,640-position suite, and the comparison is a shard-0 ranking rather than a paired
+per-context bootstrap against the ten-shard rows, because those rows were welded from a different
+position count. Extending the GGUFs to all ten shards is unrun.
+
+### Control C — isolate D1 on our own data (**done**)
 
 `tools/fidelity.py replay --score-from N` (added in this iteration; replay-time slicing of
 already-captured hidden states, so no recapture and no new GPU capture, and one capture set
@@ -447,10 +567,12 @@ outside that script.
 | `--score-from 256` | 1,791 | 9,169,920 | their **absolute** 256-token left-context floor [LC:541-544] |
 | `--score-from 1024` | 1,023 | 5,237,760 | their **proportional** `first = n_ctx/2` rule at our window length |
 
-Run this on the five existing candidates first: it costs no capture, and it converts D1 from a
-plausibility argument into a number — "restricting our own measurement to their context floor
-moves our mean by X %" — on identical data with identical numerics. Every other delta then has
-to explain what remains.
+This was run on the five existing candidates, and it converted D1 from a plausibility argument
+into a number on identical data with identical numerics: **-1.3 % to -2.1 %** at their absolute
+floor, **-3.9 % to -4.9 %** at their proportional one, uniform enough to change no ordering
+([`receipts/scored-window-offset.json`](../receipts/scored-window-offset.json), reported in full
+[above](#d1-resolved-the-scoring-window-moves-every-mean-by-at-most-about-5-percent)). Every other delta now has to
+explain what remains, which is most of the distance.
 
 ## What each run can and cannot establish
 
@@ -469,24 +591,28 @@ SEM (D7); and it cannot produce a comparable number for NVFP4 or FP8 at all, sin
 runs under `llama-perplexity` (D12). It also cannot resolve differences below ~5e-5 nats/token,
 which is where their own Q8-class rows live (D3).
 
-**Run B can establish:** where the GGUFs sit against every candidate we ship, on one corpus,
-one reference, one shared head, one uncertainty model, paired per context, with contamination
+**Run B established** (shard 0, receipt above): where the GGUFs sit against every candidate we
+ship, on one corpus, one reference, one shared head, one uncertainty model, with contamination
 excluded by whole-document pre-exclusion. This is the only run that answers the F2 question as
-asked — same dataset, same size range, all candidates.
+asked — same dataset, same size range, all candidates — with one deviation from the plan: it
+ranks on one shard instead of pairing per context against the ten-shard rows.
 
 **Run B cannot establish:** a number citable against Unsloth's table, because it is not their
 protocol; nor anything about llama.cpp's own serving numerics beyond the prefill path used for
 capture; nor the head-inclusive quality of a GGUF, unless the GGUF's own dequantized head is
 replayed separately as the candidate head (D5).
 
-**Control C can establish:** the size and sign of D1 alone, exactly, on our data.
+**Control C established:** the size and sign of D1 alone, exactly, on our data — 1.3-2.1 % at
+their absolute context floor, 3.9-4.9 % at their proportional one, no ordering changed.
 
 **Control C cannot establish:** D2 through D11. Agreement between our windowed mean and their
 published mean would be consistent with the remaining deltas cancelling, not evidence that they
 are absent; disagreement bounds the residue that D2-D11 must account for.
 
-Together the three produce two numbers per artifact — one on their axis, one on ours — plus a
-measured explanation for part of the distance between them. That is the entire claim. Neither
+Two of the three are done. Run A is what remains, and it is the only one of the three that yields
+a number citable against Unsloth's own table; B and C have already produced our-axis placement for
+the GGUFs plus a measured explanation for part of the distance between the two protocols. That is
+the entire claim. Neither
 protocol is being corrected here; the only defect worth naming is publishing a KLD without the
 corpus, position count, context floor, reference precision and engine that produced it, and
 that is the defect this document exists to avoid on our side.

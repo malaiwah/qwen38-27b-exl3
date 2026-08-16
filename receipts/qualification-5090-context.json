@@ -1,0 +1,2449 @@
+{
+  "schema": "qwen38-qualification-5090-context/1",
+  "generated_utc": "2026-08-16T01:35:21Z",
+  "title": "physical RTX 5090 rank-1 qualification of malaiwah/Qwen3.8-27B-EXL3-K5K6-context",
+  "claim_scope": "hard-limit proof on one physical NVIDIA GeForce RTX 5090, 32,607 MiB total, 32,149 MiB free with the GPU idle, which vLLM sizes as 31.4 GiB usable. This supersedes the engine-budget simulation in receipts/native-mtp-8mp-amendment.json, which was measured on a rental RTX PRO 6000 with vLLM hard-budgeted to 30.24 GiB of a 95.6 GiB card. Throughput measured here is never comparable with rental numbers and no number in this receipt is differenced against them.",
+  "verdict": {
+    "all_gates_pass": true,
+    "decisions": {
+      "gate1_startup_native_allocation": "PASS",
+      "gate2_long_needle_exact": "PASS",
+      "gate3_combined_long_text_and_7mp_image": "PASS",
+      "gate4_image_suite_24_of_30": "PASS",
+      "gate5_three_warmed_decode_runs": "PASS",
+      "gate6_second_long_request_after_release": "PASS",
+      "gate7_receipt_identity_complete": "PASS"
+    },
+    "qualified_at": "gpu_memory_utilization 0.955 with PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True",
+    "not_qualified_at": "the published card value gpu_memory_utilization 0.97, which starts and serves text but cannot serve the combined long-text plus 7 MP image request"
+  },
+  "identity": {
+    "gpu": {
+      "model": "NVIDIA GeForce RTX 5090",
+      "uuid": "GPU-506a575d-01d7-b12e-9a0a-c1ab5f38ae0a",
+      "physical_card": true,
+      "engine_budget_simulation": false,
+      "memory_total_mib": 32607,
+      "free_mib_with_gpu_idle": 32149,
+      "usable_gib_reported_by_vllm": 31.4,
+      "compute_mode": "Exclusive_Process",
+      "power_limit_w": 400.0,
+      "persistence_mode": "Enabled"
+    },
+    "host": {
+      "hostname": "aiboss",
+      "role": "the user's own machine",
+      "driver_version": "610.57.04",
+      "cuda_user_mode_driver": "13.3",
+      "cpu_cores": 28,
+      "ram_gib": 125,
+      "container_engine": "podman 4.9.3 rootless"
+    },
+    "runtime_image": {
+      "reference": "docker.io/voipmonitor/vllm@sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b",
+      "digest": "sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b",
+      "resolved_by_digest_on_host": true,
+      "vllm_version": "0.11.2.dev280+gilded.gnosis.v20.vllm4d006a4.b12xcd3ce19.fi1ac6942.cu132.20260810.r34",
+      "lacks_upstream_pr_51113": true,
+      "pr_51113_evidence": "vllm/v1/core/sched/scheduler.py in this image still gates on last_cache_position at lines 392, 394, 397, 400, 414, 417 and 421 and contains zero occurrences of prefill_end"
+    },
+    "patch_files_sha256": {
+      "vllm-exl3-prefill-dispatch.py": "2df9d0799fd323798cead1edb773cab556c94798eec263ee03ded35408c6e4ee",
+      "vllm-qwen3_5-embed-quant-config.py": "04d2bd587b37142f4f55a8d00b9f8c907309490168cb7fcdfde450531df2c9e7",
+      "vllm-qwen3_5_mtp-embed-quant-config.py": "0090dc131f0eaf439b24d50baf4def9f10b052864c76e695053d64f66b274bab"
+    },
+    "patch_mount_map": {
+      "vllm-exl3-prefill-dispatch.py": "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py",
+      "vllm-qwen3_5-embed-quant-config.py": "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5.py",
+      "vllm-qwen3_5_mtp-embed-quant-config.py": "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5_mtp.py"
+    },
+    "patch_mount_mode": "read-only bind mount over the image paths, sha256-verified on AIBoss before every launch. The older PR314-only overlay at /home/mbelleau/vllm-exl3-pr314.py (sha256 789ed7abf6bebb6ebf9fdebd01f16fc86389464eea371925a36ce58c05efb8e9), which the live K4 service uses, was deliberately not used.",
+    "harness_sha256": {
+      "longctx.py": "a63b087d9c63fdb40f6e065619e915c4bee47b75ba89cc8a6e39aadf71a635ab",
+      "longmm.py": "bcd6527f290d89a8442eb2704fb30281b8513cb795dabfd78295dcae2e4c8b31",
+      "vision_eval.py": "7bf9a7ebef93b46d9ee52cfc2aa6ee53ff05025ad4562e561f79be0445de0a08",
+      "bench.py": "d5dfd9db22dced3ee5b54c77f30e8aa0558a6a177d77eb6279c7df3b7885b2e9",
+      "native-mtp-8mp-fixture.png": "7e3748a403f201b83ac67130895223122660e1cb07877ef768c1d6a49127533d"
+    },
+    "harness_note": "copied unmodified from the rental repo tools/ and not edited on AIBoss; digests match receipts/native-mtp-8mp-amendment.json post_run_hardened_harness_sha256",
+    "model": {
+      "hf_repo": "malaiwah/Qwen3.8-27B-EXL3-K5K6-context",
+      "revision": "c45c273b0d6ef2859cb2d85b36dd52253c80d878",
+      "snapshot_path": "/mnt/vault/llm/huggingface/hub/models--malaiwah--Qwen3.8-27B-EXL3-K5K6-context/snapshots/c45c273b0d6ef2859cb2d85b36dd52253c80d878",
+      "index_sha256": "cd53b8e487b5c70b1ffe26578464a9cfd9bea9d7ed50a39e39ba3e153c1ab1b4",
+      "index_matches_release_evidence": true,
+      "shard_sha256": {
+        "model-00001-of-00003.safetensors": "c9e837be0dc9ad35fe22a42b9cefb192957767bc83d82bd893aa6b9c036cfa00",
+        "model-00002-of-00003.safetensors": "222fb1aac7254a98799ac852266d9e8e326a535d4292e3341141e03ec662bc03",
+        "model-00003-of-00003.safetensors": "d01bd1d5664382ca1490d3232453d4fbcf6b8bcf1b27bbe69f2a9ef4fc7019fc"
+      },
+      "shard_bytes": {
+        "model-00001-of-00003.safetensors": 8536687929,
+        "model-00002-of-00003.safetensors": 8495151686,
+        "model-00003-of-00003.safetensors": 3640543311
+      },
+      "shards_match_release_evidence": true,
+      "weight_bytes_total": 20672382926,
+      "fetch_wall_sec": 595.3,
+      "vault_free_bytes_before_fetch": 1788204679168,
+      "verified_against": "receipts/release-evidence-context.json artifact index_sha256 and shard_sha256",
+      "note": "these are serialized bytes on disk in the vault HF cache; they are never called VRAM"
+    },
+    "qualified_profile": {
+      "gpu_memory_utilization": 0.955,
+      "pytorch_cuda_alloc_conf": "expandable_segments:True",
+      "max_model_len": 262144,
+      "max_pixels": 8388608,
+      "mtp_depth": 3,
+      "kv_cache_dtype": "fp8",
+      "max_num_seqs": 1,
+      "max_num_batched_tokens": 2048,
+      "cudagraph_mode": "FULL_DECODE_ONLY",
+      "cudagraph_capture_sizes": [
+        4
+      ],
+      "embedding_overlay_bits": 8,
+      "quantization": "exl3",
+      "observed_gpu_kv_cache_tokens": 265122,
+      "observed_maximum_concurrency_at_262144": 1.01,
+      "observed_engine_budget_gib": 29.98,
+      "env": {
+        "VLLM_EXL3_EMBED_BITS": "8",
+        "VLLM_EXL3_GRAPH_DECODE": "1",
+        "VLLM_EXL3_PREFILL_RECONSTRUCT_M": "128",
+        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True",
+        "HF_HUB_OFFLINE": "1",
+        "TRANSFORMERS_OFFLINE": "1"
+      },
+      "copy_pasteable_command": "podman run --rm --name qwen38-ctx --device nvidia.com/gpu=all --ipc=host --network host -v /mnt/vault/llm/huggingface/hub/models--malaiwah--Qwen3.8-27B-EXL3-K5K6-context:/models/ctx-repo:ro -v $PATCH/vllm-exl3-prefill-dispatch.py:/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py:ro -v $PATCH/vllm-qwen3_5-embed-quant-config.py:/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5.py:ro -v $PATCH/vllm-qwen3_5_mtp-embed-quant-config.py:/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5_mtp.py:ro -e VLLM_EXL3_EMBED_BITS=8 -e VLLM_EXL3_GRAPH_DECODE=1 -e VLLM_EXL3_PREFILL_RECONSTRUCT_M=128 -e PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True --entrypoint /opt/venv/bin/vllm docker.io/voipmonitor/vllm@sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b serve /models/ctx-repo/snapshots/c45c273b0d6ef2859cb2d85b36dd52253c80d878 --served-model-name qwen38 --quantization exl3 --quantization-config '{\"linear\":{\"weight\":\"mxfp8\"},\"ignore\":[\"re:.*visual\\\\..*\",\"re:.*in_proj_a$\",\"re:.*in_proj_b$\",\"re:.*in_proj_ba$\",\"re:.*mtp\\\\..*\",\"lm_head\"]}' --max-model-len 262144 --gpu-memory-utilization 0.955 --kv-cache-dtype fp8 --max-num-seqs 1 --max-num-batched-tokens 2048 --speculative-config '{\"method\":\"mtp\",\"num_speculative_tokens\":3}' --mm-processor-kwargs '{\"truncation\":false,\"max_pixels\":8388608}' --compilation-config '{\"cudagraph_mode\":\"FULL_DECODE_ONLY\",\"cudagraph_capture_sizes\":[4]}' --host 127.0.0.1 --port 8000",
+      "copy_pasteable_prerequisites": [
+        "export PATCH=<dir holding the three patch modules>; on AIBoss during this run it was /home/mbelleau/qual5090/tools",
+        "verify the three modules first: sha256sum -c against identity.patch_files_sha256 in this receipt",
+        "the model repo directory is mounted, not the snapshot directory, because snapshot entries are relative symlinks into ../../blobs",
+        "add a writable cache mount if you want warm JIT across restarts: -v <dir>:/cache/jit:rw and -v <dir>:/cache/exl3-online:rw",
+        "the port is bound to 127.0.0.1; put an authenticated TLS proxy in front for remote clients and never expose this generation endpoint directly"
+      ],
+      "delta_from_published_card": "the card prints --gpu-memory-utilization 0.97 and sets no allocator config. Change those two things and nothing else: 0.97 -> 0.955 and add -e PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True. Window, MTP depth, image ceiling, KV dtype, sequence count and cudagraph mode are unchanged from the card."
+    },
+    "commands": {
+      "A": {
+        "tag": "A",
+        "gpu_memory_utilization": 0.97,
+        "max_pixels": 8388608,
+        "mtp_depth": 3,
+        "max_model_len": 262144,
+        "prefix_caching_enabled": true,
+        "model_revision": "c45c273b0d6ef2859cb2d85b36dd52253c80d878",
+        "podman_argv": [
+          "podman",
+          "run",
+          "--rm",
+          "--name",
+          "qual5090-A",
+          "--device",
+          "nvidia.com/gpu=all",
+          "--ipc=host",
+          "--network",
+          "host",
+          "-v",
+          "/mnt/vault/llm/huggingface/hub/models--malaiwah--Qwen3.8-27B-EXL3-K5K6-context:/models/ctx-repo:ro",
+          "-v",
+          "/home/mbelleau/qual5090/cache/jit:/cache/jit:rw",
+          "-v",
+          "/home/mbelleau/qual5090/cache/exl3-online:/cache/exl3-online:rw",
+          "-v",
+          "/home/mbelleau/qual5090/tools/vllm-exl3-prefill-dispatch.py:/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py:ro",
+          "-v",
+          "/home/mbelleau/qual5090/tools/vllm-qwen3_5-embed-quant-config.py:/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5.py:ro",
+          "-v",
+          "/home/mbelleau/qual5090/tools/vllm-qwen3_5_mtp-embed-quant-config.py:/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5_mtp.py:ro",
+          "-e",
+          "VLLM_EXL3_EMBED_BITS=8",
+          "-e",
+          "VLLM_EXL3_GRAPH_DECODE=1",
+          "-e",
+          "VLLM_EXL3_PREFILL_RECONSTRUCT_M=128",
+          "-e",
+          "HF_HUB_OFFLINE=1",
+          "-e",
+          "TRANSFORMERS_OFFLINE=1",
+          "--entrypoint",
+          "/opt/venv/bin/vllm",
+          "docker.io/voipmonitor/vllm@sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b"
+        ],
+        "vllm_argv": [
+          "/opt/venv/bin/vllm",
+          "serve",
+          "/models/ctx-repo/snapshots/c45c273b0d6ef2859cb2d85b36dd52253c80d878",
+          "--served-model-name",
+          "m",
+          "--quantization",
+          "exl3",
+          "--quantization-config",
+          "{\"linear\":{\"weight\":\"mxfp8\"},\"ignore\":[\"re:.*visual\\\\..*\",\"re:.*in_proj_a$\",\"re:.*in_proj_b$\",\"re:.*in_proj_ba$\",\"re:.*mtp\\\\..*\",\"lm_head\"]}",
+          "--max-model-len",
+          "262144",
+          "--gpu-memory-utilization",
+          "0.97",
+          "--kv-cache-dtype",
+          "fp8",
+          "--max-num-seqs",
+          "1",
+          "--max-num-batched-tokens",
+          "2048",
+          "--speculative-config",
+          "{\"method\":\"mtp\",\"num_speculative_tokens\":3}",
+          "--mm-processor-kwargs",
+          "{\"truncation\":false,\"max_pixels\":8388608}",
+          "--compilation-config",
+          "{\"cudagraph_mode\":\"FULL_DECODE_ONLY\",\"cudagraph_capture_sizes\":[4]}",
+          "--host",
+          "127.0.0.1",
+          "--port",
+          "8231"
+        ]
+      },
+      "B": {
+        "tag": "B",
+        "gpu_memory_utilization": 0.97,
+        "max_pixels": 8388608,
+        "mtp_depth": 3,
+        "max_model_len": 262144,
+        "prefix_caching_enabled": true,
+        "model_revision": "c45c273b0d6ef2859cb2d85b36dd52253c80d878",
+        "podman_argv": [
+          "podman",
+          "run",
+          "--rm",
+          "--name",
+          "qual5090-B",
+          "--device",
+          "nvidia.com/gpu=all",
+          "--ipc=host",
+          "--network",
+          "host",
+          "-v",
+          "/mnt/vault/llm/huggingface/hub/models--malaiwah--Qwen3.8-27B-EXL3-K5K6-context:/models/ctx-repo:ro",
+          "-v",
+          "/home/mbelleau/qual5090/cache/jit:/cache/jit:rw",
+          "-v",
+          "/home/mbelleau/qual5090/cache/exl3-online:/cache/exl3-online:rw",
+          "-v",
+          "/home/mbelleau/qual5090/tools/vllm-exl3-prefill-dispatch.py:/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py:ro",
+          "-v",
+          "/home/mbelleau/qual5090/tools/vllm-qwen3_5-embed-quant-config.py:/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5.py:ro",
+          "-v",
+          "/home/mbelleau/qual5090/tools/vllm-qwen3_5_mtp-embed-quant-config.py:/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5_mtp.py:ro",
+          "-e",
+          "VLLM_EXL3_EMBED_BITS=8",
+          "-e",
+          "VLLM_EXL3_GRAPH_DECODE=1",
+          "-e",
+          "VLLM_EXL3_PREFILL_RECONSTRUCT_M=128",
+          "-e",
+          "HF_HUB_OFFLINE=1",
+          "-e",
+          "TRANSFORMERS_OFFLINE=1",
+          "--entrypoint",
+          "/opt/venv/bin/vllm",
+          "docker.io/voipmonitor/vllm@sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b"
+        ],
+        "vllm_argv": [
+          "/opt/venv/bin/vllm",
+          "serve",
+          "/models/ctx-repo/snapshots/c45c273b0d6ef2859cb2d85b36dd52253c80d878",
+          "--served-model-name",
+          "m",
+          "--quantization",
+          "exl3",
+          "--quantization-config",
+          "{\"linear\":{\"weight\":\"mxfp8\"},\"ignore\":[\"re:.*visual\\\\..*\",\"re:.*in_proj_a$\",\"re:.*in_proj_b$\",\"re:.*in_proj_ba$\",\"re:.*mtp\\\\..*\",\"lm_head\"]}",
+          "--max-model-len",
+          "262144",
+          "--gpu-memory-utilization",
+          "0.97",
+          "--kv-cache-dtype",
+          "fp8",
+          "--max-num-seqs",
+          "1",
+          "--max-num-batched-tokens",
+          "2048",
+          "--speculative-config",
+          "{\"method\":\"mtp\",\"num_speculative_tokens\":3}",
+          "--mm-processor-kwargs",
+          "{\"truncation\":false,\"max_pixels\":8388608}",
+          "--compilation-config",
+          "{\"cudagraph_mode\":\"FULL_DECODE_ONLY\",\"cudagraph_capture_sizes\":[4]}",
+          "--host",
+          "127.0.0.1",
+          "--port",
+          "8231"
+        ]
+      },
+      "B2": {
+        "tag": "B2",
+        "gpu_memory_utilization": 0.97,
+        "max_pixels": 8388608,
+        "mtp_depth": 3,
+        "max_model_len": 262144,
+        "prefix_caching_flag_passed": true,
+        "pytorch_cuda_alloc_conf": "expandable_segments:True",
+        "model_revision": "c45c273b0d6ef2859cb2d85b36dd52253c80d878",
+        "podman_argv": [
+          "podman",
+          "run",
+          "--rm",
+          "--name",
+          "qual5090-B2",
+          "--device",
+          "nvidia.com/gpu=all",
+          "--ipc=host",
+          "--network",
+          "host",
+          "-v",
+          "/mnt/vault/llm/huggingface/hub/models--malaiwah--Qwen3.8-27B-EXL3-K5K6-context:/models/ctx-repo:ro",
+          "-v",
+          "/home/mbelleau/qual5090/cache/jit:/cache/jit:rw",
+          "-v",
+          "/home/mbelleau/qual5090/cache/exl3-online:/cache/exl3-online:rw",
+          "-v",
+          "/home/mbelleau/qual5090/tools/vllm-exl3-prefill-dispatch.py:/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py:ro",
+          "-v",
+          "/home/mbelleau/qual5090/tools/vllm-qwen3_5-embed-quant-config.py:/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5.py:ro",
+          "-v",
+          "/home/mbelleau/qual5090/tools/vllm-qwen3_5_mtp-embed-quant-config.py:/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5_mtp.py:ro",
+          "-e",
+          "VLLM_EXL3_EMBED_BITS=8",
+          "-e",
+          "VLLM_EXL3_GRAPH_DECODE=1",
+          "-e",
+          "VLLM_EXL3_PREFILL_RECONSTRUCT_M=128",
+          "-e",
+          "HF_HUB_OFFLINE=1",
+          "-e",
+          "TRANSFORMERS_OFFLINE=1",
+          "-e",
+          "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True",
+          "--entrypoint",
+          "/opt/venv/bin/vllm",
+          "docker.io/voipmonitor/vllm@sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b"
+        ],
+        "vllm_argv": [
+          "/opt/venv/bin/vllm",
+          "serve",
+          "/models/ctx-repo/snapshots/c45c273b0d6ef2859cb2d85b36dd52253c80d878",
+          "--served-model-name",
+          "m",
+          "--quantization",
+          "exl3",
+          "--quantization-config",
+          "{\"linear\":{\"weight\":\"mxfp8\"},\"ignore\":[\"re:.*visual\\\\..*\",\"re:.*in_proj_a$\",\"re:.*in_proj_b$\",\"re:.*in_proj_ba$\",\"re:.*mtp\\\\..*\",\"lm_head\"]}",
+          "--max-model-len",
+          "262144",
+          "--gpu-memory-utilization",
+          "0.97",
+          "--kv-cache-dtype",
+          "fp8",
+          "--max-num-seqs",
+          "1",
+          "--max-num-batched-tokens",
+          "2048",
+          "--speculative-config",
+          "{\"method\":\"mtp\",\"num_speculative_tokens\":3}",
+          "--mm-processor-kwargs",
+          "{\"truncation\":false,\"max_pixels\":8388608}",
+          "--compilation-config",
+          "{\"cudagraph_mode\":\"FULL_DECODE_ONLY\",\"cudagraph_capture_sizes\":[4]}",
+          "--host",
+          "127.0.0.1",
+          "--port",
+          "8231"
+        ]
+      },
+      "B3": {
+        "tag": "B3",
+        "gpu_memory_utilization": 0.955,
+        "max_pixels": 8388608,
+        "mtp_depth": 3,
+        "max_model_len": 262144,
+        "prefix_caching_flag_passed": true,
+        "pytorch_cuda_alloc_conf": "expandable_segments:True",
+        "model_revision": "c45c273b0d6ef2859cb2d85b36dd52253c80d878",
+        "podman_argv": [
+          "podman",
+          "run",
+          "--rm",
+          "--name",
+          "qual5090-B3",
+          "--device",
+          "nvidia.com/gpu=all",
+          "--ipc=host",
+          "--network",
+          "host",
+          "-v",
+          "/mnt/vault/llm/huggingface/hub/models--malaiwah--Qwen3.8-27B-EXL3-K5K6-context:/models/ctx-repo:ro",
+          "-v",
+          "/home/mbelleau/qual5090/cache/jit:/cache/jit:rw",
+          "-v",
+          "/home/mbelleau/qual5090/cache/exl3-online:/cache/exl3-online:rw",
+          "-v",
+          "/home/mbelleau/qual5090/tools/vllm-exl3-prefill-dispatch.py:/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py:ro",
+          "-v",
+          "/home/mbelleau/qual5090/tools/vllm-qwen3_5-embed-quant-config.py:/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5.py:ro",
+          "-v",
+          "/home/mbelleau/qual5090/tools/vllm-qwen3_5_mtp-embed-quant-config.py:/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5_mtp.py:ro",
+          "-e",
+          "VLLM_EXL3_EMBED_BITS=8",
+          "-e",
+          "VLLM_EXL3_GRAPH_DECODE=1",
+          "-e",
+          "VLLM_EXL3_PREFILL_RECONSTRUCT_M=128",
+          "-e",
+          "HF_HUB_OFFLINE=1",
+          "-e",
+          "TRANSFORMERS_OFFLINE=1",
+          "-e",
+          "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True",
+          "--entrypoint",
+          "/opt/venv/bin/vllm",
+          "docker.io/voipmonitor/vllm@sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b"
+        ],
+        "vllm_argv": [
+          "/opt/venv/bin/vllm",
+          "serve",
+          "/models/ctx-repo/snapshots/c45c273b0d6ef2859cb2d85b36dd52253c80d878",
+          "--served-model-name",
+          "m",
+          "--quantization",
+          "exl3",
+          "--quantization-config",
+          "{\"linear\":{\"weight\":\"mxfp8\"},\"ignore\":[\"re:.*visual\\\\..*\",\"re:.*in_proj_a$\",\"re:.*in_proj_b$\",\"re:.*in_proj_ba$\",\"re:.*mtp\\\\..*\",\"lm_head\"]}",
+          "--max-model-len",
+          "262144",
+          "--gpu-memory-utilization",
+          "0.955",
+          "--kv-cache-dtype",
+          "fp8",
+          "--max-num-seqs",
+          "1",
+          "--max-num-batched-tokens",
+          "2048",
+          "--speculative-config",
+          "{\"method\":\"mtp\",\"num_speculative_tokens\":3}",
+          "--mm-processor-kwargs",
+          "{\"truncation\":false,\"max_pixels\":8388608}",
+          "--compilation-config",
+          "{\"cudagraph_mode\":\"FULL_DECODE_ONLY\",\"cudagraph_capture_sizes\":[4]}",
+          "--host",
+          "127.0.0.1",
+          "--port",
+          "8231"
+        ]
+      },
+      "B4": {
+        "tag": "B4",
+        "gpu_memory_utilization": 0.97,
+        "max_pixels": 4194304,
+        "mtp_depth": 3,
+        "max_model_len": 262144,
+        "prefix_caching_flag_passed": true,
+        "pytorch_cuda_alloc_conf": "expandable_segments:True",
+        "model_revision": "c45c273b0d6ef2859cb2d85b36dd52253c80d878",
+        "podman_argv": [
+          "podman",
+          "run",
+          "--rm",
+          "--name",
+          "qual5090-B4",
+          "--device",
+          "nvidia.com/gpu=all",
+          "--ipc=host",
+          "--network",
+          "host",
+          "-v",
+          "/mnt/vault/llm/huggingface/hub/models--malaiwah--Qwen3.8-27B-EXL3-K5K6-context:/models/ctx-repo:ro",
+          "-v",
+          "/home/mbelleau/qual5090/cache/jit:/cache/jit:rw",
+          "-v",
+          "/home/mbelleau/qual5090/cache/exl3-online:/cache/exl3-online:rw",
+          "-v",
+          "/home/mbelleau/qual5090/tools/vllm-exl3-prefill-dispatch.py:/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py:ro",
+          "-v",
+          "/home/mbelleau/qual5090/tools/vllm-qwen3_5-embed-quant-config.py:/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5.py:ro",
+          "-v",
+          "/home/mbelleau/qual5090/tools/vllm-qwen3_5_mtp-embed-quant-config.py:/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5_mtp.py:ro",
+          "-e",
+          "VLLM_EXL3_EMBED_BITS=8",
+          "-e",
+          "VLLM_EXL3_GRAPH_DECODE=1",
+          "-e",
+          "VLLM_EXL3_PREFILL_RECONSTRUCT_M=128",
+          "-e",
+          "HF_HUB_OFFLINE=1",
+          "-e",
+          "TRANSFORMERS_OFFLINE=1",
+          "-e",
+          "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True",
+          "--entrypoint",
+          "/opt/venv/bin/vllm",
+          "docker.io/voipmonitor/vllm@sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b"
+        ],
+        "vllm_argv": [
+          "/opt/venv/bin/vllm",
+          "serve",
+          "/models/ctx-repo/snapshots/c45c273b0d6ef2859cb2d85b36dd52253c80d878",
+          "--served-model-name",
+          "m",
+          "--quantization",
+          "exl3",
+          "--quantization-config",
+          "{\"linear\":{\"weight\":\"mxfp8\"},\"ignore\":[\"re:.*visual\\\\..*\",\"re:.*in_proj_a$\",\"re:.*in_proj_b$\",\"re:.*in_proj_ba$\",\"re:.*mtp\\\\..*\",\"lm_head\"]}",
+          "--max-model-len",
+          "262144",
+          "--gpu-memory-utilization",
+          "0.97",
+          "--kv-cache-dtype",
+          "fp8",
+          "--max-num-seqs",
+          "1",
+          "--max-num-batched-tokens",
+          "2048",
+          "--speculative-config",
+          "{\"method\":\"mtp\",\"num_speculative_tokens\":3}",
+          "--mm-processor-kwargs",
+          "{\"truncation\":false,\"max_pixels\":4194304}",
+          "--compilation-config",
+          "{\"cudagraph_mode\":\"FULL_DECODE_ONLY\",\"cudagraph_capture_sizes\":[4]}",
+          "--host",
+          "127.0.0.1",
+          "--port",
+          "8231"
+        ]
+      },
+      "C": {
+        "tag": "C",
+        "gpu_memory_utilization": 0.97,
+        "max_pixels": 8388608,
+        "mtp_depth": 3,
+        "max_model_len": 262144,
+        "prefix_caching_flag_passed": true,
+        "pytorch_cuda_alloc_conf": null,
+        "model_revision": "c45c273b0d6ef2859cb2d85b36dd52253c80d878",
+        "podman_argv": [
+          "podman",
+          "run",
+          "--rm",
+          "--name",
+          "qual5090-C",
+          "--device",
+          "nvidia.com/gpu=all",
+          "--ipc=host",
+          "--network",
+          "host",
+          "-v",
+          "/mnt/vault/llm/huggingface/hub/models--malaiwah--Qwen3.8-27B-EXL3-K5K6-context:/models/ctx-repo:ro",
+          "-v",
+          "/home/mbelleau/qual5090/cache/jit:/cache/jit:rw",
+          "-v",
+          "/home/mbelleau/qual5090/cache/exl3-online:/cache/exl3-online:rw",
+          "-v",
+          "/home/mbelleau/qual5090/tools/vllm-exl3-prefill-dispatch.py:/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py:ro",
+          "-v",
+          "/home/mbelleau/qual5090/tools/vllm-qwen3_5-embed-quant-config.py:/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5.py:ro",
+          "-v",
+          "/home/mbelleau/qual5090/tools/vllm-qwen3_5_mtp-embed-quant-config.py:/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5_mtp.py:ro",
+          "-e",
+          "VLLM_EXL3_EMBED_BITS=8",
+          "-e",
+          "VLLM_EXL3_GRAPH_DECODE=1",
+          "-e",
+          "VLLM_EXL3_PREFILL_RECONSTRUCT_M=128",
+          "-e",
+          "HF_HUB_OFFLINE=1",
+          "-e",
+          "TRANSFORMERS_OFFLINE=1",
+          "--entrypoint",
+          "/opt/venv/bin/vllm",
+          "docker.io/voipmonitor/vllm@sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b"
+        ],
+        "vllm_argv": [
+          "/opt/venv/bin/vllm",
+          "serve",
+          "/models/ctx-repo/snapshots/c45c273b0d6ef2859cb2d85b36dd52253c80d878",
+          "--served-model-name",
+          "m",
+          "--quantization",
+          "exl3",
+          "--quantization-config",
+          "{\"linear\":{\"weight\":\"mxfp8\"},\"ignore\":[\"re:.*visual\\\\..*\",\"re:.*in_proj_a$\",\"re:.*in_proj_b$\",\"re:.*in_proj_ba$\",\"re:.*mtp\\\\..*\",\"lm_head\"]}",
+          "--max-model-len",
+          "262144",
+          "--gpu-memory-utilization",
+          "0.97",
+          "--kv-cache-dtype",
+          "fp8",
+          "--max-num-seqs",
+          "1",
+          "--max-num-batched-tokens",
+          "2048",
+          "--speculative-config",
+          "{\"method\":\"mtp\",\"num_speculative_tokens\":3}",
+          "--mm-processor-kwargs",
+          "{\"truncation\":false,\"max_pixels\":8388608}",
+          "--compilation-config",
+          "{\"cudagraph_mode\":\"FULL_DECODE_ONLY\",\"cudagraph_capture_sizes\":[4]}",
+          "--host",
+          "127.0.0.1",
+          "--port",
+          "8231"
+        ]
+      },
+      "D": {
+        "tag": "D",
+        "gpu_memory_utilization": 0.955,
+        "max_pixels": 8388608,
+        "mtp_depth": 3,
+        "max_model_len": 262144,
+        "prefix_caching_flag_passed": false,
+        "pytorch_cuda_alloc_conf": "expandable_segments:True",
+        "model_revision": "c45c273b0d6ef2859cb2d85b36dd52253c80d878",
+        "podman_argv": [
+          "podman",
+          "run",
+          "--rm",
+          "--name",
+          "qual5090-D",
+          "--device",
+          "nvidia.com/gpu=all",
+          "--ipc=host",
+          "--network",
+          "host",
+          "-v",
+          "/mnt/vault/llm/huggingface/hub/models--malaiwah--Qwen3.8-27B-EXL3-K5K6-context:/models/ctx-repo:ro",
+          "-v",
+          "/home/mbelleau/qual5090/cache/jit:/cache/jit:rw",
+          "-v",
+          "/home/mbelleau/qual5090/cache/exl3-online:/cache/exl3-online:rw",
+          "-v",
+          "/home/mbelleau/qual5090/tools/vllm-exl3-prefill-dispatch.py:/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py:ro",
+          "-v",
+          "/home/mbelleau/qual5090/tools/vllm-qwen3_5-embed-quant-config.py:/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5.py:ro",
+          "-v",
+          "/home/mbelleau/qual5090/tools/vllm-qwen3_5_mtp-embed-quant-config.py:/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5_mtp.py:ro",
+          "-e",
+          "VLLM_EXL3_EMBED_BITS=8",
+          "-e",
+          "VLLM_EXL3_GRAPH_DECODE=1",
+          "-e",
+          "VLLM_EXL3_PREFILL_RECONSTRUCT_M=128",
+          "-e",
+          "HF_HUB_OFFLINE=1",
+          "-e",
+          "TRANSFORMERS_OFFLINE=1",
+          "-e",
+          "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True",
+          "--entrypoint",
+          "/opt/venv/bin/vllm",
+          "docker.io/voipmonitor/vllm@sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b"
+        ],
+        "vllm_argv": [
+          "/opt/venv/bin/vllm",
+          "serve",
+          "/models/ctx-repo/snapshots/c45c273b0d6ef2859cb2d85b36dd52253c80d878",
+          "--served-model-name",
+          "m",
+          "--quantization",
+          "exl3",
+          "--quantization-config",
+          "{\"linear\":{\"weight\":\"mxfp8\"},\"ignore\":[\"re:.*visual\\\\..*\",\"re:.*in_proj_a$\",\"re:.*in_proj_b$\",\"re:.*in_proj_ba$\",\"re:.*mtp\\\\..*\",\"lm_head\"]}",
+          "--max-model-len",
+          "262144",
+          "--gpu-memory-utilization",
+          "0.955",
+          "--kv-cache-dtype",
+          "fp8",
+          "--max-num-seqs",
+          "1",
+          "--max-num-batched-tokens",
+          "2048",
+          "--speculative-config",
+          "{\"method\":\"mtp\",\"num_speculative_tokens\":3}",
+          "--mm-processor-kwargs",
+          "{\"truncation\":false,\"max_pixels\":8388608}",
+          "--compilation-config",
+          "{\"cudagraph_mode\":\"FULL_DECODE_ONLY\",\"cudagraph_capture_sizes\":[4]}",
+          "--no-enable-prefix-caching",
+          "--host",
+          "127.0.0.1",
+          "--port",
+          "8231"
+        ]
+      },
+      "E": {
+        "tag": "E",
+        "gpu_memory_utilization": 0.955,
+        "max_pixels": 8388608,
+        "mtp_depth": 3,
+        "max_model_len": 262144,
+        "prefix_caching_flag_passed": true,
+        "pytorch_cuda_alloc_conf": "expandable_segments:True",
+        "model_revision": "c45c273b0d6ef2859cb2d85b36dd52253c80d878",
+        "podman_argv": [
+          "podman",
+          "run",
+          "--rm",
+          "--name",
+          "qual5090-E",
+          "--device",
+          "nvidia.com/gpu=all",
+          "--ipc=host",
+          "--network",
+          "host",
+          "-v",
+          "/mnt/vault/llm/huggingface/hub/models--malaiwah--Qwen3.8-27B-EXL3-K5K6-context:/models/ctx-repo:ro",
+          "-v",
+          "/home/mbelleau/qual5090/cache/jit:/cache/jit:rw",
+          "-v",
+          "/home/mbelleau/qual5090/cache/exl3-online:/cache/exl3-online:rw",
+          "-v",
+          "/home/mbelleau/qual5090/tools/vllm-exl3-prefill-dispatch.py:/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py:ro",
+          "-v",
+          "/home/mbelleau/qual5090/tools/vllm-qwen3_5-embed-quant-config.py:/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5.py:ro",
+          "-v",
+          "/home/mbelleau/qual5090/tools/vllm-qwen3_5_mtp-embed-quant-config.py:/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5_mtp.py:ro",
+          "-e",
+          "VLLM_EXL3_EMBED_BITS=8",
+          "-e",
+          "VLLM_EXL3_GRAPH_DECODE=1",
+          "-e",
+          "VLLM_EXL3_PREFILL_RECONSTRUCT_M=128",
+          "-e",
+          "HF_HUB_OFFLINE=1",
+          "-e",
+          "TRANSFORMERS_OFFLINE=1",
+          "-e",
+          "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True",
+          "--entrypoint",
+          "/opt/venv/bin/vllm",
+          "docker.io/voipmonitor/vllm@sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b"
+        ],
+        "vllm_argv": [
+          "/opt/venv/bin/vllm",
+          "serve",
+          "/models/ctx-repo/snapshots/c45c273b0d6ef2859cb2d85b36dd52253c80d878",
+          "--served-model-name",
+          "m",
+          "--quantization",
+          "exl3",
+          "--quantization-config",
+          "{\"linear\":{\"weight\":\"mxfp8\"},\"ignore\":[\"re:.*visual\\\\..*\",\"re:.*in_proj_a$\",\"re:.*in_proj_b$\",\"re:.*in_proj_ba$\",\"re:.*mtp\\\\..*\",\"lm_head\"]}",
+          "--max-model-len",
+          "262144",
+          "--gpu-memory-utilization",
+          "0.955",
+          "--kv-cache-dtype",
+          "fp8",
+          "--max-num-seqs",
+          "1",
+          "--max-num-batched-tokens",
+          "2048",
+          "--speculative-config",
+          "{\"method\":\"mtp\",\"num_speculative_tokens\":3}",
+          "--mm-processor-kwargs",
+          "{\"truncation\":false,\"max_pixels\":8388608}",
+          "--compilation-config",
+          "{\"cudagraph_mode\":\"FULL_DECODE_ONLY\",\"cudagraph_capture_sizes\":[4]}",
+          "--host",
+          "127.0.0.1",
+          "--port",
+          "8231"
+        ]
+      },
+      "F": {
+        "tag": "F",
+        "gpu_memory_utilization": 0.955,
+        "max_pixels": 8388608,
+        "mtp_depth": 3,
+        "max_model_len": 262144,
+        "prefix_caching_flag_passed": true,
+        "pytorch_cuda_alloc_conf": "expandable_segments:True",
+        "model_revision": "c45c273b0d6ef2859cb2d85b36dd52253c80d878",
+        "podman_argv": [
+          "podman",
+          "run",
+          "--rm",
+          "--name",
+          "qual5090-F",
+          "--device",
+          "nvidia.com/gpu=all",
+          "--ipc=host",
+          "--network",
+          "host",
+          "-v",
+          "/mnt/vault/llm/huggingface/hub/models--malaiwah--Qwen3.8-27B-EXL3-K5K6-context:/models/ctx-repo:ro",
+          "-v",
+          "/home/mbelleau/qual5090/cache/jit:/cache/jit:rw",
+          "-v",
+          "/home/mbelleau/qual5090/cache/exl3-online:/cache/exl3-online:rw",
+          "-v",
+          "/home/mbelleau/qual5090/tools/vllm-exl3-prefill-dispatch.py:/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py:ro",
+          "-v",
+          "/home/mbelleau/qual5090/tools/vllm-qwen3_5-embed-quant-config.py:/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5.py:ro",
+          "-v",
+          "/home/mbelleau/qual5090/tools/vllm-qwen3_5_mtp-embed-quant-config.py:/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5_mtp.py:ro",
+          "-e",
+          "VLLM_EXL3_EMBED_BITS=8",
+          "-e",
+          "VLLM_EXL3_GRAPH_DECODE=1",
+          "-e",
+          "VLLM_EXL3_PREFILL_RECONSTRUCT_M=128",
+          "-e",
+          "HF_HUB_OFFLINE=1",
+          "-e",
+          "TRANSFORMERS_OFFLINE=1",
+          "-e",
+          "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True",
+          "--entrypoint",
+          "/opt/venv/bin/vllm",
+          "docker.io/voipmonitor/vllm@sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b"
+        ],
+        "vllm_argv": [
+          "/opt/venv/bin/vllm",
+          "serve",
+          "/models/ctx-repo/snapshots/c45c273b0d6ef2859cb2d85b36dd52253c80d878",
+          "--served-model-name",
+          "m",
+          "--quantization",
+          "exl3",
+          "--quantization-config",
+          "{\"linear\":{\"weight\":\"mxfp8\"},\"ignore\":[\"re:.*visual\\\\..*\",\"re:.*in_proj_a$\",\"re:.*in_proj_b$\",\"re:.*in_proj_ba$\",\"re:.*mtp\\\\..*\",\"lm_head\"]}",
+          "--max-model-len",
+          "262144",
+          "--gpu-memory-utilization",
+          "0.955",
+          "--kv-cache-dtype",
+          "fp8",
+          "--max-num-seqs",
+          "1",
+          "--max-num-batched-tokens",
+          "2048",
+          "--speculative-config",
+          "{\"method\":\"mtp\",\"num_speculative_tokens\":3}",
+          "--mm-processor-kwargs",
+          "{\"truncation\":false,\"max_pixels\":8388608}",
+          "--compilation-config",
+          "{\"cudagraph_mode\":\"FULL_DECODE_ONLY\",\"cudagraph_capture_sizes\":[4]}",
+          "--host",
+          "127.0.0.1",
+          "--port",
+          "8231"
+        ]
+      }
+    }
+  },
+  "gpu_memory_utilization_justification": {
+    "chosen_gpu_memory_utilization": 0.955,
+    "ceiling_allowed_by_gate": 0.97,
+    "why": "with the GPU idle the card reports 32,149 MiB free of 32,607 MiB total, and vLLM sizes its budget off the usable figure: it logged 'Free memory on device (30.9/31.4 GiB) on startup'. 0.97 x 31.4 GiB = 30.45 GiB started fine and served text, but left only 26.5 MiB free at peak, so the vision tower could not get the 62 MiB it needed for a 7 MP image. 0.955 x 31.4 GiB = 29.98 GiB keeps 265,122 KV tokens, still 1.01x concurrency at 262,144, and leaves roughly half a GiB of card for transient vision activations. Both values are at or under the 0.97 ceiling the acceptance gate allows.",
+    "why_not_higher": "raising utilisation is self-defeating for large-image work: at 0.97 with expandable_segments the engine simply spent the recovered bytes on KV (272,570 -> 280,017 tokens) and still OOMed with 26.5 MiB free.",
+    "what_was_not_sacrificed": "max_pixels stayed at the published 8,388,608, MTP stayed at depth 3 and the window stayed at 262,144; only KV slack was given up"
+  },
+  "gates": {
+    "gate1_startup_native_allocation": {
+      "requirement": "startup allocates at least one native-length request without exceeding utilisation 0.97",
+      "passed": true,
+      "server_process": "E",
+      "gpu_memory_utilization_requested": 0.955,
+      "engine_budget_gib": 29.98,
+      "utilisation_ceiling_respected": true,
+      "free_memory_at_startup_gib": 30.9,
+      "device_usable_gib": 31.4,
+      "measured_engine_usage_gib": {
+        "weight": 18.19,
+        "peak_activation": 1.78,
+        "non_torch": 0.27,
+        "cudagraph": 0.45
+      },
+      "engine_usage_sum_gib": 20.69,
+      "available_kv_cache_gib": 9.28,
+      "gpu_kv_cache_tokens": 265122,
+      "max_model_len": 262144,
+      "kv_tokens_cover_native_length": true,
+      "maximum_concurrency_for_native_length": 1.01,
+      "attention_block_size_tokens": 1600,
+      "mamba_page_padding_pct": "0.25",
+      "kv_padding_layers": [
+        "3",
+        "6.25"
+      ],
+      "startup_wall_sec": 55.691,
+      "startup_facts": {
+        "raw_lines": [
+          "Actual usage is 18.19 GiB for weight, 1.78 GiB for peak activation, 0.27 GiB for non-torch memory, and 0.45 GiB for CUDAGraph memory",
+          "Add 3 padding layers, may waste at most 6.25% KV cache memory",
+          "Available KV cache memory: 9.28 GiB",
+          "Desired GPU memory utilization is (0.955, 29.98 GiB)",
+          "Free memory on device (30.9/31.4 GiB) on startup",
+          "GPU KV cache size: 265,122 tokens",
+          "Graph capturing finished in 1 secs, took 0.45 GiB",
+          "Initializing a V1 LLM engine (v0.11.2.dev280+gilded.gnosis.v20.vllm4d006a4.b12xcd3ce19.fi1ac6942.cu132.20260810.r34)",
+          "Maximum concurrency for 262,144 tokens per request: 1.01x",
+          "Model loading took 18.19 GiB memory and 3.986151 seconds",
+          "Padding mamba page size by 0.25%",
+          "Padding mamba page size by 0.25% to ensure that mamba page size and attention page size are exactly equal.",
+          "Setting attention block size to 1600 tokens to ensure that attention page size is >= mamba page size",
+          "Setting attention block size to 1600 tokens to ensure that attention page size is >= mamba page size.",
+          "Using fp8 data type to store kv cache",
+          "enable_prefix_caching=False",
+          "init engine (profile, create kv cache, warmup model) took 13.71 s (compilation: 2.09 s)",
+          "num_spec_tokens=3"
+        ],
+        "desired_gpu_memory_utilization": [
+          "0.955",
+          "29.98"
+        ],
+        "free_memory_on_device": [
+          "30.9",
+          "31.4"
+        ],
+        "actual_usage": [
+          "18.19",
+          "1.78",
+          "0.27",
+          "0.45"
+        ],
+        "available_kv_cache_gib": "9.28",
+        "gpu_kv_cache_tokens": "265,122",
+        "maximum_concurrency": [
+          "262,144",
+          "1.01"
+        ],
+        "model_loading": [
+          "18.19",
+          "3.986151"
+        ],
+        "graph_capture": [
+          "1",
+          "0.45"
+        ],
+        "init_engine": [
+          "13.71",
+          "2.09"
+        ],
+        "attention_block_size": "1600",
+        "mamba_page_padding_pct": "0.25",
+        "kv_padding_layers": [
+          "3",
+          "6.25"
+        ],
+        "mamba_cache_mode": null,
+        "mamba_block_size": null,
+        "num_spec_tokens": "3",
+        "enable_prefix_caching": "False",
+        "kv_cache_dtype_note": "Using fp8 data type to store kv cache",
+        "vllm_version": "0.11.2.dev280+gilded.gnosis.v20.vllm4d006a4.b12xcd3ce19.fi1ac6942.cu132.20260810.r34",
+        "engine_config_line": "(EngineCore pid=195) INFO 08-16 01:10:56 [core.py:116] Initializing a V1 LLM engine (v0.11.2.dev280+gilded.gnosis.v20.vllm4d006a4.b12xcd3ce19.fi1ac6942.cu132.20260810.r34) with config: model='/models/ctx-repo/snapshots/c45c273b0d6ef2859cb2d85b36dd52253c80d878', speculative_config=SpeculativeConfig(method='mtp', model='/models/ctx-repo/snapshots/c45c273b0d6ef2859cb2d85b36dd52253c80d878', num_spec_tokens=3), tokenizer='/models/ctx-repo/snapshots/c45c273b0d6ef2859cb2d85b36dd52253c80d878', skip_tokenizer_init=False, tokenizer_mode=auto, revision=None, tokenizer_revision=None, trust_remote_code=False, dtype=torch.bfloat16, max_seq_len=262144, download_dir=None, load_format=auto, tensor_parallel_size=1, pipeline_parallel_size=1, data_parallel_size=1, decode_context_parallel_size=1, dcp_comm_backend=ag_rs, disable_custom_all_reduce=False, quantization=exl3, quantization_config=QuantizationConfigArgs(linear=QuantSpec(weight=QuantKey(dtype=torch.float8_e4m3fn, scale=ScaleDesc(dtype=torch.uint8, static=False, group_shape=GroupShape(row=1, col=32)), scale2=None, symmetric=True), activation=None), moe=None, shared_experts=None, ignore=['re:.*visual\\\\..*', 're:.*in_proj_a$', 're:.*in_proj_b$', 're:.*in_proj_ba$', 're:.*mtp\\\\..*', 'lm_head']), enforce_eager=False, enable_return_routed_experts=False, kv_cache_dtype=fp8, device_config=cuda, structured_outputs_config=StructuredOutputsConfig(backend='auto', disable_any_whitespace=False, disable_additional_properties=False, reasoning_parser='', reasoning_parser_plugin='', enable_in_reasoning=False), observability_config=ObservabilityConfig(show_hidden_metrics_for_version=None, otlp_traces_endpoint=None, collect_detailed_traces=None, kv_cache_metrics=False, kv_cache_metrics_sample=0.01, cudagraph_metrics=False, enable_layerwise_nvtx_tracing=False, enable_mfu_metrics=False, enable_mm_processor_stats=False, enable_logging_iteration_details=False, jit_monitor_mode='warn', jit_monitor_verbose=False), seed=0, served_model_name=m, enable_prefix_caching=False, enable_chunked_prefill=True, pooler_config=None, compilation_config={'mode': <CompilationMode.VLLM_COMPILE: 3>, 'debug_dump_path': None, 'cache_dir': '', 'compile_cache_save_format': 'binary', 'backend': 'inductor', 'custom_ops': ['none'], 'ir_enable_torch_wrap': True, 'splitting_ops': ['vllm::unified_attention_with_output', 'vllm::unified_mla_attention_with_output', 'vllm::mamba_mixer2', 'vllm::mamba_mixer', 'vllm::short_conv', 'vllm::linear_attention', 'vllm::plamo2_mamba_mixer', 'vllm::qwen_gdn_attention_core', 'vllm::gdn_attention_core_xpu', 'vllm::olmo_hybrid_gdn_full_forward', 'vllm::kda_attention', 'vllm::sparse_attn_indexer', 'vllm::rocm_aiter_sparse_attn_indexer', 'vllm::minimax_m3_sparse_attention_with_output', 'vllm::deepseek_v4_attention', 'vllm::hpc_rope_norm_forward', 'vllm::unified_kv_cache_update', 'vllm::unified_mla_kv_cache_update', 'vllm::minimax_m3_sparse_kv_cache_update'], 'compile_mm_encoder': False, 'cudagraph_mm_encoder': False, 'encoder_cudagraph_token_budgets': [], 'encoder_cudagraph_max_vision_items_per_batch': 0, 'encoder_cudagraph_max_frames_per_batch': None, 'compile_sizes': [], 'compile_ranges_endpoints': [2048], 'inductor_compile_config': {'enable_auto_functionalized_v2': False, 'combo_kernels': True, 'benchmark_combo_kernel': True}, 'inductor_passes': {}, 'cudagraph_mode': <CUDAGraphMode.FULL_DECODE_ONLY: (2, 0)>, 'cudagraph_num_of_warmups': 1, 'cudagraph_capture_sizes': [4], 'cudagraph_copy_inputs': False, 'cudagraph_specialize_lora': True, 'use_inductor_graph_partition': False, 'pass_config': {'fuse_norm_quant': False, 'fuse_act_quant': False, 'fuse_attn_quant': False, 'enable_sp': False, 'fuse_gemm_comms': False, 'fuse_allreduce_rms': False, 'enable_qk_norm_rope_fusion': False, 'fuse_rope_kvcache_cat_mla': False, 'fuse_act_padding': False, 'fuse_qk_norm_rope_kvcache': False}, 'max_cudagraph_capture_size': 4, 'dynamic_shapes_config': {'type': <DynamicShapesType.BACKED: 'backed'>, 'evaluate_guards': False, 'assume",
+        "server_log_sha256": "8c31c0b17164fae7a84bd29a86176aae975d0ec1e6fb6a7a7f53a9cb86d03e8e"
+      }
+    },
+    "gate2_long_needle_exact": {
+      "requirement": "the 261,794-token text needle is retrieved exactly",
+      "passed": true,
+      "server_process": "E",
+      "result": {
+        "schema": "qwen38-longctx/3",
+        "requested_tokens": 261800,
+        "measured_tokens_before_submit": 261794,
+        "prompt_tokens": 261794,
+        "token_count_delta": -6,
+        "length_preserved": true,
+        "completion_tokens": 11,
+        "needle_depth_fraction": 0.5,
+        "needle_code": "1376346594",
+        "retrieved_exact": true,
+        "passed": true,
+        "answer": "1376346594",
+        "wall_sec": 179.218,
+        "prefill_tok_s_including_decode": 1460.8
+      },
+      "wall_sec": 180.316
+    },
+    "gate3_combined_long_text_and_7mp_image": {
+      "requirement": "a combined 236,824-token plus seven-megapixel request returns code and colours exactly",
+      "passed": true,
+      "server_process": "B3",
+      "server_process_note": "a freshly started process that never served the 261,794-token request, per the #51113 precaution",
+      "result": {
+        "schema": "qwen38-longmm/1",
+        "requested_text_tokens": 230000,
+        "measured_text_tokens_before_submit": 229910,
+        "prompt_tokens": 236824,
+        "completion_tokens": 15,
+        "minimum_prompt_tokens": 220000,
+        "length_preserved": true,
+        "needle_depth_fraction": 0.5,
+        "needle_code": "1376346594",
+        "retrieved_exact": true,
+        "image": {
+          "path": "/home/mbelleau/qual5090/receipts/native-mtp-8mp-fixture.png",
+          "sha256": "7e3748a403f201b83ac67130895223122660e1cb07877ef768c1d6a49127533d",
+          "bytes": 26153
+        },
+        "colours_exact": true,
+        "answer_exact": true,
+        "answer": "1376346594 | red, blue",
+        "wall_sec": 156.446,
+        "prompt_tok_s_including_decode": 1513.8,
+        "passed": true
+      },
+      "image_pixels": 7077888,
+      "image_dimensions": [
+        3072,
+        2304
+      ],
+      "wall_sec": 157.427,
+      "failed_first_at_published_utilisation": true,
+      "see": "bounded_negative_results"
+    },
+    "gate4_image_suite_24_of_30": {
+      "requirement": "the 30-case deterministic image suite stays at or above 24/30",
+      "passed": true,
+      "server_process": "F",
+      "overall": {
+        "n": 30,
+        "correct": 24,
+        "accuracy": 0.8
+      },
+      "per_task": {
+        "digits": {
+          "n": 10,
+          "correct": 8,
+          "accuracy": 0.8
+        },
+        "bars": {
+          "n": 10,
+          "correct": 9,
+          "accuracy": 0.9
+        },
+        "grid": {
+          "n": 10,
+          "correct": 7,
+          "accuracy": 0.7
+        }
+      },
+      "seed": 20260815,
+      "cases": [
+        {
+          "task": "digits",
+          "case": 0,
+          "truth": "108874",
+          "answer": "108874",
+          "extracted": "108874",
+          "correct": true
+        },
+        {
+          "task": "digits",
+          "case": 1,
+          "truth": "174808",
+          "answer": "174808",
+          "extracted": "174808",
+          "correct": true
+        },
+        {
+          "task": "digits",
+          "case": 2,
+          "truth": "160288",
+          "answer": "169288",
+          "extracted": "169288",
+          "correct": false
+        },
+        {
+          "task": "digits",
+          "case": 3,
+          "truth": "162600",
+          "answer": "162699",
+          "extracted": "162699",
+          "correct": false
+        },
+        {
+          "task": "digits",
+          "case": 4,
+          "truth": "588449",
+          "answer": "588449",
+          "extracted": "588449",
+          "correct": true
+        },
+        {
+          "task": "digits",
+          "case": 5,
+          "truth": "903506",
+          "answer": "903506",
+          "extracted": "903506",
+          "correct": true
+        },
+        {
+          "task": "digits",
+          "case": 6,
+          "truth": "747097",
+          "answer": "747097",
+          "extracted": "747097",
+          "correct": true
+        },
+        {
+          "task": "digits",
+          "case": 7,
+          "truth": "897017",
+          "answer": "897017",
+          "extracted": "897017",
+          "correct": true
+        },
+        {
+          "task": "digits",
+          "case": 8,
+          "truth": "696313",
+          "answer": "696313",
+          "extracted": "696313",
+          "correct": true
+        },
+        {
+          "task": "digits",
+          "case": 9,
+          "truth": "706699",
+          "answer": "706699",
+          "extracted": "706699",
+          "correct": true
+        },
+        {
+          "task": "bars",
+          "case": 0,
+          "truth": "2",
+          "answer": "2",
+          "extracted": "2",
+          "correct": true
+        },
+        {
+          "task": "bars",
+          "case": 1,
+          "truth": "5",
+          "answer": "4",
+          "extracted": "4",
+          "correct": false
+        },
+        {
+          "task": "bars",
+          "case": 2,
+          "truth": "5",
+          "answer": "5",
+          "extracted": "5",
+          "correct": true
+        },
+        {
+          "task": "bars",
+          "case": 3,
+          "truth": "3",
+          "answer": "3",
+          "extracted": "3",
+          "correct": true
+        },
+        {
+          "task": "bars",
+          "case": 4,
+          "truth": "5",
+          "answer": "5",
+          "extracted": "5",
+          "correct": true
+        },
+        {
+          "task": "bars",
+          "case": 5,
+          "truth": "5",
+          "answer": "5",
+          "extracted": "5",
+          "correct": true
+        },
+        {
+          "task": "bars",
+          "case": 6,
+          "truth": "3",
+          "answer": "3",
+          "extracted": "3",
+          "correct": true
+        },
+        {
+          "task": "bars",
+          "case": 7,
+          "truth": "2",
+          "answer": "2",
+          "extracted": "2",
+          "correct": true
+        },
+        {
+          "task": "bars",
+          "case": 8,
+          "truth": "3",
+          "answer": "3",
+          "extracted": "3",
+          "correct": true
+        },
+        {
+          "task": "bars",
+          "case": 9,
+          "truth": "2",
+          "answer": "2",
+          "extracted": "2",
+          "correct": true
+        },
+        {
+          "task": "grid",
+          "case": 0,
+          "truth": "4",
+          "answer": "5",
+          "extracted": "5",
+          "correct": false
+        },
+        {
+          "task": "grid",
+          "case": 1,
+          "truth": "5",
+          "answer": "5",
+          "extracted": "5",
+          "correct": true
+        },
+        {
+          "task": "grid",
+          "case": 2,
+          "truth": "2",
+          "answer": "2",
+          "extracted": "2",
+          "correct": true
+        },
+        {
+          "task": "grid",
+          "case": 3,
+          "truth": "4",
+          "answer": "5",
+          "extracted": "5",
+          "correct": false
+        },
+        {
+          "task": "grid",
+          "case": 4,
+          "truth": "3",
+          "answer": "3",
+          "extracted": "3",
+          "correct": true
+        },
+        {
+          "task": "grid",
+          "case": 5,
+          "truth": "5",
+          "answer": "5",
+          "extracted": "5",
+          "correct": true
+        },
+        {
+          "task": "grid",
+          "case": 6,
+          "truth": "6",
+          "answer": "7",
+          "extracted": "7",
+          "correct": false
+        },
+        {
+          "task": "grid",
+          "case": 7,
+          "truth": "4",
+          "answer": "4",
+          "extracted": "4",
+          "correct": true
+        },
+        {
+          "task": "grid",
+          "case": 8,
+          "truth": "2",
+          "answer": "2",
+          "extracted": "2",
+          "correct": true
+        },
+        {
+          "task": "grid",
+          "case": 9,
+          "truth": "2",
+          "answer": "2",
+          "extracted": "2",
+          "correct": true
+        }
+      ],
+      "wall_sec": 5.737
+    },
+    "gate5_three_warmed_decode_runs": {
+      "requirement": "three warmed 256-token concurrency-1 runs report median decode, MTP acceptance and dispersion",
+      "passed": true,
+      "server_process": "E",
+      "decode": {
+        "available": true,
+        "protocol": "one warm-up request, then three timed runs, greedy, ignore_eos, 256 output tokens each, concurrency 1",
+        "runs": [
+          {
+            "concurrency": 1,
+            "elapsed_sec": 2.368,
+            "output_tokens": 256,
+            "aggregate_tok_s": 108.12,
+            "per_stream_tok_s": 108.12
+          },
+          {
+            "concurrency": 1,
+            "elapsed_sec": 2.38,
+            "output_tokens": 256,
+            "aggregate_tok_s": 107.56,
+            "per_stream_tok_s": 107.56
+          },
+          {
+            "concurrency": 1,
+            "elapsed_sec": 2.382,
+            "output_tokens": 256,
+            "aggregate_tok_s": 107.47,
+            "per_stream_tok_s": 107.47
+          }
+        ],
+        "n_runs": 3,
+        "output_tokens_per_request": 256,
+        "concurrency": 1,
+        "median_decode_tok_s": 107.56,
+        "min_decode_tok_s": 107.47,
+        "max_decode_tok_s": 108.12,
+        "dispersion_range_tok_s": 0.65,
+        "dispersion_relative_pct": 0.604,
+        "stdev_tok_s": 0.3522,
+        "ttft_proxy_sec": 0.0564
+      },
+      "mtp_acceptance": {
+        "available": true,
+        "source": "vLLM /metrics spec_decode counters, differenced across the gate",
+        "counters_before": {
+          "vllm:spec_decode_num_drafts_total": 6.0,
+          "vllm:spec_decode_num_draft_tokens_total": 18.0,
+          "vllm:spec_decode_num_accepted_tokens_total": 18.0
+        },
+        "counters_after": {
+          "vllm:spec_decode_num_drafts_total": 294.0,
+          "vllm:spec_decode_num_draft_tokens_total": 882.0,
+          "vllm:spec_decode_num_accepted_tokens_total": 506.0
+        },
+        "drafts": 288.0,
+        "draft_tokens": 864.0,
+        "accepted_tokens": 488.0,
+        "mtp_depth": 3,
+        "draft_token_acceptance_rate": 0.5648,
+        "mean_accepted_length": 2.6944,
+        "draft_tokens_per_draft": 3.0,
+        "accepted_per_position": {
+          "position=0": 243.0,
+          "position=1": 157.0,
+          "position=2": 88.0
+        },
+        "per_position_acceptance_rate": {
+          "position=0": 0.8438,
+          "position=1": 0.5451,
+          "position=2": 0.3056
+        }
+      },
+      "wall_sec": 7.593,
+      "comparability_note": "these are physical RTX 5090 numbers. They are not comparable with any rental RTX PRO 6000 engine-budget throughput and are never to be differenced against them."
+    },
+    "gate6_second_long_request_after_release": {
+      "requirement": "a second native-length request succeeds after the first is released, proving recovery rather than one lucky allocation",
+      "passed": true,
+      "server_process": "E",
+      "server_process_note": "deliberately the same process as gate 2 and the same request length: in-process recovery of the allocation is the property under test. A different needle code, depth 0.25 and seed 20260816 make it a new prefill rather than a cache hit.",
+      "result": {
+        "schema": "qwen38-longctx/3",
+        "requested_tokens": 261800,
+        "measured_tokens_before_submit": 261792,
+        "prompt_tokens": 261792,
+        "token_count_delta": -8,
+        "length_preserved": true,
+        "completion_tokens": 11,
+        "needle_depth_fraction": 0.25,
+        "needle_code": "7309172433",
+        "retrieved_exact": true,
+        "passed": true,
+        "answer": "7309172433",
+        "wall_sec": 180.596,
+        "prefill_tok_s_including_decode": 1449.6
+      },
+      "wall_sec": 181.707
+    }
+  },
+  "bounded_negative_results": [
+    {
+      "tag": "B",
+      "purpose": "the published card profile verbatim at gpu_memory_utilization 0.97: does the combined 236,824-token plus 7 MP request fit on a physical 5090?",
+      "gpu_memory_utilization": 0.97,
+      "engine_budget_gib": 30.45,
+      "pytorch_cuda_alloc_conf": null,
+      "max_pixels": 8388608,
+      "max_model_len": 262144,
+      "mtp_depth": 3,
+      "startup_succeeded": true,
+      "gpu_kv_cache_tokens": 272570,
+      "maximum_concurrency_for_native_length": 1.04,
+      "measured_engine_usage_gib": {
+        "weight": 18.41,
+        "peak_activation": 1.78,
+        "non_torch": 0.27,
+        "cudagraph": 0.46
+      },
+      "gate3_rc": 1,
+      "gate3_passed": false,
+      "gate3_result": null,
+      "oom": {
+        "error": "torch.OutOfMemoryError",
+        "tried_to_allocate": "62.00 MiB",
+        "device_total_capacity": "31.40 GiB",
+        "free_at_failure": "34.56 MiB",
+        "message": "torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 62.00 MiB. GPU 0 has a total capacity of 31.40 GiB of which 34.56 MiB is free. Including non-PyTorch memory, this process has 31.35 GiB memory in use. Of the allocated memory 30.33 GiB is allocated by PyTorch, with 22.00 MiB allocated in private pools (e.g., CUDA Graphs), and 269.34 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation fo",
+        "failing_frames": [
+          "File \"/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/attention/mm_encoder_attention.py\", line 557, in _forward_fa",
+          "File \"/opt/venv/lib/python3.12/site-packages/vllm/v1/attention/ops/vit_attn_wrappers.py\", line 104, in vit_flash_attn_wrapper",
+          "File \"/opt/venv/lib/python3.12/site-packages/vllm/v1/attention/ops/vit_attn_wrappers.py\", line 55, in flash_attn_maxseqlen_wrapper",
+          "File \"/opt/venv/lib/python3.12/site-packages/vllm/vllm_flash_attn/flash_attn_interface.py\", line 315, in flash_attn_varlen_func",
+          "File \"/opt/venv/lib/python3.12/site-packages/vllm/v1/engine/async_llm.py\", line 660, in output_handler",
+          "File \"/opt/venv/lib/python3.12/site-packages/vllm/v1/engine/core_client.py\", line 1061, in get_output_async"
+        ],
+        "engine_state_after": "EngineDeadError; the request returned HTTP 500"
+      },
+      "peak_memory_mib": 32002,
+      "server_log": "logs/server-B.log"
+    },
+    {
+      "tag": "B2",
+      "purpose": "the same 0.97 budget plus the allocator setting PyTorch's own OOM message recommends: does defragmentation recover the missing 62 MiB?",
+      "gpu_memory_utilization": 0.97,
+      "engine_budget_gib": 30.45,
+      "pytorch_cuda_alloc_conf": "expandable_segments:True",
+      "max_pixels": 8388608,
+      "max_model_len": 262144,
+      "mtp_depth": 3,
+      "startup_succeeded": true,
+      "gpu_kv_cache_tokens": 280017,
+      "maximum_concurrency_for_native_length": 1.07,
+      "measured_engine_usage_gib": {
+        "weight": 18.19,
+        "peak_activation": 1.78,
+        "non_torch": 0.27,
+        "cudagraph": 0.45
+      },
+      "gate3_rc": 1,
+      "gate3_passed": false,
+      "gate3_result": null,
+      "oom": {
+        "error": "torch.OutOfMemoryError",
+        "tried_to_allocate": "62.00 MiB",
+        "device_total_capacity": "31.40 GiB",
+        "free_at_failure": "26.50 MiB",
+        "message": "torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 62.00 MiB. GPU 0 has a total capacity of 31.40 GiB of which 26.50 MiB is free. Including non-PyTorch memory, this process has 31.36 GiB memory in use. Of the allocated memory 30.43 GiB is allocated by PyTorch, with 22.00 MiB allocated in private pools (e.g., CUDA Graphs), and 176.09 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation fo",
+        "failing_frames": [
+          "File \"/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/linear.py\", line 2084, in forward",
+          "File \"/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/linear.py\", line 232, in apply",
+          "File \"/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/utils.py\", line 98, in default_unquantized_gemm",
+          "File \"/opt/venv/lib/python3.12/site-packages/vllm/model_executor/parameter.py\", line 127, in __torch_function__",
+          "File \"/opt/venv/lib/python3.12/site-packages/vllm/v1/engine/async_llm.py\", line 660, in output_handler",
+          "File \"/opt/venv/lib/python3.12/site-packages/vllm/v1/engine/core_client.py\", line 1061, in get_output_async"
+        ],
+        "engine_state_after": "EngineDeadError; the request returned HTTP 500"
+      },
+      "peak_memory_mib": 31870,
+      "server_log": "logs/server-B2.log"
+    },
+    {
+      "tag": "B4",
+      "purpose": "hold utilisation at 0.97 and lower the image ceiling instead: is the vision-tower OOM a hard 32 GB ceiling for the 7 MP request, or only a slack problem?",
+      "gpu_memory_utilization": 0.97,
+      "engine_budget_gib": 30.45,
+      "pytorch_cuda_alloc_conf": "expandable_segments:True",
+      "max_pixels": 4194304,
+      "max_model_len": 262144,
+      "mtp_depth": 3,
+      "startup_succeeded": true,
+      "gpu_kv_cache_tokens": 291933,
+      "maximum_concurrency_for_native_length": 1.11,
+      "measured_engine_usage_gib": {
+        "weight": 18.19,
+        "peak_activation": 1.35,
+        "non_torch": 0.27,
+        "cudagraph": 0.45
+      },
+      "gate3_rc": 1,
+      "gate3_passed": false,
+      "gate3_result": null,
+      "oom": {
+        "error": "torch.OutOfMemoryError",
+        "tried_to_allocate": "20.00 MiB",
+        "device_total_capacity": "31.40 GiB",
+        "free_at_failure": "6.56 MiB",
+        "message": "torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 20.00 MiB. GPU 0 has a total capacity of 31.40 GiB of which 6.56 MiB is free. Including non-PyTorch memory, this process has 31.38 GiB memory in use. Of the allocated memory 30.43 GiB is allocated by PyTorch, with 22.00 MiB allocated in private pools (e.g., CUDA Graphs), and 197.31 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation fo",
+        "failing_frames": [
+          "File \"/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5.py\", line 352, in embed_input_ids",
+          "File \"/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_next.py\", line 668, in embed_input_ids",
+          "File \"/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/vocab_parallel_embedding.py\", line 487, in forward",
+          "File \"/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py\", line 2284, in embedding",
+          "File \"/opt/venv/lib/python3.12/site-packages/vllm/v1/engine/async_llm.py\", line 660, in output_handler",
+          "File \"/opt/venv/lib/python3.12/site-packages/vllm/v1/engine/core_client.py\", line 1061, in get_output_async"
+        ],
+        "engine_state_after": "EngineDeadError; the request returned HTTP 500"
+      },
+      "peak_memory_mib": 31930,
+      "server_log": "logs/server-B4.log"
+    }
+  ],
+  "seven_megapixel_ceiling_verdict": {
+    "question": "is the vision-tower OOM a hard 32 GB ceiling for a seven-megapixel request, or only a slack problem?",
+    "answer": "a slack problem, but max_pixels is the WRONG knob: lowering the image ceiling at fixed utilisation makes it strictly worse",
+    "mechanism_measured": "vLLM sizes the KV cache to consume whatever is left of the budget after profiling, so every byte freed anywhere else is immediately spent on KV and the slack never materialises. Lowering max_pixels lowers the profiled peak activation, which enlarges KV, which leaves less room for the real vision activation than before.",
+    "evidence": [
+      {
+        "utilisation": 0.97,
+        "max_pixels": 8388608,
+        "profiled_peak_activation_gib": 1.78,
+        "gpu_kv_cache_tokens": 280017,
+        "outcome": "OOM",
+        "wanted": "62.00 MiB",
+        "free_at_failure": "26.50 MiB"
+      },
+      {
+        "utilisation": 0.97,
+        "max_pixels": 4194304,
+        "profiled_peak_activation_gib": 1.35,
+        "gpu_kv_cache_tokens": 291933,
+        "outcome": "OOM, sooner and with less headroom",
+        "wanted": "20.00 MiB",
+        "free_at_failure": "6.56 MiB"
+      }
+    ],
+    "hard_ceiling_for_7mp_on_32gb": false,
+    "hard_ceiling_evidence": "the identical 236,824-token plus 7,077,888-pixel request succeeds on this same physical card at utilisation 0.955 with the full 8,388,608 pixel ceiling, so 32 GB is sufficient for the request; only the budget split was wrong",
+    "which_knob_first": "turn gpu_memory_utilization down, not max_pixels. 0.955 is the measured value that passes: it keeps the full 8,388,608 ceiling, native 262,144 and MTP depth 3, and costs only KV slack (280,017 -> 265,122 tokens, still 1.01x concurrency at 262,144). Lowering max_pixels at 0.97 does not help and silently downscales large images as well."
+  },
+  "prefix_caching_control_arm": {
+    "tag": "D",
+    "flag": "--no-enable-prefix-caching",
+    "why": "the runtime image lacks upstream vLLM #51113, so a prefill chunk ending mid-block can publish a truncated GDN state that a later request over a shared prefix could consume. This arm reruns the needle and the decode bench with prefix caching explicitly disabled, everything else equal.",
+    "material_finding": "the published profile already runs with prefix caching OFF: the engine config for the unmodified card command reports enable_prefix_caching=False with no flag from us, and every scheduler log line reports 'Prefix cache hit rate: 0.0%'. This build disables prefix caching for the hybrid mamba model, so the #51113 poisoning path is never exercised by this profile and the flag is a no-op here.",
+    "needle": {
+      "schema": "qwen38-longctx/3",
+      "requested_tokens": 261800,
+      "measured_tokens_before_submit": 261794,
+      "prompt_tokens": 261794,
+      "token_count_delta": -6,
+      "length_preserved": true,
+      "completion_tokens": 11,
+      "needle_depth_fraction": 0.5,
+      "needle_code": "1376346594",
+      "retrieved_exact": true,
+      "passed": true,
+      "answer": "1376346594",
+      "wall_sec": 178.959,
+      "prefill_tok_s_including_decode": 1462.9
+    },
+    "needle_retrieved_exact": true,
+    "decode": {
+      "available": true,
+      "protocol": "one warm-up request, then three timed runs, greedy, ignore_eos, 256 output tokens each, concurrency 1",
+      "runs": [
+        {
+          "concurrency": 1,
+          "elapsed_sec": 2.363,
+          "output_tokens": 256,
+          "aggregate_tok_s": 108.35,
+          "per_stream_tok_s": 108.35
+        },
+        {
+          "concurrency": 1,
+          "elapsed_sec": 2.379,
+          "output_tokens": 256,
+          "aggregate_tok_s": 107.61,
+          "per_stream_tok_s": 107.61
+        },
+        {
+          "concurrency": 1,
+          "elapsed_sec": 2.377,
+          "output_tokens": 256,
+          "aggregate_tok_s": 107.68,
+          "per_stream_tok_s": 107.68
+        }
+      ],
+      "n_runs": 3,
+      "output_tokens_per_request": 256,
+      "concurrency": 1,
+      "median_decode_tok_s": 107.68,
+      "min_decode_tok_s": 107.61,
+      "max_decode_tok_s": 108.35,
+      "dispersion_range_tok_s": 0.74,
+      "dispersion_relative_pct": 0.687,
+      "stdev_tok_s": 0.4085,
+      "ttft_proxy_sec": 0.056
+    },
+    "spec_decode": {
+      "available": true,
+      "source": "vLLM /metrics spec_decode counters, differenced across the gate",
+      "counters_before": {
+        "vllm:spec_decode_num_drafts_total": 3.0,
+        "vllm:spec_decode_num_draft_tokens_total": 9.0,
+        "vllm:spec_decode_num_accepted_tokens_total": 9.0
+      },
+      "counters_after": {
+        "vllm:spec_decode_num_drafts_total": 291.0,
+        "vllm:spec_decode_num_draft_tokens_total": 873.0,
+        "vllm:spec_decode_num_accepted_tokens_total": 497.0
+      },
+      "drafts": 288.0,
+      "draft_tokens": 864.0,
+      "accepted_tokens": 488.0,
+      "mtp_depth": 3,
+      "draft_token_acceptance_rate": 0.5648,
+      "mean_accepted_length": 2.6944,
+      "draft_tokens_per_draft": 3.0,
+      "accepted_per_position": {
+        "position=0": 243.0,
+        "position=1": 157.0,
+        "position=2": 88.0
+      },
+      "per_position_acceptance_rate": {
+        "position=0": 0.8438,
+        "position=1": 0.5451,
+        "position=2": 0.3056
+      }
+    },
+    "retrieval_moved_vs_baseline": false,
+    "acceptance_delta_vs_baseline": 0.0,
+    "median_decode_delta_tok_s": 0.12
+  },
+  "required_memory_points": {
+    "basis": "text and decode gates from run E, the combined image gate from run B3; both at the qualified config",
+    "device_total_mib": 32607,
+    "before_load": {
+      "name": "before_load",
+      "utc": "2026-08-16T01:10:33Z",
+      "memory_total_mib": 32607,
+      "memory_used_mib": 2,
+      "memory_free_mib": 32149,
+      "utilization_gpu_pct": 0,
+      "power_draw_w": 27.65
+    },
+    "after_startup": {
+      "name": "after_startup",
+      "utc": "2026-08-16T01:11:28Z",
+      "memory_total_mib": 32607,
+      "memory_used_mib": 30390,
+      "memory_free_mib": 1761,
+      "utilization_gpu_pct": 0,
+      "power_draw_w": 79.18
+    },
+    "peak_prefill": {
+      "text_261794_token_prefill_peak_mib": 31350,
+      "text_261794_token_prefill_peak_gib": 30.615,
+      "combined_236824_token_plus_7mp_peak_mib": 31690,
+      "combined_236824_token_plus_7mp_peak_gib": 30.947,
+      "sampled_at_1hz_during_the_request": true
+    },
+    "after_release": {
+      "name": "after_release",
+      "utc": "2026-08-16T01:17:49Z",
+      "memory_total_mib": 32607,
+      "memory_used_mib": 2,
+      "memory_free_mib": 32149,
+      "utilization_gpu_pct": 0,
+      "power_draw_w": 34.21
+    },
+    "release_is_complete": true
+  },
+  "memory_samples": {
+    "point_samples": {
+      "A": [
+        {
+          "name": "before_load",
+          "utc": "2026-08-16T00:30:23Z",
+          "memory_total_mib": 32607,
+          "memory_used_mib": 2,
+          "memory_free_mib": 32149,
+          "utilization_gpu_pct": 0,
+          "power_draw_w": 22.7
+        },
+        {
+          "name": "startup_failed",
+          "utc": "2026-08-16T00:38:54Z",
+          "memory_total_mib": 32607,
+          "memory_used_mib": 2,
+          "memory_free_mib": 32149,
+          "utilization_gpu_pct": 0,
+          "power_draw_w": 51.68
+        },
+        {
+          "name": "before_load",
+          "utc": "2026-08-16T00:39:58Z",
+          "memory_total_mib": 32607,
+          "memory_used_mib": 2,
+          "memory_free_mib": 32149,
+          "utilization_gpu_pct": 0,
+          "power_draw_w": 23.08
+        },
+        {
+          "name": "after_startup",
+          "utc": "2026-08-16T00:40:53Z",
+          "memory_total_mib": 32607,
+          "memory_used_mib": 31000,
+          "memory_free_mib": 1151,
+          "utilization_gpu_pct": 0,
+          "power_draw_w": 76.4
+        },
+        {
+          "name": "after_g2_release",
+          "utc": "2026-08-16T00:43:53Z",
+          "memory_total_mib": 32607,
+          "memory_used_mib": 32002,
+          "memory_free_mib": 149,
+          "utilization_gpu_pct": 88,
+          "power_draw_w": 383.15
+        },
+        {
+          "name": "after_release",
+          "utc": "2026-08-16T00:47:15Z",
+          "memory_total_mib": 32607,
+          "memory_used_mib": 2,
+          "memory_free_mib": 32149,
+          "utilization_gpu_pct": 0,
+          "power_draw_w": 33.83
+        }
+      ],
+      "B": [
+        {
+          "name": "before_load",
+          "utc": "2026-08-16T00:51:03Z",
+          "memory_total_mib": 32607,
+          "memory_used_mib": 2,
+          "memory_free_mib": 32149,
+          "utilization_gpu_pct": 0,
+          "power_draw_w": 23.11
+        },
+        {
+          "name": "after_startup",
+          "utc": "2026-08-16T00:51:58Z",
+          "memory_total_mib": 32607,
+          "memory_used_mib": 31000,
+          "memory_free_mib": 1151,
+          "utilization_gpu_pct": 0,
+          "power_draw_w": 77.36
+        },
+        {
+          "name": "after_gate3_release",
+          "utc": "2026-08-16T00:54:28Z",
+          "memory_total_mib": 32607,
+          "memory_used_mib": 32116,
+          "memory_free_mib": 35,
+          "utilization_gpu_pct": 100,
+          "power_draw_w": 399.69
+        },
+        {
+          "name": "after_release",
+          "utc": "2026-08-16T00:54:38Z",
+          "memory_total_mib": 32607,
+          "memory_used_mib": 2,
+          "memory_free_mib": 32149,
+          "utilization_gpu_pct": 0,
+          "power_draw_w": 32.12
+        }
+      ],
+      "B2": [
+        {
+          "name": "before_load",
+          "utc": "2026-08-16T01:01:33Z",
+          "memory_total_mib": 32607,
+          "memory_used_mib": 2,
+          "memory_free_mib": 32149,
+          "utilization_gpu_pct": 0,
+          "power_draw_w": 23.21
+        },
+        {
+          "name": "after_startup",
+          "utc": "2026-08-16T01:02:28Z",
+          "memory_total_mib": 32607,
+          "memory_used_mib": 30930,
+          "memory_free_mib": 1221,
+          "utilization_gpu_pct": 0,
+          "power_draw_w": 77.44
+        },
+        {
+          "name": "after_gate3_release",
+          "utc": "2026-08-16T01:04:57Z",
+          "memory_total_mib": 32607,
+          "memory_used_mib": 32124,
+          "memory_free_mib": 27,
+          "utilization_gpu_pct": 100,
+          "power_draw_w": 400.15
+        },
+        {
+          "name": "after_release",
+          "utc": "2026-08-16T01:05:08Z",
+          "memory_total_mib": 32607,
+          "memory_used_mib": 2,
+          "memory_free_mib": 32149,
+          "utilization_gpu_pct": 0,
+          "power_draw_w": 30.79
+        }
+      ],
+      "B3": [
+        {
+          "name": "before_load",
+          "utc": "2026-08-16T01:06:03Z",
+          "memory_total_mib": 32607,
+          "memory_used_mib": 2,
+          "memory_free_mib": 32149,
+          "utilization_gpu_pct": 0,
+          "power_draw_w": 28.07
+        },
+        {
+          "name": "after_startup",
+          "utc": "2026-08-16T01:06:58Z",
+          "memory_total_mib": 32607,
+          "memory_used_mib": 30390,
+          "memory_free_mib": 1761,
+          "utilization_gpu_pct": 0,
+          "power_draw_w": 78.0
+        },
+        {
+          "name": "after_gate3_release",
+          "utc": "2026-08-16T01:09:36Z",
+          "memory_total_mib": 32607,
+          "memory_used_mib": 31690,
+          "memory_free_mib": 461,
+          "utilization_gpu_pct": 100,
+          "power_draw_w": 400.02
+        },
+        {
+          "name": "after_release",
+          "utc": "2026-08-16T01:09:47Z",
+          "memory_total_mib": 32607,
+          "memory_used_mib": 2,
+          "memory_free_mib": 32149,
+          "utilization_gpu_pct": 0,
+          "power_draw_w": 32.83
+        }
+      ],
+      "B4": [
+        {
+          "name": "before_load",
+          "utc": "2026-08-16T01:25:11Z",
+          "memory_total_mib": 32607,
+          "memory_used_mib": 2,
+          "memory_free_mib": 32149,
+          "utilization_gpu_pct": 0,
+          "power_draw_w": 30.16
+        },
+        {
+          "name": "after_startup",
+          "utc": "2026-08-16T01:26:07Z",
+          "memory_total_mib": 32607,
+          "memory_used_mib": 31390,
+          "memory_free_mib": 761,
+          "utilization_gpu_pct": 0,
+          "power_draw_w": 80.29
+        },
+        {
+          "name": "after_gate3_release",
+          "utc": "2026-08-16T01:26:10Z",
+          "memory_total_mib": 32607,
+          "memory_used_mib": 32144,
+          "memory_free_mib": 7,
+          "utilization_gpu_pct": 100,
+          "power_draw_w": 271.18
+        },
+        {
+          "name": "after_release",
+          "utc": "2026-08-16T01:26:21Z",
+          "memory_total_mib": 32607,
+          "memory_used_mib": 2,
+          "memory_free_mib": 32149,
+          "utilization_gpu_pct": 0,
+          "power_draw_w": 28.8
+        }
+      ],
+      "C": [
+        {
+          "name": "before_load",
+          "utc": "2026-08-16T00:57:28Z",
+          "memory_total_mib": 32607,
+          "memory_used_mib": 2,
+          "memory_free_mib": 32149,
+          "utilization_gpu_pct": 0,
+          "power_draw_w": 23.75
+        },
+        {
+          "name": "after_startup",
+          "utc": "2026-08-16T00:58:24Z",
+          "memory_total_mib": 32607,
+          "memory_used_mib": 31000,
+          "memory_free_mib": 1151,
+          "utilization_gpu_pct": 0,
+          "power_draw_w": 76.62
+        },
+        {
+          "name": "after_release",
+          "utc": "2026-08-16T00:58:41Z",
+          "memory_total_mib": 32607,
+          "memory_used_mib": 2,
+          "memory_free_mib": 32149,
+          "utilization_gpu_pct": 0,
+          "power_draw_w": 27.13
+        }
+      ],
+      "D": [
+        {
+          "name": "before_load",
+          "utc": "2026-08-16T01:20:43Z",
+          "memory_total_mib": 32607,
+          "memory_used_mib": 2,
+          "memory_free_mib": 32149,
+          "utilization_gpu_pct": 0,
+          "power_draw_w": 26.49
+        },
+        {
+          "name": "after_startup",
+          "utc": "2026-08-16T01:21:39Z",
+          "memory_total_mib": 32607,
+          "memory_used_mib": 30390,
+          "memory_free_mib": 1761,
+          "utilization_gpu_pct": 0,
+          "power_draw_w": 77.41
+        },
+        {
+          "name": "after_g2c_release",
+          "utc": "2026-08-16T01:24:39Z",
+          "memory_total_mib": 32607,
+          "memory_used_mib": 31350,
+          "memory_free_mib": 801,
+          "utilization_gpu_pct": 100,
+          "power_draw_w": 400.01
+        },
+        {
+          "name": "after_release",
+          "utc": "2026-08-16T01:24:57Z",
+          "memory_total_mib": 32607,
+          "memory_used_mib": 2,
+          "memory_free_mib": 32149,
+          "utilization_gpu_pct": 0,
+          "power_draw_w": 32.87
+        }
+      ],
+      "E": [
+        {
+          "name": "before_load",
+          "utc": "2026-08-16T01:10:33Z",
+          "memory_total_mib": 32607,
+          "memory_used_mib": 2,
+          "memory_free_mib": 32149,
+          "utilization_gpu_pct": 0,
+          "power_draw_w": 27.65
+        },
+        {
+          "name": "after_startup",
+          "utc": "2026-08-16T01:11:28Z",
+          "memory_total_mib": 32607,
+          "memory_used_mib": 30390,
+          "memory_free_mib": 1761,
+          "utilization_gpu_pct": 0,
+          "power_draw_w": 79.18
+        },
+        {
+          "name": "after_g2_release",
+          "utc": "2026-08-16T01:14:29Z",
+          "memory_total_mib": 32607,
+          "memory_used_mib": 31350,
+          "memory_free_mib": 801,
+          "utilization_gpu_pct": 100,
+          "power_draw_w": 399.97
+        },
+        {
+          "name": "after_release",
+          "utc": "2026-08-16T01:17:49Z",
+          "memory_total_mib": 32607,
+          "memory_used_mib": 2,
+          "memory_free_mib": 32149,
+          "utilization_gpu_pct": 0,
+          "power_draw_w": 34.21
+        }
+      ],
+      "F": [
+        {
+          "name": "before_load",
+          "utc": "2026-08-16T01:19:18Z",
+          "memory_total_mib": 32607,
+          "memory_used_mib": 2,
+          "memory_free_mib": 32149,
+          "utilization_gpu_pct": 0,
+          "power_draw_w": 27.23
+        },
+        {
+          "name": "after_startup",
+          "utc": "2026-08-16T01:20:13Z",
+          "memory_total_mib": 32607,
+          "memory_used_mib": 30390,
+          "memory_free_mib": 1761,
+          "utilization_gpu_pct": 0,
+          "power_draw_w": 78.38
+        },
+        {
+          "name": "after_release",
+          "utc": "2026-08-16T01:20:30Z",
+          "memory_total_mib": 32607,
+          "memory_used_mib": 2,
+          "memory_free_mib": 32149,
+          "utilization_gpu_pct": 0,
+          "power_draw_w": 27.4
+        }
+      ]
+    },
+    "per_phase_summary": {
+      "A": {
+        "startup": {
+          "samples": 55,
+          "peak_used_mib": 31000,
+          "peak_used_gib": 30.273,
+          "min_used_mib": 2,
+          "median_used_mib": 750
+        },
+        "g2_long_needle": {
+          "samples": 176,
+          "peak_used_mib": 32002,
+          "peak_used_gib": 31.252,
+          "min_used_mib": 31000,
+          "median_used_mib": 32002
+        },
+        "gate6_second_long": {
+          "samples": 177,
+          "peak_used_mib": 32002,
+          "peak_used_gib": 31.252,
+          "min_used_mib": 32002,
+          "median_used_mib": 32002
+        },
+        "g5_decode": {
+          "samples": 10,
+          "peak_used_mib": 32002,
+          "peak_used_gib": 31.252,
+          "min_used_mib": 32002,
+          "median_used_mib": 32002
+        },
+        "shutdown": {
+          "samples": 10,
+          "peak_used_mib": 2,
+          "peak_used_gib": 0.002,
+          "min_used_mib": 2,
+          "median_used_mib": 2
+        },
+        "after_release": {
+          "samples": 3,
+          "peak_used_mib": 2,
+          "peak_used_gib": 0.002,
+          "min_used_mib": 2,
+          "median_used_mib": 2
+        }
+      },
+      "B": {
+        "startup": {
+          "samples": 55,
+          "peak_used_mib": 31000,
+          "peak_used_gib": 30.273,
+          "min_used_mib": 2,
+          "median_used_mib": 750
+        },
+        "gate3_combined": {
+          "samples": 146,
+          "peak_used_mib": 32002,
+          "peak_used_gib": 31.252,
+          "min_used_mib": 31000,
+          "median_used_mib": 32002
+        },
+        "shutdown": {
+          "samples": 10,
+          "peak_used_mib": 2,
+          "peak_used_gib": 0.002,
+          "min_used_mib": 2,
+          "median_used_mib": 2
+        },
+        "after_release": {
+          "samples": 3,
+          "peak_used_mib": 2,
+          "peak_used_gib": 0.002,
+          "min_used_mib": 2,
+          "median_used_mib": 2
+        }
+      },
+      "B2": {
+        "startup": {
+          "samples": 55,
+          "peak_used_mib": 30930,
+          "peak_used_gib": 30.205,
+          "min_used_mib": 2,
+          "median_used_mib": 750
+        },
+        "gate3_combined": {
+          "samples": 145,
+          "peak_used_mib": 31870,
+          "peak_used_gib": 31.123,
+          "min_used_mib": 30930,
+          "median_used_mib": 31870
+        },
+        "shutdown": {
+          "samples": 11,
+          "peak_used_mib": 32124,
+          "peak_used_gib": 31.371,
+          "min_used_mib": 2,
+          "median_used_mib": 2
+        },
+        "after_release": {
+          "samples": 3,
+          "peak_used_mib": 2,
+          "peak_used_gib": 0.002,
+          "min_used_mib": 2,
+          "median_used_mib": 2
+        }
+      },
+      "B3": {
+        "startup": {
+          "samples": 55,
+          "peak_used_mib": 30390,
+          "peak_used_gib": 29.678,
+          "min_used_mib": 2,
+          "median_used_mib": 750
+        },
+        "gate3_combined": {
+          "samples": 154,
+          "peak_used_mib": 31690,
+          "peak_used_gib": 30.947,
+          "min_used_mib": 30390,
+          "median_used_mib": 31350
+        },
+        "shutdown": {
+          "samples": 11,
+          "peak_used_mib": 4,
+          "peak_used_gib": 0.004,
+          "min_used_mib": 2,
+          "median_used_mib": 2
+        },
+        "after_release": {
+          "samples": 3,
+          "peak_used_mib": 2,
+          "peak_used_gib": 0.002,
+          "min_used_mib": 2,
+          "median_used_mib": 2
+        }
+      },
+      "B4": {
+        "startup": {
+          "samples": 55,
+          "peak_used_mib": 31390,
+          "peak_used_gib": 30.654,
+          "min_used_mib": 2,
+          "median_used_mib": 750
+        },
+        "gate3_combined": {
+          "samples": 3,
+          "peak_used_mib": 31930,
+          "peak_used_gib": 31.182,
+          "min_used_mib": 31390,
+          "median_used_mib": 31390
+        },
+        "shutdown": {
+          "samples": 10,
+          "peak_used_mib": 4,
+          "peak_used_gib": 0.004,
+          "min_used_mib": 2,
+          "median_used_mib": 2
+        },
+        "after_release": {
+          "samples": 3,
+          "peak_used_mib": 2,
+          "peak_used_gib": 0.002,
+          "min_used_mib": 2,
+          "median_used_mib": 2
+        }
+      },
+      "C": {
+        "startup": {
+          "samples": 55,
+          "peak_used_mib": 31000,
+          "peak_used_gib": 30.273,
+          "min_used_mib": 2,
+          "median_used_mib": 750
+        },
+        "gate4_vision": {
+          "samples": 6,
+          "peak_used_mib": 31478,
+          "peak_used_gib": 30.74,
+          "min_used_mib": 31434,
+          "median_used_mib": 31465
+        },
+        "shutdown": {
+          "samples": 10,
+          "peak_used_mib": 2,
+          "peak_used_gib": 0.002,
+          "min_used_mib": 2,
+          "median_used_mib": 2
+        },
+        "after_release": {
+          "samples": 3,
+          "peak_used_mib": 2,
+          "peak_used_gib": 0.002,
+          "min_used_mib": 2,
+          "median_used_mib": 2
+        }
+      },
+      "D": {
+        "startup": {
+          "samples": 55,
+          "peak_used_mib": 30390,
+          "peak_used_gib": 29.678,
+          "min_used_mib": 2,
+          "median_used_mib": 750
+        },
+        "g2c_long_needle": {
+          "samples": 176,
+          "peak_used_mib": 31350,
+          "peak_used_gib": 30.615,
+          "min_used_mib": 30390,
+          "median_used_mib": 31350
+        },
+        "g5c_decode": {
+          "samples": 8,
+          "peak_used_mib": 31350,
+          "peak_used_gib": 30.615,
+          "min_used_mib": 31350,
+          "median_used_mib": 31350
+        },
+        "shutdown": {
+          "samples": 10,
+          "peak_used_mib": 2,
+          "peak_used_gib": 0.002,
+          "min_used_mib": 2,
+          "median_used_mib": 2
+        },
+        "after_release": {
+          "samples": 3,
+          "peak_used_mib": 2,
+          "peak_used_gib": 0.002,
+          "min_used_mib": 2,
+          "median_used_mib": 2
+        }
+      },
+      "E": {
+        "startup": {
+          "samples": 55,
+          "peak_used_mib": 30390,
+          "peak_used_gib": 29.678,
+          "min_used_mib": 2,
+          "median_used_mib": 750
+        },
+        "g2_long_needle": {
+          "samples": 176,
+          "peak_used_mib": 31350,
+          "peak_used_gib": 30.615,
+          "min_used_mib": 30390,
+          "median_used_mib": 31350
+        },
+        "g2_released": {
+          "samples": 1,
+          "peak_used_mib": 31350,
+          "peak_used_gib": 30.615,
+          "min_used_mib": 31350,
+          "median_used_mib": 31350
+        },
+        "gate6_second_long": {
+          "samples": 177,
+          "peak_used_mib": 31350,
+          "peak_used_gib": 30.615,
+          "min_used_mib": 31350,
+          "median_used_mib": 31350
+        },
+        "g5_decode": {
+          "samples": 8,
+          "peak_used_mib": 31350,
+          "peak_used_gib": 30.615,
+          "min_used_mib": 31350,
+          "median_used_mib": 31350
+        },
+        "shutdown": {
+          "samples": 10,
+          "peak_used_mib": 2,
+          "peak_used_gib": 0.002,
+          "min_used_mib": 2,
+          "median_used_mib": 2
+        },
+        "after_release": {
+          "samples": 3,
+          "peak_used_mib": 2,
+          "peak_used_gib": 0.002,
+          "min_used_mib": 2,
+          "median_used_mib": 2
+        }
+      },
+      "F": {
+        "startup": {
+          "samples": 55,
+          "peak_used_mib": 30390,
+          "peak_used_gib": 29.678,
+          "min_used_mib": 2,
+          "median_used_mib": 750
+        },
+        "gate4_vision": {
+          "samples": 6,
+          "peak_used_mib": 30896,
+          "peak_used_gib": 30.172,
+          "min_used_mib": 30832,
+          "median_used_mib": 30874
+        },
+        "shutdown": {
+          "samples": 10,
+          "peak_used_mib": 2,
+          "peak_used_gib": 0.002,
+          "min_used_mib": 2,
+          "median_used_mib": 2
+        },
+        "after_release": {
+          "samples": 3,
+          "peak_used_mib": 2,
+          "peak_used_gib": 0.002,
+          "min_used_mib": 2,
+          "median_used_mib": 2
+        }
+      }
+    },
+    "sampler": {
+      "tool": "nvidia-smi --query-gpu=memory.total,memory.used,memory.free,utilization.gpu,temperature.gpu,power.draw,clocks.sm",
+      "interval_sec": 1.0,
+      "points": [
+        "before_load",
+        "after_startup",
+        "after each gate release",
+        "after_release"
+      ],
+      "note": "every figure here is device memory reported by the driver; serialized bytes on disk are never called VRAM"
+    }
+  },
+  "wall_times_sec": {
+    "gate1_startup_native_allocation": 55.691,
+    "gate2_long_needle_exact": 180.316,
+    "gate3_combined_long_text_and_7mp_image": 157.427,
+    "gate4_image_suite_24_of_30": 5.737,
+    "gate5_three_warmed_decode_runs": 7.593,
+    "gate6_second_long_request_after_release": 181.707
+  },
+  "live_service": {
+    "snapshot_receipt": "receipts/aiboss-live-service-snapshot.json",
+    "snapshot_sha256": "268ea6965f01b92b1db9d8fde3f3dd33cdc566a0cafbca50ce9ca7f9d1df4ccb",
+    "stopped_for_this_run": true,
+    "restored_after_run": "restored, active and healthy on its snapshotted spec: systemctl --user start qwen38-27b.service, podman health=healthy, GET /health=200, a real completion served on model Qwen3.8-27B at max_model_len 262144, and all fifteen compared podman inspect fields (image digest, cmd, entrypoint, 108 env vars, binds, devices, network, ipc, shm, healthcheck, restart policy, create command, privileged, ulimits) identical to receipts/aiboss-live-service-snapshot.json; GPU back to 30,449 MiB used, the same figure as before the stop"
+  },
+  "attempts": [
+    {
+      "attempt": 1,
+      "tag": "A",
+      "utc": "2026-08-16T00:30:22Z",
+      "config": "util 0.97, max_pixels 8388608, no allocator config",
+      "outcome": "abandoned by the operator, not by the engine",
+      "detail": "the engine started correctly and served the model (GPU KV cache size 272,570 tokens, maximum concurrency 1.04x for 262,144, /v1/models answered), but the driver's readiness probe additionally required a 'Uvicorn running on' log banner that this build never prints. The probe was changed to poll /v1/models only and the run was relaunched with the same launch spec. No gate result was taken from this attempt.",
+      "preserved_log": "logs/server-A-attempt1-driver-probe-defect.log"
+    },
+    {
+      "attempt": 2,
+      "tag": "A",
+      "utc": "2026-08-16T00:39:57Z",
+      "config": "util 0.97, max_pixels 8388608, no allocator config",
+      "outcome": "gates 1, 2, 6, 5 all PASS at the published utilisation: KV 272,570 tokens, 1.04x at 262,144, needle exact at 261,794, second needle exact at 261,792, decode median 104.53 tok/s"
+    },
+    {
+      "attempt": 3,
+      "tag": "B",
+      "utc": "2026-08-16T00:51:02Z",
+      "config": "util 0.97, max_pixels 8388608, no allocator config",
+      "outcome": "gate 3 FAIL: torch.OutOfMemoryError in the vision tower, 62.00 MiB wanted, 34.56 MiB free"
+    },
+    {
+      "attempt": 4,
+      "tag": "C",
+      "utc": "2026-08-16T00:57:28Z",
+      "config": "util 0.97, max_pixels 8388608, no allocator config",
+      "outcome": "gate 4 PASS, 24/30"
+    },
+    {
+      "attempt": 5,
+      "tag": "B2",
+      "utc": "2026-08-16T01:01:32Z",
+      "config": "util 0.97, max_pixels 8388608, expandable_segments:True",
+      "outcome": "gate 3 FAIL again: the allocator setting freed memory but the engine spent it on KV (280,017 tokens), 62.00 MiB wanted, 26.50 MiB free"
+    },
+    {
+      "attempt": 6,
+      "tag": "B3",
+      "utc": "2026-08-16T01:06:03Z",
+      "config": "util 0.955, max_pixels 8388608, expandable_segments:True",
+      "outcome": "gate 3 PASS: 236,824 prompt tokens plus the 7,077,888-pixel fixture answered '1376346594 | red, blue' exactly, with KV still 265,122 tokens and 1.01x at 262,144"
+    },
+    {
+      "attempt": 7,
+      "tag": "E",
+      "utc": "2026-08-16T01:10:33Z",
+      "config": "util 0.955, max_pixels 8388608, expandable_segments:True",
+      "outcome": "gates 1, 2, 6, 5 re-run and PASS at the qualified config"
+    },
+    {
+      "attempt": 8,
+      "tag": "F",
+      "utc": "2026-08-16T01:19:18Z",
+      "config": "util 0.955, max_pixels 8388608, expandable_segments:True",
+      "outcome": "gate 4 re-run and PASS at the qualified config, 24/30"
+    },
+    {
+      "attempt": 9,
+      "tag": "D",
+      "utc": "2026-08-16T01:20:44Z",
+      "config": "util 0.955, max_pixels 8388608, expandable_segments:True, --no-enable-prefix-caching",
+      "outcome": "prefix-caching control arm"
+    },
+    {
+      "attempt": 10,
+      "tag": "B4",
+      "config": "util 0.97, max_pixels 4194304, expandable_segments:True",
+      "outcome": "image-ceiling probe: does lowering max_pixels instead of utilisation let the combined request through at 0.97?"
+    }
+  ],
+  "correctness_caveats": [
+    "the runtime image lacks upstream vLLM #51113 (mamba align-mode chunk splitting past last_cache_position). Each long-context gate therefore ran in a freshly started server process, and an explicit --no-enable-prefix-caching control arm is published. The material finding is that this profile already runs with prefix caching off, so the poisoning path is not exercised.",
+    "gate 6 intentionally reuses gate 2's process at the same request length, because in-process recovery of the allocation is the property it tests.",
+    "gate 4's 24/30 sits exactly on the acceptance threshold; it is a pass with no margin, and the per-case answers are published so a reader can audit it.",
+    "gate 5's three runs are warmed and single-stream on an otherwise idle card, but they follow two 261,794-token requests in the same process, which is the state a long-context user would actually decode in."
+  ],
+  "evidence_files": {
+    "qualification-5090-context-commands.txt": "2ef561d3eefe4c6a3dac232772d514648a428d76fa3317f04f8cbcc0cbdd9c8c",
+    "qualification-5090-context-gates.jsonl": "07ac6240db026679caf992e7942756cd4ff91d18e1a8a5b75ccbc18c7f4202bd",
+    "qualification-5090-context-gpu-samples-A.jsonl": "c9d4f8273b3a4cb11f404f36e9a6f227cd142a9f53f2a4e5938bd15712ddfec7",
+    "qualification-5090-context-gpu-samples-B.jsonl": "13b4dd9de5c8d5b95b6926460265393a306b0a69fa481faa36550d572bb1109f",
+    "qualification-5090-context-gpu-samples-B2.jsonl": "f52ae2e6f8b246ee5be3f9f261e61f8a90aeb2caebdd9a4bcc584bab5ab85b98",
+    "qualification-5090-context-gpu-samples-B3.jsonl": "8029f5280f53f42ec80ffcdfd9d494fc95af5fcd9c76db86e7fa7ec15f819db9",
+    "qualification-5090-context-gpu-samples-B4.jsonl": "3461a1fc178b8888fd28136161ee1a4acb6fcd009023f836e87452c3e5ee2864",
+    "qualification-5090-context-gpu-samples-C.jsonl": "5f7702ffdb5212aaa8fec3dfae25a19df7912eaa956da1b8f9eaaa93e8f68e05",
+    "qualification-5090-context-gpu-samples-D.jsonl": "4c68abc500f1585340c46fa01b12f547337981cbdd1eb34a1ff47dc36dc3a5c7",
+    "qualification-5090-context-gpu-samples-E.jsonl": "426d8c3cf9d2bcd515bae55f617de2dff6a6de3156162fb8e95f7a40b7fafcee",
+    "qualification-5090-context-gpu-samples-F.jsonl": "5883228d49519cdf0b88bc166a0514fcc7773b18b0a5d9e1a32ca57d0b0cbce5",
+    "qualification-5090-context-model-fetch-verify.json": "588683b5cd33561d698eb1176c12a430d14a008d42c10bee44bf4ebf6b63c300",
+    "qualification-5090-context-server-A-attempt1-driver-probe-defect.log": "6b5417011212ce0f7a703273b9199270b0a29c982d2849a9d8931d92bb6cb119",
+    "qualification-5090-context-server-A.log": "5ec254094a98b045d4285ca8d9a8f7df40d0cc34761057882cef062bba92280c",
+    "qualification-5090-context-server-B.log": "8367606b8373a7abdf3e56975ea964f4380e26d0670416e15a7e16fd4db91889",
+    "qualification-5090-context-server-B2.log": "c896a3ad8439d6eb48b618f14dbe5ffdaddd4ed769c8917e9b3c5a4eae18c1ee",
+    "qualification-5090-context-server-B3.log": "eedff22e193e9480bf99ac90c00281f6f705fd730c90570e0369848feec3acea",
+    "qualification-5090-context-server-B4.log": "1444377cbe88287af77fbb906adebf02cd0c1ab7094bc0c3454a7f97e1133351",
+    "qualification-5090-context-server-C.log": "aeae452e851e6868d0de1116406f8cff119f9713e798365c6d9057c80082dd8a",
+    "qualification-5090-context-server-D.log": "4b13e607a69047d97296efffa6cbe4fde2b3c4ef81e8ad6f50929e03e0e06e87",
+    "qualification-5090-context-server-E.log": "8c31c0b17164fae7a84bd29a86176aae975d0ec1e6fb6a7a7f53a9cb86d03e8e",
+    "qualification-5090-context-server-F.log": "5f9f4e8a845046d7fb2f35ec5a15da4aa7d27a3c4f23d567c33643e11c76eb21"
+  }
+}

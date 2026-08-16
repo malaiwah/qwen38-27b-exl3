@@ -1,6 +1,6 @@
 {
   "schema": "qwen38-aiboss-live-service-snapshot/1",
-  "generated_utc": "2026-08-16T00:29:55Z",
+  "generated_utc": "2026-08-16T01:34:44Z",
   "purpose": "verbatim restore spec for the user's production qwen38-27b service on AIBoss, captured before the physical RTX 5090 rank-1 qualification took the GPU",
   "host": {
     "hostname": "aiboss",
@@ -477,6 +477,45 @@
       "compute_mode": "Exclusive_Process",
       "compute_apps": [],
       "idle": true
+    }
+  },
+  "restored": {
+    "restored_utc": "2026-08-16T01:34:26Z",
+    "command": "systemctl --user start qwen38-27b.service",
+    "systemd_is_active": "active",
+    "container_state": "running",
+    "container_health": "healthy",
+    "health_endpoint": "GET http://127.0.0.1:8000/health -> 200",
+    "generation_proof": {
+      "request": "POST /v1/completions model=Qwen3.8-27B prompt=\"2+2=\" max_tokens=8 temperature=0",
+      "served_model": "Qwen3.8-27B",
+      "max_model_len": 262144,
+      "completion_tokens": 8,
+      "finish_reason": "length",
+      "system_fingerprint": "vllm-0.11.2.dev280+gilded.gnosis.v20.vllm4d006a4.b12xcd3ce19.fi1ac6942.cu132.20260810.r34-78f6870b"
+    },
+    "gpu_memory_used_mib_after_restore": 30449,
+    "gpu_memory_used_mib_before_stop": 30449,
+    "spec_diff_vs_snapshot": {
+      "method": "podman inspect of the restored container compared field by field against this snapshot",
+      "fields_compared": [
+        "image_digest",
+        "image_name",
+        "cmd",
+        "entrypoint",
+        "env",
+        "binds",
+        "devices",
+        "network_mode",
+        "ipc_mode",
+        "shm_size",
+        "healthcheck",
+        "restart_policy",
+        "create_command",
+        "privileged",
+        "ulimits"
+      ],
+      "all_fields_identical": true
     }
   },
   "restore_procedure": [

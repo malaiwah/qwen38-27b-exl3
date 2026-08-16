@@ -1,15 +1,24 @@
 {
-  "schema": "qwen38-production-image/1",
-  "generated_utc": "2026-08-16T00:20:33Z",
+  "schema": "qwen38-production-image/2",
+  "generated_utc": "2026-08-16T01:06:24Z",
   "purpose": "P0 / rank 2 immutable production runtime: the three content-pinned patch modules folded into the pinned r34 digest, replacing the read-only source bind mounts the model cards' patched recipes required",
+  "release_unit": "the image described at the top level of this receipt. Any image under superset_images is explicitly not the qualified artifact.",
   "hardware_scope": "built and smoke-tested on AIBoss, one physical RTX 5090 (32,607 MiB); no throughput number here is comparable to the rental RTX PRO 6000 engine-budget receipts",
   "operational_scope": "the host's live qwen38-27b service (K4 at 262,144 on the r34 digest with one bind-mounted module) was never stopped, altered or reconfigured by this receipt; smoke recipes ran as separate short-lived containers on a distinct loopback port",
+  "variant": "release",
+  "declaration": null,
   "base_image": {
     "reference": "docker.io/voipmonitor/vllm@sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b",
     "tag": "docker.io/voipmonitor/vllm:gilded-gnosis-v20-vllm4d006a4-b12xcd3ce19-fi1ac6942-cu132-20260810-r34",
     "config_id": "0ff4b1de4e950cf48dd0405562908a2f81597f4524698c0291ac2c40514ae17e",
     "present_locally_before_build": true,
     "pull_during_build": false
+  },
+  "parent_image": {
+    "reference": "docker.io/voipmonitor/vllm@sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b",
+    "description": "pinned public r34 digest",
+    "config_id": "0ff4b1de4e950cf48dd0405562908a2f81597f4524698c0291ac2c40514ae17e",
+    "manifest_digest": "sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b"
   },
   "image": {
     "tag": "localhost/vllm:gg-r34-patched",
@@ -23,12 +32,12 @@
     "pushed_to_registry": false
   },
   "build": {
-    "started_utc": "2026-08-16T00:18:55Z",
-    "finished_utc": "2026-08-16T00:18:56Z",
+    "started_utc": "2026-08-16T00:57:59Z",
+    "finished_utc": "2026-08-16T00:58:00Z",
     "host": "aiboss",
     "podman_version": "4.9.3",
-    "command": "podman build --pull=never -f /home/mbelleau/prodimage/receipts/.production-image-stage/context/Dockerfile -t localhost/vllm:gg-r34-patched /home/mbelleau/prodimage/receipts/.production-image-stage/context",
-    "context": "minimal: Dockerfile plus the three tools/ modules only",
+    "command": "podman build --pull=never -f /home/mbelleau/prodimage/receipts/.production-image-stage/release/context/Dockerfile -t localhost/vllm:gg-r34-patched /home/mbelleau/prodimage/receipts/.production-image-stage/release/context",
+    "context": "minimal: Dockerfile plus only the module(s) this layer copies",
     "context_files": [
       "Dockerfile",
       "tools/vllm-exl3-prefill-dispatch.py",
@@ -36,7 +45,7 @@
       "tools/vllm-qwen3_5_mtp-embed-quant-config.py"
     ],
     "dockerfile_sha256": "0c95510b1dc1f201bd146f21edf8544fcbfd18942da6d66cc5aa1c1854e8d63a",
-    "build_script_sha256": "8d91c81f26ce1a8dbff93395a0e2f61e033f9e6ebc695612bd8014e3ff84e8d3",
+    "build_script_sha256": "6dd1f866ba674e13868d17f31a1cd1ec34c3eb747c7678ffbd723a0b117ab8aa",
     "smoke_client_sha256": "fb95b965f558b0918ed344ed76c1afd9c0e10fd06d4935a8c3eafaf2f3cc3afa",
     "build_log_sha256": "5bd6e5ef857666b5a73bc4a60e945dafa7143e4459ba4bb6fa377883dc260155"
   },
@@ -60,6 +69,11 @@
       "bytes": 11456
     }
   ],
+  "added_by_this_layer": [
+    "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py",
+    "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5.py",
+    "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5_mtp.py"
+  ],
   "patch_modules": [
     {
       "source": "tools/vllm-exl3-prefill-dispatch.py",
@@ -67,8 +81,10 @@
       "published_sha256": "2df9d0799fd323798cead1edb773cab556c94798eec263ee03ded35408c6e4ee",
       "in_image_sha256": "2df9d0799fd323798cead1edb773cab556c94798eec263ee03ded35408c6e4ee",
       "base_image_sha256": "42c0e9150a065c48e3780eebc8b3c89ea410d82610e2c14bc97546dee6866214",
+      "parent_image_sha256": "42c0e9150a065c48e3780eebc8b3c89ea410d82610e2c14bc97546dee6866214",
       "matches_published_map": true,
-      "differs_from_base": true
+      "differs_from_base": true,
+      "added_by_this_layer": true
     },
     {
       "source": "tools/vllm-qwen3_5-embed-quant-config.py",
@@ -76,8 +92,10 @@
       "published_sha256": "04d2bd587b37142f4f55a8d00b9f8c907309490168cb7fcdfde450531df2c9e7",
       "in_image_sha256": "04d2bd587b37142f4f55a8d00b9f8c907309490168cb7fcdfde450531df2c9e7",
       "base_image_sha256": "5189ef2192bccd055692527b3585915e3be911f6794635c51dabf52ded2e8252",
+      "parent_image_sha256": "5189ef2192bccd055692527b3585915e3be911f6794635c51dabf52ded2e8252",
       "matches_published_map": true,
-      "differs_from_base": true
+      "differs_from_base": true,
+      "added_by_this_layer": true
     },
     {
       "source": "tools/vllm-qwen3_5_mtp-embed-quant-config.py",
@@ -85,11 +103,20 @@
       "published_sha256": "0090dc131f0eaf439b24d50baf4def9f10b052864c76e695053d64f66b274bab",
       "in_image_sha256": "0090dc131f0eaf439b24d50baf4def9f10b052864c76e695053d64f66b274bab",
       "base_image_sha256": "165306afb3bccfd7d4707ec925aa7affca119a003c6c40fb22eba13611eefa92",
+      "parent_image_sha256": "165306afb3bccfd7d4707ec925aa7affca119a003c6c40fb22eba13611eefa92",
       "matches_published_map": true,
-      "differs_from_base": true
+      "differs_from_base": true,
+      "added_by_this_layer": true
     }
   ],
   "immutability": {
+    "parent_image": "docker.io/voipmonitor/vllm@sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b",
+    "python_files_changed_vs_parent": [
+      "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py",
+      "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5.py",
+      "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5_mtp.py"
+    ],
+    "python_files_changed_vs_parent_are_exactly_this_layers_adds": true,
     "python_files_changed_vs_base": [
       "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py",
       "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5.py",
@@ -98,8 +125,10 @@
     "python_files_changed_are_exactly_the_patch_set": true,
     "image_config_entrypoint_cmd_user_workdir_unchanged": true,
     "image_config_inherited": "[\"/opt/nvidia/nvidia_entrypoint.sh\"]|[\"/usr/local/bin/run-kimi26-vllm\"]||/",
-    "env_vars_added_by_this_image": [],
-    "added_history_entries": [
+    "image_config_working_dir": "/",
+    "image_config_working_dir_is_the_duplicate_source_tree": false,
+    "env_vars_added_vs_base_image": [],
+    "added_history_entries_vs_base": [
       "/bin/sh -c #(nop) LABEL org.opencontainers.image.title=\"Gilded Gnosis vLLM r34 + Qwen3.8-27B EXL3 native-context patches\"       org.opencontainers.image.description=\"r34 with the three content-pinned EXL3/Qwen3.5 modules folded in; no runtime source mounts\"       org.opencontainers.image.base.name=\"docker.io/voipmonitor/vllm:gilded-gnosis-v20-vllm4d006a4-b12xcd3ce19-fi1ac6942-cu132-20260810-r34\"       org.opencontainers.image.base.digest=\"sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b\"       org.opencontainers.image.source=\"https://github.com/malaiwah/qwen38-27b-exl3\"       io.malaiwah.patch.exl3_py.sha256=\"2df9d0799fd323798cead1edb773cab556c94798eec263ee03ded35408c6e4ee\"       io.malaiwah.patch.qwen3_5_py.sha256=\"04d2bd587b37142f4f55a8d00b9f8c907309490168cb7fcdfde450531df2c9e7\"       io.malaiwah.patch.qwen3_5_mtp_py.sha256=\"0090dc131f0eaf439b24d50baf4def9f10b052864c76e695053d64f66b274bab\"       io.malaiwah.patch.upstream_prs=\"local-inference-lab/vllm#312,#314,#316,#318,#319\"",
       "/bin/sh -c set -eu;     V=/opt/venv/lib/python3.12/site-packages/vllm;     printf '%s  %s\\n'       2df9d0799fd323798cead1edb773cab556c94798eec263ee03ded35408c6e4ee       \"$V/model_executor/layers/quantization/exl3.py\"       04d2bd587b37142f4f55a8d00b9f8c907309490168cb7fcdfde450531df2c9e7       \"$V/model_executor/models/qwen3_5.py\"       0090dc131f0eaf439b24d50baf4def9f10b052864c76e695053d64f66b274bab       \"$V/model_executor/models/qwen3_5_mtp.py\"       | sha256sum -c -;     chmod 0644       \"$V/model_executor/layers/quantization/exl3.py\"       \"$V/model_executor/models/qwen3_5.py\"       \"$V/model_executor/models/qwen3_5_mtp.py\";     rm -f \"$V/model_executor/layers/quantization/__pycache__/exl3.\"*.pyc           \"$V/model_executor/models/__pycache__/qwen3_5.\"*.pyc           \"$V/model_executor/models/__pycache__/qwen3_5_mtp.\"*.pyc;     /opt/venv/bin/python -c 'import ast,sys;[ast.parse(open(p,encoding=\"utf-8\").read(),p) for p in sys.argv[1:]]'       \"$V/model_executor/layers/quantization/exl3.py\"       \"$V/model_executor/models/qwen3_5.py\"       \"$V/model_executor/models/qwen3_5_mtp.py\"",
       "/bin/sh -c #(nop) COPY file:2e61e3b32d33d565c5ea9a442e13e8a598c483403c73495fce7c6244af3410a3 in /opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5_mtp.py ",
@@ -111,11 +140,88 @@
     "source_bind_mounts_required_at_runtime": false,
     "startup_file_copies_required": false
   },
+  "import_resolution": {
+    "measured_in": "localhost/vllm:gg-r34-patched",
+    "measured": {
+      "probe_invocation": "podman run --entrypoint /opt/venv/bin/python IMAGE - (script on stdin, no -w), so sys.path[0] is derived from the working directory exactly as `python -m` or `python -c` would be",
+      "cwd": "/",
+      "sys_path_0": "",
+      "sys_path": [
+        "",
+        "/opt/venv/lib/python3.12/site-packages/nvidia_cutlass_dsl/dsl_packages",
+        "/opt/venv/lib/python3.12/site-packages/nvidia_cutlass_dsl/dsl_packages",
+        "/usr/lib/python312.zip",
+        "/usr/lib/python3.12",
+        "/usr/lib/python3.12/lib-dynload",
+        "/opt/venv/lib/python3.12/site-packages"
+      ],
+      "site_packages": "/opt/venv/lib/python3.12/site-packages",
+      "path_configuration_files": {
+        "_pynvml_redirector.pth": [
+          "# SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.",
+          "# SPDX-License-Identifier: BSD-3-Clause",
+          "import _pynvml_redirector"
+        ],
+        "distutils-precedence.pth": [
+          "import os; var = 'SETUPTOOLS_USE_DISTUTILS'; enabled = os.environ.get(var, 'local') == 'local'; enabled and __import__('_distutils_hack').add_shim();"
+        ],
+        "nvidia_cutlass_dsl_packages.pth": [
+          "import sys, os, nvidia_cutlass_dsl; sys.path.insert(0, os.path.join(nvidia_cutlass_dsl.__path__[0], 'dsl_packages'))"
+        ]
+      },
+      "editable_install_pth_present": false,
+      "vllm_dist_info_direct_url": {
+        "dir_info": {},
+        "url": "file:///opt/vllm"
+      },
+      "vllm_installed_editable": false,
+      "second_source_tree": "/opt/vllm",
+      "second_source_tree_on_sys_path": false,
+      "second_source_tree_reachable_from_cwd": false,
+      "modules": {
+        "vllm.model_executor.layers.quantization.exl3": {
+          "resolved_origin": "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py",
+          "resolved_origin_sha256": "2df9d0799fd323798cead1edb773cab556c94798eec263ee03ded35408c6e4ee",
+          "cached_bytecode_path": "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/__pycache__/exl3.cpython-312.pyc",
+          "stale_bytecode_present": false,
+          "unimported_duplicate_path": "/opt/vllm/vllm/model_executor/layers/quantization/exl3.py",
+          "unimported_duplicate_sha256": "42c0e9150a065c48e3780eebc8b3c89ea410d82610e2c14bc97546dee6866214"
+        },
+        "vllm.model_executor.models.qwen3_5": {
+          "resolved_origin": "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5.py",
+          "resolved_origin_sha256": "04d2bd587b37142f4f55a8d00b9f8c907309490168cb7fcdfde450531df2c9e7",
+          "cached_bytecode_path": "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/__pycache__/qwen3_5.cpython-312.pyc",
+          "stale_bytecode_present": false,
+          "unimported_duplicate_path": "/opt/vllm/vllm/model_executor/models/qwen3_5.py",
+          "unimported_duplicate_sha256": "5189ef2192bccd055692527b3585915e3be911f6794635c51dabf52ded2e8252"
+        },
+        "vllm.model_executor.models.qwen3_5_mtp": {
+          "resolved_origin": "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5_mtp.py",
+          "resolved_origin_sha256": "0090dc131f0eaf439b24d50baf4def9f10b052864c76e695053d64f66b274bab",
+          "cached_bytecode_path": "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/__pycache__/qwen3_5_mtp.cpython-312.pyc",
+          "stale_bytecode_present": false,
+          "unimported_duplicate_path": "/opt/vllm/vllm/model_executor/models/qwen3_5_mtp.py",
+          "unimported_duplicate_sha256": "165306afb3bccfd7d4707ec925aa7affca119a003c6c40fb22eba13611eefa92"
+        }
+      }
+    },
+    "other_copies_of_these_filenames_on_the_filesystem": [
+      "/opt/exllamav3-python/exllamav3/architecture/qwen3_5.py",
+      "/opt/exllamav3-python/exllamav3/architecture/qwen3_5_mtp.py",
+      "/opt/exllamav3-python/exllamav3/modules/arch_specific/qwen3_5_mtp.py",
+      "/opt/exllamav3-python/exllamav3/modules/quant/exl3.py",
+      "/opt/vllm/vllm/model_executor/layers/quantization/exl3.py",
+      "/opt/vllm/vllm/model_executor/models/qwen3_5.py",
+      "/opt/vllm/vllm/model_executor/models/qwen3_5_mtp.py",
+      "/opt/vllm/vllm/transformers_utils/configs/qwen3_5.py"
+    ]
+  },
   "toolchain": {
     "in_image": {
       "python": "3.12.3",
       "cuda_runtime_env": "13.2.1",
       "torch_cuda_arch_list": "12.0a",
+      "local_inference_cache_fingerprint": "vllme2666d9a65-b12x7cecbb2c48-136ce64f2c43f0f8",
       "libc_platform": "Linux-6.8.0-137-generic-x86_64-with-glibc2.39",
       "torch": "2.12.0+cu132",
       "torch_cuda": "13.2",
@@ -142,7 +248,8 @@
     "python_packages_sha256": "031c1296d6dbe27b6a41ea3b2f4c9fef96a2b52d4209e23ed83219eee6905836",
     "debian_packages": 318,
     "debian_packages_file": "receipts/production-image-sbom-dpkg.txt",
-    "debian_packages_sha256": "b761466750e2a0537195a8cace9fc93d9f8875e3326549fec5c64858d78042dc"
+    "debian_packages_sha256": "b761466750e2a0537195a8cace9fc93d9f8875e3326549fec5c64858d78042dc",
+    "package_lists_identical_to_release_image": null
   },
   "smoke": {
     "client": "docker/smoke_client.py, one text and one image request per recipe, exact match; image fixture drawn by tools/vision_eval.draw_digits",
@@ -155,6 +262,12 @@
   },
   "acceptance": {
     "modules_in_image_match_published_map": true,
+    "layer_adds_exactly_its_declared_files": true,
+    "import_machinery_resolves_to_patched_modules": true,
+    "no_stale_bytecode_for_patched_modules": true,
+    "only_the_imported_tree_is_patched": true,
+    "duplicate_source_tree_unreachable_from_working_dir": true,
+    "vllm_is_not_an_editable_install": true,
     "sbom_generated": true,
     "no_runtime_source_bind_mounts": null,
     "no_startup_file_copies": null,
@@ -165,7 +278,336 @@
     "image_digest_and_toolchain_recorded": true
   },
   "not_claimed": [
-    "the image has not been pushed to any public registry: repo_digests is empty and the release unit here is the local manifest digest plus the verified source map",
-    "no recipe was started on the GPU in this receipt; the smoke section records only what was attempted"
+    "no image here has been pushed to any public registry: repo_digests are local, and the release unit is the local manifest digest plus the verified source map",
+    "the model cards still document the three-mount patched recipe: collapsing their unmodified and patched recipes into one command needs a digest a reader can pull, and this digest is local to the build host",
+    "no recipe served a request, so every runtime gate (mounts, writes, endpoint) is recorded as null rather than passed"
+  ],
+  "superset_images": [
+    {
+      "variant": "apc",
+      "declaration": {
+        "role": "declared superset of the release image; prerequisite for prefix caching",
+        "qualified": false,
+        "qualification_note": "the hardware-qualified digest is the release image; using this image with --enable-prefix-caching requires its own qualification run",
+        "delta_vs_release_image": [
+          "/opt/venv/lib/python3.12/site-packages/vllm/v1/core/sched/scheduler.py"
+        ],
+        "no_published_measurement_depends_on_this_module": true,
+        "why_latent_today": {
+          "claim": "behaviourally inert on the qualified profile, not textually inert: the module is imported unconditionally and Scheduler is on every request's hot path, but the changed function is never called",
+          "changed_function": "Scheduler._mamba_block_aligned_split",
+          "call_guard": "only when need_mamba_block_aligned_split is true, i.e. has_mamba_layers and mamba_cache_mode == 'align' (vllm/v1/core/sched/scheduler.py:316-318)",
+          "align_mode_requires": "mamba_cache_mode only becomes 'align' when prefix caching is enabled (vllm/model_executor/models/config.py:558-562)",
+          "prefix_caching_default": "default-off for this hybrid model (vllm/engine/arg_utils.py:2532-2534 excludes hybrid models)",
+          "confirmed_by": "enable_prefix_caching=False in the engine banner of every recipe started in this receipt and in the archived native-MTP server logs"
+        },
+        "why_it_exists_anyway": "enabling prefix caching is the largest untapped win for repeated long prompts, and unpatched it is unsafe in the worst way: it returns wrong tokens instead of failing",
+        "upstream": {
+          "pr": "https://github.com/vllm-project/vllm/pull/51113",
+          "title": "Keep mamba align prefill chunks block-aligned past last_cache_position",
+          "merge_commit": "c56f169d9ae46ca420617e2cf5f0c9135da0f651",
+          "merged_utc_date": "2026-08-06",
+          "fixes_issue": "https://github.com/vllm-project/vllm/issues/43559"
+        },
+        "provenance": {
+          "vendored_scheduler_sha256_in_r34": "1ea341f4cc28d282452597c25d97eea84be8b5f984d2e1a6b548356c8417fdce",
+          "patch": "patches/vllm-51113-mamba-align.patch",
+          "patch_reproduces_module_byte_identically": true,
+          "evidence_receipt": "receipts/mamba-align-defect.json",
+          "evidence_receipt_sha256": "a654f3df5776466575a6706a73f3ea369b73587e6fb832a6ea5917f617c31e82",
+          "evidence_receipt_owner": "MambaAlignProof; that receipt is authoritative for the defect and the CPU-only test result, this one for the image identities"
+        },
+        "cpu_only_evidence": {
+          "test_file": "upstream tests/v1/core/test_mamba_align_chunk_split.py, run unmodified",
+          "vendored_r34_scheduler": "14 failed, 6 passed",
+          "this_module": "20 passed",
+          "gpu_used": false
+        }
+      },
+      "base_image": {
+        "reference": "docker.io/voipmonitor/vllm@sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b",
+        "tag": "docker.io/voipmonitor/vllm:gilded-gnosis-v20-vllm4d006a4-b12xcd3ce19-fi1ac6942-cu132-20260810-r34",
+        "config_id": "0ff4b1de4e950cf48dd0405562908a2f81597f4524698c0291ac2c40514ae17e",
+        "present_locally_before_build": true,
+        "pull_during_build": false
+      },
+      "parent_image": {
+        "reference": "localhost/vllm:gg-r34-patched",
+        "description": "the release image localhost/vllm:gg-r34-patched",
+        "config_id": "3cd11158a540ff4c23cece491774fecd3e61f6e4784771273e72bd65e44b773c",
+        "manifest_digest": "sha256:6eca4c693f01b6f4e112c04eacd30673b7cfbba4150e6fe2ea3ba1bbfde14c27"
+      },
+      "image": {
+        "tag": "localhost/vllm:gg-r34-patched-apc",
+        "config_id": "sha256:5ce31638c0a5c5c5ee4b5cafb7cd29170b9f2f7a5dcf6e2caa6f3b41bc6f8adc",
+        "manifest_digest": "sha256:16a936b877b90fc080181e842f47dbafc5cb8e62688799596836e34ba0b79218",
+        "created_utc": "2026-08-16 00:58:27.472555031 +0000 UTC",
+        "size_bytes": 25077647900,
+        "repo_digests": [
+          "localhost/vllm@sha256:16a936b877b90fc080181e842f47dbafc5cb8e62688799596836e34ba0b79218"
+        ],
+        "pushed_to_registry": false
+      },
+      "build": {
+        "started_utc": "2026-08-16T01:06:24Z",
+        "finished_utc": "2026-08-16T01:06:24Z",
+        "host": "aiboss",
+        "podman_version": "4.9.3",
+        "command": "podman build --pull=never -f /home/mbelleau/prodimage/receipts/.production-image-stage/apc/context/Dockerfile -t localhost/vllm:gg-r34-patched-apc --build-arg PARENT=localhost/vllm:gg-r34-patched /home/mbelleau/prodimage/receipts/.production-image-stage/apc/context",
+        "context": "minimal: Dockerfile plus only the module(s) this layer copies",
+        "context_files": [
+          "Dockerfile",
+          "tools/vllm-mamba-align-scheduler.py"
+        ],
+        "dockerfile_sha256": "d309b5cf0a736f2f09b6447e3448a0ec9a14f63ab6433f0375390563f87acb84",
+        "build_script_sha256": "d9ac95f5ff7292dc3901d7b91f142ae7b0702b9ad43d43a24a454f623cb8f94b",
+        "smoke_client_sha256": "fb95b965f558b0918ed344ed76c1afd9c0e10fd06d4935a8c3eafaf2f3cc3afa",
+        "build_log_sha256": "b8fcc643c13ddc0f789db525c6780311025285dc79df3f5dab033866708bdbf4"
+      },
+      "source_map": [
+        {
+          "source": "tools/vllm-exl3-prefill-dispatch.py",
+          "dest": "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py",
+          "sha256": "2df9d0799fd323798cead1edb773cab556c94798eec263ee03ded35408c6e4ee",
+          "bytes": 227678
+        },
+        {
+          "source": "tools/vllm-qwen3_5-embed-quant-config.py",
+          "dest": "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5.py",
+          "sha256": "04d2bd587b37142f4f55a8d00b9f8c907309490168cb7fcdfde450531df2c9e7",
+          "bytes": 24458
+        },
+        {
+          "source": "tools/vllm-qwen3_5_mtp-embed-quant-config.py",
+          "dest": "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5_mtp.py",
+          "sha256": "0090dc131f0eaf439b24d50baf4def9f10b052864c76e695053d64f66b274bab",
+          "bytes": 11456
+        },
+        {
+          "source": "tools/vllm-mamba-align-scheduler.py",
+          "dest": "/opt/venv/lib/python3.12/site-packages/vllm/v1/core/sched/scheduler.py",
+          "sha256": "b431c1066dfee3ed56bfa7e71cc8606f9afadc300f22d7fc542c43835d1b22bf",
+          "bytes": 137206
+        }
+      ],
+      "added_by_this_layer": [
+        "/opt/venv/lib/python3.12/site-packages/vllm/v1/core/sched/scheduler.py"
+      ],
+      "patch_modules": [
+        {
+          "source": "tools/vllm-exl3-prefill-dispatch.py",
+          "dest": "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py",
+          "published_sha256": "2df9d0799fd323798cead1edb773cab556c94798eec263ee03ded35408c6e4ee",
+          "in_image_sha256": "2df9d0799fd323798cead1edb773cab556c94798eec263ee03ded35408c6e4ee",
+          "base_image_sha256": "42c0e9150a065c48e3780eebc8b3c89ea410d82610e2c14bc97546dee6866214",
+          "parent_image_sha256": "2df9d0799fd323798cead1edb773cab556c94798eec263ee03ded35408c6e4ee",
+          "matches_published_map": true,
+          "differs_from_base": true,
+          "added_by_this_layer": false
+        },
+        {
+          "source": "tools/vllm-qwen3_5-embed-quant-config.py",
+          "dest": "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5.py",
+          "published_sha256": "04d2bd587b37142f4f55a8d00b9f8c907309490168cb7fcdfde450531df2c9e7",
+          "in_image_sha256": "04d2bd587b37142f4f55a8d00b9f8c907309490168cb7fcdfde450531df2c9e7",
+          "base_image_sha256": "5189ef2192bccd055692527b3585915e3be911f6794635c51dabf52ded2e8252",
+          "parent_image_sha256": "04d2bd587b37142f4f55a8d00b9f8c907309490168cb7fcdfde450531df2c9e7",
+          "matches_published_map": true,
+          "differs_from_base": true,
+          "added_by_this_layer": false
+        },
+        {
+          "source": "tools/vllm-qwen3_5_mtp-embed-quant-config.py",
+          "dest": "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5_mtp.py",
+          "published_sha256": "0090dc131f0eaf439b24d50baf4def9f10b052864c76e695053d64f66b274bab",
+          "in_image_sha256": "0090dc131f0eaf439b24d50baf4def9f10b052864c76e695053d64f66b274bab",
+          "base_image_sha256": "165306afb3bccfd7d4707ec925aa7affca119a003c6c40fb22eba13611eefa92",
+          "parent_image_sha256": "0090dc131f0eaf439b24d50baf4def9f10b052864c76e695053d64f66b274bab",
+          "matches_published_map": true,
+          "differs_from_base": true,
+          "added_by_this_layer": false
+        },
+        {
+          "source": "tools/vllm-mamba-align-scheduler.py",
+          "dest": "/opt/venv/lib/python3.12/site-packages/vllm/v1/core/sched/scheduler.py",
+          "published_sha256": "b431c1066dfee3ed56bfa7e71cc8606f9afadc300f22d7fc542c43835d1b22bf",
+          "in_image_sha256": "b431c1066dfee3ed56bfa7e71cc8606f9afadc300f22d7fc542c43835d1b22bf",
+          "base_image_sha256": "1ea341f4cc28d282452597c25d97eea84be8b5f984d2e1a6b548356c8417fdce",
+          "parent_image_sha256": "1ea341f4cc28d282452597c25d97eea84be8b5f984d2e1a6b548356c8417fdce",
+          "matches_published_map": true,
+          "differs_from_base": true,
+          "added_by_this_layer": true
+        }
+      ],
+      "immutability": {
+        "parent_image": "localhost/vllm:gg-r34-patched",
+        "python_files_changed_vs_parent": [
+          "/opt/venv/lib/python3.12/site-packages/vllm/v1/core/sched/scheduler.py"
+        ],
+        "python_files_changed_vs_parent_are_exactly_this_layers_adds": true,
+        "python_files_changed_vs_base": [
+          "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py",
+          "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5.py",
+          "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5_mtp.py",
+          "/opt/venv/lib/python3.12/site-packages/vllm/v1/core/sched/scheduler.py"
+        ],
+        "python_files_changed_are_exactly_the_patch_set": true,
+        "image_config_entrypoint_cmd_user_workdir_unchanged": true,
+        "image_config_inherited": "[\"/opt/nvidia/nvidia_entrypoint.sh\"]|[\"/usr/local/bin/run-kimi26-vllm\"]||/",
+        "image_config_working_dir": "/",
+        "image_config_working_dir_is_the_duplicate_source_tree": false,
+        "env_vars_added_vs_base_image": [],
+        "added_history_entries_vs_base": [
+          "/bin/sh -c #(nop) LABEL org.opencontainers.image.title=\"Gilded Gnosis vLLM r34 + Qwen3.8-27B EXL3 native-context patches + PR #51113 (prefix-caching prerequisite)\"       org.opencontainers.image.description=\"Declared superset of localhost/vllm:gg-r34-patched; adds only vllm/v1/core/sched/scheduler.py from PR #51113. Not the hardware-qualified digest.\"       io.malaiwah.image.qualified=\"false\"       io.malaiwah.image.role=\"prefix-caching prerequisite; requires its own qualification run before --enable-prefix-caching is used\"       io.malaiwah.patch.scheduler_py.sha256=\"b431c1066dfee3ed56bfa7e71cc8606f9afadc300f22d7fc542c43835d1b22bf\"       io.malaiwah.patch.scheduler_py.upstream_pr=\"vllm-project/vllm#51113\"       io.malaiwah.patch.scheduler_py.upstream_merge=\"c56f169d9ae46ca420617e2cf5f0c9135da0f651\"",
+          "/bin/sh -c set -eu;     V=/opt/venv/lib/python3.12/site-packages/vllm;     printf '%s  %s\\n'       2df9d0799fd323798cead1edb773cab556c94798eec263ee03ded35408c6e4ee       \"$V/model_executor/layers/quantization/exl3.py\"       04d2bd587b37142f4f55a8d00b9f8c907309490168cb7fcdfde450531df2c9e7       \"$V/model_executor/models/qwen3_5.py\"       0090dc131f0eaf439b24d50baf4def9f10b052864c76e695053d64f66b274bab       \"$V/model_executor/models/qwen3_5_mtp.py\"       b431c1066dfee3ed56bfa7e71cc8606f9afadc300f22d7fc542c43835d1b22bf       \"$V/v1/core/sched/scheduler.py\"       | sha256sum -c -;     chmod 0644 \"$V/v1/core/sched/scheduler.py\";     rm -f \"$V/v1/core/sched/__pycache__/scheduler.\"*.pyc;     /opt/venv/bin/python -c 'import ast,sys;[ast.parse(open(p,encoding=\"utf-8\").read(),p) for p in sys.argv[1:]]'       \"$V/v1/core/sched/scheduler.py\"",
+          "/bin/sh -c #(nop) COPY file:44db214da360078821df6bbb0050ad979ad48123a6b62f08a6278a4d28575b84 in /opt/venv/lib/python3.12/site-packages/vllm/v1/core/sched/scheduler.py ",
+          "/bin/sh -c #(nop) LABEL org.opencontainers.image.title=\"Gilded Gnosis vLLM r34 + Qwen3.8-27B EXL3 native-context patches\"       org.opencontainers.image.description=\"r34 with the three content-pinned EXL3/Qwen3.5 modules folded in; no runtime source mounts\"       org.opencontainers.image.base.name=\"docker.io/voipmonitor/vllm:gilded-gnosis-v20-vllm4d006a4-b12xcd3ce19-fi1ac6942-cu132-20260810-r34\"       org.opencontainers.image.base.digest=\"sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b\"       org.opencontainers.image.source=\"https://github.com/malaiwah/qwen38-27b-exl3\"       io.malaiwah.patch.exl3_py.sha256=\"2df9d0799fd323798cead1edb773cab556c94798eec263ee03ded35408c6e4ee\"       io.malaiwah.patch.qwen3_5_py.sha256=\"04d2bd587b37142f4f55a8d00b9f8c907309490168cb7fcdfde450531df2c9e7\"       io.malaiwah.patch.qwen3_5_mtp_py.sha256=\"0090dc131f0eaf439b24d50baf4def9f10b052864c76e695053d64f66b274bab\"       io.malaiwah.patch.upstream_prs=\"local-inference-lab/vllm#312,#314,#316,#318,#319\"",
+          "/bin/sh -c set -eu;     V=/opt/venv/lib/python3.12/site-packages/vllm;     printf '%s  %s\\n'       2df9d0799fd323798cead1edb773cab556c94798eec263ee03ded35408c6e4ee       \"$V/model_executor/layers/quantization/exl3.py\"       04d2bd587b37142f4f55a8d00b9f8c907309490168cb7fcdfde450531df2c9e7       \"$V/model_executor/models/qwen3_5.py\"       0090dc131f0eaf439b24d50baf4def9f10b052864c76e695053d64f66b274bab       \"$V/model_executor/models/qwen3_5_mtp.py\"       | sha256sum -c -;     chmod 0644       \"$V/model_executor/layers/quantization/exl3.py\"       \"$V/model_executor/models/qwen3_5.py\"       \"$V/model_executor/models/qwen3_5_mtp.py\";     rm -f \"$V/model_executor/layers/quantization/__pycache__/exl3.\"*.pyc           \"$V/model_executor/models/__pycache__/qwen3_5.\"*.pyc           \"$V/model_executor/models/__pycache__/qwen3_5_mtp.\"*.pyc;     /opt/venv/bin/python -c 'import ast,sys;[ast.parse(open(p,encoding=\"utf-8\").read(),p) for p in sys.argv[1:]]'       \"$V/model_executor/layers/quantization/exl3.py\"       \"$V/model_executor/models/qwen3_5.py\"       \"$V/model_executor/models/qwen3_5_mtp.py\"",
+          "/bin/sh -c #(nop) COPY file:2e61e3b32d33d565c5ea9a442e13e8a598c483403c73495fce7c6244af3410a3 in /opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5_mtp.py ",
+          "/bin/sh -c #(nop) COPY file:5448d27c8f22aec874239c88229e0eeb96a4976890f70de8bf1745c56d921c6d in /opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5.py ",
+          "/bin/sh -c #(nop) COPY file:cf78957646d4c772b1be9f89a44f60f6f57fcad9a69e49c44e703880a599d224 in /opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py "
+        ],
+        "package_manager_invocations_in_added_layers": 0,
+        "runtime_package_installs": false,
+        "source_bind_mounts_required_at_runtime": false,
+        "startup_file_copies_required": false
+      },
+      "import_resolution": {
+        "measured_in": "localhost/vllm:gg-r34-patched-apc",
+        "measured": {
+          "probe_invocation": "podman run --entrypoint /opt/venv/bin/python IMAGE - (script on stdin, no -w), so sys.path[0] is derived from the working directory exactly as `python -m` or `python -c` would be",
+          "cwd": "/",
+          "sys_path_0": "",
+          "sys_path": [
+            "",
+            "/opt/venv/lib/python3.12/site-packages/nvidia_cutlass_dsl/dsl_packages",
+            "/opt/venv/lib/python3.12/site-packages/nvidia_cutlass_dsl/dsl_packages",
+            "/usr/lib/python312.zip",
+            "/usr/lib/python3.12",
+            "/usr/lib/python3.12/lib-dynload",
+            "/opt/venv/lib/python3.12/site-packages"
+          ],
+          "site_packages": "/opt/venv/lib/python3.12/site-packages",
+          "path_configuration_files": {
+            "_pynvml_redirector.pth": [
+              "# SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.",
+              "# SPDX-License-Identifier: BSD-3-Clause",
+              "import _pynvml_redirector"
+            ],
+            "distutils-precedence.pth": [
+              "import os; var = 'SETUPTOOLS_USE_DISTUTILS'; enabled = os.environ.get(var, 'local') == 'local'; enabled and __import__('_distutils_hack').add_shim();"
+            ],
+            "nvidia_cutlass_dsl_packages.pth": [
+              "import sys, os, nvidia_cutlass_dsl; sys.path.insert(0, os.path.join(nvidia_cutlass_dsl.__path__[0], 'dsl_packages'))"
+            ]
+          },
+          "editable_install_pth_present": false,
+          "vllm_dist_info_direct_url": {
+            "dir_info": {},
+            "url": "file:///opt/vllm"
+          },
+          "vllm_installed_editable": false,
+          "second_source_tree": "/opt/vllm",
+          "second_source_tree_on_sys_path": false,
+          "second_source_tree_reachable_from_cwd": false,
+          "modules": {
+            "vllm.model_executor.layers.quantization.exl3": {
+              "resolved_origin": "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py",
+              "resolved_origin_sha256": "2df9d0799fd323798cead1edb773cab556c94798eec263ee03ded35408c6e4ee",
+              "cached_bytecode_path": "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/__pycache__/exl3.cpython-312.pyc",
+              "stale_bytecode_present": false,
+              "unimported_duplicate_path": "/opt/vllm/vllm/model_executor/layers/quantization/exl3.py",
+              "unimported_duplicate_sha256": "42c0e9150a065c48e3780eebc8b3c89ea410d82610e2c14bc97546dee6866214"
+            },
+            "vllm.model_executor.models.qwen3_5": {
+              "resolved_origin": "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5.py",
+              "resolved_origin_sha256": "04d2bd587b37142f4f55a8d00b9f8c907309490168cb7fcdfde450531df2c9e7",
+              "cached_bytecode_path": "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/__pycache__/qwen3_5.cpython-312.pyc",
+              "stale_bytecode_present": false,
+              "unimported_duplicate_path": "/opt/vllm/vllm/model_executor/models/qwen3_5.py",
+              "unimported_duplicate_sha256": "5189ef2192bccd055692527b3585915e3be911f6794635c51dabf52ded2e8252"
+            },
+            "vllm.model_executor.models.qwen3_5_mtp": {
+              "resolved_origin": "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5_mtp.py",
+              "resolved_origin_sha256": "0090dc131f0eaf439b24d50baf4def9f10b052864c76e695053d64f66b274bab",
+              "cached_bytecode_path": "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/__pycache__/qwen3_5_mtp.cpython-312.pyc",
+              "stale_bytecode_present": false,
+              "unimported_duplicate_path": "/opt/vllm/vllm/model_executor/models/qwen3_5_mtp.py",
+              "unimported_duplicate_sha256": "165306afb3bccfd7d4707ec925aa7affca119a003c6c40fb22eba13611eefa92"
+            },
+            "vllm.v1.core.sched.scheduler": {
+              "resolved_origin": "/opt/venv/lib/python3.12/site-packages/vllm/v1/core/sched/scheduler.py",
+              "resolved_origin_sha256": "b431c1066dfee3ed56bfa7e71cc8606f9afadc300f22d7fc542c43835d1b22bf",
+              "cached_bytecode_path": "/opt/venv/lib/python3.12/site-packages/vllm/v1/core/sched/__pycache__/scheduler.cpython-312.pyc",
+              "stale_bytecode_present": false,
+              "unimported_duplicate_path": "/opt/vllm/vllm/v1/core/sched/scheduler.py",
+              "unimported_duplicate_sha256": "1ea341f4cc28d282452597c25d97eea84be8b5f984d2e1a6b548356c8417fdce"
+            }
+          }
+        },
+        "other_copies_of_these_filenames_on_the_filesystem": [
+          "/opt/exllamav3-python/exllamav3/architecture/qwen3_5.py",
+          "/opt/exllamav3-python/exllamav3/architecture/qwen3_5_mtp.py",
+          "/opt/exllamav3-python/exllamav3/modules/arch_specific/qwen3_5_mtp.py",
+          "/opt/exllamav3-python/exllamav3/modules/quant/exl3.py",
+          "/opt/venv/lib/python3.12/site-packages/cudnn/frost/tile_dsl/scheduler.py",
+          "/opt/venv/lib/python3.12/site-packages/torch/_inductor/scheduler.py",
+          "/opt/venv/lib/python3.12/site-packages/transformers/generation/continuous_batching/scheduler.py",
+          "/opt/vllm/vllm/config/scheduler.py",
+          "/opt/vllm/vllm/distributed/kv_transfer/kv_connector/v1/mooncake/store/scheduler.py",
+          "/opt/vllm/vllm/distributed/kv_transfer/kv_connector/v1/nixl/scheduler.py",
+          "/opt/vllm/vllm/distributed/kv_transfer/kv_connector/v1/offloading/scheduler.py",
+          "/opt/vllm/vllm/model_executor/layers/quantization/exl3.py",
+          "/opt/vllm/vllm/model_executor/models/qwen3_5.py",
+          "/opt/vllm/vllm/model_executor/models/qwen3_5_mtp.py",
+          "/opt/vllm/vllm/transformers_utils/configs/qwen3_5.py",
+          "/opt/vllm/vllm/v1/core/sched/scheduler.py"
+        ]
+      },
+      "sbom": {
+        "source": "pip-freeze+dpkg (syft not installed on the build host)",
+        "tool_version": "none",
+        "captured_from": "localhost/vllm:gg-r34-patched-apc",
+        "python_packages": 224,
+        "python_packages_file": "receipts/production-image-sbom-pip.txt",
+        "python_packages_sha256": "031c1296d6dbe27b6a41ea3b2f4c9fef96a2b52d4209e23ed83219eee6905836",
+        "debian_packages": 318,
+        "debian_packages_file": "receipts/production-image-sbom-dpkg.txt",
+        "debian_packages_sha256": "b761466750e2a0537195a8cace9fc93d9f8875e3326549fec5c64858d78042dc",
+        "package_lists_identical_to_release_image": true
+      },
+      "smoke": {
+        "client": "docker/smoke_client.py, one text and one image request per recipe, exact match; image fixture drawn by tools/vision_eval.draw_digits",
+        "recipes_attempted": [],
+        "recipes_run": [],
+        "recipes_skipped": {},
+        "all_run_recipes_started": false,
+        "all_run_recipes_text_and_image_exact": false,
+        "results": []
+      },
+      "acceptance": {
+        "modules_in_image_match_published_map": true,
+        "layer_adds_exactly_its_declared_files": true,
+        "import_machinery_resolves_to_patched_modules": true,
+        "no_stale_bytecode_for_patched_modules": true,
+        "only_the_imported_tree_is_patched": true,
+        "duplicate_source_tree_unreachable_from_working_dir": true,
+        "vllm_is_not_an_editable_install": true,
+        "sbom_generated": true,
+        "no_runtime_source_bind_mounts": null,
+        "no_startup_file_copies": null,
+        "no_runtime_package_installs": true,
+        "weights_read_only": null,
+        "service_loopback_or_api_key": null,
+        "no_host_root_privilege": null,
+        "image_digest_and_toolchain_recorded": true
+      },
+      "not_claimed": [
+        "this is not the hardware-qualified digest; the release unit at the top level is",
+        "no published measurement depends on this image's extra module",
+        "using --enable-prefix-caching requires this image and a qualification run of its own; that run has not been done",
+        "no recipe served a request, so every runtime gate (mounts, writes, endpoint) is recorded as null rather than passed"
+      ]
+    }
   ]
 }
