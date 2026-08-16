@@ -65,8 +65,8 @@
   "harness": {
     "driver": "tools/run_lmcache_test.sh",
     "probe": "tools/apc_poison_probe.py",
-    "probe_sha256": "f415414ddf9dfc762eb872e6f6dca33ed1c040a22d3de976cd2e3ca4a65a5b1c",
-    "probe_unchanged": "byte-identical to the probe of receipts/apc-poison-repro.json; every threshold, prompt, needle and scoring rule is inherited unchanged and asserted by digest before any request is issued",
+    "probe_sha256": "a96168f9b0c32387fe0cd2b180cb23ff67061b6dbe8f46c1423041c904e7aeb6",
+    "probe_unchanged": "identical to the probe of receipts/apc-poison-repro.json in every threshold, prompt, needle and scoring rule (see pre_registration.amendment_1: the sole difference against that receipt's stage-time digest is inside verdict-mode reporting, which this experiment does not use); the digest is asserted before any request is issued",
     "prompts_sha256": "9978404b0ce2d032ebf762e17335d7b5a37dbc424f57f61db66ecf3f946f39df",
     "thresholds_inherited_unchanged": {
       "out_of_script_fraction_gt": 0.02,
@@ -93,6 +93,12 @@
   },
   "pre_registration": {
     "written_before_any_gpu_arm_was_started": true,
+    "amendment_1": {
+      "made_utc": "2026-08-16T13:25:00Z",
+      "made_before_any_scored_arm_ran": true,
+      "what_changed": "probe_sha256 corrected from f415414d... to a96168f9b0c32387fe0cd2b180cb23ff67061b6dbe8f46c1423041c904e7aeb6. f415414d... is the digest apc-poison-repro recorded at its own stage time; the probe was then amended once more in the publishing commit (48b1c0a) to add a noise-floor comparison block to VERDICT-MODE REPORTING ONLY. git diff 3e237b2..48b1c0a -- tools/apc_poison_probe.py shows the entire difference is inside verdict(); THRESHOLDS, prompt construction, scoring and the run mode are byte-identical between the two digests. This experiment runs the current repo bytes a96168f9... and does not use the probe's verdict mode at all (its A/B/C rules do not apply here; this receipt's own pre-registered rules above do).",
+      "what_did_not_change": "no threshold, no prompt, no scoring rule, no verdict rule of this receipt"
+    },
     "exercise_gate": "the experiment is EXERCISED only if the L3restart pass shows nonzero LMCache retrieval activity: nonzero retrieve/hit counters in the lmcache prometheus deltas between the L3restart-pre and L3restart-post snapshots, or explicit successful retrieve lines in the LMCache MP log for that pass, together with a nonempty L2 directory at pass start (file count and bytes recorded). If the gate fails, the verdict is NOT_EXERCISED regardless of how clean the responses are, because a probe that never touched the suspect path proves nothing about it.",
     "verdict_rules": {
       "corruption_reproduced": "at least one failing request in any of L1cold / L2warm / L3restart AND zero failing requests in L0. Reported immediately to Main as P0 with the failing arm's server log, LMCache MP log and per-request rows. The failing arm's name travels with every statement of the verdict.",
