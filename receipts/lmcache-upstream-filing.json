@@ -1,0 +1,53 @@
+{
+  "schema": "qwen38-lmcache-upstream-filing/1",
+  "generated_utc": "2026-08-16T14:24:36Z",
+  "authority": "owner granted standing approval 2026-08-16 to post on the LMCache project and any other upstream project on his behalf",
+  "outcome": "NO NEW ISSUE FILED - prior art existed upstream; our evidence was added to the two matching open reports instead",
+  "target_repo_decision": {
+    "local-inference-lab/LMCache": "issues disabled (has_issues=false) on the fork whose wheel we ran; cannot file there",
+    "LMCache/LMCache": "issues enabled; upstream of the fork build; filing target"
+  },
+  "duplicate_search": {
+    "queries": [
+      "repo:LMCache/LMCache mamba in:title,body",
+      "repo:LMCache/LMCache corrupt in:title",
+      "repo:LMCache/LMCache wrong tokens in:title,body",
+      "repo:LMCache/LMCache kv_both in:title,body",
+      "repo:LMCache/LMCache hybrid in:title",
+      "repo:LMCache/LMCache restart warm in:title,body"
+    ],
+    "hits_that_matched": {
+      "4247": "open, 11 comments - LMCacheMPConnector silently corrupts output on shared-prefix requests for hybrid Mamba/GDN under vLLM 0.26.0; same connector, kv_role, fs_native L2, chunk 1600, fp8 KV, MTP - matches our L1cold/L2warm arms",
+      "4492": "open, 1 comment - MP-mode cross-restart returns corrupted output for a previously-cached prompt after restarting vLLM - matches our L3restart arm"
+    }
+  },
+  "comments_posted": {
+    "4247": "https://github.com/LMCache/LMCache/issues/4247#issuecomment-5307903588",
+    "4492": "https://github.com/LMCache/LMCache/issues/4492#issuecomment-5307903650"
+  },
+  "what_our_comments_add": [
+    "second architecture, GPU and weight format (Qwen3.8-27B EXL3 on RTX 5090 sm_120 x86_64 vs Qwen3.6-27B-NVFP4 on GB10 aarch64)",
+    "four-arm ladder with one variable per arm and pre-registered thresholds: L0 off 0/38, L1cold 7/38, L2warm 7/38, L3restart 38/38",
+    "falsifiable localisation rule with zero false negatives over 114 request-arm instances: a request fails iff a scored needle lies in [hit_tokens-1600, hit_tokens), the last chunk the cache supplied",
+    "control that isolates the component rather than prefix reuse: identical geometry served by vLLM's own prefix cache is correct 7/7, served by LMCache is wrong 14/14",
+    "quantified escalation for #4492: after restart the bound breaks - 31 of 38 failures fall outside the rule and one failing request retrieved 0 tokens"
+  ],
+  "restraint_stated_in_both_comments": [
+    "no root cause asserted; LMCache internals not instrumented",
+    "fork build (local-inference-lab/LMCache @ 9cebd405, wheel 0.5.2+glm52dcp.4) on a downstream vLLM fork carrying vLLM #51113 - fork-local patches not ruled out",
+    "vLLM #51766 called adjacent, not identical: its precondition (loaded prefix supplying every block a continuation needs) is unmet in all 14 bounded failures",
+    "untested by us: other kv_role values, other chunk sizes, non-disk modes, other LMCache versions, other GPUs"
+  ],
+  "reporter_answer": {
+    "surface": "https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6-context/discussions/1",
+    "posted_by": "Main",
+    "comment_id": "6a81c7778af1319759720d19",
+    "verified": "read back via HF API: 9 comments, last authored by malaiwah, opening line matches"
+  },
+  "evidence_source": {
+    "receipt": "receipts/lmcache-reuse-test.json",
+    "raw": "receipts/lmcache-raw/{logs,out}",
+    "verified_reachable": "raw.githubusercontent.com 200, 86,657 B; contents API lists lmcache-raw/logs and lmcache-raw/out"
+  },
+  "gpu_used": "none for this filing step - CPU only; the measurements it cites were taken earlier by LMCacheTest/LMCacheTest2 on the owner's RTX 5090"
+}

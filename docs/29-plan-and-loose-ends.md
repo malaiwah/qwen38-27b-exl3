@@ -895,6 +895,29 @@ and build differences are explicitly reduced to a measured numerical equivalence
 independent operator signs the receipt or publishes it from a separate account. A copy of this
 workstation is not an independent reproduction.
 
+**LMCache corruption landed upstream 2026-08-16 - as corroboration, not a new issue.** Owner granted standing
+approval to post on the LMCache project (and any other upstream project) on his behalf. A duplicate search
+(six queries, recorded in [`receipts/lmcache-upstream-filing.json`](../receipts/lmcache-upstream-filing.json))
+found the report already exists twice: [LMCache#4247](https://github.com/LMCache/LMCache/issues/4247) covers
+the same-process shared-prefix corruption on the same hybrid Mamba/GDN architecture class with the *same*
+connector shape (`kv_both`, `fs_native` L2, chunk 1600, fp8 KV, MTP), and
+[LMCache#4492](https://github.com/LMCache/LMCache/issues/4492) covers the cross-restart case. The fork whose
+wheel we ran, `local-inference-lab/LMCache`, has issues disabled, so upstream is the only filing surface.
+Rather than file a third report we added our evidence to both threads
+([#4247 comment](https://github.com/LMCache/LMCache/issues/4247#issuecomment-5307903588),
+[#4492 comment](https://github.com/LMCache/LMCache/issues/4492#issuecomment-5307903650)). What our evidence
+contributes over the existing reports: a second GPU, architecture and weight format; a four-arm ladder with
+one variable per arm and thresholds pre-registered before any arm ran (LMCache off **0/38** failed, cold
+7/38, warm 7/38, restart-over-warm **38/38**); a falsifiable localisation rule with **zero false negatives
+over 114 request-arm instances** - a request fails iff a scored needle lies in `[hit_tokens - 1600,
+hit_tokens)`, the last chunk the cache supplied; a control that isolates the *component* rather than prefix
+reuse in general - identical geometry served by vLLM's own prefix cache is correct **7/7**, served by
+LMCache wrong **14/14**; and, for #4492, the quantified escalation that after a restart the bound breaks
+(31 of 38 failures outside the rule, one failing request having retrieved zero tokens). Both comments state
+what we do not claim: no root cause, no LMCache internals instrumented, fork-local patches not ruled out,
+vLLM #51766 adjacent rather than identical. The downstream reporter has his answer on
+[discussion #1](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6-context/discussions/1).
+
 **Upstream fix filed 2026-08-16.** The admission livelock we reported as
 [vllm-project/vllm#52520](https://github.com/vllm-project/vllm/issues/52520) now has a pull request:
 [#52530](https://github.com/vllm-project/vllm/pull/52530) (+381/-2, one commit, DCO green). It was gated on
