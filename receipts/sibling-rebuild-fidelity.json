@@ -3363,6 +3363,38 @@
    "already_preserved_at": "malaiwah/qwen38-27b-fidelity-suite-v5 -> reference/hidden-bf16",
    "verified_here": "all 512 hidden files re-hashed against the capture manifest before the replay: 10,732,224,512 B, zero mismatches. The harness re-verifies every digest again on the way in and fails closed.",
    "not_re_uploaded_because": "it is unchanged and already published; this run consumed it."
+  },
+  "released": {
+   "when": "immediately after this receipt was written, in the same pass",
+   "deleted": [
+    {
+     "path": "/var/tmp/work/kld8/qwen38-hyd-sibling",
+     "bytes": 21610916123,
+     "why": "the sibling CHECKPOINT. Not preserved: see sibling_checkpoint.not_published_because. Its 16 per-file digests are in siblinghood.sibling_sha256 and all 399 differing tensors are named in siblinghood.payload_divergence.trellis_tensors_differing_detail, so the comparison stands without the tree.",
+     "recompute": "about 40 minutes of GPU, which buys a DIFFERENT sibling rather than this one"
+    },
+    {
+     "path": "/var/tmp/work/kld8/hidden/hidden-hyd-sibling",
+     "bytes": 10732324117,
+     "why": "the local copy of the sibling's CAPTURE. The remote copy was deep-verified first -- every file's sha256 checked against the Hub's LFS oid, six re-downloaded and re-hashed from what the CDN serves -- so this deletion loses no bytes.",
+     "recompute": "re-download from the preserved revision; the capture itself is not recomputable, because it needs the deleted checkpoint"
+    },
+    {
+     "path": "/var/tmp/work/kld8/wd-hyd",
+     "bytes": 41875931136,
+     "bytes_note": "39 GiB as `du -sh` reported it; recorded as the GiB figure in bytes",
+     "why": "the conversion working directory. Nothing reads it after the shards are written, and the published build kept no equivalent.",
+     "recompute": "rebuilt by any conversion; no independent value"
+    }
+   ],
+   "kept_locally": [
+    "/var/tmp/work/kld8/convert-hyd-sibling.log and the per-step logs",
+    "/var/tmp/work/kld8/reports/ (the sibling's replay report and both paired reports)",
+    "/var/tmp/work/kld8/sibling-bytes.json (the full byte comparison this receipt summarises)",
+    "/var/tmp/work/kld8/toolchain.json, preservation.json, preserved-capture-sibling.json",
+    "/var/tmp/work/kld8/build_hyd_sibling.sh and score_sibling.sh, both digested in `toolchain`"
+   ],
+   "what_a_reader_can_still_do": "recompute the sibling's mean and the paired difference from scratch: download the preserved capture, take `reference/hidden-bf16` from the same dataset and the shared head, and re-run `tools/fidelity.py replay` and `paired`. That reproduces every number in this receipt without the checkpoint, which is why the capture is the artifact worth 10 GB and the checkpoint is not."
   }
  },
  "implications": {
@@ -3396,5 +3428,5 @@
   "both_were_publishable": "Neither outcome was the hoped-for one. The two readings above were written into this tool before the score existed, and which one the receipt reports is decided by whether `paired.bootstrap_difference` brackets zero."
  },
  "errors": [],
- "content_sha256": "c7a1f651f3c94f2ff8c838607a90daf0eed7fb2df68cba3453425d5ffc44b6e3"
+ "content_sha256": "846adbcd16c5af27346b656fe0dc9e85752a7816ba3df04bb94fa523734be2c9"
 }
