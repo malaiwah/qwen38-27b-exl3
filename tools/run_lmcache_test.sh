@@ -313,7 +313,7 @@ print(json.dumps({'lmcache_version': d.version,
 PY
     /opt/venv/bin/lmcache server --help 2>&1 | sed -n '1,400p'
   " >"$OUT/stage-identity.txt" 2>&1 || die "stage identity checks failed (see $OUT/stage-identity.txt)"
-  grep -q "$SCHED_SHA" "$OUT/stage-identity.txt" || die "promoted image lost the #51113 scheduler"
+  grep -q "v1/core/sched/scheduler.py: OK" "$OUT/stage-identity.txt" || die "promoted image lost the #51113 scheduler"
   say "listening ports that could collide:"
   ss -ltn "( sport = :$PORT or sport = :$LMC_HTTP_PORT or sport = :$LMC_PROM_PORT or sport = :5796 )" | tee "$OUT/stage-ports.txt" >&2
   python3 - "$OUT/stage.json" "$W" "$APC_IMAGE" "$APC_MANIFEST" <<'PY'
