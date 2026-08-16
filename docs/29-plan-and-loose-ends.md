@@ -1070,6 +1070,48 @@ delta wrong, `abs` and `sqrt(out_energy)` get every sign right but are 13.3× an
 scale. `sqrt(out_energy)` is the pre-registrable candidate; it was selected knowing this run's
 answer, so it must be validated on a between-role delta before any GPU is spent.
 
+## P1 / rank 14 — runtime memory sharing and sub-8-bit KV (owner-suggested, 2026-08-16)
+
+Added from the owner's zoom-out: when GLM-5.2 and Kimi K3 were discussed on the vLLM-GG fork,
+"sharing H (suv/suh)" was suggested as a runtime-memory lever, and the fork reportedly serves
+GLM-5.2 with an **nvfp4 KV cache**. Neither has been evaluated for this model. The extra target
+is the small classes: every GiB of runtime memory recovered goes straight to KV, and the 16 GB
+class currently fails on exactly that arithmetic (S16-V is 28,672 tokens MTP-off; MTP-3 is
+structurally impossible there because the 0.63 GiB fixed per-request term exceeds the pool).
+
+Three questions, in evidence order (`HSharingResearch` is producing
+[43-runtime-memory-sharing.md](43-runtime-memory-sharing.md) and
+`receipts/h-sharing-research.json`):
+
+1. **What is "sharing H" concretely, and what does it save on a dense 64-layer model?** The
+   EXL3 trellis stores per-module `suh`/`svh` sign vectors; the prior to confirm or demolish
+   from our own manifests is that these are tens of MB across 409 modules — material on a
+   300-expert MoE, perhaps irrelevant here. If the vectors are small, find where the real
+   per-module runtime overhead lives (per-shape Hadamard matrices, workspace, online-overlay
+   scratch, graph pools) and size each for our shapes. Fork prior art to be quoted, not
+   paraphrased.
+2. **KLD risk of sharing.** Per-module random sign vectors decorrelate quantization error;
+   one shared H could correlate it. If sharing costs fidelity it ships as a **separate opt-in
+   variant**, never a silent change; the measurement is one conversion plus one shard-0 score
+   (~1 h GPU) on the existing protocol.
+3. **nvfp4 KV for Qwen 3.8.** The r34 flag set accepts `nvfp4`; what gates it for a hybrid
+   GDN + full-attention model at head_size 256, by file:line, and is the fix config, kernel
+   port, or upstream work? `KvDtypeSweep` is measuring the whole KV-dtype family on the
+   physical 5090 (including the 4-bit schemes that would move the 16/24 GB windows); its
+   receipt is the measured half of this item.
+
+Also in scope: an inventory of everything else shareable at runtime — MTP draft ↔ target
+`lm_head` (the draft input table is already aliased by vLLM; the earlier int4-draft-embedding
+claim was retracted for exactly that reason), byte-identical small tensors across modules,
+codebook/Hadamard constants, and whether the online-K5/K6 overlay's BF16 source is freed after
+encode or double-resident (a candidate explanation for the unexplained 18.41 vs 18.19 GiB
+resident-weight gap).
+
+Acceptance: a ranked lever table — bytes saved on 32/24/16 GB, KLD risk, build cost — and an
+explicit answer to the 16 GB question: what stack of levers, if any, plausibly makes 16 GB
+usable, and what must be measured first. Nothing ships without a shard-0 fidelity score, and
+any fidelity-costing lever is a separate variant with its own card.
+
 ## P2 / rank 10 — prefill kernels
 
 FP8 activations are closed: +31 % prefill cost +0.0141 KLD and made the context build worse
