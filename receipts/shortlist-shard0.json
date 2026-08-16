@@ -1,0 +1,492 @@
+{
+ "schema": "qwen38-shortlist-shard0/1",
+ "generated_utc": "2026-08-16T14:12:51Z",
+ "generated_by": "ShortlistScore subagent",
+ "status": "IN PROGRESS: identity, digests, composition and archival mirrors recorded before the GPU window; measurement blocks are null until capture+replay on the rental RTX PRO 6000 (queue: RentalFidelityBatch2 -> SixteenFlipCalib2 -> TerminalBench2 -> ShortlistScore)",
+ "question": "where do the highest-value unmeasured quant-landscape shortlist artifacts (docs/40 section 4) sit on v5 shard 0, measured by the same harness and protocol as every published row?",
+ "protocol_pinned": {
+  "suite": "v5 shard 0: 512 contexts, 1,048,064 scored positions, suite token caef8a4628d6c07c162100895096f890cdf9cafc8e4c48b3d66035d737ee7cf7",
+  "reference": "surviving shard-0 BF16 capture /var/tmp/work/gguf/hidden-bf16 (also published under reference/hidden-bf16 of malaiwah/qwen38-27b-fidelity-suite-v5), symlinked into the run root exactly as receipts/nvfp4-v5-measurement.json did",
+  "head": "/work/kld2/lm_head.safetensors sha256 25a30fd5f826da0abc4efc4cc71def9f02bcb8085f7175eee284d221dee4cfff, shared for both operands",
+  "harness": "tools/fidelity.py via tools/kld_ladder.sh (run root /var/tmp/work/kld5-short), gpu-memory-utilization 0.85",
+  "ladder_extension_commit": "13451e6 adds candidates turbo5/turbo6 (EXL3_ARGS + VLLM_EXL3_PREFILL_RECONSTRUCT_M=128, same as hyd/ctx) and saka/awq (--quantization compressed-tensors, no env, same as nvfp4)",
+  "aggregation": "tools/kld_aggregate.py aggregate then paired, bootstrap 10000 resamples seed 1, 330 clusters; challenger is always the A side (a_wins = contexts where the challenger is strictly better), matching kld5-1M-paired-nvfp4.json",
+  "planned_pairings": [
+   "turbo5:ctx",
+   "turbo6:hyd",
+   "turbo6:k5k6",
+   "saka:nvfp4",
+   "awq:ctx",
+   "awq:nvfp4"
+  ]
+ },
+ "artifacts": {
+  "turbo5": {
+   "upstream_repo": "turboderp/Qwen3.8-27B-exl3",
+   "upstream_revision": "a35e75a73baee51da709329d19294245cbeeb5d8",
+   "total_bytes": 19925543918,
+   "file_count": 18,
+   "files": {
+    ".gitattributes": {
+     "git_blob_sha1": "52373fe24473b1aa44333d318f578ae6bf04b49b",
+     "size": 1570
+    },
+    "LICENSE": {
+     "git_blob_sha1": "f938136e3adacfd92be087f6e113b5d6d97f678f",
+     "size": 11544
+    },
+    "README.md": {
+     "git_blob_sha1": "bc8aa0e396cd029c21cd773cca21830d0ded28ec",
+     "size": 65012
+    },
+    "chat_template.jinja": {
+     "git_blob_sha1": "c0c686f9c38d70d179fb7b5f5aa7530bc913dda3",
+     "size": 8952
+    },
+    "config.json": {
+     "git_blob_sha1": "e0a976f2f8383eec79248be0b245b2d5a0e6da42",
+     "size": 4621
+    },
+    "crc32.txt": {
+     "git_blob_sha1": "6de5ee6a0c6596744baee911af0a5cdcb8d99a1e",
+     "size": 238
+    },
+    "generation_config.json": {
+     "git_blob_sha1": "023756cfadf88e5bf69eefeee3e172f38c448d64",
+     "size": 202
+    },
+    "merges.txt": {
+     "git_blob_sha1": "a494e019ca1502219fd0128658b979e5f05ae8e8",
+     "size": 3353259
+    },
+    "model-00001-of-00003.safetensors": {
+     "sha256": "16326edb907e474bb727b6078f7a67182ea319f2c5df5029b8155556dd483107",
+     "size": 8509808537
+    },
+    "model-00002-of-00003.safetensors": {
+     "sha256": "488c30f1d773e0248d09e1b31401f48f341d3e7a2c1d46852d55d2a9770450f8",
+     "size": 8589756567
+    },
+    "model-00003-of-00003.safetensors": {
+     "sha256": "56f35ca89b0cf01e0a7431e74042d27b6eace941a3c361d8af3e3e3558bc4254",
+     "size": 2802114925
+    },
+    "model.safetensors.index.json": {
+     "git_blob_sha1": "c7bca071e260ebee33ecf00c3a885152560b3cc4",
+     "size": 238664
+    },
+    "preprocessor_config.json": {
+     "git_blob_sha1": "2ea84a437d448ff71b08df68fdd949d5cc4ebb64",
+     "size": 390
+    },
+    "quantization_config.json": {
+     "git_blob_sha1": "047fe12e203bababf55ea729c7c9b85890046a9b",
+     "size": 629045
+    },
+    "tokenizer.json": {
+     "sha256": "0997f410c57a1f4e53b09e4be8f4a172d90edd9564368fb0847030937229b9f3",
+     "size": 12809320
+    },
+    "tokenizer_config.json": {
+     "git_blob_sha1": "5de744b3fca2129d7186979ae47c06be33903243",
+     "size": 17928
+    },
+    "video_preprocessor_config.json": {
+     "git_blob_sha1": "3ba673a5ad7d4d13f54155ecd38b2a94a6dac8fe",
+     "size": 385
+    },
+    "vocab.json": {
+     "git_blob_sha1": "0aa0ce0658d60ac4a5d609f4eadb0e8e43514176",
+     "size": 6722759
+    }
+   },
+   "quantization_config_summary": "uniform 5-bit trellis on 400 language linears, 8 MTP linears at 4 bits (mtp_bits=4), exl3-serialized lm_head at 6 bits (head_bits=6), plain BF16 vision tower; codebook mul1 (ours are mcg; the vLLM exl3 ext parses both and mul1 rides the generic exl3_gemm path)",
+   "composition_from_headers": {
+    "dtypes": {
+     "BF16": 694,
+     "F16": 914,
+     "I16": 409,
+     "I32": 409
+    },
+    "groups_tensors_gib": {
+     "language": [
+      2050,
+      16.59
+     ],
+     "lm_head": [
+      4,
+      0.889
+     ],
+     "mtp": [
+      39,
+      0.198
+     ],
+     "visual": [
+      333,
+      0.858
+     ]
+    },
+    "trellis_bits_histogram": {
+     "4": 8,
+     "5": 400,
+     "6": 1
+    }
+   },
+   "mirror": {
+    "repo": "malaiwah/Qwen3.8-27B-exl3-archival-a35e75a7",
+    "revision": "10607acadd798b2519928ff5aedf7448afcf4f52",
+    "verification": "every file re-verified against the remote copy: LFS files by LFS oid sha256, small files by git blob sha1, both computed from local bytes",
+    "problems": []
+   },
+   "local_snapshot_digest_check": "every file verified against upstream paths-info digests after download (LFS sha256 / git blob sha1)",
+   "measurement": null
+  },
+  "turbo6": {
+   "upstream_repo": "turboderp/Qwen3.8-27B-exl3",
+   "upstream_revision": "d32ba0bbd17de6bed8d5bbfb8c19f16f228f67ff",
+   "total_bytes": 22966414310,
+   "file_count": 18,
+   "files": {
+    ".gitattributes": {
+     "git_blob_sha1": "52373fe24473b1aa44333d318f578ae6bf04b49b",
+     "size": 1570
+    },
+    "LICENSE": {
+     "git_blob_sha1": "f938136e3adacfd92be087f6e113b5d6d97f678f",
+     "size": 11544
+    },
+    "README.md": {
+     "git_blob_sha1": "bc8aa0e396cd029c21cd773cca21830d0ded28ec",
+     "size": 65012
+    },
+    "chat_template.jinja": {
+     "git_blob_sha1": "c0c686f9c38d70d179fb7b5f5aa7530bc913dda3",
+     "size": 8952
+    },
+    "config.json": {
+     "git_blob_sha1": "f3ff6952f5c39727aa6bee5bbccafbb5f6b9b245",
+     "size": 4621
+    },
+    "crc32.txt": {
+     "git_blob_sha1": "6de5ee6a0c6596744baee911af0a5cdcb8d99a1e",
+     "size": 238
+    },
+    "generation_config.json": {
+     "git_blob_sha1": "023756cfadf88e5bf69eefeee3e172f38c448d64",
+     "size": 202
+    },
+    "merges.txt": {
+     "git_blob_sha1": "a494e019ca1502219fd0128658b979e5f05ae8e8",
+     "size": 3353259
+    },
+    "model-00001-of-00003.safetensors": {
+     "sha256": "e0921a677eaebdced9a70fc76eac7b6df383f1a86634bd89ebd889937fbfe5b7",
+     "size": 8553504384
+    },
+    "model-00002-of-00003.safetensors": {
+     "sha256": "0747736cc0fc63d4d2a1f8419e027072cc5ffcaab0cec952da36189ac8de71ce",
+     "size": 8587999773
+    },
+    "model-00003-of-00003.safetensors": {
+     "sha256": "a50c0a24ae0fb02e21d13003a274eddcbef82b9a5c4c0d6772d32a7cc77e30d1",
+     "size": 5801046264
+    },
+    "model.safetensors.index.json": {
+     "git_blob_sha1": "8e927ece47647beb3be24e69da8f9d8b21bb0ac7",
+     "size": 238664
+    },
+    "preprocessor_config.json": {
+     "git_blob_sha1": "2ea84a437d448ff71b08df68fdd949d5cc4ebb64",
+     "size": 390
+    },
+    "quantization_config.json": {
+     "git_blob_sha1": "5b96b0b091588034b246a3d0cf0df2c45085e01e",
+     "size": 629045
+    },
+    "tokenizer.json": {
+     "sha256": "0997f410c57a1f4e53b09e4be8f4a172d90edd9564368fb0847030937229b9f3",
+     "size": 12809320
+    },
+    "tokenizer_config.json": {
+     "git_blob_sha1": "5de744b3fca2129d7186979ae47c06be33903243",
+     "size": 17928
+    },
+    "video_preprocessor_config.json": {
+     "git_blob_sha1": "3ba673a5ad7d4d13f54155ecd38b2a94a6dac8fe",
+     "size": 385
+    },
+    "vocab.json": {
+     "git_blob_sha1": "0aa0ce0658d60ac4a5d609f4eadb0e8e43514176",
+     "size": 6722759
+    }
+   },
+   "quantization_config_summary": "uniform 6-bit trellis on 400 language linears plus the 6-bit lm_head, 8 MTP linears at 4 bits, BF16 vision; codebook mul1",
+   "composition_from_headers": {
+    "dtypes": {
+     "BF16": 694,
+     "F16": 914,
+     "I16": 409,
+     "I32": 409
+    },
+    "groups_tensors_gib": {
+     "language": [
+      2050,
+      19.422
+     ],
+     "lm_head": [
+      4,
+      0.889
+     ],
+     "mtp": [
+      39,
+      0.198
+     ],
+     "visual": [
+      333,
+      0.858
+     ]
+    },
+    "trellis_bits_histogram": {
+     "4": 8,
+     "6": 401
+    }
+   },
+   "mirror": {
+    "repo": "malaiwah/Qwen3.8-27B-exl3-archival-d32ba0bb",
+    "revision": "825e79d437a4388e14178dd03071a848c6a1bcd9",
+    "verification": "every file re-verified against the remote copy: LFS files by LFS oid sha256, small files by git blob sha1, both computed from local bytes",
+    "problems": []
+   },
+   "local_snapshot_digest_check": "every file verified against upstream paths-info digests after download (LFS sha256 / git blob sha1)",
+   "measurement": null
+  },
+  "saka": {
+   "upstream_repo": "sakamakismile/Qwen3.8-27B-MTP-NVFP4",
+   "upstream_revision": "6d98dc1f1d5259c9582794014b73852baf20f805",
+   "total_bytes": 20589620357,
+   "file_count": 16,
+   "files": {
+    ".gitattributes": {
+     "git_blob_sha1": "52373fe24473b1aa44333d318f578ae6bf04b49b",
+     "size": 1570
+    },
+    "README.md": {
+     "git_blob_sha1": "65df80e11577b4734ee34bf8b23c9d8756083a99",
+     "size": 2941
+    },
+    "chat_template.jinja": {
+     "git_blob_sha1": "c0c686f9c38d70d179fb7b5f5aa7530bc913dda3",
+     "size": 8952
+    },
+    "config.json": {
+     "git_blob_sha1": "db5369a1df13275a6015448e66fee2d64ae6498f",
+     "size": 15632
+    },
+    "generation_config.json": {
+     "git_blob_sha1": "d423c5ddf4a899d10bcb4d432a888aba3cc1b5c8",
+     "size": 225
+    },
+    "merges.txt": {
+     "git_blob_sha1": "a494e019ca1502219fd0128658b979e5f05ae8e8",
+     "size": 3353259
+    },
+    "model-mtp-bf16.safetensors": {
+     "sha256": "90fa0e3eed5a647c035c6df9ecabc416c0f8d573ff84ac12485b085f00a7cdf2",
+     "size": 849400424
+    },
+    "model.safetensors": {
+     "sha256": "0e1597fc7835a5a7578243809420f88ae06732733a716e49629392e571a62f76",
+     "size": 19709883808
+    },
+    "model.safetensors.index.json": {
+     "git_blob_sha1": "511701f7720a7fa72811678681b35fb2dcaba461",
+     "size": 238113
+    },
+    "preprocessor_config.json": {
+     "git_blob_sha1": "2ea84a437d448ff71b08df68fdd949d5cc4ebb64",
+     "size": 390
+    },
+    "processor_config.json": {
+     "git_blob_sha1": "33818c7f9e991ad735fd240209f4fa73e6c28c50",
+     "size": 1191
+    },
+    "recipe.yaml": {
+     "git_blob_sha1": "481bfd5355f3fa62abaad38ce610e52769afea61",
+     "size": 218
+    },
+    "tokenizer.json": {
+     "sha256": "06b9509352d2af50381ab2247e083b80d32d5c0aba91c272ca9ff729b6a0e523",
+     "size": 19989325
+    },
+    "tokenizer_config.json": {
+     "git_blob_sha1": "1d134cd298be1e3be25db393d93a1cefe80e3214",
+     "size": 1165
+    },
+    "video_preprocessor_config.json": {
+     "git_blob_sha1": "3ba673a5ad7d4d13f54155ecd38b2a94a6dac8fe",
+     "size": 385
+    },
+    "vocab.json": {
+     "git_blob_sha1": "0aa0ce0658d60ac4a5d609f4eadb0e8e43514176",
+     "size": 6722759
+    }
+   },
+   "quantization_config_summary": "pure NVFP4 W4A4 g16 (nvfp4-pack-quantized, memoryless_minmax weights / static_minmax activations, compressed-tensors 0.17.1) on 496 language linears; BF16 lm_head, BF16 vision tower, BF16 MTP wired into the index; 222 ignore entries. Unlike unsloth there is NO FP8 group_0 block: attention, linear_attn/SSM, lm_head and the last-8-layer MLPs are quantized like everything else or left BF16 per the ignore list -- that is where the 2.65 GiB goes",
+   "composition_from_headers": {
+    "dtypes": {
+     "BF16": 703,
+     "F32": 992,
+     "F8_E4M3": 496,
+     "U8": 496
+    },
+    "groups_tensors_gib": {
+     "language": [
+      2338,
+      15.13
+     ],
+     "lm_head": [
+      1,
+      2.368
+     ],
+     "mtp": [
+      15,
+      0.791
+     ],
+     "visual": [
+      333,
+      0.858
+     ]
+    },
+    "packed_linears": 496
+   },
+   "mirror": {
+    "repo": "malaiwah/Qwen3.8-27B-MTP-NVFP4-archival-6d98dc1f",
+    "revision": "21bb8bebc6e194768de01d8b897356eb6d9ad4af",
+    "verification": "every file re-verified against the remote copy: LFS files by LFS oid sha256, small files by git blob sha1, both computed from local bytes",
+    "problems": []
+   },
+   "local_snapshot_digest_check": "every file verified against upstream paths-info digests after download (LFS sha256 / git blob sha1)",
+   "measurement": null
+  },
+  "awq": {
+   "upstream_repo": "cyankiwi/Qwen3.8-27B-AWQ-INT4",
+   "upstream_revision": "63768c10df38c0395e12ef49edac1bd539eaeeea",
+   "total_bytes": 21041255795,
+   "file_count": 18,
+   "files": {
+    ".gitattributes": {
+     "git_blob_sha1": "52373fe24473b1aa44333d318f578ae6bf04b49b",
+     "size": 1570
+    },
+    "LICENSE": {
+     "git_blob_sha1": "f938136e3adacfd92be087f6e113b5d6d97f678f",
+     "size": 11544
+    },
+    "README.md": {
+     "git_blob_sha1": "72302c2c43cec3da8d56f3b9af5bd3980b1f3c54",
+     "size": 66145
+    },
+    "chat_template.jinja": {
+     "git_blob_sha1": "c0c686f9c38d70d179fb7b5f5aa7530bc913dda3",
+     "size": 8952
+    },
+    "config.json": {
+     "git_blob_sha1": "546431a3edb9d341f0ca6d2db96abf9224364fb3",
+     "size": 20927
+    },
+    "generation_config.json": {
+     "git_blob_sha1": "023756cfadf88e5bf69eefeee3e172f38c448d64",
+     "size": 202
+    },
+    "merges.txt": {
+     "git_blob_sha1": "a494e019ca1502219fd0128658b979e5f05ae8e8",
+     "size": 3353259
+    },
+    "model-00001-of-00005.safetensors": {
+     "sha256": "54d83c1d36631de231876217a8e0c2483eccee8746369a482b79442bdfc5d958",
+     "size": 2542796928
+    },
+    "model-00002-of-00005.safetensors": {
+     "sha256": "64be5fc2f66a3e5679ba229261a7a0d8112b06f6f560c750a62ca9457f90006c",
+     "size": 4967650936
+    },
+    "model-00003-of-00005.safetensors": {
+     "sha256": "7b90d6c7059d615a560cd4d2e766d328210605041061681550d80f380a8b529b",
+     "size": 4996718528
+    },
+    "model-00004-of-00005.safetensors": {
+     "sha256": "03b2624ec788780a2915003cd2871c29c87dfb6f2a8d189ef3918662d6a1ed56",
+     "size": 4976405864
+    },
+    "model-00005-of-00005.safetensors": {
+     "sha256": "eb5ea1fbef28b13ac89158924ee7cfe7c9f111c79ae177b290c0abd45c38925c",
+     "size": 3534428672
+    },
+    "model.safetensors.index.json": {
+     "git_blob_sha1": "1d116198152b373006acbe83c979083fc438aa2d",
+     "size": 241486
+    },
+    "preprocessor_config.json": {
+     "git_blob_sha1": "2ea84a437d448ff71b08df68fdd949d5cc4ebb64",
+     "size": 390
+    },
+    "tokenizer.json": {
+     "sha256": "0997f410c57a1f4e53b09e4be8f4a172d90edd9564368fb0847030937229b9f3",
+     "size": 12809320
+    },
+    "tokenizer_config.json": {
+     "git_blob_sha1": "5de744b3fca2129d7186979ae47c06be33903243",
+     "size": 17928
+    },
+    "video_preprocessor_config.json": {
+     "git_blob_sha1": "3ba673a5ad7d4d13f54155ecd38b2a94a6dac8fe",
+     "size": 385
+    },
+    "vocab.json": {
+     "git_blob_sha1": "0aa0ce0658d60ac4a5d609f4eadb0e8e43514176",
+     "size": 6722759
+    }
+   },
+   "quantization_config_summary": "compressed-tensors pack-quantized INT4 W4A16 asymmetric group-32 (mse observer, llm-compressor dev build 0.1.dev535+gdc9611a) on 399 language linears; 313 ignore entries keep every linear_attn/SSM projection, lm_head, vision and MTP in BF16. Not a legacy autoawq checkpoint: vLLM serves it through compressed-tensors wNa16 (asymmetric 4-bit is in WNA16_ZP_SUPPORTED_TYPES_MAP of the pinned image)",
+   "composition_from_headers": {
+    "dtypes": {
+     "BF16": 1199,
+     "I32": 798,
+     "I64": 399
+    },
+    "groups_tensors_gib": {
+     "language": [
+      2047,
+      15.557
+     ],
+     "lm_head": [
+      1,
+      2.368
+     ],
+     "mtp": [
+      15,
+      0.791
+     ],
+     "visual": [
+      333,
+      0.858
+     ]
+    },
+    "packed_linears": 399
+   },
+   "mirror": {
+    "repo": "malaiwah/Qwen3.8-27B-AWQ-INT4-archival-63768c10",
+    "revision": "139c28760aa4d8dd9117faebdc21b4ce9bd944c2",
+    "verification": "every file re-verified against the remote copy: LFS files by LFS oid sha256, small files by git blob sha1, both computed from local bytes",
+    "problems": []
+   },
+   "local_snapshot_digest_check": "every file verified against upstream paths-info digests after download (LFS sha256 / git blob sha1)",
+   "measurement": null
+  }
+ },
+ "unrun": {
+  "what": "all four captures/replays (GPU window not yet open) and everything below the four in the docs/40 ranking (amd Quark pair, kaitchup ladder ends, chriswritescode MXFP8 on v5, empero-ai Ridge GGUF)",
+  "resume_commands": "# ShortlistScore GPU window runbook \u2014 v5 shard 0, run root /var/tmp/work/kld5-short\n\nQueue position: last on the rental RTX PRO 6000, after SixteenFlipCalib hands over by name.\nRestore nothing; leave the box clean and disk accounted.\n\nPrep already done (no GPU): turbo5/turbo6 downloaded + digest-verified + mirrored\n(malaiwah/Qwen3.8-27B-exl3-archival-a35e75a7@10607aca, -d32ba0bb@825e79d4);\nupstream identity + composition in identity/; ladder map extended (commit 13451e6);\nshard-0 BF16 reference symlinked at hidden/shard-0000/hidden-bf16 -> ../../../gguf/hidden-bf16.\n\n## Phase 1 \u2014 turboderp uniform-bitrate controls (highest value, docs/29 F2)\n    cd /home/mbelleau/research\n    KLD_ROOT=/var/tmp/work/kld5-short KLD_SUITE=/var/tmp/work/kld5/suite \\\n      KLD_KEEP_HIDDEN=1 tools/kld_ladder.sh --candidates \"turbo5 turbo6\" 0\n(bf16 capture is skipped: the symlinked reference verifies. KEEP_HIDDEN so the two\nF2-control captures can be preserved to the suite dataset like nvfp4's shard-0 was;\nif disk or window forbids, release them and state the ~6 min/capture recompute cost.)\n\n## Phase 2 \u2014 aggregate + pair turbos\n    tools/kld_aggregate.py aggregate --suite /var/tmp/work/kld5/suite --shard-size 512 \\\n      --candidate turbo5 --out receipts/kld5-1M-turbo5.json \\\n      /var/tmp/work/kld5-short/reports/shard-0000/report-turbo5.json\n    tools/kld_aggregate.py aggregate --suite /var/tmp/work/kld5/suite --shard-size 512 \\\n      --candidate turbo6 --out receipts/kld5-1M-turbo6.json \\\n      /var/tmp/work/kld5-short/reports/shard-0000/report-turbo6.json\n    tools/kld_aggregate.py paired \\\n      --input turbo5=receipts/kld5-1M-turbo5.json --input turbo6=receipts/kld5-1M-turbo6.json \\\n      --input ctx=receipts/kld5-1M-tail-ctx.json --input hyd=receipts/kld5-1M-tail-hyd.json \\\n      --input k5k6=receipts/kld5-1M-tail-k5k6.json \\\n      --compare turbo5:ctx --compare turbo6:hyd --compare turbo6:k5k6 \\\n      --out receipts/kld5-1M-paired-shortlist-exl3.json\n(match a_wins/b_wins orientation to kld5-1M-paired-nvfp4.json before writing prose)\n\n## Phase 3 \u2014 sakamakismile + cyankiwi\nALREADY DONE off-GPU: both downloaded, digest-verified against identity/upstream-identity.json,\nmirrored and remote-verified (saka -> malaiwah/Qwen3.8-27B-MTP-NVFP4-archival-6d98dc1f@21bb8beb,\nawq -> malaiwah/Qwen3.8-27B-AWQ-INT4-archival-63768c10@139c2876), composition recorded, then the\nlocal copies were DELETED to keep 35G of capture scratch. At their slot: re-download (below),\nre-verify digests, capture. Do NOT re-mirror.\n    export HF_HOME=/var/tmp/hf-home-3\n    hf download sakamakismile/Qwen3.8-27B-MTP-NVFP4 \\\n      --revision 6d98dc1f1d5259c9582794014b73852baf20f805 \\\n      --local-dir /var/tmp/models/Qwen3.8-27B-MTP-NVFP4\n    hf download cyankiwi/Qwen3.8-27B-AWQ-INT4 \\\n      --revision 63768c10df38c0395e12ef49edac1bd539eaeeea \\\n      --local-dir /var/tmp/models/Qwen3.8-27B-AWQ-INT4\n    # verify against identity/upstream-identity.json, then mirror BEFORE citing:\n    HFPY=/home/mbelleau/.local/share/uv/tools/huggingface-hub/bin/python\n    \"$HFPY\" /var/tmp/work/kld5-short/mirror_artifact.py /var/tmp/models/Qwen3.8-27B-MTP-NVFP4 \\\n      malaiwah/Qwen3.8-27B-MTP-NVFP4-archival-6d98dc1f \\\n      sakamakismile/Qwen3.8-27B-MTP-NVFP4 6d98dc1f1d5259c9582794014b73852baf20f805 \\\n      /var/tmp/work/kld5-short/identity/mirror-saka.json\n    \"$HFPY\" /var/tmp/work/kld5-short/mirror_artifact.py /var/tmp/models/Qwen3.8-27B-AWQ-INT4 \\\n      malaiwah/Qwen3.8-27B-AWQ-INT4-archival-63768c10 \\\n      cyankiwi/Qwen3.8-27B-AWQ-INT4 63768c10df38c0395e12ef49edac1bd539eaeeea \\\n      /var/tmp/work/kld5-short/identity/mirror-awq.json\n    # free space first if needed: rm -rf /var/tmp/models/Qwen3.8-27B-exl3-{5,6}.00bpw\n    # (safe: digest-verified mirrors above + upstream still resolves)\n    ln -sfn ../../../gguf/hidden-bf16 /var/tmp/work/kld5-short/hidden/shard-0000/hidden-bf16\n    KLD_ROOT=/var/tmp/work/kld5-short KLD_SUITE=/var/tmp/work/kld5/suite \\\n      tools/kld_ladder.sh --candidates \"saka awq\" 0\n(an AWQ load refusal is a result: capture the exact error, record it in the receipt)\n\n## Phase 4 \u2014 aggregate + pair the rest\n    tools/kld_aggregate.py aggregate ... --candidate saka --out receipts/kld5-1M-saka-nvfp4.json ...\n    tools/kld_aggregate.py aggregate ... --candidate awq --out receipts/kld5-1M-cyankiwi-awq.json ...\n    paired: saka:nvfp4 (receipts/kld5-1M-nvfp4.json), awq:ctx, awq:nvfp4\n\n## Phase 5 \u2014 receipts, cleanup, push\n    receipts/shortlist-shard0.json (master) + per-artifact sub-receipts\n    preserve turbo captures to malaiwah/qwen38-27b-fidelity-suite-v5 captures/shard-0000/\n      via tools/preserve_artifacts.sh --deep (window permitting), then release hidden\n    delete downloaded weights (mirrors verified), account disk in the receipt\n    git rebase, add ONLY receipts/shortlist-* receipts/kld5-1M-* + tools edits, push both remotes\n    F2 sentence to Main over hub (cards/docs are not mine to edit)\n"
+ },
+ "content_sha256": "7e771383a291b1504f0c40464d66209af1a9ca17e4a932b46253834f992296c8"
+}
