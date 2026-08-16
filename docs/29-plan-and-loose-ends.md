@@ -1155,6 +1155,48 @@ explicit answer to the 16 GB question: what stack of levers, if any, plausibly m
 usable, and what must be measured first. Nothing ships without a shard-0 fidelity score, and
 any fidelity-costing lever is a separate variant with its own card.
 
+**ANSWERED 2026-08-16** ([43](43-runtime-memory-sharing.md), `receipts/h-sharing-research.json`;
+every mechanism claim carries file:line or a fork URL):
+
+- **Shared H is a dead end on this dense model — do not build.** `shared_h_v1` (fork PR #225
+  closed, #228 open; b12x side merged as #117) broadcasts one physical `suh`/`svh` row across
+  ~160 experts per layer on rank-sliced GLM-5.2 MoE, saving 672-681 MiB/GPU **there**. Our
+  dense builds carry **13.69 MiB total** of `suh`+`svh` across all 409 modules — all 818
+  vectors ranged-read and hashed, zero byte-identical, and the sign pattern is *already shared*
+  where inputs coincide (gate/up agreement 1.0000; the converter draws one `su` per Hessian and
+  folds per-channel scales in). Pure loader dedup saves 0 B; the theoretical cap is <13.69 MiB.
+  The loader code for shared_h_v1 ships in our pinned rootfs, so a future MoE quant of ours
+  gets it for free — irrelevant to this family. Kimi K3 used a different mechanism entirely
+  (QSRT canonical atoms). The KLD-risk mechanism is real (shared H correlates residual
+  directions) but not worth the GPU hour here.
+- **The real recoverable memory is the prefill reconstruct scratch**: persistent fp16
+  per-geometry buffers, never freed, ~790 MiB across our 9 geometries at the qualified
+  profile. One shared arena (fork precedent issue #203 / PR #270) recovers **~620 MiB of KV
+  pool on every class — roughly +18.7k MTP-3 tokens, plausibly 24,576 → ~40,960 on the 24 GB
+  class — at zero KLD risk** (byte-exact, same kernels). `ScratchArena` is building it as an
+  overlay plus fork PR, with a bit-exactness guard and a measured 5090 A/B as acceptance
+  (`receipts/scratch-arena.json`). If `VLLM_EXL3_PREFILL_FP8` ever shipped it would add
+  +555 MiB of fp8 scratch unless arena'd — recorded so the two stay coupled.
+- **nvfp4 KV is not a config away on this card.** Plain `nvfp4` requires FlashInfer's
+  SM100-family trtllm-gen cubins and is **refused on SM120** (`flashinfer.py:447-452` via
+  `interface.py:481-493`); the layout would be 144 B/side/token at head 256 versus fp8's 256,
+  but the cost is vendor-cubin/upstream kernel work. `nvfp4_ds_mla` is the GLM-5.2 path —
+  an MLA latent record, structurally inapplicable to non-MLA Qwen 3.8. The `turboquant_*`
+  head-256 backend stores values fp16: **612 B/slot versus fp8's 512 — a capacity regression**.
+  Measured capacity/retrieval verdicts belong to `receipts/kv-dtype-sweep-5090.json`.
+- **Inventory findings**: MTP draft `lm_head` AND embed are already shared (no such tensors on
+  disk; the server log prints the share); the int8 embed overlay frees its BF16 source, no
+  double-residency; the **18.41 vs 18.19 GiB resident gap is explained** — manifest floor
+  18.069 GiB plus per-host measurement overhead (+0.121 on the 5090, +0.341 on the rental's
+  older image), not weights; a runtime **MXFP8 vision overlay** (~439 MiB, in-fork precedent)
+  is the one remaining opt-in candidate and would need its own measured variant card.
+- **The 16 GB answer, plainly: no runtime-sharing stack reaches it.** Weights alone are
+  18.19 GiB; the full inventory recovers ~1.6 GiB and lands ~16.6 GiB against the class's
+  12.49 GiB weights-plus-KV budget. **Only the S16-V sub-4-bit rebuild (12.77 GiB serialized,
+  prediction) flips the class** — which is the already-tracked flip condition. Measure first:
+  the sub-4-bit shard-0 KLD (~1 h GPU), the KV-dtype sweep receipt, and R1's measured pool
+  gain.
+
 ## P2 / rank 10 — prefill kernels
 
 FP8 activations are closed: +31 % prefill cost +0.0141 KLD and made the context build worse
