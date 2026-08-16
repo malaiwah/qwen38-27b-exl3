@@ -193,6 +193,80 @@ def ladder_check(realised: dict) -> dict:
     }
 
 
+MODEL_LOAD = re.compile(r"Model loading took ([0-9.]+) GiB memory and ([0-9.]+) seconds")
+
+
+def resident_weights(capture_log: Path, serialized_payload: int | None) -> dict | None:
+    """vLLM's own model-loading footprint, read out of the capture log.
+
+    docs/34 models resident weights as `payload + 0.35 GiB loader allowance` and labels the
+    0.35 a prediction.  Every capture prints the real number, so each conversion scored here
+    also measures that term for its own build -- which for S16-V is the other half of the
+    16 GB arithmetic, and the only part of it that a 32 GB card can measure.
+    """
+    if capture_log is None or not capture_log.exists():
+        return None
+    m = None
+    for line in capture_log.read_text(errors="replace").splitlines():
+        m = MODEL_LOAD.search(line) or m
+        if m:
+            break
+    if not m:
+        return None
+    gib = float(m.group(1))
+    out = {"model_loading_gib": gib, "model_loading_seconds": float(m.group(2)),
+           "source": "vLLM gpu_model_runner, quoted from the capture log",
+           "embedding_form": "BF16 on disk and BF16 resident -- the fidelity protocol runs no "
+                             "int8 embedding overlay, so this is the un-overlaid figure"}
+    if serialized_payload:
+        out["serialized_payload_gib"] = round(serialized_payload / GIB, 4)
+        out["loader_delta_gib"] = round(gib - serialized_payload / GIB, 4)
+        out["loader_delta_note"] = ("measured counterpart of docs/34's +0.35 GiB loader "
+                                    "allowance, which is labelled a prediction there")
+    return out
+
+
+def sixteen_gb_arithmetic(rw: dict | None) -> dict | None:
+    """Re-run docs/34's 16 GB resident line with the measured loader term.
+
+    receipts/vram-class-verdict.json fits resident weights as `payload + 0.35 GiB` and labels
+    the 0.35 a prediction.  This build's own capture measures it.  Everything else in the line
+    -- the int8-embedding payload, the two budget figures -- is quoted from that receipt.
+    """
+    if not rw or "loader_delta_gib" not in rw:
+        return None
+    v = json.loads((REPO / "receipts/vram-class-verdict.json").read_text())
+    cand = v["class_16_gib"]["s16_v_candidate"]
+    int8_payload = 12_440_105_028      # cand.resident_payload_gib's own formula input
+    int8_gib = int8_payload / GIB
+    delta = rw["loader_delta_gib"]
+    resident = int8_gib + delta
+    budgets = {
+        "docs34_section3_basis_12_70": 12.70,
+        "measured_utilisation_0_955_basis_12_49": 12.49,
+    }
+    return {
+        "what": "docs/34's 16 GB resident-weight line with the loader allowance measured "
+                "instead of predicted",
+        "int8_embedding_payload_bytes": int8_payload,
+        "int8_embedding_payload_gib": round(int8_gib, 4),
+        "predicted_resident_gib": cand["resident_weights_gib"]["value"],
+        "predicted_loader_allowance_gib": 0.35,
+        "measured_loader_delta_gib": delta,
+        "resident_with_measured_loader_gib": round(resident, 4),
+        "budgets_gib": budgets,
+        "headroom_gib": {k: round(b - resident, 4) for k, b in budgets.items()},
+        "fits": {k: resident <= b for k, b in budgets.items()},
+        "assumption": "the loader delta is measured with the BF16 embedding resident, because "
+                      "the fidelity protocol runs no int8 overlay, and is carried across to the "
+                      "int8-embedding form unchanged. That assumes the loader's own overhead "
+                      "does not scale with the embedding form.",
+        "what_it_does_not_settle": "this is still a 32 GB board. Activation, non-torch and "
+                                   "CUDA-graph terms in the 16 GB budget are carried from a "
+                                   "32 GB profile, which is docs/34's flip item (2).",
+    }
+
+
 def tree_digests(tree: Path) -> dict:
     files, total = {}, 0
     for p in sorted(tree.rglob("*")):
@@ -530,6 +604,11 @@ def main() -> int:
         payload["ladder_extension"] = ladder_check(realised)
     if args.capture_log and args.capture_log.exists():
         payload["score"]["capture_log_sha256"] = sha256_file(args.capture_log)
+        rw = resident_weights(args.capture_log, measured_payload or pred_payload)
+        if rw:
+            payload["resident_weights_measured"] = rw
+            if args.cond == "s16v":
+                payload["sixteen_gb_arithmetic"] = sixteen_gb_arithmetic(rw)
     if args.extra:
         payload.update(json.loads(args.extra.read_text()))
     payload["errors"] = errors
