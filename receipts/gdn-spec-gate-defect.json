@@ -1,0 +1,60 @@
+{
+  "schema": "qwen38-gdn-spec-gate-defect/1",
+  "generated_utc": "2026-08-16T02:24:37Z",
+  "purpose": "answer a user report of garbled output plus collapsing MTP acceptance on the context edition, and record whether the pinned image carries upstream vLLM PR #51812",
+  "reported_by": {
+    "where": "https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6-context/discussions/1",
+    "user": "cosmicnag",
+    "symptoms": "intermittent multilingual token soup with repeated blocks and replacement characters after 1-2 turns, HTTP 200, no crash; SpecDecoding acceptance walking 39.4 % -> 0.0 % -> 64.5 % -> 20.4 % -> 0.0 %",
+    "config_of_note": "--enable-prefix-caching --mamba-cache-mode align with --speculative-config mtp depth 3, LMCache 0.5.2 in kv_both disk mode, --max-model-len 196608, --gpu-memory-utilization 0.92"
+  },
+  "upstream": {
+    "pr": "https://github.com/vllm-project/vllm/pull/51812",
+    "title": "[Bugfix] Align Qwen GDN gates with speculative tokens",
+    "merged_utc": "2026-08-11T15:35:30Z",
+    "merge_commit": "5af7c8dad798bf899813f8f3c6b9eaf08a748e17",
+    "mechanism": "mixed_qkv is gathered with spec_token_indx but the fused recurrent update received the unsorted a and b gate tensors, so the kernel's first T_spec gate rows can belong to different tokens than the gathered Q/K/V rows; it bites only when a mixed batch places non-speculative tokens before speculative ones",
+    "upstream_measured_effect": "on Qwen3.5-2B BF16 TP1 eager, mean absolute chosen-logprob error 0.002755 -> 0.000208 and maximum 0.020539 -> 0.001690, with identical greedy token ids in their repro"
+  },
+  "verdict": {
+    "present_in_pinned_image": false,
+    "image": "voipmonitor/vllm@sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b (built 2026-08-10, one day before the fix merged)",
+    "file": "vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py",
+    "vendored_sha256": "663dacd324b6b8224a4cb312b3e9c0bad4322c515e982a85f13c3450ffdb7d61",
+    "evidence": [
+      "vendored line 1298 gathers mixed_qkv_spec with spec_token_indx",
+      "vendored lines 1420-1427 pass a=a and b=b unsorted into fused_sigmoid_gating_delta_rule_update on the speculative branch",
+      "the identifiers a_spec and b_spec do not occur anywhere in the vendored file"
+    ]
+  },
+  "patch_published": {
+    "path": "tools/vllm-qwen-gdn-spec-gates.py",
+    "sha256": "7cd3f5fe763b621048af4817951a841d99c8b700d9a56ded27ccaca5a56ccbe0",
+    "derivation": "the vendored file with exactly the upstream two-hunk change applied: gather a and b with spec_token_indx alongside mixed_qkv_spec, keep the pure-speculative fast path unchanged, and pass a_spec/b_spec to the recurrent update",
+    "changed_lines": 8,
+    "validation": "ast.parse on the host and py_compile under the image's own python 3.12.3 both succeed; the unified diff against the vendored file is exactly the upstream diff",
+    "not_yet": "no runtime measurement of this patch exists yet; it is offered as a mount-in fix and is not part of the qualified image digest"
+  },
+  "likely_primary_cause_of_the_report": {
+    "which": "not this PR, but the absent PR #51113 mamba align-mode chunk splitting, receipt receipts/mamba-align-defect.json",
+    "why": "the reporter explicitly enables prefix caching and align mode, which is the exact path where the pinned image publishes a truncated GDN recurrent state that a later request over a shared prefix consumes silently; that matches every reported symptom - wrong tokens with HTTP 200, acceptance collapsing to zero because the draft state is garbage, onset after a turn or two once a cache hit lands, and persistence until restart. Upstream measured #51812's own effect as sub-argmax logit drift, which degrades acceptance but is not a plausible source of token soup on its own.",
+    "our_published_numbers": "unaffected either way: prefix caching is default-off for this hybrid model, every published measurement ran with enable_prefix_caching=False, and the physical-5090 qualification reproduced that (receipts/qualification-5090-context.json)",
+    "decisive_test_for_the_reporter": "drop --enable-prefix-caching (and --mamba-cache-mode align) and repeat the workload; if the garbling stops, it is #51113"
+  },
+  "remediation_offered": {
+    "mamba_align": {
+      "module": "tools/vllm-mamba-align-scheduler.py",
+      "sha256": "b431c1066dfee3ed56bfa7e71cc8606f9afadc300f22d7fc542c43835d1b22bf",
+      "destination": "vllm/v1/core/sched/scheduler.py",
+      "evidence": "upstream's own CPU-only regression file fails 14 of 20 against the vendored scheduler and passes 20 of 20 patched"
+    },
+    "gdn_spec_gates": {
+      "module": "tools/vllm-qwen-gdn-spec-gates.py",
+      "sha256": "7cd3f5fe763b621048af4817951a841d99c8b700d9a56ded27ccaca5a56ccbe0",
+      "destination": "vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py",
+      "evidence": "diff-identical to upstream PR #51812"
+    },
+    "image_variant": "localhost/vllm:gg-r34-patched-apc already bakes the scheduler fix and is marked qualified:false in receipts/production-image.json; the GDN gate module is not in any image yet"
+  },
+  "content_sha256": "00066a45ef6d8e6e068829b2420438fac2ad30f68b586773a82707b204dc941e"
+}

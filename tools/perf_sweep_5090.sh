@@ -380,7 +380,10 @@ PY
 }
 
 phase_run() {
-  local tag=$1 log=$LOGS/server-$tag.log
+  # Two statements on purpose: bash expands the whole `local` line before assigning, so
+  # `local tag=$1 log=...$tag...` would expand $tag before it exists and trip set -u.
+  local tag=$1
+  local log=$LOGS/server-$tag.log
   configure "$tag"
   compose_podman "perfsweep-$tag" "$CTX_REPO" /models/ctx-repo \
     -e VLLM_EXL3_EMBED_BITS=8 -e VLLM_EXL3_GRAPH_DECODE=1 \
@@ -418,7 +421,9 @@ PY
 }
 
 phase_fidelity() {
-  local tag=$1 log=$LOGS/server-fidelity-$tag.log api=http://127.0.0.1:$PORT/v1 kv needle
+  local tag=$1
+  local log=$LOGS/server-fidelity-$tag.log
+  local api=http://127.0.0.1:$PORT/v1 kv needle
   configure "$tag"
   compose_podman "perfsweep-fidelity-$tag" "$CTX_REPO" /models/ctx-repo \
     -e VLLM_EXL3_EMBED_BITS=8 -e VLLM_EXL3_GRAPH_DECODE=1 \
