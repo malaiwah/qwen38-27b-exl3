@@ -410,11 +410,18 @@ harness and emits `/1` reports, which carry no histogram; its tail is published 
 the exact global maximum via `kld_aggregate.py --allow-legacy-no-tail`, and the receipt says in
 `not_aggregable` why there is no cumulative percentile. A mixed `/1` + `/2` shard set is
 rejected rather than summed into a tail that would silently describe only part of the run. Its
-hidden states are deleted, so it cannot be retrofitted. **Cumulative histograms over all ten
-shards therefore require re-running the other nine shards with the `/2` harness — about 6 hours
-of GPU time, and not yet done.** Until that runs, the published tail is one shard of ten
-(1,048,064 of 10,480,640 positions) with bin-bounded quantiles, and the 10 M receipts stay the
-authority for full-run means, bootstrap intervals and paired results.
+hidden states are deleted, so it cannot be retrofitted.
+
+**Two shards of ten now carry cumulative histograms**, not one: shard 1 was re-run with the `/2`
+harness and welded in, so `receipts/kld5-2M-tail-{hyd,k5k6,ctx,fp8,k4}.json` publish
+**2,096,128 scored positions** over 1,024 contexts with bin-bounded cumulative quantiles and
+exact maxima. Doubling the tail volume changed no ordering at any quantile and moved the exact
+maxima only where a single new outlier appeared, which is the expected behaviour of a maximum.
+The remaining eight shards are about 4-5 hours of GPU and are **not** run; the 10 M receipts stay
+the authority for full-run means, bootstrap intervals and paired results, and the tail authority
+is the 2 M pair. Anyone extending it should note the measured cost/benefit: the mean stopped
+moving after one shard and the tail ordering stopped moving after two, so the third shard onward
+buys resolution in the exceedance counts and nothing else.
 
 **Long context.** Every scored position today comes from a 2,048-token window. Two readers
 asked for 64k/128k behaviour, and one reports measured instruction-following collapse at Q3
