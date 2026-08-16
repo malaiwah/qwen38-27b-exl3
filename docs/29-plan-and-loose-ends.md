@@ -62,7 +62,7 @@ Four independent readers attacked the same weak point: the fidelity claim is str
 thin, and the comparator set is narrow. They now head the list: the physical RTX 5090
 qualification that used to outrank them is closed (rank 1).
 
-### F1 — evidence volume: 278,392 scored positions is not enough
+### F1 — evidence volume: 278,392 scored positions is not enough — **CLOSED**
 
 "Do I understand this correctly that you evaluated only on 136 traces and 278k output
 tokens?" The headline KLD rests on 136 analysis contexts. Bootstrap intervals are computed
@@ -79,8 +79,21 @@ token-bound rather than window-bound.
 `tools/kld_ladder.sh` walks it in 512-context shards because one shard of six models is
 ~64 GB of hidden states and `/var/tmp` holds ~135 GB: capture six models, replay the five
 candidates, verify, delete, next shard. `tools/kld_aggregate.py` welds the per-shard reports
-into cumulative receipts at the **1M / 2M / 5M / 10M** checkpoints. Escalate until the run
-stops being reasonable on this hardware, and publish the point at which it stopped.
+into cumulative receipts at the **1M / 2M / 5M / 10M** checkpoints.
+
+**Closed, and the answer was not the one the objection expected.** The full ten shards ran:
+10,480,640 scored positions, 5,120 contexts, 842 source clusters, receipts
+`kld5-10M-{hyd,k5k6,ctx,fp8,k4,nvfp4}.json` and `kld5-10M-paired.json`. Ten times the
+positions moved no mean by more than **2.9 %** of its own value and changed no ordering, and
+the intervals did **not** narrow — relative 95 % width went 14.6 % -> 17.4 % for hydrated and
+13.0 % -> 15.1 % for FP8 as volume rose
+([`receipts/kld5-ladder-convergence.json`](../receipts/kld5-ladder-convergence.json)). The
+bootstrap resamples **source clusters**, so the variance is between-document, not
+between-token: 278,392 positions were already enough for the mean, and what more volume buys
+is accountability rather than precision. Tightening the interval needs more *documents* — 39
+clusters at v3 to 842 at v5 is what moved it, not the position count. The measured tail was
+published separately at 2,096,128 positions with exact maxima and exceedance counts
+(`kld5-2M-tail-*.json`), because a mean cannot answer a tail objection.
 
 ### F2 — comparator breadth: FP8 is a throughput format, not the quality ceiling
 
@@ -112,6 +125,7 @@ per-candidate reports `receipts/gguf-report-{q8_0,q6_k,q5_k_xl}.json`.
 | GGUF `UD-Q5_K_XL` | llama.cpp | 0.004444 | ~0.003936 | 97.20 % | 0.2144 | 18.83 GiB |
 | official FP8 | vLLM | 0.005197 | n/a, same engine | 96.92 % | 0.2440 | 28.51 GiB resident |
 | K4 EXL3 | vLLM | 0.010345 | n/a, same engine | 95.91 % | 0.5576 | — |
+| `unsloth/Qwen3.8-27B-NVFP4` | vLLM | 0.030115 | n/a, same engine | 93.16 % | 1.6228 | 22.57 GB checkpoint |
 
 The **cross-engine floor** is measured the same way, not assumed: the unquantized BF16 GGUF
 against the vLLM BF16 reference, identical tokens, identical shared head, the same 512 contexts,
@@ -148,8 +162,14 @@ names. The two differ by construction, not by measurement.
   not need a long context on a 32 GB card should use it.
 - **Official FP8 is a weak bar.** Every GGUF point at or above 5 bits beats it. Our published
   "34-48 % below FP8" is true and a weaker achievement than it sounds.
-- **K4 is the weakest point in the table**, 0.010345 mean and 0.5576 at p99.9 — worse than every
-  GGUF measured here and worse than official FP8.
+- **K4 is the weakest of our own builds**, 0.010345 mean and 0.5576 at p99.9 — worse than every
+  GGUF measured here and worse than official FP8. The one row it beats is `unsloth`'s NVFP4.
+- **The other 4-bit-weight artifact is far behind.** `unsloth/Qwen3.8-27B-NVFP4` reads 0.030115
+  with 93.16 % top-1 on this same shard, under the same engine so with **no** cross-engine term:
+  2.9x K4 at the same weight class, 8.8x the context edition, 27.7x `Q8_0`, and it loses **512 of
+  512 contexts** to both the context edition and official FP8 with zero ties
+  ([`receipts/kld5-1M-paired-nvfp4.json`](../receipts/kld5-1M-paired-nvfp4.json)). Over the full
+  ten shards it reads 0.031059 [0.027916, 0.034795] with 92.90 % top-1 and loses 5,120 of 5,120.
 - So the format advantage at this bitrate is real at 5 bits, negative at 6 bits, and far short of
   a full bit. turboderp's own chart reads "about a bit ahead" on *his* protocol
   ([35](35-external-protocol-comparability.md)); that is a difference between protocols, not a
@@ -176,10 +196,18 @@ scoring floor explains at most about 5 % of any cross-protocol gap, and none of 
 
 **Still open in F2:**
 
-- **Their protocol, for cross-citation.** wikitext-2 raw test at ctx 512 under
-  `llama-perplexity --kl-divergence`, so the three GGUFs also carry a number citable next to
-  Unsloth's own published rows. Run A of
-  [35-external-protocol-comparability.md](35-external-protocol-comparability.md); not run.
+- ~~**Their protocol, for cross-citation.**~~ **Done.** wikitext-2 raw test at ctx 512 under
+  `llama-perplexity --kl-divergence`, 147,900 scored positions, base PPL 6.950230 ± 0.044933:
+  `Q8_0` **0.000926** ± 0.000042 (98.761 % top-1), `Q6_K` **0.002286** ± 0.000108 (97.875 %),
+  `UD-Q5_K_XL` **0.004426** ± 0.000167 (97.178 %)
+  ([`receipts/wikitext-kld-run-a.json`](../receipts/wikitext-kld-run-a.json)). **Same ordering as
+  our suite**, at 1.60x / 1.50x / 1.12x our net-of-floor values, which is the cross-citation the
+  objection asked for. Three by-products: their harness floor measured on our hardware at
+  5.6e-5 to 8.0e-5 rather than inferred from their log; tokenisation eliminated as an explanation
+  (GGUF BPE and our HF tokenizer produce bit-identical 297,194-token streams, same sha256); and
+  **PPL does not reproduce the KLD ordering** — `Q6_K` has the smallest PPL delta (+0.00079) while
+  `Q8_0` (+0.00467) is the better quant by every divergence statistic, which is a caution about
+  perplexity as a quantization metric rather than about either artifact.
 - **Stock EXL3 uniform-bitrate controls**, at least `turboderp/Qwen3.8-27B-exl3` 5.00bpw
   (`a35e75a7`) and 6.00bpw (`d32ba0bb`), to separate our role-aware allocation from EXL3 itself.
   Not run — and after the GGUF result this is the more interesting of the two, because it is the
