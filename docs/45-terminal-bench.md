@@ -215,6 +215,29 @@ reading `harbor/job.py`:
 An interrupted window therefore loses only the trials in flight at that instant. Rerunning
 `pass1`/`pass2`/`pass3` is always safe.
 
+### And it was proven, not just read
+
+A source read can be wrong about behaviour, so both halves were tested end to end before the GPU
+window, using the mock endpoint in place of the model.
+
+**Resuming a job that already finished** (4 tasks): every `result.json` was fingerprinted with
+sha256 plus its `finished_at`, then `harbor job resume` was run on the completed job. It returned in
+**3.5 s** reporting 4/4 trials and 0 exceptions, against ~100 s for the original run, and the
+before/after fingerprint lists were **identical** — byte-identical results, unchanged timestamps.
+Nothing that had completed was re-executed.
+
+**Resuming a job killed mid-flight** (6 tasks at `-n 2`): harbor was `SIGKILL`ed 50 s in, leaving
+exactly the three interesting cases, which then behaved exactly as the source predicted:
+
+| At the moment of the kill | After `harbor job resume` |
+|---|---|
+| 2 complete: `break-filter-js-from-html__xcQ6M2u`, `openssl-selfsigned-cert__gquj8Xp` | **unchanged** — same trial ids, byte-identical `result.json`, not re-executed |
+| 2 killed in flight (no `result.json`): `build-cython-ext__Y3ZPLCw`, `regex-log__HQZxS9o` | deleted and re-run under new ids (`__fMA2huP`, `__3bkMpqS`) |
+| 2 never started (no trial dir): `adaptive-rejection-sampler`, `bn-fit-modify` | executed |
+
+Final state: 6/6 `completed`, 0 exceptions, one row per task, no duplicates. Both jobs are published
+under `harness-validation/resume-proof-complete` and `.../resume-proof-interrupted`.
+
 ### Retries are transport-only, on purpose
 
 In-run retries (`--max-retries 3`) are restricted to transport failures — `APIConnectionError`,

@@ -163,7 +163,45 @@
       "config_identity_enforced": "job.py:246 raises FileExistsError if the job dir's config.json differs from the config being run -- which is why resume must go through `harbor job resume` (it re-reads the job's own config.json) rather than re-issuing `harbor run`",
       "errored_trials": "`-f <ExceptionType>` deletes matching errored trials before resuming (cli/jobs.py:1750-1796), so transport-failed trials are retried while genuine failures are kept"
     },
-    "consequence": "An interrupted or yielded window loses only the trials that were in flight at that instant."
+    "consequence": "An interrupted or yielded window loses only the trials that were in flight at that instant.",
+    "empirical_proof": {
+      "status": "PROVEN END TO END before the GPU window, with the mock endpoint standing in for the model",
+      "why_this_was_worth_doing": "Resume-by-task-id is a hard requirement, and up to this point it rested on a source read of harbor/job.py. A source read can be wrong about behaviour; this test settles it.",
+      "test_a_resume_of_a_COMPLETE_job": {
+        "job": "tb21-resume-proof (4 tasks)",
+        "method": "Ran 4 tasks to completion (~100 s), fingerprinted every result.json with sha256 plus its finished_at, then ran `harbor job resume` on the finished job.",
+        "result": "Resume returned in 3.5 s reporting 4/4 trials and 0 exceptions, versus ~100 s for the original run.",
+        "verification": "Every completed trial's result.json was byte-identical and finished_at unchanged (diff of the before/after fingerprint lists was empty).",
+        "conclusion": "Resume re-runs nothing that already completed. A kill cannot lose completed work."
+      },
+      "test_b_resume_of_an_INTERRUPTED_job": {
+        "job": "tb21-resume-proof2 (6 tasks, -n 2)",
+        "method": "Started the job, SIGKILL'd the harbor process 50 s in to simulate a lost window, then resumed with the runner's transport-only -f filters.",
+        "state_at_the_moment_of_the_kill": {
+          "complete_with_result_json": [
+            "break-filter-js-from-html__xcQ6M2u",
+            "openssl-selfsigned-cert__gquj8Xp"
+          ],
+          "killed_in_flight_no_result_json": [
+            "build-cython-ext__Y3ZPLCw",
+            "regex-log__HQZxS9o"
+          ],
+          "never_started_no_trial_dir": [
+            "adaptive-rejection-sampler",
+            "bn-fit-modify"
+          ]
+        },
+        "result_after_resume": "6/6 trials, 0 exceptions, 1 m 34 s.",
+        "verification": {
+          "already_complete_trials": "UNCHANGED -- same trial ids, byte-identical result.json (break-filter-js-from-html__xcQ6M2u, openssl-selfsigned-cert__gquj8Xp). Not re-executed.",
+          "killed_in_flight_trials": "Old trial ids gone; re-run under new ids (build-cython-ext__Y3ZPLCw -> __fMA2huP, regex-log__HQZxS9o -> __3bkMpqS), confirming harbor rmtree's a trial dir with no result.json.",
+          "never_started_tasks": "Executed on the resume (adaptive-rejection-sampler__YdbQzsV, bn-fit-modify__gYTD3or).",
+          "final_row_set": "All 6 tasks status=completed, one row each, no duplicates."
+        },
+        "conclusion": "The three cases behave exactly as the source read predicted. An interrupted window loses only the trials in flight at that instant, and only those are repeated."
+      },
+      "published_at": "harness-validation/resume-proof-complete and harness-validation/resume-proof-interrupted"
+    }
   },
   "serving_pins": {
     "vllm": "0.11.2.dev280+gilded.gnosis.v20.vllm4d006a4.b12xcd3ce19.fi1ac6942.cu132.20260810.r34",
@@ -257,7 +295,23 @@
     "tb_task_images_present_at_pin_time": [
       "alexgshaw/openssl-selfsigned-cert:20251031",
       "alexgshaw/regex-log:20251031"
-    ]
+    ],
+    "pass1_image_footprint_projection": {
+      "measured_sample": {
+        "adaptive-rejection-sampler": "80.6 MB",
+        "regex-log": "80.6 MB",
+        "openssl-selfsigned-cert": "125 MB",
+        "bn-fit-modify": "664 MB",
+        "build-cython-ext": "850 MB",
+        "break-filter-js-from-html": "1.06 GB"
+      },
+      "sample_mean_mb": 477,
+      "projection_for_89_tasks_gb": 42.5,
+      "free_on_aiboss_home_gb": 68,
+      "reading": "[INFERENCE from a 6-image sample] Pulling all 89 task images would take roughly 42 GB against 68 GB free, which fits but not comfortably on a box shared with other agents' 192 GB of images.",
+      "mitigation_already_in_the_runner": "disk_guard runs before every pass, reports free space, and when aiboss:$HOME drops below 15 GB removes ONLY docker.io/alexgshaw/* images. There is no global prune anywhere in the tooling.",
+      "side_benefit_of_the_preflight": "The validation runs already pulled 6 task images, so those tasks start without a pull during pass 1."
+    }
   },
   "harness_validation_evidence": {
     "stage_1_infrastructure_oracle": {
