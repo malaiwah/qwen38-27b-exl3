@@ -441,8 +441,13 @@ Gilded Gnosis vLLM EXL3 path supports q4 KV cache. Read out of the pinned r34 bu
 accepted `--kv-cache-dtype` set is `auto, float16, bfloat16, fp8, fp8_e4m3, fp8_e5m2,
 fp8_inc, fp8_ds_mla, nvfp4_ds_mla, turboquant_k8v4, turboquant_4bit_nc, turboquant_k3v4_nc,
 turboquant_3bit_nc, int4_per_token_head, int8_per_token_head, fp8_per_token_head, nvfp4`, so
-sub-8-bit KV exists in several flavours — but every number we publish used `fp8`, and none of
-the 4-bit schemes has been measured here for KV capacity, retrieval or KLD. The honest card
+sub-8-bit KV exists in several flavours — but every **serving and capacity** number we publish
+used `fp8` KV, the **fidelity suite was captured with the KV dtype resolved to `bfloat16`**
+(`receipts/kld5-10M-ctx.json` records it; disclosed on the cards' determinism scope and in
+docs/34 §7), and none of the 4-bit schemes has been measured here for KV capacity, retrieval or
+KLD. `KvDtypeSweep` is measuring exactly this on the physical 5090; docs/28's sentence "4-bit KV
+is not an escape" predates the flag-list read-out and is **at risk** — amend it with a
+superseding note whichever way that receipt lands. The honest card
 answer is the flag list plus that gap, and the fix is a KV-dtype sweep (fp8 versus
 `int4_per_token_head` versus `turboquant_4bit_nc`) reporting allocated KV tokens, needle
 retrieval at native length and KLD delta on the same checkpoint. That sweep is also the
@@ -461,7 +466,11 @@ pinned temperature and publish acceptance per SKU against the in-thread BF16 ref
 (MTP-3 optimal, MTP-4 regressing).
 
 **Prefill, not just decode.** A 196k-token agentic turn spends ~75 s in prefill; prefix-cache
-reuse dominates that workload. Our LMCache path is real and unpublished.
+reuse dominates that workload — now measured and shipped (11.6x/29.3x warm TTFT on the
+8,192-token recipes). **LMCache remains unmeasured by us and carries no receipt**: it is the
+sole surviving suspect in the one real user corruption report, and the open action is
+test-or-retire — either exercise `kv_both` disk reuse against the poisoning probe and publish
+the result, or remove the LMCache compatibility implication from anything we ship.
 
 **Per-tensor bit maps.** Readers now inspect how a quant spends its bit budget before
 downloading. Mixed precision is our differentiator and it is currently only prose.
@@ -1069,6 +1078,40 @@ none of the four weightings tested is calibrated: `rel` and `numel` get the sign
 delta wrong, `abs` and `sqrt(out_energy)` get every sign right but are 13.3× and 2.51× uncertain in
 scale. `sqrt(out_energy)` is the pre-registrable candidate; it was selected knowing this run's
 answer, so it must be validated on a between-role delta before any GPU is spent.
+
+## P1 / rank 15 — serving-path correctness debt and migrated loose ends (re-read, 2026-08-16)
+
+A full re-read of docs/01-42 against the receipts (`BigPictureReread`; findings mirrored in the
+todo list) found no load-bearing published number contradicted by newer evidence, and three
+clusters of genuinely missed work. Migrated here so they stop living only in superseded attack
+lists:
+
+1. **Tool calls have never been exercised end-to-end.** docs/39 §12 states plainly that nothing
+   we publish exercises the template's `# Tools` block, while all four cards ship
+   `--tool-call-parser qwen3_coder`. The audit measured the *template* side (render plus
+   parser round-trip, 34 cases); what has never run is a served request with a real `tools`
+   parameter through the whole stack, multi-turn, with a tool result fed back. One deterministic
+   smoke with schema-validated calls closes it.
+2. **LMCache: test or retire** (see F5 above). The one real user corruption report has LMCache
+   `kv_both` as its sole surviving suspect; we ship no LMCache claim, but F5 used to imply one.
+3. **The calibration-corpus experiment** — dropped through docs/12 P3 → 17 P1.2 → 23 P1.2
+   without ever running. It is the last untested zero-byte fidelity lever, and docs/37 sharpened
+   it: allocation is now provably near-optimal for the converter's own objective, so *content*
+   of the calibration set is the remaining conversion-time input nobody has varied. One
+   conversion at identical bytes with a deliberately different calibration corpus, scored on
+   shard 0, answers it (~1 h GPU on the existing protocol).
+4. **Benchmark-leakage scan** (promised in docs/17/20/23, no receipt): run the calibration
+   12-gram scan against HumanEval/MMLU-Pro/GPQA item texts so the capability numbers carry the
+   same contamination statement the fidelity numbers do.
+5. **Small MTP levers, never measured**: a 3-bpw draft (~0.1 GiB), depth 4/5 under the measured
+   accepted-per-step-over-step-time metric, and `lm_head` K6→K5 (~0.16 GiB) — each a cheap
+   single-variable experiment against the perf-sweep baseline.
+6. **YaRN-1M: verify or declare.** The config carries the 1M rope-scaling block; nothing beyond
+   262,144 has ever been started. Either one startup probe at a longer window on the 96 GB card,
+   or an explicit "unverified beyond 262,144" line on every card that mentions 1M.
+7. **Live-logit sentinels** (docs/17): a handful of fixed prompts scored against the live server
+   at deploy time, so a regression in the serving path (as opposed to the weights) is caught by
+   a number rather than a user report.
 
 ## P1 / rank 14 — runtime memory sharing and sub-8-bit KV (owner-suggested, 2026-08-16)
 
