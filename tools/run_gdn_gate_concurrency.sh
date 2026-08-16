@@ -115,16 +115,22 @@ verify_modules_in_image() {
 # insertions must be removable to recover the vendored bytes exactly. Otherwise the
 # instrument could be changing what it measures.
 verify_instrument_additive() {
-  podman run --rm --network none \
+  # -i is required: without it podman does not attach stdin and the heredoc is silently
+  # discarded, which would make this check pass by producing nothing at all.
+  podman run --rm -i --network none \
     -v "$TOOLS/vllm-gdn-reach-instrument.py:/tmp/instrument.py:ro" \
-    --entrypoint /opt/venv/bin/python "$IMAGE" - <<PY | tee "$OUT/instrument-additive.json"
+    --entrypoint /opt/venv/bin/python "$IMAGE" - <<PY >"$OUT/instrument-additive.json"
 import difflib, hashlib, json, py_compile
 vendored = open("$INSTR_DEST").read().splitlines(keepends=True)
 instrument = open("/tmp/instrument.py").read().splitlines(keepends=True)
 sm = difflib.SequenceMatcher(None, vendored, instrument, autojunk=False)
 ops = sm.get_opcodes()
 changed = [o for o in ops if o[0] != "equal"]
-kept = "".join(instrument[j1:j2] for tag, _, _, j1, j2 in ops if tag == "equal")
+kept_lines = []
+for tag, _, _, j1, j2 in ops:
+    if tag == "equal":
+        kept_lines.extend(instrument[j1:j2])
+kept = "".join(kept_lines)
 rebuilt = hashlib.sha256(kept.encode()).hexdigest()
 py_compile.compile("/tmp/instrument.py", doraise=True)
 payload = {
@@ -140,6 +146,20 @@ payload = {
 assert payload["purely_additive"] and payload["reversible"], payload
 print(json.dumps(payload, indent=2))
 PY
+  # fail closed: an empty or non-conforming report is a failed check, not a pass
+  python3 - "$OUT/instrument-additive.json" "$INSTR_SHA" <<'PY' || die "instrument additivity check did not produce a conforming report"
+import json, sys
+report = json.loads(open(sys.argv[1]).read())
+assert report["purely_additive"], report
+assert report["reversible"], report
+assert report["py_compile_ok"], report
+assert report["instrument_sha256"] == sys.argv[2], report
+assert all(op[0] == "insert" for op in report["opcodes_other_than_equal"]), report
+print(json.dumps({"instrument_additivity": "verified",
+                  "lines_inserted": report["lines_inserted"],
+                  "vendored_sha256": report["vendored_sha256"]}))
+PY
+  cat "$OUT/instrument-additive.json" >&2
 }
 
 start_sampler() {
