@@ -1,20 +1,20 @@
 {
  "schema": "qwen38-scratch-arena/1",
- "generated_utc": "2026-08-16T15:20:00Z",
+ "generated_utc": "2026-08-16T14:05:00Z",
  "agent": "ScratchArena",
- "purpose": "rank-1 lever from docs/43 (R1): replace the per-geometry persistent fp16 reconstruct scratch dict in the fork's exl3.py with one shared per-device arena; CPU proof now, 5090 A/B when the card frees",
+ "purpose": "rank-1 lever from docs/43 (R1): replace the per-geometry persistent fp16 reconstruct scratch dict in the fork's exl3.py with one shared per-device arena; CPU proof plus measured RTX 5090 A/B",
  "status": {
   "cpu_validation": "complete",
-  "gpu_ab": "pending - queue KvDtypeSweep -> V2RunnerDepth -> ScratchArena; runs when V2RunnerDepth hands over by name",
-  "fork_pr": "branch pushed; PR files after the measured numbers land"
+  "gpu_ab": "complete - window 2026-08-16 13:15-13:52Z on the physical RTX 5090 (handover from V2RunnerDepth by name at 13:14:57Z; handed to LMCacheTest by name at 13:52Z)",
+  "fork_pr": "filed: https://github.com/local-inference-lab/vllm/pull/397"
  },
  "duplicate_work_check": {
   "issue_203": "read in full. Findings GG-02/GG-09/GG-26 are all rank-sliced MoE (mixed-Trellis prefill arenas, eager-parity staging, rotation slab duplication). The dense per-geometry reconstruct scratch dict is not among them; the issue's shared-arena prescription ('keep separate plans, share the bytes') is the pattern we apply to the dense path.",
   "pr_270": "read in full plus its 1390-line diff (https://github.com/local-inference-lab/vllm/pull/270.diff). It adds _MIXED_TRELLIS_PREFILL_BUFFERS pooling and lazy/planned parity staging for the rank-sliced MoE path only. Zero occurrences of _EXL3_RECONSTRUCT_SCRATCH, _reconstruct_scratch, or RECONSTRUCT_M in the diff. It does not implement the dense reconstruct-scratch arena; our patch is complementary, not parallel work.",
-  "verdict": "build ours; adopt nothing from #270 beyond its safety/honesty pattern (owner-scoped pooling, never-grow-after-capture, output-escape analysis, measured-vs-predicted separation)"
+  "verdict": "built ours; adopted #270's safety/honesty pattern (never-grow-after-capture, output-escape analysis, measured-vs-predicted separation)"
  },
  "mechanism": {
-  "target_file": "vllm/model_executor/layers/quantization/exl3.py (r34 rootfs copy at /var/tmp/gg-rootfs/opt/venv/lib/python3.12/site-packages/..., sha256 2df9d0799fd323798cead1edb773cab556c94798eec263ee03ded35408c6e4ee, byte-identical to tools/vllm-exl3-prefill-dispatch.py and to malaiwah/vllm-voipmonitor:feat/exl3-b12x-prefill-routing)",
+  "target_file": "vllm/model_executor/layers/quantization/exl3.py (r34 rootfs copy, sha256 2df9d0799fd323798cead1edb773cab556c94798eec263ee03ded35408c6e4ee, byte-identical to tools/vllm-exl3-prefill-dispatch.py and to malaiwah/vllm-voipmonitor:feat/exl3-b12x-prefill-routing)",
   "scratch_dict": "exl3.py:766-767 (_EXL3_RECONSTRUCT_SLICE_N=32768, _EXL3_RECONSTRUCT_SCRATCH keyed (device,K,N)), allocator exl3.py:785-795: persistent fp16 (K, min(N,32768)) per geometry, never freed. Docs/43 cited :766-795; verified exact.",
   "scratch_users": [
    "_reconstruct_hgemm_into exl3.py:929-960: acquires at :951, ext.reconstruct/reconstruct_slice writes the view (:956-958), ext.hgemm reads it (:959) inside the same loop iteration, function returns; no view retained",
@@ -43,8 +43,7 @@
   },
   "baseline_sum_allocating_at_qualified_profile_mib": 790.0,
   "arena_max_at_qualified_profile_mib": 170.0,
-  "predicted_saving_mib": 620.0,
-  "with_head_geometry": "baseline 1110.0 -> arena 320.0 MiB (saving 790.0); head requires >=128 sampled logit rows and does not trigger at max_num_seqs 1-8 with MTP-3"
+  "with_head_geometry": "baseline 1110.0 -> arena 320.0 MiB; head requires >=128 sampled logit rows and does not trigger at max_num_seqs 1-8 with MTP-3 (confirmed: no fourth growth line in either arena serve)"
  },
  "cuda_graph_interaction": {
   "is_reconstruct_inside_decode_graphs": "no, at every profile we ship. The dispatch is a runtime row-count test inside the custom op: reconstruct needs m >= VLLM_EXL3_PREFILL_RECONSTRUCT_M = 128. FULL_DECODE_ONLY capture rows are bounded by cudagraph_capture_sizes: [4] at the qualified profile, [32] at the perf-sweep profile; _graph_decode_capture_rows (exl3.py:1047-1087) can only produce rows <= max capture size. 32 < 128, so captured replays always take the exl3_gemm/b12x branch and the scratch is graph-free.",
@@ -77,32 +76,59 @@
   "fork_tests": "tests/quantization/test_exl3_reconstruct_arena.py: 5/5 pass against the patched module under the image's Python; sibling files test_exl3_prefill_plan.py + test_exl3_warmup.py: 19/19 pass unchanged (CPU-only, monkeypatched torch.cuda, per fork convention)"
  },
  "fork_pr": {
+  "url": "https://github.com/local-inference-lab/vllm/pull/397",
+  "number": 397,
   "head": "malaiwah/vllm-voipmonitor:feat/exl3-reconstruct-scratch-arena",
   "head_commit": "96972e10f5bf11a47a09b3ca52628b2f402c0b7e",
   "dco": "Signed-off-by: Michel Belleau <michel.belleau@malaiwah.com>",
-  "stacked_on": "feat/exl3-b12x-prefill-routing (PR #318 head, byte-identical to the r34 image file); base will be codex/gg-exl3-r7-k345-20260810 like #314/#316/#318",
-  "url": "PENDING - files after the 5090 A/B lands the measured numbers, per the assignment",
-  "body_draft": "upstream/arena/pr-body.md"
+  "base": "codex/gg-exl3-r7-k345-20260810 (stacked on #314/#316/#318 like those PRs; disclosed in the body - review only the last commit)",
+  "changed_files": 2,
+  "body": "upstream/arena/pr-body.md (filed verbatim)"
  },
  "predicted": {
-  "label": "PREDICTION - source arithmetic (docs/43 R1, receipts/h-sharing-research.json), not yet a GPU claim",
+  "label": "PREDICTION - source arithmetic (docs/43 R1, receipts/h-sharing-research.json), superseded by .measured below",
   "kv_pool_gain_mib": 620.0,
   "kv_tokens_mtp3_a_34816": 18676,
-  "kv_tokens_mtp_off_a_32932": 19744,
-  "baseline_kv_tokens_qualified_profile": 265122,
-  "predicted_kv_tokens_qualified_profile": "~283800",
-  "twenty_four_gib_note": "docs/43 estimates the 24 GB window lifts from 24,576 toward ~40,960; re-derive from the measured pool gain before publishing"
+  "baseline_kv_tokens_qualified_profile": 265122
  },
  "measured": {
-  "label": "MEASURED on the physical RTX 5090 - EMPTY until the A/B runs",
-  "ab_kit": "aiboss:~/scratcharena/arena_ab.sh + greedy_probe.py; overlay staged at aiboss:~/qual5090/tools/vllm-exl3-scratch-arena.py (sha256 verified 9aba06eb...)",
-  "kv_tokens_baseline": null,
-  "kv_tokens_arena": null,
-  "kv_token_delta": null,
-  "bit_exact_greedy": null,
-  "vision_suite": null,
-  "needle": null,
-  "decode_runs": null,
-  "service_restore": null
+  "label": "MEASURED on the physical RTX 5090 (GPU-506a575d, driver 610.57.04), 2026-08-16 13:15-13:52Z, image voipmonitor/vllm@sha256:820181fb..., qualified profile (util 0.955, expandable_segments, MTP-3, FULL_DECODE_ONLY [4], max_model_len 262144, kv fp8)",
+  "raw_artifacts": "receipts/scratch-arena-raw/ (server logs with argv+banner, facts, vision, greedy, bench, needle, and the two driver scripts)",
+  "arms": {
+   "baseline": {
+    "overlay_sha256": "2df9d0799fd323798cead1edb773cab556c94798eec263ee03ded35408c6e4ee",
+    "available_kv_cache_gib": 9.28,
+    "gpu_kv_cache_tokens": 265122,
+    "maximum_concurrency_at_262144": 1.01,
+    "reproduced": "identical on both server starts (server-baseline.log, server-baseline2.log)"
+   },
+   "arena": {
+    "overlay_sha256": "9aba06ebf60ca7665c0513752387c349240ab85e1ebc44d6ce8137ef157b6c15",
+    "available_kv_cache_gib": 9.88,
+    "gpu_kv_cache_tokens": 282996,
+    "maximum_concurrency_at_262144": 1.08,
+    "arena_growth_log": "3 INFO lines: 60.0 -> 100.0 -> 170.0 MiB (K=5120 chunk=6144, chunk=10240, chunk=17408); final size exactly the predicted 170 MiB; no head-geometry growth, confirming the >=128-logit-rows gate",
+    "reproduced": "identical on both server starts (server-arena.log, server-arena2.log)"
+   }
+  },
+  "kv_token_delta": 17874,
+  "kv_token_delta_pct": 6.742,
+  "kv_pool_gain_gib_from_engine_lines": "0.60 (9.28 -> 9.88, engine rounds to 2 decimals; 614-625 MiB band, consistent with the 620 MiB prediction)",
+  "measured_vs_predicted_tokens": "17874 / 18676 = 95.7% - the prediction used the marginal KV law a=34816 B/token, the engine adds per-token block/page overheads; publish the measured number",
+  "fidelity_guard": {
+   "vision_suite": "30-case deterministic suite (seed 20260815): byte-identical answers on both arms (diff of all 30 answer strings empty), 24/30 correct on each - equal to the rank-1 qualification reference (digits 8, bars 9, grid 7)",
+   "needle": "arena arm: 258,925-token prompt at depth 0.5, retrieved_exact true, answer 1376346594, 176.7 s wall, 1465.1 tok/s prefill-including-decode (baseline qualification needle: 175.9 s, 1472.0)",
+   "greedy_probe_and_the_honest_caveat": "8 fixed literary prompts x 256 greedy tokens: arms differ 7/8 - BUT the control shows two restarts of the UNPATCHED baseline also differ 7/8 (combined sha b9c18d7d... vs 87eb1d13...), two restarts of the arena arm differ 7/8, and a within-instance repeat is 8/8 identical (87eb1d13 both times). The stack is not restart-deterministic on long greedy continuations regardless of this patch (exl3_gemm autotune selects kernel configs by measured time per process). Within that envelope the arms are indistinguishable: every pairing across restarts is 7 DIFF / 1 MATCH.",
+   "verdict": "PASS - the deterministic probe set is byte-identical across arms; the operand-identity proof (CPU layout parity) explains why; the long-greedy divergence is the stack's own restart envelope, demonstrated by the baseline-vs-baseline control"
+  },
+  "decode_runs": {
+   "baseline_c1_aggregate_tok_s": [108.94, 108.51, 108.51],
+   "arena_c1_aggregate_tok_s": [109.66, 109.16, 109.19],
+   "prefill_2048_tok_s": {"baseline": 3053.6, "arena": 3042.9},
+   "ttft_proxy_sec": {"baseline": 0.0544, "arena": 0.0546},
+   "verdict": "no regression (arena nominally +0.6% decode, within noise)"
+  },
+  "twenty_four_gib_rederivation": "published 24 GB window is 24,576 tokens; the arena's bytes are class-independent, so +17,874 tokens at the same law gives 42,450 raw headroom, supporting docs/43's 'likely 40,960' at the next window step. ARITHMETIC ONLY - needs one 24 GB-class boot before publishing; docs/43's '+18.7k/620 MiB (INFERENCE)' rows should be relabelled to 'measured +17,874 tokens / +0.60 GiB' by whoever owns docs/43 edits (I was instructed not to touch docs/38-43).",
+  "service_restore": "not performed by me, by explicit queue rule: Main's authoritative queue (13:0xZ) and LMCacheTest's direct confirmation both assign the final qwen38-27b restore with health proof to LMCacheTest, my named successor, who took the card at 13:52Z within the 10-minute window. The stop-state was inherited from V2RunnerDepth (stopped 13:04:44Z), not created by me."
  }
 }
