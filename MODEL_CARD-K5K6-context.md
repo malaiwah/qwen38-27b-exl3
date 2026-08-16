@@ -1388,6 +1388,46 @@ bound; it is **not the v5 KLD** and must never be differenced against any publis
 Retrieval was **44/44 exact** across the five arms, 4-bit included — retrieval is not fidelity,
 which is exactly why the KL column exists.
 
+### Reconstruct-scratch arena: +17,874 KV tokens, and it stays an overlay
+
+**A 2-hunk fork patch to `exl3.py` buys this checkpoint 17,874 more KV tokens, measured on the
+physical 5090, and it is an opt-in overlay rather than part of the qualified digest.** The pinned
+r34 image keeps one persistent fp16 prefill-reconstruct scratch **per weight geometry** — 790 MiB
+across the eight geometries that allocate at this card's qualified profile (the head's 5120×32768
+chunk needs ≥128 sampled logit rows and never triggered in either arm). The patch (overlay
+`tools/vllm-exl3-scratch-arena.py`, sha256
+`9aba06ebf60ca7665c0513752387c349240ab85e1ebc44d6ce8137ef157b6c15`; fork PR
+[local-inference-lab/vllm#397](https://github.com/local-inference-lab/vllm/pull/397)) shares one
+grow-to-max arena per device instead, sized by the largest live geometry (**170 MiB**), because
+each reconstruct is written and consumed inside one eager call on one stream. The kernels see
+identical operands — same shapes, strides and dtypes.
+
+**Measured A/B at this card's qualified 262,144-token profile: engine-reported KV pool 265,122 →
+282,996 tokens (+17,874, +6.7 %, 9.28 → 9.88 GiB ≈ +0.60 GiB)**, maximum concurrency 1.01 → 1.08,
+reproduced identically across two server starts per arm, the arena's own growth log ending at
+exactly the predicted 170 MiB (60 → 100 → 170, no fourth line)
+([`receipts/scratch-arena.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/scratch-arena.json),
+raw artifacts under `receipts/scratch-arena-raw/`). Fidelity was gated rather than assumed: the
+30-case deterministic vision suite returned **byte-identical answers on both arms** (24/30 each,
+equal to the rank-1 qualification reference), a full-window needle (258,925 tokens, depth 0.5)
+retrieved exactly, and decode did not regress (109.2–109.7 against 108.5–108.9 tok/s over three
+warmed C1 runs). **Read the byte-identity claim narrowly** — it covers that deterministic probe
+set, because the control shows two restarts of the *unpatched* baseline differ on 7 of 8 long
+greedy continuations (`exl3_gemm` autotunes kernel configs by measured time per process), so this
+stack is not restart-deterministic on long greedy text with or without the patch, and every
+cross-restart pairing is 7 DIFF / 1 MATCH either way.
+
+Like #51812 it is an **overlay deliberately not part of the qualified digest**: the pinned digest
+is what was qualified, a larger KV pool is not evidence that would survive a re-qualification, so
+it is mounted read-only over the vendored file rather than promoted into the image —
+`-v tools/vllm-exl3-scratch-arena.py:/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py:ro`.
+The static prediction had been +620 MiB / +18.7k tokens; the measured gain is **95.7 %** of it, and
+the measured number is the one to quote. On the 24 GB class the same bytes put the published
+24,576-token window at **42,450 raw token headroom, supporting 40,960 at the next window step —
+arithmetic only**, pending a 24 GB-class boot
+([`docs/34-vram-class-profiles.md`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/docs/34-vram-class-profiles.md)
+§10.2).
+
 ### Chat template
 
 This repo ships `chat_template.jinja` byte-identical to `Qwen/Qwen3.8-27B` (sha256

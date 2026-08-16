@@ -4,7 +4,9 @@ Receipt: `receipts/h-sharing-research.json`. Every byte figure below is derived 
 manifests/safetensors headers (ranged HTTP reads of `malaiwah/Qwen3.8-27B-EXL3-K5K6-context`,
 no weight-shard downloads) or quoted from a named receipt. Every mechanism claim carries a
 rootfs `file:line` (pinned image `voipmonitor/vllm@sha256:820181fb…`, r34) or a fork URL with a
-verbatim quote. Nothing here was run on a GPU.
+verbatim quote. Nothing here was run on a GPU **except lever R1's outcome**, added 2026-08-16 from
+`receipts/scratch-arena.json` after the physical-5090 A/B; §3 keeps both the original
+\[INFERENCE] figure and the measured one.
 
 ## 1. What "sharing H (suv/suh)" actually was
 
@@ -131,19 +133,39 @@ sampled logit rows and does not trigger at max_num_seqs 1–8 with MTP-3):
 | **sum (allocating)** | **790.0** |
 | head 5120×32768 (only if ≥128 logit rows) | +320.0 |
 
-**Lever R1 — one shared scratch arena.** Layers execute serially per rank, so one byte arena of
-the largest live chunk (170 MiB) with per-geometry typed views replaces 790 MiB of persistent
-buffers: **~620 MiB recovered** \[INFERENCE — arithmetic from source; needs one 5090 run to
-confirm it lands in the KV pool]. These buffers allocate during vLLM's profiling prefill, so
-they are inside the measured 1.78 GiB "peak activation" and shrinking them enlarges the
-computed KV pool directly. At the measured law (`receipts/qualification-5090-context.json`,
-MTP-3 a = 34,816 B/token) 620 MiB ≈ **+18,700 tokens MTP-3** (+19,800 MTP-off at a = 32,932) on
-*every* class, including 24 GB where the published window is 24,576. The fork already blessed
-this exact pattern for the GLM MoE arenas — issue #203
+**Lever R1 — one shared scratch arena. Built, measured on a GPU, and PR'd (2026-08-16).** Layers
+execute serially per rank, so one byte arena of the largest live chunk (170 MiB) with per-geometry
+typed views replaces 790 MiB of persistent buffers. This section originally priced that at
+**~620 MiB recovered ≈ +18,700 tokens MTP-3** \[INFERENCE — arithmetic from source at the measured
+law `receipts/qualification-5090-context.json`, MTP-3 a = 34,816 B/token; needs one 5090 run to
+confirm it lands in the KV pool]. **That run happened, and the row is now measured:** a physical
+RTX 5090 A/B at the qualified 262,144-token profile moved the engine-reported KV pool
+**265,122 → 282,996 tokens — +17,874 (+6.7 %), 9.28 → 9.88 GiB, i.e. +0.60 GiB** — reproduced
+identically across two server starts per arm, with the arena's growth log ending at exactly the
+predicted 170 MiB (`receipts/scratch-arena.json`; overlay `tools/vllm-exl3-scratch-arena.py`, fork
+PR <https://github.com/local-inference-lab/vllm/pull/397>). **Measured / predicted = 17,874 /
+18,676 = 95.7 %**: the prediction used the marginal KV law alone, while the engine also charges
+per-token block/page overheads. The \[INFERENCE] figure is kept above rather than overwritten —
+it is this path's calibration datum for the next static prediction, and 95.7 % is how much of one
+to expect. Quote the measured number, never the prediction.
+
+The mechanism the prediction assumed also held: these buffers allocate during vLLM's profiling
+prefill, so they sit inside the measured 1.78 GiB "peak activation", and shrinking them enlarges
+the computed KV pool directly — which is what the A/B observed. The bytes are class-independent,
+so the same delta applies on *every* class, including 24 GB where the published window is 24,576:
+**42,450 raw token headroom**, supporting 40,960 at the next window step — arithmetic only, no
+24 GB board booted ([docs/34](34-vram-class-profiles.md) §10.2). The **MTP-off** variant of this
+row (+19,800 tokens at a = 32,932) was **not** in the A/B and remains \[INFERENCE]. The fork had
+already blessed this exact pattern for the GLM MoE arenas — issue #203
 (<https://github.com/local-inference-lab/vllm/issues/203>): "share one `max(total_nbytes)`
 scratch tensor across the two owner keys (keep separate *plans*, share the *bytes*)" — and PR
-#270 shipped the MoE variant. Build cost: small `exl3.py` patch, no kernel change, byte-exact
-outputs (same kernels, same values). KLD risk: none.
+#270 shipped the MoE variant, not this dense one (checked against its 1390-line diff: zero
+occurrences of `_EXL3_RECONSTRUCT_SCRATCH`). Build cost, as forecast: a 2-hunk `exl3.py` patch, no
+kernel change, byte-exact outputs. KLD risk: none, and no longer only by argument — the 30-case
+deterministic vision suite returned byte-identical answers on both arms. One caveat travels with
+that claim: it covers the deterministic probe set, because a baseline-vs-baseline control shows
+this stack is not restart-deterministic on long greedy continuations (7 of 8 differ across
+restarts of the *unpatched* image) with or without the patch.
 
 - `_EXL3_FP8_SCRATCH` (`exl3.py:798, 814-821`): if `VLLM_EXL3_PREFILL_FP8=1` ever ships
   (B12xLeverPlan territory), it adds fp8 `(chunk, K)` buffers per geometry — **+555 MiB** across
@@ -233,7 +255,7 @@ arithmetic and gate locations only).
 
 | # | lever | 32 GB | 24 GB | 16 GB | KLD risk | build cost | verdict |
 |---|---|---:|---:|---:|---|---|---|
-| 1 | R1: single reconstruct-scratch arena (`exl3.py` dict→arena) | +620 MiB KV pool ≈ +18.7k tok MTP-3 | same bytes; window 24,576 → re-derive (likely 40,960) | +620 MiB but see below | none (byte-exact) | small fork patch; precedent issue #203/PR #270 | **build first** |
+| 1 | R1: single reconstruct-scratch arena (`exl3.py` dict→arena) | **measured +17,874 tok MTP-3 / +0.60 GiB KV pool** (265,122 → 282,996; predicted +620 MiB ≈ +18.7k = 95.7 %) | same measured bytes; window 24,576 → 42,450 raw headroom, supports 40,960 \[P] — arithmetic only | **+0.60 GiB** measured on 32 GB, class-independent bytes, but see below | none (byte-exact; deterministic vision suite byte-identical across arms) | 2-hunk `exl3.py` patch, as forecast; precedent issue #203/PR #270 (MoE variant only) | **built, measured on the 5090, PR'd — fork PR #397, `receipts/scratch-arena.json`** |
 | 2 | KV dtype (fp8→?) | defer | defer | defer | measured elsewhere | n/a | **defer to `receipts/kv-dtype-sweep-5090.json`**; turboquant is −100 B/token vs fp8 by layout; nvfp4 hard-refused on SM120 |
 | 3 | R2: fp8-prefill scratch arena (pre-req for `VLLM_EXL3_PREFILL_FP8=1`) | avoids +555 MiB | same | same | none | trivial once R1 exists | build with R1 if fp8 prefill ships |
 | 4 | vision MXFP8 runtime overlay | +439 MiB | +439 MiB | +439 MiB | unmeasured (vision path) | moderate (extend overlay policy) | opt-in variant, measure first |
@@ -250,5 +272,6 @@ candidate (full-attn K4, GDN K3, MLP K3/K3/K3, head K4, 12.77 GiB serialized —
 plus int8 embed. What must be measured first, in order: **(1)** the flip condition already on
 file — a sub-4-bit shard-0 KLD (one conversion + one shard-0 score ≈ 1 h GPU, protocol exists);
 **(2)** `KvDtypeSweep`'s receipt for whatever KV dtype the 16 GB context budget would use;
-**(3)** R1's measured pool gain, which at 16 GB is the difference between a toy window and a
-usable one *after* (1) passes. Runtime sharing is margin, not the door.
+**(3)** R1's pool gain, now **measured** at +17,874 tokens / +0.60 GiB on 32 GB
+(`receipts/scratch-arena.json`) — at 16 GB those class-independent bytes are the difference between
+a toy window and a usable one *after* (1) passes. Runtime sharing is margin, not the door.

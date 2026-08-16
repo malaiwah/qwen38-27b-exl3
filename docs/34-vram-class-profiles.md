@@ -884,6 +884,31 @@ blocking term is not KV. All of these are predictions **[P]**: no 24 GB or 16 GB
 sweep, and the KV pool itself moved with dtype on the 5090 (9.28 GiB for fp8 against 9.67 GiB for
 every other arm), so these windows inherit an fp8-shaped pool.
 
+**The reconstruct-scratch arena moves these rows by *measured* bytes, but the class effect is still
+arithmetic.** The fork's shared reconstruct-scratch arena (docs/43 lever R1) is no longer a
+forecast: on the physical 5090 at the 262,144-token profile it moved the engine-reported KV pool
+**265,122 → 282,996 tokens — +17,874 (+6.7 %), 9.28 → 9.88 GiB** — reproduced identically across
+two server starts per arm ([`receipts/scratch-arena.json`](../receipts/scratch-arena.json),
+[docs/43](43-runtime-memory-sharing.md) §3; it ships as an **opt-in overlay, not part of the
+qualified digest**). Those bytes are class-independent — the arena replaces a 790 MiB
+per-geometry scratch set with one 170 MiB buffer, and the geometries are shape-derived, not
+budget-derived — so the delta carries down to this class, as arithmetic:
+
+| 24 GB MTP-3 row | tokens | basis |
+|---|---:|---|
+| published today | **24,576** | §5.3: measured pool, ≥15 % envelope |
+| + measured arena delta → raw capacity **[P]** | **42,450** | 24,576 + 17,874 (`receipts/scratch-arena.json`) |
+| next 4,096 step, the one docs/43 flags **[P]** | **40,960** | 42,450 / 40,960 = 1.036 → **3.6 %** headroom |
+| largest 4,096 step clearing the ≥15 % rule **[P]** | **36,864** | 42,450 / 1.15 = 36,913 |
+
+**Every row above is [P], and none of them is a publishable window.** No 24 GB board has been
+booted with the overlay; the +17,874 was measured at a 262,144-token window rather than re-derived
+at 24,576 through `int(max_concurrency × max_model_len)`, which is the only form that yields a
+startable length; and §5.3's ≥15 % envelope — not raw capacity — is what licenses a published
+figure. So **40,960 is docs/43's raw-headroom step, not a window this document publishes**, and on
+the same arithmetic the envelope-clearing step would be 36,864. §8's physical-board gate stays
+open, and it is the gate that decides.
+
 ### 10.3 What a capped budget does not change, and the one thing it does
 
 The four memory components are **invariant to the budget**, which is the direct test of whether
