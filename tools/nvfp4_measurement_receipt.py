@@ -99,10 +99,16 @@ def suite_comparability(repo: Path) -> dict:
     order_v5 = sorted(rows, key=lambda k: rows[k]["v5_shard0_mean_kld"])
     return {
         "why_this_block_exists": "our published NVFP4 number on the older v3 suite is "
-            "0.094978 raw / 0.092727 contamination-corrected, and this measurement is "
-            "0.030115. That is a 3.08x gap on the same checkpoint, same revision, same "
-            "flags and same shared-head protocol, so it needs an account before anyone "
-            "reads either number.",
+            "0.094978 raw / 0.092727 contamination-corrected, and this run's shard-0 "
+            "measurement is 0.030115. That is a 3.08x gap on the same checkpoint, same "
+            "revision, same flags and same shared-head protocol, so it needs an account "
+            "before anyone reads either number.",
+        "basis": "every v5 figure in this block is the SHARD-0 value, for all six "
+                 "candidates, because that is the only scale on which all six have been "
+                 "measured. The ten-shard NVFP4 figure lives in `coverage` and in "
+                 "receipts/kld5-10M-nvfp4.json and is deliberately not substituted here: "
+                 "putting a 10,480,640-position row into a table of 1,048,064-position "
+                 "rows would be the same error this block exists to prevent.",
         "finding": "it is suite hardness, not an NVFP4 anomaly. Every candidate moved "
                    "by a factor in a narrow band, NVFP4 sits at the top of that band "
                    "rather than outside it, and the ordering is identical in both "
@@ -524,7 +530,12 @@ def main() -> int:
                                      "more wall-clock than recapturing, and the "
                                      "reports -- three orders of magnitude smaller -- "
                                      "are the durable artifact",
-                "how_to_recompute": "tools/kld_ladder.sh with the command below",
+                "how_to_recompute": f"KLD_ROOT={ROOT} KLD_SUITE={PARENT_SUITE} "
+                                    "tools/kld_ladder.sh --candidates nvfp4 <shards>, "
+                                    "which recaptures BF16 and NVFP4 for each named "
+                                    "shard, replays, verifies, and releases the hidden "
+                                    "states again. Re-running it over an already "
+                                    "verified shard skips it.",
             },
         },
     }

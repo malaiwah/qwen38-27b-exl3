@@ -1,0 +1,789 @@
+{
+  "schema": "qwen38-nvfp4-v5-measurement/1",
+  "generated_utc": "2026-08-16T06:02:58Z",
+  "question": "where does unsloth/Qwen3.8-27B-NVFP4 sit on OUR v5 held-out suite, measured by the same harness and protocol as every published row of the ladder?",
+  "why": "NVFP4 is the size-class competitor most often argued for against these builds, and it was the one comparator missing from the v5 tables: it had only ever been scored on the older v3 suite (0.094978 raw, 0.092727 contamination-corrected). It is served by the same vLLM build as our EXL3 rows, so unlike the GGUF rows its number carries no cross-engine term, which makes it the cleanest external comparison on the table.",
+  "artifact": {
+    "repo": "unsloth/Qwen3.8-27B-NVFP4",
+    "revision": "9c73e2daee1d0fd494ffbd1d8753f2174a953796",
+    "local_snapshot": "/var/tmp/models/Qwen3.8-27B-NVFP4",
+    "served_as": "/models/Qwen3.8-27B-NVFP4",
+    "quantization_flag": "--quantization compressed-tensors",
+    "files": {
+      ".gitattributes": {
+        "size": 1570,
+        "sha256": "34448b82c17d60fec9b65b1f093c115ddbaadc04beb1b0140b6bfed2e012a930",
+        "git_blob_id": "52373fe24473b1aa44333d318f578ae6bf04b49b",
+        "published_blob_id": "52373fe24473b1aa44333d318f578ae6bf04b49b",
+        "matches_published": true
+      },
+      "README.md": {
+        "size": 6586,
+        "sha256": "eb6c7966cc08d4beb8231a6fb29a05d72394911dc07e995af73d6baa3f109890",
+        "git_blob_id": "824a2e9af3bafd33addb6f6b2fac1111aef1961e",
+        "published_blob_id": "824a2e9af3bafd33addb6f6b2fac1111aef1961e",
+        "matches_published": true
+      },
+      "chat_template.jinja": {
+        "size": 9993,
+        "sha256": "12827f24b742ea4e80cdc12dbcf9622227056b9f797252a3149263d4f9aaadce",
+        "git_blob_id": "a087700658910c336c9ca9f5780a75a3cdd4fcdd",
+        "published_blob_id": "a087700658910c336c9ca9f5780a75a3cdd4fcdd",
+        "matches_published": true
+      },
+      "config.json": {
+        "size": 22601,
+        "sha256": "fd29e5c031dfb051fe591bec1c6417e313be3d1d777e742a2b67de2da937a6b6",
+        "git_blob_id": "6733c8551cdcc9e02a2d8e5928f40721aee7dd5f",
+        "published_blob_id": "6733c8551cdcc9e02a2d8e5928f40721aee7dd5f",
+        "matches_published": true
+      },
+      "generation_config.json": {
+        "size": 214,
+        "sha256": "d0d0ed2e37cdfafef4a5067d5ea2407b05f4fb50526e47c008a5b235d50240fb",
+        "git_blob_id": "0bc3addd19dc59c5c8899fc1fb887d50b592e7c3",
+        "published_blob_id": "0bc3addd19dc59c5c8899fc1fb887d50b592e7c3",
+        "matches_published": true
+      },
+      "model.safetensors": {
+        "size": 22568192096,
+        "sha256": "c473512c70eace07e2256fe9fd76596ac03e3295bee7d54cfb72676416afcc05",
+        "published_lfs_sha256": "c473512c70eace07e2256fe9fd76596ac03e3295bee7d54cfb72676416afcc05",
+        "matches_published": true
+      },
+      "model.safetensors.index.json": {
+        "size": 164371,
+        "sha256": "429430e1b9e65b2cb98eff8cd10a06e70a09cee89c48487a3914684aeb6df57f",
+        "git_blob_id": "7608ff001dbfc8936318df32aaaaef7c8c9f340d",
+        "published_blob_id": "7608ff001dbfc8936318df32aaaaef7c8c9f340d",
+        "matches_published": true
+      },
+      "model_mtp.safetensors": {
+        "size": 849400392,
+        "sha256": "1d8268aa85ace093a561e3e7b63b9d390dac1cd55a90cd55b5ec509c3c9da9fe",
+        "published_lfs_sha256": "1d8268aa85ace093a561e3e7b63b9d390dac1cd55a90cd55b5ec509c3c9da9fe",
+        "matches_published": true
+      },
+      "preprocessor_config.json": {
+        "size": 390,
+        "sha256": "27225450ac9c6529872ee1924fcb0962ff5634834f817040f444118116f4e516",
+        "git_blob_id": "2ea84a437d448ff71b08df68fdd949d5cc4ebb64",
+        "published_blob_id": "2ea84a437d448ff71b08df68fdd949d5cc4ebb64",
+        "matches_published": true
+      },
+      "tokenizer.json": {
+        "size": 19989424,
+        "sha256": "f399b3cd12fa270d51457bb749fb30863521e8359b8a27059c71b6c2f7d6dd6c",
+        "published_lfs_sha256": "f399b3cd12fa270d51457bb749fb30863521e8359b8a27059c71b6c2f7d6dd6c",
+        "matches_published": true
+      },
+      "tokenizer_config.json": {
+        "size": 1124,
+        "sha256": "66e427c470fe580fe8c7b5725d857af23d8417e37fae62667ec698306a19987b",
+        "git_blob_id": "d1a20cc3a8838d08eca9de8a7b84d510d60a0524",
+        "published_blob_id": "d1a20cc3a8838d08eca9de8a7b84d510d60a0524",
+        "matches_published": true
+      },
+      "video_preprocessor_config.json": {
+        "size": 385,
+        "sha256": "7768af27c1fafa9cc9011c1dc20067e03f8915e03b63504550e11d5066986d13",
+        "git_blob_id": "3ba673a5ad7d4d13f54155ecd38b2a94a6dac8fe",
+        "published_blob_id": "3ba673a5ad7d4d13f54155ecd38b2a94a6dac8fe",
+        "matches_published": true
+      },
+      "vocab.json": {
+        "size": 6722759,
+        "sha256": "ce99b4cb2983d118806ce0a8b777a35b093e2000a503ebde25853284c9dfa003",
+        "git_blob_id": "0aa0ce0658d60ac4a5d609f4eadb0e8e43514176",
+        "published_blob_id": "0aa0ce0658d60ac4a5d609f4eadb0e8e43514176",
+        "matches_published": true
+      }
+    },
+    "all_files_match_published_digests": true,
+    "digest_source": "/var/tmp/models/Qwen3.8-27B-NVFP4/.cache/huggingface/trees/9c73e2daee1d0fd494ffbd1d8753f2174a953796.json, the download-time record of the pinned revision: lfs_sha256 for LFS files, git blob ids (sha1('blob <size>\\0' + bytes)) for the rest",
+    "upstream_revision_no_longer_resolves": {
+      "checked_utc": "2026-08-16T06:02:58Z",
+      "api": "https://huggingface.co/api/models/unsloth/Qwen3.8-27B-NVFP4/revision/9c73e2daee1d0fd494ffbd1d8753f2174a953796",
+      "response": "{\"error\":\"Invalid rev id\"}",
+      "cause": "the upstream repository was super-squashed on 2026-08-15; current HEAD 16b6615af3548b88e2d8e382457bc705b00479cf is titled \"Super-squash branch 'main' using huggingface_hub\". Squashing is a routine maintainer action; the lesson is ours, namely that a Hugging Face revision id is not a durable citation.",
+      "consequence": "our local snapshot was the only verifiable copy of the revision this project's published v3 NVFP4 number was measured on, so it is now mirrored"
+    },
+    "archival_mirror": {
+      "repo": "malaiwah/Qwen3.8-27B-NVFP4-archival-9c73e2da",
+      "commit": "7a66267ebd34a01ba9a13e56aa2cea0b27bdacd4",
+      "byte_identical": true,
+      "verified_remotely_after_upload": true,
+      "note": "public model repo, apache-2.0 and attribution inherited from unsloth, upstream card preserved as upstream-README.md"
+    },
+    "difference_from_current_upstream_head": {
+      "head": "16b6615af3548b88e2d8e382457bc705b00479cf",
+      "weights_identical": true,
+      "weight_files": [
+        "model.safetensors",
+        "model_mtp.safetensors"
+      ],
+      "config_json_diff": {
+        "field": "quantization_config.config_groups.group_1.weights.observer",
+        "pinned_revision": "imatrix_mse",
+        "current_head": null,
+        "only_difference_in_the_file": true
+      },
+      "tokenizer_json_adjudicated": {
+        "why": "receipts and docs/35 carried a tokenizer.json digest that did not match the local snapshot, and nobody could tell which side had drifted because the cited revision no longer resolved. Holding the only resolvable copy plus a mirror settles it.",
+        "method": "both files were downloaded from their live revisions and hashed: HEAD from upstream, the reviewed revision from the archival mirror; the mirror's copy was then compared against the local snapshot",
+        "reviewed_revision": {
+          "revision": "9c73e2daee1d0fd494ffbd1d8753f2174a953796",
+          "sha256": "f399b3cd12fa270d51457bb749fb30863521e8359b8a27059c71b6c2f7d6dd6c",
+          "size": 19989424,
+          "resolvable_upstream": false,
+          "reachable_via": "malaiwah/Qwen3.8-27B-NVFP4-archival-9c73e2da@7a66267ebd34a01ba9a13e56aa2cea0b27bdacd4",
+          "mirror_copy_matches_local_snapshot": true
+        },
+        "current_head": {
+          "revision": "16b6615af3548b88e2d8e382457bc705b00479cf",
+          "sha256": "06b9509352d2af50381ab2247e083b80d32d5c0aba91c272ca9ff729b6a0e523",
+          "size": 19989325
+        },
+        "the_only_difference": {
+          "field": "truncation",
+          "reviewed_revision": {
+            "direction": "Right",
+            "max_length": 2048,
+            "strategy": "LongestFirst",
+            "stride": 0
+          },
+          "current_head": null,
+          "bytes": 99,
+          "identical_elsewhere": "vocab (248,044 entries), merges and added_tokens are identical; a full structural walk of both files reports exactly one differing node, /truncation"
+        },
+        "does_it_change_tokenization": "Under transformers.AutoTokenizer, no: measured, a 12,002-token input gives 12,002 tokens with either file, because PreTrainedTokenizerFast sets truncation per call and defaults to off. Under the raw tokenizers.Tokenizer API, YES: the reviewed revision's file silently truncates that same input to 2,048 tokens while HEAD's returns all 12,002. So the field is inert for every number we publish but is a live trap for anyone reproducing through the raw library against the mirrored revision.",
+        "irrelevant_to_this_measurement": "the suite ships pre-tokenized contexts; no tokenizer is consulted during capture or replay",
+        "corrected_in": "docs/35-external-protocol-comparability.md, source row [HF-NVFP4], which now carries both digests labelled with their revisions"
+      },
+      "does_it_change_what_we_measured": "No. The two weight files are byte-identical between the pinned revision and current HEAD, so 'the NVFP4 everyone downloads today' computes exactly what we measured. The observer field is llm-compressor's record of how scales were chosen at build time; it is metadata, not read at inference, and it describes the same bytes. Its only substantive content is historical: the revision we reviewed declared an imatrix-MSE observer and the current one declares none."
+    }
+  },
+  "suite_comparability_v3_vs_v5": {
+    "why_this_block_exists": "our published NVFP4 number on the older v3 suite is 0.094978 raw / 0.092727 contamination-corrected, and this run's shard-0 measurement is 0.030115. That is a 3.08x gap on the same checkpoint, same revision, same flags and same shared-head protocol, so it needs an account before anyone reads either number.",
+    "basis": "every v5 figure in this block is the SHARD-0 value, for all six candidates, because that is the only scale on which all six have been measured. The ten-shard NVFP4 figure lives in `coverage` and in receipts/kld5-10M-nvfp4.json and is deliberately not substituted here: putting a 10,480,640-position row into a table of 1,048,064-position rows would be the same error this block exists to prevent.",
+    "finding": "it is suite hardness, not an NVFP4 anomaly. Every candidate moved by a factor in a narrow band, NVFP4 sits at the top of that band rather than outside it, and the ordering is identical in both suites.",
+    "ratio_range": [
+      2.4624986758761565,
+      3.0790651709420223
+    ],
+    "ratio_spread_end_to_end": 1.2503824676561468,
+    "ordering_v3": [
+      "hyd",
+      "k5k6",
+      "ctx",
+      "fp8",
+      "k4",
+      "nvfp4"
+    ],
+    "ordering_v5": [
+      "hyd",
+      "k5k6",
+      "ctx",
+      "fp8",
+      "k4",
+      "nvfp4"
+    ],
+    "ordering_identical": true,
+    "monotone_in_severity": "the factor rises with quantization error across the band, which is what a harder corpus does: the candidates with more probability mass in the tail gain the most from an easier one",
+    "per_candidate": {
+      "hyd": {
+        "v3_contamination_corrected_mean_kld": 0.007172033855778145,
+        "v5_shard0_mean_kld": 0.002699883159684943,
+        "ratio_v3_over_v5": 2.6564237900632226,
+        "v3_top1": 0.9716081532798141,
+        "v5_top1": 0.9779689026624329
+      },
+      "k5k6": {
+        "v3_contamination_corrected_mean_kld": 0.007945432690251431,
+        "v5_shard0_mean_kld": 0.0031413603551342147,
+        "ratio_v3_over_v5": 2.5292967988424118,
+        "v3_top1": 0.9694617435155729,
+        "v5_top1": 0.9761083292623352
+      },
+      "ctx": {
+        "v3_contamination_corrected_mean_kld": 0.009377507327503,
+        "v5_shard0_mean_kld": 0.003409409957186559,
+        "ratio_v3_over_v5": 2.7504780725288045,
+        "v3_top1": 0.9680000307728999,
+        "v5_top1": 0.9754566515021983
+      },
+      "fp8": {
+        "v3_contamination_corrected_mean_kld": 0.012797762111083744,
+        "v5_shard0_mean_kld": 0.0051970635503104596,
+        "ratio_v3_over_v5": 2.4624986758761565,
+        "v3_top1": 0.9617608253291738,
+        "v5_top1": 0.9692137121397166
+      },
+      "k4": {
+        "v3_contamination_corrected_mean_kld": 0.029678914726743645,
+        "v5_shard0_mean_kld": 0.010345348536682758,
+        "ratio_v3_over_v5": 2.868817287451217,
+        "v3_top1": 0.9447857244517616,
+        "v5_top1": 0.9591322667318026
+      },
+      "nvfp4": {
+        "v3_contamination_corrected_mean_kld": 0.09272730252953497,
+        "v5_shard0_mean_kld": 0.030115407560914208,
+        "ratio_v3_over_v5": 3.0790651709420223,
+        "v3_top1": 0.9049463589889564,
+        "v5_top1": 0.9315795600268686
+      }
+    },
+    "rule": "never put a v3 and a v5 number in the same sentence. What carries across the two suites is the ORDERING and the rough ratio structure, both of which are preserved; what does not carry is any absolute value. No conclusion of ours changes between the two suites.",
+    "corroborated_by": "Main derived the same six ratios independently from the published receipts; both derivations agree to three decimal places"
+  },
+  "protocol": {
+    "metric": "KL(BF16 reference || candidate), full 248,320-entry vocabulary, exact two-pass, float32 within vocabulary chunks and float64 across them",
+    "reference": "BF16 Qwen/Qwen3.8-27B at /models/Qwen3.8-27B, captured under vLLM at the final norm",
+    "head": {
+      "path": "/work/kld2/lm_head.safetensors",
+      "sha256": "25a30fd5f826da0abc4efc4cc71def9f02bcb8085f7175eee284d221dee4cfff",
+      "shared": "one BF16 head for both operands; no candidate head quantization is counted"
+    },
+    "suite": {
+      "parent": "/var/tmp/work/kld5/suite",
+      "manifest_sha256": "c79dfad3767ca5b3015129077f20dbb9282a2e51ca8bca9ed09be8c7a9c73019",
+      "suite_token_sha256": "510541f6861b589d44932db253ec25d96d6daaeeee4ea2ab9b65329209482b88",
+      "contexts": 5120,
+      "context_length": 2048,
+      "scored_positions_per_context": 2047,
+      "shard_size": 512
+    },
+    "gpu_memory_utilization": 0.85,
+    "same_as_published_rows": "identical suite, identical shard views, identical shared head, identical reference checkpoint, identical gpu-memory-utilization"
+  },
+  "harness": {
+    "capture_and_replay": {
+      "guest_path": "/work/kld5-nvfp4/fidelity.py",
+      "sha256": "8ce8fe861c977c856f3263f509878e588caa2eaab29fe310f8c40223941e1294",
+      "source": "tools/fidelity.py at the repository revision of this run"
+    },
+    "frozen_ladder_harness": {
+      "path": "/var/tmp/work/kld5/tools/fidelity.py",
+      "sha256": "804c20a6479df067b1dde0e34c3664f0a7d12d692d59cd5d99ed0e319257a7f6",
+      "used_here": false,
+      "why_not": "the surviving shard-0 BF16 reference (/var/tmp/work/gguf/hidden-bf16) was captured by the current harness generation, and a replay's two operands should come from one generation. The choice is safe because the two generations are additively different and provably produce identical numbers -- see determinism_evidence."
+    },
+    "aggregator": {
+      "path": "tools/kld_aggregate.py",
+      "sha256": "9cac013372da03debad14dade1c1161cc25b2159fb7cd9139b0bbd90d11d9cef",
+      "note": "the `paired` subcommand was added by this run and validated by rebuilding receipts/kld5-10M-paired.json from its own five inputs: content_sha256 ba0f9a2a3a680a135d28a5cc11b14d107e92c0ec477d4fdf0a7e3758b30b01e7 reproduced bit-for-bit, every field identical, only generated_utc differing",
+      "tie_convention": "the schema counts an exact tie as a b-win (`a_wins` counts strict improvements, `b_wins` is the remainder), which has already misled one reader on a zero-difference control. It is kept unchanged so the published paired receipt stays reproducible, and the tool now prints the tie count to stderr when any comparison ties. Audited for this run: BOTH NVFP4 comparisons have ZERO exact ties, and the smallest per-context gap is +0.007842279 against the context edition and +0.007170826 against official FP8, so `b_wins: 512` here is 512 genuine losses on 512 contexts rather than a tie artefact"
+    },
+    "ladder": {
+      "path": "tools/kld_ladder.sh",
+      "sha256": "a036d2ade7e1d24727b48a620cd3a040c5cb822f44b294cf322dc85cc4538b41",
+      "extended_not_forked": "nvfp4 was added to that script's model map (--quantization compressed-tensors, no environment of ours) rather than run through a parallel pipeline, so this measurement walks the same capture/replay/verify/release loop as the published ladder. The other changes are a --candidates selector so a subset can be measured without invalidating a root whose reports predate the new model, KLD_KEEP_HIDDEN, and a space check that scales to the number of models actually captured instead of hardcoding six. A bare invocation still means exactly what it meant for the published ten shards.",
+      "backward_compatibility_verified": "with the published harness (KLD_HARNESS=/var/tmp/work/kld5/tools/fidelity.py) and the default candidate list, a --dry-run over shards 0-9 of the published root reports all ten shards already verified and would recapture nothing; --candidates refuses bf16, an empty list, and an unknown model name",
+      "provenance_defect_fixed": {
+        "what": "the script stages a copy of the repository harness into the run root, and it had to do so BEFORE the run pin could be checked, because the pin is partly the harness digest. So a run the pin REJECTED still left a fidelity.py behind in the root it had just been refused entry to.",
+        "why_it_matters": "this actually happened during a regression test of the extension: a rejected run wrote /var/tmp/work/kld5/fidelity.py into the PUBLISHED ladder root, where it sat beside a ladder-pin.json naming a different harness digest. An auditor reading that tree later would reasonably have concluded that file was the harness which measured the ten published shards. It is a provenance trap, not untidiness.",
+        "fix": "pin_run's failure path now removes a harness staged by the same invocation before aborting",
+        "verified_both_directions": [
+          "a rejected run leaves no file behind (checked on the published root, which rejects on harness drift)",
+          "an accepted run is unchanged (the nvfp4 root still pins, and still verifies shard 0's report)",
+          "the published path still verifies all ten shards as done with nothing recaptured"
+        ],
+        "stray_file_removed": "/var/tmp/work/kld5/fidelity.py, deleted; it existed for about four minutes",
+        "did_it_reach_the_published_dataset": "no. The full tree of malaiwah/qwen38-27b-fidelity-suite-v5 was enumerated by pagination (6,396 entries across suite/, captures/, reference/, reports/ and corpus/) and contains zero .py files of any name, so no harness copy was published."
+      }
+    },
+    "determinism_evidence": {
+      "claim": "capture+replay on this box is deterministic across harness generations, so a report's numbers do not depend on which generation produced the hidden states",
+      "evidence": "/var/tmp/work/kld5/reports/shard-0000/report-hyd.json and /var/tmp/work/kld5-tail/reports/shard-0000/report-hyd.json were produced from different capture directories by different harness files, and agree bit-for-bit on the whole per_context array as well as token_mean_kld 0.002699883159684943, max_kld 3.7348466556786946, top-1, mean JSD and the entire bootstrap block; the only difference between the two reports is the additive kld_tail histogram",
+      "independently_checked_by": "ErrorDrivenAlloc"
+    }
+  },
+  "reference_capture_reuse": {
+    "path": "/var/tmp/work/gguf/hidden-bf16",
+    "guest_path": "/work/gguf/hidden-bf16",
+    "why": "the v5 ladder deleted its own BF16 hidden states after verification; this is the surviving shard-0 BF16 capture, the same one every GGUF row was replayed against",
+    "wired_in_as": "/var/tmp/work/kld5-nvfp4/hidden/shard-0000/hidden-bf16 -> ../../../gguf/hidden-bf16 (relative symlink, so it resolves identically on the host and in the rootfs)",
+    "accepted_by": "tools/kld_ladder.sh verify_capture, which checks the capture manifest against the shard suite view before reuse",
+    "capture_manifest": {
+      "suite_token_sha256": "caef8a4628d6c07c162100895096f890cdf9cafc8e4c48b3d66035d737ee7cf7",
+      "contexts": 512,
+      "complete": true,
+      "capture_contract_sha256": "b204c4a60d9e1731cb60d24a5974b963f36d7a135562a8bf6d88d784bdf97389",
+      "model_path": "/models/Qwen3.8-27B"
+    },
+    "consequence": "no BF16 capture was needed for shard 0, which is why the shard-0 number cost one model load instead of two"
+  },
+  "commands": {
+    "shard-0000": {
+      "cap-nvfp4.sh": [
+        "set -uo pipefail",
+        "export VLLM_ALLOW_INSECURE_SERIALIZATION=1 TORCH_EXTENSIONS_DIR=/work/torch-ext ",
+        "exec python /work/kld5-nvfp4/fidelity.py capture --model /models/Qwen3.8-27B-NVFP4 --suite /work/kld5-nvfp4/shards/shard-0000/suite \\",
+        "  --out /work/kld5-nvfp4/hidden/shard-0000/hidden-nvfp4 --gpu-memory-utilization 0.85 --quantization compressed-tensors"
+      ],
+      "cap-bf16.sh": [
+        "set -uo pipefail",
+        "export VLLM_ALLOW_INSECURE_SERIALIZATION=1 TORCH_EXTENSIONS_DIR=/work/torch-ext ",
+        "exec python /work/kld5-nvfp4/fidelity.py capture --model /models/Qwen3.8-27B --suite /work/kld5-nvfp4/shards/shard-0000/suite \\",
+        "  --out /work/kld5-nvfp4/hidden/shard-0000/hidden-bf16 --gpu-memory-utilization 0.85"
+      ],
+      "replay-nvfp4.sh": [
+        "set -uo pipefail",
+        "export VLLM_ALLOW_INSECURE_SERIALIZATION=1 TORCH_EXTENSIONS_DIR=/work/torch-ext",
+        "exec python /work/kld5-nvfp4/fidelity.py replay --reference /work/kld5-nvfp4/hidden/shard-0000/hidden-bf16 \\",
+        "  --candidate /work/kld5-nvfp4/hidden/shard-0000/hidden-nvfp4 --head /work/kld2/lm_head.safetensors --suite /work/kld5-nvfp4/shards/shard-0000/suite \\",
+        "  --out /work/kld5-nvfp4/reports/shard-0000/report-nvfp4.json"
+      ]
+    },
+    "shard-0001": {
+      "cap-nvfp4.sh": [
+        "set -uo pipefail",
+        "export VLLM_ALLOW_INSECURE_SERIALIZATION=1 TORCH_EXTENSIONS_DIR=/work/torch-ext ",
+        "exec python /work/kld5-nvfp4/fidelity.py capture --model /models/Qwen3.8-27B-NVFP4 --suite /work/kld5-nvfp4/shards/shard-0001/suite \\",
+        "  --out /work/kld5-nvfp4/hidden/shard-0001/hidden-nvfp4 --gpu-memory-utilization 0.85 --quantization compressed-tensors"
+      ],
+      "cap-bf16.sh": [
+        "set -uo pipefail",
+        "export VLLM_ALLOW_INSECURE_SERIALIZATION=1 TORCH_EXTENSIONS_DIR=/work/torch-ext ",
+        "exec python /work/kld5-nvfp4/fidelity.py capture --model /models/Qwen3.8-27B --suite /work/kld5-nvfp4/shards/shard-0001/suite \\",
+        "  --out /work/kld5-nvfp4/hidden/shard-0001/hidden-bf16 --gpu-memory-utilization 0.85"
+      ],
+      "replay-nvfp4.sh": [
+        "set -uo pipefail",
+        "export VLLM_ALLOW_INSECURE_SERIALIZATION=1 TORCH_EXTENSIONS_DIR=/work/torch-ext",
+        "exec python /work/kld5-nvfp4/fidelity.py replay --reference /work/kld5-nvfp4/hidden/shard-0001/hidden-bf16 \\",
+        "  --candidate /work/kld5-nvfp4/hidden/shard-0001/hidden-nvfp4 --head /work/kld2/lm_head.safetensors --suite /work/kld5-nvfp4/shards/shard-0001/suite \\",
+        "  --out /work/kld5-nvfp4/reports/shard-0001/report-nvfp4.json"
+      ]
+    },
+    "shard-0002": {
+      "cap-nvfp4.sh": [
+        "set -uo pipefail",
+        "export VLLM_ALLOW_INSECURE_SERIALIZATION=1 TORCH_EXTENSIONS_DIR=/work/torch-ext ",
+        "exec python /work/kld5-nvfp4/fidelity.py capture --model /models/Qwen3.8-27B-NVFP4 --suite /work/kld5-nvfp4/shards/shard-0002/suite \\",
+        "  --out /work/kld5-nvfp4/hidden/shard-0002/hidden-nvfp4 --gpu-memory-utilization 0.85 --quantization compressed-tensors"
+      ],
+      "cap-bf16.sh": [
+        "set -uo pipefail",
+        "export VLLM_ALLOW_INSECURE_SERIALIZATION=1 TORCH_EXTENSIONS_DIR=/work/torch-ext ",
+        "exec python /work/kld5-nvfp4/fidelity.py capture --model /models/Qwen3.8-27B --suite /work/kld5-nvfp4/shards/shard-0002/suite \\",
+        "  --out /work/kld5-nvfp4/hidden/shard-0002/hidden-bf16 --gpu-memory-utilization 0.85"
+      ],
+      "replay-nvfp4.sh": [
+        "set -uo pipefail",
+        "export VLLM_ALLOW_INSECURE_SERIALIZATION=1 TORCH_EXTENSIONS_DIR=/work/torch-ext",
+        "exec python /work/kld5-nvfp4/fidelity.py replay --reference /work/kld5-nvfp4/hidden/shard-0002/hidden-bf16 \\",
+        "  --candidate /work/kld5-nvfp4/hidden/shard-0002/hidden-nvfp4 --head /work/kld2/lm_head.safetensors --suite /work/kld5-nvfp4/shards/shard-0002/suite \\",
+        "  --out /work/kld5-nvfp4/reports/shard-0002/report-nvfp4.json"
+      ]
+    },
+    "shard-0003": {
+      "cap-nvfp4.sh": [
+        "set -uo pipefail",
+        "export VLLM_ALLOW_INSECURE_SERIALIZATION=1 TORCH_EXTENSIONS_DIR=/work/torch-ext ",
+        "exec python /work/kld5-nvfp4/fidelity.py capture --model /models/Qwen3.8-27B-NVFP4 --suite /work/kld5-nvfp4/shards/shard-0003/suite \\",
+        "  --out /work/kld5-nvfp4/hidden/shard-0003/hidden-nvfp4 --gpu-memory-utilization 0.85 --quantization compressed-tensors"
+      ],
+      "cap-bf16.sh": [
+        "set -uo pipefail",
+        "export VLLM_ALLOW_INSECURE_SERIALIZATION=1 TORCH_EXTENSIONS_DIR=/work/torch-ext ",
+        "exec python /work/kld5-nvfp4/fidelity.py capture --model /models/Qwen3.8-27B --suite /work/kld5-nvfp4/shards/shard-0003/suite \\",
+        "  --out /work/kld5-nvfp4/hidden/shard-0003/hidden-bf16 --gpu-memory-utilization 0.85"
+      ],
+      "replay-nvfp4.sh": [
+        "set -uo pipefail",
+        "export VLLM_ALLOW_INSECURE_SERIALIZATION=1 TORCH_EXTENSIONS_DIR=/work/torch-ext",
+        "exec python /work/kld5-nvfp4/fidelity.py replay --reference /work/kld5-nvfp4/hidden/shard-0003/hidden-bf16 \\",
+        "  --candidate /work/kld5-nvfp4/hidden/shard-0003/hidden-nvfp4 --head /work/kld2/lm_head.safetensors --suite /work/kld5-nvfp4/shards/shard-0003/suite \\",
+        "  --out /work/kld5-nvfp4/reports/shard-0003/report-nvfp4.json"
+      ]
+    },
+    "shard-0004": {
+      "cap-nvfp4.sh": [
+        "set -uo pipefail",
+        "export VLLM_ALLOW_INSECURE_SERIALIZATION=1 TORCH_EXTENSIONS_DIR=/work/torch-ext ",
+        "exec python /work/kld5-nvfp4/fidelity.py capture --model /models/Qwen3.8-27B-NVFP4 --suite /work/kld5-nvfp4/shards/shard-0004/suite \\",
+        "  --out /work/kld5-nvfp4/hidden/shard-0004/hidden-nvfp4 --gpu-memory-utilization 0.85 --quantization compressed-tensors"
+      ],
+      "cap-bf16.sh": [
+        "set -uo pipefail",
+        "export VLLM_ALLOW_INSECURE_SERIALIZATION=1 TORCH_EXTENSIONS_DIR=/work/torch-ext ",
+        "exec python /work/kld5-nvfp4/fidelity.py capture --model /models/Qwen3.8-27B --suite /work/kld5-nvfp4/shards/shard-0004/suite \\",
+        "  --out /work/kld5-nvfp4/hidden/shard-0004/hidden-bf16 --gpu-memory-utilization 0.85"
+      ],
+      "replay-nvfp4.sh": [
+        "set -uo pipefail",
+        "export VLLM_ALLOW_INSECURE_SERIALIZATION=1 TORCH_EXTENSIONS_DIR=/work/torch-ext",
+        "exec python /work/kld5-nvfp4/fidelity.py replay --reference /work/kld5-nvfp4/hidden/shard-0004/hidden-bf16 \\",
+        "  --candidate /work/kld5-nvfp4/hidden/shard-0004/hidden-nvfp4 --head /work/kld2/lm_head.safetensors --suite /work/kld5-nvfp4/shards/shard-0004/suite \\",
+        "  --out /work/kld5-nvfp4/reports/shard-0004/report-nvfp4.json"
+      ]
+    },
+    "shard-0005": {
+      "cap-nvfp4.sh": [
+        "set -uo pipefail",
+        "export VLLM_ALLOW_INSECURE_SERIALIZATION=1 TORCH_EXTENSIONS_DIR=/work/torch-ext ",
+        "exec python /work/kld5-nvfp4/fidelity.py capture --model /models/Qwen3.8-27B-NVFP4 --suite /work/kld5-nvfp4/shards/shard-0005/suite \\",
+        "  --out /work/kld5-nvfp4/hidden/shard-0005/hidden-nvfp4 --gpu-memory-utilization 0.85 --quantization compressed-tensors"
+      ],
+      "cap-bf16.sh": [
+        "set -uo pipefail",
+        "export VLLM_ALLOW_INSECURE_SERIALIZATION=1 TORCH_EXTENSIONS_DIR=/work/torch-ext ",
+        "exec python /work/kld5-nvfp4/fidelity.py capture --model /models/Qwen3.8-27B --suite /work/kld5-nvfp4/shards/shard-0005/suite \\",
+        "  --out /work/kld5-nvfp4/hidden/shard-0005/hidden-bf16 --gpu-memory-utilization 0.85"
+      ],
+      "replay-nvfp4.sh": [
+        "set -uo pipefail",
+        "export VLLM_ALLOW_INSECURE_SERIALIZATION=1 TORCH_EXTENSIONS_DIR=/work/torch-ext",
+        "exec python /work/kld5-nvfp4/fidelity.py replay --reference /work/kld5-nvfp4/hidden/shard-0005/hidden-bf16 \\",
+        "  --candidate /work/kld5-nvfp4/hidden/shard-0005/hidden-nvfp4 --head /work/kld2/lm_head.safetensors --suite /work/kld5-nvfp4/shards/shard-0005/suite \\",
+        "  --out /work/kld5-nvfp4/reports/shard-0005/report-nvfp4.json"
+      ]
+    },
+    "shard-0006": {
+      "cap-nvfp4.sh": [
+        "set -uo pipefail",
+        "export VLLM_ALLOW_INSECURE_SERIALIZATION=1 TORCH_EXTENSIONS_DIR=/work/torch-ext ",
+        "exec python /work/kld5-nvfp4/fidelity.py capture --model /models/Qwen3.8-27B-NVFP4 --suite /work/kld5-nvfp4/shards/shard-0006/suite \\",
+        "  --out /work/kld5-nvfp4/hidden/shard-0006/hidden-nvfp4 --gpu-memory-utilization 0.85 --quantization compressed-tensors"
+      ],
+      "cap-bf16.sh": [
+        "set -uo pipefail",
+        "export VLLM_ALLOW_INSECURE_SERIALIZATION=1 TORCH_EXTENSIONS_DIR=/work/torch-ext ",
+        "exec python /work/kld5-nvfp4/fidelity.py capture --model /models/Qwen3.8-27B --suite /work/kld5-nvfp4/shards/shard-0006/suite \\",
+        "  --out /work/kld5-nvfp4/hidden/shard-0006/hidden-bf16 --gpu-memory-utilization 0.85"
+      ],
+      "replay-nvfp4.sh": [
+        "set -uo pipefail",
+        "export VLLM_ALLOW_INSECURE_SERIALIZATION=1 TORCH_EXTENSIONS_DIR=/work/torch-ext",
+        "exec python /work/kld5-nvfp4/fidelity.py replay --reference /work/kld5-nvfp4/hidden/shard-0006/hidden-bf16 \\",
+        "  --candidate /work/kld5-nvfp4/hidden/shard-0006/hidden-nvfp4 --head /work/kld2/lm_head.safetensors --suite /work/kld5-nvfp4/shards/shard-0006/suite \\",
+        "  --out /work/kld5-nvfp4/reports/shard-0006/report-nvfp4.json"
+      ]
+    },
+    "shard-0007": {
+      "cap-nvfp4.sh": [
+        "set -uo pipefail",
+        "export VLLM_ALLOW_INSECURE_SERIALIZATION=1 TORCH_EXTENSIONS_DIR=/work/torch-ext ",
+        "exec python /work/kld5-nvfp4/fidelity.py capture --model /models/Qwen3.8-27B-NVFP4 --suite /work/kld5-nvfp4/shards/shard-0007/suite \\",
+        "  --out /work/kld5-nvfp4/hidden/shard-0007/hidden-nvfp4 --gpu-memory-utilization 0.85 --quantization compressed-tensors"
+      ],
+      "cap-bf16.sh": [
+        "set -uo pipefail",
+        "export VLLM_ALLOW_INSECURE_SERIALIZATION=1 TORCH_EXTENSIONS_DIR=/work/torch-ext ",
+        "exec python /work/kld5-nvfp4/fidelity.py capture --model /models/Qwen3.8-27B --suite /work/kld5-nvfp4/shards/shard-0007/suite \\",
+        "  --out /work/kld5-nvfp4/hidden/shard-0007/hidden-bf16 --gpu-memory-utilization 0.85"
+      ],
+      "replay-nvfp4.sh": [
+        "set -uo pipefail",
+        "export VLLM_ALLOW_INSECURE_SERIALIZATION=1 TORCH_EXTENSIONS_DIR=/work/torch-ext",
+        "exec python /work/kld5-nvfp4/fidelity.py replay --reference /work/kld5-nvfp4/hidden/shard-0007/hidden-bf16 \\",
+        "  --candidate /work/kld5-nvfp4/hidden/shard-0007/hidden-nvfp4 --head /work/kld2/lm_head.safetensors --suite /work/kld5-nvfp4/shards/shard-0007/suite \\",
+        "  --out /work/kld5-nvfp4/reports/shard-0007/report-nvfp4.json"
+      ]
+    },
+    "shard-0008": {
+      "cap-nvfp4.sh": [
+        "set -uo pipefail",
+        "export VLLM_ALLOW_INSECURE_SERIALIZATION=1 TORCH_EXTENSIONS_DIR=/work/torch-ext ",
+        "exec python /work/kld5-nvfp4/fidelity.py capture --model /models/Qwen3.8-27B-NVFP4 --suite /work/kld5-nvfp4/shards/shard-0008/suite \\",
+        "  --out /work/kld5-nvfp4/hidden/shard-0008/hidden-nvfp4 --gpu-memory-utilization 0.85 --quantization compressed-tensors"
+      ],
+      "cap-bf16.sh": [
+        "set -uo pipefail",
+        "export VLLM_ALLOW_INSECURE_SERIALIZATION=1 TORCH_EXTENSIONS_DIR=/work/torch-ext ",
+        "exec python /work/kld5-nvfp4/fidelity.py capture --model /models/Qwen3.8-27B --suite /work/kld5-nvfp4/shards/shard-0008/suite \\",
+        "  --out /work/kld5-nvfp4/hidden/shard-0008/hidden-bf16 --gpu-memory-utilization 0.85"
+      ],
+      "replay-nvfp4.sh": [
+        "set -uo pipefail",
+        "export VLLM_ALLOW_INSECURE_SERIALIZATION=1 TORCH_EXTENSIONS_DIR=/work/torch-ext",
+        "exec python /work/kld5-nvfp4/fidelity.py replay --reference /work/kld5-nvfp4/hidden/shard-0008/hidden-bf16 \\",
+        "  --candidate /work/kld5-nvfp4/hidden/shard-0008/hidden-nvfp4 --head /work/kld2/lm_head.safetensors --suite /work/kld5-nvfp4/shards/shard-0008/suite \\",
+        "  --out /work/kld5-nvfp4/reports/shard-0008/report-nvfp4.json"
+      ]
+    },
+    "shard-0009": {
+      "cap-nvfp4.sh": [
+        "set -uo pipefail",
+        "export VLLM_ALLOW_INSECURE_SERIALIZATION=1 TORCH_EXTENSIONS_DIR=/work/torch-ext ",
+        "exec python /work/kld5-nvfp4/fidelity.py capture --model /models/Qwen3.8-27B-NVFP4 --suite /work/kld5-nvfp4/shards/shard-0009/suite \\",
+        "  --out /work/kld5-nvfp4/hidden/shard-0009/hidden-nvfp4 --gpu-memory-utilization 0.85 --quantization compressed-tensors"
+      ],
+      "cap-bf16.sh": [
+        "set -uo pipefail",
+        "export VLLM_ALLOW_INSECURE_SERIALIZATION=1 TORCH_EXTENSIONS_DIR=/work/torch-ext ",
+        "exec python /work/kld5-nvfp4/fidelity.py capture --model /models/Qwen3.8-27B --suite /work/kld5-nvfp4/shards/shard-0009/suite \\",
+        "  --out /work/kld5-nvfp4/hidden/shard-0009/hidden-bf16 --gpu-memory-utilization 0.85"
+      ],
+      "replay-nvfp4.sh": [
+        "set -uo pipefail",
+        "export VLLM_ALLOW_INSECURE_SERIALIZATION=1 TORCH_EXTENSIONS_DIR=/work/torch-ext",
+        "exec python /work/kld5-nvfp4/fidelity.py replay --reference /work/kld5-nvfp4/hidden/shard-0009/hidden-bf16 \\",
+        "  --candidate /work/kld5-nvfp4/hidden/shard-0009/hidden-nvfp4 --head /work/kld2/lm_head.safetensors --suite /work/kld5-nvfp4/shards/shard-0009/suite \\",
+        "  --out /work/kld5-nvfp4/reports/shard-0009/report-nvfp4.json"
+      ]
+    }
+  },
+  "coverage": {
+    "shards_measured": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+    ],
+    "shards_total": 10,
+    "shards_outstanding": [],
+    "contexts": 5120,
+    "scored_positions": 10480640,
+    "full_suite_positions": 10480640,
+    "complete": true,
+    "per_shard": [
+      {
+        "shard": 0,
+        "report": "/var/tmp/work/kld5-nvfp4/reports/shard-0000/report-nvfp4.json",
+        "report_sha256": "49bdf713182f4e40421ba5eb5d2840506ea83f4bb878c491d91d695b45771e5d",
+        "report_schema": "qwen38-fidelity-report/2",
+        "harness_sha256": "8ce8fe861c977c856f3263f509878e588caa2eaab29fe310f8c40223941e1294",
+        "suite_token_sha256": "caef8a4628d6c07c162100895096f890cdf9cafc8e4c48b3d66035d737ee7cf7",
+        "contexts": 512,
+        "scored_positions": 1048064,
+        "token_mean_kld": 0.030115407560914208,
+        "top1_agreement": 0.9315795600268686,
+        "p999_kld": 1.622844287351794,
+        "max_kld": 10.62854133951995,
+        "ci95": [
+          0.027637156534345248,
+          0.03296468638390454
+        ]
+      },
+      {
+        "shard": 1,
+        "report": "/var/tmp/work/kld5-nvfp4/reports/shard-0001/report-nvfp4.json",
+        "report_sha256": "0da14b803dd23349723561466b667e042e2198bc5a92fbe227e4a05e3f4bfb23",
+        "report_schema": "qwen38-fidelity-report/2",
+        "harness_sha256": "8ce8fe861c977c856f3263f509878e588caa2eaab29fe310f8c40223941e1294",
+        "suite_token_sha256": "3961604e08636b41f0e263238e888c2940ca49f2ff5ac4a834e46f4c29f902b3",
+        "contexts": 512,
+        "scored_positions": 1048064,
+        "token_mean_kld": 0.03194682752715476,
+        "top1_agreement": 0.9284871916218856,
+        "p999_kld": 1.843038117586565,
+        "max_kld": 10.813740740974453,
+        "ci95": [
+          0.027855838274241936,
+          0.03706554720518377
+        ]
+      },
+      {
+        "shard": 2,
+        "report": "/var/tmp/work/kld5-nvfp4/reports/shard-0002/report-nvfp4.json",
+        "report_sha256": "2097fdd2599d781cbae61145cab2eb9e877a7c52582fa19f53877079d656ac3b",
+        "report_schema": "qwen38-fidelity-report/2",
+        "harness_sha256": "8ce8fe861c977c856f3263f509878e588caa2eaab29fe310f8c40223941e1294",
+        "suite_token_sha256": "89ee97b9e3946d64183717eb19d7832140744207592788ee6a9ab77ff95db8c2",
+        "contexts": 512,
+        "scored_positions": 1048064,
+        "token_mean_kld": 0.030354960373562813,
+        "top1_agreement": 0.9290014731924768,
+        "p999_kld": 1.5465504619326775,
+        "max_kld": 9.329436829087932,
+        "ci95": [
+          0.02653591642118688,
+          0.03529847457990596
+        ]
+      },
+      {
+        "shard": 3,
+        "report": "/var/tmp/work/kld5-nvfp4/reports/shard-0003/report-nvfp4.json",
+        "report_sha256": "58979538b81d0fc9cbeacf86b8441373a431272fcd941b62d155b5f879658bfd",
+        "report_schema": "qwen38-fidelity-report/2",
+        "harness_sha256": "8ce8fe861c977c856f3263f509878e588caa2eaab29fe310f8c40223941e1294",
+        "suite_token_sha256": "9178af95448b72e2e93b56cd4030dcd5a3bea71c180e6dd0452fc927986899c3",
+        "contexts": 512,
+        "scored_positions": 1048064,
+        "token_mean_kld": 0.028831833631711108,
+        "top1_agreement": 0.9291751267098193,
+        "p999_kld": 1.4332658992828624,
+        "max_kld": 12.92882164367802,
+        "ci95": [
+          0.0266297196780808,
+          0.03149685184715685
+        ]
+      },
+      {
+        "shard": 4,
+        "report": "/var/tmp/work/kld5-nvfp4/reports/shard-0004/report-nvfp4.json",
+        "report_sha256": "ae6dc5a8fb72c92e3a06517c37efb8ecf0d02afb503be715444ebe386f511b7b",
+        "report_schema": "qwen38-fidelity-report/2",
+        "harness_sha256": "8ce8fe861c977c856f3263f509878e588caa2eaab29fe310f8c40223941e1294",
+        "suite_token_sha256": "765f69ea3e0e2bae98c73e757ac8d92e64484b138827cc9a3ed0b2119719dfe7",
+        "contexts": 512,
+        "scored_positions": 1048064,
+        "token_mean_kld": 0.029558981686500552,
+        "top1_agreement": 0.9295997191011236,
+        "p999_kld": 1.5998359280432854,
+        "max_kld": 12.041796140087854,
+        "ci95": [
+          0.026031508017098116,
+          0.03418429219307847
+        ]
+      },
+      {
+        "shard": 5,
+        "report": "/var/tmp/work/kld5-nvfp4/reports/shard-0005/report-nvfp4.json",
+        "report_sha256": "d63fd95b5cdb51d2360a0268387e8486a3a4817f42e9cab8d1407f0eaefaf292",
+        "report_schema": "qwen38-fidelity-report/2",
+        "harness_sha256": "8ce8fe861c977c856f3263f509878e588caa2eaab29fe310f8c40223941e1294",
+        "suite_token_sha256": "35bcd797dede046059ee12fc6eeca4da4f081b40da654e67c399727fafd91f5a",
+        "contexts": 512,
+        "scored_positions": 1048064,
+        "token_mean_kld": 0.03018932702271716,
+        "top1_agreement": 0.9303515815828041,
+        "p999_kld": 1.6613447681360385,
+        "max_kld": 14.482794395293695,
+        "ci95": [
+          0.02723966994196604,
+          0.03385567403736834
+        ]
+      },
+      {
+        "shard": 6,
+        "report": "/var/tmp/work/kld5-nvfp4/reports/shard-0006/report-nvfp4.json",
+        "report_sha256": "a16cd57741157c2c713bb161b1a18f960c820cb850c58f7c704be9ca3168f8e9",
+        "report_schema": "qwen38-fidelity-report/2",
+        "harness_sha256": "8ce8fe861c977c856f3263f509878e588caa2eaab29fe310f8c40223941e1294",
+        "suite_token_sha256": "2bf623a518f7a574f25b91ba9276cf9ec790286c5ab5f79cdcd1c3bef41d23da",
+        "contexts": 512,
+        "scored_positions": 1048064,
+        "token_mean_kld": 0.031262432161037766,
+        "top1_agreement": 0.9289728489863215,
+        "p999_kld": 1.77835109478523,
+        "max_kld": 10.499627001638009,
+        "ci95": [
+          0.027509964246489233,
+          0.03565297534062028
+        ]
+      },
+      {
+        "shard": 7,
+        "report": "/var/tmp/work/kld5-nvfp4/reports/shard-0007/report-nvfp4.json",
+        "report_sha256": "0505989bce930b73f6c0afc3dcf48a6a95b76c3a8a958553cddd5b1af727bfe8",
+        "report_schema": "qwen38-fidelity-report/2",
+        "harness_sha256": "8ce8fe861c977c856f3263f509878e588caa2eaab29fe310f8c40223941e1294",
+        "suite_token_sha256": "66b5168517aaf0d0cd9c8b5d92371979547d6fadff0337b5fc74f1b8c3e2d5d0",
+        "contexts": 512,
+        "scored_positions": 1048064,
+        "token_mean_kld": 0.032221966330778826,
+        "top1_agreement": 0.9295501038104543,
+        "p999_kld": 1.7013384711460293,
+        "max_kld": 15.624105980083186,
+        "ci95": [
+          0.028223379435879985,
+          0.03683303100580024
+        ]
+      },
+      {
+        "shard": 8,
+        "report": "/var/tmp/work/kld5-nvfp4/reports/shard-0008/report-nvfp4.json",
+        "report_sha256": "d4be3a5ac31d1ac2726464402af24ffbfbe38a166efb6bef8b0f8062555a059a",
+        "report_schema": "qwen38-fidelity-report/2",
+        "harness_sha256": "8ce8fe861c977c856f3263f509878e588caa2eaab29fe310f8c40223941e1294",
+        "suite_token_sha256": "b2bbe729e5540abdea6408093806b6c8ad1e67d1e105f86834b39d49261aea27",
+        "contexts": 512,
+        "scored_positions": 1048064,
+        "token_mean_kld": 0.032704568612359555,
+        "top1_agreement": 0.9265598284074255,
+        "p999_kld": 1.844456666335287,
+        "max_kld": 11.374104239917074,
+        "ci95": [
+          0.027357773185293845,
+          0.03983693038593714
+        ]
+      },
+      {
+        "shard": 9,
+        "report": "/var/tmp/work/kld5-nvfp4/reports/shard-0009/report-nvfp4.json",
+        "report_sha256": "97d62505ecb5c4c1e7b204c29cb55e7eaff5155a758e8900fa4e0eda63f3e018",
+        "report_schema": "qwen38-fidelity-report/2",
+        "harness_sha256": "8ce8fe861c977c856f3263f509878e588caa2eaab29fe310f8c40223941e1294",
+        "suite_token_sha256": "d44dafa7787a7492656b566ac8afe806af7db15d691d4095c7c4056e2280f46b",
+        "contexts": 512,
+        "scored_positions": 1048064,
+        "token_mean_kld": 0.03339976968840418,
+        "top1_agreement": 0.9268088590009771,
+        "p999_kld": 1.9709446384957983,
+        "max_kld": 21.53768510208259,
+        "ci95": [
+          0.027722599610569974,
+          0.04064165278311436
+        ]
+      }
+    ]
+  },
+  "receipts": {
+    "kld5-1M-nvfp4.json": {
+      "path": "receipts/kld5-1M-nvfp4.json",
+      "sha256": "02ce3f336d2ca3d93f2fbeebf4f003adf026df2862ff4e862ce0a2cb0dd43865",
+      "content_sha256": "f01ddc78c142bb88733c10fd4e9dfd05d74bca2236df9044b72fc5f3e548139b",
+      "schema": "qwen38-kld-ladder-cumulative/3"
+    },
+    "kld5-10M-nvfp4.json": {
+      "path": "receipts/kld5-10M-nvfp4.json",
+      "sha256": "9fd6e3b44541235837ad4414ab66de4ff277d3df6407e6b59b52a3145276caba",
+      "content_sha256": "e4f967971c3fb799350aba699b63d7b87ff1dfe8bc53b200bf2144e978bd37b5",
+      "schema": "qwen38-kld-ladder-cumulative/3"
+    },
+    "kld5-1M-paired-nvfp4.json": {
+      "path": "receipts/kld5-1M-paired-nvfp4.json",
+      "sha256": "ee2a3dc14b7fc3075dc44eb38e3dc3073cafaa96e9e87abe6eb7c3ac561ea558",
+      "content_sha256": "c5baeab4616e033eeadc407c8321883064888caa299ec52dfa56a9a883c9bc3a",
+      "schema": "qwen38-kld-ladder-paired/1"
+    },
+    "kld5-10M-paired-nvfp4.json": {
+      "path": "receipts/kld5-10M-paired-nvfp4.json",
+      "sha256": "f04716b82a88ba6ffade1725028b6c5bb810022d36409c7491c7b2cc64eb49e2",
+      "content_sha256": "337b525c9afacd3c57abdf5dbec2b002b3eb1ee9dba9d6ece6cbdfbaae1b385b",
+      "schema": "qwen38-kld-ladder-paired/1"
+    },
+    "cross-engine-comparator.json": {
+      "path": "receipts/cross-engine-comparator.json",
+      "sha256": "3fd7e57f76a082276c8d3cbf117cb0137d64cd61e6b5dba13451cf09d7f12acc",
+      "content_sha256": "b1bbb800c49fc6d46ddfb9b15241fb48a81ee34d74e684a696312b273613f8d0",
+      "schema": "qwen38-cross-engine-comparator/1"
+    }
+  },
+  "artifacts_released": {
+    "policy": "cost-based preserve-before-delete: preserved when recompute costs GPU-hours, when an input has ceased to exist, or when it is the shared reference future runs replay against",
+    "preserved": {
+      "shard-0000/hidden-nvfp4": {
+        "bytes": 10732323294,
+        "files": 513,
+        "repo": "malaiwah/qwen38-27b-fidelity-suite-v5",
+        "path": "captures/shard-0000/hidden-nvfp4",
+        "revision": "db4f7dcaa7bafc52e042c5dca8e6b7a9311bd5de",
+        "uploaded_with": "tools/preserve_artifacts.sh --deep",
+        "verification": "all 513 files re-verified against the remote copy: 509 by remote sha256/LFS oid, 1 by served-bytes readback, 3 by LFS spot re-download and re-hash",
+        "why_preserved": "with the shard-0 BF16 reference (already in the same dataset) this lets anyone re-derive the headline number by `fidelity.py replay` alone, with no GPU capture at all -- the one capture in this run that buys a reader something they cannot cheaply recompute"
+      },
+      "the snapshot itself": "mirrored to malaiwah/Qwen3.8-27B-NVFP4-archival-9c73e2da@7a66267ebd34a01ba9a13e56aa2cea0b27bdacd4 because its upstream revision ceased to exist; a mirror preserves the CITATION, not independent byte-level redundancy, since a content-addressed store may hold one copy of chunks both repos reference"
+    },
+    "released": {
+      "what": "the per-shard BF16 and NVFP4 hidden states for shards 1-9",
+      "bytes_each": 10732175360,
+      "recompute_cost_per_capture": "one model load plus ~170 s of prefill: about 6 minutes of GPU per capture on this box",
+      "recompute_cost_total": "about 2 hours of GPU for all nineteen (anchor agreed with ArtifactPreserve: the surviving shard-0 BF16 capture measured 170.08 s of prefill, rounded up to ~6 min with its model load, the way the ladder budgeted it)",
+      "why_not_preserved": "uploading ~200 GiB to avoid ~2 GPU-hours costs more wall-clock than recapturing, and the reports -- three orders of magnitude smaller -- are the durable artifact",
+      "how_to_recompute": "KLD_ROOT=/var/tmp/work/kld5-nvfp4 KLD_SUITE=/var/tmp/work/kld5/suite tools/kld_ladder.sh --candidates nvfp4 <shards>, which recaptures BF16 and NVFP4 for each named shard, replays, verifies, and releases the hidden states again. Re-running it over an already verified shard skips it."
+    }
+  },
+  "outstanding": null,
+  "content_sha256": "4b7a6eb445404e20507bef75e70f3dae300de8714c73652ab4ea4af90542c0f6"
+}

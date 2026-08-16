@@ -1,0 +1,62 @@
+{
+  "schema": "qwen38-kld-ladder-paired/1",
+  "generated_utc": "2026-08-16T03:20:16Z",
+  "scope": "paired per-context comparison on v5 shard 0 (512 contexts, 1,048,064 scored positions): NVFP4 against the context edition and against official FP8",
+  "suite": {
+    "manifest": "receipts/kld5-suite-manifest.json",
+    "manifest_sha256": "c79dfad3767ca5b3015129077f20dbb9282a2e51ca8bca9ed09be8c7a9c73019",
+    "suite_token_sha256": "510541f6861b589d44932db253ec25d96d6daaeeee4ea2ab9b65329209482b88",
+    "contexts": 512,
+    "context_length": 2048,
+    "scored_positions": 1048064,
+    "source_clusters": 330
+  },
+  "inputs": {
+    "nvfp4": {
+      "path": "receipts/kld5-1M-nvfp4.json",
+      "sha256": "02ce3f336d2ca3d93f2fbeebf4f003adf026df2862ff4e862ce0a2cb0dd43865",
+      "content_sha256": "f01ddc78c142bb88733c10fd4e9dfd05d74bca2236df9044b72fc5f3e548139b"
+    },
+    "ctx": {
+      "path": "receipts/kld5-1M-tail-ctx.json",
+      "sha256": "ed5c09e9414e2c0c418dffbe82f20ca1398550dcf1cf74772bda44057269f28f",
+      "content_sha256": "0543a0d48d3c140ad2a26085ebb7ff45e383278e85752fddf7fcd77038916797"
+    },
+    "fp8": {
+      "path": "receipts/kld5-1M-tail-fp8.json",
+      "sha256": "526b18c122fa9c68d6541abdff9e604f0dd5f4620733242b4db0b8ff15079331",
+      "content_sha256": "503be126eb267fa0401b9fe6971a9f5f43482f5056dd54b4478739b80c6cbb67"
+    }
+  },
+  "method": {
+    "unit": "one 2,048-token context, 2,047 scored positions",
+    "statistic": "mean over contexts of (candidate A mean KLD - candidate B mean KLD)",
+    "interval": "source-cluster bootstrap, 10,000 resamples, seed 1, 330 clusters resampled with replacement",
+    "operands": "both candidates replayed through the same shared BF16 LM head; body-only, no candidate head quantization counted"
+  },
+  "comparisons": {
+    "nvfp4_vs_ctx": {
+      "a": "nvfp4",
+      "b": "ctx",
+      "contexts": 512,
+      "difference_a_minus_b": 0.026705997603727653,
+      "ci95_low": 0.02446525016515461,
+      "ci95_high": 0.029284842555892348,
+      "a_wins": 0,
+      "b_wins": 512,
+      "clusters": 330
+    },
+    "nvfp4_vs_fp8": {
+      "a": "nvfp4",
+      "b": "fp8",
+      "contexts": 512,
+      "difference_a_minus_b": 0.024918344010603753,
+      "ci95_low": 0.02275635261561385,
+      "ci95_high": 0.0274239123872108,
+      "a_wins": 0,
+      "b_wins": 512,
+      "clusters": 330
+    }
+  },
+  "content_sha256": "c5baeab4616e033eeadc407c8321883064888caa299ec52dfa56a9a883c9bc3a"
+}

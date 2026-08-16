@@ -1,0 +1,396 @@
+{
+  "schema": "qwen38-capture-determinism/1",
+  "generated_utc": "2026-08-16T03:07:48Z",
+  "claim": "on this machine, vLLM hidden-state capture followed by replay is bit-reproducible: two independent runs of the same shard, with separate model loads and different harness files, produce reports whose every measured field is byte-identical, including the complete per-context arrays.",
+  "scope_limits": {
+    "read_this_first": "This is NOT a claim that vLLM is bitwise deterministic in general. The configuration below is load-bearing, and a reader who takes a broader claim from this receipt and then fails to reproduce it under CUDA graphs or larger batches would be right to call that overreach.",
+    "same_gpu": {
+      "devices_visible_on_host": 1,
+      "device": {
+        "name": "NVIDIA RTX PRO 6000 Blackwell Server Edition",
+        "driver_version": "595.58.03",
+        "memory.total": "97887 MiB",
+        "uuid": "GPU-a1c308e7-fdd4-7130-9e3a-045ded2c20fd",
+        "vbios_version": "98.02.67.00.0A"
+      },
+      "basis": "this host exposes exactly one GPU and tools/ggrun.sh pins CUDA_VISIBLE_DEVICES=0, so both runs used this device; the reports themselves record only comparator.device = 'cuda', so this is a host-level statement queried at receipt time rather than something the reports evidence",
+      "queried_utc": "2026-08-16T03:07:48Z"
+    },
+    "same_runtime": "the same pinned rootfs image and vLLM build in both runs",
+    "enforce_eager": true,
+    "max_num_seqs": 1,
+    "prefill": "one context per forward, one chunk per context (max_num_batched_tokens = context_length)",
+    "gpu_memory_utilization": 0.85,
+    "kv_cache": "512 MiB, bfloat16",
+    "not_claimed": [
+      "determinism across different GPUs, drivers or CUDA versions",
+      "determinism with CUDA graphs enabled (enforce_eager=False)",
+      "determinism across batch shapes, max_num_seqs > 1, or chunked prefill with more than one chunk per context",
+      "determinism of sampling or of anything downstream of the logits"
+    ]
+  },
+  "runs": {
+    "published_ladder": {
+      "root": "/var/tmp/work/kld5",
+      "harness_sha256": "804c20a6479df067b1dde0e34c3664f0a7d12d692d59cd5d99ed0e319257a7f6",
+      "harness_guest_path": "/work/kld5/tools/fidelity.py",
+      "head_sha256": "25a30fd5f826da0abc4efc4cc71def9f02bcb8085f7175eee284d221dee4cfff",
+      "shard_suite_token_sha256": "caef8a4628d6c07c162100895096f890cdf9cafc8e4c48b3d66035d737ee7cf7",
+      "runtime_image": {
+        "image": "voipmonitor/vllm@sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b",
+        "file_manifest_sha256": "9f2456247b6d527c379e427c9bae4eef000edde24254ffcb9d61c2020c0e5aac"
+      }
+    },
+    "tail_rerun": {
+      "root": "/var/tmp/work/kld5-tail",
+      "harness_sha256": "f8b1316f411a8ac02ff88144a6fedfeee56f0cc23c1b6887aa09ef9c7f842996",
+      "harness_guest_path": "/work/kld5-tail/tools/fidelity.py",
+      "head_sha256": "25a30fd5f826da0abc4efc4cc71def9f02bcb8085f7175eee284d221dee4cfff",
+      "shard_suite_token_sha256": "caef8a4628d6c07c162100895096f890cdf9cafc8e4c48b3d66035d737ee7cf7",
+      "runtime_image": {
+        "image": "voipmonitor/vllm@sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b",
+        "file_manifest_sha256": "9f2456247b6d527c379e427c9bae4eef000edde24254ffcb9d61c2020c0e5aac"
+      }
+    }
+  },
+  "what_was_compared": {
+    "shard": "v5 shard-0000: contexts 0-511 of the parent suite",
+    "candidates": [
+      "hyd",
+      "k5k6",
+      "ctx",
+      "k4",
+      "fp8"
+    ],
+    "reports_per_candidate": 2,
+    "note": "JSON round-trips IEEE-754 doubles exactly, so equality of the parsed values is bitwise equality of the numbers each run computed, not equality to some printed precision"
+  },
+  "result": {
+    "every_measured_field_identical": true,
+    "per_context_arrays_identical": true,
+    "scored_positions_reproduced": 5240320,
+    "arithmetic": "5 candidates x 512 contexts x 2047 scored positions = 5,240,320",
+    "fields_that_differ_and_why": {
+      "reference": "path of the reference capture directory; each run captured into its own directory, so this differs by construction",
+      "candidate": "path of the candidate capture directory; likewise",
+      "schema": "the tail re-run's harness emits qwen38-fidelity-report/2, which adds the kld_tail histogram to /1 without changing any existing field",
+      "kld_tail": "the added histogram itself: present only in /2, so there is nothing in /1 to compare it against"
+    },
+    "per_candidate": {
+      "hyd": {
+        "contexts": 512,
+        "scored_positions": 1048064,
+        "differing_keys": [
+          "candidate",
+          "kld_tail",
+          "reference",
+          "schema"
+        ],
+        "unexpectedly_differing_keys": [],
+        "identical_keys": [
+          "candidate_head",
+          "candidate_head_sha256",
+          "candidate_identity",
+          "comparator",
+          "context_bootstrap",
+          "context_macro_mean_kld",
+          "contexts",
+          "filter",
+          "head",
+          "head_sha256",
+          "hidden_size",
+          "max_kld",
+          "mean_jsd_bits",
+          "p95_kld",
+          "p999_kld",
+          "p99_kld",
+          "per_context",
+          "per_context_all",
+          "reference_identity",
+          "scored_positions",
+          "strata",
+          "suite_token_sha256",
+          "token_mean_kld",
+          "token_median_kld",
+          "top1_agreement",
+          "vocab_size",
+          "worst_contexts"
+        ],
+        "per_context_rows_identical": true,
+        "per_context_all_rows_identical": true,
+        "agreed_values": {
+          "token_mean_kld": 0.002699883159684943,
+          "token_median_kld": 0.0010904027048752596,
+          "p95_kld": 0.008207095996885981,
+          "p99_kld": 0.02758407759672991,
+          "p999_kld": 0.13126287966486647,
+          "max_kld": 3.7348466556786946,
+          "top1_agreement": 0.9779689026624329,
+          "mean_jsd_bits": 0.0009602631900925122,
+          "context_bootstrap": {
+            "mean": 0.002699883159684943,
+            "ci95_low": 0.0025165341342532257,
+            "ci95_high": 0.0029118291286379205,
+            "clusters": 330,
+            "samples": 10000
+          }
+        }
+      },
+      "k5k6": {
+        "contexts": 512,
+        "scored_positions": 1048064,
+        "differing_keys": [
+          "candidate",
+          "kld_tail",
+          "reference",
+          "schema"
+        ],
+        "unexpectedly_differing_keys": [],
+        "identical_keys": [
+          "candidate_head",
+          "candidate_head_sha256",
+          "candidate_identity",
+          "comparator",
+          "context_bootstrap",
+          "context_macro_mean_kld",
+          "contexts",
+          "filter",
+          "head",
+          "head_sha256",
+          "hidden_size",
+          "max_kld",
+          "mean_jsd_bits",
+          "p95_kld",
+          "p999_kld",
+          "p99_kld",
+          "per_context",
+          "per_context_all",
+          "reference_identity",
+          "scored_positions",
+          "strata",
+          "suite_token_sha256",
+          "token_mean_kld",
+          "token_median_kld",
+          "top1_agreement",
+          "vocab_size",
+          "worst_contexts"
+        ],
+        "per_context_rows_identical": true,
+        "per_context_all_rows_identical": true,
+        "agreed_values": {
+          "token_mean_kld": 0.0031413603551342147,
+          "token_median_kld": 0.0012854688368832967,
+          "p95_kld": 0.00987547691110393,
+          "p99_kld": 0.032058876280916575,
+          "p999_kld": 0.14470799411698693,
+          "max_kld": 5.506768094147674,
+          "top1_agreement": 0.9761083292623352,
+          "mean_jsd_bits": 0.001113919483571485,
+          "context_bootstrap": {
+            "mean": 0.0031413603551342147,
+            "ci95_low": 0.0029467532068065522,
+            "ci95_high": 0.003368682230985319,
+            "clusters": 330,
+            "samples": 10000
+          }
+        }
+      },
+      "ctx": {
+        "contexts": 512,
+        "scored_positions": 1048064,
+        "differing_keys": [
+          "candidate",
+          "kld_tail",
+          "reference",
+          "schema"
+        ],
+        "unexpectedly_differing_keys": [],
+        "identical_keys": [
+          "candidate_head",
+          "candidate_head_sha256",
+          "candidate_identity",
+          "comparator",
+          "context_bootstrap",
+          "context_macro_mean_kld",
+          "contexts",
+          "filter",
+          "head",
+          "head_sha256",
+          "hidden_size",
+          "max_kld",
+          "mean_jsd_bits",
+          "p95_kld",
+          "p999_kld",
+          "p99_kld",
+          "per_context",
+          "per_context_all",
+          "reference_identity",
+          "scored_positions",
+          "strata",
+          "suite_token_sha256",
+          "token_mean_kld",
+          "token_median_kld",
+          "top1_agreement",
+          "vocab_size",
+          "worst_contexts"
+        ],
+        "per_context_rows_identical": true,
+        "per_context_all_rows_identical": true,
+        "agreed_values": {
+          "token_mean_kld": 0.003409409957186559,
+          "token_median_kld": 0.0013518004213910473,
+          "p95_kld": 0.010679159638812052,
+          "p99_kld": 0.035669830241508195,
+          "p999_kld": 0.1631958112023867,
+          "max_kld": 3.7491887151263654,
+          "top1_agreement": 0.9754566515021983,
+          "mean_jsd_bits": 0.0012104720212027026,
+          "context_bootstrap": {
+            "mean": 0.003409409957186559,
+            "ci95_low": 0.0031704108176442074,
+            "ci95_high": 0.003686531427353988,
+            "clusters": 330,
+            "samples": 10000
+          }
+        }
+      },
+      "k4": {
+        "contexts": 512,
+        "scored_positions": 1048064,
+        "differing_keys": [
+          "candidate",
+          "kld_tail",
+          "reference",
+          "schema"
+        ],
+        "unexpectedly_differing_keys": [],
+        "identical_keys": [
+          "candidate_head",
+          "candidate_head_sha256",
+          "candidate_identity",
+          "comparator",
+          "context_bootstrap",
+          "context_macro_mean_kld",
+          "contexts",
+          "filter",
+          "head",
+          "head_sha256",
+          "hidden_size",
+          "max_kld",
+          "mean_jsd_bits",
+          "p95_kld",
+          "p999_kld",
+          "p99_kld",
+          "per_context",
+          "per_context_all",
+          "reference_identity",
+          "scored_positions",
+          "strata",
+          "suite_token_sha256",
+          "token_mean_kld",
+          "token_median_kld",
+          "top1_agreement",
+          "vocab_size",
+          "worst_contexts"
+        ],
+        "per_context_rows_identical": true,
+        "per_context_all_rows_identical": true,
+        "agreed_values": {
+          "token_mean_kld": 0.010345348536682758,
+          "token_median_kld": 0.0032060394484858534,
+          "p95_kld": 0.03312413368040551,
+          "p99_kld": 0.11942647084340932,
+          "p999_kld": 0.5576395587246648,
+          "max_kld": 7.564510417655803,
+          "top1_agreement": 0.9591322667318026,
+          "mean_jsd_bits": 0.0035793631882548456,
+          "context_bootstrap": {
+            "mean": 0.01034534853668276,
+            "ci95_low": 0.009562594149420877,
+            "ci95_high": 0.01124581917295876,
+            "clusters": 330,
+            "samples": 10000
+          }
+        }
+      },
+      "fp8": {
+        "contexts": 512,
+        "scored_positions": 1048064,
+        "differing_keys": [
+          "candidate",
+          "kld_tail",
+          "reference",
+          "schema"
+        ],
+        "unexpectedly_differing_keys": [],
+        "identical_keys": [
+          "candidate_head",
+          "candidate_head_sha256",
+          "candidate_identity",
+          "comparator",
+          "context_bootstrap",
+          "context_macro_mean_kld",
+          "contexts",
+          "filter",
+          "head",
+          "head_sha256",
+          "hidden_size",
+          "max_kld",
+          "mean_jsd_bits",
+          "p95_kld",
+          "p999_kld",
+          "p99_kld",
+          "per_context",
+          "per_context_all",
+          "reference_identity",
+          "scored_positions",
+          "strata",
+          "suite_token_sha256",
+          "token_mean_kld",
+          "token_median_kld",
+          "top1_agreement",
+          "vocab_size",
+          "worst_contexts"
+        ],
+        "per_context_rows_identical": true,
+        "per_context_all_rows_identical": true,
+        "agreed_values": {
+          "token_mean_kld": 0.0051970635503104596,
+          "token_median_kld": 0.002023634613792069,
+          "p95_kld": 0.01667325247997269,
+          "p99_kld": 0.053122556770031214,
+          "p999_kld": 0.24396262721444806,
+          "max_kld": 5.295716603680546,
+          "top1_agreement": 0.9692137121397166,
+          "mean_jsd_bits": 0.0018389220904748377,
+          "context_bootstrap": {
+            "mean": 0.0051970635503104596,
+            "ci95_low": 0.004879906227191791,
+            "ci95_high": 0.005557464379117151,
+            "clusters": 330,
+            "samples": 10000
+          }
+        }
+      }
+    }
+  },
+  "what_this_licenses": {
+    "capture_reuse": "a surviving capture may be replayed instead of recapturing the same operand, which is how the shard-0 NVFP4 measurement used /work/gguf/hidden-bf16 as its BF16 reference and cost one model load instead of two (receipts/nvfp4-v5-measurement.json)",
+    "cross_generation_reports": "reports produced by different harness generations may sit in one cumulative receipt, because the generations differ only additively in the measurement path",
+    "re_derivable_not_just_re_runnable": "every published KLD number in this project can be re-derived to the bit from the same inputs, rather than merely re-measured to within an interval"
+  },
+  "independently_checked_by": "ErrorDrivenAlloc verified the hydrated candidate independently before this receipt existed; this receipt extends the check to all five candidates",
+  "inputs": {
+    "published_ladder/hyd": "c81921742e237c2daf0f98c60e36225d4db8c9b1741df9f52a9e3a391c2be1dc",
+    "published_ladder/k5k6": "730dbf49e8e12b4a66a1b7412a964f7578e20ec18e7f99d6984c8544889a5f49",
+    "published_ladder/ctx": "988e6d6d3025e6551c8a57c0e2e50ece3b8acf0c32529a1b952107b2839d4228",
+    "published_ladder/k4": "ab406cdd8d11299db1e8596a59f207a7087432ed691075302c79612230cd7dc9",
+    "published_ladder/fp8": "fd3877310fdccd0901d9a5a9ca2934fabd74d18dce839a4f0f8f654e59f91bc3",
+    "tail_rerun/hyd": "ef5240a658b899d9eb39854ed0c2794f705e37dee885c8b16763af4c9c1f97f9",
+    "tail_rerun/k5k6": "2f2ab0797c70b657933952c9016b1540748806dab2221c374b25066bfc373ad3",
+    "tail_rerun/ctx": "592dbbadf79ddb31cc7be7fba2c71fb97cc9ca56b45dbbdf7800411fe58ef000",
+    "tail_rerun/k4": "e1791027632620f583d745a602a79393301fd29959a4a851b61dc7ff93677279",
+    "tail_rerun/fp8": "44d17177329ff2121fe8ca7a1c8bcf7c9af07a30057dd042a446a267da98366a"
+  },
+  "content_sha256": "d149af4df365836f370ba25df59772d84428699f06367986bfb0b442e46f8d81"
+}
