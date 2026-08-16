@@ -1,0 +1,108 @@
+{
+ "schema": "qwen38-scratch-arena/1",
+ "generated_utc": "2026-08-16T15:20:00Z",
+ "agent": "ScratchArena",
+ "purpose": "rank-1 lever from docs/43 (R1): replace the per-geometry persistent fp16 reconstruct scratch dict in the fork's exl3.py with one shared per-device arena; CPU proof now, 5090 A/B when the card frees",
+ "status": {
+  "cpu_validation": "complete",
+  "gpu_ab": "pending - queue KvDtypeSweep -> V2RunnerDepth -> ScratchArena; runs when V2RunnerDepth hands over by name",
+  "fork_pr": "branch pushed; PR files after the measured numbers land"
+ },
+ "duplicate_work_check": {
+  "issue_203": "read in full. Findings GG-02/GG-09/GG-26 are all rank-sliced MoE (mixed-Trellis prefill arenas, eager-parity staging, rotation slab duplication). The dense per-geometry reconstruct scratch dict is not among them; the issue's shared-arena prescription ('keep separate plans, share the bytes') is the pattern we apply to the dense path.",
+  "pr_270": "read in full plus its 1390-line diff (https://github.com/local-inference-lab/vllm/pull/270.diff). It adds _MIXED_TRELLIS_PREFILL_BUFFERS pooling and lazy/planned parity staging for the rank-sliced MoE path only. Zero occurrences of _EXL3_RECONSTRUCT_SCRATCH, _reconstruct_scratch, or RECONSTRUCT_M in the diff. It does not implement the dense reconstruct-scratch arena; our patch is complementary, not parallel work.",
+  "verdict": "build ours; adopt nothing from #270 beyond its safety/honesty pattern (owner-scoped pooling, never-grow-after-capture, output-escape analysis, measured-vs-predicted separation)"
+ },
+ "mechanism": {
+  "target_file": "vllm/model_executor/layers/quantization/exl3.py (r34 rootfs copy at /var/tmp/gg-rootfs/opt/venv/lib/python3.12/site-packages/..., sha256 2df9d0799fd323798cead1edb773cab556c94798eec263ee03ded35408c6e4ee, byte-identical to tools/vllm-exl3-prefill-dispatch.py and to malaiwah/vllm-voipmonitor:feat/exl3-b12x-prefill-routing)",
+  "scratch_dict": "exl3.py:766-767 (_EXL3_RECONSTRUCT_SLICE_N=32768, _EXL3_RECONSTRUCT_SCRATCH keyed (device,K,N)), allocator exl3.py:785-795: persistent fp16 (K, min(N,32768)) per geometry, never freed. Docs/43 cited :766-795; verified exact.",
+  "scratch_users": [
+   "_reconstruct_hgemm_into exl3.py:929-960: acquires at :951, ext.reconstruct/reconstruct_slice writes the view (:956-958), ext.hgemm reads it (:959) inside the same loop iteration, function returns; no view retained",
+   "_fp8_weight_scale exl3.py:824-858: probe at :845, consumed by .abs().amax() at :855 in the same loop; only reachable under VLLM_EXL3_PREFILL_FP8=1 (off by default, :803-811)"
+  ],
+  "dispatch_sites": [
+   "generic dense: _exl3_gemm custom op exl3.py:986-993 - threshold = VLLM_EXL3_PREFILL_RECONSTRUCT_M (default 128, :770-782), reconstruct branch taken when x.shape[0] >= threshold",
+   "K6/MCG dense: _b12x_trellis_linear_out custom op exl3.py:1287-1294 - same threshold, same _reconstruct_hgemm_into"
+  ]
+ },
+ "concurrent_geometry_set": {
+  "derivation": "Every reconstruct call fully consumes the scratch before returning: the write (ext.reconstruct*) and the read (ext.hgemm / amax) are enqueued back-to-back on the same stream inside one eager function invocation, and no reference to the view survives the call (output goes to a separate tensor via hgemm). Distinct modules (gate, up, down, q, k, v, o, in_proj, ba, fc, head) are separate custom-op invocations, serialized on the model's forward stream. Therefore every reachable concurrent set is a singleton {one geometry}.",
+  "baseline_already_assumes_serialization": "the unpatched dict shares ONE buffer per geometry across all layers of that geometry (130 gate/up modules share one 5120x17408 buffer) and across target and MTP-draft models; any concurrent forward on a second stream would already race the baseline. The arena extends the identical assumption across geometries, adding no new requirement.",
+  "arena_size_rule": "max over concurrent sums = max over singletons = largest single geometry: 2*K*min(N,32768) bytes",
+  "per_geometry_offsets": "every view starts at arena byte offset 0 (singleton concurrency means no packing); alignment is the allocation's base alignment - the CUDA caching allocator returns >=512 B aligned blocks, and torch's Tensor.view(dtype) requires only element-size (2 B) alignment at offset 0, trivially satisfied. Verified by the harness: all views offset 0, in-bounds, fp16-aligned.",
+  "geometries_mib": {
+   "5120x17408_gate_up": 170.0,
+   "17408x5120_down": 170.0,
+   "5120x12288_q": 120.0,
+   "5120x10240_gdn_in_proj": 100.0,
+   "10240x5120_mtp_fc": 100.0,
+   "5120x6144_gdn_ba": 60.0,
+   "6144x5120_o_out": 60.0,
+   "5120x1024_k_v": 10.0,
+   "5120x32768_head_chunk_if_>=128_logit_rows": 320.0
+  },
+  "baseline_sum_allocating_at_qualified_profile_mib": 790.0,
+  "arena_max_at_qualified_profile_mib": 170.0,
+  "predicted_saving_mib": 620.0,
+  "with_head_geometry": "baseline 1110.0 -> arena 320.0 MiB (saving 790.0); head requires >=128 sampled logit rows and does not trigger at max_num_seqs 1-8 with MTP-3"
+ },
+ "cuda_graph_interaction": {
+  "is_reconstruct_inside_decode_graphs": "no, at every profile we ship. The dispatch is a runtime row-count test inside the custom op: reconstruct needs m >= VLLM_EXL3_PREFILL_RECONSTRUCT_M = 128. FULL_DECODE_ONLY capture rows are bounded by cudagraph_capture_sizes: [4] at the qualified profile, [32] at the perf-sweep profile; _graph_decode_capture_rows (exl3.py:1047-1087) can only produce rows <= max capture size. 32 < 128, so captured replays always take the exl3_gemm/b12x branch and the scratch is graph-free.",
+  "docs41_claim_confirmed": "decode goes through b12x/exl3_gemm; reconstruct is a prefill path above RECONSTRUCT_M=128 - verified from the dispatch conditions at exl3.py:986-993 and :1287-1294",
+  "exotic_config_guard": "an operator could set capture sizes >= 128 with VLLM_EXL3_GRAPH_DECODE=1, putting reconstruct inside a captured graph. The patch handles it: serving the arena during capture freezes it (never reallocated afterwards); a geometry that no longer fits gets a dedicated persistent per-geometry buffer - exactly the pre-arena behaviour, so the worst case is the status quo. Verified by test_arena_never_grows_during_capture_and_freezes_afterwards and the harness capture_freeze section.",
+  "priming_note": "VLLM_EXL3_GRAPH_DECODE=1 priming (_prime_exl3_gemm_rows, exl3.py:1090-1169) runs eagerly pre-capture and only for capturable row counts, all < 128 in our profiles; it cannot touch the reconstruct path"
+ },
+ "patch": {
+  "overlay": "tools/vllm-exl3-scratch-arena.py",
+  "overlay_sha256": "9aba06ebf60ca7665c0513752387c349240ab85e1ebc44d6ce8137ef157b6c15",
+  "baseline_overlay": "tools/vllm-exl3-prefill-dispatch.py (sha256 2df9d079...)",
+  "diff_vs_baseline": "receipts/scratch-arena-hunks.diff (72 lines, exactly 2 hunks: the module globals at :766-782 and _reconstruct_scratch at :785-833; sha256 e8c205ddd396701d432e10747649437e6b04cbcb6d6896a6b92f2a312f7d749e)",
+  "byte_exactness_argument": "the arena view is arena[:2*k*n].view(float16).view(k, n): contiguous, offset 0, identical shape/strides/dtype to the torch.empty((k, n)) it replaces. Same kernels, same launch order, same values - only the backing allocation is shared. Verified by test_arena_view_matches_torch_empty_layout and the harness layout-parity check for all 9 geometries.",
+  "py_compile": "clean under the image's Python 3.12.3 (/var/tmp/gg-rootfs/usr/bin/python3.12 -m py_compile)",
+  "mount": "-v tools/vllm-exl3-scratch-arena.py:/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py:ro (same pattern as the qualified overlays)"
+ },
+ "cpu_validation": {
+  "harness": "tools/exl3_scratch_arena_sim.py (sha256 f5e1287b2b841e85840ab8bd15d5025b46ff2b071e3a776c329bedd85a817cf1)",
+  "method": "AST-extracts the verbatim allocation-path source segments from BOTH overlays (segment sha256s inside the output), executes them with the image's torch 2.12.0+cu132 on CPU (CUDA_VISIBLE_DEVICES empty, rootfs python via ld.so), and drives the real _reconstruct_hgemm_into over the 9 real geometries with an instrumented fake extension that tags every scratch write and verifies the tag at consumption",
+  "output": "receipts/scratch-arena-sim-output.json (sha256 6d44e1fa0676ea8652d732d447883fe26fee546fc615fd0f90a95ac24de0c0a4)",
+  "results": {
+   "orders_walked": ["realistic per-layer interleaving (q,k,v,o,gate,up,down,gdn,mtp.fc,head)", "ascending size", "descending size"],
+   "every_view_in_bounds": true,
+   "every_view_offset_0_and_element_aligned": true,
+   "non_overlap_every_reachable_concurrent_set": "22/22 tagged write->consume cycles intact per order, including the head's 8-chunk loop and the short 18944-column final chunk",
+   "kernel_operand_layout_identical_to_baseline": true,
+   "arena_bytes_equal_max_over_concurrent_sums": "335544320 B (320.0 MiB) with the head geometry; dict baseline 1163919360 B (1110.0 MiB) executed from the baseline overlay's own code",
+   "capture_freeze_semantics": "frozen arena never reallocated; oversize geometries fall back to dedicated stable-address buffers"
+  },
+  "fork_tests": "tests/quantization/test_exl3_reconstruct_arena.py: 5/5 pass against the patched module under the image's Python; sibling files test_exl3_prefill_plan.py + test_exl3_warmup.py: 19/19 pass unchanged (CPU-only, monkeypatched torch.cuda, per fork convention)"
+ },
+ "fork_pr": {
+  "head": "malaiwah/vllm-voipmonitor:feat/exl3-reconstruct-scratch-arena",
+  "head_commit": "96972e10f5bf11a47a09b3ca52628b2f402c0b7e",
+  "dco": "Signed-off-by: Michel Belleau <michel.belleau@malaiwah.com>",
+  "stacked_on": "feat/exl3-b12x-prefill-routing (PR #318 head, byte-identical to the r34 image file); base will be codex/gg-exl3-r7-k345-20260810 like #314/#316/#318",
+  "url": "PENDING - files after the 5090 A/B lands the measured numbers, per the assignment",
+  "body_draft": "upstream/arena/pr-body.md"
+ },
+ "predicted": {
+  "label": "PREDICTION - source arithmetic (docs/43 R1, receipts/h-sharing-research.json), not yet a GPU claim",
+  "kv_pool_gain_mib": 620.0,
+  "kv_tokens_mtp3_a_34816": 18676,
+  "kv_tokens_mtp_off_a_32932": 19744,
+  "baseline_kv_tokens_qualified_profile": 265122,
+  "predicted_kv_tokens_qualified_profile": "~283800",
+  "twenty_four_gib_note": "docs/43 estimates the 24 GB window lifts from 24,576 toward ~40,960; re-derive from the measured pool gain before publishing"
+ },
+ "measured": {
+  "label": "MEASURED on the physical RTX 5090 - EMPTY until the A/B runs",
+  "ab_kit": "aiboss:~/scratcharena/arena_ab.sh + greedy_probe.py; overlay staged at aiboss:~/qual5090/tools/vllm-exl3-scratch-arena.py (sha256 verified 9aba06eb...)",
+  "kv_tokens_baseline": null,
+  "kv_tokens_arena": null,
+  "kv_token_delta": null,
+  "bit_exact_greedy": null,
+  "vision_suite": null,
+  "needle": null,
+  "decode_runs": null,
+  "service_restore": null
+ }
+}

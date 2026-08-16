@@ -1,0 +1,134 @@
+{
+ "schema": "exl3-scratch-arena-sim/1",
+ "torch": "2.12.0+cu132",
+ "geometries": [
+  {
+   "K": 5120,
+   "N": 17408,
+   "chunk": 17408,
+   "role": "mlp gate/up (K5, 130 modules)"
+  },
+  {
+   "K": 17408,
+   "N": 5120,
+   "chunk": 5120,
+   "role": "mlp down (K6, 65 modules)"
+  },
+  {
+   "K": 5120,
+   "N": 12288,
+   "chunk": 12288,
+   "role": "attn q (K5, 17 modules)"
+  },
+  {
+   "K": 5120,
+   "N": 10240,
+   "chunk": 10240,
+   "role": "gdn in_proj (K5, 48 modules)"
+  },
+  {
+   "K": 10240,
+   "N": 5120,
+   "chunk": 5120,
+   "role": "mtp.fc (K4, 1 module)"
+  },
+  {
+   "K": 5120,
+   "N": 6144,
+   "chunk": 6144,
+   "role": "gdn ba (K5, 48 modules)"
+  },
+  {
+   "K": 6144,
+   "N": 5120,
+   "chunk": 5120,
+   "role": "attn o / gdn out (K5, 65 modules)"
+  },
+  {
+   "K": 5120,
+   "N": 1024,
+   "chunk": 1024,
+   "role": "attn k/v (K5, 34 modules)"
+  },
+  {
+   "K": 5120,
+   "N": 248320,
+   "chunk": 32768,
+   "role": "lm_head (K6, 1 module; chunked to 32768)"
+  }
+ ],
+ "baseline": {
+  "segment_sha256": {
+   "_EXL3_RECONSTRUCT_SLICE_N": "95e82312cd5f53377e551bba0da50519562b7a165ee46bef631c7a921137eba0",
+   "_EXL3_RECONSTRUCT_SCRATCH": "f5b76c609c9f624c2f337f68839f79d9c32c2efc1726643688c2afd34ac10938",
+   "_reconstruct_scratch": "e10ff7b367e7c4527394c66166590a19e09a79bfa672d2a8f349d13cb808f4ea",
+   "_reconstruct_hgemm_into": "9ede3ba83269391b03c04006176c0068a9d042c6e02f2097e939e1a246b326ca"
+  },
+  "persistent_bytes": 1163919360,
+  "persistent_mib": 1110.0,
+  "distinct_buffers": 9,
+  "hgemm_consumptions_verified": 22
+ },
+ "arena_orders": {
+  "realistic": {
+   "arena_bytes": 335544320,
+   "arena_mib": 320.0,
+   "views_checked": 22,
+   "hgemm_consumptions_verified": 22,
+   "all_views_offset0_inbounds_aligned": true,
+   "segment_sha256": {
+    "_EXL3_RECONSTRUCT_SLICE_N": "95e82312cd5f53377e551bba0da50519562b7a165ee46bef631c7a921137eba0",
+    "_EXL3_RECONSTRUCT_ARENA": "f4dd2a204edbaea4305bbe4fabe5b26c5c43c11c70c721f758d70d049eb54f54",
+    "_EXL3_RECONSTRUCT_ARENA_FROZEN": "8c502f486cd21978efab1017bd4a37fd8f356b708310cb0813a4d008125b5d1e",
+    "_EXL3_RECONSTRUCT_SCRATCH": "f5b76c609c9f624c2f337f68839f79d9c32c2efc1726643688c2afd34ac10938",
+    "_reconstruct_scratch": "8a589b5e87f8ad385b731ec6955134958a6d038e54eacdf82ec76b4d9aae5eec",
+    "_reconstruct_hgemm_into": "9ede3ba83269391b03c04006176c0068a9d042c6e02f2097e939e1a246b326ca"
+   }
+  },
+  "ascending": {
+   "arena_bytes": 335544320,
+   "arena_mib": 320.0,
+   "views_checked": 16,
+   "hgemm_consumptions_verified": 16,
+   "all_views_offset0_inbounds_aligned": true,
+   "segment_sha256": {
+    "_EXL3_RECONSTRUCT_SLICE_N": "95e82312cd5f53377e551bba0da50519562b7a165ee46bef631c7a921137eba0",
+    "_EXL3_RECONSTRUCT_ARENA": "f4dd2a204edbaea4305bbe4fabe5b26c5c43c11c70c721f758d70d049eb54f54",
+    "_EXL3_RECONSTRUCT_ARENA_FROZEN": "8c502f486cd21978efab1017bd4a37fd8f356b708310cb0813a4d008125b5d1e",
+    "_EXL3_RECONSTRUCT_SCRATCH": "f5b76c609c9f624c2f337f68839f79d9c32c2efc1726643688c2afd34ac10938",
+    "_reconstruct_scratch": "8a589b5e87f8ad385b731ec6955134958a6d038e54eacdf82ec76b4d9aae5eec",
+    "_reconstruct_hgemm_into": "9ede3ba83269391b03c04006176c0068a9d042c6e02f2097e939e1a246b326ca"
+   }
+  },
+  "descending": {
+   "arena_bytes": 335544320,
+   "arena_mib": 320.0,
+   "views_checked": 16,
+   "hgemm_consumptions_verified": 16,
+   "all_views_offset0_inbounds_aligned": true,
+   "segment_sha256": {
+    "_EXL3_RECONSTRUCT_SLICE_N": "95e82312cd5f53377e551bba0da50519562b7a165ee46bef631c7a921137eba0",
+    "_EXL3_RECONSTRUCT_ARENA": "f4dd2a204edbaea4305bbe4fabe5b26c5c43c11c70c721f758d70d049eb54f54",
+    "_EXL3_RECONSTRUCT_ARENA_FROZEN": "8c502f486cd21978efab1017bd4a37fd8f356b708310cb0813a4d008125b5d1e",
+    "_EXL3_RECONSTRUCT_SCRATCH": "f5b76c609c9f624c2f337f68839f79d9c32c2efc1726643688c2afd34ac10938",
+    "_reconstruct_scratch": "8a589b5e87f8ad385b731ec6955134958a6d038e54eacdf82ec76b4d9aae5eec",
+    "_reconstruct_hgemm_into": "9ede3ba83269391b03c04006176c0068a9d042c6e02f2097e939e1a246b326ca"
+   }
+  }
+ },
+ "capture_freeze": {
+  "frozen_arena_never_reallocated": true,
+  "oversize_geometry_falls_back_to_dedicated_buffer": true,
+  "dedicated_buffer_address_stable": true
+ },
+ "verdict": {
+  "baseline_persistent_mib": 1110.0,
+  "arena_persistent_mib": 320.0,
+  "saving_all_9_geometries_mib": 790.0,
+  "note": "at the qualified profile the head geometry does not allocate (needs >=128 sampled logit rows), so the serve-time saving is 790.0 - 170.0 = 620.0 MiB; with the head it is 1110.0 - 320.0 = 790.0 MiB",
+  "in_bounds": true,
+  "aligned_offset0": true,
+  "non_overlapping_every_reachable_concurrent_set": true,
+  "kernels_see_identical_operands": true
+ }
+}
