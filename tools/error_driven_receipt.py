@@ -103,6 +103,197 @@ def equal_width_table(lad_mods: dict) -> dict:
     return dict(out)
 
 
+
+def law_summary(lad_mods: dict) -> dict:
+    """The reusable part of this work: fit log eps(m,K) = a_m + s(K) and test it out of sample.
+
+    Everything here is computed from the ladder artifact, so the receipt carries the law rather
+    than quoting it.
+    """
+    import math
+
+    lads = {k: {int(a): b for a, b in (v.get("ladder") or {}).items() if b and b > 0}
+            for k, v in lad_mods.items()}
+    lads = {k: v for k, v in lads.items() if len(v) >= 2}
+    if not lads:
+        return {}
+
+    def fit(eps):
+        ks = sorted(eps)
+        ys = [math.log(eps[k]) for k in ks]
+        mx, my = statistics.fmean(ks), statistics.fmean(ys)
+        sxx = sum((x - mx) ** 2 for x in ks)
+        slope = sum((x - mx) * (y - my) for x, y in zip(ks, ys)) / sxx
+        return math.exp(-slope), my - slope * mx
+
+    def q(v, p):
+        v = sorted(v)
+        return v[min(len(v) - 1, int(p * len(v)))]
+
+    # universal shape, pinned s(5) = 0
+    shape = {}
+    for K in range(1, 9):
+        v = [math.log(e[K]) - math.log(e[5]) for e in lads.values() if K in e and 5 in e]
+        if v:
+            shape[K] = statistics.fmean(v)
+    ratios_by_pair = defaultdict(list)
+    for e in lads.values():
+        ks = sorted(e)
+        for a, b in zip(ks, ks[1:]):
+            ratios_by_pair[(a, b)].append(e[a] / e[b])
+
+    by_cls, r_mod, by_octet = defaultdict(list), {}, defaultdict(list)
+    for k, e in lads.items():
+        r, _ = fit(e)
+        r_mod[k] = r
+        by_cls[role_of(k) + ("." + k.rsplit(".", 1)[-1] if role_of(k).endswith("attention") else "")].append(r)
+        m = re.search(r"layers\.(\d+)\.", k)
+        if m:
+            by_octet[int(m.group(1)) // 8].append(r)
+    all_r = list(r_mod.values())
+
+    # out-of-sample: predict a held-out rung from ONE anchor rung
+    def anchored(pred_fn):
+        out = defaultdict(list)
+        for k, e in lads.items():
+            ks = sorted(e)
+            for held in ks:
+                for anchor in ks:
+                    if anchor != held:
+                        out[held].append(pred_fn(e, anchor, held) / e[held] - 1.0)
+        return out
+
+    R = statistics.fmean(all_r)
+    tests = {
+        "one_anchor_plus_shape": anchored(
+            lambda e, a, h: math.exp(math.log(e[a]) - shape[a] + shape[h])),
+        "one_anchor_plus_single_constant": anchored(
+            lambda e, a, h: e[a] * R ** (a - h)),
+    }
+    loo = defaultdict(list)
+    for k, e in lads.items():
+        ks = sorted(e)
+        if len(ks) < 3:
+            continue
+        for held in ks:
+            r, lc = fit({a: e[a] for a in ks if a != held})
+            loo[held].append(math.exp(lc) * r ** (-held) / e[held] - 1.0)
+    tests["leave_one_out_refit"] = loo
+
+    def dist(rows):
+        flat = [x for v in rows.values() for x in v]
+        return {"n": len(flat), "median": statistics.median(flat),
+                "mean_abs": statistics.fmean(map(abs, flat)),
+                "p95_abs": q([abs(x) for x in flat], 0.95),
+                "max_abs": max(map(abs, flat)),
+                "median_by_rung": {f"K{k}": statistics.median(v) for k, v in sorted(rows.items())},
+                "mean_abs_by_rung": {f"K{k}": statistics.fmean(map(abs, v))
+                                     for k, v in sorted(rows.items())}}
+
+    return {
+        "law": "log eps(m, K) = a_m + s(K): one constant per module, one universal shape",
+        "shape_s_of_K_pinned_at_K5": {f"K{k}": v for k, v in sorted(shape.items())},
+        "implied_per_bit_ratio": {f"K{k-1}->K{k}": math.exp(shape[k - 1] - shape[k])
+                                  for k in sorted(shape) if k - 1 in shape},
+        "ratio_by_rung_pair": {f"K{a}->K{b}": {"n": len(v), "mean": statistics.fmean(v),
+                                              "sd": statistics.stdev(v) if len(v) > 1 else 0.0}
+                               for (a, b), v in sorted(ratios_by_pair.items())},
+        "single_constant_fit": {"mean": R, "sd": statistics.stdev(all_r), "n": len(all_r),
+                                "min": min(all_r), "max": max(all_r),
+                                "ideal_information_bound": 4.0,
+                                "deficit_vs_bound": 1.0 - R / 4.0,
+                                "why": "unexplained; measured, stable across depth, mildly "
+                                       "class-dependent, and the deficit widens with width"},
+        "per_class_constant": {c: {"n": len(v), "mean": statistics.fmean(v),
+                                   "sd": statistics.stdev(v) if len(v) > 1 else 0.0,
+                                   "min": min(v), "max": max(v)}
+                               for c, v in sorted(by_cls.items())},
+        "constant_by_layer_octet": {f"layers_{o*8}_{o*8+7}": statistics.fmean(v)
+                                    for o, v in sorted(by_octet.items())},
+        "out_of_sample": {k: dist(v) for k, v in tests.items()},
+        "not_measured_for": "lm_head and the 8 MTP draft modules carry one rung each (recipe-pinned "
+                            "by -hb/-mb, so the pass does not ladder them) and the MTP draft "
+                            "quantizes through the uncalibrated fallback, which reports rmse rather "
+                            "than this proxy; the vision tower is unquantized at -vb 16",
+    }
+
+
+def one_rung_equivalence(lad_mods: dict, plan: dict, receipts: str, ctx_log: str) -> dict:
+    """Re-solve the allocation from ONE rung per module and report whether it lands on the same map.
+
+    This is the claim that makes the law useful, so it is verified by running the shipped allocator
+    (`tools/allocate_bits.py`) on reconstructed input, not by re-implementing the solve here. Two
+    reconstructions: the measured ladder's K5 rung expanded by the shape, and an ordinary conversion
+    log from a different recipe that existed before this work.
+    """
+    import math
+    import subprocess
+    import sys
+    import tempfile
+
+    here = Path(__file__).resolve().parent
+    sys.path.insert(0, str(here))
+    import allocate_bits as ab
+
+    L = ab.load_ladder(Path(plan["ladder"]["source"]))
+    measured = L["modules"]
+    free = sorted(k for k in measured
+                  if ab.MODS[k][2] in ("full_attention", "linear_attention", "mlp_gate_proj",
+                                       "mlp_up_proj", "mlp_down_proj"))
+    w = ab.weights(measured, plan["objective"]["chosen"])
+    hyd = ab.hydrated_bits()
+    e_hyd = ab.total_error(measured, w, hyd, free)
+    e_five = ab.total_error(measured, w, plan["solved_bits"], free)
+
+    def run(args: list[str]) -> dict | None:
+        out = Path(tempfile.mkdtemp()) / "plan.json"
+        r = subprocess.run([sys.executable, str(here / "allocate_bits.py"), "--out", str(out),
+                            "--receipts", receipts] + args, capture_output=True, text=True)
+        if r.returncode != 0:
+            return {"error": r.stderr.strip()[-400:]}
+        p = json.loads(out.read_text())
+        bits = p["solved_bits"]
+        e = ab.total_error(measured, w, bits, free)
+        agree = sum(1 for k in free if bits[k] == plan["solved_bits"][k])
+        return {
+            "modules_compared": len(free), "identical_widths": agree,
+            "disagreements": {k: [plan["solved_bits"][k], bits[k]] for k in free
+                              if bits[k] != plan["solved_bits"][k]},
+            "objective_on_the_measured_ladder": e,
+            "fraction_of_the_five_rung_improvement_recovered":
+                (e_hyd - e) / (e_hyd - e_five) if e_hyd != e_five else None,
+            "serialized_bytes": p["bytes"]["solved_total"],
+        }
+
+    shape = {int(k[1:]): v for k, v in
+             (plan.get("_shape") or law_summary(lad_mods)["shape_s_of_K_pinned_at_K5"]).items()}
+    recon = {"schema": "qwen38-proxy-error-ladder/1", "metric": "reconstructed from one K5 rung",
+             "out_energy": "carried from the measured ladder",
+             "candidate_widths": {"big": [3, 4, 5, 6, 7], "small": [4, 5, 6, 7, 8],
+                                 "big_numel_threshold": 52_000_000},
+             "elapsed_sec": 0, "propagation_recipe": "as measured", "modules": {}}
+    for k in free:
+        eps = {int(a): b for a, b in lad_mods[k]["ladder"].items() if b and b > 0}
+        if 5 not in eps:
+            continue
+        a5 = math.log(eps[5])
+        recon["modules"][k] = dict(lad_mods[k],
+                                   ladder={str(K): math.exp(a5 + shape[K]) for K in eps})
+    tmp = Path(tempfile.mkdtemp()) / "onerung-ladder.json"
+    tmp.write_text(json.dumps(recon))
+
+    return {
+        "why": "if one rung per module suffices, the 2 h five-rung measurement pass never has to be "
+               "paid again: an ordinary teed conversion log is the input",
+        "objective_hydrated": e_hyd, "objective_five_rung_solve": e_five,
+        "from_one_K5_rung_plus_shape": run(["--ladder", str(tmp)]),
+        "from_a_pre_existing_conversion_log": (
+            run(["--ladder-from-log", ctx_log]) if Path(ctx_log).is_file()
+            else {"error": f"{ctx_log} not present"}),
+        "pre_existing_log": ctx_log,
+    }
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     for name in ("plan", "ladder", "convert-log", "manifest", "build-receipt", "report",
@@ -113,6 +304,9 @@ def main() -> int:
     ap.add_argument("--workdir", default="/var/tmp/work/kld6")
     ap.add_argument("--exllamav3", default="/var/tmp/work/exllamav3")
     ap.add_argument("--receipts", default="receipts")
+    ap.add_argument("--ctx-log", default="/var/tmp/work/kld3/convert-ctx.log",
+                    help="an ordinary conversion log that predates this work, for the one-rung check")
+    ap.add_argument("--surrogate", default="receipts/error-driven-surrogate-calibration.json")
     ap.add_argument("--out", required=True)
     a = ap.parse_args()
 
@@ -292,6 +486,8 @@ def main() -> int:
                 "prediction_vs_measurement.ladder_replay compares every ladder rung against the proxy error "
                 "the real conversion achieved at the same width with the solved propagation"),
             "equal_width_proxy_error_by_role": eqw,
+            "law": law_summary(lad_mods),
+            "one_rung_equivalence": one_rung_equivalence(lad_mods, plan, a.receipts, a.ctx_log),
         },
         "hand_designed_recipe_justification_reviewed": {
             "claim_in_the_shipped_recipe": "down_proj is at K6 while gate/up are at K5 because down_proj "
@@ -337,7 +533,9 @@ def main() -> int:
             "solved_minus_hydrated": real_total - hyd_total,
             "predicted_total": plan["bytes"]["solved_total"],
             "realised_minus_predicted_total": real_total - plan["bytes"]["solved_total"],
-            "disk_bytes": breceipt.get("artifact", {}).get("disk_bytes"),
+            "immutable_payload_bytes": breceipt.get("immutable_payload_bytes"),
+            "immutable_payload_files": breceipt.get("file_count"),
+            "hydrated_immutable_payload_bytes": 21_610_916_123,
         },
         "fidelity": {
             "solved": {k: rep.get(k) for k in ("token_mean_kld", "token_median_kld", "p95_kld", "p99_kld",
@@ -358,6 +556,31 @@ def main() -> int:
                 "note": "the GGUF number carries a cross-engine floor of 0.000507 "
                         "(receipts/gguf-report-engine-floor.json); the EXL3 numbers do not",
             },
+        },
+        "surrogate_calibration": {
+            "receipt": stamp(a.surrogate),
+            "summary": (json.loads(Path(a.surrogate).read_text())["verdict"]
+                        if Path(a.surrogate).is_file() else None),
+        },
+        "toolchain_traps": {
+            "two_exllamav3_generations": "the image bundles exllamav3 0.0.43 at "
+                "/opt/exllamav3-python/exllamav3, whose modules/attention_fn/flash_attn_2.py imports "
+                "flash_attn unguarded, so importing THAT package root fails with ModuleNotFoundError. "
+                "Every conversion in this project instead puts /var/tmp/work/exllamav3 (1.4.2 at "
+                "5f3c537) first on sys.path, where the same import is wrapped in try/except and the "
+                "built-in Triton attention kernels serve instead. flash-attn is not a conversion "
+                "dependency; importing the right generation is.",
+            "encoder_source_asymmetry": "ggrun.sh sets VLLM_EXL3_ENCODER_SOURCE="
+                "/opt/exllamav3-python/exllamav3, so the runtime online-encoding overlay reads 0.0.43 "
+                "while every offline conversion runs 1.4.2. Two generations of the same quantizer are "
+                "live on this box for two different jobs; anything comparing online against offline "
+                "encoding is comparing across that split as well.",
+            "marisa_trie": "absent from the pinned rootfs venv and imported by both compile_model and "
+                "util/add_quant_config.py. It cost this ticket two late-stage failures with all "
+                "quantization already done. ImmutableImage has since published a conversion-only tag "
+                "localhost/vllm:gg-r34-convert with the wheel installed; the workaround used here was "
+                "/var/tmp/work/kld6/run_shimmed.py, a sorted prefix scan over the ~1,200 tensor names "
+                "in place of the trie, sorted so that shard packing cannot differ between runs.",
         },
         "prediction_vs_measurement": {
             "predicted_kld_delta_solved_minus_hydrated": predicted_delta,
@@ -382,8 +605,10 @@ def main() -> int:
             "converter": f"turboderp-org/exllamav3@{git} (1.4.2) plus this repository's allocation patch "
                          f"(tools/exllamav3-allocation-bits-override.py)",
             "converter_worktree_diff_sha256": hashlib.sha256(diff.encode()).hexdigest(),
-            "command": breceipt.get("build", {}).get("command") or breceipt.get("command"),
-            "recipe": breceipt.get("build", {}).get("recipe") or breceipt.get("recipe"),
+            "command": breceipt.get("command"),
+            "recipe": breceipt.get("recipe"),
+            "build_receipt": stamp(a.build_receipt),
+            "upstream_logical_tensor_check": breceipt.get("upstream_check"),
             "bits_fixed_spec": stamp(W / "solved-fixed.json"),
             "bits_override_spec": stamp(W / "solved-override.json"),
             "build_script": stamp(W / "build_solved.sh"),
@@ -422,7 +647,12 @@ def main() -> int:
             + ("down_proj is therefore NOT the highest-error MLP tensor at equal width and the stated "
                "reason for spending the extra bit there is wrong, whatever the merits of the resulting "
                "recipe." if all(r < 1 for r in worst.values()) else
-               "the ladder at equal width is what settles it; see the numbers above."))
+               "down_proj IS the highest-error MLP tensor at equal width, so the shipped conclusion is "
+               "right and only the evidence originally offered for it was not. The ratios are constant "
+               "to three digits across four widths, which is what the universal shape in ladder.law "
+               "predicts: only the per-module constant differs between these three roles. The solved "
+               "allocation agrees in practice, keeping 60 of 64 down_proj at K6 and buying its MLP bits "
+               "on up_proj instead."))
 
     Path(a.out).write_text(json.dumps(receipt, indent=1) + "\n")
     print(json.dumps({"outcome": outcome, "paired": [d["mean"], lo, hi],

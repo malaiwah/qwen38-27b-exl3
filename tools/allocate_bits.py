@@ -184,11 +184,80 @@ def load_ladder(path: Path) -> dict:
     return {"meta": {k: v for k, v in d.items() if k != "modules"}, "modules": lad}
 
 
+# Candidate widths, and the measured law that lets ONE width stand in for the whole curve.
+#
+# Measured on the five-rung ladder of all 400 body modules (receipts/error-driven-ladder.json):
+#
+#     log eps(m, K) = a_m + s(K)
+#
+# one constant per module and ONE universal shape, pinned s(5) = 0. Fitted on 8,000 ordered rung
+# pairs, the shape's implied per-bit ratio is not constant - it declines smoothly from 3.860 at
+# K3->K4 to 3.559 at K7->K8, i.e. each further bit buys slightly less - and the decline shows up
+# in every module class with very little scatter (the 192 MLP modules put sd 0.003-0.011 on each
+# rung pair). Predicting a held-out width from ONE measured width and this shape lands within
+# 1.175 % mean absolute error, p95 3.86 %, with no systematic bias by rung; the single-constant
+# geometric approximation eps = c_m * 3.7294**-K is 3.03 % / 6.88 % and biased at the ends.
+#
+# What it buys: the allocation solved from ONE K5 rung per module plus this shape agreed with the
+# five-rung solve on 396 of 400 modules - the four disagreements one bit at a threshold - and
+# recovered 99.98 % of the objective improvement at identical bytes. The input is then an ordinary
+# teed conversion log, ~25 min of GPU, instead of a ~2 h five-rung measurement pass. Rerunning it
+# on convert-ctx.log, a log from a DIFFERENT recipe that already existed before this work, also
+# reproduced 396 of 400 and 100.0 % of the improvement.
+#
+# The shape is measured, not derived. A pure information argument gives 4.0 per bit; nothing here
+# reaches it, the deficit widens with width, and we do not know why. Extrapolating four or five
+# bits from one anchor is where it degrades: three of 400 modules exceed 20 % error, all of them
+# K8->K4 or K7->K3. Per-class constants and the depth check are in docs/37.
+LAW_SHAPE = {3: 2.6834, 4: 1.3327, 5: 0.0, 6: -1.3150, 7: -2.6089, 8: -3.8783}
+CAND_BIG = (3, 4, 5, 6, 7)
+CAND_SMALL = (4, 5, 6, 7, 8)
+BIG_NUMEL = 52_000_000
+
+LOG_LINE = re.compile(r"Quantized:\s+(?P<key>\S+)\s+bpw:\s+(?P<bpw>[\d.]+)\s+"
+                      r"(?:proxy_err|rmse)\s*:\s*(?P<err>[\d.eE+-]+)")
+
+
+def ladder_from_log(path: Path, shape: dict[int, float]) -> dict:
+    """Synthesize the candidate ladder from ONE ordinary teed conversion log.
+
+    A conversion prints one proxy error per module, at the width the allocator gave it. With the
+    shape above that is enough: a_m follows from the single point and every other width is
+    exp(a_m + s(K)). `out_energy` is not recoverable from a log, so only the `rel` objective is
+    available - which is the one the two measured KLD deltas select anyway.
+    """
+    lad = {}
+    for line in path.read_text(errors="ignore").splitlines():
+        m = LOG_LINE.search(line)
+        if not m:
+            continue
+        key, k, err = m.group("key"), round(float(m.group("bpw"))), float(m.group("err"))
+        if key not in MODS or err <= 0 or k not in shape:
+            continue
+        cands = CAND_BIG if numel(key) >= BIG_NUMEL else CAND_SMALL
+        a = math.log(err) - shape[k]
+        lad[key] = {"eps": {kk: math.exp(a + shape[kk]) for kk in cands if kk in shape},
+                    "numel": numel(key), "out_energy": None, "recipe_bits": k,
+                    "q_fallback": False, "measured_rung": k, "measured_proxy_err": err}
+    if not lad:
+        raise SystemExit(f"no per-module proxy errors found in {path}")
+    return {"meta": {"source": str(path), "synthesized": True,
+                     "law": "log eps(m,K) = a_m + s(K), a_m from the log's single rung",
+                     "shape": {str(k): v for k, v in sorted(shape.items())},
+                     "candidate_widths": {"big": list(CAND_BIG), "small": list(CAND_SMALL),
+                                          "big_numel_threshold": BIG_NUMEL}},
+            "modules": lad}
+
+
 def weights(lad: dict, objective: str) -> dict[str, float]:
+    """Objective weight per module. Recipe-pinned modules (head, MTP) are laddered at their
+    assigned width only and carry no output energy; they are never free variables and never
+    appear in a delta, so they get no weight rather than a fabricated one."""
     if objective == "rel":
         return {k: 1.0 for k in lad}
     if objective == "abs":
-        return {k: float(v["out_energy"]) for k, v in lad.items()}
+        return {k: float(v["out_energy"]) for k, v in lad.items()
+                if v.get("out_energy") is not None}
     raise SystemExit(f"unknown objective {objective}")
 
 
@@ -260,7 +329,14 @@ def solve(lad: dict, w: dict[str, float], free: list[str], budget_units: int,
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--ladder", required=True)
+    src = ap.add_mutually_exclusive_group(required=True)
+    src.add_argument("--ladder", help="five-rung ladder JSON from tools/ladder_pass.py")
+    src.add_argument("--ladder-from-log", metavar="LOG",
+                     help="an ordinary teed conversion log: one rung per module, expanded to the "
+                          "candidate widths by the geometric law (see LAW_R)")
+    ap.add_argument("--law-shape", default=None, metavar="JSON",
+                    help="override the measured width->log-error shape used by --ladder-from-log, "
+                         "as a JSON object {\"4\": 1.3327, ...}; default is LAW_SHAPE")
     ap.add_argument("--receipts", default=str(Path(__file__).resolve().parent.parent / "receipts"))
     ap.add_argument("--out", required=True, help="plan JSON")
     ap.add_argument("--fixed-out", default=None, help="EXL3_BITS_FIXED spec (attention)")
@@ -278,7 +354,15 @@ def main() -> int:
     hyd_roles = role_bytes(hyd)
     budget = args.budget_bytes or sum(hyd_roles.values())
 
-    L = load_ladder(Path(args.ladder))
+    if args.ladder:
+        L = load_ladder(Path(args.ladder))
+    else:
+        shape = ({int(k): float(v) for k, v in json.loads(args.law_shape).items()}
+                 if args.law_shape else LAW_SHAPE)
+        L = ladder_from_log(Path(args.ladder_from_log), shape)
+        if args.objective == "abs":
+            raise SystemExit("--objective abs needs per-module output energies, which a conversion "
+                             "log does not carry; use --ladder or --objective rel")
     lad = L["modules"]
     # free variables: the budgeted body. Head and MTP are recipe-pinned, identical to hydrated.
     free = [k for k in lad if MODS[k][2] in ("full_attention", "linear_attention",
@@ -315,7 +399,8 @@ def main() -> int:
                              "keys": "mlp", "a": hyd, "b": k4},
     }
     validation = {}
-    for obj in ("rel", "abs"):
+    have_energy = all(lad[k].get("out_energy") is not None for k in free)
+    for obj in (("rel", "abs") if have_energy else ("rel",)):
         w = weights(lad, obj)
         rows = {}
         for name, spec in MEASURED.items():
