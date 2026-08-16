@@ -158,7 +158,8 @@
    },
    "exact_environment": {
     "EXL3_BITS_FIXED": "{\"^.*self_attn\\\\..*$\": 4, \"^.*linear_attn\\\\..*$\": 3}",
-    "EXL3_BITS_OVERRIDE": "{\"^.*mlp\\\\.(gate|up|down)_proj$\": 3}"
+    "EXL3_BITS_OVERRIDE": "{\"^model\\\\.language_model\\\\.layers\\\\.[0-9]+\\\\.mlp\\\\.(gate|up|down)_proj$\": 3}",
+    "why_the_override_names_the_body": "EXL3_BITS_OVERRIDE is matched against every key in f_targets and the MTP draft layer's three MLP projections are among them, so the loose '^.*mlp\\.' form the hydrated build used would carry them to K3 too. docs/34 6.1 specifies mtp_draft all K4 for S16-V and 6.2's 212,636,704 B mtp_draft row is the all-K4 figure, so the loose form would land 33,423,360 B below the published byte prediction for a recipe reason rather than a byte-law reason. MTP width cannot reach the KLD: the fidelity protocol never engages MTP."
    },
    "exact_command": "convert.py -i /models/Qwen3.8-27B -o /work/kld9/qwen38-s16v -w /work/kld9/wd-s16v -b 3 -hb 4 -mb 4 -vb 16 -cb mcg",
    "build_script": "/var/tmp/work/kld9/build_s16v.sh",
@@ -414,6 +415,17 @@
     "GGUF Q6_K (receipts/gguf-report-q6_k.json, mean 0.002035) -- SAME 512 contexts and the same suite token, but the candidate was captured in llama.cpp, so this pairing carries the cross-engine term measured at 0.000507 mean (receipts/gguf-report-engine-floor.json). A GGUF number is an upper bound on its quantization error; the net figure is the naive subtraction and KL is not additive, so the net column is an estimate, not an identity."
    ],
    "preservation_policy": "keep and upload the checkpoint in every branch of the decision rule."
+  }
+ ],
+ "addenda": [
+  {
+   "when": "before any of the three conversions ran; the S16-V build script had not been executed",
+   "what": "condition 1's EXL3_BITS_OVERRIDE regex was narrowed from '^.*mlp\\.(gate|up|down)_proj$' to the language-model body only",
+   "why": "the loose form also matches the MTP draft layer's three MLP projections -- verified against the published hydrated build, whose MTP mlp is K5/K5/K6 from its override rather than K4 from its -mb 4 -- and docs/34 6.1 specifies mtp_draft all K4 for S16-V. The all-K4 mtp_draft row docs/34 6.2 publishes, 212,636,704 B, is re-derived to the byte here from the hydrated manifest's 283,415,584 B by charging the width deltas across the MTP module numels in receipts/error-driven-ladder.json, which confirms which recipe the published prediction assumes.",
+   "byte_effect_avoided": 33423360,
+   "byte_effect_avoided_note": "31.9 MiB. Left in, the measured payload would have undershot the published prediction for a recipe reason and looked like a byte-law error.",
+   "fidelity_effect": "none possible: the fidelity protocol never engages MTP (docs/34 7), so no MTP width can reach the measured KLD.",
+   "predictions_changed": "none. Every predicted byte count, predicted mean, threshold, interval, derivation and digest in this file is byte-identical to the revision first committed; the diff is this addendum, the one regex string, its explanation, and two literal '%%' typos in prose."
   }
  ],
  "order_and_disk": {

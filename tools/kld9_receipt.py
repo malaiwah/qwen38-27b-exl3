@@ -59,6 +59,9 @@ CONDS = {
                     "the v5 suite, and does sub-4-bit fidelity justify a 16 GB SKU?",
         "roles_expected": {"full_attn": 4, "linear_attn": 3, "mlp_gate": 3, "mlp_up": 3,
                            "mlp_down": 3},
+        # docs/34 6.1 pins the head at K4 and the whole MTP draft at K4; the override regex is
+        # deliberately body-only so -mb 4 governs the draft. Checked, not assumed.
+        "head_mtp_expected": {"lm_head": 4.0, "mtp": 4.0},
     },
     "altcal": {
         "index": 1,
@@ -67,6 +70,7 @@ CONDS = {
                     "calibration corpus change measured fidelity?",
         "roles_expected": {"full_attn": 6, "linear_attn": 6, "mlp_gate": 5, "mlp_up": 5,
                            "mlp_down": 6},
+        "head_mtp_expected": {"lm_head": 6.0},
     },
     "k6parity": {
         "index": 2,
@@ -75,6 +79,7 @@ CONDS = {
                     "the 6-bit-class loss a byte gap rather than an engineering gap?",
         "roles_expected": {"full_attn": 6, "linear_attn": 6, "mlp_gate": 6, "mlp_up": 6,
                            "mlp_down": 6},
+        "head_mtp_expected": {"lm_head": 6.0},
     },
 }
 
@@ -398,6 +403,14 @@ def main() -> int:
         if got != [float(want)]:
             errors.append("realised width for %s is %s, pre-registered %s"
                           % (role, got, want))
+    for key, want in spec.get("head_mtp_expected", {}).items():
+        got = {n: v["bpw"] for n, v in realised["head_and_mtp"].items()
+               if n.startswith(key) and v["bpw"] < 16.0}
+        if not got:
+            errors.append("no quantized %s module found in the conversion log" % key)
+        bad = {n: b for n, b in got.items() if b != want}
+        if bad:
+            errors.append("realised %s widths %s, pre-registered %s" % (key, bad, want))
 
     tree = tree_digests(args.tree)
     predicted = cond["predicted_bytes"]
