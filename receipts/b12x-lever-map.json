@@ -1,0 +1,1060 @@
+{
+  "schema": "qwen38-b12x-lever-map/1",
+  "generated_utc": "2026-08-16T12:32:05Z",
+  "purpose": "enumerate every b12x/SparkInfer knob reachable from the pinned runtime, classify it for Qwen3_5ForConditionalGeneration on one RTX 5090, and cost the dead ones as build tasks",
+  "method": "static read of the extracted rootfs plus the local exllamav3 tree and the served checkpoint's safetensors headers; four GitHub REST dossiers over local-inference-lab/{b12x,vllm,rtx6kpro}, turboderp-org/exllamav3 and vllm-project/vllm. NO GPU was used: the physical 5090 was held by a sibling agent for the duration",
+  "evidence_base": {
+    "pinned_rootfs": "/var/tmp/gg-rootfs",
+    "image": "voipmonitor/vllm@sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b",
+    "image_file_manifest": "/var/tmp/work/gg-rootfs-files.jsonl (107,998 entries)",
+    "promoted_serving_image": "localhost/vllm:gg-r34-patched-apc, manifest sha256:16a936b877b90fc080181e842f47dbafc5cb8e62688799596836e34ba0b79218",
+    "perf_sweep_image": "localhost/vllm:gg-r34-patched, manifest sha256:6eca4c693f01b6f4e112c04eacd30673b7cfbba4150e6fe2ea3ba1bbfde14c27",
+    "b12x_wheel": "b12x 1.2.1 (b12x-1.2.1.dist-info/METADATA: 'DGX Spark and RTX 6000-focused inference kernel library', Luke Alonso, Apache-2.0)",
+    "b12x_repo_head": "local-inference-lab/b12x master, pyproject 1.2.3, tags 1.2.4 and pre-cute-rebase-20260807, no releases",
+    "vllm_fork": "local-inference-lab/vllm dev/gilded-gnosis @ fa033bd4e1b16d9d729ad94be2d87da5a13210ce",
+    "exllamav3_in_image": "brandonmmusic-max/exllamav3 @704aefd743b390af4bd0fb429d1906f9b964c7d8 (branch a1-retile-sm120, __version__ 0.0.43, 2026-07-15)",
+    "exllamav3_local_tree": "/var/tmp/work/exllamav3 = turboderp-org/exllamav3 v1.4.2 @5f3c537, with 5 uncommitted modified files",
+    "served_checkpoint": "/var/tmp/work/qwen38-ctx (malaiwah/Qwen3.8-27B-EXL3-K5K6-context)"
+  },
+  "corrections_to_the_brief": [
+    {
+      "claim": "the mamba page forces attention block size 816/832/896",
+      "verdict": "WRONG NUMBERS, right mechanism",
+      "correct": "the measured value logged by every serving run is 1600 (and 1584 at MTP depth 1); 816 is arithmetically unreachable because select_common_block_size requires the storage block to be a multiple of 64 or 128 and 816 is neither",
+      "evidence": [
+        "receipts/perf-sweep-5090.json startup facts: 'Setting attention block size to 1600 tokens to ensure that attention page size is >= mamba page size' and 'Padding mamba page size by 0.25%'",
+        "reproduced exactly from vllm/platforms/interface.py:895-925 - see allocator_arithmetic"
+      ]
+    },
+    {
+      "claim": "VLLM_EXL3_PREFILL_FP8's 1.5-1.8x prefill path is a rebuilt extension away",
+      "verdict": "WRONG on both halves",
+      "correct": "1.5-1.8x is an isolated-GEMM microbenchmark, not prefill. The end-to-end number was already measured by us and published as +31% prefill at +0.0141 mean KLD, deliberately default-off. And the kernel is not a vendor artifact at all: reconstruct_fp8_slice exists only as an uncommitted working-tree modification in /var/tmp/work/exllamav3",
+      "evidence": [
+        "site-packages exl3.py:806-809 (the 1.5-1.8x sentence, scoped to 'an FP8 matmul')",
+        "local-inference-lab/vllm PR #318 body: '+31 % prefill but costs +0.0141 mean KLD - worse than official FP8. Row-wise scaling does not help; the loss is FP8 activations.'",
+        "git -C /var/tmp/work/exllamav3 status --porcelain: ' M exllamav3/exllamav3_ext/quant/reconstruct.cu'"
+      ]
+    },
+    {
+      "claim": "48 linear-attention and 163 full-attention layers",
+      "verdict": "WRONG",
+      "correct": "config.json text_config.layer_types is 48 linear_attention + 16 full_attention over 64 layers; vision_config.depth is 27; mtp_num_hidden_layers is 1. There is no 163 anywhere. The 208 figure used elsewhere is the count of attention-side EXL3 projections: 48x3 GDN + 16x4 full = 208",
+      "evidence": [
+        "/var/tmp/work/qwen38-ctx/config.json",
+        "safetensors header census, see dispatch_census"
+      ]
+    },
+    {
+      "claim": "the FULL_AND_PIECEWISE refusal kills adaptive and per-batch-size speculative decoding",
+      "verdict": "TRUE FOR US, but for a reason one step removed, and it has a config-only escape",
+      "correct": "the refusal is owned entirely by EXL3 (exl3_gemm autotune), not b12x. Dynamic SD is supported at FULL_DECODE_ONLY by the V2 model runner in this image. Our model does not select V2 by default because _is_default_v2_model_runner_model() returns False for is_hybrid models, so on V1 vLLM silently rewrites cudagraph_mode to PIECEWISE and EXL3 then raises. VLLM_USE_V2_MODEL_RUNNER=1 is honoured unconditionally and nothing in the V2 unsupported-feature list rejects a hybrid mamba model or MTP",
+      "evidence": [
+        "vllm/config/vllm.py:592-596 env override, :640-666 is_hybrid exclusion, :862-887 PIECEWISE rewrite",
+        "vllm/config/vllm.py:2167-2261 _get_v2_model_runner_unsupported_features (no hybrid/mamba entry)",
+        "exl3.py:1777-1783 refusal, :1806-1811 stated cause, :1822-1828 raise, :1802-1805 rank-sliced exemption"
+      ]
+    },
+    {
+      "claim": "mul1 failing the b12x gate may be silently costing us fallbacks on 208 projections",
+      "verdict": "WRONG mechanism",
+      "correct": "the served checkpoint has 409 mcg markers and ZERO mul1 markers. All 208 attention projections fail exactly one clause of _b12x_trellis_k6_supported: int(trellis.shape[2]) == 96, i.e. bits must be 6, and our attention is serialized at K5. mul1 touches exactly one tensor in the public K4 build (lm_head), which is also that build's only K6 matrix",
+      "evidence": [
+        "safetensors header census of /var/tmp/work/qwen38-ctx",
+        "exl3.py:1210-1218"
+      ]
+    }
+  ],
+  "allocator_arithmetic": {
+    "question": "where do 64/128 and the inflated attention block size come from, and are they genuinely coupled",
+    "b12x_side_64_128": {
+      "vllm_adapter_constant": {
+        "file": "/opt/venv/lib/python3.12/site-packages/vllm/v1/attention/backends/b12x_attn.py",
+        "lines": "64-65"
+      },
+      "kernel_side_hard_gates": [
+        "b12x/attention/paged/forward_paged.py:3131 ('paged decode kernel supports page_size 64 or 128'), :8902, :9946",
+        "b12x/attention/paged/forward_extend_generic.py:2978",
+        "b12x/attention/paged/planner.py:1103, 1356, 1474, 1783, 1820",
+        "b12x/attention/paged/graph_replay.py:1370, 1473",
+        "b12x/attention/paged/_scratch.py:2139",
+        "b12x/attention/nsa_indexer/paged.py:49 PAGED_INDEX_PAGE_SIZE = 64"
+      ],
+      "why_64": "the kernel's atomic unit is a 64-row TMA tile; 128 was added only to accept a vLLM contract and is walked as 2x64 with a stride-derived page_tiles_per_entry",
+      "vendor_quote": {
+        "source": "local-inference-lab/b12x commit edf8d3dba96ec8be53ebd38a680149d0e7366b76, Luke Alonso, 2026-06-12, 'MSA paged attention: page_size=128 (vLLM contract) + fp8 KV at 128'",
+        "verbatim": "Walk arithmetic stays in 64-token tiles; block id -> table entry via entries_per_block, table entry -> physical 64-row TMA tile via stride-derived page_tiles_per_entry (phantom tiles span the strided V-plane gap and are never addressed). page64 codegen byte-preserved."
+      },
+      "documented_in_repo": "b12x/attention/nsa_indexer/MSA.md:29 'The attention backend accepts page_size in {64, 128} for MSA plans'"
+    },
+    "our_side_1600": {
+      "code_that_inflates": {
+        "file": "/opt/venv/lib/python3.12/site-packages/vllm/platforms/interface.py",
+        "lines": "895-901",
+        "note": "attn_block_size = kernel_block_alignment_size * cdiv(mamba_page_size, kernel_block_alignment_size * attn_page_size_1_token)"
+      },
+      "code_that_pads": {
+        "file": "/opt/venv/lib/python3.12/site-packages/vllm/platforms/interface.py",
+        "lines": "914-925",
+        "note": "mamba_page_size_padded = cache_config.block_size * attn_page_size_1_token; assert attn_page >= mamba_page"
+      },
+      "alignment_source": {
+        "file": "/opt/venv/lib/python3.12/site-packages/vllm/platforms/interface.py",
+        "lines": "874-882",
+        "note": "kernel_block_alignment_size = max(min(backend.get_supported_kernel_block_sizes()), cache_config.block_size)"
+      },
+      "mamba_page_source": [
+        {
+          "file": "/opt/venv/lib/python3.12/site-packages/vllm/v1/kv_cache_interface.py",
+          "lines": "846-851",
+          "note": "MambaSpec.page_size_bytes = sum(prod(shape)*dtype_size)"
+        },
+        {
+          "file": "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/mamba/mamba_utils.py",
+          "lines": "213-234",
+          "note": "gated_delta_net_state_shape"
+        },
+        {
+          "file": "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/mamba/mamba_utils.py",
+          "lines": "84-96",
+          "note": "_mamba_state_dtype: ssm dtype from cache_config, conv dtype from model dtype"
+        },
+        {
+          "file": "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5.py",
+          "lines": "546-565",
+          "note": "Qwen3_5.get_mamba_state_shape_from_config passes num_spec"
+        }
+      ],
+      "attn_page_source": [
+        {
+          "file": "/opt/venv/lib/python3.12/site-packages/vllm/v1/kv_cache_interface.py",
+          "lines": "217-231",
+          "note": "AttentionSpec.real_page_size_bytes = 2*block*kv_heads*head_dim*dtype_size"
+        },
+        {
+          "file": "/opt/venv/lib/python3.12/site-packages/vllm/v1/kv_cache_interface.py",
+          "lines": "62-74",
+          "note": "get_kv_quant_mode('fp8') -> FP8_PER_TENSOR, so no per-token-head scale bytes are added"
+        }
+      ],
+      "verdict": "the mamba page size is a property of the GDN state layout only (conv (10240, 3+num_spec) bf16 + recurrent (48,128,128) fp32). It is not a property of MambaSpec, not of mamba_cache_mode, and not of any allocator. The inflation of the ATTENTION block is entirely the platform's single-page-size unification in _align_hybrid_block_size",
+      "reproduction": {
+        "num_spec=1": {
+          "mamba_page_size_bytes": 3227648,
+          "mamba_page_over_attn_page_1_token": 1576.0,
+          "by_kernel_alignment": {
+            "16": {
+              "attn_block_size": 1584,
+              "mamba_page_size_padded": 3244032,
+              "padding_pct": 0.51
+            },
+            "64": {
+              "attn_block_size": 1600,
+              "mamba_page_size_padded": 3276800,
+              "padding_pct": 1.52
+            },
+            "128": {
+              "attn_block_size": 1664,
+              "mamba_page_size_padded": 3407872,
+              "padding_pct": 5.58
+            }
+          }
+        },
+        "num_spec=2": {
+          "mamba_page_size_bytes": 3248128,
+          "mamba_page_over_attn_page_1_token": 1586.0,
+          "by_kernel_alignment": {
+            "16": {
+              "attn_block_size": 1600,
+              "mamba_page_size_padded": 3276800,
+              "padding_pct": 0.88
+            },
+            "64": {
+              "attn_block_size": 1600,
+              "mamba_page_size_padded": 3276800,
+              "padding_pct": 0.88
+            },
+            "128": {
+              "attn_block_size": 1664,
+              "mamba_page_size_padded": 3407872,
+              "padding_pct": 4.92
+            }
+          }
+        },
+        "num_spec=3": {
+          "mamba_page_size_bytes": 3268608,
+          "mamba_page_over_attn_page_1_token": 1596.0,
+          "by_kernel_alignment": {
+            "16": {
+              "attn_block_size": 1600,
+              "mamba_page_size_padded": 3276800,
+              "padding_pct": 0.25
+            },
+            "64": {
+              "attn_block_size": 1600,
+              "mamba_page_size_padded": 3276800,
+              "padding_pct": 0.25
+            },
+            "128": {
+              "attn_block_size": 1664,
+              "mamba_page_size_padded": 3407872,
+              "padding_pct": 4.26
+            }
+          }
+        }
+      }
+    },
+    "is_the_coupling_genuine": {
+      "answer": "NO. Per-cache-group page geometry is already implemented and shipped in this image.",
+      "mechanism": [
+        {
+          "file": "/opt/venv/lib/python3.12/site-packages/vllm/v1/worker/utils.py",
+          "lines": "346-387",
+          "note": "prepare_kernel_block_sizes returns ONE kernel block size PER KV cache group; AttentionSpec groups get select_common_block_size(storage, backends); MambaSpec groups get kv_cache_spec.block_size unchanged"
+        },
+        {
+          "file": "/opt/venv/lib/python3.12/site-packages/vllm/v1/worker/utils.py",
+          "lines": "277-343",
+          "note": "select_common_block_size: case 2 walks int-format supported sizes descending and returns the first that divides the storage block. 1600 % 64 == 0 -> 64"
+        },
+        {
+          "file": "/opt/venv/lib/python3.12/site-packages/vllm/v1/worker/block_table.py",
+          "lines": "69-77",
+          "note": "BlockTable sets use_hybrid_blocks and blocks_per_kv_block = block_size // kernel_block_size"
+        },
+        {
+          "file": "/opt/venv/lib/python3.12/site-packages/vllm/v1/worker/gpu_model_runner.py",
+          "lines": "7511-7570",
+          "note": "get_kv_cache_shape is called with shape_block_size = kernel_block_size, and num_blocks *= block_size // kernel_block_size"
+        },
+        {
+          "file": "/opt/venv/lib/python3.12/site-packages/vllm/v1/attention/backend.py",
+          "lines": "181-197",
+          "note": "base supports_block_size accepts ANY MULTIPLE of a supported kernel size - 'With hybrid_blocks feature, the framework-level block size only needs to be a multiple of the kernel's requirement'"
+        }
+      ],
+      "upstream_provenance": {
+        "pr": "vllm-project/vllm#24486 '[Hybrid]: Decouple Kernel Block Size from KV Page Size', zhiyuan1i, MERGED 2025-10-09",
+        "verbatim": "This PR introduces a hybrid cache architecture that separates logical kernel block size from physical page size... This hybrid model decoupling enables independent development of high-performance operators without being constrained by linear attention mechanisms like Mamba",
+        "motivating_issue": "vllm-project/vllm#24280, tomeras91, opened 2025-09-04, CLOSED as completed 2025-10-09",
+        "issue_verbatim": "in hybrid mamba/attention models the KVCacheManager requires the mamba and attention page sizes to match, which might cause large attention page sizes (672 tokens for nvidia/NVIDIA-Nemotron-Nano-9B-v2)... If the KVCacheManager requires a page size larger than what is supported by the attention backend, we can create multiple pages for the attention backend from a single KVCacheManager page.",
+        "closing_confirmation": "Thanks @zhiyuan1i for merging https://github.com/vllm-project/vllm/pull/24486 :) I can confirm this solves the issue for nvidia/NVIDIA-Nemotron-Nano-9B-v2"
+      },
+      "the_three_b12x_local_gates_that_block_it": [
+        {
+          "id": "G-A",
+          "site": {
+            "file": "/opt/venv/lib/python3.12/site-packages/vllm/v1/attention/backends/b12x_attn.py",
+            "lines": "417-418"
+          },
+          "problem": "supports_block_size overrides the base class with EXACT membership in (64,128); called from backend.py:343 during backend validation, so B12X_ATTN is rejected before any cache is built",
+          "fix": "delete the override (inherit the base multiple test) or mirror triton_attn.py:295 `return block_size % 64 == 0`",
+          "invasiveness": "2 lines deleted",
+          "precedent": "b12x is the ONLY attention backend in the pinned tree that narrows this to equality. flashmla [64], cutlass_mla [128], sparse_mla [256], hpc_attn [64], b12x_mla_sparse [64] do not override at all; triton_attn.py:295, triton_mla.py:102, rocm_aiter_unified_attn.py:49 all use a modulo test. vllm-project/vllm#36701 (tdoublep, MERGED 2026-06-26) removed the analogous FlashAttention hybrid restriction"
+        },
+        {
+          "id": "G-B",
+          "site": {
+            "file": "/opt/venv/lib/python3.12/site-packages/vllm/v1/attention/backends/b12x_attn.py",
+            "lines": "690-696"
+          },
+          "problem": "B12XPagedAttentionImpl.__init__ validates cache_config.block_size - the STORAGE block (1600) - instead of the negotiated kernel page",
+          "fix": "read the kernel page from the spec the builder was handed, or drop the check: the runtime already reads it from the tensor at _kv_page_size (b12x_attn.py:100-126) and plans are pre-built for BOTH 64 and 128 at :707-715",
+          "invasiveness": "~6 lines",
+          "note": "b12x_attn.py:103-107 already documents the split: 'The KV manager can split the configured storage block into a smaller kernel page when another backend shares its cache group.'"
+        },
+        {
+          "id": "G-C",
+          "site": {
+            "file": "/opt/venv/lib/python3.12/site-packages/vllm/v1/attention/backends/b12x_attn.py",
+            "lines": "85-97"
+          },
+          "problem": "_max_page_table_width reserves cdiv(max_model_len, kernel_page); under hybrid blocks the true width is cdiv(L, storage) * (storage // kernel_page). At L=262144, storage 1600, page 64 that is 164*25 = 4100 against 4096 reserved",
+          "fix": "compute the width from the storage block and the split ratio",
+          "invasiveness": "~4 lines",
+          "upstream_symptom": "local-inference-lab/b12x issue #29, jeremylea, opened 2026-07-11, OPEN, 0 comments, no maintainer reply: 'RuntimeError: The size of tensor a (4096) must match the size of tensor b (4100) at non-singleton dimension 1' / 'This happens during startup without MTP, but only on first use with MTP.' The mamba_cache_mode=='align' branch at :92-96 adds cdiv(max_num_batched_tokens, block_size) and accidentally masks the shortfall; non-align mode does not",
+          "attribution": "the 4096-vs-4100 arithmetic is [INFERENCE] by this agent; upstream states only the error string"
+        }
+      ],
+      "not_a_blocker": {
+        "file": "/opt/venv/lib/python3.12/site-packages/vllm/v1/attention/backends/b12x_attn.py",
+        "lines": "487-499",
+        "note": "get_kv_cache_shape raises for block_size not in (64,128) but gpu_model_runner.py:7518 calls it with the kernel block size"
+      },
+      "no_kernel_change_required": true,
+      "revision_check": "b12x_attn.py at dev/gilded-gnosis head fa033bd4e has md5 4c54854746011046e6cc5a8dd2a475fe, identical to the pinned image copy; every hybrid/size-related agent branch differs only by one type annotation. No commit has ever edited _B12X_SUPPORTED_PAGE_SIZES since it was introduced in b0d9820e3 (2026-07-17). There is no free revision-bump win.",
+      "executed_verification": {
+        "method": "exec'd the verbatim source text of select_common_block_size (vllm/v1/worker/utils.py lines 277-343) from the pinned image with a stub MultipleOf and a stub backend returning [64,128]; no GPU, no torch, the real package could not be imported on this host",
+        "results": {
+          "256": {
+            "kernel_page": 128,
+            "b12x_exact_override_accepts_storage": false
+          },
+          "512": {
+            "kernel_page": 128,
+            "b12x_exact_override_accepts_storage": false
+          },
+          "816": {
+            "kernel_page": "ValueError: No common block size for 816. ",
+            "b12x_exact_override_accepts_storage": false
+          },
+          "832": {
+            "kernel_page": 64,
+            "b12x_exact_override_accepts_storage": false
+          },
+          "896": {
+            "kernel_page": 128,
+            "b12x_exact_override_accepts_storage": false
+          },
+          "1600": {
+            "kernel_page": 64,
+            "b12x_exact_override_accepts_storage": false
+          },
+          "1664": {
+            "kernel_page": 128,
+            "b12x_exact_override_accepts_storage": false
+          },
+          "2048": {
+            "kernel_page": 128,
+            "b12x_exact_override_accepts_storage": false
+          }
+        },
+        "reading": "1600 -> a 64-token kernel page. 816 is unreachable for any b12x change (not a multiple of 64 or 128). Note that select_common_block_size never calls backend.supports_block_size - it reads get_supported_kernel_block_sizes() through its own local block_size_is_supported - so the SPLITTER would succeed for 1600. The rejection happens strictly earlier, at backend.py:343 via the overridden supports_block_size at b12x_attn.py:417-418."
+      }
+    },
+    "what_b12x_attn_would_actually_buy": {
+      "attention_share_of_prefill": "1.05x-1.11x total (docs/26 arms A->C and B->D), i.e. attention representation is about a tenth of prefill",
+      "head_dim_256_penalties_that_survive_the_fix": [
+        "b12x/attention/paged/planner.py:698-704 _fa2_determine_cta_tile_q caps the prefill query tile at 64 for head_dim >= 256 (byte-faithful to flashinfer/data/include/flashinfer/utils.cuh:412)",
+        "b12x/attention/paged/traits.py:83-100 _paged_is_invalid independently forbids cta_tile_q=128 at head_dim 256: num_mma_d_vo=16 makes num_mma_q>=2 always exceed the 256-register budget",
+        "every SM120 tuned/analytic decode+verify family in b12x/attention/paged/_forward.py:427-500 and forward_paged.py:3155-3232 requires head_dim_qk == head_dim_vo == 128; our 24q/4kv/gqa6 head counts match exactly and only head_dim misses",
+        "the one head_dim-256-exclusive TMA path (forward_extend_generic.py:3008-3020) additionally requires page_size == 64 and cta_tile_q == 16, so it serves extend/verify, not a 2048-row prefill chunk"
+      ]
+    }
+  },
+  "dispatch_census": {
+    "checkpoint_dir": "/var/tmp/work/qwen38-ctx",
+    "exl3_matrices": 409,
+    "mcg_markers": 409,
+    "mul1_markers": 0,
+    "b12x_k6_gate_pass": 66,
+    "b12x_k6_gate_reject": 343,
+    "by_family": [
+      {
+        "family": "mlp.down_proj",
+        "bits": 6,
+        "K": 17408,
+        "N": 5120,
+        "b12x_k6_gate": true,
+        "count": 65,
+        "mac_per_token": 5793382400
+      },
+      {
+        "family": "mlp.gate_proj",
+        "bits": 5,
+        "K": 5120,
+        "N": 17408,
+        "b12x_k6_gate": false,
+        "count": 65,
+        "mac_per_token": 5793382400
+      },
+      {
+        "family": "mlp.up_proj",
+        "bits": 5,
+        "K": 5120,
+        "N": 17408,
+        "b12x_k6_gate": false,
+        "count": 65,
+        "mac_per_token": 5793382400
+      },
+      {
+        "family": "linear_attn.in_proj_qkv",
+        "bits": 5,
+        "K": 5120,
+        "N": 10240,
+        "b12x_k6_gate": false,
+        "count": 48,
+        "mac_per_token": 2516582400
+      },
+      {
+        "family": "linear_attn.in_proj_z",
+        "bits": 5,
+        "K": 5120,
+        "N": 6144,
+        "b12x_k6_gate": false,
+        "count": 48,
+        "mac_per_token": 1509949440
+      },
+      {
+        "family": "linear_attn.out_proj",
+        "bits": 5,
+        "K": 6144,
+        "N": 5120,
+        "b12x_k6_gate": false,
+        "count": 48,
+        "mac_per_token": 1509949440
+      },
+      {
+        "family": "self_attn.k_proj",
+        "bits": 5,
+        "K": 5120,
+        "N": 1024,
+        "b12x_k6_gate": false,
+        "count": 17,
+        "mac_per_token": 89128960
+      },
+      {
+        "family": "self_attn.q_proj",
+        "bits": 5,
+        "K": 5120,
+        "N": 12288,
+        "b12x_k6_gate": false,
+        "count": 17,
+        "mac_per_token": 1069547520
+      },
+      {
+        "family": "self_attn.o_proj",
+        "bits": 5,
+        "K": 6144,
+        "N": 5120,
+        "b12x_k6_gate": false,
+        "count": 17,
+        "mac_per_token": 534773760
+      },
+      {
+        "family": "self_attn.v_proj",
+        "bits": 5,
+        "K": 5120,
+        "N": 1024,
+        "b12x_k6_gate": false,
+        "count": 17,
+        "mac_per_token": 89128960
+      },
+      {
+        "family": "lm_head",
+        "bits": 6,
+        "K": 5120,
+        "N": 248320,
+        "b12x_k6_gate": true,
+        "count": 1,
+        "mac_per_token": 1271398400
+      },
+      {
+        "family": "mtp.fc",
+        "bits": 4,
+        "K": 10240,
+        "N": 5120,
+        "b12x_k6_gate": false,
+        "count": 1,
+        "mac_per_token": 52428800
+      }
+    ],
+    "body_linear_mac_per_token": 24326963200
+  },
+  "prefill_dispatch_reality": {
+    "finding": "at prefill row counts b12x contributes ZERO GEMM work; all 409 EXL3 matrices run exllamav3 reconstruct+hgemm",
+    "sites": [
+      {
+        "file": "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py",
+        "lines": "1287-1294",
+        "note": "vllm::b12x_trellis_linear_out: if threshold and x.shape[0] >= threshold -> reconstruct path, else b12x"
+      },
+      {
+        "file": "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py",
+        "lines": "985-993",
+        "note": "vllm::exl3_gemm: same runtime dispatch"
+      },
+      {
+        "file": "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py",
+        "lines": "770-782",
+        "note": "VLLM_EXL3_PREFILL_RECONSTRUCT_M default 128; the live serving profile sets it to 128 explicitly"
+      }
+    ],
+    "consequence": "no b12x GEMM-side lever can move prefill. Prefill levers must target exllamav3 reconstruct/hgemm or b12x_attn",
+    "why_the_dispatch_is_inside_the_op": {
+      "file": "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py",
+      "lines": "761-765",
+      "note": "a Python-level rows>=N branch is resolved once at trace time and bakes the prefill branch into decode graphs: measured 56.5 -> 22.6 tok/s at C1"
+    }
+  },
+  "allocator_arithmetic_note": "AP1 = 2048 B/token; mamba page 3,268,608 B at MTP depth 3; ratio 1596.0",
+  "knob_inventory": {
+    "legend": {
+      "a": "live and already on",
+      "b": "live and off by default",
+      "c": "present but declined at runtime for our shapes",
+      "d": "absent from the build"
+    },
+    "b12x": [
+      {
+        "knob": "b12x.gemm.trellis_linear (K6/MCG dense EXL3 GEMM)",
+        "state": "a",
+        "where": [
+          "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py:1296-1305",
+          "/opt/venv/lib/python3.12/site-packages/b12x/gemm/trellis_linear/api.py:78-108"
+        ],
+        "gate_or_rule": "exl3.py:1210-1218 _b12x_trellis_k6_supported: mcg and not mul1 and int16 and ndim==3 and shape[2]==96 and shape[0]%8==0 and shape[1]%8==0",
+        "verdict_for_our_shapes": "LIVE for 66 of 409 matrices (65 mlp.down_proj K6 + lm_head K6) and only at rows < 128. Bypassed entirely at prefill."
+      },
+      {
+        "knob": "K6/MCG small-M CUDA kernel (JIT from csrc/trellis_k6_small.cu)",
+        "state": "a",
+        "where": [
+          "/opt/venv/lib/python3.12/site-packages/b12x/moe/_shared/kernels/w4a16/kernel.py:11213-11234",
+          "/opt/venv/lib/python3.12/site-packages/b12x/gemm/trellis_linear/_small_m.py:85-90"
+        ],
+        "gate_or_rule": "_use_k6_mcg_small: not explicit_launch_config and capability == (12,0) and m <= 128 and trellis_bits == 6 and codebook mcg and pair_kind None and compute fp16 and no external hadamard; _small_m.py raises NotImplementedError on any capability != (12,0)",
+        "verdict_for_our_shapes": "LIVE at every decode/verify row count we run (C1/C4/C8 with MTP-3 = 4/16/32 rows). 5090 is sm_120 so it qualifies; a GB10 would not.",
+        "knobs_on_this_path": [
+          "B12X_TRELLIS_BUILD_DIR",
+          "B12X_JIT_VERBOSE"
+        ]
+      },
+      {
+        "knob": "generic CuTe trellis256 dense scheduler",
+        "state": "c",
+        "where": [
+          "/opt/venv/lib/python3.12/site-packages/b12x/moe/_shared/kernels/w4a16/kernel.py:11045-11095",
+          "/opt/venv/lib/python3.12/site-packages/b12x/moe/_shared/kernels/w4a16/kernel.py:11437-11478"
+        ],
+        "gate_or_rule": "reached when m > 128; m-invariant tile from _trellis256_dense_tile_config (64,256) for N%256==0 else (64,128); K%64==0 and N%128==0 required",
+        "verdict_for_our_shapes": "NEVER REACHED in serving: the exl3 prefill dispatch diverts every m>=128 call to reconstruct+hgemm first. _force_tile_config and _moe_block_size are not exposed by the vLLM adapter."
+      },
+      {
+        "knob": "b12x trellis W4A8 (run_w4a8, direct E4M3 trellis decode into SM120 MXFP8 MMA)",
+        "state": "c",
+        "where": [
+          "/opt/venv/lib/python3.12/site-packages/b12x/gemm/trellis_linear/api.py:111-134",
+          "/opt/venv/lib/python3.12/site-packages/b12x/gemm/trellis_linear/w4a8.py:43-45"
+        ],
+        "gate_or_rule": "_W4A8_CODEBOOKS == {'sqg_xor_cheb_t12'} and _PAIR_KINDS == {'P24','P33'}; prepare.py:2351-2352 'W4A8 trellis pairs support only sqg_xor_cheb_t12'",
+        "verdict_for_our_shapes": "DECLINED: our payload is unpaired MCG. Reaching it needs a re-quantized checkpoint in the QSRT P24/P33 sqg_xor_cheb_t12 format, i.e. a converter project, not a knob. Zero callers in vLLM."
+      },
+      {
+        "knob": "b12x mul1 codebook",
+        "state": "d",
+        "where": [
+          "/opt/venv/lib/python3.12/site-packages/b12x/moe/_shared/kernels/w4a16/prepare.py:2004-2014",
+          "/opt/venv/lib/python3.12/site-packages/b12x/_lib/intrinsics.py:6148"
+        ],
+        "gate_or_rule": "prepare raises 'the MUL1 runtime marker is not supported; use legacy EXL3 MCG or the QSRT SQG-XOR-Cheb-T12 codebook'; kernel.py:167 _TRELLIS256_CODEBOOKS == {'mcg','sqg_xor_cheb_t12'}",
+        "verdict_for_our_shapes": "IRRELEVANT for the served checkpoint (0 mul1 markers). A dead decoder packed_decode_trellis_mul1_e4m3_to_e4m3x8 exists with zero callers, and trellis_linear/__init__.py:32-36 advertises w4a16/w4a8 'exl3_trellis_mul1_e4m3' recipes that both raise - the advertised recipe list is wrong. Costs the PUBLIC K4 build its only K6 matrix (lm_head, mul1) -> 0/193 b12x coverage there."
+      },
+      {
+        "knob": "b12x fused K6/MCG CuTe projection specialization (_k6_mcg_cute.py, b12x PR #221)",
+        "state": "d",
+        "where": [
+          "absent from wheel 1.2.1; master is 1.2.3/tag 1.2.4"
+        ],
+        "gate_or_rule": "rtx6kpro#73: 'SM120/SM121, FP16, unpaired MCG K6, one expert, dimensions divisible by 128, and 1-16 input rows'; 'Paired QSRT, SQG, BF16, non-SM120 execution, and row counts above 16: unsupported'",
+        "verdict_for_our_shapes": "WOULD QUALIFY for the 66 K6 matrices at C1 (4 rows) and C4 (16 rows); C8 with MTP-3 is 32 rows and exceeds the cap. Vendor claim 2.0x-6.4x on the projection across 15 shapes, E2E parity to +2.05% prefill."
+      },
+      {
+        "knob": "gemm.bf16_gemv (small-N BF16 GEMV)",
+        "state": "d",
+        "where": [
+          "/opt/venv/lib/python3.12/site-packages/b12x/gemm/bf16_gemv/api.py:19-25",
+          "/opt/venv/lib/python3.12/site-packages/b12x/integration/vllm/plugin.py:56-63"
+        ],
+        "gate_or_rule": "1 <= m <= 8 and K%8==0 and bf16 and 16-byte aligned W; routing N <= 1024 and K >= 1024; B12X_DISABLE_BF16_GEMV kills it",
+        "verdict_for_our_shapes": "NOT WIRED: grep for bf16_gemv across the whole vllm package returns nothing outside the b12x_fp6 plugin. Would target GDN in_proj_ba-class shapes and only at m<=8, i.e. C1 with MTP-3 only."
+      },
+      {
+        "knob": "b12x_fp6 quantization plugin (MX-FP6 W6A6/W6A8)",
+        "state": "b",
+        "where": [
+          "/opt/venv/lib/python3.12/site-packages/b12x-1.2.1.dist-info/entry_points.txt",
+          "/opt/venv/lib/python3.12/site-packages/b12x/integration/vllm/plugin.py:53-54"
+        ],
+        "gate_or_rule": "vllm.general_plugins entry point 'b12x_fp6 = b12x.integration.vllm.plugin:register_b12x_fp6'; needs B12X_FP6_MODEL_DIR and an MXFP6 checkpoint written by b12x/quantization/mxfp6/fp6_safetensors_export.py",
+        "verdict_for_our_shapes": "OFF and unreachable without a new checkpoint. A whole alternative quantization path we have never evaluated; it is a converter project, not a flag."
+      },
+      {
+        "knob": "--linear-backend b12x / VLLM_USE_B12X_FP8_GEMM (blockscaled, nvfp4, mxfp4, mxfp8, tensor_fp8, block_fp8 linears)",
+        "state": "c",
+        "where": [
+          "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/kernels/linear/__init__.py:583-596",
+          "/opt/venv/lib/python3.12/site-packages/vllm/config/kernel.py:210-217",
+          "/opt/venv/lib/python3.12/site-packages/b12x/_lib/dense_gemm.py:4430-4535"
+        ],
+        "gate_or_rule": "DenseGemmKernel.can_implement requires ab_dtype in {FP4E2M1, FP8E4M3, FP6E3M2, FP6E2M3} - there is no BF16/FP16 operand path - plus both operands K-major and k % tile_k == 0",
+        "verdict_for_our_shapes": "DECLINED: every linear in this model is either an EXL3 trellis or a BF16 vision/embedding weight. No fp8/fp4 linear exists to route."
+      },
+      {
+        "knob": "VLLM_USE_B12X_MHC",
+        "state": "c",
+        "where": [
+          "/opt/venv/lib/python3.12/site-packages/vllm/envs.py:62",
+          "/opt/venv/lib/python3.12/site-packages/vllm/models/deepseek_v4/nvidia/model.py:130-135"
+        ],
+        "gate_or_rule": "consumed only by models/deepseek_v4/nvidia/model.py",
+        "verdict_for_our_shapes": "DECLINED: DeepSeek-V4 only."
+      },
+      {
+        "knob": "VLLM_USE_B12X_WO_PROJECTION",
+        "state": "c",
+        "where": [
+          "/opt/venv/lib/python3.12/site-packages/vllm/envs.py:68",
+          "/opt/venv/lib/python3.12/site-packages/vllm/models/deepseek_v4/attention.py:199"
+        ],
+        "gate_or_rule": "consumed only by models/deepseek_v4",
+        "verdict_for_our_shapes": "DECLINED: DeepSeek-V4 only."
+      },
+      {
+        "knob": "VLLM_USE_B12X_MOE / b12x_moe / b12x_ep_moe",
+        "state": "c",
+        "where": [
+          "/opt/venv/lib/python3.12/site-packages/vllm/envs.py:69",
+          "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/fused_moe/oracle/{mxfp4,nvfp4}.py"
+        ],
+        "gate_or_rule": "requires an MXFP4/NVFP4 MoE layer",
+        "verdict_for_our_shapes": "DECLINED: config.json text_config has no num_experts - the model is dense."
+      },
+      {
+        "knob": "VLLM_USE_B12X_SPARSE_INDEXER / MINIMAX_M3_MSA / b12x_mla_sparse / nsa_indexer",
+        "state": "c",
+        "where": [
+          "/opt/venv/lib/python3.12/site-packages/vllm/envs.py:61,71",
+          "/opt/venv/lib/python3.12/site-packages/vllm/v1/attention/backends/mla/b12x_mla_sparse.py:729-733"
+        ],
+        "gate_or_rule": "MLA / NSA architectures only; b12x_mla_sparse.get_supported_kernel_block_sizes() == [64]",
+        "verdict_for_our_shapes": "DECLINED: Qwen3.5 is GQA + GDN, not MLA, and has no sparse indexer."
+      },
+      {
+        "knob": "VLLM_USE_B12X_DCP_A2A / VLLM_USE_B12X_PCIE_DMA / comm.pcie collectives",
+        "state": "c",
+        "where": [
+          "/opt/venv/lib/python3.12/site-packages/vllm/envs.py:72,249",
+          "/opt/venv/lib/python3.12/site-packages/vllm/distributed/device_communicators/custom_all_reduce.py:34-38"
+        ],
+        "gate_or_rule": "world size 2/4/8 and DCP>1",
+        "verdict_for_our_shapes": "DECLINED: TP1, one GPU, no collectives."
+      },
+      {
+        "knob": "VLLM_B12X_ABSORB_BMM / gemm.bmm / b12x_mxfp8_bmm",
+        "state": "c",
+        "where": [
+          "/opt/venv/lib/python3.12/site-packages/vllm/envs.py:66",
+          "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/attention/mla_attention.py:1336-1340",
+          "/opt/venv/lib/python3.12/site-packages/b12x/gemm/_bmm/api.py:114-141"
+        ],
+        "gate_or_rule": "can_implement_bmm allowlist: 1<=m<=MAX_M and batch in {8,16} and (k,n) in {(192,512),(512,256)} and MXFP8 spec and SM120/121",
+        "verdict_for_our_shapes": "DECLINED: MLA absorbed-projection only."
+      },
+      {
+        "knob": "VLLM_B12X_CUDAGRAPH_PIECEWISE_PREWARM",
+        "state": "b",
+        "where": [
+          "/opt/venv/lib/python3.12/site-packages/vllm/envs.py:93",
+          "/opt/venv/lib/python3.12/site-packages/vllm/compilation/b12x_capture.py:10-26"
+        ],
+        "gate_or_rule": "b12x_cuda_graph_prewarm_enabled() is the OR of the six VLLM_USE_B12X_* toggles, all default False",
+        "verdict_for_our_shapes": "UNREACHABLE: with all six off, guard_b12x_kernel_resolution yields immediately and this knob is dead config for us. It predates every EXL3 graph issue (added in the initial integration commit b0d9820e3, 2026-07-17) and is documented as a debugging knob."
+      },
+      {
+        "knob": "b12x.freeze_kernel_resolution / KernelResolutionFrozenError",
+        "state": "b",
+        "where": [
+          "/opt/venv/lib/python3.12/site-packages/b12x/_lib/runtime_control.py:17-64",
+          "/opt/venv/lib/python3.12/site-packages/vllm/compilation/cuda_graph.py:333",
+          "/opt/venv/lib/python3.12/site-packages/vllm/compilation/breakable_cudagraph.py:398"
+        ],
+        "gate_or_rule": "a global flag plus raise_if_kernel_resolution_frozen; 'warm up this kernel shape before calling b12x.freeze_kernel_resolution()'",
+        "verdict_for_our_shapes": "INERT for us (same gate as above). Important for the record: this is a fail-closed assertion, NOT a capability restriction, and it is wired into the PIECEWISE capture site - b12x expects piecewise capture to happen."
+      },
+      {
+        "knob": "B12X_ATTN / B12X_PAGED_ATTN paged attention backend",
+        "state": "c",
+        "where": [
+          "/opt/venv/lib/python3.12/site-packages/vllm/v1/attention/backends/registry.py:103",
+          "/opt/venv/lib/python3.12/site-packages/vllm/v1/attention/backends/b12x_attn.py:417-418,690-696,85-97"
+        ],
+        "gate_or_rule": "opt-in only (not in the platform auto-selection priority list); then three local gates, see allocator_arithmetic.is_the_coupling_genuine",
+        "verdict_for_our_shapes": "DECLINED at backend-validation time for storage block 1600. Fixable in ~12 lines with no kernel change; see work item W5."
+      },
+      {
+        "knob": "158 B12X_* environment knobs read by the wheel",
+        "state": "c",
+        "where": [
+          "/opt/venv/lib/python3.12/site-packages/b12x/_lib/env.py:7-19",
+          "enumerated by walking every b12x *.py for os.environ.get/os.getenv/_env_flag"
+        ],
+        "gate_or_rule": "each belongs to a subsystem: 33 paged-attention, 25 MHC-prefill-tiling, 15 PCIe collective, 12 NSA/MSA indexer, 9 MLA, 8 dense-GEMM (B12X_DENSE_*), 8 compile-cache/logging, the rest MoE and quantization",
+        "verdict_for_our_shapes": "the only ones on our live code path are B12X_TRELLIS_BUILD_DIR, B12X_JIT_VERBOSE, the five B12X_COMPILE_* cache knobs, the five B12X_LOG_CUTE_* knobs, B12X_TIMING(+_THRESHOLD_MS), B12X_DISABLE_CUTLASS_RUNTIME_PATCHES and B12X_SQG_XOR_CHEB_T12_SMEM. None of them is a performance lever for a K6/MCG dense projection: they are cache, logging and codebook-staging controls. B12X_DENSE_* and B12X_W4A16_SMALL_M_* belong to the FP4/FP8 dense path and the MoE micro-kernel respectively, both unreachable here."
+      }
+    ],
+    "exl3_adjacent_because_it_owns_the_dispatch": [
+      {
+        "knob": "VLLM_EXL3_PREFILL_RECONSTRUCT_M",
+        "state": "a",
+        "where": [
+          "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py:770-782"
+        ],
+        "gate_or_rule": "rows >= N switches exl3_gemm and b12x_trellis_linear_out to reconstruct+hgemm; default 128, set explicitly to 128 in the live profile",
+        "verdict_for_our_shapes": "LIVE AND ON. This is the single biggest prefill lever in the stack and it is already collected: PR #316 measured 2,369 -> 5,050 PP2k on an RTX PRO 6000."
+      },
+      {
+        "knob": "VLLM_EXL3_PREFILL_FP8",
+        "state": "c",
+        "where": [
+          "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py:803-811,876-878"
+        ],
+        "gate_or_rule": "hasattr(ext, 'reconstruct_fp8_slice'); the baked extension exports neither reconstruct_fp8_slice nor reconstruct_had_slice",
+        "verdict_for_our_shapes": "SILENT NO-OP, and it should stay that way: measured +31% prefill for +0.0141 mean KLD. See work item W3."
+      },
+      {
+        "knob": "VLLM_EXL3_EXT_PATH / VLLM_EXL3_ABI_SHIM",
+        "state": "b",
+        "where": [
+          "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py:380-398"
+        ],
+        "gate_or_rule": "prepends a directory to sys.path before importlib.import_module('exllamav3_ext'); then requires exl3_gemm",
+        "verdict_for_our_shapes": "LIVE AND OFF: this is the supported loader override, and it is how any rebuilt extension gets in without touching the image."
+      },
+      {
+        "knob": "VLLM_EXL3_GRAPH_DECODE",
+        "state": "a",
+        "where": [
+          "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py:1027-1036,1791-1798"
+        ],
+        "gate_or_rule": "os.environ.get('VLLM_EXL3_GRAPH_DECODE','0') == '1'; not registered in vllm/envs.py",
+        "verdict_for_our_shapes": "LIVE AND ON in the measured profile. Without it dense EXL3 is enforce-eager only, i.e. the whole 1.91x CUDA-graph win exists because of it."
+      },
+      {
+        "knob": "cudagraph_mode FULL_AND_PIECEWISE / PIECEWISE / FULL",
+        "state": "c",
+        "where": [
+          "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py:1777-1783,1802-1805,1822-1828",
+          "/opt/venv/lib/python3.12/site-packages/vllm/config/compilation.py:56-70"
+        ],
+        "gate_or_rule": "any mode whose mixed_mode() != CUDAGraphMode.NONE is refused; that is PIECEWISE, FULL_AND_PIECEWISE and also bare FULL. Rank-sliced checkpoints are exempt at :1802-1805",
+        "verdict_for_our_shapes": "REFUSED, and the owner is EXL3, not b12x: exl3.py:1806-1811 'exllamav3_ext's exl3_gemm autotunes with timing launches on the first call per (m-bucket, k, n, K) shape hash; under CUDA-graph capture those launches fault'. See work item W1 for why this does not have to block dynamic speculative depth."
+      },
+      {
+        "knob": "VLLM_EXL3_PREFILL_TRELLIS / _CHUNK / _BLOCK_M / _CAPACITY / _R7_* / _ONLINE_TRELLIS_BITS / _ENCODER_SOURCE",
+        "state": "b",
+        "where": [
+          "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py:732-744,3950-3951,4125-4126,4988-4990"
+        ],
+        "gate_or_rule": "rank-sliced (R7 / hybrid_tr3_tail) MoE arena controls",
+        "verdict_for_our_shapes": "INERT: the served checkpoint is dense and serialized, so rank_sliced_metadata is None and none of these is consulted."
+      }
+    ],
+    "counts": {
+      "a": 4,
+      "b": 5,
+      "c": 13,
+      "d": 3
+    }
+  },
+  "extension_and_prefill_rebuild_audit": {
+    "question": "cost the prefill rebuild: does the source for reconstruct_fp8_slice / reconstruct_had_slice exist, what builds it, can the pinned image build it",
+    "symbol_presence": {
+      "method": "nm -D --defined-only <so> | c++filt, plus exact-line strings(1) cross-check",
+      "baked_wheel_extension": {
+        "path": "/var/tmp/gg-rootfs/opt/exllamav3/exllamav3_ext.cpython-312-x86_64-linux-gnu.so",
+        "bytes": 95619792,
+        "sha256_from_image_manifest": "829b982709188f2f5801766e62d6edf2e9373cb93a62b3ce5ca34f4b56bbfdb9",
+        "in_image_manifest": true,
+        "exports": {
+          "reconstruct": true,
+          "reconstruct_slice": true,
+          "reconstruct_fp8dg_nt": true,
+          "had_r_128": true,
+          "hgemm": true,
+          "exl3_moe_fused": true,
+          "exl3_moe_fused_retile": true,
+          "reconstruct_fp8_slice": false,
+          "reconstruct_had_slice": false
+        },
+        "consequence": "exl3.py:877 hasattr check is False, so _reconstruct_fp8_mm_into returns False before doing anything"
+      },
+      "local_purpose_built_extension": {
+        "path": "/var/tmp/work/torch-ext/exllamav3_ext/exllamav3_ext.so",
+        "built_from": "/work/exllamav3 (= /var/tmp/work/exllamav3, turboderp-org/exllamav3 v1.4.2 @5f3c537 plus 5 uncommitted files)",
+        "build_ninja_flags": "-DTORCH_EXTENSION_NAME=exllamav3_ext -gencode=arch=compute_120,code=sm_120 -std=c++20 -O3 --use_fast_math -lineinfo, nvcc from /usr/local/cuda, torch headers from /opt/venv",
+        "in_image_manifest": false,
+        "exports": {
+          "reconstruct_fp8_slice": true,
+          "reconstruct_had_slice": true,
+          "exl3_moe_fused": false,
+          "exl3_moe_fused_retile": false,
+          "exl3_moe_r7_fused": false
+        },
+        "qualification_against_vllm": "the only ext.<name> attributes vLLM ever touches are exl3_gemm, exl3_moe, exl3_moe_fused, exl3_moe_max_concurrency, exl3_moe_r7_fused, exl3_moe_r7_fused_retile, had_r_128, hgemm, reconstruct, reconstruct_fp8_slice, reconstruct_slice. The three missing names are all routed-expert entry points; our checkpoint is dense (no num_experts), so they are never resolved. exl3.py:5082-5091 and :4270-4277 are the only sites that require them and both are MoE-only.",
+        "consequence": "VLLM_EXL3_EXT_PATH=/work/torch-ext/exllamav3_ext makes both symbols live TODAY, with no rebuild and no image change - for a dense checkpoint only"
+      },
+      "second_local_build": {
+        "path": "/var/tmp/gg-rootfs/root/.cache/torch_extensions/py312_cu132/exllamav3_ext/exllamav3_ext.so",
+        "note": "also exports both symbols, but its build directory has been reused by two different source trees (.ninja_deps references both /work/exllamav3 and /opt/exllamav3-python) and reconstruct.cuda.o was recompiled after the .so was linked. Do not use it; prefer /var/tmp/work/torch-ext. It is NOT part of the image (absent from the 107,998-entry manifest)"
+      }
+    },
+    "source_availability": {
+      "in_image": {
+        "path": "/var/tmp/gg-rootfs/opt/exllamav3-python/exllamav3/exllamav3_ext/",
+        "in_manifest": true,
+        "files_in_manifest": 358,
+        "bindings_reconstruct_family": [
+          "reconstruct (bindings.cpp:96)",
+          "reconstruct_slice (:97)",
+          "reconstruct_fp8dg_nt (:98)"
+        ],
+        "verdict": "the image's own source does NOT contain reconstruct_fp8_slice or reconstruct_had_slice"
+      },
+      "local_tree": {
+        "path": "/var/tmp/work/exllamav3",
+        "revision": "v1.4.2 @5f3c537",
+        "reconstruct_had_slice": "reconstruct.cu:508, reconstruct.cuh:42, bindings.cpp:123 - UPSTREAM, shipped in v1.4.0",
+        "reconstruct_fp8_slice": "reconstruct.cu:211, reconstruct.cuh:30, bindings.cpp:125 - UNCOMMITTED local modification, never pushed to any branch",
+        "git_status": "M conversion/allocation.py, M exllamav3_ext/bindings.cpp, M quant/reconstruct.cu, M quant/reconstruct.cuh, M modules/linear.py"
+      }
+    },
+    "toolchain": {
+      "arch_flags_needed": "-gencode=arch=compute_120,code=sm_120 (the local build) or TORCH_CUDA_ARCH_LIST=12.0a (what the image Dockerfile uses)",
+      "can_the_pinned_image_build_it": "yes. nvcc is at /usr/local/cuda, the torch headers are in the same venv, and there are no preprocessor guards on either binding - exllamav3/setup.py globs every .c/.cpp/.cu unconditionally. A symbol is present iff the checked-out revision contains it. The convert image is not required.",
+      "no_macro_gates": "grep '#if|#ifdef|#ifndef|__CUDA_ARCH__' over reconstruct.cu and bindings.cpp: no matches",
+      "image_pin": "local-inference-lab/blackwell-llm-docker Dockerfile.vllm-b12x-cu132:45-47 pins EXLLAMAV3_REPO=brandonmmusic-max/exllamav3, REF=a1-retile-sm120, COMMIT=704aefd743b390af4bd0fb429d1906f9b964c7d8 (2026-07-15, __version__ 0.0.43), which is 19 days older than upstream d33be5ce that added reconstruct_had_slice. Lines 367-393 assert the extension exports exl3_gemm, exl3_moe_fused, exl3_moe_fused_retile and exl3_moe_max_concurrency, so a naive repoint to upstream v1.4.x fails the build gate"
+    },
+    "what_the_1_5_to_1_8x_actually_measures": {
+      "claim_site": "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py:806-807 'An FP8 matmul is 1.5-1.8x faster than fp16 on these shapes (SM120, measured)'",
+      "scope": "one isolated GEMM: torch.mm fp16 against torch._scaled_mm E4M3, three MLP shapes, m in {256,1024,2048,4096}",
+      "provenance": "OURS, not a vendor claim. Zero hits for '1.5-1.8x' in exllamav3, b12x or any published repo",
+      "end_to_end_number": "+31% prefill (local-inference-lab/vllm PR #318, open, 2026-08-15)",
+      "overstatement_factor": "quoting 1.5-1.8x as a prefill speedup overstates the measured end-to-end result by about 5x"
+    },
+    "fidelity": {
+      "is_it_the_same_mechanism": "YES, same mechanism, and the brief's sign is inverted",
+      "brief_said": "'FP8 activations were previously measured as +31 % prefill cost at +0.0141 KLD'",
+      "actually": "+31% is the prefill GAIN; +0.0141 mean KLD is the cost",
+      "attribution_quote": {
+        "source": "local-inference-lab/vllm PR #318 body",
+        "verbatim": "Negative result recorded so nobody repeats it: emitting the reconstructed weight as FP8 E4M3 and using torch._scaled_mm gives +31 % prefill but costs +0.0141 mean KLD - worse than official FP8. Row-wise scaling does not help; the loss is FP8 activations. Left behind VLLM_EXL3_PREFILL_FP8=1, off by default."
+      },
+      "in_image_ledger": [
+        "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py:826-831 per-tensor weight scaling cost +0.0139 mean KLD, 'worse than official FP8'",
+        "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py:872-874 the shipped path uses row-wise activation scales plus per-output-channel weight scales",
+        "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py:912-916 out_dtype MUST be bfloat16; with row-wise scales and float16 this torch build silently returns ~6x relative error, observed KLD 10.8 with 0.1% top-1"
+      ],
+      "scale_of_the_cost": {
+        "published_k5k6_mean_kld": 0.0032098839572023935,
+        "source": "receipts/kld5-10M-k5k6.json (5,120 contexts, 10,480,640 scored positions)",
+        "fp8_prefill_penalty": 0.0141,
+        "ratio": 4.39,
+        "reading": "the FP8 prefill path costs 4.4x the entire published quantization error of the artifact. Speed here does not merely cost quality; it erases the artifact's reason to exist."
+      },
+      "does_a_weights_only_variant_escape_it": {
+        "candidate": "reconstruct_fp8dg_nt - vendor, built into the baked .so, zero callers anywhere in the image, FP8 weights into DeepGEMM NT layout with one FP32 scale per 128x128 tile",
+        "why_it_does_not_escape": "every FP8 weight consumer on this stack is FP8 x FP8: DeepGEMM's NT entry and torch._scaled_mm both require an FP8 A operand. So an FP8 weight operand forces FP8 activations, which is exactly where PR #318 attributes the loss. The only thing reconstruct_fp8dg_nt changes is WEIGHT scale granularity (per-128x128 tile instead of per-output-channel), and weight granularity is already ruled out as the cause: per-tensor cost +0.0139 and per-output-channel cost +0.0141, i.e. finer weight scaling did not help.",
+        "verdict": "[INFERENCE] very unlikely to change the verdict; ranked as a cheap disproof, not a lever",
+        "deep_gemm_present": "deep_gemm 2.5.0+a6b593d is installed in the same venv"
+      }
+    },
+    "reconstruct_had_slice_transferability": {
+      "vendor_claim": {
+        "source": "/var/tmp/work/exllamav3/exllamav3/modules/quant/exl3.py:171-184",
+        "verbatim": "Fused path: reconstruct emits ORIGINAL-basis weights (both Hadamards + sign vectors folded into the memory-bound reconstruct kernel), so the gemm runs on the raw input and the standalone input/output had_r_128 launches disappear (~14% of long-chunk prefill GPU time)... The fused kernel costs ~4x plain reconstruct (k*n-proportional) while the saved had launches scale with rows*(k+n); breakeven is rows ~400-900 across shapes",
+        "gate": "use_fused = self._fused_reconstruct and rows >= 1024, both dims 128-divisible",
+        "release": "turboderp-org/exllamav3 v1.4.0, 2026-08-06, release notes 'Faster prefill (all models)'; commit d33be5ce, 2026-08-03"
+      },
+      "our_arithmetic": {
+        "measured_inputs": {
+          "gate_proj_total_ms_m2048": 1.2,
+          "gate_proj_gemm_ms": 0.9,
+          "gate_proj_reconstruct_ms": 0.16742199659347534,
+          "sources": [
+            "docs/26-prefill-attribution.md ('At m=2048 a gate_proj shape costs 1.20 ms end to end of which the GEMM is 0.90 ms; the remaining ~0.30 ms is Hadamard + reconstruct')",
+            "receipts/v3-prefill-micro.json reconstruct_ms for mlp.gate_proj K=5120 N=17408 bits=5"
+          ]
+        },
+        "derived": {
+          "two_had_launches_ms": 0.13257800340652465,
+          "had_cost_per_element_ps": 2.876,
+          "reconstruct_cost_per_element_ps": 1.879,
+          "had_over_reconstruct_per_element": 1.531,
+          "fused_predicted_ms": 1.5696879863739013,
+          "fused_over_unfused": 1.3080733219782512,
+          "breakeven_rows_gate_up": 7752,
+          "breakeven_rows_k_v_proj": 1672
+        },
+        "verdict": "[INFERENCE] the vendor's ~14% does NOT transfer to our shapes at our chunk size. At m=2048 the fused kernel is predicted to cost 1.31x the unfused path on gate_proj: it removes 0.133 ms of Hadamard and adds 0.502 ms of reconstruct. Breakeven is around 7,600 rows for gate/up and down, and only the tiny k_proj/v_proj (breakeven ~1,600 rows) would win at 2048. Our max_num_batched_tokens is 2048.",
+        "caveat": "the 0.133 ms Hadamard figure is a subtraction from two independently measured quantities, not a direct measurement; a 10-minute microbench settles it"
+      }
+    }
+  },
+  "ranked_work_items": [
+    {
+      "rank": 1,
+      "id": "W1",
+      "title": "Enable per-batch-size (or acceptance-adaptive) speculative depth at FULL_DECODE_ONLY by opting into the V2 model runner",
+      "kind": "configuration only; no code",
+      "build_or_fix": "set VLLM_USE_V2_MODEL_RUNNER=1 and speculative_config.num_speculative_tokens_per_batch_size (e.g. [(1,4,3),(5,8,1)] style triples) instead of a fixed num_speculative_tokens=3",
+      "files": [
+        "/opt/venv/lib/python3.12/site-packages/vllm/config/vllm.py:592-596 (env override is honoured unconditionally)",
+        "/opt/venv/lib/python3.12/site-packages/vllm/config/vllm.py:640-666 (_is_default_v2_model_runner_model returns False for is_hybrid, which is why we default to V1)",
+        "/opt/venv/lib/python3.12/site-packages/vllm/config/vllm.py:862-887 (_maybe_override_dynamic_sd_cudagraph_mode rewrites FULL_DECODE_ONLY -> PIECEWISE on V1)",
+        "/opt/venv/lib/python3.12/site-packages/vllm/config/vllm.py:2167-2261 (_get_v2_model_runner_unsupported_features - no hybrid/mamba/MTP entry)",
+        "/opt/venv/lib/python3.12/site-packages/vllm/config/speculative.py:181,188,1573-1578 (num_speculative_tokens_per_batch_size, adaptive_speculative_tokens_window, uses_dynamic_speculative_decoding)",
+        "/opt/venv/lib/python3.12/site-packages/vllm/v1/worker/gpu/spec_decode/autoregressive/speculator.py:70-91 (draft-decode manager rejects PIECEWISE and upgrades to FULL_DECODE_ONLY)",
+        "/opt/venv/lib/python3.12/site-packages/vllm/v1/worker/gpu/cudagraph_utils.py:215-276 (one FULL uniform-decode graph per draft depth, with a K=0 guard)"
+      ],
+      "estimated_effect": "+25 to +31% aggregate decode throughput at concurrency 8, with no loss at C1",
+      "effect_basis": "MEASURED, receipts/perf-sweep-5090.json: num_speculative_tokens=1 at C8 gives 409.35 tok/s against 313.28 for MTP-3, i.e. +30.7%, while MTP-3 is what wins at C1 (82.94 tok/s). A per-batch-size schedule takes both instead of choosing. The [INFERENCE] part is only that the switch is free of overhead.",
+      "measurement": "re-run the perf-sweep decode rows at C1/C4/C8 with the schedule and confirm C1 >= 82.9 and C8 >= 400 tok/s in one server; check the startup log for 'Overriding cudagraph_mode ... to PIECEWISE' being ABSENT and for the EXL3 graph-decode info line naming FULL_DECODE_ONLY",
+      "what_could_break": "(1) if VLLM_USE_V2_MODEL_RUNNER is not set, vLLM silently rewrites the mode to PIECEWISE at config time and Exl3Config._require_enforce_eager then raises 'The EXL3 quantization backend requires eager execution' - a loud failure, not a silent regression. (2) V2 runner + hybrid mamba + MTP + EXL3 + fp8 KV is a combination we have never run; V2 owns its own KV/mamba state plumbing, so re-verify context capacity and the GDN gate behaviour. (3) local-inference-lab/vllm#298 (open) warns that a prompt chunk carrying K+1 tokens per request can let a decode FULL graph replay over prompt state, producing valid-looking garbage - re-run the fidelity guard, not just the throughput rows.",
+      "provenance": "upstream cover: vllm-project/vllm#45953 '[MRV2][SD] Make Dynamic SD comatible with Full Cuda Graphs', ekagra-ranjan, MERGED 2026-07-04"
+    },
+    {
+      "rank": 2,
+      "id": "W2",
+      "title": "Widen _b12x_trellis_k6_supported from K6-only to every MCG bitrate b12x accepts",
+      "kind": "one-line vLLM change, gated behind a microbenchmark",
+      "build_or_fix": "change exl3.py:1215 from int(trellis.shape[2]) == 96 to int(trellis.shape[2]) in (32,48,64,80,96) (bits 2-6). This is the clause - and the ONLY clause - that rejects all 208 attention projections and both MLP gate/up families: they are mcg, int16, ndim 3, and 128-divisible on both axes",
+      "files": [
+        "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py:1202-1218",
+        "/opt/venv/lib/python3.12/site-packages/b12x/moe/_shared/kernels/w4a16/kernel.py:166-167 (_TRELLIS256_BITS = (2,3,4,5,6), _TRELLIS256_CODEBOOKS = {'mcg','sqg_xor_cheb_t12'})",
+        "/opt/venv/lib/python3.12/site-packages/b12x/moe/_shared/kernels/w4a16/prepare.py:2082-2087 (dense prepare accepts the same bit range)",
+        "/opt/venv/lib/python3.12/site-packages/b12x/moe/_shared/kernels/w4a16/kernel.py:11213-11234 (_use_k6_mcg_small requires trellis_bits == 6 - THE CATCH)"
+      ],
+      "estimated_effect": "UNKNOWN SIGN. Possibly large at decode, possibly a regression.",
+      "effect_basis": "the upside basis is MEASURED but only for K6: exl3.py:1275-1276 'measured on SM120 it beats reconstruct+GEMM by ~5x at m=1-8'. The catch is [INFERENCE] and structural: _use_k6_mcg_small hard-requires trellis_bits == 6, so K5 shards admitted by the widened gate would run the GENERIC CuTe trellis256 scheduler, not the tuned small-M CUDA kernel. There is no measurement anywhere of the generic scheduler at m in {1..32} against ext.exl3_gemm on a K5 shape. It could easily be slower.",
+      "measurement": "extend tools/b12x_vs_reconstruct.py with a K5 arm and a small-m sweep: b12x trellis_linear.run vs ext.exl3_gemm at m in {1,4,8,16,32,128} on the four real K5 geometries (5120x17408, 5120x10240, 5120x6144, 6144x5120) and on 5120x12288. Roughly 5 GPU-minutes, no serving run. Only widen the gate if b12x wins at 4, 16 and 32 rows, which are C1/C4/C8 with MTP-3.",
+      "what_could_break": "the 343 K5/K4 shards currently run the bit-faithful ext.exl3_gemm; moving them to b12x changes the arithmetic and must be re-qualified against the decode-parity captures (receipts/decode-parity-*.json), not just benchmarked. Also: the pre-capture priming pass at exl3.py:1090-1169 primes exl3_gemm; shards that move to b12x need b12x's own warm-then-capture instead, or graph capture will resolve a new CuTe kernel inside capture.",
+      "provenance": "upstream cover for the premise that the bitrate limit is arbitrary: local-inference-lab/vllm PR #297 'feat(exl3): extend rank-sliced bitrate to accept K2' (open, 2026-08-12) - 'The b12x PTX dequant kernel is parametric in bits - shifts are bits, 2*bits, 3*bits with MCG/MASK/OR constants that are K-independent. All restrictions were Python-level validation guards, not compiled PTX limitations.' No upstream issue or PR has ever proposed widening this particular clause: genuinely undiscussed."
+    },
+    {
+      "rank": 3,
+      "id": "W3",
+      "title": "Bump the b12x wheel from 1.2.1 to 1.2.4 for the fused K6/MCG CuTe projection specialization",
+      "kind": "vendor upgrade; image rebuild",
+      "build_or_fix": "rebuild the serving image against b12x master (1.2.3/tag 1.2.4), which contains b12x PR #221's gemm/trellis_linear/_k6_mcg_cute.py - absent from our install",
+      "files": [
+        "absent from /var/tmp/gg-rootfs/opt/venv/lib/python3.12/site-packages/b12x/gemm/trellis_linear/ (files: __init__.py, _small_m.py, api.py, w4a8.py, csrc/)"
+      ],
+      "estimated_effect": "at most about 1.15x decode step time at C1 and C4; nothing at C8; nothing at prefill",
+      "effect_basis": "VENDOR CLAIM: rtx6kpro#73 and b12x PR #221 report '2.0x to 6.4x faster' than the generic separate-H128 scheduler across 15 projection shapes, with E2E parity to +2.05% prefill. The ceiling is ours to compute [INFERENCE]: the specialization covers unpaired MCG K6 at 1-16 rows only, which is our 66 K6 matrices at C1 (4 rows) and C4 (16 rows) but not C8 (32 rows). Those 66 matrices carry 7.065 of the 26.047 GMAC/token of linear work (27.1%), so even a 2x kernel win bounds the whole-step improvement at 1.16x, and less than that because decode is weight-bandwidth bound rather than MAC bound.",
+      "measurement": "decode rows at C1/C4/C8 before and after the image bump, plus the b12x_vs_reconstruct microbench at m in {1,4,8,16} on 17408x5120 K6",
+      "what_could_break": "a whole-image bump moves every other b12x kernel at the same time, so any decode regression is hard to attribute. b12x master also carries the pre-cute-rebase-20260807 boundary. And the specialization does not cover C8, so the bump can help C1/C4 while doing nothing for the concurrency we actually serve at."
+    },
+    {
+      "rank": 4,
+      "id": "W4",
+      "title": "Make B12X_ATTN loadable on a hybrid model: relax the three b12x-local page-size gates",
+      "kind": "about 12 lines of vLLM, no kernel change",
+      "build_or_fix": "(G-A) delete or modulo-ise supports_block_size at b12x_attn.py:417-418; (G-B) stop validating cache_config.block_size at b12x_attn.py:690-696 and use the negotiated kernel page the builder already receives; (G-C) fix _max_page_table_width at b12x_attn.py:85-97 to reserve cdiv(L, storage) * (storage // kernel_page)",
+      "files": [
+        "/opt/venv/lib/python3.12/site-packages/vllm/v1/attention/backends/b12x_attn.py:85-97, 417-418, 690-696"
+      ],
+      "estimated_effect": "bounded above by about 10% of prefill and an unknown decode delta; realistically small",
+      "effect_basis": "MEASURED bound: docs/26-prefill-attribution.md arms A->C and B->D put the whole attention representation at 1.05x-1.11x of prefill. [INFERENCE] for the rest: at head_dim 256 b12x caps the prefill query tile at 64 (planner.py:698-704, byte-faithful to flashinfer utils.cuh:412) and _paged_is_invalid (traits.py:83-100) independently forbids cta_tile_q=128, so we would pay 2x the CTA count of a head_dim-128 model; and every SM120 analytic decode/verify family requires head_dim 128, so we would land on the generic paths. Our 24q/4kv/gqa6 head counts match those families exactly and miss only on head_dim.",
+      "measurement": "start the server with --attention-backend B12X_ATTN after the three edits and check the startup log reports a kernel page of 64 (select_common_block_size(1600,[b12x]) = 64 because 1600 % 128 != 0), then run the existing prefill and decode sweep rows against the FLASHINFER baseline. A failure to reach 4,100 page-table entries reproduces b12x issue #29 and validates the G-C fix independently.",
+      "what_could_break": "b12x issue #29 (open since 2026-07-11, zero comments) is the unpatched page-table overflow this item must fix, and it manifests only 'on first use with MTP'. mamba_cache_mode=align masks the shortfall via b12x_attn.py:92-96, so a fix validated in align mode is not validated in general. Also B12X_ATTN advertises AttentionCGSupport.UNIFORM_BATCH (b12x_attn.py:559), which resolve_cudagraph_mode_and_sizes turns into FULL_AND_PIECEWISE - and EXL3 refuses that mode, so this item collides with W1 unless the mode is pinned to FULL_DECODE_ONLY explicitly.",
+      "provenance": "the capability is already shipped: vllm-project/vllm#24486 (MERGED 2025-10-09). The deletion has direct precedent in vllm-project/vllm#36701 (tdoublep, MERGED 2026-06-26), which removed FlashAttention's analogous hybrid-model block-size restriction. NOTE: the TODO(tdoublep) at platforms/interface.py:886 is NOT about this coupling - it is scoped to mamba chunk alignment in mamba_cache_mode='all', its PR is vllm-project/vllm#33194 (still open), and we run 'align', so it would not affect us."
+    },
+    {
+      "rank": 5,
+      "id": "W5",
+      "title": "Wire exllamav3's fused reconstruct_had_slice into the vLLM prefill path",
+      "kind": "about 25 lines of vLLM plus a loader env var; the extension is already built",
+      "build_or_fix": "mirror upstream exllamav3/modules/quant/exl3.py:171-215 inside _reconstruct_hgemm_into: when both dims are 128-divisible and rows are above a measured threshold, call ext.reconstruct_had_slice(w, trellis, suh, svh[n_start:], K, mcg, mul1, n_start) and skip both had_r_128 launches. Serve with VLLM_EXL3_EXT_PATH=/work/torch-ext/exllamav3_ext, which already exports the symbol",
+      "files": [
+        "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py:929-960 (_reconstruct_hgemm_into)",
+        "/var/tmp/work/exllamav3/exllamav3/modules/quant/exl3.py:171-215 (the reference implementation)",
+        "/var/tmp/work/exllamav3/exllamav3/exllamav3_ext/quant/reconstruct.cu:508 (the kernel)"
+      ],
+      "estimated_effect": "predicted NEGATIVE at our chunk size: about 1.31x the current cost on gate_proj at m=2048",
+      "effect_basis": "VENDOR CLAIM ~14% of long-chunk prefill GPU time, with the vendor's own caveat that the fused kernel 'costs ~4x plain reconstruct' and 'breakeven is rows ~400-900 across shapes'. [INFERENCE] with measured inputs: at m=2048 gate_proj is 1.20 ms total = 0.90 GEMM + 0.167 reconstruct + 0.133 for both had launches (docs/26 plus receipts/v3-prefill-micro.json). Fused predicts 0.90 + 4x0.167 = 1.57 ms. Per element, had costs 2.88 ps and reconstruct 1.88 ps, a ratio of 1.53, which puts breakeven at about 7,750 rows for gate/up and down and about 1,670 rows for k_proj/v_proj. Our max_num_batched_tokens is 2048, so only the two tiny projections win.",
+      "measurement": "microbenchmark, no serving run, about 10 GPU-minutes: for each of 5120x17408 (K5), 17408x5120 (K6), 5120x248320 (K6), 5120x1024 (K5), time had_r_128 + reconstruct_slice + hgemm + had_r_128 against reconstruct_had_slice + hgemm at m in {512, 1024, 2048, 4096, 8192} using /work/torch-ext/exllamav3_ext. This also directly measures the 0.133 ms Hadamard figure that is currently a subtraction.",
+      "what_could_break": "nothing in serving if the microbench says no - the item dies cheaply. If it says yes for some shapes, the threshold must be per-geometry, and it must live INSIDE the custom op for the same Dynamo reason documented at exl3.py:761-765 (a Python-level row test bakes the prefill branch into the decode graphs: measured 56.5 -> 22.6 tok/s at C1). Fidelity: upstream's own tolerance for the fused kernel is errs/scale < 2e-3 (tests/test_reconstruct_had.py:67), i.e. fp16, not bit-exact, so the decode-parity captures still apply.",
+      "provenance": "turboderp-org/exllamav3 commit d33be5ce (2026-08-03), released in v1.4.0 (2026-08-06) whose notes read 'Faster prefill (all models)'"
+    },
+    {
+      "rank": 6,
+      "id": "W6",
+      "title": "Disprove (or salvage) the weights-only FP8 prefill variant using the already-built reconstruct_fp8dg_nt",
+      "kind": "one microbenchmark; an experiment, not a feature",
+      "build_or_fix": "call the baked extension's reconstruct_fp8dg_nt (FP8 weights into DeepGEMM NT layout, one FP32 scale per 128x128 tile) against deep_gemm 2.5.0 and measure both speed and KLD on one layer",
+      "files": [
+        "/var/tmp/gg-rootfs/opt/exllamav3-python/exllamav3/exllamav3_ext/quant/reconstruct.cu:271 (definition), reconstruct.cuh:24, bindings.cpp:98",
+        "/var/tmp/gg-rootfs/opt/exllamav3/exllamav3_ext.cpython-312-x86_64-linux-gnu.so (exports _Z20reconstruct_fp8dg_ntN2at6TensorES0_S0_ibb)",
+        "/opt/venv/lib/python3.12/site-packages/deep_gemm (2.5.0+a6b593d)"
+      ],
+      "estimated_effect": "expected to reproduce roughly the same +0.0141-class KLD penalty as VLLM_EXL3_PREFILL_FP8, for a similar prefill gain",
+      "effect_basis": "[INFERENCE], and the reasoning is why this is ranked low rather than high: DeepGEMM NT and torch._scaled_mm are both FP8 x FP8, so an FP8 weight operand forces FP8 activations, and PR #318 attributes the loss to the activations, not the weights. Weight-scale granularity is already ruled out as the cause: per-tensor cost +0.0139 (exl3.py:826-831) and per-output-channel cost +0.0141 - refining the weight scaling did not help, so refining it further to per-128x128 tile should not either.",
+      "measurement": "one-layer teacher-forced KLD on the existing fidelity suite plus a GEMM microbench; kill the item if mean KLD exceeds the published 0.00321 by more than a factor of two",
+      "what_could_break": "nothing - it is a read-only experiment. Its value is closing the last FP8 door with evidence instead of inference."
+    },
+    {
+      "rank": "do-not-do",
+      "id": "W7",
+      "title": "VLLM_EXL3_PREFILL_FP8",
+      "kind": "closed",
+      "build_or_fix": "nothing. The extension at /work/torch-ext/exllamav3_ext already exports reconstruct_fp8_slice, so this flag can be made live TODAY with one env var and no build - and it should not be",
+      "files": [
+        "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py:803-811, 861-926"
+      ],
+      "estimated_effect": "+31% prefill (MEASURED, ours, PR #318) for +0.0141 mean KLD (MEASURED, ours, PR #318)",
+      "effect_basis": "the cost is 4.4x the artifact's entire published mean KLD of 0.00321 (receipts/kld5-10M-k5k6.json, 10,480,640 scored positions). The whole point of this checkpoint family is fidelity per byte; +0.0141 puts it behind official FP8, which is the comparison it exists to win.",
+      "measurement": "already measured. Do not re-measure; do re-label the '1.5-1.8x' number wherever it appears as an isolated-GEMM microbenchmark",
+      "what_could_break": "the artifact's reason to exist"
+    },
+    {
+      "rank": "structural",
+      "id": "W8",
+      "title": "The only remaining real prefill lever is a fused dequant-in-GEMM-epilogue kernel",
+      "kind": "new CUDA kernel; large",
+      "build_or_fix": "a Marlin-style kernel that dequantizes the trellis inside the GEMM epilogue, so the weight is never materialized",
+      "files": [
+        "new"
+      ],
+      "estimated_effect": "the arithmetic ceiling is 11.8k tok/s MLP-only, i.e. roughly 7-8k end to end, against 5.6k measured on an RTX PRO 6000 and 3,374 on our 5090",
+      "effect_basis": "MEASURED and published: docs/26-prefill-attribution.md - ext.hgemm is at cuBLAS parity (0.92-1.06x) so there is no free GEMM win; a perfect fused kernel that made reconstruct free gives 64 x 2.70 ms = 173 ms. Maintainer statement, local-inference-lab/vllm PR #316 comment 5299700465, 2026-08-15: 'prefill parity with FP8 is not reachable for a 4-bit-class trellis format by dispatch or tuning changes in this runtime. It needs dequant fused into the GEMM epilogue (Marlin-style) - a new kernel, out of scope for this PR.'",
+      "measurement": "n/a at this scope",
+      "what_could_break": "n/a - listed so the ranked list is honest about where the headroom actually is"
+    }
+  ],
+  "could_not_determine_without_running_it": [
+    "Whether the promoted serving image localhost/vllm:gg-r34-patched-apc (manifest sha256:16a936b8...) carries the same /opt/exllamav3-python source tree and the same baked extension as the pinned base rootfs. Neither podman nor docker nor skopeo is installed on this host and I had no GPU window, so I could only read the base image voipmonitor/vllm@sha256:820181fb... via its flattened rootfs and file manifest.",
+    "Every performance number attributed to a work item is either a re-quotation of an existing receipt or an inference from one. Nothing in this document was measured during this ticket: the RTX 5090 was held by KvDtypeSweep throughout.",
+    "The absolute milliseconds in receipts/b12x-vs-reconstruct.json carry no device field. Their output path (/work/kld3) places them in the iteration-3 series, which docs/26 documents as one RTX PRO 6000 Blackwell, so the ratios are the transferable part and the absolute times are not the 5090's.",
+    "Whether the generic CuTe trellis256 scheduler beats ext.exl3_gemm on a K5 shape at 4/16/32 rows. This is the whole sign of work item W2 and it needs 5 GPU-minutes to settle; no measurement of it exists anywhere.",
+    "Whether the V2 model runner actually serves this hybrid VL model correctly. Nothing in _get_v2_model_runner_unsupported_features rejects it, but 'not rejected at config time' is not 'known to work', and we have never run V2 on this checkpoint.",
+    "The 0.133 ms two-launch Hadamard cost underpinning the W5 refutation is a subtraction of two independently measured quantities (docs/26's 1.20/0.90 ms and v3-prefill-micro's 0.167 ms), not a direct measurement."
+  ],
+  "upstream_dossiers": {
+    "note": "four GitHub REST dossiers, full transcripts retained",
+    "artifacts": [
+      "agent://B12xLeverPlan.UpBlockSize",
+      "agent://B12xLeverPlan.UpPrefillFp8",
+      "agent://B12xLeverPlan.UpShapeGates",
+      "agent://B12xLeverPlan.UpGraphModes"
+    ],
+    "corpora_enumerated": "all 223 local-inference-lab/b12x issues+PRs (open+closed) and 522 comments; all 394 local-inference-lab/vllm issues+PRs and 847 comments; all 73 local-inference-lab/rtx6kpro issues. GitHub code and commit search index only a repo's default branch, and this fork's default branch (main) is a stock vLLM mirror with no exl3.py, so code-search zeros on that repo are weak evidence and were replaced by direct contents-API fetches at explicit refs plus md5 comparison against the image.",
+    "rename_confirmed": "GET /repos/local-inference-lab/SparkInfer -> 301 -> /repositories/1183945688 -> local-inference-lab/b12x (created 2026-03-17, default branch master). b12x has zero releases; tags are 1.2.4 and pre-cute-rebase-20260807. si<hash> identifiers appear only in the vLLM fork's image tags, never in b12x.",
+    "key_negatives": {
+      "b12x_attn_on_a_hybrid_model": "exactly one upstream report, b12x#29, open since 2026-07-11 with zero comments and no maintainer reply",
+      "page_size_256_or_larger": "never tried, requested or rejected: git log -S and --grep over all 1,027 b12x commits returned zero; body search over both repos returned zero",
+      "mul1_as_a_b12x_topic": "zero mentions across 223 b12x issues/PRs, 522 comments and all commit messages",
+      "head_dim_256_as_a_performance_topic": "zero mentions in any of the four corpora; only correctness mentions exist (b12x#24)",
+      "rtx_5090_as_a_distinct_tuning_target": "every b12x qualification run is on a 188-SM RTX PRO 6000 or a 48-SM GB10; 18 mentions of '5090' are all 'tested on one RTX 5090' notes and none cautions against it",
+      "widening_the_K6_only_clause": "never proposed upstream",
+      "FULL_DECODE_ONLY_vs_FULL_AND_PIECEWISE": "no upstream artifact in either repo measures them against each other"
+    }
+  },
+  "notable_upstream_contradictions_of_our_own_prior_conclusions": [
+    {
+      "ours": "'the pinned exllamav3 extension exports neither reconstruct_fp8_slice nor reconstruct_had_slice' implied a packaging gap",
+      "upstream": "reconstruct_fp8_slice has never existed in any published revision of anything - it is our own uncommitted patch. reconstruct_had_slice does exist upstream since v1.4.0; the image simply pins a v0.0.43-based fork from 19 days earlier",
+      "consequence": "the first symbol is not a regression to fix; the second is a pin to move"
+    },
+    {
+      "ours": "'SparkInfer / b12x as a second engine: the same component under two names, so there is no second engine to enable'",
+      "upstream": "confirmed, and additionally: b12x is NOT a rename of exllamav3. It is a separate CuTe-DSL kernel library by Luke Alonso, and it contains none of the EXL3 reconstruct kernels. The two renames are independent",
+      "consequence": "keep the two lineages separate when reasoning about pins"
+    },
+    {
+      "ours": "3,374 tok/s prefill is unmoved by every lever and looks like a floor",
+      "upstream": "local-inference-lab/vllm PR #316 and #318 measure 5,050-5,250 PP2k for a dense Qwen3.8-27B EXL3 on a 188-SM RTX PRO 6000. Scaling by SM count alone (188/170) predicts about 3,732 for us, so roughly 30% of the gap is not explained by SM count",
+      "consequence": "3,374 is not an EXL3 floor. The source-verified candidates for the residual are our hybrid geometry (48 GDN layers, vision tower, MTP-3) and head_dim 256's cta_tile_q cap"
+    }
+  ]
+}

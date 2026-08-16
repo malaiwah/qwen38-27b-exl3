@@ -1158,7 +1158,24 @@ any fidelity-costing lever is a separate variant with its own card.
 ## P2 / rank 10 — prefill kernels
 
 FP8 activations are closed: +31 % prefill cost +0.0141 KLD and made the context build worse
-than official FP8. Remaining credible work:
+than official FP8. **Re-closed with sharper evidence by the b12x lever plan
+([41](41-b12x-lever-plan.md), `receipts/b12x-lever-map.json`)**: the pinned extension at
+`/var/tmp/work/torch-ext` already exports `reconstruct_fp8_slice`/`reconstruct_had_slice` for
+SM120, so the path is one `VLLM_EXL3_EXT_PATH` env var away — and it must still not be used,
+because the +0.0141 KLD price is 4.4x the k5k6 build's whole mean. The "1.5-1.8x" figure
+sometimes quoted for it is our own isolated-GEMM microbenchmark, not an end-to-end or vendor
+number. Two structural facts from the same plan bound all prefill work: **at prefill b12x
+contributes zero GEMM work** (both dispatch ops divert to exllamav3 reconstruct+hgemm above
+`VLLM_EXL3_PREFILL_RECONSTRUCT_M=128`, so every one of the 409 EXL3 matrices runs
+had_r_128 → reconstruct → hgemm → had_r_128 at chunk size), and only **66 of 409** matrices
+reach b12x at decode (b12x requires 6-bit trellis; our attention is serialized K5). The
+B12X_ATTN block-size claim is corrected in [41](41-b12x-lever-plan.md) §2: per-group page
+geometry shipped upstream (#24486) and is in the image, three b12x-local gates (~12 lines)
+block it, one of which reproduces open b12x issue #29 — but its ceiling is ~10 % of prefill,
+so it ranks behind the configuration levers. The plan's rank-1 item —
+`VLLM_USE_V2_MODEL_RUNNER=1` plus a per-batch-size speculative depth schedule, aiming for
+C1 ≈ 83 and C8 ≈ 409 tok/s in one server — is being measured (`V2RunnerDepth`,
+`receipts/v2-runner-depth-schedule.json`). Remaining credible kernel work:
 
 1. fuse `gate_proj` and `up_proj` reconstruction/GEMM because they share input and shape;
 2. prototype a Marlin-shaped fused dequant-in-epilogue kernel in exllamav3;
