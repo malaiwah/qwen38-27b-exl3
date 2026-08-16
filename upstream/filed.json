@@ -99,6 +99,13 @@
   "notes": {
     "apc_poison_repro": "receipts/apc-poison-repro.json did not exist at filing time; the issue cites the physical-RTX-5090 reproduction as in flight. ApcPoisonRepro confirmed pending (harness done, GPU window held by PerfSweep5090).",
     "no_gpu_work": "No GPU was used by this filing; both cards remained occupied by other jobs.",
-    "rootfs_not_written": "/var/tmp/gg-rootfs was read only; the PR tree was cloned separately to /var/tmp/gg-vllm-pr."
+    "rootfs_not_written": "/var/tmp/gg-rootfs was read only; the PR tree was cloned separately to /var/tmp/gg-vllm-pr.",
+    "artifact_preservation": {
+      "policy": "preserve before delete",
+      "deleted_by_this_task": "nothing",
+      "/var/tmp/gg-vllm-pr": "196 MB partial clone. Durable copy already published: branch fix/cherry-pick-51113-51812 at malaiwah/vllm-voipmonitor, head 50248cdb926137e69bc7858393335e0c47c2aeeb, and open as PR 393. Safe to delete; recompute cost is one blob-filtered clone plus two cherry-picks, well under a minute, and no GPU.",
+      "/var/tmp/work/mamba-align": "1.2 MB CPU test harness owned by MambaAlignProof, not by this task. Left untouched. Cheap to rebuild but it is the only assembled copy of the loader shim and conftest substitution, so do not delete it without asking that agent.",
+      "no_hugging_face_upload_needed": "This task produced no captures, checkpoints or GGUFs. Its outputs are text artefacts already committed as research 118919c and pushed to both the github and origin remotes."
+    }
   }
 }
