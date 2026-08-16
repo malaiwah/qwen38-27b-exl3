@@ -50,10 +50,11 @@
 # command printed.
 #
 # Usage:
-#   tools/preserve_artifacts.sh <local-dir> <dataset-path> [options]
+#   tools/preserve_artifacts.sh <local-dir> <repo-path> [options]
 #
 #   <local-dir>     directory to preserve, e.g. /var/tmp/work/gguf/hidden-bf16
-#   <dataset-path>  prefix inside the dataset repo, e.g. reference/hidden-bf16
+#   <repo-path>     prefix inside the repo, e.g. reference/hidden-bf16, or `.` for the repo
+#                   root - which is what publishing a whole checkpoint into a model repo needs
 #
 #   --repo ID       target repo (default: $PRESERVE_REPO or the v5 fidelity suite)
 #   --repo-type T   dataset | model | space (default: dataset)
@@ -70,6 +71,10 @@
 #   # a candidate capture tree handed over by another agent, before its pipeline cleans up
 #   tools/preserve_artifacts.sh /var/tmp/work/kld5/hidden/shard-0000/hidden-eda \
 #       captures/shard-0000/hidden-eda --deep --receipt /var/tmp/preserved-eda.json
+#
+#   # a whole checkpoint published into its own model repo, verified before the local copy goes
+#   tools/preserve_artifacts.sh /var/tmp/work/kld6/qwen38-eda . \
+#       --repo malaiwah/Qwen3.8-27B-EXL3-EDA-research --repo-type model --deep
 #
 # Environment:
 #   HF_HOME         must point at the authenticated cache (this project: /var/tmp/hf-home-3)
@@ -116,7 +121,7 @@ done
 [ -d "$LOCAL_DIR" ] || die "not a directory: $LOCAL_DIR"
 [ -x "$HF" ] || die "hf CLI not executable at $HF (set HF=...)"
 case "$DEST" in
-  /*|*..*) die "dataset path must be repo-relative and must not contain '..': $DEST" ;;
+  /*|*..*) die "repo path must be repo-relative and must not contain '..': $DEST" ;;
 esac
 
 # The `hf` CLI ships its own interpreter; that is the one that has huggingface_hub.
@@ -130,6 +135,10 @@ WHO=$("$HF" auth whoami 2>/dev/null | sed -n 's/^user=//p') \
 
 LOCAL_DIR=$(cd "$LOCAL_DIR" && pwd)
 DEST=${DEST%/}
+# `.` is the whole-repo destination: `hf upload` already spells the root that way, and a model
+# repo published from a checkpoint directory has no prefix.  PREFIX is what the remote paths are
+# actually built from, so it is empty at the root and `dir/` below it.
+if [ "$DEST" = . ]; then PREFIX=; else PREFIX=$DEST/; fi
 FILES=$(find "$LOCAL_DIR" -type f | wc -l)
 [ "$FILES" -gt 0 ] || die "$LOCAL_DIR contains no files"
 say "preserving $FILES file(s) from $LOCAL_DIR -> $REPO:$DEST ($REPO_TYPE) as $WHO"
@@ -145,11 +154,11 @@ trap 'rm -f "$INVENTORY" "$REMOTE"' EXIT
 
 # ------------------------------------------------------------------ local inventory
 say "hashing local bytes (sha256 + git blob id)"
-"$HFPY" - "$LOCAL_DIR" "$DEST" "$INVENTORY" <<'PY' || die "local inventory failed"
+"$HFPY" - "$LOCAL_DIR" "$PREFIX" "$INVENTORY" <<'PY' || die "local inventory failed"
 import hashlib, json, os, sys
 from concurrent.futures import ThreadPoolExecutor
 
-root, dest, out = sys.argv[1], sys.argv[2], sys.argv[3]
+root, prefix, out = sys.argv[1], sys.argv[2], sys.argv[3]
 
 def one(abs_path):
     rel = os.path.relpath(abs_path, root).replace(os.sep, "/")
@@ -159,7 +168,7 @@ def one(abs_path):
     with open(abs_path, "rb") as f:
         while (c := f.read(8 << 20)):
             h.update(c); g.update(c)
-    return f"{dest}/{rel}", {"local_path": abs_path, "bytes": n,
+    return f"{prefix}{rel}", {"local_path": abs_path, "bytes": n,
                              "sha256": h.hexdigest(), "git_blob_sha1": g.hexdigest()}
 
 paths = [os.path.join(d, f) for d, _, fs in os.walk(root) for f in fs]
@@ -301,10 +310,15 @@ if [ -n "$RECEIPT" ]; then
 fi
 
 TOTAL=$("$HFPY" -c 'import json,sys; print(sum(v["bytes"] for v in json.load(open(sys.argv[1])).values()))' "$INVENTORY")
+# Model repos live at the bare id; every other type is namespaced by its plural.
+case "$REPO_TYPE" in
+  model) URL=https://huggingface.co/$REPO ;;
+  *)     URL=https://huggingface.co/${REPO_TYPE}s/$REPO ;;
+esac
 cat <<SUMMARY
 
 == PRESERVED
-   repo      https://huggingface.co/${REPO_TYPE}s/$REPO/tree/$REVISION/$DEST
+   repo      $URL/tree/$REVISION/$PREFIX
    revision  $REVISION
    files     $FILES
    bytes     $TOTAL

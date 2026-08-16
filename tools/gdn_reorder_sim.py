@@ -213,6 +213,38 @@ CASES.append(
     )
 )
 
+# 8. The ordinary-traffic mechanism, with no prefix caching and no contrivance. A running
+#    request that HAS drafts can still be scheduled with exactly one token when the
+#    step's token budget is down to 1 (scheduler.py:518, num_new_tokens = min(..., token
+#    budget)). Then scheduler.py:637-642 computes num_scheduled_spec_tokens == 0, does
+#    not enter it into scheduled_spec_decode_tokens, and gpu_model_runner.py:2248 marks
+#    it non-speculative. The budget is consumed in self.running order (scheduler.py:480),
+#    which is NOT input_batch slot order, and the reorder only permutes slots, so the
+#    clamped request can hold a lower slot than fully scheduled speculative decodes.
+CASES.append(
+    (
+        "budget-clamped decode: 4 speculative decodes, a clamped non-speculative decode at a middle slot, 3 more speculative decodes, plus the prefill that ate the budget",
+        [spec_decode(f"s{i}") for i in range(4)]
+        + [Req("clamped", 9000, 8000, 1, False)]
+        + [spec_decode(f"s{i}") for i in range(4, 7)]
+        + [Req("chunkprefill", 4096, 9000, 2047 - 28, False)],
+        "the clamped request is region 0 like the speculative decodes, so the reorder leaves it where it is, in the middle of the leading tokens",
+    )
+)
+
+# 9. Same mechanism, but the clamped request holds the highest slot among the region-0
+#    requests, which is what happens whenever slot order happens to agree with
+#    self.running order.
+CASES.append(
+    (
+        "budget-clamped decode holding the highest region-0 slot",
+        [spec_decode(f"s{i}") for i in range(7)]
+        + [Req("clamped", 9000, 8000, 1, False)]
+        + [Req("chunkprefill", 4096, 9000, 2047 - 28, False)],
+        "identical regions, but the clamped request sorts last inside region 0, so the speculative tokens stay leading",
+    )
+)
+
 
 def main() -> int:
     results = [evaluate(name, reqs, note) for name, reqs, note in CASES]

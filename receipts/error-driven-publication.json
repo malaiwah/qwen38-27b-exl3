@@ -1,0 +1,254 @@
+{
+ "schema": "qwen38-error-driven-publication/1",
+ "question": "where did the error-driven allocation experiment's expensive artifacts go, was every upload verified against the local bytes before the local copy was released, and what does re-making each released artifact cost?",
+ "policy": "docs/29 'Preservation: preserve before delete'. Upload first, re-verify the remote copy against the local bytes, and only then treat the local copy as expendable. tools/preserve_artifacts.sh never deletes: it prints the delete command and a human runs it.",
+ "published": {
+  "model_repo": {
+   "repo": "malaiwah/Qwen3.8-27B-EXL3-EDA-research",
+   "repo_type": "model",
+   "revision": "bbbe6a7eaae578d2e9deb75f36c472035fccd391",
+   "files": 27,
+   "bytes": 21611155800,
+   "uploaded_with": "tools/preserve_artifacts.sh --deep",
+   "verification": {
+    "served-sha256-readback": 23,
+    "served-sha256-readback-lfs-spot": 1,
+    "remote-sha256-lfs-oid": 3
+   },
+   "problems": [],
+   "why_preserved": "the candidate checkpoint of a measured negative: publishing the loser is what makes the hydrated recipe's win checkable by a third party, and the tree carries the exact per-module width maps, the pre-registered plan and the full conversion log with every realised proxy error",
+   "recompute_cost": "~50 min of GPU for the conversion, on top of the 2 h 04 ladder pass that produced its input map -- or ~25 min with tools/allocate_bits.py --ladder-from-log against a conversion log that already exists",
+   "file_digests": {
+    ".gitattributes": {
+     "bytes": 1570,
+     "sha256": "34448b82c17d60fec9b65b1f093c115ddbaadc04beb1b0140b6bfed2e012a930",
+     "verified_by": "served-sha256-readback"
+    },
+    "DOCS-SHA256SUMS": {
+     "bytes": 723,
+     "sha256": "a2107aa2487a1665a91bc1a113a788abdcfddbb858b01041bbcd4c0693616f96",
+     "verified_by": "served-sha256-readback"
+    },
+    "LICENSE": {
+     "bytes": 11544,
+     "sha256": "bbedc3fda3305820b977265f01b8619d87570a6739de3a5582c3464840f1e57a",
+     "verified_by": "served-sha256-readback"
+    },
+    "README.md": {
+     "bytes": 18452,
+     "sha256": "86d8f5ca37bee8f84e1475472e8394a3499e12ecf2eb5539afd8af400b85a855",
+     "verified_by": "served-sha256-readback"
+    },
+    "SHA256SUMS": {
+     "bytes": 1414,
+     "sha256": "e6bf4d6b25f83ced907fffced2855228d38489e47b87af5691fc03bd02970fa2",
+     "verified_by": "served-sha256-readback"
+    },
+    "allocation/build_solved.sh": {
+     "bytes": 2416,
+     "sha256": "d76194f98ab1d061bf65e5895c659de974f5449916b38d3a0a3fd3a5834f5375",
+     "verified_by": "served-sha256-readback"
+    },
+    "allocation/convert-eda.log": {
+     "bytes": 119676,
+     "sha256": "499058953787b8541ba91037bb85c77a38619a57ad670aa28864db4142ff29a9",
+     "verified_by": "served-sha256-readback"
+    },
+    "allocation/plan-error-driven-allocation.json": {
+     "bytes": 63364,
+     "sha256": "2352c1ddd9479cd63ccb5b45d31d9f9a1d5306f38efbb5a1ca183f1531b17b41",
+     "verified_by": "served-sha256-readback"
+    },
+    "allocation/solved-fixed.json": {
+     "bytes": 14862,
+     "sha256": "565199ec49b22a6efd9d89cf04086674db31aa23d1f834206ae91c2a14da2870",
+     "verified_by": "served-sha256-readback"
+    },
+    "allocation/solved-override.json": {
+     "bytes": 12262,
+     "sha256": "e7c17cb99ecd3de793a57030c00159020d6dfa2b22690f1867e035b6bdd281c7",
+     "verified_by": "served-sha256-readback"
+    },
+    "build-receipt.json": {
+     "bytes": 4196,
+     "sha256": "bfe03038f60d39ba9cfdd8a89dd4762b83a56f916f6f8aa0e6161865d35425c1",
+     "verified_by": "served-sha256-readback"
+    },
+    "chat_template.jinja": {
+     "bytes": 8952,
+     "sha256": "c3cf9e34abf4f9e36c2d72165aa9c132d3e2a725b6c2586aaa3a8af9d7a81041",
+     "verified_by": "served-sha256-readback"
+    },
+    "config.json": {
+     "bytes": 4620,
+     "sha256": "fbb105334da6554c10784ff1257fda5e3821d4d5426d64469cee2b2ad67ba2b3",
+     "verified_by": "served-sha256-readback"
+    },
+    "crc32.txt": {
+     "bytes": 238,
+     "sha256": "b42dd291f5f98b05807e458f5b47849969a9b3326acbf0c97d28b05826740b83",
+     "verified_by": "served-sha256-readback"
+    },
+    "generation_config.json": {
+     "bytes": 202,
+     "sha256": "e70c136c1b78ddc1fb0905bac8e733a4dc448d4f852a5dd75143fffc70be550e",
+     "verified_by": "served-sha256-readback"
+    },
+    "merges.txt": {
+     "bytes": 3353259,
+     "sha256": "a9d356d7bdf1ef4949e3e748e95b8e10ad9d4e2e838eddc38a0a7b6b94d1db8d",
+     "verified_by": "served-sha256-readback"
+    },
+    "model-00001-of-00003.safetensors": {
+     "bytes": 8479438795,
+     "sha256": "b44fd2e501124b6db49c08579d0c4a70e155f91cf2a7f395fe1d0dd9147d5f46",
+     "verified_by": "served-sha256-readback-lfs-spot"
+    },
+    "model-00002-of-00003.safetensors": {
+     "bytes": 8449296087,
+     "sha256": "6ef1949d17fa36c131b85f5b487bb0eae7fa62c4a061b6f1b03db5bc5bf118b6",
+     "verified_by": "remote-sha256-lfs-oid"
+    },
+    "model-00003-of-00003.safetensors": {
+     "bytes": 4658530634,
+     "sha256": "c520edf1c0f7870ac98422c6d8b0e4a7f5827bc2f27ce42be791b39d3e97a42e",
+     "verified_by": "remote-sha256-lfs-oid"
+    },
+    "model.safetensors.index.json": {
+     "bytes": 238255,
+     "sha256": "48021b68951e30daea378bcbd9a2dfb07c780147764cedd5211d53659e438462",
+     "verified_by": "served-sha256-readback"
+    },
+    "preprocessor_config.json": {
+     "bytes": 390,
+     "sha256": "27225450ac9c6529872ee1924fcb0962ff5634834f817040f444118116f4e516",
+     "verified_by": "served-sha256-readback"
+    },
+    "quantization_config.json": {
+     "bytes": 480335,
+     "sha256": "5f285ff4532be60fc0461527f554c5d47bba1e94bdb33370fee10475009b13f4",
+     "verified_by": "served-sha256-readback"
+    },
+    "quantization_manifest.json": {
+     "bytes": 3162,
+     "sha256": "907fcead5988679229dc87403560c11d5427f6d63a032eb8c8ef6881e024327d",
+     "verified_by": "served-sha256-readback"
+    },
+    "tokenizer.json": {
+     "bytes": 12809320,
+     "sha256": "0997f410c57a1f4e53b09e4be8f4a172d90edd9564368fb0847030937229b9f3",
+     "verified_by": "remote-sha256-lfs-oid"
+    },
+    "tokenizer_config.json": {
+     "bytes": 17928,
+     "sha256": "b11349aafa7cdc6a320767cf7ceb29ed82f7eda5d65e8e0819e76f0ce947bf27",
+     "verified_by": "served-sha256-readback"
+    },
+    "video_preprocessor_config.json": {
+     "bytes": 385,
+     "sha256": "7768af27c1fafa9cc9011c1dc20067e03f8915e03b63504550e11d5066986d13",
+     "verified_by": "served-sha256-readback"
+    },
+    "vocab.json": {
+     "bytes": 6722759,
+     "sha256": "ce99b4cb2983d118806ce0a8b777a35b093e2000a503ebde25853284c9dfa003",
+     "verified_by": "served-sha256-readback"
+    }
+   }
+  },
+  "capture_error_driven": {
+   "repo": "malaiwah/qwen38-27b-fidelity-suite-v5",
+   "repo_type": "dataset",
+   "revision": "99b7468dea168061f0a5b30de3cebf627f2800fc",
+   "files": 513,
+   "bytes": 10732324101,
+   "uploaded_with": "tools/preserve_artifacts.sh --deep",
+   "verification": {
+    "served-sha256-readback": 1,
+    "served-sha256-readback-lfs-spot": 3,
+    "remote-sha256-lfs-oid": 509
+   },
+   "problems": [],
+   "why_preserved": "with the shard-0 BF16 reference already in this dataset, this capture lets anyone re-derive the headline paired number by `fidelity.py replay` alone: no GPU, no checkpoint",
+   "recompute_cost": "~6 min of GPU per 512-context capture (anchor: the surviving shard-0 BF16 capture's 170.08 s of prefill plus its model load), and only while the checkpoint still exists locally",
+   "capture_manifest_sha256": "9e059149269b43722a49fee397f62b102c8b9ec929962df9688414b39ec06bc8",
+   "file_digests_sha256": "47a55e6ebb2c75493f4b60066a253b6860c3577af6261dfe820615d2c2cfcd89",
+   "file_digests_sha256_definition": "sha256 over the sorted `sha256<two spaces>repo-relative-path\\n` listing of every file in this upload -- the same text `sha256sum` would print. The per-file digests are not inlined because 513 hidden-state shards would be most of this receipt; regenerate the listing from the published tree and this digest checks it in one line."
+  },
+  "capture_hydrated_rematched": {
+   "repo": "malaiwah/qwen38-27b-fidelity-suite-v5",
+   "repo_type": "dataset",
+   "revision": "17777e7e0f68bd9dfd87becb34897e3e92137c17",
+   "files": 513,
+   "bytes": 10732324091,
+   "uploaded_with": "tools/preserve_artifacts.sh --deep",
+   "verification": {
+    "served-sha256-readback": 1,
+    "served-sha256-readback-lfs-spot": 3,
+    "remote-sha256-lfs-oid": 509
+   },
+   "problems": [],
+   "why_preserved": "the other operand of the same paired comparison, re-captured against the surviving BF16 reference with one harness version so the interval uses one reference and one code path",
+   "recompute_cost": "~6 min of GPU per 512-context capture; the published hydrated checkpoint still exists, so this one is recomputable, unlike a capture whose model is gone",
+   "capture_manifest_sha256": "c2bb10b0a282b3edc6f93e3cb8a850931a62357b3cab56500e826f84495221de",
+   "file_digests_sha256": "bccac4c422dfd0e732bce985e7649d077e02a1f0b0d85e1b505b1a000df7b6a3",
+   "file_digests_sha256_definition": "sha256 over the sorted `sha256<two spaces>repo-relative-path\\n` listing of every file in this upload -- the same text `sha256sum` would print. The per-file digests are not inlined because 513 hidden-state shards would be most of this receipt; regenerate the listing from the published tree and this digest checks it in one line."
+  },
+  "ladder": {
+   "repo": "malaiwah/qwen38-27b-fidelity-suite-v5",
+   "repo_type": "dataset",
+   "revision": "2762570217c6c6c94a664af354b5bf1ba5d6d0af",
+   "files": 1,
+   "bytes": 284807,
+   "uploaded_with": "tools/preserve_artifacts.sh --deep",
+   "verification": {
+    "served-sha256-readback": 1
+   },
+   "problems": [],
+   "why_preserved": "the reusable artifact of the whole experiment: 409 modules x up to five widths with out_energy, numel, qmap and per-rung seconds. Everything in docs/37 section 3 is derived from this file",
+   "recompute_cost": "2 h 04 of GPU for the measurement pass (7,473 s, 2,000 module-quantizations). It is also committed verbatim at receipts/error-driven-ladder.json, so the dataset copy is convenience, not the only copy",
+   "file_digests": {
+    "captures/shard-0000/error-driven-ladder.json": {
+     "bytes": 284807,
+     "sha256": "b5e3a4ff1e08218f49b49156eee35e85677aaacacbde232603a45569931b13c9",
+     "verified_by": "served-sha256-readback"
+    }
+   }
+  }
+ },
+ "released_after_verification": {
+  "what": [
+   {
+    "path": "/var/tmp/work/kld6/qwen38-eda",
+    "bytes": 21610992825,
+    "now_at": "malaiwah/Qwen3.8-27B-EXL3-EDA-research@bbbe6a7eaae578d2e9deb75f36c472035fccd391",
+    "recompute_cost": "~50 min GPU (or ~25 min via --ladder-from-log); downloading it from the Hub costs only wire time and is the cheap path"
+   },
+   {
+    "path": "/var/tmp/work/kld6/hidden/eda",
+    "bytes": 10485688000,
+    "now_at": "malaiwah/qwen38-27b-fidelity-suite-v5@99b7468dea168061f0a5b30de3cebf627f2800fc captures/shard-0000/hidden-eda",
+    "recompute_cost": "~6 min GPU, and only while the checkpoint exists locally"
+   },
+   {
+    "path": "/var/tmp/work/kld6/hidden/hyd-rematch",
+    "bytes": 10485688000,
+    "now_at": "malaiwah/qwen38-27b-fidelity-suite-v5@17777e7e0f68bd9dfd87becb34897e3e92137c17 captures/shard-0000/hidden-hyd-rematch",
+    "recompute_cost": "~6 min GPU"
+   }
+  ],
+  "not_released": {
+   "receipts/error-driven-ladder.json": "285 KB, committed verbatim and also published in the dataset. Nothing to reclaim.",
+   "the five allocation artifacts": "solved-fixed.json, solved-override.json, plan-error-driven-allocation.json, build_solved.sh and convert-eda.log are now inside the model repo under allocation/, digest-verified at the same revision."
+  }
+ },
+ "what_verification_means_here": {
+  "remote-sha256-lfs-oid": "the Hub's own LFS object id is a sha256 over the stored content, compared against the local sha256. End-to-end on the full bytes without re-downloading them.",
+  "remote-git-blob-id": "sha1 over 'blob <len>\\0' + content, for files the Hub does not put in LFS.",
+  "served-sha256-readback": "the file was re-downloaded from the CDN and re-hashed: a claim about what the Hub actually serves, not only about metadata it computed.",
+  "served-sha256-readback-lfs-spot": "the same, for a spread sample of the LFS files. The model repo's sample was 1 of its 4 LFS files (one 8.5 GB shard); the other three are covered by their LFS oids. Each capture tree's sample was 3 of 512.",
+  "problems": "any missing file, size disagreement or digest disagreement exits non-zero and prints no delete command. All four uploads reported an empty problem list."
+ },
+ "hardware": "1x RTX PRO 6000 Blackwell Server Edition, SM120, driver 595.58.03, rental box. Every recompute cost above is that card's time and is not comparable to any other card.",
+ "content_sha256": "7c80b629d3beb76bf191ead28401bd7a182025a7dd9ea07b5144ca71cae37b0c"
+}

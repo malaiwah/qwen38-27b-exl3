@@ -1,0 +1,417 @@
+{
+ "schema": "qwen38-error-surrogate-calibration/1",
+ "question": "does any per-module weighting of exllamav3's relative proxy error predict the measured KLD difference between two builds, in sign and magnitude, with one free scale parameter?",
+ "protocol": "shard 0 of the v5 suite, 512 contexts, 1,048,064 scored positions, one shared BF16 head, cluster-bootstrap intervals over 330 source clusters; every delta is a paired per-context difference, not a difference of two independent means",
+ "ladder": {
+  "source": "/var/tmp/work/kld6/ladder.json",
+  "modules_used": 400,
+  "note": "eps rungs measured at fixed propagation; see receipts/error-driven-allocation.json -> ladder"
+ },
+ "excluded_pairs": {
+  "why": "a width-based rule cannot be asked to predict a change of mechanism",
+  "hydrated_vs_online_K5K6": {
+   "delta_b_minus_a": 0.00044147719544927196,
+   "ci95": [
+    0.00041193206710189094,
+    0.00047424818631859925
+   ],
+   "contexts": 512,
+   "clusters": 330,
+   "a_label": "hyd",
+   "b_label": "k5k6",
+   "report": "/var/tmp/work/kld6/reports/paired-hyd-vs-k5k6.json",
+   "note": "offline calibrated K6 attention versus the runtime's uncalibrated online K6 encoding at identical widths: a width rule predicts exactly zero for this pair, and the measured effect is this large"
+  },
+  "official_fp8_and_nvfp4": "different quantizer entirely, no per-module EXL3 width map"
+ },
+ "pairs": {
+  "hydrated_to_context": {
+   "kind": "uniform role-group move: attention K6->K5",
+   "modules_moved": 208,
+   "measured": {
+    "delta_b_minus_a": 0.0007095267975016164,
+    "ci95": [
+     0.0006503611407389167,
+     0.0007777105507320322
+    ],
+    "contexts": 512,
+    "clusters": 330,
+    "a_label": "hyd",
+    "b_label": "ctx",
+    "report": "/tmp/paired-hyd-ctx.json"
+   },
+   "objective_delta": {
+    "rel": {
+     "delta": 0.04068931225049321,
+     "implied_scale": 0.017437669949631945
+    },
+    "abs": {
+     "delta": 333.5164567014933,
+     "implied_scale": 2.1274116561410434e-06
+    },
+    "sqrt_energy": {
+     "delta": 2.4529798996288954,
+     "implied_scale": 0.0002892509627204686
+    },
+    "numel": {
+     "delta": 1359940.2442668434,
+     "implied_scale": 5.217338044761879e-10
+    }
+   }
+  },
+  "mlp_to_K4": {
+   "kind": "uniform role-group move: MLP K5/K5/K6->K4 (measured between the two online-K6-attention builds, whose only difference is the MLP)",
+   "modules_moved": 192,
+   "measured": {
+    "delta_b_minus_a": 0.007203988181548545,
+    "ci95": [
+     0.0066135596813721685,
+     0.007886658856856325
+    ],
+    "contexts": 512,
+    "clusters": 330,
+    "a_label": "k5k6",
+    "b_label": "k4",
+    "report": "/var/tmp/work/kld6/reports/paired-k5k6-vs-k4.json"
+   },
+   "objective_delta": {
+    "rel": {
+     "delta": 0.2735036614985774,
+     "implied_scale": 0.02633964072757401
+    },
+    "abs": {
+     "delta": 1345.8259839918487,
+     "implied_scale": 5.352837786784905e-06
+    },
+    "sqrt_energy": {
+     "delta": 12.98677436727384,
+     "implied_scale": 0.0005547172821992127
+    },
+    "numel": {
+     "delta": 24377096.90556024,
+     "implied_scale": 2.9552281017947497e-10
+    }
+   }
+  },
+  "hydrated_to_error_driven": {
+   "kind": "reallocation at a fixed byte budget",
+   "modules_moved": 175,
+   "measured": {
+    "delta_b_minus_a": 0.0003662964754934233,
+    "ci95": [
+     0.00033476706949517353,
+     0.0003977921395768962
+    ],
+    "contexts": 512,
+    "clusters": 330,
+    "a_label": "hydrated-rematched",
+    "b_label": "error-driven",
+    "report": "/var/tmp/work/kld6/reports/paired-hyd-vs-eda.json"
+   },
+   "objective_delta": {
+    "rel": {
+     "delta": -0.009841011103927877,
+     "implied_scale": -0.03722142690675576
+    },
+    "abs": {
+     "delta": 311.589988232578,
+     "implied_scale": 1.1755720316020266e-06
+    },
+    "sqrt_energy": {
+     "delta": 0.8998516041854622,
+     "implied_scale": 0.00040706320218764476
+    },
+    "numel": {
+     "delta": -1080549.324358259,
+     "implied_scale": -3.389909810095598e-10
+    }
+   }
+  },
+  "context_to_error_driven": {
+   "kind": "reallocation plus an attention move",
+   "modules_moved": 188,
+   "measured": {
+    "delta_b_minus_a": -0.0003432303220081932,
+    "ci95": [
+     -0.0004189721427002162,
+     -0.00027552728345752207
+    ],
+    "contexts": 512,
+    "clusters": 330,
+    "a_label": "ctx",
+    "b_label": "eda",
+    "report": "/var/tmp/work/kld6/reports/paired-ctx-vs-eda.json"
+   },
+   "objective_delta": {
+    "rel": {
+     "delta": -0.0505303233544211,
+     "implied_scale": 0.0067925613616355894
+    },
+    "abs": {
+     "delta": -21.926468468915314,
+     "implied_scale": 1.565369829139533e-05
+    },
+    "sqrt_energy": {
+     "delta": -1.5531282954434324,
+     "implied_scale": 0.0002209928973769664
+    },
+    "numel": {
+     "delta": -2440489.568625103,
+     "implied_scale": 1.4063994635369765e-10
+    }
+   }
+  }
+ },
+ "rules": {
+  "rel": {
+   "definition": "w_m = 1: every module's relative proxy error counts equally. The rule the rank-9 plan selected and the allocation minimised.",
+   "free_parameters": 1,
+   "implied_scale_per_pair": {
+    "hydrated_to_context": 0.017437669949631945,
+    "mlp_to_K4": 0.02633964072757401,
+    "hydrated_to_error_driven": -0.03722142690675576,
+    "context_to_error_driven": 0.0067925613616355894
+   },
+   "scale_spread_ratio": null,
+   "scale_changes_sign_across_pairs": true,
+   "sign_correct_on_all_pairs": false,
+   "leave_one_pair_out": {
+    "hydrated_to_context": {
+     "fitted_scale": 0.025615790076458183,
+     "predicted": 0.0010422888809640922,
+     "measured": 0.0007095267975016164,
+     "ci95": [
+      0.0006503611407389167,
+      0.0007777105507320322
+     ],
+     "ratio_predicted_over_measured": 1.4689915654126053,
+     "verdict": "sign correct, magnitude wrong"
+    },
+    "mlp_to_K4": {
+     "fitted_scale": 0.009895762605610675,
+     "predicted": 0.0027065273059552223,
+     "measured": 0.007203988181548545,
+     "ci95": [
+      0.0066135596813721685,
+      0.007886658856856325
+     ],
+     "ratio_predicted_over_measured": 0.37569846559262904,
+     "verdict": "sign correct, magnitude wrong"
+    },
+    "hydrated_to_error_driven": {
+     "fitted_scale": 0.02552144685383322,
+     "predicted": -0.0002511568418768779,
+     "measured": 0.0003662964754934233,
+     "ci95": [
+      0.00033476706949517353,
+      0.0003977921395768962
+     ],
+     "ratio_predicted_over_measured": -0.6856654613958668,
+     "verdict": "sign wrong"
+    },
+    "context_to_error_driven": {
+     "fitted_scale": 0.026066720390994724,
+     "predicted": -0.0013171598101462455,
+     "measured": -0.0003432303220081932,
+     "ci95": [
+      -0.0004189721427002162,
+      -0.00027552728345752207
+     ],
+     "ratio_predicted_over_measured": 3.8375391848824,
+     "verdict": "sign correct, magnitude wrong"
+    }
+   },
+   "worst_out_of_sample_ratio": 3.8375391848824
+  },
+  "abs": {
+   "definition": "w_m = tr(W^T H W)/count, the module's mean per-row calibration output energy, so w_m*eps is absolute output error energy (the GPTQ objective under isotropic downstream sensitivity).",
+   "free_parameters": 1,
+   "implied_scale_per_pair": {
+    "hydrated_to_context": 2.1274116561410434e-06,
+    "mlp_to_K4": 5.352837786784905e-06,
+    "hydrated_to_error_driven": 1.1755720316020266e-06,
+    "context_to_error_driven": 1.565369829139533e-05
+   },
+   "scale_spread_ratio": 13.31581380858733,
+   "scale_changes_sign_across_pairs": false,
+   "sign_correct_on_all_pairs": true,
+   "leave_one_pair_out": {
+    "hydrated_to_context": {
+     "fitted_scale": 5.142963586206549e-06,
+     "predicted": 0.0017152629922164134,
+     "measured": 0.0007095267975016164,
+     "ci95": [
+      0.0006503611407389167,
+      0.0007777105507320322
+     ],
+     "ratio_predicted_over_measured": 2.417474573555491,
+     "verdict": "sign correct, magnitude wrong"
+    },
+    "mlp_to_K4": {
+     "fitted_scale": 1.7159723644133509e-06,
+     "predicted": 0.0023094001958394172,
+     "measured": 0.007203988181548545,
+     "ci95": [
+      0.0066135596813721685,
+      0.007886658856856325
+     ],
+     "ratio_predicted_over_measured": 0.32057245759431496,
+     "verdict": "sign correct, magnitude wrong"
+    },
+    "hydrated_to_error_driven": {
+     "fitted_scale": 5.168839200385018e-06,
+     "predicted": 0.0016105585456240557,
+     "measured": 0.0003662964754934233,
+     "ci95": [
+      0.00033476706949517353,
+      0.0003977921395768962
+     ],
+     "ratio_predicted_over_measured": 4.396871532696395,
+     "verdict": "sign correct, magnitude wrong"
+    },
+    "context_to_error_driven": {
+     "fitted_scale": 4.9743717743981695e-06,
+     "predicted": -0.00010907040586400378,
+     "measured": -0.0003432303220081932,
+     "ci95": [
+      -0.0004189721427002162,
+      -0.00027552728345752207
+     ],
+     "ratio_predicted_over_measured": 0.3177761371018968,
+     "verdict": "sign correct, magnitude wrong"
+    }
+   },
+   "worst_out_of_sample_ratio": 4.396871532696395
+  },
+  "sqrt_energy": {
+   "definition": "w_m = sqrt(out_energy), the geometric mean of the two above. Included because it was the only rule that matched the error-driven build's measured delta, and it is therefore under test here rather than being reported as a result.",
+   "free_parameters": 1,
+   "implied_scale_per_pair": {
+    "hydrated_to_context": 0.0002892509627204686,
+    "mlp_to_K4": 0.0005547172821992127,
+    "hydrated_to_error_driven": 0.00040706320218764476,
+    "context_to_error_driven": 0.0002209928973769664
+   },
+   "scale_spread_ratio": 2.5101136225793907,
+   "scale_changes_sign_across_pairs": false,
+   "sign_correct_on_all_pairs": true,
+   "leave_one_pair_out": {
+    "hydrated_to_context": {
+     "fitted_scale": 0.0005493380510367215,
+     "predicted": 0.0013475151972943901,
+     "measured": 0.0007095267975016164,
+     "ci95": [
+      0.0006503611407389167,
+      0.0007777105507320322
+     ],
+     "ratio_predicted_over_measured": 1.8991744949440337,
+     "verdict": "sign correct, magnitude wrong"
+    },
+    "mlp_to_K4": {
+     "fitted_scale": 0.000281754936195904,
+     "predicted": 0.0036590877832418426,
+     "measured": 0.007203988181548545,
+     "ci95": [
+      0.0066135596813721685,
+      0.007886658856856325
+     ],
+     "ratio_predicted_over_measured": 0.5079252895797085,
+     "verdict": "sign correct, magnitude wrong"
+    },
+    "hydrated_to_error_driven": {
+     "fitted_scale": 0.0005411512313416334,
+     "predicted": 0.00048695580362970696,
+     "measured": 0.0003662964754934233,
+     "ci95": [
+      0.00033476706949517353,
+      0.0003977921395768962
+     ],
+     "ratio_predicted_over_measured": 1.3294034647036894,
+     "verdict": "sign correct, magnitude wrong"
+    },
+    "context_to_error_driven": {
+     "fitted_scale": 0.0005449334340112138,
+     "predicted": -0.0008463515354959727,
+     "measured": -0.0003432303220081932,
+     "ci95": [
+      -0.0004189721427002162,
+      -0.00027552728345752207
+     ],
+     "ratio_predicted_over_measured": 2.465841393452906,
+     "verdict": "sign correct, magnitude wrong"
+    }
+   },
+   "worst_out_of_sample_ratio": 2.465841393452906
+  },
+  "numel": {
+   "definition": "w_m = parameter count: error weighted by how much of the model the module is.",
+   "free_parameters": 1,
+   "implied_scale_per_pair": {
+    "hydrated_to_context": 5.217338044761879e-10,
+    "mlp_to_K4": 2.9552281017947497e-10,
+    "hydrated_to_error_driven": -3.389909810095598e-10,
+    "context_to_error_driven": 1.4063994635369765e-10
+   },
+   "scale_spread_ratio": null,
+   "scale_changes_sign_across_pairs": true,
+   "sign_correct_on_all_pairs": false,
+   "leave_one_pair_out": {
+    "hydrated_to_context": {
+     "fitted_scale": 2.9275689150369615e-10,
+     "predicted": 0.0003981318785423383,
+     "measured": 0.0007095267975016164,
+     "ci95": [
+      0.0006503611407389167,
+      0.0007777105507320322
+     ],
+     "ratio_predicted_over_measured": 0.5611231033757133,
+     "verdict": "sign correct, magnitude wrong"
+    },
+    "mlp_to_K4": {
+     "fitted_scale": 1.5677705544256452e-10,
+     "predicted": 0.003821769473091786,
+     "measured": 0.007203988181548545,
+     "ci95": [
+      0.0066135596813721685,
+      0.007886658856856325
+     ],
+     "ratio_predicted_over_measured": 0.530507460142761,
+     "verdict": "sign correct, magnitude wrong"
+    },
+    "hydrated_to_error_driven": {
+     "fitted_scale": 2.9468547268846234e-10,
+     "predicted": -0.0003184221884117122,
+     "measured": 0.0003662964754934233,
+     "ci95": [
+      0.00033476706949517353,
+      0.0003977921395768962
+     ],
+     "ratio_predicted_over_measured": -0.8693018080034169,
+     "verdict": "sign wrong"
+    },
+    "context_to_error_driven": {
+     "fitted_scale": 2.94982866216499e-10,
+     "predicted": -0.0007199026079245001,
+     "measured": -0.0003432303220081932,
+     "ci95": [
+      -0.0004189721427002162,
+      -0.00027552728345752207
+     ],
+     "ratio_predicted_over_measured": 2.097433011490504,
+     "verdict": "sign correct, magnitude wrong"
+    }
+   },
+   "worst_out_of_sample_ratio": 2.097433011490504
+  }
+ },
+ "verdict": {
+  "calibrated_surrogate_found": false,
+  "best_sign_correct_rule": "sqrt_energy",
+  "best_scale_spread_ratio": 2.5101136225793907,
+  "rules_that_get_the_sign_wrong": [
+   "rel",
+   "numel"
+  ],
+  "plain": "No rule is calibrated. The rule the plan selected, `rel`, changes the sign of its implied scale across the four pairs and predicts -0.000251 for the reallocation against a measured +0.000366 \u2014 which is exactly why the error-driven build lost. `numel` also gets that sign wrong. `abs` and `sqrt_energy` get the sign right on all four pairs, but out of sample they are off by up to 4.4x and 2.5x respectively, and their implied scale spreads 13.3x and 2.5x across the pairs. A rule that is a factor of two-and-a-half uncertain cannot decide a 1e-4 fidelity claim, so there is no surrogate here good enough to authorise a conversion on prediction alone. `sqrt_energy` is the least-bad and is the pre-registrable candidate for a next attempt; its selection must be validated on a BETWEEN-role reallocation delta, which is the test the rank-9 rule lacked."
+ }
+}

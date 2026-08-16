@@ -62,6 +62,36 @@
             "where": "scheduler.py:865-878 pad_spec_decode (requires num_spec_tokens > 0, dynamic_sd_lookup None, num_new_tokens == 1, running requests already scheduled and no prefill chunk scheduled) and scheduler.py:1052 which writes [-1] * num_spec_tokens into scheduled_spec_decode_tokens",
             "how_to_reach_it": "prefix caching on, then re-send an identical prompt: the whole prompt hits the cache, admission has to recompute exactly one token, and the padding fires while the other streams decode",
             "note": "this is the mechanism the adversarial arm R2 targets. It needs a non-speculative request ordered ahead of it as well, which region 1 can supply in the form of a chunked prefill whose final chunk is 2-4 tokens."
+          },
+          {
+            "mechanism": "token-budget clamping of a speculative decode down to exactly one token, which silently reclassifies it as non-speculative. This is the only mechanism found that needs no prefix caching, no async scheduling and no contrivance, so it is the one that could fire on ordinary mixed traffic.",
+            "where": [
+              "scheduler.py:511-515 computes num_new_tokens = num_tokens_with_spec + num_output_placeholders - num_computed_tokens, which is 1 + drafts for a drafted decode.",
+              "scheduler.py:518 then clamps it: num_new_tokens = min(num_new_tokens, token_budget).",
+              "scheduler.py:637-642 recomputes num_scheduled_spec_tokens from the clamped count; at a clamp of exactly 1 it is 0, so the request is NOT entered into scheduled_spec_decode_tokens.",
+              "gpu_model_runner.py:2240-2249 therefore leaves num_decode_draft_tokens at -1, i.e. non-speculative, while the request is still a one-token decode with context that is done prefilling: region 0 by utils.py:703."
+            ],
+            "why_the_slot_order_can_be_wrong": "the budget is consumed walking self.running (scheduler.py:480), whereas the reorder and the GDN gather both work on input_batch slot order, and reorder_batch_to_split_decodes_and_prefills only permutes slots and never touches self.running. The two orders are independent, so the clamped request can hold a lower slot than fully scheduled speculative decodes.",
+            "how_often": "the clamp has to land on exactly 1. A co-scheduled prefill chunk takes min(remaining_prompt, token_budget), so it either exhausts the budget completely (leaving nothing, and the later decodes are simply not scheduled: scheduler.py:480 exits on token_budget > 0) or leaves a remainder. A remainder of 2, 3 or 4 truncates the drafts but keeps num_scheduled_tokens == draft_len + 1, so the request stays speculative and nothing breaks. Only a remainder of exactly 1 breaks it, which at --max-num-batched-tokens 2048 needs the prefill's remaining length to hit one specific value. So: reachable on ordinary traffic, but rare per step rather than constant. --mamba-cache-mode align makes it rarer still, because scheduler.py:547-550 rounds chunks to whole mamba blocks and the remainder is then structured rather than arbitrary.",
+            "verified_by": "tools/gdn_reorder_sim.py cases 8 and 9: the same clamped request miscomputes at a middle region-0 slot and is harmless at the highest region-0 slot"
+          }
+        ],
+        "answered_and_refuted": [
+          {
+            "hypothesis": "a request's FIRST decode step after its own prefill completes is a plain non-speculative decode, because no draft exists for it yet",
+            "refuted_because": "scheduler.py:1276-1280 sets is_prefill_chunk = num_computed_tokens < num_tokens + num_output_placeholders, evaluated after scheduling and before the forward. On the step that completes a prefill num_computed equals num_prompt_tokens and num_tokens is still num_prompt_tokens with no placeholders, so it is already False, and scheduler.py:2131-2135 therefore does NOT clear the drafts the drafter proposed on that step. The first decode step is already a speculative decode."
+          },
+          {
+            "hypothesis": "the step after a full draft rejection is a plain non-speculative decode",
+            "refuted_because": "drafts are consumed and cleared every step at scheduler.py:650 and re-proposed every step regardless of how many were accepted; rejection does not suppress the next proposal. gpu_model_runner.py:4943-4952 returns a dense draft row for every request in the batch, so the drafter does not selectively skip requests."
+          },
+          {
+            "hypothesis": "a very short brand-new prompt arriving mid-flight lands beside the speculative decodes",
+            "refuted_because": "region 0 requires has_context and a fresh request has num_computed_tokens == 0, so utils.py:700 puts it in region 3 at the very back. Checked by executing the image's own reorder: a brand-new 4-token prompt placed first is moved to the back and the permutation stays the identity."
+          },
+          {
+            "hypothesis": "a preempted and resumed request does it",
+            "refuted_because": "scheduler.py:1245-1257 sets num_computed_tokens = 0 and clears spec_token_ids before returning the request to the waiting queue, so it comes back as a prefill in region 3."
           }
         ],
         "not_a_mechanism": "a short brand-new prompt on its own does not do it: region 0 requires has_context, and a fresh request has num_computed_tokens == 0, so utils.py:700 puts it in region 3 at the back of the batch."
@@ -140,5 +170,5 @@
   "measured": {
     "status": "not run"
   },
-  "content_sha256": "c0949f1e309a7a1f5419bc4760f65d4ddcf35558ce19c465572171bbb08ec9e1"
+  "content_sha256": "3cf577f5c556b5efdb0aa4ea243c2dfd1b984354a05fd87424c466c4115cec00"
 }

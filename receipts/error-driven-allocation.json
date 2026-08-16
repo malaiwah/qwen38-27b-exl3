@@ -1,0 +1,5413 @@
+{
+ "schema": "qwen38-error-driven-allocation/1",
+ "question": "Does an error-driven per-module bit allocation, solved against the converter's own proxy error at the hydrated build's serialized-byte budget, measure better than the hand-designed hydrated role split?",
+ "verdict": {
+  "outcome": "loss",
+  "plain": "The solved allocation measures 0.003066 mean KLD against the re-measured hydrated 0.002700 on the same 512 contexts and the same BF16 reference, i.e. 0.000366 higher, at 21,586,964,548 serialized bytes against hydrated's 21,586,964,548. The paired difference is -0.000366 [-0.000398, -0.000335] over 512 contexts with 42 contexts won by the solved build and 470 by hydrated. The interval excludes zero in favour of hydrated: error-driven allocation on this proxy does NOT beat the hand-designed split at the same byte budget.",
+  "paired_difference_hydrated_minus_solved": -0.0003662964754934233,
+  "paired_ci95": [
+   -0.0003977921395768962,
+   -0.00033476706949517353
+  ],
+  "paired_contexts": 512,
+  "paired_clusters": 330,
+  "solved_wins": 42,
+  "hydrated_wins": 470,
+  "solved_mean_kld": 0.003066179635178366,
+  "hydrated_rematched_mean_kld": 0.002699883159684943,
+  "hydrated_published_mean_kld": 0.002699883159684943,
+  "solved_serialized_bytes": 21586964548,
+  "hydrated_serialized_bytes": 21586964548,
+  "byte_budget_respected": true
+ },
+ "protocol": {
+  "suite": "v5 shard 0",
+  "suite_token_sha256": "caef8a4628d6c07c162100895096f890cdf9cafc8e4c48b3d66035d737ee7cf7",
+  "contexts": 512,
+  "scored_positions": 1048064,
+  "reference_capture": "/work/gguf/hidden-bf16",
+  "shared_head": "/work/kld2/lm_head.safetensors",
+  "head_sha256": "25a30fd5f826da0abc4efc4cc71def9f02bcb8085f7175eee284d221dee4cfff",
+  "filter": "all",
+  "harness": {
+   "path": "tools/fidelity.py",
+   "sha256": "8ce8fe861c977c856f3263f509878e588caa2eaab29fe310f8c40223941e1294",
+   "mtime_utc": "2026-08-15T23:30:19Z",
+   "bytes": 62833
+  },
+  "paired_resolution_half_width": 6.4e-05,
+  "paired_resolution_basis": "ci95 half-width of the paired difference between the existing shard-0 hydrated and context reports (-0.000710 [-0.000778, -0.000650], 512 contexts, 330 clusters)",
+  "reference_reuse": {
+   "why": "the published shard-0 hydrated report was replayed against /work/kld5/hidden/shard-0000/hidden-bf16, which was deleted when the 10 M-position run reclaimed disk; the surviving BF16 shard-0 capture is /work/gguf/hidden-bf16",
+   "handling": "hydrated was re-captured and re-replayed against the surviving reference with this harness version, so the headline paired delta uses one reference and one code version for both operands",
+   "published_minus_rematched_mean_kld": 0.0,
+   "exceeds_paired_resolution": false,
+   "note": "capture is not assumed deterministic: this difference is measured, and the paired report paired_reference_and_harness_delta gives it an interval"
+  }
+ },
+ "converter_signal": {
+  "emitted_per_conversion": "one proxy error per module, at the width the allocator assigned: proxy_err = tr(E^T H E) / tr(W^T H W), computed in exllamav3/modules/quant/exl3_lib/quantize.py and printed by conversion/convert_model.py:print_quantized_linear",
+  "candidate_ladder_emitted": false,
+  "on_disk_before_this_work": {
+   "convert-ctx.log": "519 single-width points (one per module at the context build's widths), the only converter stdout that survived; no candidate curve",
+   "working_directories": "wd-hyd / wd-ctx / wd-k4 / wd-v2 held only the resume state (ckpt/state.safetensors) and the per-layer quantized tensors: no Hessians, no error records. Reclaimed for this work",
+   "reused": "the context log's points were used only as a magnitude cross-check; a curve cannot be reconstructed from one width per module"
+  },
+  "upstream_error_driven_path": {
+   "tools": "util/measure.py -> conversion/measure_model.py, util/optimize.py -> conversion/optimize_model.py",
+   "signal": "per-group dkld/dbits, measured by swapping module groups between >=2 already converted whole models and a reference",
+   "why_not_used": "it needs N full conversions of the model plus a VariantSafetensorsCollection splice-recompile, and its allocator is a greedy dkld/dbits ratio with an ad-hoc adjust(dkld) = -(-dkld)**0.69 for negative deltas. The ladder pass here gets a per-candidate signal in ONE conversion by reusing each captured Hessian, and the allocation is then solved exactly rather than greedily"
+  },
+  "defect_found_and_fixed": "tools/ladder_from_log.py matched only the `rmse` label, which the converter prints for uncalibrated fallback modules; all 400 calibrated body modules print `proxy_err` and were silently dropped (118 modules extracted instead of 519). Regex fixed in this change"
+ },
+ "ladder": {
+  "tool": {
+   "path": "tools/ladder_pass.py",
+   "sha256": "2276bff78a2ac32424cbd9d1ef7f524f18e6fed90aeed64d536b44c2458951ab",
+   "mtime_utc": "2026-08-16T01:38:56Z",
+   "bytes": 8535
+  },
+  "artifact": {
+   "path": "/var/tmp/work/kld6/ladder.json",
+   "sha256": "b5e3a4ff1e08218f49b49156eee35e85677aaacacbde232603a45569931b13c9",
+   "mtime_utc": "2026-08-16T03:35:33Z",
+   "bytes": 284807
+  },
+  "modules": 409,
+  "rungs_per_module": {
+   "big": [
+    3,
+    4,
+    5,
+    6,
+    7
+   ],
+   "small": [
+    4,
+    5,
+    6,
+    7,
+    8
+   ],
+   "big_numel_threshold": 52000000
+  },
+  "measurement_cost_sec": 7473.2,
+  "propagation_recipe": "hydrated (attention K6, mlp gate/up K5, down K6, head K6/mcg, MTP as -mb 4 plus the fixed/override regexes, BF16 embed+vision)",
+  "metric": "proxy_err = tr(E^T H E) / tr(W^T H W), exllamav3's own per-module Hessian-weighted relative quantization error",
+  "out_energy": "tr(W^T H W) / count on the raw accumulated Hessian: the module's mean per-calibration-row output energy, so out_energy * proxy_err is the module's absolute output error energy",
+  "assumption_a_reader_must_check": "every rung is measured at FIXED propagation: one Hessian per module, captured with the hydrated recipe's upstream widths, then re-used for all five widths of that module. So the ladder is the module-local error of changing one module's width, not the true sequential effect of changing many widths at once, which would move every downstream Hessian. The objective built on it is therefore first-order and additive by assumption. Both assumptions are checked, not asserted: pre_registered_plan.objective_validation scores the objective against two measured single-role-group KLD deltas between published checkpoints, and prediction_vs_measurement.ladder_replay compares every ladder rung against the proxy error the real conversion achieved at the same width with the solved propagation",
+  "equal_width_proxy_error_by_role": {
+   "full_attention": {
+    "K3": {
+     "modules": 16,
+     "mean": 0.001802215530789523,
+     "median": 0.001943516499368234,
+     "min": 0.0007024553954587518,
+     "max": 0.0030758969119863023
+    },
+    "K4": {
+     "modules": 64,
+     "mean": 0.000817231878053951,
+     "median": 0.0007205114477172635,
+     "min": 0.0001822143844472051,
+     "max": 0.0022765036179400325
+    },
+    "K5": {
+     "modules": 64,
+     "mean": 0.00021608111316234646,
+     "median": 0.00019155869036991015,
+     "min": 4.802120606251417e-05,
+     "max": 0.0005995322154143982
+    },
+    "K6": {
+     "modules": 64,
+     "mean": 5.823576803612928e-05,
+     "median": 5.1758057664563244e-05,
+     "min": 1.2847552025920242e-05,
+     "max": 0.00016128792355144106
+    },
+    "K7": {
+     "modules": 64,
+     "mean": 1.608060334458849e-05,
+     "median": 1.4386395806976811e-05,
+     "min": 3.501772677417105e-06,
+     "max": 4.356109658437128e-05
+    },
+    "K8": {
+     "modules": 48,
+     "mean": 5.031880598293322e-06,
+     "median": 4.426507351587933e-06,
+     "min": 1.1392991906111708e-06,
+     "max": 1.2039599299510574e-05
+    }
+   },
+   "linear_attention": {
+    "K3": {
+     "modules": 48,
+     "mean": 0.002909211954808919,
+     "median": 0.0029595853437448427,
+     "min": 0.001439663276081214,
+     "max": 0.00380959696820446
+    },
+    "K4": {
+     "modules": 144,
+     "mean": 0.0011004374390961662,
+     "median": 0.0007762644114542239,
+     "min": 0.0002816001913711012,
+     "max": 0.0026729781418503174
+    },
+    "K5": {
+     "modules": 144,
+     "mean": 0.00029049257152673837,
+     "median": 0.00020446492916599137,
+     "min": 7.411140847492769e-05,
+     "max": 0.0007050009453809413
+    },
+    "K6": {
+     "modules": 144,
+     "mean": 7.808138984329876e-05,
+     "median": 5.489463933828275e-05,
+     "min": 2.0055449275384047e-05,
+     "max": 0.00018836896176672294
+    },
+    "K7": {
+     "modules": 144,
+     "mean": 2.1465144208112654e-05,
+     "median": 1.518891597399188e-05,
+     "min": 5.422713879229756e-06,
+     "max": 5.203687081160915e-05
+    },
+    "K8": {
+     "modules": 96,
+     "mean": 6.969827157184777e-06,
+     "median": 4.669196873822321e-06,
+     "min": 1.5119251720197606e-06,
+     "max": 1.4463569807657e-05
+    }
+   },
+   "lm_head": {
+    "K6": {
+     "modules": 1,
+     "mean": 5.9112379125311046e-05,
+     "median": 5.9112379125311046e-05,
+     "min": 5.9112379125311046e-05,
+     "max": 5.9112379125311046e-05
+    }
+   },
+   "mlp_down_proj": {
+    "K3": {
+     "modules": 64,
+     "mean": 0.008604396921232762,
+     "median": 0.009289926718738626,
+     "min": 0.0006019669357099786,
+     "max": 0.010907905116955344
+    },
+    "K4": {
+     "modules": 64,
+     "mean": 0.0022275937887566996,
+     "median": 0.0024060164653497995,
+     "min": 0.00015571446497392573,
+     "max": 0.0028274263528002943
+    },
+    "K5": {
+     "modules": 64,
+     "mean": 0.000586198885281254,
+     "median": 0.0006333450839677844,
+     "min": 4.0941502615915454e-05,
+     "max": 0.0007444649953752381
+    },
+    "K6": {
+     "modules": 64,
+     "mean": 0.00015679218341370802,
+     "median": 0.00016924080545035078,
+     "min": 1.0935259283359305e-05,
+     "max": 0.00019963004935590962
+    },
+    "K7": {
+     "modules": 64,
+     "mean": 4.274840301788647e-05,
+     "median": 4.6237656434552994e-05,
+     "min": 2.9760055981574708e-06,
+     "max": 5.4563416935729356e-05
+    }
+   },
+   "mlp_gate_proj": {
+    "K3": {
+     "modules": 64,
+     "mean": 0.004805259878140887,
+     "median": 0.0045294393750476385,
+     "min": 0.0012403446447101223,
+     "max": 0.008210849016985145
+    },
+    "K4": {
+     "modules": 64,
+     "mean": 0.001244218716701541,
+     "median": 0.0011739075562748245,
+     "min": 0.00032127651692576413,
+     "max": 0.0021259823438130343
+    },
+    "K5": {
+     "modules": 64,
+     "mean": 0.0003274418876171548,
+     "median": 0.0003090927461257123,
+     "min": 8.45764310242427e-05,
+     "max": 0.0005597969847059346
+    },
+    "K6": {
+     "modules": 64,
+     "mean": 8.756117139323677e-05,
+     "median": 8.283326191252834e-05,
+     "min": 2.266664550525668e-05,
+     "max": 0.00015015358702975454
+    },
+    "K7": {
+     "modules": 64,
+     "mean": 2.387974859228732e-05,
+     "median": 2.2578182296071406e-05,
+     "min": 6.209667385015683e-06,
+     "max": 4.136299568758453e-05
+    }
+   },
+   "mlp_up_proj": {
+    "K3": {
+     "modules": 64,
+     "mean": 0.0067370819267950225,
+     "median": 0.006560467407001157,
+     "min": 0.0011115077994050683,
+     "max": 0.009937770448141802
+    },
+    "K4": {
+     "modules": 64,
+     "mean": 0.001745187000483565,
+     "median": 0.0017003347913515754,
+     "min": 0.00028793007628554,
+     "max": 0.0025743755367179624
+    },
+    "K5": {
+     "modules": 64,
+     "mean": 0.0004592707239956744,
+     "median": 0.0004476022657391162,
+     "min": 7.585584275555285e-05,
+     "max": 0.0006778094065587592
+    },
+    "K6": {
+     "modules": 64,
+     "mean": 0.00012283605123948783,
+     "median": 0.00011960516092400186,
+     "min": 2.0289017819163468e-05,
+     "max": 0.000181876977120289
+    },
+    "K7": {
+     "modules": 64,
+     "mean": 3.34930051009266e-05,
+     "median": 3.256804299144541e-05,
+     "min": 5.5493136549136285e-06,
+     "max": 4.9950499117270525e-05
+    }
+   },
+   "mtp_draft": {
+    "K4": {
+     "modules": 1,
+     "mean": 0.0023787022315709424,
+     "median": 0.0023787022315709424,
+     "min": 0.0023787022315709424,
+     "max": 0.0023787022315709424
+    },
+    "K5": {
+     "modules": 2,
+     "mean": 0.0013346635912340663,
+     "median": 0.0013346635912340663,
+     "min": 0.0013341927796365995,
+     "max": 0.001335134402831533
+    },
+    "K6": {
+     "modules": 5,
+     "mean": 0.00028715720000680866,
+     "median": 0.00030303234014797056,
+     "min": 0.00020305928038389897,
+     "max": 0.0003144853571503131
+    }
+   }
+  },
+  "law": {
+   "law": "log eps(m, K) = a_m + s(K): one constant per module, one universal shape",
+   "shape_s_of_K_pinned_at_K5": {
+    "K3": 2.683416892678348,
+    "K4": 1.3327098804354918,
+    "K5": 0.0,
+    "K6": -1.3149764521300462,
+    "K7": -2.6088738015438104,
+    "K8": -3.8783397735562963
+   },
+   "implied_per_bit_ratio": {
+    "K3->K4": 3.860153742098869,
+    "K4->K5": 3.7913034585746477,
+    "K5->K6": 3.7246632763320884,
+    "K6->K7": 3.646972419984881,
+    "K7->K8": 3.558951475089895
+   },
+   "ratio_by_rung_pair": {
+    "K3->K4": {
+     "n": 256,
+     "mean": 3.8580319021909597,
+     "sd": 0.013661629668051577
+    },
+    "K4->K5": {
+     "n": 400,
+     "mean": 3.7913768622487476,
+     "sd": 0.02337611693947579
+    },
+    "K5->K6": {
+     "n": 400,
+     "mean": 3.7248879789708513,
+     "sd": 0.040234006071252715
+    },
+    "K6->K7": {
+     "n": 400,
+     "mean": 3.6474772886307374,
+     "sd": 0.059357112714621504
+    },
+    "K7->K8": {
+     "n": 144,
+     "mean": 3.573375824813084,
+     "sd": 0.07190345124018946
+    }
+   },
+   "single_constant_fit": {
+    "mean": 3.72937464183071,
+    "sd": 0.05361655006521828,
+    "n": 400,
+    "min": 3.329426547807691,
+    "max": 3.778466712110802,
+    "ideal_information_bound": 4.0,
+    "deficit_vs_bound": 0.06765633954232253,
+    "why": "unexplained; measured, stable across depth, mildly class-dependent, and the deficit widens with width"
+   },
+   "per_class_constant": {
+    "full_attention.k_proj": {
+     "n": 16,
+     "mean": 3.6947200780719047,
+     "sd": 0.021048952426587993,
+     "min": 3.6518143556902998,
+     "max": 3.718428248762379
+    },
+    "full_attention.o_proj": {
+     "n": 16,
+     "mean": 3.677552201985806,
+     "sd": 0.029728082616852065,
+     "min": 3.6137267932019324,
+     "max": 3.7102523342054217
+    },
+    "full_attention.q_proj": {
+     "n": 16,
+     "mean": 3.668241295536755,
+     "sd": 0.06681857944271127,
+     "min": 3.4939961791260368,
+     "max": 3.7639373657010613
+    },
+    "full_attention.v_proj": {
+     "n": 16,
+     "mean": 3.702712442414012,
+     "sd": 0.01382064726170795,
+     "min": 3.662815656810512,
+     "max": 3.716398113985268
+    },
+    "linear_attention.in_proj_qkv": {
+     "n": 48,
+     "mean": 3.7507759733218275,
+     "sd": 0.03457649605591548,
+     "min": 3.5260859861272436,
+     "max": 3.7684638571356235
+    },
+    "linear_attention.in_proj_z": {
+     "n": 48,
+     "mean": 3.6613752024213344,
+     "sd": 0.04448690271090491,
+     "min": 3.540196328818146,
+     "max": 3.713457240438864
+    },
+    "linear_attention.out_proj": {
+     "n": 48,
+     "mean": 3.6834556344402465,
+     "sd": 0.05724350483071083,
+     "min": 3.329426547807691,
+     "max": 3.719385496754032
+    },
+    "mlp_down_proj": {
+     "n": 64,
+     "mean": 3.767427731427654,
+     "sd": 0.003446792109261735,
+     "min": 3.7588664393334943,
+     "max": 3.7754211344422464
+    },
+    "mlp_gate_proj": {
+     "n": 64,
+     "mean": 3.7669132667957523,
+     "sd": 0.0044799551361937,
+     "min": 3.7540851603610768,
+     "max": 3.777762742196783
+    },
+    "mlp_up_proj": {
+     "n": 64,
+     "mean": 3.7667389010788552,
+     "sd": 0.004616077058338551,
+     "min": 3.7520697291446683,
+     "max": 3.778466712110802
+    }
+   },
+   "constant_by_layer_octet": {
+    "layers_0_7": 3.7271668524418406,
+    "layers_8_15": 3.7364710060195585,
+    "layers_16_23": 3.7348340909871376,
+    "layers_24_31": 3.7293187654653828,
+    "layers_32_39": 3.725427886947368,
+    "layers_40_47": 3.7301698953321214,
+    "layers_48_55": 3.722543732743826,
+    "layers_56_63": 3.7290649047084448
+   },
+   "out_of_sample": {
+    "one_anchor_plus_shape": {
+     "n": 8000,
+     "median": 1.4671597270421444e-13,
+     "mean_abs": 0.011749945458683773,
+     "p95_abs": 0.03858438753128024,
+     "max_abs": 0.4711929739691758,
+     "median_by_rung": {
+      "K3": -0.0023763482801499314,
+      "K4": -0.0023548999853569286,
+      "K5": -0.0007245727702441807,
+      "K6": 0.00231373430672821,
+      "K7": 0.007223138637396764,
+      "K8": 0.013793722664769414
+     },
+     "mean_abs_by_rung": {
+      "K3": 0.008553667203528039,
+      "K4": 0.010718317121534503,
+      "K5": 0.00930841841414964,
+      "K6": 0.009720485118100752,
+      "K7": 0.014463606025597004,
+      "K8": 0.025179315566052837
+     }
+    },
+    "one_anchor_plus_single_constant": {
+     "n": 8000,
+     "median": 2.926960340765561e-10,
+     "mean_abs": 0.030251792699677208,
+     "p95_abs": 0.06879324502856976,
+     "max_abs": 0.5526858186380381,
+     "median_by_rung": {
+      "K3": -0.042070211629070875,
+      "K4": -0.007675354489495134,
+      "K5": 0.017950739243666747,
+      "K6": 0.0182658092098682,
+      "K7": -0.01125332231750964,
+      "K8": -0.04687694014286481
+     },
+     "mean_abs_by_rung": {
+      "K3": 0.043883560705914655,
+      "K4": 0.023719443113427652,
+      "K5": 0.026785104409435632,
+      "K6": 0.02714813954733093,
+      "K7": 0.02517711289516836,
+      "K8": 0.056510235225661315
+     }
+    },
+    "leave_one_out_refit": {
+     "n": 2000,
+     "median": 0.01143897736665378,
+     "mean_abs": 0.028476504291798297,
+     "p95_abs": 0.05463373736970445,
+     "max_abs": 0.12531501548904078,
+     "median_by_rung": {
+      "K3": -0.04104436904842457,
+      "K4": 0.011149292847434267,
+      "K5": 0.020294669695508527,
+      "K6": 0.014749465577625465,
+      "K7": -0.04062597035214954,
+      "K8": -0.043625120790075966
+     },
+     "mean_abs_by_rung": {
+      "K3": 0.043600352198403546,
+      "K4": 0.025110456355375323,
+      "K5": 0.0194621187897655,
+      "K6": 0.01853918980386686,
+      "K7": 0.03403917313255252,
+      "K8": 0.048131549917925044
+     }
+    }
+   },
+   "not_measured_for": "lm_head and the 8 MTP draft modules carry one rung each (recipe-pinned by -hb/-mb, so the pass does not ladder them) and the MTP draft quantizes through the uncalibrated fallback, which reports rmse rather than this proxy; the vision tower is unquantized at -vb 16"
+  },
+  "one_rung_equivalence": {
+   "why": "if one rung per module suffices, the 2 h five-rung measurement pass never has to be paid again: an ordinary teed conversion log is the input",
+   "objective_hydrated": 0.07535511617344577,
+   "objective_five_rung_solve": 0.06551410506951784,
+   "from_one_K5_rung_plus_shape": {
+    "modules_compared": 400,
+    "identical_widths": 396,
+    "disagreements": {
+     "model.language_model.layers.1.mlp.down_proj": [
+      6,
+      5
+     ],
+     "model.language_model.layers.19.self_attn.q_proj": [
+      4,
+      5
+     ],
+     "model.language_model.layers.24.linear_attn.out_proj": [
+      6,
+      7
+     ],
+     "model.language_model.layers.7.self_attn.v_proj": [
+      7,
+      6
+     ]
+    },
+    "objective_on_the_measured_ladder": 0.06551565470404283,
+    "fraction_of_the_five_rung_improvement_recovered": 0.9998425329970034,
+    "serialized_bytes": 21586964548
+   },
+   "from_a_pre_existing_conversion_log": {
+    "modules_compared": 400,
+    "identical_widths": 396,
+    "disagreements": {
+     "model.language_model.layers.1.mlp.down_proj": [
+      6,
+      5
+     ],
+     "model.language_model.layers.19.self_attn.q_proj": [
+      4,
+      5
+     ],
+     "model.language_model.layers.24.linear_attn.out_proj": [
+      6,
+      7
+     ],
+     "model.language_model.layers.7.self_attn.v_proj": [
+      7,
+      6
+     ]
+    },
+    "objective_on_the_measured_ladder": 0.06551565470404283,
+    "fraction_of_the_five_rung_improvement_recovered": 0.9998425329970034,
+    "serialized_bytes": 21586964548
+   },
+   "pre_existing_log": "/var/tmp/work/kld3/convert-ctx.log"
+  }
+ },
+ "hand_designed_recipe_justification_reviewed": {
+  "claim_in_the_shipped_recipe": "down_proj is at K6 while gate/up are at K5 because down_proj carries the largest per-tensor proxy error in every layer (tools/exllamav3-allocation-bits-override.py, docs/12 P2, build_hydrated.sh)",
+  "what_the_ladder_shows_at_equal_width": {
+   "K4": {
+    "mlp_gate_proj": 0.001244218716701541,
+    "mlp_up_proj": 0.001745187000483565,
+    "mlp_down_proj": 0.0022275937887566996,
+    "down_over_gate": 1.7903554727597362
+   },
+   "K5": {
+    "mlp_gate_proj": 0.0003274418876171548,
+    "mlp_up_proj": 0.0004592707239956744,
+    "mlp_down_proj": 0.000586198885281254,
+    "down_over_gate": 1.7902379244974242
+   },
+   "K6": {
+    "mlp_gate_proj": 8.756117139323677e-05,
+    "mlp_up_proj": 0.00012283605123948783,
+    "mlp_down_proj": 0.00015679218341370802,
+    "down_over_gate": 1.7906588150763212
+   },
+   "K7": {
+    "mlp_gate_proj": 2.387974859228732e-05,
+    "mlp_up_proj": 3.34930051009266e-05,
+    "mlp_down_proj": 4.274840301788647e-05,
+    "down_over_gate": 1.7901529763882584
+   }
+  },
+  "reading": "At equal width, down_proj's mean proxy error is 1.790x gate_proj's at K4, 1.790x gate_proj's at K5, 1.791x gate_proj's at K6, 1.790x gate_proj's at K7. The shipped justification compared down_proj at K6 with gate/up at K5, which is not a comparison of tensors but of widths; down_proj IS the highest-error MLP tensor at equal width, so the shipped conclusion is right and only the evidence originally offered for it was not. The ratios are constant to three digits across four widths, which is what the universal shape in ladder.law predicts: only the per-module constant differs between these three roles. The solved allocation agrees in practice, keeping 60 of 64 down_proj at K6 and buying its MLP bits on up_proj instead."
+ },
+ "pre_registered_plan": {
+  "artifact": {
+   "path": "/var/tmp/work/kld6/plan-error-driven-allocation.json",
+   "sha256": "2352c1ddd9479cd63ccb5b45d31d9f9a1d5306f38efbb5a1ca183f1531b17b41",
+   "mtime_utc": "2026-08-16T03:37:18Z",
+   "bytes": 63364
+  },
+  "conversion_log": {
+   "path": "/var/tmp/work/kld6/convert-eda.log",
+   "sha256": "499058953787b8541ba91037bb85c77a38619a57ad670aa28864db4142ff29a9",
+   "mtime_utc": "2026-08-16T04:18:43Z",
+   "bytes": 119676
+  },
+  "written_before_conversion": true,
+  "immutable_after_writing": true,
+  "objective_chosen": "rel",
+  "objective_selection_rule": "the objective whose implied KLD-per-objective-unit scale is most consistent across the two measured single-role-group deltas",
+  "objective_definitions": {
+   "rel": "sum_m eps(m,K)",
+   "abs": "sum_m out_energy_m * eps(m,K)"
+  },
+  "objective_validation": {
+   "rel": {
+    "deltas": {
+     "attention_K6_to_K5": {
+      "predicted_objective_delta": 0.04068931225049319,
+      "measured_kld_delta": 0.000709,
+      "implied_scale_kld_per_objective_unit": 0.01742472312225937,
+      "source": "receipts shard-0 report-hyd 0.002700 -> report-ctx 0.003409"
+     },
+     "mlp_K5K5K6_to_K4": {
+      "predicted_objective_delta": 0.27350366149857724,
+      "measured_kld_delta": 0.007204,
+      "implied_scale_kld_per_objective_unit": 0.026339683938883852,
+      "source": "receipts shard-0 report-k5k6 0.003141 -> report-k4 0.010345 (identical online-K6 attention and K6 head; MTP is not in the scored forward pass)"
+     }
+    },
+    "scale_ratio_across_the_two_deltas": 1.511627114765226,
+    "scale_geometric_mean": 0.021423391415993715
+   },
+   "abs": {
+    "deltas": {
+     "attention_K6_to_K5": {
+      "predicted_objective_delta": 333.5164567014934,
+      "measured_kld_delta": 0.000709,
+      "implied_scale_kld_per_objective_unit": 2.1258321313798767e-06,
+      "source": "receipts shard-0 report-hyd 0.002700 -> report-ctx 0.003409"
+     },
+     "mlp_K5K5K6_to_K4": {
+      "predicted_objective_delta": 1345.825983991849,
+      "measured_kld_delta": 0.007204,
+      "implied_scale_kld_per_objective_unit": 5.3528465683447765e-06,
+      "source": "receipts shard-0 report-k5k6 0.003141 -> report-k4 0.010345 (identical online-K6 attention and K6 head; MTP is not in the scored forward pass)"
+     }
+    },
+    "scale_ratio_across_the_two_deltas": 2.518000593428911,
+    "scale_geometric_mean": 3.3733148725450828e-06
+   }
+  },
+  "kld_per_objective_unit": 0.021423391415993715,
+  "predicted": {
+   "objective_hydrated": 0.07535511617344577,
+   "objective_solved": 0.06551410506951784,
+   "objective_delta_solved_minus_hydrated": -0.009841011103927932,
+   "kld_delta_solved_minus_hydrated": -0.0002108278328085885,
+   "hydrated_measured_shard0_mean_kld": 0.0027,
+   "predicted_shard0_mean_kld": 0.0024891721671914118,
+   "note": "first-order and layer-local: the proxy sees no error accumulation between layers, and the ladder was measured with hydrated-recipe propagation"
+  },
+  "byte_law": "bytes(role,K) = fixed(role) + params(role)*K/8, docs/34 \u00a72, per module",
+  "byte_law_validation": {
+   "hydrated": {
+    "manifest": "hydrated-quantization-manifest.json",
+    "roles": 10,
+    "total_bytes": 21586964548,
+    "exact": true
+   },
+   "context": {
+    "manifest": "context-quantization-manifest.json",
+    "roles": 10,
+    "total_bytes": 20672081988,
+    "exact": true
+   }
+  },
+  "solver": "exact dynamic programming over the byte grid (not greedy)",
+  "grid_unit_bytes": 655360,
+  "grid_points": 25664
+ },
+ "allocation": {
+  "average_body_bits": 5.531034482758621,
+  "hydrated_average_body_bits": 5.531034482758621,
+  "bit_histogram_by_role": {
+   "full_attention": {
+    "4": 5,
+    "5": 13,
+    "6": 17,
+    "7": 29
+   },
+   "linear_attention": {
+    "5": 61,
+    "6": 70,
+    "7": 13
+   },
+   "lm_head": {
+    "6": 1
+   },
+   "mlp_down_proj": {
+    "4": 1,
+    "5": 3,
+    "6": 60
+   },
+   "mlp_gate_proj": {
+    "4": 1,
+    "5": 51,
+    "6": 12
+   },
+   "mlp_up_proj": {
+    "4": 1,
+    "5": 27,
+    "6": 36
+   },
+   "mtp_draft": {
+    "4": 1,
+    "5": 2,
+    "6": 5
+   }
+  },
+  "modules_changed_from_hydrated": 175,
+  "changed_from_hydrated": {
+   "model.language_model.layers.0.linear_attn.in_proj_qkv": [
+    6,
+    5
+   ],
+   "model.language_model.layers.0.linear_attn.out_proj": [
+    6,
+    5
+   ],
+   "model.language_model.layers.0.mlp.down_proj": [
+    6,
+    5
+   ],
+   "model.language_model.layers.1.linear_attn.in_proj_qkv": [
+    6,
+    5
+   ],
+   "model.language_model.layers.1.linear_attn.in_proj_z": [
+    6,
+    5
+   ],
+   "model.language_model.layers.10.linear_attn.in_proj_qkv": [
+    6,
+    5
+   ],
+   "model.language_model.layers.10.mlp.gate_proj": [
+    5,
+    6
+   ],
+   "model.language_model.layers.10.mlp.up_proj": [
+    5,
+    6
+   ],
+   "model.language_model.layers.11.mlp.gate_proj": [
+    5,
+    6
+   ],
+   "model.language_model.layers.11.mlp.up_proj": [
+    5,
+    6
+   ],
+   "model.language_model.layers.11.self_attn.q_proj": [
+    6,
+    4
+   ],
+   "model.language_model.layers.11.self_attn.v_proj": [
+    6,
+    7
+   ],
+   "model.language_model.layers.12.linear_attn.in_proj_qkv": [
+    6,
+    5
+   ],
+   "model.language_model.layers.12.linear_attn.in_proj_z": [
+    6,
+    5
+   ],
+   "model.language_model.layers.12.mlp.up_proj": [
+    5,
+    6
+   ],
+   "model.language_model.layers.13.linear_attn.in_proj_qkv": [
+    6,
+    5
+   ],
+   "model.language_model.layers.13.linear_attn.in_proj_z": [
+    6,
+    5
+   ],
+   "model.language_model.layers.13.mlp.up_proj": [
+    5,
+    6
+   ],
+   "model.language_model.layers.14.linear_attn.in_proj_qkv": [
+    6,
+    5
+   ],
+   "model.language_model.layers.14.linear_attn.in_proj_z": [
+    6,
+    5
+   ],
+   "model.language_model.layers.14.mlp.gate_proj": [
+    5,
+    6
+   ],
+   "model.language_model.layers.14.mlp.up_proj": [
+    5,
+    6
+   ],
+   "model.language_model.layers.15.mlp.gate_proj": [
+    5,
+    6
+   ],
+   "model.language_model.layers.15.mlp.up_proj": [
+    5,
+    6
+   ],
+   "model.language_model.layers.15.self_attn.k_proj": [
+    6,
+    7
+   ],
+   "model.language_model.layers.15.self_attn.q_proj": [
+    6,
+    4
+   ],
+   "model.language_model.layers.15.self_attn.v_proj": [
+    6,
+    7
+   ],
+   "model.language_model.layers.16.linear_attn.in_proj_qkv": [
+    6,
+    5
+   ],
+   "model.language_model.layers.16.linear_attn.in_proj_z": [
+    6,
+    5
+   ],
+   "model.language_model.layers.16.mlp.up_proj": [
+    5,
+    6
+   ],
+   "model.language_model.layers.17.linear_attn.in_proj_qkv": [
+    6,
+    5
+   ],
+   "model.language_model.layers.17.linear_attn.in_proj_z": [
+    6,
+    5
+   ],
+   "model.language_model.layers.17.linear_attn.out_proj": [
+    6,
+    7
+   ],
+   "model.language_model.layers.17.mlp.up_proj": [
+    5,
+    6
+   ],
+   "model.language_model.layers.18.linear_attn.in_proj_qkv": [
+    6,
+    5
+   ],
+   "model.language_model.layers.18.linear_attn.in_proj_z": [
+    6,
+    5
+   ],
+   "model.language_model.layers.18.mlp.up_proj": [
+    5,
+    6
+   ],
+   "model.language_model.layers.19.mlp.up_proj": [
+    5,
+    6
+   ],
+   "model.language_model.layers.19.self_attn.k_proj": [
+    6,
+    7
+   ],
+   "model.language_model.layers.19.self_attn.q_proj": [
+    6,
+    4
+   ],
+   "model.language_model.layers.19.self_attn.v_proj": [
+    6,
+    7
+   ],
+   "model.language_model.layers.2.linear_attn.in_proj_qkv": [
+    6,
+    5
+   ],
+   "model.language_model.layers.2.linear_attn.in_proj_z": [
+    6,
+    5
+   ],
+   "model.language_model.layers.2.mlp.gate_proj": [
+    5,
+    6
+   ],
+   "model.language_model.layers.2.mlp.up_proj": [
+    5,
+    6
+   ],
+   "model.language_model.layers.20.linear_attn.in_proj_qkv": [
+    6,
+    5
+   ],
+   "model.language_model.layers.20.linear_attn.in_proj_z": [
+    6,
+    5
+   ],
+   "model.language_model.layers.20.mlp.up_proj": [
+    5,
+    6
+   ],
+   "model.language_model.layers.21.linear_attn.in_proj_qkv": [
+    6,
+    5
+   ],
+   "model.language_model.layers.21.mlp.up_proj": [
+    5,
+    6
+   ],
+   "model.language_model.layers.22.linear_attn.in_proj_qkv": [
+    6,
+    5
+   ],
+   "model.language_model.layers.22.linear_attn.out_proj": [
+    6,
+    7
+   ],
+   "model.language_model.layers.22.mlp.up_proj": [
+    5,
+    6
+   ],
+   "model.language_model.layers.23.mlp.up_proj": [
+    5,
+    6
+   ],
+   "model.language_model.layers.23.self_attn.k_proj": [
+    6,
+    7
+   ],
+   "model.language_model.layers.23.self_attn.q_proj": [
+    6,
+    5
+   ],
+   "model.language_model.layers.23.self_attn.v_proj": [
+    6,
+    7
+   ],
+   "model.language_model.layers.24.linear_attn.in_proj_qkv": [
+    6,
+    5
+   ],
+   "model.language_model.layers.24.mlp.up_proj": [
+    5,
+    6
+   ],
+   "model.language_model.layers.25.linear_attn.in_proj_qkv": [
+    6,
+    5
+   ],
+   "model.language_model.layers.25.mlp.up_proj": [
+    5,
+    6
+   ],
+   "model.language_model.layers.26.linear_attn.in_proj_qkv": [
+    6,
+    5
+   ],
+   "model.language_model.layers.26.mlp.up_proj": [
+    5,
+    6
+   ],
+   "model.language_model.layers.27.mlp.up_proj": [
+    5,
+    6
+   ],
+   "model.language_model.layers.27.self_attn.k_proj": [
+    6,
+    7
+   ],
+   "model.language_model.layers.27.self_attn.q_proj": [
+    6,
+    5
+   ],
+   "model.language_model.layers.27.self_attn.v_proj": [
+    6,
+    7
+   ],
+   "model.language_model.layers.28.linear_attn.in_proj_qkv": [
+    6,
+    5
+   ],
+   "model.language_model.layers.28.linear_attn.out_proj": [
+    6,
+    7
+   ],
+   "model.language_model.layers.29.linear_attn.in_proj_qkv": [
+    6,
+    5
+   ],
+   "model.language_model.layers.29.linear_attn.out_proj": [
+    6,
+    7
+   ],
+   "model.language_model.layers.3.mlp.gate_proj": [
+    5,
+    6
+   ],
+   "model.language_model.layers.3.mlp.up_proj": [
+    5,
+    6
+   ],
+   "model.language_model.layers.3.self_attn.o_proj": [
+    6,
+    5
+   ],
+   "model.language_model.layers.3.self_attn.q_proj": [
+    6,
+    4
+   ],
+   "model.language_model.layers.30.linear_attn.in_proj_qkv": [
+    6,
+    5
+   ],
+   "model.language_model.layers.31.self_attn.k_proj": [
+    6,
+    7
+   ],
+   "model.language_model.layers.31.self_attn.o_proj": [
+    6,
+    7
+   ],
+   "model.language_model.layers.31.self_attn.q_proj": [
+    6,
+    5
+   ],
+   "model.language_model.layers.31.self_attn.v_proj": [
+    6,
+    7
+   ],
+   "model.language_model.layers.32.linear_attn.in_proj_qkv": [
+    6,
+    5
+   ],
+   "model.language_model.layers.32.linear_attn.out_proj": [
+    6,
+    7
+   ],
+   "model.language_model.layers.33.linear_attn.in_proj_qkv": [
+    6,
+    5
+   ],
+   "model.language_model.layers.33.linear_attn.out_proj": [
+    6,
+    7
+   ],
+   "model.language_model.layers.34.linear_attn.in_proj_qkv": [
+    6,
+    5
+   ],
+   "model.language_model.layers.35.self_attn.k_proj": [
+    6,
+    7
+   ],
+   "model.language_model.layers.35.self_attn.q_proj": [
+    6,
+    5
+   ],
+   "model.language_model.layers.35.self_attn.v_proj": [
+    6,
+    7
+   ],
+   "model.language_model.layers.36.linear_attn.in_proj_qkv": [
+    6,
+    5
+   ],
+   "model.language_model.layers.36.mlp.up_proj": [
+    5,
+    6
+   ],
+   "model.language_model.layers.37.linear_attn.in_proj_qkv": [
+    6,
+    5
+   ],
+   "model.language_model.layers.37.mlp.up_proj": [
+    5,
+    6
+   ],
+   "model.language_model.layers.38.linear_attn.out_proj": [
+    6,
+    7
+   ],
+   "model.language_model.layers.38.mlp.up_proj": [
+    5,
+    6
+   ],
+   "model.language_model.layers.39.mlp.up_proj": [
+    5,
+    6
+   ],
+   "model.language_model.layers.39.self_attn.k_proj": [
+    6,
+    7
+   ],
+   "model.language_model.layers.39.self_attn.o_proj": [
+    6,
+    7
+   ],
+   "model.language_model.layers.39.self_attn.q_proj": [
+    6,
+    5
+   ],
+   "model.language_model.layers.39.self_attn.v_proj": [
+    6,
+    7
+   ],
+   "model.language_model.layers.4.linear_attn.in_proj_qkv": [
+    6,
+    5
+   ],
+   "model.language_model.layers.4.linear_attn.out_proj": [
+    6,
+    7
+   ],
+   "model.language_model.layers.4.mlp.gate_proj": [
+    5,
+    6
+   ],
+   "model.language_model.layers.4.mlp.up_proj": [
+    5,
+    6
+   ],
+   "model.language_model.layers.40.linear_attn.in_proj_qkv": [
+    6,
+    5
+   ],
+   "model.language_model.layers.40.linear_attn.out_proj": [
+    6,
+    7
+   ],
+   "model.language_model.layers.40.mlp.up_proj": [
+    5,
+    6
+   ],
+   "model.language_model.layers.41.linear_attn.in_proj_qkv": [
+    6,
+    5
+   ],
+   "model.language_model.layers.41.linear_attn.out_proj": [
+    6,
+    7
+   ],
+   "model.language_model.layers.41.mlp.up_proj": [
+    5,
+    6
+   ],
+   "model.language_model.layers.42.linear_attn.in_proj_qkv": [
+    6,
+    5
+   ],
+   "model.language_model.layers.42.mlp.up_proj": [
+    5,
+    6
+   ],
+   "model.language_model.layers.43.mlp.up_proj": [
+    5,
+    6
+   ],
+   "model.language_model.layers.43.self_attn.k_proj": [
+    6,
+    7
+   ],
+   "model.language_model.layers.43.self_attn.q_proj": [
+    6,
+    5
+   ],
+   "model.language_model.layers.43.self_attn.v_proj": [
+    6,
+    7
+   ],
+   "model.language_model.layers.44.linear_attn.in_proj_qkv": [
+    6,
+    5
+   ],
+   "model.language_model.layers.44.mlp.up_proj": [
+    5,
+    6
+   ],
+   "model.language_model.layers.45.linear_attn.in_proj_qkv": [
+    6,
+    5
+   ],
+   "model.language_model.layers.45.linear_attn.out_proj": [
+    6,
+    7
+   ],
+   "model.language_model.layers.45.mlp.up_proj": [
+    5,
+    6
+   ],
+   "model.language_model.layers.46.linear_attn.in_proj_qkv": [
+    6,
+    5
+   ],
+   "model.language_model.layers.46.linear_attn.in_proj_z": [
+    6,
+    5
+   ],
+   "model.language_model.layers.47.self_attn.k_proj": [
+    6,
+    7
+   ],
+   "model.language_model.layers.47.self_attn.q_proj": [
+    6,
+    5
+   ],
+   "model.language_model.layers.47.self_attn.v_proj": [
+    6,
+    7
+   ],
+   "model.language_model.layers.48.linear_attn.in_proj_qkv": [
+    6,
+    5
+   ],
+   "model.language_model.layers.49.linear_attn.in_proj_qkv": [
+    6,
+    5
+   ],
+   "model.language_model.layers.49.linear_attn.in_proj_z": [
+    6,
+    5
+   ],
+   "model.language_model.layers.5.linear_attn.in_proj_qkv": [
+    6,
+    5
+   ],
+   "model.language_model.layers.5.linear_attn.out_proj": [
+    6,
+    7
+   ],
+   "model.language_model.layers.5.mlp.gate_proj": [
+    5,
+    6
+   ],
+   "model.language_model.layers.5.mlp.up_proj": [
+    5,
+    6
+   ],
+   "model.language_model.layers.50.linear_attn.in_proj_qkv": [
+    6,
+    5
+   ],
+   "model.language_model.layers.50.linear_attn.in_proj_z": [
+    6,
+    5
+   ],
+   "model.language_model.layers.51.self_attn.k_proj": [
+    6,
+    7
+   ],
+   "model.language_model.layers.51.self_attn.q_proj": [
+    6,
+    5
+   ],
+   "model.language_model.layers.51.self_attn.v_proj": [
+    6,
+    7
+   ],
+   "model.language_model.layers.52.linear_attn.in_proj_qkv": [
+    6,
+    5
+   ],
+   "model.language_model.layers.53.linear_attn.in_proj_qkv": [
+    6,
+    5
+   ],
+   "model.language_model.layers.54.linear_attn.in_proj_qkv": [
+    6,
+    5
+   ],
+   "model.language_model.layers.55.self_attn.k_proj": [
+    6,
+    7
+   ],
+   "model.language_model.layers.55.self_attn.q_proj": [
+    6,
+    5
+   ],
+   "model.language_model.layers.55.self_attn.v_proj": [
+    6,
+    7
+   ],
+   "model.language_model.layers.56.linear_attn.in_proj_qkv": [
+    6,
+    5
+   ],
+   "model.language_model.layers.57.linear_attn.in_proj_qkv": [
+    6,
+    5
+   ],
+   "model.language_model.layers.59.self_attn.k_proj": [
+    6,
+    7
+   ],
+   "model.language_model.layers.59.self_attn.q_proj": [
+    6,
+    5
+   ],
+   "model.language_model.layers.59.self_attn.v_proj": [
+    6,
+    7
+   ],
+   "model.language_model.layers.6.linear_attn.in_proj_qkv": [
+    6,
+    5
+   ],
+   "model.language_model.layers.6.linear_attn.in_proj_z": [
+    6,
+    5
+   ],
+   "model.language_model.layers.6.mlp.gate_proj": [
+    5,
+    6
+   ],
+   "model.language_model.layers.6.mlp.up_proj": [
+    5,
+    6
+   ],
+   "model.language_model.layers.60.linear_attn.in_proj_qkv": [
+    6,
+    5
+   ],
+   "model.language_model.layers.61.linear_attn.in_proj_qkv": [
+    6,
+    5
+   ],
+   "model.language_model.layers.61.mlp.down_proj": [
+    6,
+    5
+   ],
+   "model.language_model.layers.62.linear_attn.in_proj_qkv": [
+    6,
+    5
+   ],
+   "model.language_model.layers.62.linear_attn.in_proj_z": [
+    6,
+    5
+   ],
+   "model.language_model.layers.62.mlp.down_proj": [
+    6,
+    5
+   ],
+   "model.language_model.layers.63.mlp.down_proj": [
+    6,
+    4
+   ],
+   "model.language_model.layers.63.mlp.gate_proj": [
+    5,
+    4
+   ],
+   "model.language_model.layers.63.mlp.up_proj": [
+    5,
+    4
+   ],
+   "model.language_model.layers.63.self_attn.k_proj": [
+    6,
+    7
+   ],
+   "model.language_model.layers.63.self_attn.o_proj": [
+    6,
+    5
+   ],
+   "model.language_model.layers.63.self_attn.q_proj": [
+    6,
+    5
+   ],
+   "model.language_model.layers.7.mlp.gate_proj": [
+    5,
+    6
+   ],
+   "model.language_model.layers.7.mlp.up_proj": [
+    5,
+    6
+   ],
+   "model.language_model.layers.7.self_attn.q_proj": [
+    6,
+    4
+   ],
+   "model.language_model.layers.7.self_attn.v_proj": [
+    6,
+    7
+   ],
+   "model.language_model.layers.8.linear_attn.in_proj_qkv": [
+    6,
+    5
+   ],
+   "model.language_model.layers.8.linear_attn.out_proj": [
+    6,
+    7
+   ],
+   "model.language_model.layers.8.mlp.gate_proj": [
+    5,
+    6
+   ],
+   "model.language_model.layers.8.mlp.up_proj": [
+    5,
+    6
+   ],
+   "model.language_model.layers.9.linear_attn.in_proj_qkv": [
+    6,
+    5
+   ],
+   "model.language_model.layers.9.mlp.gate_proj": [
+    5,
+    6
+   ],
+   "model.language_model.layers.9.mlp.up_proj": [
+    5,
+    6
+   ]
+  },
+  "solved_bits": {
+   "lm_head": 6,
+   "model.language_model.layers.0.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.0.linear_attn.in_proj_z": 6,
+   "model.language_model.layers.0.linear_attn.out_proj": 5,
+   "model.language_model.layers.0.mlp.down_proj": 5,
+   "model.language_model.layers.0.mlp.gate_proj": 5,
+   "model.language_model.layers.0.mlp.up_proj": 5,
+   "model.language_model.layers.1.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.1.linear_attn.in_proj_z": 5,
+   "model.language_model.layers.1.linear_attn.out_proj": 6,
+   "model.language_model.layers.1.mlp.down_proj": 6,
+   "model.language_model.layers.1.mlp.gate_proj": 5,
+   "model.language_model.layers.1.mlp.up_proj": 5,
+   "model.language_model.layers.10.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.10.linear_attn.in_proj_z": 6,
+   "model.language_model.layers.10.linear_attn.out_proj": 6,
+   "model.language_model.layers.10.mlp.down_proj": 6,
+   "model.language_model.layers.10.mlp.gate_proj": 6,
+   "model.language_model.layers.10.mlp.up_proj": 6,
+   "model.language_model.layers.11.mlp.down_proj": 6,
+   "model.language_model.layers.11.mlp.gate_proj": 6,
+   "model.language_model.layers.11.mlp.up_proj": 6,
+   "model.language_model.layers.11.self_attn.k_proj": 6,
+   "model.language_model.layers.11.self_attn.o_proj": 6,
+   "model.language_model.layers.11.self_attn.q_proj": 4,
+   "model.language_model.layers.11.self_attn.v_proj": 7,
+   "model.language_model.layers.12.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.12.linear_attn.in_proj_z": 5,
+   "model.language_model.layers.12.linear_attn.out_proj": 6,
+   "model.language_model.layers.12.mlp.down_proj": 6,
+   "model.language_model.layers.12.mlp.gate_proj": 5,
+   "model.language_model.layers.12.mlp.up_proj": 6,
+   "model.language_model.layers.13.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.13.linear_attn.in_proj_z": 5,
+   "model.language_model.layers.13.linear_attn.out_proj": 6,
+   "model.language_model.layers.13.mlp.down_proj": 6,
+   "model.language_model.layers.13.mlp.gate_proj": 5,
+   "model.language_model.layers.13.mlp.up_proj": 6,
+   "model.language_model.layers.14.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.14.linear_attn.in_proj_z": 5,
+   "model.language_model.layers.14.linear_attn.out_proj": 6,
+   "model.language_model.layers.14.mlp.down_proj": 6,
+   "model.language_model.layers.14.mlp.gate_proj": 6,
+   "model.language_model.layers.14.mlp.up_proj": 6,
+   "model.language_model.layers.15.mlp.down_proj": 6,
+   "model.language_model.layers.15.mlp.gate_proj": 6,
+   "model.language_model.layers.15.mlp.up_proj": 6,
+   "model.language_model.layers.15.self_attn.k_proj": 7,
+   "model.language_model.layers.15.self_attn.o_proj": 6,
+   "model.language_model.layers.15.self_attn.q_proj": 4,
+   "model.language_model.layers.15.self_attn.v_proj": 7,
+   "model.language_model.layers.16.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.16.linear_attn.in_proj_z": 5,
+   "model.language_model.layers.16.linear_attn.out_proj": 6,
+   "model.language_model.layers.16.mlp.down_proj": 6,
+   "model.language_model.layers.16.mlp.gate_proj": 5,
+   "model.language_model.layers.16.mlp.up_proj": 6,
+   "model.language_model.layers.17.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.17.linear_attn.in_proj_z": 5,
+   "model.language_model.layers.17.linear_attn.out_proj": 7,
+   "model.language_model.layers.17.mlp.down_proj": 6,
+   "model.language_model.layers.17.mlp.gate_proj": 5,
+   "model.language_model.layers.17.mlp.up_proj": 6,
+   "model.language_model.layers.18.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.18.linear_attn.in_proj_z": 5,
+   "model.language_model.layers.18.linear_attn.out_proj": 6,
+   "model.language_model.layers.18.mlp.down_proj": 6,
+   "model.language_model.layers.18.mlp.gate_proj": 5,
+   "model.language_model.layers.18.mlp.up_proj": 6,
+   "model.language_model.layers.19.mlp.down_proj": 6,
+   "model.language_model.layers.19.mlp.gate_proj": 5,
+   "model.language_model.layers.19.mlp.up_proj": 6,
+   "model.language_model.layers.19.self_attn.k_proj": 7,
+   "model.language_model.layers.19.self_attn.o_proj": 6,
+   "model.language_model.layers.19.self_attn.q_proj": 4,
+   "model.language_model.layers.19.self_attn.v_proj": 7,
+   "model.language_model.layers.2.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.2.linear_attn.in_proj_z": 5,
+   "model.language_model.layers.2.linear_attn.out_proj": 6,
+   "model.language_model.layers.2.mlp.down_proj": 6,
+   "model.language_model.layers.2.mlp.gate_proj": 6,
+   "model.language_model.layers.2.mlp.up_proj": 6,
+   "model.language_model.layers.20.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.20.linear_attn.in_proj_z": 5,
+   "model.language_model.layers.20.linear_attn.out_proj": 6,
+   "model.language_model.layers.20.mlp.down_proj": 6,
+   "model.language_model.layers.20.mlp.gate_proj": 5,
+   "model.language_model.layers.20.mlp.up_proj": 6,
+   "model.language_model.layers.21.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.21.linear_attn.in_proj_z": 6,
+   "model.language_model.layers.21.linear_attn.out_proj": 6,
+   "model.language_model.layers.21.mlp.down_proj": 6,
+   "model.language_model.layers.21.mlp.gate_proj": 5,
+   "model.language_model.layers.21.mlp.up_proj": 6,
+   "model.language_model.layers.22.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.22.linear_attn.in_proj_z": 6,
+   "model.language_model.layers.22.linear_attn.out_proj": 7,
+   "model.language_model.layers.22.mlp.down_proj": 6,
+   "model.language_model.layers.22.mlp.gate_proj": 5,
+   "model.language_model.layers.22.mlp.up_proj": 6,
+   "model.language_model.layers.23.mlp.down_proj": 6,
+   "model.language_model.layers.23.mlp.gate_proj": 5,
+   "model.language_model.layers.23.mlp.up_proj": 6,
+   "model.language_model.layers.23.self_attn.k_proj": 7,
+   "model.language_model.layers.23.self_attn.o_proj": 6,
+   "model.language_model.layers.23.self_attn.q_proj": 5,
+   "model.language_model.layers.23.self_attn.v_proj": 7,
+   "model.language_model.layers.24.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.24.linear_attn.in_proj_z": 6,
+   "model.language_model.layers.24.linear_attn.out_proj": 6,
+   "model.language_model.layers.24.mlp.down_proj": 6,
+   "model.language_model.layers.24.mlp.gate_proj": 5,
+   "model.language_model.layers.24.mlp.up_proj": 6,
+   "model.language_model.layers.25.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.25.linear_attn.in_proj_z": 6,
+   "model.language_model.layers.25.linear_attn.out_proj": 6,
+   "model.language_model.layers.25.mlp.down_proj": 6,
+   "model.language_model.layers.25.mlp.gate_proj": 5,
+   "model.language_model.layers.25.mlp.up_proj": 6,
+   "model.language_model.layers.26.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.26.linear_attn.in_proj_z": 6,
+   "model.language_model.layers.26.linear_attn.out_proj": 6,
+   "model.language_model.layers.26.mlp.down_proj": 6,
+   "model.language_model.layers.26.mlp.gate_proj": 5,
+   "model.language_model.layers.26.mlp.up_proj": 6,
+   "model.language_model.layers.27.mlp.down_proj": 6,
+   "model.language_model.layers.27.mlp.gate_proj": 5,
+   "model.language_model.layers.27.mlp.up_proj": 6,
+   "model.language_model.layers.27.self_attn.k_proj": 7,
+   "model.language_model.layers.27.self_attn.o_proj": 6,
+   "model.language_model.layers.27.self_attn.q_proj": 5,
+   "model.language_model.layers.27.self_attn.v_proj": 7,
+   "model.language_model.layers.28.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.28.linear_attn.in_proj_z": 6,
+   "model.language_model.layers.28.linear_attn.out_proj": 7,
+   "model.language_model.layers.28.mlp.down_proj": 6,
+   "model.language_model.layers.28.mlp.gate_proj": 5,
+   "model.language_model.layers.28.mlp.up_proj": 5,
+   "model.language_model.layers.29.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.29.linear_attn.in_proj_z": 6,
+   "model.language_model.layers.29.linear_attn.out_proj": 7,
+   "model.language_model.layers.29.mlp.down_proj": 6,
+   "model.language_model.layers.29.mlp.gate_proj": 5,
+   "model.language_model.layers.29.mlp.up_proj": 5,
+   "model.language_model.layers.3.mlp.down_proj": 6,
+   "model.language_model.layers.3.mlp.gate_proj": 6,
+   "model.language_model.layers.3.mlp.up_proj": 6,
+   "model.language_model.layers.3.self_attn.k_proj": 6,
+   "model.language_model.layers.3.self_attn.o_proj": 5,
+   "model.language_model.layers.3.self_attn.q_proj": 4,
+   "model.language_model.layers.3.self_attn.v_proj": 6,
+   "model.language_model.layers.30.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.30.linear_attn.in_proj_z": 6,
+   "model.language_model.layers.30.linear_attn.out_proj": 6,
+   "model.language_model.layers.30.mlp.down_proj": 6,
+   "model.language_model.layers.30.mlp.gate_proj": 5,
+   "model.language_model.layers.30.mlp.up_proj": 5,
+   "model.language_model.layers.31.mlp.down_proj": 6,
+   "model.language_model.layers.31.mlp.gate_proj": 5,
+   "model.language_model.layers.31.mlp.up_proj": 5,
+   "model.language_model.layers.31.self_attn.k_proj": 7,
+   "model.language_model.layers.31.self_attn.o_proj": 7,
+   "model.language_model.layers.31.self_attn.q_proj": 5,
+   "model.language_model.layers.31.self_attn.v_proj": 7,
+   "model.language_model.layers.32.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.32.linear_attn.in_proj_z": 6,
+   "model.language_model.layers.32.linear_attn.out_proj": 7,
+   "model.language_model.layers.32.mlp.down_proj": 6,
+   "model.language_model.layers.32.mlp.gate_proj": 5,
+   "model.language_model.layers.32.mlp.up_proj": 5,
+   "model.language_model.layers.33.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.33.linear_attn.in_proj_z": 6,
+   "model.language_model.layers.33.linear_attn.out_proj": 7,
+   "model.language_model.layers.33.mlp.down_proj": 6,
+   "model.language_model.layers.33.mlp.gate_proj": 5,
+   "model.language_model.layers.33.mlp.up_proj": 5,
+   "model.language_model.layers.34.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.34.linear_attn.in_proj_z": 6,
+   "model.language_model.layers.34.linear_attn.out_proj": 6,
+   "model.language_model.layers.34.mlp.down_proj": 6,
+   "model.language_model.layers.34.mlp.gate_proj": 5,
+   "model.language_model.layers.34.mlp.up_proj": 5,
+   "model.language_model.layers.35.mlp.down_proj": 6,
+   "model.language_model.layers.35.mlp.gate_proj": 5,
+   "model.language_model.layers.35.mlp.up_proj": 5,
+   "model.language_model.layers.35.self_attn.k_proj": 7,
+   "model.language_model.layers.35.self_attn.o_proj": 6,
+   "model.language_model.layers.35.self_attn.q_proj": 5,
+   "model.language_model.layers.35.self_attn.v_proj": 7,
+   "model.language_model.layers.36.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.36.linear_attn.in_proj_z": 6,
+   "model.language_model.layers.36.linear_attn.out_proj": 6,
+   "model.language_model.layers.36.mlp.down_proj": 6,
+   "model.language_model.layers.36.mlp.gate_proj": 5,
+   "model.language_model.layers.36.mlp.up_proj": 6,
+   "model.language_model.layers.37.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.37.linear_attn.in_proj_z": 6,
+   "model.language_model.layers.37.linear_attn.out_proj": 6,
+   "model.language_model.layers.37.mlp.down_proj": 6,
+   "model.language_model.layers.37.mlp.gate_proj": 5,
+   "model.language_model.layers.37.mlp.up_proj": 6,
+   "model.language_model.layers.38.linear_attn.in_proj_qkv": 6,
+   "model.language_model.layers.38.linear_attn.in_proj_z": 6,
+   "model.language_model.layers.38.linear_attn.out_proj": 7,
+   "model.language_model.layers.38.mlp.down_proj": 6,
+   "model.language_model.layers.38.mlp.gate_proj": 5,
+   "model.language_model.layers.38.mlp.up_proj": 6,
+   "model.language_model.layers.39.mlp.down_proj": 6,
+   "model.language_model.layers.39.mlp.gate_proj": 5,
+   "model.language_model.layers.39.mlp.up_proj": 6,
+   "model.language_model.layers.39.self_attn.k_proj": 7,
+   "model.language_model.layers.39.self_attn.o_proj": 7,
+   "model.language_model.layers.39.self_attn.q_proj": 5,
+   "model.language_model.layers.39.self_attn.v_proj": 7,
+   "model.language_model.layers.4.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.4.linear_attn.in_proj_z": 6,
+   "model.language_model.layers.4.linear_attn.out_proj": 7,
+   "model.language_model.layers.4.mlp.down_proj": 6,
+   "model.language_model.layers.4.mlp.gate_proj": 6,
+   "model.language_model.layers.4.mlp.up_proj": 6,
+   "model.language_model.layers.40.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.40.linear_attn.in_proj_z": 6,
+   "model.language_model.layers.40.linear_attn.out_proj": 7,
+   "model.language_model.layers.40.mlp.down_proj": 6,
+   "model.language_model.layers.40.mlp.gate_proj": 5,
+   "model.language_model.layers.40.mlp.up_proj": 6,
+   "model.language_model.layers.41.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.41.linear_attn.in_proj_z": 6,
+   "model.language_model.layers.41.linear_attn.out_proj": 7,
+   "model.language_model.layers.41.mlp.down_proj": 6,
+   "model.language_model.layers.41.mlp.gate_proj": 5,
+   "model.language_model.layers.41.mlp.up_proj": 6,
+   "model.language_model.layers.42.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.42.linear_attn.in_proj_z": 6,
+   "model.language_model.layers.42.linear_attn.out_proj": 6,
+   "model.language_model.layers.42.mlp.down_proj": 6,
+   "model.language_model.layers.42.mlp.gate_proj": 5,
+   "model.language_model.layers.42.mlp.up_proj": 6,
+   "model.language_model.layers.43.mlp.down_proj": 6,
+   "model.language_model.layers.43.mlp.gate_proj": 5,
+   "model.language_model.layers.43.mlp.up_proj": 6,
+   "model.language_model.layers.43.self_attn.k_proj": 7,
+   "model.language_model.layers.43.self_attn.o_proj": 6,
+   "model.language_model.layers.43.self_attn.q_proj": 5,
+   "model.language_model.layers.43.self_attn.v_proj": 7,
+   "model.language_model.layers.44.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.44.linear_attn.in_proj_z": 6,
+   "model.language_model.layers.44.linear_attn.out_proj": 6,
+   "model.language_model.layers.44.mlp.down_proj": 6,
+   "model.language_model.layers.44.mlp.gate_proj": 5,
+   "model.language_model.layers.44.mlp.up_proj": 6,
+   "model.language_model.layers.45.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.45.linear_attn.in_proj_z": 6,
+   "model.language_model.layers.45.linear_attn.out_proj": 7,
+   "model.language_model.layers.45.mlp.down_proj": 6,
+   "model.language_model.layers.45.mlp.gate_proj": 5,
+   "model.language_model.layers.45.mlp.up_proj": 6,
+   "model.language_model.layers.46.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.46.linear_attn.in_proj_z": 5,
+   "model.language_model.layers.46.linear_attn.out_proj": 6,
+   "model.language_model.layers.46.mlp.down_proj": 6,
+   "model.language_model.layers.46.mlp.gate_proj": 5,
+   "model.language_model.layers.46.mlp.up_proj": 5,
+   "model.language_model.layers.47.mlp.down_proj": 6,
+   "model.language_model.layers.47.mlp.gate_proj": 5,
+   "model.language_model.layers.47.mlp.up_proj": 5,
+   "model.language_model.layers.47.self_attn.k_proj": 7,
+   "model.language_model.layers.47.self_attn.o_proj": 6,
+   "model.language_model.layers.47.self_attn.q_proj": 5,
+   "model.language_model.layers.47.self_attn.v_proj": 7,
+   "model.language_model.layers.48.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.48.linear_attn.in_proj_z": 6,
+   "model.language_model.layers.48.linear_attn.out_proj": 6,
+   "model.language_model.layers.48.mlp.down_proj": 6,
+   "model.language_model.layers.48.mlp.gate_proj": 5,
+   "model.language_model.layers.48.mlp.up_proj": 5,
+   "model.language_model.layers.49.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.49.linear_attn.in_proj_z": 5,
+   "model.language_model.layers.49.linear_attn.out_proj": 6,
+   "model.language_model.layers.49.mlp.down_proj": 6,
+   "model.language_model.layers.49.mlp.gate_proj": 5,
+   "model.language_model.layers.49.mlp.up_proj": 5,
+   "model.language_model.layers.5.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.5.linear_attn.in_proj_z": 6,
+   "model.language_model.layers.5.linear_attn.out_proj": 7,
+   "model.language_model.layers.5.mlp.down_proj": 6,
+   "model.language_model.layers.5.mlp.gate_proj": 6,
+   "model.language_model.layers.5.mlp.up_proj": 6,
+   "model.language_model.layers.50.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.50.linear_attn.in_proj_z": 5,
+   "model.language_model.layers.50.linear_attn.out_proj": 6,
+   "model.language_model.layers.50.mlp.down_proj": 6,
+   "model.language_model.layers.50.mlp.gate_proj": 5,
+   "model.language_model.layers.50.mlp.up_proj": 5,
+   "model.language_model.layers.51.mlp.down_proj": 6,
+   "model.language_model.layers.51.mlp.gate_proj": 5,
+   "model.language_model.layers.51.mlp.up_proj": 5,
+   "model.language_model.layers.51.self_attn.k_proj": 7,
+   "model.language_model.layers.51.self_attn.o_proj": 6,
+   "model.language_model.layers.51.self_attn.q_proj": 5,
+   "model.language_model.layers.51.self_attn.v_proj": 7,
+   "model.language_model.layers.52.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.52.linear_attn.in_proj_z": 6,
+   "model.language_model.layers.52.linear_attn.out_proj": 6,
+   "model.language_model.layers.52.mlp.down_proj": 6,
+   "model.language_model.layers.52.mlp.gate_proj": 5,
+   "model.language_model.layers.52.mlp.up_proj": 5,
+   "model.language_model.layers.53.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.53.linear_attn.in_proj_z": 6,
+   "model.language_model.layers.53.linear_attn.out_proj": 6,
+   "model.language_model.layers.53.mlp.down_proj": 6,
+   "model.language_model.layers.53.mlp.gate_proj": 5,
+   "model.language_model.layers.53.mlp.up_proj": 5,
+   "model.language_model.layers.54.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.54.linear_attn.in_proj_z": 6,
+   "model.language_model.layers.54.linear_attn.out_proj": 6,
+   "model.language_model.layers.54.mlp.down_proj": 6,
+   "model.language_model.layers.54.mlp.gate_proj": 5,
+   "model.language_model.layers.54.mlp.up_proj": 5,
+   "model.language_model.layers.55.mlp.down_proj": 6,
+   "model.language_model.layers.55.mlp.gate_proj": 5,
+   "model.language_model.layers.55.mlp.up_proj": 5,
+   "model.language_model.layers.55.self_attn.k_proj": 7,
+   "model.language_model.layers.55.self_attn.o_proj": 6,
+   "model.language_model.layers.55.self_attn.q_proj": 5,
+   "model.language_model.layers.55.self_attn.v_proj": 7,
+   "model.language_model.layers.56.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.56.linear_attn.in_proj_z": 6,
+   "model.language_model.layers.56.linear_attn.out_proj": 6,
+   "model.language_model.layers.56.mlp.down_proj": 6,
+   "model.language_model.layers.56.mlp.gate_proj": 5,
+   "model.language_model.layers.56.mlp.up_proj": 5,
+   "model.language_model.layers.57.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.57.linear_attn.in_proj_z": 6,
+   "model.language_model.layers.57.linear_attn.out_proj": 6,
+   "model.language_model.layers.57.mlp.down_proj": 6,
+   "model.language_model.layers.57.mlp.gate_proj": 5,
+   "model.language_model.layers.57.mlp.up_proj": 5,
+   "model.language_model.layers.58.linear_attn.in_proj_qkv": 6,
+   "model.language_model.layers.58.linear_attn.in_proj_z": 6,
+   "model.language_model.layers.58.linear_attn.out_proj": 6,
+   "model.language_model.layers.58.mlp.down_proj": 6,
+   "model.language_model.layers.58.mlp.gate_proj": 5,
+   "model.language_model.layers.58.mlp.up_proj": 5,
+   "model.language_model.layers.59.mlp.down_proj": 6,
+   "model.language_model.layers.59.mlp.gate_proj": 5,
+   "model.language_model.layers.59.mlp.up_proj": 5,
+   "model.language_model.layers.59.self_attn.k_proj": 7,
+   "model.language_model.layers.59.self_attn.o_proj": 6,
+   "model.language_model.layers.59.self_attn.q_proj": 5,
+   "model.language_model.layers.59.self_attn.v_proj": 7,
+   "model.language_model.layers.6.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.6.linear_attn.in_proj_z": 5,
+   "model.language_model.layers.6.linear_attn.out_proj": 6,
+   "model.language_model.layers.6.mlp.down_proj": 6,
+   "model.language_model.layers.6.mlp.gate_proj": 6,
+   "model.language_model.layers.6.mlp.up_proj": 6,
+   "model.language_model.layers.60.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.60.linear_attn.in_proj_z": 6,
+   "model.language_model.layers.60.linear_attn.out_proj": 6,
+   "model.language_model.layers.60.mlp.down_proj": 6,
+   "model.language_model.layers.60.mlp.gate_proj": 5,
+   "model.language_model.layers.60.mlp.up_proj": 5,
+   "model.language_model.layers.61.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.61.linear_attn.in_proj_z": 6,
+   "model.language_model.layers.61.linear_attn.out_proj": 6,
+   "model.language_model.layers.61.mlp.down_proj": 5,
+   "model.language_model.layers.61.mlp.gate_proj": 5,
+   "model.language_model.layers.61.mlp.up_proj": 5,
+   "model.language_model.layers.62.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.62.linear_attn.in_proj_z": 5,
+   "model.language_model.layers.62.linear_attn.out_proj": 6,
+   "model.language_model.layers.62.mlp.down_proj": 5,
+   "model.language_model.layers.62.mlp.gate_proj": 5,
+   "model.language_model.layers.62.mlp.up_proj": 5,
+   "model.language_model.layers.63.mlp.down_proj": 4,
+   "model.language_model.layers.63.mlp.gate_proj": 4,
+   "model.language_model.layers.63.mlp.up_proj": 4,
+   "model.language_model.layers.63.self_attn.k_proj": 7,
+   "model.language_model.layers.63.self_attn.o_proj": 5,
+   "model.language_model.layers.63.self_attn.q_proj": 5,
+   "model.language_model.layers.63.self_attn.v_proj": 6,
+   "model.language_model.layers.7.mlp.down_proj": 6,
+   "model.language_model.layers.7.mlp.gate_proj": 6,
+   "model.language_model.layers.7.mlp.up_proj": 6,
+   "model.language_model.layers.7.self_attn.k_proj": 6,
+   "model.language_model.layers.7.self_attn.o_proj": 6,
+   "model.language_model.layers.7.self_attn.q_proj": 4,
+   "model.language_model.layers.7.self_attn.v_proj": 7,
+   "model.language_model.layers.8.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.8.linear_attn.in_proj_z": 6,
+   "model.language_model.layers.8.linear_attn.out_proj": 7,
+   "model.language_model.layers.8.mlp.down_proj": 6,
+   "model.language_model.layers.8.mlp.gate_proj": 6,
+   "model.language_model.layers.8.mlp.up_proj": 6,
+   "model.language_model.layers.9.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.9.linear_attn.in_proj_z": 6,
+   "model.language_model.layers.9.linear_attn.out_proj": 6,
+   "model.language_model.layers.9.mlp.down_proj": 6,
+   "model.language_model.layers.9.mlp.gate_proj": 6,
+   "model.language_model.layers.9.mlp.up_proj": 6,
+   "mtp.fc": 4,
+   "mtp.layers.0.mlp.down_proj": 6,
+   "mtp.layers.0.mlp.gate_proj": 5,
+   "mtp.layers.0.mlp.up_proj": 5,
+   "mtp.layers.0.self_attn.k_proj": 6,
+   "mtp.layers.0.self_attn.o_proj": 6,
+   "mtp.layers.0.self_attn.q_proj": 6,
+   "mtp.layers.0.self_attn.v_proj": 6
+  },
+  "realised_bits_from_converter_log": {
+   "lm_head": 6,
+   "model.language_model.layers.0.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.0.linear_attn.in_proj_z": 6,
+   "model.language_model.layers.0.linear_attn.out_proj": 5,
+   "model.language_model.layers.0.mlp.down_proj": 5,
+   "model.language_model.layers.0.mlp.gate_proj": 5,
+   "model.language_model.layers.0.mlp.up_proj": 5,
+   "model.language_model.layers.1.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.1.linear_attn.in_proj_z": 5,
+   "model.language_model.layers.1.linear_attn.out_proj": 6,
+   "model.language_model.layers.1.mlp.down_proj": 6,
+   "model.language_model.layers.1.mlp.gate_proj": 5,
+   "model.language_model.layers.1.mlp.up_proj": 5,
+   "model.language_model.layers.10.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.10.linear_attn.in_proj_z": 6,
+   "model.language_model.layers.10.linear_attn.out_proj": 6,
+   "model.language_model.layers.10.mlp.down_proj": 6,
+   "model.language_model.layers.10.mlp.gate_proj": 6,
+   "model.language_model.layers.10.mlp.up_proj": 6,
+   "model.language_model.layers.11.mlp.down_proj": 6,
+   "model.language_model.layers.11.mlp.gate_proj": 6,
+   "model.language_model.layers.11.mlp.up_proj": 6,
+   "model.language_model.layers.11.self_attn.k_proj": 6,
+   "model.language_model.layers.11.self_attn.o_proj": 6,
+   "model.language_model.layers.11.self_attn.q_proj": 4,
+   "model.language_model.layers.11.self_attn.v_proj": 7,
+   "model.language_model.layers.12.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.12.linear_attn.in_proj_z": 5,
+   "model.language_model.layers.12.linear_attn.out_proj": 6,
+   "model.language_model.layers.12.mlp.down_proj": 6,
+   "model.language_model.layers.12.mlp.gate_proj": 5,
+   "model.language_model.layers.12.mlp.up_proj": 6,
+   "model.language_model.layers.13.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.13.linear_attn.in_proj_z": 5,
+   "model.language_model.layers.13.linear_attn.out_proj": 6,
+   "model.language_model.layers.13.mlp.down_proj": 6,
+   "model.language_model.layers.13.mlp.gate_proj": 5,
+   "model.language_model.layers.13.mlp.up_proj": 6,
+   "model.language_model.layers.14.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.14.linear_attn.in_proj_z": 5,
+   "model.language_model.layers.14.linear_attn.out_proj": 6,
+   "model.language_model.layers.14.mlp.down_proj": 6,
+   "model.language_model.layers.14.mlp.gate_proj": 6,
+   "model.language_model.layers.14.mlp.up_proj": 6,
+   "model.language_model.layers.15.mlp.down_proj": 6,
+   "model.language_model.layers.15.mlp.gate_proj": 6,
+   "model.language_model.layers.15.mlp.up_proj": 6,
+   "model.language_model.layers.15.self_attn.k_proj": 7,
+   "model.language_model.layers.15.self_attn.o_proj": 6,
+   "model.language_model.layers.15.self_attn.q_proj": 4,
+   "model.language_model.layers.15.self_attn.v_proj": 7,
+   "model.language_model.layers.16.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.16.linear_attn.in_proj_z": 5,
+   "model.language_model.layers.16.linear_attn.out_proj": 6,
+   "model.language_model.layers.16.mlp.down_proj": 6,
+   "model.language_model.layers.16.mlp.gate_proj": 5,
+   "model.language_model.layers.16.mlp.up_proj": 6,
+   "model.language_model.layers.17.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.17.linear_attn.in_proj_z": 5,
+   "model.language_model.layers.17.linear_attn.out_proj": 7,
+   "model.language_model.layers.17.mlp.down_proj": 6,
+   "model.language_model.layers.17.mlp.gate_proj": 5,
+   "model.language_model.layers.17.mlp.up_proj": 6,
+   "model.language_model.layers.18.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.18.linear_attn.in_proj_z": 5,
+   "model.language_model.layers.18.linear_attn.out_proj": 6,
+   "model.language_model.layers.18.mlp.down_proj": 6,
+   "model.language_model.layers.18.mlp.gate_proj": 5,
+   "model.language_model.layers.18.mlp.up_proj": 6,
+   "model.language_model.layers.19.mlp.down_proj": 6,
+   "model.language_model.layers.19.mlp.gate_proj": 5,
+   "model.language_model.layers.19.mlp.up_proj": 6,
+   "model.language_model.layers.19.self_attn.k_proj": 7,
+   "model.language_model.layers.19.self_attn.o_proj": 6,
+   "model.language_model.layers.19.self_attn.q_proj": 4,
+   "model.language_model.layers.19.self_attn.v_proj": 7,
+   "model.language_model.layers.2.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.2.linear_attn.in_proj_z": 5,
+   "model.language_model.layers.2.linear_attn.out_proj": 6,
+   "model.language_model.layers.2.mlp.down_proj": 6,
+   "model.language_model.layers.2.mlp.gate_proj": 6,
+   "model.language_model.layers.2.mlp.up_proj": 6,
+   "model.language_model.layers.20.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.20.linear_attn.in_proj_z": 5,
+   "model.language_model.layers.20.linear_attn.out_proj": 6,
+   "model.language_model.layers.20.mlp.down_proj": 6,
+   "model.language_model.layers.20.mlp.gate_proj": 5,
+   "model.language_model.layers.20.mlp.up_proj": 6,
+   "model.language_model.layers.21.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.21.linear_attn.in_proj_z": 6,
+   "model.language_model.layers.21.linear_attn.out_proj": 6,
+   "model.language_model.layers.21.mlp.down_proj": 6,
+   "model.language_model.layers.21.mlp.gate_proj": 5,
+   "model.language_model.layers.21.mlp.up_proj": 6,
+   "model.language_model.layers.22.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.22.linear_attn.in_proj_z": 6,
+   "model.language_model.layers.22.linear_attn.out_proj": 7,
+   "model.language_model.layers.22.mlp.down_proj": 6,
+   "model.language_model.layers.22.mlp.gate_proj": 5,
+   "model.language_model.layers.22.mlp.up_proj": 6,
+   "model.language_model.layers.23.mlp.down_proj": 6,
+   "model.language_model.layers.23.mlp.gate_proj": 5,
+   "model.language_model.layers.23.mlp.up_proj": 6,
+   "model.language_model.layers.23.self_attn.k_proj": 7,
+   "model.language_model.layers.23.self_attn.o_proj": 6,
+   "model.language_model.layers.23.self_attn.q_proj": 5,
+   "model.language_model.layers.23.self_attn.v_proj": 7,
+   "model.language_model.layers.24.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.24.linear_attn.in_proj_z": 6,
+   "model.language_model.layers.24.linear_attn.out_proj": 6,
+   "model.language_model.layers.24.mlp.down_proj": 6,
+   "model.language_model.layers.24.mlp.gate_proj": 5,
+   "model.language_model.layers.24.mlp.up_proj": 6,
+   "model.language_model.layers.25.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.25.linear_attn.in_proj_z": 6,
+   "model.language_model.layers.25.linear_attn.out_proj": 6,
+   "model.language_model.layers.25.mlp.down_proj": 6,
+   "model.language_model.layers.25.mlp.gate_proj": 5,
+   "model.language_model.layers.25.mlp.up_proj": 6,
+   "model.language_model.layers.26.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.26.linear_attn.in_proj_z": 6,
+   "model.language_model.layers.26.linear_attn.out_proj": 6,
+   "model.language_model.layers.26.mlp.down_proj": 6,
+   "model.language_model.layers.26.mlp.gate_proj": 5,
+   "model.language_model.layers.26.mlp.up_proj": 6,
+   "model.language_model.layers.27.mlp.down_proj": 6,
+   "model.language_model.layers.27.mlp.gate_proj": 5,
+   "model.language_model.layers.27.mlp.up_proj": 6,
+   "model.language_model.layers.27.self_attn.k_proj": 7,
+   "model.language_model.layers.27.self_attn.o_proj": 6,
+   "model.language_model.layers.27.self_attn.q_proj": 5,
+   "model.language_model.layers.27.self_attn.v_proj": 7,
+   "model.language_model.layers.28.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.28.linear_attn.in_proj_z": 6,
+   "model.language_model.layers.28.linear_attn.out_proj": 7,
+   "model.language_model.layers.28.mlp.down_proj": 6,
+   "model.language_model.layers.28.mlp.gate_proj": 5,
+   "model.language_model.layers.28.mlp.up_proj": 5,
+   "model.language_model.layers.29.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.29.linear_attn.in_proj_z": 6,
+   "model.language_model.layers.29.linear_attn.out_proj": 7,
+   "model.language_model.layers.29.mlp.down_proj": 6,
+   "model.language_model.layers.29.mlp.gate_proj": 5,
+   "model.language_model.layers.29.mlp.up_proj": 5,
+   "model.language_model.layers.3.mlp.down_proj": 6,
+   "model.language_model.layers.3.mlp.gate_proj": 6,
+   "model.language_model.layers.3.mlp.up_proj": 6,
+   "model.language_model.layers.3.self_attn.k_proj": 6,
+   "model.language_model.layers.3.self_attn.o_proj": 5,
+   "model.language_model.layers.3.self_attn.q_proj": 4,
+   "model.language_model.layers.3.self_attn.v_proj": 6,
+   "model.language_model.layers.30.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.30.linear_attn.in_proj_z": 6,
+   "model.language_model.layers.30.linear_attn.out_proj": 6,
+   "model.language_model.layers.30.mlp.down_proj": 6,
+   "model.language_model.layers.30.mlp.gate_proj": 5,
+   "model.language_model.layers.30.mlp.up_proj": 5,
+   "model.language_model.layers.31.mlp.down_proj": 6,
+   "model.language_model.layers.31.mlp.gate_proj": 5,
+   "model.language_model.layers.31.mlp.up_proj": 5,
+   "model.language_model.layers.31.self_attn.k_proj": 7,
+   "model.language_model.layers.31.self_attn.o_proj": 7,
+   "model.language_model.layers.31.self_attn.q_proj": 5,
+   "model.language_model.layers.31.self_attn.v_proj": 7,
+   "model.language_model.layers.32.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.32.linear_attn.in_proj_z": 6,
+   "model.language_model.layers.32.linear_attn.out_proj": 7,
+   "model.language_model.layers.32.mlp.down_proj": 6,
+   "model.language_model.layers.32.mlp.gate_proj": 5,
+   "model.language_model.layers.32.mlp.up_proj": 5,
+   "model.language_model.layers.33.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.33.linear_attn.in_proj_z": 6,
+   "model.language_model.layers.33.linear_attn.out_proj": 7,
+   "model.language_model.layers.33.mlp.down_proj": 6,
+   "model.language_model.layers.33.mlp.gate_proj": 5,
+   "model.language_model.layers.33.mlp.up_proj": 5,
+   "model.language_model.layers.34.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.34.linear_attn.in_proj_z": 6,
+   "model.language_model.layers.34.linear_attn.out_proj": 6,
+   "model.language_model.layers.34.mlp.down_proj": 6,
+   "model.language_model.layers.34.mlp.gate_proj": 5,
+   "model.language_model.layers.34.mlp.up_proj": 5,
+   "model.language_model.layers.35.mlp.down_proj": 6,
+   "model.language_model.layers.35.mlp.gate_proj": 5,
+   "model.language_model.layers.35.mlp.up_proj": 5,
+   "model.language_model.layers.35.self_attn.k_proj": 7,
+   "model.language_model.layers.35.self_attn.o_proj": 6,
+   "model.language_model.layers.35.self_attn.q_proj": 5,
+   "model.language_model.layers.35.self_attn.v_proj": 7,
+   "model.language_model.layers.36.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.36.linear_attn.in_proj_z": 6,
+   "model.language_model.layers.36.linear_attn.out_proj": 6,
+   "model.language_model.layers.36.mlp.down_proj": 6,
+   "model.language_model.layers.36.mlp.gate_proj": 5,
+   "model.language_model.layers.36.mlp.up_proj": 6,
+   "model.language_model.layers.37.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.37.linear_attn.in_proj_z": 6,
+   "model.language_model.layers.37.linear_attn.out_proj": 6,
+   "model.language_model.layers.37.mlp.down_proj": 6,
+   "model.language_model.layers.37.mlp.gate_proj": 5,
+   "model.language_model.layers.37.mlp.up_proj": 6,
+   "model.language_model.layers.38.linear_attn.in_proj_qkv": 6,
+   "model.language_model.layers.38.linear_attn.in_proj_z": 6,
+   "model.language_model.layers.38.linear_attn.out_proj": 7,
+   "model.language_model.layers.38.mlp.down_proj": 6,
+   "model.language_model.layers.38.mlp.gate_proj": 5,
+   "model.language_model.layers.38.mlp.up_proj": 6,
+   "model.language_model.layers.39.mlp.down_proj": 6,
+   "model.language_model.layers.39.mlp.gate_proj": 5,
+   "model.language_model.layers.39.mlp.up_proj": 6,
+   "model.language_model.layers.39.self_attn.k_proj": 7,
+   "model.language_model.layers.39.self_attn.o_proj": 7,
+   "model.language_model.layers.39.self_attn.q_proj": 5,
+   "model.language_model.layers.39.self_attn.v_proj": 7,
+   "model.language_model.layers.4.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.4.linear_attn.in_proj_z": 6,
+   "model.language_model.layers.4.linear_attn.out_proj": 7,
+   "model.language_model.layers.4.mlp.down_proj": 6,
+   "model.language_model.layers.4.mlp.gate_proj": 6,
+   "model.language_model.layers.4.mlp.up_proj": 6,
+   "model.language_model.layers.40.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.40.linear_attn.in_proj_z": 6,
+   "model.language_model.layers.40.linear_attn.out_proj": 7,
+   "model.language_model.layers.40.mlp.down_proj": 6,
+   "model.language_model.layers.40.mlp.gate_proj": 5,
+   "model.language_model.layers.40.mlp.up_proj": 6,
+   "model.language_model.layers.41.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.41.linear_attn.in_proj_z": 6,
+   "model.language_model.layers.41.linear_attn.out_proj": 7,
+   "model.language_model.layers.41.mlp.down_proj": 6,
+   "model.language_model.layers.41.mlp.gate_proj": 5,
+   "model.language_model.layers.41.mlp.up_proj": 6,
+   "model.language_model.layers.42.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.42.linear_attn.in_proj_z": 6,
+   "model.language_model.layers.42.linear_attn.out_proj": 6,
+   "model.language_model.layers.42.mlp.down_proj": 6,
+   "model.language_model.layers.42.mlp.gate_proj": 5,
+   "model.language_model.layers.42.mlp.up_proj": 6,
+   "model.language_model.layers.43.mlp.down_proj": 6,
+   "model.language_model.layers.43.mlp.gate_proj": 5,
+   "model.language_model.layers.43.mlp.up_proj": 6,
+   "model.language_model.layers.43.self_attn.k_proj": 7,
+   "model.language_model.layers.43.self_attn.o_proj": 6,
+   "model.language_model.layers.43.self_attn.q_proj": 5,
+   "model.language_model.layers.43.self_attn.v_proj": 7,
+   "model.language_model.layers.44.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.44.linear_attn.in_proj_z": 6,
+   "model.language_model.layers.44.linear_attn.out_proj": 6,
+   "model.language_model.layers.44.mlp.down_proj": 6,
+   "model.language_model.layers.44.mlp.gate_proj": 5,
+   "model.language_model.layers.44.mlp.up_proj": 6,
+   "model.language_model.layers.45.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.45.linear_attn.in_proj_z": 6,
+   "model.language_model.layers.45.linear_attn.out_proj": 7,
+   "model.language_model.layers.45.mlp.down_proj": 6,
+   "model.language_model.layers.45.mlp.gate_proj": 5,
+   "model.language_model.layers.45.mlp.up_proj": 6,
+   "model.language_model.layers.46.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.46.linear_attn.in_proj_z": 5,
+   "model.language_model.layers.46.linear_attn.out_proj": 6,
+   "model.language_model.layers.46.mlp.down_proj": 6,
+   "model.language_model.layers.46.mlp.gate_proj": 5,
+   "model.language_model.layers.46.mlp.up_proj": 5,
+   "model.language_model.layers.47.mlp.down_proj": 6,
+   "model.language_model.layers.47.mlp.gate_proj": 5,
+   "model.language_model.layers.47.mlp.up_proj": 5,
+   "model.language_model.layers.47.self_attn.k_proj": 7,
+   "model.language_model.layers.47.self_attn.o_proj": 6,
+   "model.language_model.layers.47.self_attn.q_proj": 5,
+   "model.language_model.layers.47.self_attn.v_proj": 7,
+   "model.language_model.layers.48.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.48.linear_attn.in_proj_z": 6,
+   "model.language_model.layers.48.linear_attn.out_proj": 6,
+   "model.language_model.layers.48.mlp.down_proj": 6,
+   "model.language_model.layers.48.mlp.gate_proj": 5,
+   "model.language_model.layers.48.mlp.up_proj": 5,
+   "model.language_model.layers.49.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.49.linear_attn.in_proj_z": 5,
+   "model.language_model.layers.49.linear_attn.out_proj": 6,
+   "model.language_model.layers.49.mlp.down_proj": 6,
+   "model.language_model.layers.49.mlp.gate_proj": 5,
+   "model.language_model.layers.49.mlp.up_proj": 5,
+   "model.language_model.layers.5.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.5.linear_attn.in_proj_z": 6,
+   "model.language_model.layers.5.linear_attn.out_proj": 7,
+   "model.language_model.layers.5.mlp.down_proj": 6,
+   "model.language_model.layers.5.mlp.gate_proj": 6,
+   "model.language_model.layers.5.mlp.up_proj": 6,
+   "model.language_model.layers.50.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.50.linear_attn.in_proj_z": 5,
+   "model.language_model.layers.50.linear_attn.out_proj": 6,
+   "model.language_model.layers.50.mlp.down_proj": 6,
+   "model.language_model.layers.50.mlp.gate_proj": 5,
+   "model.language_model.layers.50.mlp.up_proj": 5,
+   "model.language_model.layers.51.mlp.down_proj": 6,
+   "model.language_model.layers.51.mlp.gate_proj": 5,
+   "model.language_model.layers.51.mlp.up_proj": 5,
+   "model.language_model.layers.51.self_attn.k_proj": 7,
+   "model.language_model.layers.51.self_attn.o_proj": 6,
+   "model.language_model.layers.51.self_attn.q_proj": 5,
+   "model.language_model.layers.51.self_attn.v_proj": 7,
+   "model.language_model.layers.52.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.52.linear_attn.in_proj_z": 6,
+   "model.language_model.layers.52.linear_attn.out_proj": 6,
+   "model.language_model.layers.52.mlp.down_proj": 6,
+   "model.language_model.layers.52.mlp.gate_proj": 5,
+   "model.language_model.layers.52.mlp.up_proj": 5,
+   "model.language_model.layers.53.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.53.linear_attn.in_proj_z": 6,
+   "model.language_model.layers.53.linear_attn.out_proj": 6,
+   "model.language_model.layers.53.mlp.down_proj": 6,
+   "model.language_model.layers.53.mlp.gate_proj": 5,
+   "model.language_model.layers.53.mlp.up_proj": 5,
+   "model.language_model.layers.54.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.54.linear_attn.in_proj_z": 6,
+   "model.language_model.layers.54.linear_attn.out_proj": 6,
+   "model.language_model.layers.54.mlp.down_proj": 6,
+   "model.language_model.layers.54.mlp.gate_proj": 5,
+   "model.language_model.layers.54.mlp.up_proj": 5,
+   "model.language_model.layers.55.mlp.down_proj": 6,
+   "model.language_model.layers.55.mlp.gate_proj": 5,
+   "model.language_model.layers.55.mlp.up_proj": 5,
+   "model.language_model.layers.55.self_attn.k_proj": 7,
+   "model.language_model.layers.55.self_attn.o_proj": 6,
+   "model.language_model.layers.55.self_attn.q_proj": 5,
+   "model.language_model.layers.55.self_attn.v_proj": 7,
+   "model.language_model.layers.56.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.56.linear_attn.in_proj_z": 6,
+   "model.language_model.layers.56.linear_attn.out_proj": 6,
+   "model.language_model.layers.56.mlp.down_proj": 6,
+   "model.language_model.layers.56.mlp.gate_proj": 5,
+   "model.language_model.layers.56.mlp.up_proj": 5,
+   "model.language_model.layers.57.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.57.linear_attn.in_proj_z": 6,
+   "model.language_model.layers.57.linear_attn.out_proj": 6,
+   "model.language_model.layers.57.mlp.down_proj": 6,
+   "model.language_model.layers.57.mlp.gate_proj": 5,
+   "model.language_model.layers.57.mlp.up_proj": 5,
+   "model.language_model.layers.58.linear_attn.in_proj_qkv": 6,
+   "model.language_model.layers.58.linear_attn.in_proj_z": 6,
+   "model.language_model.layers.58.linear_attn.out_proj": 6,
+   "model.language_model.layers.58.mlp.down_proj": 6,
+   "model.language_model.layers.58.mlp.gate_proj": 5,
+   "model.language_model.layers.58.mlp.up_proj": 5,
+   "model.language_model.layers.59.mlp.down_proj": 6,
+   "model.language_model.layers.59.mlp.gate_proj": 5,
+   "model.language_model.layers.59.mlp.up_proj": 5,
+   "model.language_model.layers.59.self_attn.k_proj": 7,
+   "model.language_model.layers.59.self_attn.o_proj": 6,
+   "model.language_model.layers.59.self_attn.q_proj": 5,
+   "model.language_model.layers.59.self_attn.v_proj": 7,
+   "model.language_model.layers.6.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.6.linear_attn.in_proj_z": 5,
+   "model.language_model.layers.6.linear_attn.out_proj": 6,
+   "model.language_model.layers.6.mlp.down_proj": 6,
+   "model.language_model.layers.6.mlp.gate_proj": 6,
+   "model.language_model.layers.6.mlp.up_proj": 6,
+   "model.language_model.layers.60.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.60.linear_attn.in_proj_z": 6,
+   "model.language_model.layers.60.linear_attn.out_proj": 6,
+   "model.language_model.layers.60.mlp.down_proj": 6,
+   "model.language_model.layers.60.mlp.gate_proj": 5,
+   "model.language_model.layers.60.mlp.up_proj": 5,
+   "model.language_model.layers.61.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.61.linear_attn.in_proj_z": 6,
+   "model.language_model.layers.61.linear_attn.out_proj": 6,
+   "model.language_model.layers.61.mlp.down_proj": 5,
+   "model.language_model.layers.61.mlp.gate_proj": 5,
+   "model.language_model.layers.61.mlp.up_proj": 5,
+   "model.language_model.layers.62.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.62.linear_attn.in_proj_z": 5,
+   "model.language_model.layers.62.linear_attn.out_proj": 6,
+   "model.language_model.layers.62.mlp.down_proj": 5,
+   "model.language_model.layers.62.mlp.gate_proj": 5,
+   "model.language_model.layers.62.mlp.up_proj": 5,
+   "model.language_model.layers.63.mlp.down_proj": 4,
+   "model.language_model.layers.63.mlp.gate_proj": 4,
+   "model.language_model.layers.63.mlp.up_proj": 4,
+   "model.language_model.layers.63.self_attn.k_proj": 7,
+   "model.language_model.layers.63.self_attn.o_proj": 5,
+   "model.language_model.layers.63.self_attn.q_proj": 5,
+   "model.language_model.layers.63.self_attn.v_proj": 6,
+   "model.language_model.layers.7.mlp.down_proj": 6,
+   "model.language_model.layers.7.mlp.gate_proj": 6,
+   "model.language_model.layers.7.mlp.up_proj": 6,
+   "model.language_model.layers.7.self_attn.k_proj": 6,
+   "model.language_model.layers.7.self_attn.o_proj": 6,
+   "model.language_model.layers.7.self_attn.q_proj": 4,
+   "model.language_model.layers.7.self_attn.v_proj": 7,
+   "model.language_model.layers.8.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.8.linear_attn.in_proj_z": 6,
+   "model.language_model.layers.8.linear_attn.out_proj": 7,
+   "model.language_model.layers.8.mlp.down_proj": 6,
+   "model.language_model.layers.8.mlp.gate_proj": 6,
+   "model.language_model.layers.8.mlp.up_proj": 6,
+   "model.language_model.layers.9.linear_attn.in_proj_qkv": 5,
+   "model.language_model.layers.9.linear_attn.in_proj_z": 6,
+   "model.language_model.layers.9.linear_attn.out_proj": 6,
+   "model.language_model.layers.9.mlp.down_proj": 6,
+   "model.language_model.layers.9.mlp.gate_proj": 6,
+   "model.language_model.layers.9.mlp.up_proj": 6,
+   "mtp.fc": 4,
+   "mtp.layers.0.mlp.down_proj": 6,
+   "mtp.layers.0.mlp.gate_proj": 5,
+   "mtp.layers.0.mlp.up_proj": 5,
+   "mtp.layers.0.self_attn.k_proj": 6,
+   "mtp.layers.0.self_attn.o_proj": 6,
+   "mtp.layers.0.self_attn.q_proj": 6,
+   "mtp.layers.0.self_attn.v_proj": 6
+  },
+  "realised_matches_solved": true
+ },
+ "bytes": {
+  "convention": "per-role serialized bytes, embeddings and vision separate, never called VRAM (receipts/hydrated-quantization-manifest.json convention)",
+  "per_role": {
+   "embed_tokens": {
+    "predicted": 2542796800,
+    "realised": 2542796800,
+    "hydrated": 2542796800,
+    "realised_minus_predicted": 0,
+    "realised_minus_hydrated": 0
+   },
+   "full_attention": {
+    "predicted": 1112162560,
+    "realised": 1112162560,
+    "hydrated": 1259618560,
+    "realised_minus_predicted": 0,
+    "realised_minus_hydrated": -147456000
+   },
+   "linear_attention": {
+    "predicted": 3897808448,
+    "realised": 3897808448,
+    "hydrated": 4207138368,
+    "realised_minus_predicted": 0,
+    "realised_minus_hydrated": -309329920
+   },
+   "lm_head": {
+    "predicted": 954055684,
+    "realised": 954055684,
+    "hydrated": 954055684,
+    "realised_minus_predicted": 0,
+    "realised_minus_hydrated": 0
+   },
+   "mlp_down_proj": {
+    "predicted": 4225368320,
+    "realised": 4225368320,
+    "hydrated": 4281073920,
+    "realised_minus_predicted": 0,
+    "realised_minus_hydrated": -55705600
+   },
+   "mlp_gate_proj": {
+    "predicted": 3690594560,
+    "realised": 3690594560,
+    "hydrated": 3568042240,
+    "realised_minus_predicted": 0,
+    "realised_minus_hydrated": 122552320
+   },
+   "mlp_up_proj": {
+    "predicted": 3957981440,
+    "realised": 3957981440,
+    "hydrated": 3568042240,
+    "realised_minus_predicted": 0,
+    "realised_minus_hydrated": 389939200
+   },
+   "mtp_draft": {
+    "predicted": 283415584,
+    "realised": 283415584,
+    "hydrated": 283415584,
+    "realised_minus_predicted": 0,
+    "realised_minus_hydrated": 0
+   },
+   "norms_and_small": {
+    "predicted": 1320960,
+    "realised": 1320960,
+    "hydrated": 1320960,
+    "realised_minus_predicted": 0,
+    "realised_minus_hydrated": 0
+   },
+   "vision_tower": {
+    "predicted": 921460192,
+    "realised": 921460192,
+    "hydrated": 921460192,
+    "realised_minus_predicted": 0,
+    "realised_minus_hydrated": 0
+   }
+  },
+  "solved_total": 21586964548,
+  "solved_gib": 20.10442740097642,
+  "hydrated_total": 21586964548,
+  "hydrated_gib": 20.10442740097642,
+  "solved_minus_hydrated": 0,
+  "predicted_total": 21586964548,
+  "realised_minus_predicted_total": 0,
+  "immutable_payload_bytes": 21610916627,
+  "immutable_payload_files": 16,
+  "hydrated_immutable_payload_bytes": 21610916123
+ },
+ "fidelity": {
+  "solved": {
+   "token_mean_kld": 0.003066179635178366,
+   "token_median_kld": 0.0013417954460521742,
+   "p95_kld": 0.009458839226314804,
+   "p99_kld": 0.029924389245473516,
+   "p999_kld": 0.13750555427679295,
+   "max_kld": 5.115299983999421,
+   "top1_agreement": 0.9750606833170493,
+   "mean_jsd_bits": 0.0010908037481383982,
+   "context_macro_mean_kld": 0.003066179635178366,
+   "context_bootstrap": {
+    "mean": 0.003066179635178366,
+    "ci95_low": 0.0028858435552754514,
+    "ci95_high": 0.0032791093880426775,
+    "clusters": 330,
+    "samples": 10000
+   }
+  },
+  "hydrated_rematched": {
+   "token_mean_kld": 0.002699883159684943,
+   "token_median_kld": 0.0010904027048752596,
+   "p999_kld": 0.13126287966486647,
+   "max_kld": 3.7348466556786946,
+   "top1_agreement": 0.9779689026624329,
+   "context_macro_mean_kld": 0.002699883159684943,
+   "context_bootstrap": {
+    "mean": 0.002699883159684943,
+    "ci95_low": 0.0025165341342532257,
+    "ci95_high": 0.0029118291286379205,
+    "clusters": 330,
+    "samples": 10000
+   }
+  },
+  "hydrated_published": {
+   "token_mean_kld": 0.002699883159684943,
+   "token_median_kld": 0.0010904027048752596,
+   "p999_kld": 0.13126287966486647,
+   "max_kld": 3.7348466556786946,
+   "top1_agreement": 0.9779689026624329,
+   "context_macro_mean_kld": 0.002699883159684943,
+   "context_bootstrap": {
+    "mean": 0.002699883159684943,
+    "ci95_low": 0.0025165341342532257,
+    "ci95_high": 0.0029118291286379205,
+    "clusters": 330,
+    "samples": 10000
+   }
+  },
+  "paired_hydrated_rematched_minus_solved": {
+   "schema": "qwen38-fidelity-paired/2",
+   "suite_token_sha256": "caef8a4628d6c07c162100895096f890cdf9cafc8e4c48b3d66035d737ee7cf7",
+   "filter": "all",
+   "head_sha256": "25a30fd5f826da0abc4efc4cc71def9f02bcb8085f7175eee284d221dee4cfff",
+   "a": {
+    "report": "/work/kld6/reports/report-hyd-rematch.json",
+    "label": "hydrated-rematched",
+    "mean": 0.002699883159684943
+   },
+   "b": {
+    "report": "/work/kld6/reports/report-eda.json",
+    "label": "error-driven",
+    "mean": 0.003066179635178366
+   },
+   "contexts": 512,
+   "difference_a_minus_b": -0.0003662964754934233,
+   "median_difference": -0.00036917004306995043,
+   "bootstrap_difference": {
+    "mean": -0.0003662964754934233,
+    "ci95_low": -0.0003977921395768962,
+    "ci95_high": -0.00033476706949517353,
+    "clusters": 330,
+    "samples": 10000
+   },
+   "a_wins": 470,
+   "b_wins": 42,
+   "largest_a_advantage": [
+    [
+     402,
+     -0.0027999602338777156
+    ],
+    [
+     31,
+     -0.0022996425262849086
+    ],
+    [
+     120,
+     -0.0019004245224763482
+    ],
+    [
+     244,
+     -0.0014274947170912454
+    ],
+    [
+     33,
+     -0.001381033040513107
+    ],
+    [
+     468,
+     -0.0012630486876414257
+    ],
+    [
+     261,
+     -0.00119636563759781
+    ],
+    [
+     219,
+     -0.0011485202643075482
+    ],
+    [
+     251,
+     -0.0010592081262303108
+    ],
+    [
+     451,
+     -0.001022944539565179
+    ]
+   ],
+   "largest_b_advantage": [
+    [
+     503,
+     0.0013969646049561153
+    ],
+    [
+     253,
+     0.0012326497984903764
+    ],
+    [
+     411,
+     0.0009700939248857461
+    ],
+    [
+     341,
+     0.0007858462798000284
+    ],
+    [
+     52,
+     0.0006034310903627518
+    ],
+    [
+     204,
+     0.0005075514543737532
+    ],
+    [
+     464,
+     0.0004919572016745342
+    ],
+    [
+     438,
+     0.0004359448996257946
+    ],
+    [
+     69,
+     0.00043420793110905426
+    ],
+    [
+     256,
+     0.00041309335747361474
+    ]
+   ]
+  },
+  "paired_hydrated_published_minus_solved": {
+   "schema": "qwen38-fidelity-paired/2",
+   "suite_token_sha256": "caef8a4628d6c07c162100895096f890cdf9cafc8e4c48b3d66035d737ee7cf7",
+   "filter": "all",
+   "head_sha256": "25a30fd5f826da0abc4efc4cc71def9f02bcb8085f7175eee284d221dee4cfff",
+   "a": {
+    "report": "/work/kld5/reports/shard-0000/report-hyd.json",
+    "label": "hydrated-published",
+    "mean": 0.002699883159684943
+   },
+   "b": {
+    "report": "/work/kld6/reports/report-eda.json",
+    "label": "error-driven",
+    "mean": 0.003066179635178366
+   },
+   "contexts": 512,
+   "difference_a_minus_b": -0.0003662964754934233,
+   "median_difference": -0.00036917004306995043,
+   "bootstrap_difference": {
+    "mean": -0.0003662964754934233,
+    "ci95_low": -0.0003977921395768962,
+    "ci95_high": -0.00033476706949517353,
+    "clusters": 330,
+    "samples": 10000
+   },
+   "a_wins": 470,
+   "b_wins": 42,
+   "largest_a_advantage": [
+    [
+     402,
+     -0.0027999602338777156
+    ],
+    [
+     31,
+     -0.0022996425262849086
+    ],
+    [
+     120,
+     -0.0019004245224763482
+    ],
+    [
+     244,
+     -0.0014274947170912454
+    ],
+    [
+     33,
+     -0.001381033040513107
+    ],
+    [
+     468,
+     -0.0012630486876414257
+    ],
+    [
+     261,
+     -0.00119636563759781
+    ],
+    [
+     219,
+     -0.0011485202643075482
+    ],
+    [
+     251,
+     -0.0010592081262303108
+    ],
+    [
+     451,
+     -0.001022944539565179
+    ]
+   ],
+   "largest_b_advantage": [
+    [
+     503,
+     0.0013969646049561153
+    ],
+    [
+     253,
+     0.0012326497984903764
+    ],
+    [
+     411,
+     0.0009700939248857461
+    ],
+    [
+     341,
+     0.0007858462798000284
+    ],
+    [
+     52,
+     0.0006034310903627518
+    ],
+    [
+     204,
+     0.0005075514543737532
+    ],
+    [
+     464,
+     0.0004919572016745342
+    ],
+    [
+     438,
+     0.0004359448996257946
+    ],
+    [
+     69,
+     0.00043420793110905426
+    ],
+    [
+     256,
+     0.00041309335747361474
+    ]
+   ]
+  },
+  "paired_reference_and_harness_delta": {
+   "schema": "qwen38-fidelity-paired/2",
+   "suite_token_sha256": "caef8a4628d6c07c162100895096f890cdf9cafc8e4c48b3d66035d737ee7cf7",
+   "filter": "all",
+   "head_sha256": "25a30fd5f826da0abc4efc4cc71def9f02bcb8085f7175eee284d221dee4cfff",
+   "a": {
+    "report": "/work/kld5/reports/shard-0000/report-hyd.json",
+    "label": "hydrated-published",
+    "mean": 0.002699883159684943
+   },
+   "b": {
+    "report": "/work/kld6/reports/report-hyd-rematch.json",
+    "label": "hydrated-rematched",
+    "mean": 0.002699883159684943
+   },
+   "contexts": 512,
+   "difference_a_minus_b": 0.0,
+   "median_difference": 0.0,
+   "bootstrap_difference": {
+    "mean": 0.0,
+    "ci95_low": 0.0,
+    "ci95_high": 0.0,
+    "clusters": 330,
+    "samples": 10000
+   },
+   "a_wins": 0,
+   "b_wins": 512,
+   "largest_a_advantage": [
+    [
+     0,
+     0.0
+    ],
+    [
+     1,
+     0.0
+    ],
+    [
+     2,
+     0.0
+    ],
+    [
+     3,
+     0.0
+    ],
+    [
+     4,
+     0.0
+    ],
+    [
+     5,
+     0.0
+    ],
+    [
+     6,
+     0.0
+    ],
+    [
+     7,
+     0.0
+    ],
+    [
+     8,
+     0.0
+    ],
+    [
+     9,
+     0.0
+    ]
+   ],
+   "largest_b_advantage": [
+    [
+     0,
+     0.0
+    ],
+    [
+     1,
+     0.0
+    ],
+    [
+     2,
+     0.0
+    ],
+    [
+     3,
+     0.0
+    ],
+    [
+     4,
+     0.0
+    ],
+    [
+     5,
+     0.0
+    ],
+    [
+     6,
+     0.0
+    ],
+    [
+     7,
+     0.0
+    ],
+    [
+     8,
+     0.0
+    ],
+    [
+     9,
+     0.0
+    ]
+   ]
+  },
+  "published_shard0_comparators": {
+   "hydrated": 0.0027,
+   "online_k5k6": 0.003141,
+   "context": 0.003409,
+   "k4": 0.010345,
+   "official_fp8": 0.005197,
+   "gguf_q6_k": 0.002035,
+   "note": "the GGUF number carries a cross-engine floor of 0.000507 (receipts/gguf-report-engine-floor.json); the EXL3 numbers do not"
+  }
+ },
+ "surrogate_calibration": {
+  "receipt": {
+   "path": "receipts/error-driven-surrogate-calibration.json",
+   "sha256": "257aa01eea35319ee919515420d0538a4d364bbdce15a17aa663f532065e407f",
+   "mtime_utc": "2026-08-16T04:44:21Z",
+   "bytes": 14087
+  },
+  "summary": {
+   "calibrated_surrogate_found": false,
+   "best_sign_correct_rule": "sqrt_energy",
+   "best_scale_spread_ratio": 2.5101136225793907,
+   "rules_that_get_the_sign_wrong": [
+    "rel",
+    "numel"
+   ],
+   "plain": "No rule is calibrated. The rule the plan selected, `rel`, changes the sign of its implied scale across the four pairs and predicts -0.000251 for the reallocation against a measured +0.000366 \u2014 which is exactly why the error-driven build lost. `numel` also gets that sign wrong. `abs` and `sqrt_energy` get the sign right on all four pairs, but out of sample they are off by up to 4.4x and 2.5x respectively, and their implied scale spreads 13.3x and 2.5x across the pairs. A rule that is a factor of two-and-a-half uncertain cannot decide a 1e-4 fidelity claim, so there is no surrogate here good enough to authorise a conversion on prediction alone. `sqrt_energy` is the least-bad and is the pre-registrable candidate for a next attempt; its selection must be validated on a BETWEEN-role reallocation delta, which is the test the rank-9 rule lacked."
+  }
+ },
+ "toolchain_traps": {
+  "two_exllamav3_generations": "the image bundles exllamav3 0.0.43 at /opt/exllamav3-python/exllamav3, whose modules/attention_fn/flash_attn_2.py imports flash_attn unguarded, so importing THAT package root fails with ModuleNotFoundError. Every conversion in this project instead puts /var/tmp/work/exllamav3 (1.4.2 at 5f3c537) first on sys.path, where the same import is wrapped in try/except and the built-in Triton attention kernels serve instead. flash-attn is not a conversion dependency; importing the right generation is.",
+  "encoder_source_asymmetry": "ggrun.sh sets VLLM_EXL3_ENCODER_SOURCE=/opt/exllamav3-python/exllamav3, so the runtime online-encoding overlay reads 0.0.43 while every offline conversion runs 1.4.2. Two generations of the same quantizer are live on this box for two different jobs; anything comparing online against offline encoding is comparing across that split as well.",
+  "marisa_trie": "absent from the pinned rootfs venv and imported by both compile_model and util/add_quant_config.py. It cost this ticket two late-stage failures with all quantization already done. ImmutableImage has since published a conversion-only tag localhost/vllm:gg-r34-convert with the wheel installed; the workaround used here was /var/tmp/work/kld6/run_shimmed.py, a sorted prefix scan over the ~1,200 tensor names in place of the trie, sorted so that shard packing cannot differ between runs."
+ },
+ "prediction_vs_measurement": {
+  "predicted_kld_delta_solved_minus_hydrated": -0.0002108278328085885,
+  "measured_kld_delta_solved_minus_hydrated_rematched": 0.0003662964754934232,
+  "measured_minus_predicted": 0.0005771243083020117,
+  "sign_agreement": false,
+  "ladder_replay": {
+   "modules_compared": 409,
+   "ratio_realised_over_ladder_predicted": {
+    "p05": 0.9918176465951121,
+    "median": 0.9996505264368986,
+    "p95": 1.0081923525636327,
+    "mean": 0.9995550194968876
+   },
+   "by_role_mean_ratio": {
+    "full_attention": 1.0003700597685814,
+    "linear_attention": 0.9990171113973817,
+    "lm_head": 0.9980988901652424,
+    "mlp_down_proj": 0.9998922984444218,
+    "mlp_gate_proj": 0.9995053385803533,
+    "mlp_up_proj": 0.9996727245834113,
+    "mtp_draft": 0.9996566343406965
+   },
+   "meaning": "the ladder was measured with hydrated propagation; converting with the solved widths changes every layer's input state, so a ratio above 1 is the part of the error the layer-local proxy cannot see",
+   "per_module": {
+    "model.language_model.layers.0.mlp.up_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.00024024570547131932,
+     "realised": 0.00024,
+     "ratio_realised_over_predicted": 0.9989772742416466
+    },
+    "model.language_model.layers.0.mlp.gate_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.00023317916392948067,
+     "realised": 0.000233,
+     "ratio_realised_over_predicted": 0.9992316469170682
+    },
+    "model.language_model.layers.0.linear_attn.in_proj_qkv": {
+     "bits": 5,
+     "ladder_predicted": 0.00011298763652157318,
+     "realised": 0.000111,
+     "ratio_realised_over_predicted": 0.982408371546088
+    },
+    "model.language_model.layers.0.linear_attn.in_proj_z": {
+     "bits": 6,
+     "ladder_predicted": 4.4384292158738446e-05,
+     "realised": 4.4e-05,
+     "ratio_realised_over_predicted": 0.9913417080672585
+    },
+    "model.language_model.layers.0.linear_attn.out_proj": {
+     "bits": 5,
+     "ladder_predicted": 7.411140847492769e-05,
+     "realised": 7.4e-05,
+     "ratio_realised_over_predicted": 0.9984967432515416
+    },
+    "model.language_model.layers.0.mlp.down_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.0002803692184699949,
+     "realised": 0.000281,
+     "ratio_realised_over_predicted": 1.0022498244759084
+    },
+    "model.language_model.layers.1.linear_attn.in_proj_qkv": {
+     "bits": 5,
+     "ladder_predicted": 9.763039280683941e-05,
+     "realised": 9.8e-05,
+     "ratio_realised_over_predicted": 1.003785780047939
+    },
+    "model.language_model.layers.1.linear_attn.in_proj_z": {
+     "bits": 5,
+     "ladder_predicted": 9.81911352371596e-05,
+     "realised": 9.8e-05,
+     "ratio_realised_over_predicted": 0.9980534369350353
+    },
+    "model.language_model.layers.1.mlp.up_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.0003565157100604819,
+     "realised": 0.000356,
+     "ratio_realised_over_predicted": 0.9985534717098598
+    },
+    "model.language_model.layers.1.mlp.gate_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.0003152727068944947,
+     "realised": 0.000315,
+     "ratio_realised_over_predicted": 0.9991350126778149
+    },
+    "model.language_model.layers.1.linear_attn.out_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.0001320691665957107,
+     "realised": 0.000132,
+     "ratio_realised_over_predicted": 0.9994762850596125
+    },
+    "model.language_model.layers.1.mlp.down_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.0001141918941859354,
+     "realised": 0.000114,
+     "ratio_realised_over_predicted": 0.9983195463451816
+    },
+    "model.language_model.layers.2.linear_attn.in_proj_qkv": {
+     "bits": 5,
+     "ladder_predicted": 0.00012736393729450044,
+     "realised": 0.000127,
+     "ratio_realised_over_predicted": 0.9971425404849182
+    },
+    "model.language_model.layers.2.linear_attn.in_proj_z": {
+     "bits": 5,
+     "ladder_predicted": 0.00012467090194957548,
+     "realised": 0.000124,
+     "ratio_realised_over_predicted": 0.9946186163805342
+    },
+    "model.language_model.layers.2.mlp.up_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00014538986814651553,
+     "realised": 0.000145,
+     "ratio_realised_over_predicted": 0.9973184641303708
+    },
+    "model.language_model.layers.2.mlp.gate_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00013028068791541203,
+     "realised": 0.00013,
+     "ratio_realised_over_predicted": 0.9978455140212777
+    },
+    "model.language_model.layers.2.linear_attn.out_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00012647200217996696,
+     "realised": 0.000126,
+     "ratio_realised_over_predicted": 0.9962679314644255
+    },
+    "model.language_model.layers.2.mlp.down_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00011940976664783779,
+     "realised": 0.000119,
+     "ratio_realised_over_predicted": 0.9965683992244432
+    },
+    "model.language_model.layers.3.self_attn.k_proj": {
+     "bits": 6,
+     "ladder_predicted": 2.3219047144200828e-05,
+     "realised": 2.3e-05,
+     "ratio_realised_over_predicted": 0.9905660579936616
+    },
+    "model.language_model.layers.3.self_attn.v_proj": {
+     "bits": 6,
+     "ladder_predicted": 2.4253928150205713e-05,
+     "realised": 2.4e-05,
+     "ratio_realised_over_predicted": 0.9895304319929901
+    },
+    "model.language_model.layers.3.mlp.up_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00016365683299116764,
+     "realised": 0.000163,
+     "ratio_realised_over_predicted": 0.9959865226574249
+    },
+    "model.language_model.layers.3.mlp.gate_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00013729450994223556,
+     "realised": 0.000137,
+     "ratio_realised_over_predicted": 0.9978549037222284
+    },
+    "model.language_model.layers.3.self_attn.q_proj": {
+     "bits": 4,
+     "ladder_predicted": 0.0001822143844472051,
+     "realised": 0.000182,
+     "ratio_realised_over_predicted": 0.998823449378843
+    },
+    "model.language_model.layers.3.self_attn.o_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.000151410754510848,
+     "realised": 0.000151,
+     "ratio_realised_over_predicted": 0.9972871510205799
+    },
+    "model.language_model.layers.3.mlp.down_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00016605803289243654,
+     "realised": 0.000166,
+     "ratio_realised_over_predicted": 0.9996505264368986
+    },
+    "model.language_model.layers.4.mlp.up_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00017645537960033375,
+     "realised": 0.000175,
+     "ratio_realised_over_predicted": 0.991752138112025
+    },
+    "model.language_model.layers.4.mlp.gate_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00013531967413475676,
+     "realised": 0.000135,
+     "ratio_realised_over_predicted": 0.9976376374182041
+    },
+    "model.language_model.layers.4.linear_attn.in_proj_qkv": {
+     "bits": 5,
+     "ladder_predicted": 0.00024071388301293963,
+     "realised": 0.000241,
+     "ratio_realised_over_predicted": 1.001188618551947
+    },
+    "model.language_model.layers.4.linear_attn.in_proj_z": {
+     "bits": 6,
+     "ladder_predicted": 6.137386655410667e-05,
+     "realised": 6.1e-05,
+     "ratio_realised_over_predicted": 0.9939083754194129
+    },
+    "model.language_model.layers.4.linear_attn.out_proj": {
+     "bits": 7,
+     "ladder_predicted": 4.4380533012021664e-05,
+     "realised": 4.4e-05,
+     "ratio_realised_over_predicted": 0.9914256772914695
+    },
+    "model.language_model.layers.4.mlp.down_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00018140288508631223,
+     "realised": 0.000181,
+     "ratio_realised_over_predicted": 0.9977790591030538
+    },
+    "model.language_model.layers.5.mlp.up_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00018061179860465401,
+     "realised": 0.000181,
+     "ratio_realised_over_predicted": 1.002149368968944
+    },
+    "model.language_model.layers.5.mlp.gate_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.0001481297301531078,
+     "realised": 0.000148,
+     "ratio_realised_over_predicted": 0.9991242125873467
+    },
+    "model.language_model.layers.5.linear_attn.in_proj_qkv": {
+     "bits": 5,
+     "ladder_predicted": 0.00020329126287989846,
+     "realised": 0.000203,
+     "ratio_realised_over_predicted": 0.9985672631682625
+    },
+    "model.language_model.layers.5.linear_attn.in_proj_z": {
+     "bits": 6,
+     "ladder_predicted": 4.811059274762954e-05,
+     "realised": 4.8e-05,
+     "ratio_realised_over_predicted": 0.997701280709434
+    },
+    "model.language_model.layers.5.linear_attn.out_proj": {
+     "bits": 7,
+     "ladder_predicted": 4.4255035892443744e-05,
+     "realised": 4.4e-05,
+     "ratio_realised_over_predicted": 0.9942371328527768
+    },
+    "model.language_model.layers.5.mlp.down_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00018067937625496937,
+     "realised": 0.000181,
+     "ratio_realised_over_predicted": 1.0017745453392433
+    },
+    "model.language_model.layers.6.linear_attn.in_proj_qkv": {
+     "bits": 5,
+     "ladder_predicted": 0.00015411296933328294,
+     "realised": 0.000154,
+     "ratio_realised_over_predicted": 0.999266970626991
+    },
+    "model.language_model.layers.6.linear_attn.in_proj_z": {
+     "bits": 5,
+     "ladder_predicted": 0.00013404796658169512,
+     "realised": 0.000134,
+     "ratio_realised_over_predicted": 0.9996421685243104
+    },
+    "model.language_model.layers.6.mlp.up_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00013659829756391872,
+     "realised": 0.000137,
+     "ratio_realised_over_predicted": 1.0029407572659776
+    },
+    "model.language_model.layers.6.mlp.gate_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00011453054789774709,
+     "realised": 0.000114,
+     "ratio_realised_over_predicted": 0.9953676297940987
+    },
+    "model.language_model.layers.6.linear_attn.out_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.0001396034043754934,
+     "realised": 0.00014,
+     "ratio_realised_over_predicted": 1.0028408735895857
+    },
+    "model.language_model.layers.6.mlp.down_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.0001439626047768672,
+     "realised": 0.000144,
+     "ratio_realised_over_predicted": 1.0002597565054534
+    },
+    "model.language_model.layers.7.mlp.up_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00018061582437536817,
+     "realised": 0.00018,
+     "ratio_realised_over_predicted": 0.9965904184890892
+    },
+    "model.language_model.layers.7.mlp.gate_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.0001422417575638894,
+     "realised": 0.000142,
+     "ratio_realised_over_predicted": 0.998300375585694
+    },
+    "model.language_model.layers.7.self_attn.q_proj": {
+     "bits": 4,
+     "ladder_predicted": 0.00019492909064914565,
+     "realised": 0.000195,
+     "ratio_realised_over_predicted": 1.0003637699771655
+    },
+    "model.language_model.layers.7.self_attn.k_proj": {
+     "bits": 6,
+     "ladder_predicted": 2.3673773254945665e-05,
+     "realised": 2.4e-05,
+     "ratio_realised_over_predicted": 1.0137800908009535
+    },
+    "model.language_model.layers.7.self_attn.v_proj": {
+     "bits": 7,
+     "ladder_predicted": 7.133393476600036e-06,
+     "realised": 7e-06,
+     "ratio_realised_over_predicted": 0.9813001375800154
+    },
+    "model.language_model.layers.7.self_attn.o_proj": {
+     "bits": 6,
+     "ladder_predicted": 7.180919314016993e-05,
+     "realised": 7.2e-05,
+     "ratio_realised_over_predicted": 1.0026571369414723
+    },
+    "model.language_model.layers.7.mlp.down_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00018205151969369294,
+     "realised": 0.000182,
+     "ratio_realised_over_predicted": 0.9997170048688436
+    },
+    "model.language_model.layers.8.mlp.up_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.000181876977120289,
+     "realised": 0.000181,
+     "ratio_realised_over_predicted": 0.9951781850887648
+    },
+    "model.language_model.layers.8.mlp.gate_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00015015358702975454,
+     "realised": 0.00015,
+     "ratio_realised_over_predicted": 0.9989771337948515
+    },
+    "model.language_model.layers.8.linear_attn.in_proj_qkv": {
+     "bits": 5,
+     "ladder_predicted": 0.00020402251885704963,
+     "realised": 0.000204,
+     "ratio_realised_over_predicted": 0.9998896256296815
+    },
+    "model.language_model.layers.8.linear_attn.in_proj_z": {
+     "bits": 6,
+     "ladder_predicted": 5.1537599197065823e-05,
+     "realised": 5.2e-05,
+     "ratio_realised_over_predicted": 1.00897210599908
+    },
+    "model.language_model.layers.8.linear_attn.out_proj": {
+     "bits": 7,
+     "ladder_predicted": 4.198984089010495e-05,
+     "realised": 4.2e-05,
+     "ratio_realised_over_predicted": 1.000241942090746
+    },
+    "model.language_model.layers.8.mlp.down_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00018012206954386303,
+     "realised": 0.00018,
+     "ratio_realised_over_predicted": 0.9993222954623376
+    },
+    "model.language_model.layers.9.mlp.up_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00017402814488776965,
+     "realised": 0.000174,
+     "ratio_realised_over_predicted": 0.9998382739309909
+    },
+    "model.language_model.layers.9.mlp.gate_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00014563378823417703,
+     "realised": 0.000146,
+     "ratio_realised_over_predicted": 1.0025146071544475
+    },
+    "model.language_model.layers.9.linear_attn.in_proj_qkv": {
+     "bits": 5,
+     "ladder_predicted": 0.0002012366049049276,
+     "realised": 0.000201,
+     "ratio_realised_over_predicted": 0.9988242451961492
+    },
+    "model.language_model.layers.9.linear_attn.in_proj_z": {
+     "bits": 6,
+     "ladder_predicted": 4.564825900937626e-05,
+     "realised": 4.6e-05,
+     "ratio_realised_over_predicted": 1.007705463434027
+    },
+    "model.language_model.layers.9.linear_attn.out_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.0001292058477984039,
+     "realised": 0.000129,
+     "ratio_realised_over_predicted": 0.9984068228960884
+    },
+    "model.language_model.layers.9.mlp.down_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.0001774443849761136,
+     "realised": 0.000177,
+     "ratio_realised_over_predicted": 0.9974956379928651
+    },
+    "model.language_model.layers.10.mlp.up_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00015359873897577807,
+     "realised": 0.000155,
+     "ratio_realised_over_predicted": 1.009122868023304
+    },
+    "model.language_model.layers.10.mlp.gate_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00012971910268601175,
+     "realised": 0.00013,
+     "ratio_realised_over_predicted": 1.0021654275135419
+    },
+    "model.language_model.layers.10.linear_attn.in_proj_qkv": {
+     "bits": 5,
+     "ladder_predicted": 0.00019965814210870923,
+     "realised": 0.0002,
+     "ratio_realised_over_predicted": 1.0017122161294312
+    },
+    "model.language_model.layers.10.linear_attn.in_proj_z": {
+     "bits": 6,
+     "ladder_predicted": 4.423263604557269e-05,
+     "realised": 4.4e-05,
+     "ratio_realised_over_predicted": 0.9947406244264302
+    },
+    "model.language_model.layers.10.linear_attn.out_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00011712409274992173,
+     "realised": 0.000117,
+     "ratio_realised_over_predicted": 0.9989405019325385
+    },
+    "model.language_model.layers.10.mlp.down_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.0001547128712324899,
+     "realised": 0.000155,
+     "ratio_realised_over_predicted": 1.00185588157742
+    },
+    "model.language_model.layers.11.mlp.up_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.0001467866929268623,
+     "realised": 0.000147,
+     "ratio_realised_over_predicted": 1.0014531771844193
+    },
+    "model.language_model.layers.11.mlp.gate_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.0001185610521950467,
+     "realised": 0.000118,
+     "ratio_realised_over_predicted": 0.995267820378958
+    },
+    "model.language_model.layers.11.self_attn.q_proj": {
+     "bits": 4,
+     "ladder_predicted": 0.0002054302426464125,
+     "realised": 0.000206,
+     "ratio_realised_over_predicted": 1.0027734833306319
+    },
+    "model.language_model.layers.11.self_attn.k_proj": {
+     "bits": 6,
+     "ladder_predicted": 2.4853934731250156e-05,
+     "realised": 2.5e-05,
+     "ratio_realised_over_predicted": 1.0058769474664384
+    },
+    "model.language_model.layers.11.self_attn.v_proj": {
+     "bits": 7,
+     "ladder_predicted": 7.4937548486878855e-06,
+     "realised": 7e-06,
+     "ratio_realised_over_predicted": 0.9341111554010418
+    },
+    "model.language_model.layers.11.self_attn.o_proj": {
+     "bits": 6,
+     "ladder_predicted": 7.314331589495817e-05,
+     "realised": 7.3e-05,
+     "ratio_realised_over_predicted": 0.9980406152878823
+    },
+    "model.language_model.layers.11.mlp.down_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00017059598101718478,
+     "realised": 0.000171,
+     "ratio_realised_over_predicted": 1.0023682796066253
+    },
+    "model.language_model.layers.12.linear_attn.in_proj_qkv": {
+     "bits": 5,
+     "ladder_predicted": 0.00015795061925350296,
+     "realised": 0.000158,
+     "ratio_realised_over_predicted": 1.0003126340797548
+    },
+    "model.language_model.layers.12.linear_attn.in_proj_z": {
+     "bits": 5,
+     "ladder_predicted": 0.0001333388328235872,
+     "realised": 0.000133,
+     "ratio_realised_over_predicted": 0.9974588586354622
+    },
+    "model.language_model.layers.12.linear_attn.out_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00012783212920231986,
+     "realised": 0.000128,
+     "ratio_realised_over_predicted": 1.001313212873224
+    },
+    "model.language_model.layers.12.mlp.up_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00013958429803298273,
+     "realised": 0.00014,
+     "ratio_realised_over_predicted": 1.0029781427630136
+    },
+    "model.language_model.layers.12.mlp.gate_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.000419631856968236,
+     "realised": 0.000419,
+     "ratio_realised_over_predicted": 0.9984942588181911
+    },
+    "model.language_model.layers.12.mlp.down_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.0001731944864278516,
+     "realised": 0.000173,
+     "ratio_realised_over_predicted": 0.9988770633992865
+    },
+    "model.language_model.layers.13.linear_attn.in_proj_qkv": {
+     "bits": 5,
+     "ladder_predicted": 0.00016673101967255142,
+     "realised": 0.000167,
+     "ratio_realised_over_predicted": 1.0016132590562743
+    },
+    "model.language_model.layers.13.linear_attn.in_proj_z": {
+     "bits": 5,
+     "ladder_predicted": 0.0001335441137052407,
+     "realised": 0.000134,
+     "ratio_realised_over_predicted": 1.0034137505735785
+    },
+    "model.language_model.layers.13.linear_attn.out_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00014994895241002878,
+     "realised": 0.00015,
+     "ratio_realised_over_predicted": 1.000340433121744
+    },
+    "model.language_model.layers.13.mlp.up_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00013990855979850765,
+     "realised": 0.00014,
+     "ratio_realised_over_predicted": 1.0006535711726574
+    },
+    "model.language_model.layers.13.mlp.gate_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.0004201568798305987,
+     "realised": 0.00042,
+     "ratio_realised_over_predicted": 0.9996266160614532
+    },
+    "model.language_model.layers.13.mlp.down_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00017664421314806734,
+     "realised": 0.000177,
+     "ratio_realised_over_predicted": 1.0020141438295203
+    },
+    "model.language_model.layers.14.linear_attn.in_proj_qkv": {
+     "bits": 5,
+     "ladder_predicted": 0.00015356929480498947,
+     "realised": 0.000154,
+     "ratio_realised_over_predicted": 1.0028046309358747
+    },
+    "model.language_model.layers.14.linear_attn.in_proj_z": {
+     "bits": 5,
+     "ladder_predicted": 0.00012599145368249426,
+     "realised": 0.000126,
+     "ratio_realised_over_predicted": 1.0000678325176506
+    },
+    "model.language_model.layers.14.mlp.up_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00014404734181980424,
+     "realised": 0.000143,
+     "ratio_realised_over_predicted": 0.9927291832909044
+    },
+    "model.language_model.layers.14.mlp.gate_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00011475242794265949,
+     "realised": 0.000115,
+     "ratio_realised_over_predicted": 1.002157445047387
+    },
+    "model.language_model.layers.14.linear_attn.out_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00013212053885288747,
+     "realised": 0.000132,
+     "ratio_realised_over_predicted": 0.9990876599964394
+    },
+    "model.language_model.layers.14.mlp.down_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00017279397486213486,
+     "realised": 0.000173,
+     "ratio_realised_over_predicted": 1.0011923166767216
+    },
+    "model.language_model.layers.15.self_attn.k_proj": {
+     "bits": 7,
+     "ladder_predicted": 9.968917180343022e-06,
+     "realised": 1e-05,
+     "ratio_realised_over_predicted": 1.0031179735065177
+    },
+    "model.language_model.layers.15.self_attn.v_proj": {
+     "bits": 7,
+     "ladder_predicted": 9.821710424702135e-06,
+     "realised": 1e-05,
+     "ratio_realised_over_predicted": 1.0181525994545164
+    },
+    "model.language_model.layers.15.mlp.up_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.0001439932643954351,
+     "realised": 0.000144,
+     "ratio_realised_over_predicted": 1.0000467772197066
+    },
+    "model.language_model.layers.15.mlp.gate_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.0001171854736026116,
+     "realised": 0.000117,
+     "ratio_realised_over_predicted": 0.9984172645558393
+    },
+    "model.language_model.layers.15.self_attn.q_proj": {
+     "bits": 4,
+     "ladder_predicted": 0.00024797425149988107,
+     "realised": 0.000248,
+     "ratio_realised_over_predicted": 1.0001038353779201
+    },
+    "model.language_model.layers.15.self_attn.o_proj": {
+     "bits": 6,
+     "ladder_predicted": 7.871600320752658e-05,
+     "realised": 7.9e-05,
+     "ratio_realised_over_predicted": 1.003607866010736
+    },
+    "model.language_model.layers.15.mlp.down_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00018354719311776068,
+     "realised": 0.000184,
+     "ratio_realised_over_predicted": 1.0024669779719748
+    },
+    "model.language_model.layers.16.linear_attn.in_proj_qkv": {
+     "bits": 5,
+     "ladder_predicted": 0.0001787798704453495,
+     "realised": 0.000179,
+     "ratio_realised_over_predicted": 1.0012312882546683
+    },
+    "model.language_model.layers.16.linear_attn.in_proj_z": {
+     "bits": 5,
+     "ladder_predicted": 0.00014580537639113155,
+     "realised": 0.000146,
+     "ratio_realised_over_predicted": 1.0013348177802879
+    },
+    "model.language_model.layers.16.linear_attn.out_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00013802640858902424,
+     "realised": 0.000138,
+     "ratio_realised_over_predicted": 0.9998086700270318
+    },
+    "model.language_model.layers.16.mlp.up_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00013682003951589607,
+     "realised": 0.000138,
+     "ratio_realised_over_predicted": 1.0086241787992383
+    },
+    "model.language_model.layers.16.mlp.gate_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.00040610132771438457,
+     "realised": 0.000406,
+     "ratio_realised_over_predicted": 0.9997504866212704
+    },
+    "model.language_model.layers.16.mlp.down_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.0001687863504399826,
+     "realised": 0.000169,
+     "ratio_realised_over_predicted": 1.0012657988010314
+    },
+    "model.language_model.layers.17.linear_attn.in_proj_qkv": {
+     "bits": 5,
+     "ladder_predicted": 0.00017111563924900576,
+     "realised": 0.000171,
+     "ratio_realised_over_predicted": 0.9993242040907934
+    },
+    "model.language_model.layers.17.linear_attn.in_proj_z": {
+     "bits": 5,
+     "ladder_predicted": 0.0001358193606552662,
+     "realised": 0.000136,
+     "ratio_realised_over_predicted": 1.0013299970185567
+    },
+    "model.language_model.layers.17.linear_attn.out_proj": {
+     "bits": 7,
+     "ladder_predicted": 4.2761326506837056e-05,
+     "realised": 4.3e-05,
+     "ratio_realised_over_predicted": 1.0055815268762718
+    },
+    "model.language_model.layers.17.mlp.up_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00013798396953673808,
+     "realised": 0.000138,
+     "ratio_realised_over_predicted": 1.0001161762726187
+    },
+    "model.language_model.layers.17.mlp.gate_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.00039449468489337656,
+     "realised": 0.000394,
+     "ratio_realised_over_predicted": 0.9987460290028742
+    },
+    "model.language_model.layers.17.mlp.down_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00016125228378389614,
+     "realised": 0.000161,
+     "ratio_realised_over_predicted": 0.9984354715606122
+    },
+    "model.language_model.layers.18.linear_attn.in_proj_qkv": {
+     "bits": 5,
+     "ladder_predicted": 0.00016842379029380033,
+     "realised": 0.000168,
+     "ratio_realised_over_predicted": 0.9974837860312901
+    },
+    "model.language_model.layers.18.linear_attn.in_proj_z": {
+     "bits": 5,
+     "ladder_predicted": 0.00013670615089299683,
+     "realised": 0.000137,
+     "ratio_realised_over_predicted": 1.0021494944088738
+    },
+    "model.language_model.layers.18.linear_attn.out_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00011303101963691812,
+     "realised": 0.000113,
+     "ratio_realised_over_predicted": 0.9997255652738711
+    },
+    "model.language_model.layers.18.mlp.up_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00011491876023592624,
+     "realised": 0.000115,
+     "ratio_realised_over_predicted": 1.0007069321310722
+    },
+    "model.language_model.layers.18.mlp.gate_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.000334051230970815,
+     "realised": 0.000334,
+     "ratio_realised_over_predicted": 0.9998466373835351
+    },
+    "model.language_model.layers.18.mlp.down_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00012770164513899816,
+     "realised": 0.000128,
+     "ratio_realised_over_predicted": 1.0023363431275853
+    },
+    "model.language_model.layers.19.self_attn.k_proj": {
+     "bits": 7,
+     "ladder_predicted": 1.3622999081703484e-05,
+     "realised": 1.4e-05,
+     "ratio_realised_over_predicted": 1.027673856251143
+    },
+    "model.language_model.layers.19.self_attn.v_proj": {
+     "bits": 7,
+     "ladder_predicted": 1.366996552242706e-05,
+     "realised": 1.4e-05,
+     "ratio_realised_over_predicted": 1.0241430365739754
+    },
+    "model.language_model.layers.19.self_attn.q_proj": {
+     "bits": 4,
+     "ladder_predicted": 0.00030075966797207067,
+     "realised": 0.000301,
+     "ratio_realised_over_predicted": 1.0007990832997982
+    },
+    "model.language_model.layers.19.self_attn.o_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00011508391275917766,
+     "realised": 0.000115,
+     "ratio_realised_over_predicted": 0.9992708558723299
+    },
+    "model.language_model.layers.19.mlp.up_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00013583196735033468,
+     "realised": 0.000136,
+     "ratio_realised_over_predicted": 1.0012370626218785
+    },
+    "model.language_model.layers.19.mlp.gate_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.00034028759590025675,
+     "realised": 0.00034,
+     "ratio_realised_over_predicted": 0.9991548445969772
+    },
+    "model.language_model.layers.19.mlp.down_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00016303184681042983,
+     "realised": 0.000163,
+     "ratio_realised_over_predicted": 0.9998046589604861
+    },
+    "model.language_model.layers.20.linear_attn.in_proj_qkv": {
+     "bits": 5,
+     "ladder_predicted": 0.00015552817742498867,
+     "realised": 0.000155,
+     "ratio_realised_over_predicted": 0.9966039759885734
+    },
+    "model.language_model.layers.20.linear_attn.in_proj_z": {
+     "bits": 5,
+     "ladder_predicted": 0.00014218700683775158,
+     "realised": 0.000142,
+     "ratio_realised_over_predicted": 0.9986847825134616
+    },
+    "model.language_model.layers.20.linear_attn.out_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00014396088764056684,
+     "realised": 0.000144,
+     "ratio_realised_over_predicted": 1.00027168740117
+    },
+    "model.language_model.layers.20.mlp.up_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00015784008533636866,
+     "realised": 0.000157,
+     "ratio_realised_over_predicted": 0.994677617320224
+    },
+    "model.language_model.layers.20.mlp.gate_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.0003787437926059555,
+     "realised": 0.000379,
+     "ratio_realised_over_predicted": 1.0006764662525072
+    },
+    "model.language_model.layers.20.mlp.down_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00017293147273193793,
+     "realised": 0.000173,
+     "ratio_realised_over_predicted": 1.0003962683424799
+    },
+    "model.language_model.layers.21.linear_attn.in_proj_qkv": {
+     "bits": 5,
+     "ladder_predicted": 0.0002000943543690575,
+     "realised": 0.0002,
+     "ratio_realised_over_predicted": 0.9995284506184344
+    },
+    "model.language_model.layers.21.linear_attn.in_proj_z": {
+     "bits": 6,
+     "ladder_predicted": 4.346204586179972e-05,
+     "realised": 4.3e-05,
+     "ratio_realised_over_predicted": 0.9893689803910997
+    },
+    "model.language_model.layers.21.linear_attn.out_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.0001325635253444311,
+     "realised": 0.000133,
+     "ratio_realised_over_predicted": 1.0032925697655886
+    },
+    "model.language_model.layers.21.mlp.up_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00016710502327816376,
+     "realised": 0.000166,
+     "ratio_realised_over_predicted": 0.9933872527798022
+    },
+    "model.language_model.layers.21.mlp.gate_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.0004203321631526788,
+     "realised": 0.00042,
+     "ratio_realised_over_predicted": 0.9992097603233895
+    },
+    "model.language_model.layers.21.mlp.down_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00019576861286730657,
+     "realised": 0.000196,
+     "ratio_realised_over_predicted": 1.0011819419328993
+    },
+    "model.language_model.layers.22.linear_attn.in_proj_qkv": {
+     "bits": 5,
+     "ladder_predicted": 0.00024478152528649763,
+     "realised": 0.000244,
+     "ratio_realised_over_predicted": 0.9968072537926098
+    },
+    "model.language_model.layers.22.linear_attn.in_proj_z": {
+     "bits": 6,
+     "ladder_predicted": 4.927576792007986e-05,
+     "realised": 4.9e-05,
+     "ratio_realised_over_predicted": 0.9944035794525389
+    },
+    "model.language_model.layers.22.linear_attn.out_proj": {
+     "bits": 7,
+     "ladder_predicted": 4.5872308347027196e-05,
+     "realised": 4.6e-05,
+     "ratio_realised_over_predicted": 1.0027836326004527
+    },
+    "model.language_model.layers.22.mlp.up_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00016824695213686774,
+     "realised": 0.000168,
+     "ratio_realised_over_predicted": 0.9985322043951985
+    },
+    "model.language_model.layers.22.mlp.gate_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.0003326983796686689,
+     "realised": 0.000333,
+     "ratio_realised_over_predicted": 1.000906587917956
+    },
+    "model.language_model.layers.22.mlp.down_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00017749056525192365,
+     "realised": 0.000177,
+     "ratio_realised_over_predicted": 0.9972361051911274
+    },
+    "model.language_model.layers.23.self_attn.k_proj": {
+     "bits": 7,
+     "ladder_predicted": 1.719270839464236e-05,
+     "realised": 1.7e-05,
+     "ratio_realised_over_predicted": 0.9887912718450798
+    },
+    "model.language_model.layers.23.self_attn.v_proj": {
+     "bits": 7,
+     "ladder_predicted": 1.569810935563429e-05,
+     "realised": 1.6e-05,
+     "ratio_realised_over_predicted": 1.0192310193238243
+    },
+    "model.language_model.layers.23.self_attn.q_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.00010227831421847517,
+     "realised": 0.000102,
+     "ratio_realised_over_predicted": 0.9972788540698797
+    },
+    "model.language_model.layers.23.self_attn.o_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00012556630031925438,
+     "realised": 0.000126,
+     "ratio_realised_over_predicted": 1.0034539496635875
+    },
+    "model.language_model.layers.23.mlp.up_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.0001675341784290524,
+     "realised": 0.000168,
+     "ratio_realised_over_predicted": 1.0027804569510266
+    },
+    "model.language_model.layers.23.mlp.gate_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.00037364780320602394,
+     "realised": 0.000373,
+     "ratio_realised_over_predicted": 0.9982662732111214
+    },
+    "model.language_model.layers.23.mlp.down_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00017898082638230818,
+     "realised": 0.000179,
+     "ratio_realised_over_predicted": 1.0001071266575272
+    },
+    "model.language_model.layers.24.linear_attn.in_proj_qkv": {
+     "bits": 5,
+     "ladder_predicted": 0.00022482323139816566,
+     "realised": 0.000225,
+     "ratio_realised_over_predicted": 1.0007862559431027
+    },
+    "model.language_model.layers.24.linear_attn.in_proj_z": {
+     "bits": 6,
+     "ladder_predicted": 5.460456277917753e-05,
+     "realised": 5.5e-05,
+     "ratio_realised_over_predicted": 1.0072418347606158
+    },
+    "model.language_model.layers.24.linear_attn.out_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.0001530506506568629,
+     "realised": 0.000153,
+     "ratio_realised_over_predicted": 0.9996690595130076
+    },
+    "model.language_model.layers.24.mlp.up_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00016103596404526817,
+     "realised": 0.000161,
+     "ratio_realised_over_predicted": 0.9997766707239505
+    },
+    "model.language_model.layers.24.mlp.gate_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.0003483217890404804,
+     "realised": 0.000348,
+     "ratio_realised_over_predicted": 0.9990761730945205
+    },
+    "model.language_model.layers.24.mlp.down_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00017006862785009925,
+     "realised": 0.00017,
+     "ratio_realised_over_predicted": 0.9995964696665882
+    },
+    "model.language_model.layers.25.linear_attn.in_proj_qkv": {
+     "bits": 5,
+     "ladder_predicted": 0.000201709667008165,
+     "realised": 0.000202,
+     "ratio_realised_over_predicted": 1.0014393608206356
+    },
+    "model.language_model.layers.25.linear_attn.in_proj_z": {
+     "bits": 6,
+     "ladder_predicted": 4.700147495719417e-05,
+     "realised": 4.7e-05,
+     "ratio_realised_over_predicted": 0.9999686189168421
+    },
+    "model.language_model.layers.25.linear_attn.out_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00014445678156164242,
+     "realised": 0.000144,
+     "ratio_realised_over_predicted": 0.9968379361861424
+    },
+    "model.language_model.layers.25.mlp.up_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00014862247910990293,
+     "realised": 0.000148,
+     "ratio_realised_over_predicted": 0.9958116759077701
+    },
+    "model.language_model.layers.25.mlp.gate_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.0003489257208664473,
+     "realised": 0.000349,
+     "ratio_realised_over_predicted": 1.0002128795015979
+    },
+    "model.language_model.layers.25.mlp.down_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00017422662074038955,
+     "realised": 0.000174,
+     "ratio_realised_over_predicted": 0.9986992760381479
+    },
+    "model.language_model.layers.26.linear_attn.in_proj_qkv": {
+     "bits": 5,
+     "ladder_predicted": 0.00020913614952525986,
+     "realised": 0.000209,
+     "ratio_realised_over_predicted": 0.9993489909536495
+    },
+    "model.language_model.layers.26.linear_attn.in_proj_z": {
+     "bits": 6,
+     "ladder_predicted": 4.6078270820793385e-05,
+     "realised": 4.6e-05,
+     "ratio_realised_over_predicted": 0.9983013507364937
+    },
+    "model.language_model.layers.26.linear_attn.out_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00013730761521761798,
+     "realised": 0.000137,
+     "ratio_realised_over_predicted": 0.9977596638239588
+    },
+    "model.language_model.layers.26.mlp.up_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00011484780537737893,
+     "realised": 0.000114,
+     "ratio_realised_over_predicted": 0.9926180097687273
+    },
+    "model.language_model.layers.26.mlp.gate_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.0002996404006941218,
+     "realised": 0.000299,
+     "ratio_realised_over_predicted": 0.9978627691972167
+    },
+    "model.language_model.layers.26.mlp.down_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.0001579617808410063,
+     "realised": 0.000158,
+     "ratio_realised_over_predicted": 1.0002419519379322
+    },
+    "model.language_model.layers.27.self_attn.k_proj": {
+     "bits": 7,
+     "ladder_predicted": 1.1652806398253329e-05,
+     "realised": 1.2e-05,
+     "ratio_realised_over_predicted": 1.029794848543842
+    },
+    "model.language_model.layers.27.self_attn.v_proj": {
+     "bits": 7,
+     "ladder_predicted": 1.2079017749473933e-05,
+     "realised": 1.2e-05,
+     "ratio_realised_over_predicted": 0.9934582636508359
+    },
+    "model.language_model.layers.27.self_attn.q_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.00011615681317232684,
+     "realised": 0.000116,
+     "ratio_realised_over_predicted": 0.9986499873055729
+    },
+    "model.language_model.layers.27.self_attn.o_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00011223820233956092,
+     "realised": 0.000112,
+     "ratio_realised_over_predicted": 0.9978777071033241
+    },
+    "model.language_model.layers.27.mlp.up_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00011924609835788929,
+     "realised": 0.000119,
+     "ratio_realised_over_predicted": 0.9979362145908482
+    },
+    "model.language_model.layers.27.mlp.gate_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.0002955589065270773,
+     "realised": 0.000295,
+     "ratio_realised_over_predicted": 0.9981089843184068
+    },
+    "model.language_model.layers.27.mlp.down_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.0001701427185485936,
+     "realised": 0.00017,
+     "ratio_realised_over_predicted": 0.9991611833300241
+    },
+    "model.language_model.layers.28.mlp.up_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.00041981673805328005,
+     "realised": 0.00042,
+     "ratio_realised_over_predicted": 1.0004365284423145
+    },
+    "model.language_model.layers.28.mlp.gate_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.00029368055253379367,
+     "realised": 0.000294,
+     "ratio_realised_over_predicted": 1.0010877378956495
+    },
+    "model.language_model.layers.28.linear_attn.in_proj_qkv": {
+     "bits": 5,
+     "ladder_predicted": 0.00019332126081110463,
+     "realised": 0.000193,
+     "ratio_realised_over_predicted": 0.9983382023800345
+    },
+    "model.language_model.layers.28.linear_attn.in_proj_z": {
+     "bits": 6,
+     "ladder_predicted": 4.450841445001468e-05,
+     "realised": 4.5e-05,
+     "ratio_realised_over_predicted": 1.0110447778484088
+    },
+    "model.language_model.layers.28.linear_attn.out_proj": {
+     "bits": 7,
+     "ladder_predicted": 4.279132158643246e-05,
+     "realised": 4.3e-05,
+     "ratio_realised_over_predicted": 1.0048766526910378
+    },
+    "model.language_model.layers.28.mlp.down_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00017560319833451117,
+     "realised": 0.000176,
+     "ratio_realised_over_predicted": 1.0022596494212648
+    },
+    "model.language_model.layers.29.mlp.up_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.0004160935503213653,
+     "realised": 0.000416,
+     "ratio_realised_over_predicted": 0.9997751699797004
+    },
+    "model.language_model.layers.29.mlp.gate_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.00029677581602485114,
+     "realised": 0.000297,
+     "ratio_realised_over_predicted": 1.0007553983951647
+    },
+    "model.language_model.layers.29.linear_attn.in_proj_qkv": {
+     "bits": 5,
+     "ladder_predicted": 0.0002049073394749331,
+     "realised": 0.000205,
+     "ratio_realised_over_predicted": 1.0004522069600061
+    },
+    "model.language_model.layers.29.linear_attn.in_proj_z": {
+     "bits": 6,
+     "ladder_predicted": 4.651959430594478e-05,
+     "realised": 4.6e-05,
+     "ratio_realised_over_predicted": 0.9888306354838873
+    },
+    "model.language_model.layers.29.linear_attn.out_proj": {
+     "bits": 7,
+     "ladder_predicted": 4.615064201072705e-05,
+     "realised": 4.6e-05,
+     "ratio_realised_over_predicted": 0.9967358631610794
+    },
+    "model.language_model.layers.29.mlp.down_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00017530550245884962,
+     "realised": 0.000175,
+     "ratio_realised_over_predicted": 0.9982573139201872
+    },
+    "model.language_model.layers.30.mlp.up_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.00038297148562437905,
+     "realised": 0.000383,
+     "ratio_realised_over_predicted": 1.0000744556101206
+    },
+    "model.language_model.layers.30.mlp.gate_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.00029573934586951065,
+     "realised": 0.000296,
+     "ratio_realised_over_predicted": 1.0008813643978383
+    },
+    "model.language_model.layers.30.linear_attn.in_proj_qkv": {
+     "bits": 5,
+     "ladder_predicted": 0.0001893830197137486,
+     "realised": 0.00019,
+     "ratio_realised_over_predicted": 1.0032578437453579
+    },
+    "model.language_model.layers.30.linear_attn.in_proj_z": {
+     "bits": 6,
+     "ladder_predicted": 4.393980947339776e-05,
+     "realised": 4.4e-05,
+     "ratio_realised_over_predicted": 1.0013698404094964
+    },
+    "model.language_model.layers.30.linear_attn.out_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00014610961037129366,
+     "realised": 0.000146,
+     "ratio_realised_over_predicted": 0.9992498072439238
+    },
+    "model.language_model.layers.30.mlp.down_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00016683138585850667,
+     "realised": 0.000167,
+     "ratio_realised_over_predicted": 1.0010106859727002
+    },
+    "model.language_model.layers.31.self_attn.k_proj": {
+     "bits": 7,
+     "ladder_predicted": 1.3452679695367214e-05,
+     "realised": 1.3e-05,
+     "ratio_realised_over_predicted": 0.9663502212482539
+    },
+    "model.language_model.layers.31.self_attn.v_proj": {
+     "bits": 7,
+     "ladder_predicted": 1.2720990171710116e-05,
+     "realised": 1.3e-05,
+     "ratio_realised_over_predicted": 1.0219330275806962
+    },
+    "model.language_model.layers.31.mlp.up_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.000405729820416685,
+     "realised": 0.000406,
+     "ratio_realised_over_predicted": 1.0006659100951405
+    },
+    "model.language_model.layers.31.mlp.gate_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.0003077490462011252,
+     "realised": 0.000308,
+     "ratio_realised_over_predicted": 1.0008154494773343
+    },
+    "model.language_model.layers.31.self_attn.q_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.00014079035958395334,
+     "realised": 0.000141,
+     "ratio_realised_over_predicted": 1.0014890253612974
+    },
+    "model.language_model.layers.31.self_attn.o_proj": {
+     "bits": 7,
+     "ladder_predicted": 4.3258269184823145e-05,
+     "realised": 4.3e-05,
+     "ratio_realised_over_predicted": 0.9940295996652183
+    },
+    "model.language_model.layers.31.mlp.down_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.0001723207490703678,
+     "realised": 0.000172,
+     "ratio_realised_over_predicted": 0.9981386509047914
+    },
+    "model.language_model.layers.32.mlp.up_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.0004041542011314188,
+     "realised": 0.000404,
+     "ratio_realised_over_predicted": 0.9996184596597361
+    },
+    "model.language_model.layers.32.mlp.gate_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.0003041377500329321,
+     "realised": 0.000304,
+     "ratio_realised_over_predicted": 0.99954708012104
+    },
+    "model.language_model.layers.32.linear_attn.in_proj_qkv": {
+     "bits": 5,
+     "ladder_predicted": 0.00021730848172255764,
+     "realised": 0.000217,
+     "ratio_realised_over_predicted": 0.9985804432477169
+    },
+    "model.language_model.layers.32.linear_attn.in_proj_z": {
+     "bits": 6,
+     "ladder_predicted": 5.14207426890234e-05,
+     "realised": 5.1e-05,
+     "ratio_realised_over_predicted": 0.9918176465951121
+    },
+    "model.language_model.layers.32.linear_attn.out_proj": {
+     "bits": 7,
+     "ladder_predicted": 4.445338280222544e-05,
+     "realised": 4.5e-05,
+     "ratio_realised_over_predicted": 1.012296413980607
+    },
+    "model.language_model.layers.32.mlp.down_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00017075067020371035,
+     "realised": 0.000171,
+     "ratio_realised_over_predicted": 1.0014601980536428
+    },
+    "model.language_model.layers.33.mlp.up_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.00041511146089163206,
+     "realised": 0.000415,
+     "ratio_realised_over_predicted": 0.9997314916543315
+    },
+    "model.language_model.layers.33.mlp.gate_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.00030781808000749007,
+     "realised": 0.000308,
+     "ratio_realised_over_predicted": 1.0005909983991372
+    },
+    "model.language_model.layers.33.linear_attn.in_proj_qkv": {
+     "bits": 5,
+     "ladder_predicted": 0.0002162108979786866,
+     "realised": 0.000216,
+     "ratio_realised_over_predicted": 0.9990245728561407
+    },
+    "model.language_model.layers.33.linear_attn.in_proj_z": {
+     "bits": 6,
+     "ladder_predicted": 4.891626864267904e-05,
+     "realised": 4.9e-05,
+     "ratio_realised_over_predicted": 1.0017117282173051
+    },
+    "model.language_model.layers.33.linear_attn.out_proj": {
+     "bits": 7,
+     "ladder_predicted": 5.203687081160915e-05,
+     "realised": 5.1e-05,
+     "ratio_realised_over_predicted": 0.9800743050948822
+    },
+    "model.language_model.layers.33.mlp.down_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00017246947592454835,
+     "realised": 0.000173,
+     "ratio_realised_over_predicted": 1.0030760461966253
+    },
+    "model.language_model.layers.34.mlp.up_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.0003605502046143401,
+     "realised": 0.00036,
+     "ratio_realised_over_predicted": 0.9984739861264853
+    },
+    "model.language_model.layers.34.mlp.gate_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.0002718362630078322,
+     "realised": 0.000272,
+     "ratio_realised_over_predicted": 1.0006023368271622
+    },
+    "model.language_model.layers.34.linear_attn.in_proj_qkv": {
+     "bits": 5,
+     "ladder_predicted": 0.00020365002957647798,
+     "realised": 0.000203,
+     "ratio_realised_over_predicted": 0.9968081046792391
+    },
+    "model.language_model.layers.34.linear_attn.in_proj_z": {
+     "bits": 6,
+     "ladder_predicted": 4.737065572290047e-05,
+     "realised": 4.7e-05,
+     "ratio_realised_over_predicted": 0.992175414985415
+    },
+    "model.language_model.layers.34.linear_attn.out_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00013341763659995058,
+     "realised": 0.000133,
+     "ratio_realised_over_predicted": 0.9968697047062612
+    },
+    "model.language_model.layers.34.mlp.down_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.0001544662557969056,
+     "realised": 0.000154,
+     "ratio_realised_over_predicted": 0.9969815038598551
+    },
+    "model.language_model.layers.35.self_attn.k_proj": {
+     "bits": 7,
+     "ladder_predicted": 1.6408525321445336e-05,
+     "realised": 1.6e-05,
+     "ratio_realised_over_predicted": 0.9751028618695301
+    },
+    "model.language_model.layers.35.self_attn.v_proj": {
+     "bits": 7,
+     "ladder_predicted": 1.653302716648104e-05,
+     "realised": 1.7e-05,
+     "ratio_realised_over_predicted": 1.0282448476505077
+    },
+    "model.language_model.layers.35.mlp.up_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.00042298416979759065,
+     "realised": 0.000423,
+     "ratio_realised_over_predicted": 1.0000374250469395
+    },
+    "model.language_model.layers.35.mlp.gate_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.00026712347860267753,
+     "realised": 0.000267,
+     "ratio_realised_over_predicted": 0.9995377470998675
+    },
+    "model.language_model.layers.35.self_attn.q_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.0001841563601241215,
+     "realised": 0.000184,
+     "ratio_realised_over_predicted": 0.999150938235225
+    },
+    "model.language_model.layers.35.self_attn.o_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00013101380516135371,
+     "realised": 0.000131,
+     "ratio_realised_over_predicted": 0.9998946281932908
+    },
+    "model.language_model.layers.35.mlp.down_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.0001487127189322192,
+     "realised": 0.000149,
+     "ratio_realised_over_predicted": 1.001931785457515
+    },
+    "model.language_model.layers.36.linear_attn.in_proj_qkv": {
+     "bits": 5,
+     "ladder_predicted": 0.00019958162478112012,
+     "realised": 0.000199,
+     "ratio_realised_over_predicted": 0.9970857799070532
+    },
+    "model.language_model.layers.36.linear_attn.in_proj_z": {
+     "bits": 6,
+     "ladder_predicted": 4.6714648948614234e-05,
+     "realised": 4.7e-05,
+     "ratio_realised_over_predicted": 1.006108384795948
+    },
+    "model.language_model.layers.36.linear_attn.out_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00013697520504900228,
+     "realised": 0.000137,
+     "ratio_realised_over_predicted": 1.0001810178052943
+    },
+    "model.language_model.layers.36.mlp.up_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.0001308397827260711,
+     "realised": 0.000131,
+     "ratio_realised_over_predicted": 1.0012245302658775
+    },
+    "model.language_model.layers.36.mlp.gate_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.0002966960558696491,
+     "realised": 0.000297,
+     "ratio_realised_over_predicted": 1.0010244292916533
+    },
+    "model.language_model.layers.36.mlp.down_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00017033073165603733,
+     "realised": 0.00017,
+     "ratio_realised_over_predicted": 0.9980582972149431
+    },
+    "model.language_model.layers.37.linear_attn.in_proj_qkv": {
+     "bits": 5,
+     "ladder_predicted": 0.00021093146244318694,
+     "realised": 0.00021,
+     "ratio_realised_over_predicted": 0.9955840516516695
+    },
+    "model.language_model.layers.37.linear_attn.in_proj_z": {
+     "bits": 6,
+     "ladder_predicted": 4.424467784198895e-05,
+     "realised": 4.4e-05,
+     "ratio_realised_over_predicted": 0.9944698921108033
+    },
+    "model.language_model.layers.37.linear_attn.out_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00014417002100841292,
+     "realised": 0.000144,
+     "ratio_realised_over_predicted": 0.998820690964573
+    },
+    "model.language_model.layers.37.mlp.up_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00014685942710881416,
+     "realised": 0.000147,
+     "ratio_realised_over_predicted": 1.000957193514596
+    },
+    "model.language_model.layers.37.mlp.gate_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.000353878949603567,
+     "realised": 0.000354,
+     "ratio_realised_over_predicted": 1.0003420672423962
+    },
+    "model.language_model.layers.37.mlp.down_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00019963004935590962,
+     "realised": 0.0002,
+     "ratio_realised_over_predicted": 1.001853181148249
+    },
+    "model.language_model.layers.38.linear_attn.in_proj_qkv": {
+     "bits": 6,
+     "ladder_predicted": 6.951297445147307e-05,
+     "realised": 6.9e-05,
+     "ratio_realised_over_predicted": 0.9926204502753486
+    },
+    "model.language_model.layers.38.linear_attn.in_proj_z": {
+     "bits": 6,
+     "ladder_predicted": 5.427423966574317e-05,
+     "realised": 5.4e-05,
+     "ratio_realised_over_predicted": 0.9949471486393522
+    },
+    "model.language_model.layers.38.linear_attn.out_proj": {
+     "bits": 7,
+     "ladder_predicted": 4.9070205491645526e-05,
+     "realised": 4.8e-05,
+     "ratio_realised_over_predicted": 0.9781903197485543
+    },
+    "model.language_model.layers.38.mlp.up_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00014319336050658534,
+     "realised": 0.000143,
+     "ratio_realised_over_predicted": 0.9986496545237763
+    },
+    "model.language_model.layers.38.mlp.gate_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.00027679931750915546,
+     "realised": 0.000277,
+     "ratio_realised_over_predicted": 1.000725010786336
+    },
+    "model.language_model.layers.38.mlp.down_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00017945126184874027,
+     "realised": 0.000179,
+     "ratio_realised_over_predicted": 0.9974853236244131
+    },
+    "model.language_model.layers.39.self_attn.k_proj": {
+     "bits": 7,
+     "ladder_predicted": 1.899783368758674e-05,
+     "realised": 1.9e-05,
+     "ratio_realised_over_predicted": 1.0001140294440347
+    },
+    "model.language_model.layers.39.self_attn.v_proj": {
+     "bits": 7,
+     "ladder_predicted": 1.864550872093087e-05,
+     "realised": 1.9e-05,
+     "ratio_realised_over_predicted": 1.0190121537778793
+    },
+    "model.language_model.layers.39.self_attn.q_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.0001652385639031728,
+     "realised": 0.000165,
+     "ratio_realised_over_predicted": 0.9985562456030991
+    },
+    "model.language_model.layers.39.self_attn.o_proj": {
+     "bits": 7,
+     "ladder_predicted": 4.356109658437128e-05,
+     "realised": 4.5e-05,
+     "ratio_realised_over_predicted": 1.0330318455790428
+    },
+    "model.language_model.layers.39.mlp.up_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00015737327758803065,
+     "realised": 0.000157,
+     "ratio_realised_over_predicted": 0.9976280751487695
+    },
+    "model.language_model.layers.39.mlp.gate_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.0003103674122439345,
+     "realised": 0.00031,
+     "ratio_realised_over_predicted": 0.998816202251138
+    },
+    "model.language_model.layers.39.mlp.down_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00018090484948537968,
+     "realised": 0.000181,
+     "ratio_realised_over_predicted": 1.0005259699498992
+    },
+    "model.language_model.layers.40.linear_attn.in_proj_qkv": {
+     "bits": 5,
+     "ladder_predicted": 0.00023478839758184198,
+     "realised": 0.000235,
+     "ratio_realised_over_predicted": 1.000901247337336
+    },
+    "model.language_model.layers.40.linear_attn.in_proj_z": {
+     "bits": 6,
+     "ladder_predicted": 5.53381908850507e-05,
+     "realised": 5.5e-05,
+     "ratio_realised_over_predicted": 0.9938886530325288
+    },
+    "model.language_model.layers.40.linear_attn.out_proj": {
+     "bits": 7,
+     "ladder_predicted": 4.504847777853178e-05,
+     "realised": 4.5e-05,
+     "ratio_realised_over_predicted": 0.998923875324487
+    },
+    "model.language_model.layers.40.mlp.up_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.0001458055098575269,
+     "realised": 0.000147,
+     "ratio_realised_over_predicted": 1.0081923525636327
+    },
+    "model.language_model.layers.40.mlp.gate_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.00029700617027258075,
+     "realised": 0.000297,
+     "ratio_realised_over_predicted": 0.9999792251030506
+    },
+    "model.language_model.layers.40.mlp.down_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00017389082636952373,
+     "realised": 0.000174,
+     "ratio_realised_over_predicted": 1.0006278285793195
+    },
+    "model.language_model.layers.41.linear_attn.in_proj_qkv": {
+     "bits": 5,
+     "ladder_predicted": 0.0002294189078999324,
+     "realised": 0.00023,
+     "ratio_realised_over_predicted": 1.0025328866979049
+    },
+    "model.language_model.layers.41.linear_attn.in_proj_z": {
+     "bits": 6,
+     "ladder_predicted": 5.47412309635581e-05,
+     "realised": 5.5e-05,
+     "ratio_realised_over_predicted": 1.004727132216193
+    },
+    "model.language_model.layers.41.linear_attn.out_proj": {
+     "bits": 7,
+     "ladder_predicted": 4.305749585489721e-05,
+     "realised": 4.3e-05,
+     "ratio_realised_over_predicted": 0.9986646725789402
+    },
+    "model.language_model.layers.41.mlp.up_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00014620737198047407,
+     "realised": 0.000147,
+     "ratio_realised_over_predicted": 1.005421258920048
+    },
+    "model.language_model.layers.41.mlp.gate_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.0003537285022022695,
+     "realised": 0.000353,
+     "ratio_realised_over_predicted": 0.9979405046589859
+    },
+    "model.language_model.layers.41.mlp.down_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00018637977984813046,
+     "realised": 0.000186,
+     "ratio_realised_over_predicted": 0.9979623334224349
+    },
+    "model.language_model.layers.42.linear_attn.in_proj_qkv": {
+     "bits": 5,
+     "ladder_predicted": 0.00022941621669377916,
+     "realised": 0.000229,
+     "ratio_realised_over_predicted": 0.9981857573114166
+    },
+    "model.language_model.layers.42.linear_attn.in_proj_z": {
+     "bits": 6,
+     "ladder_predicted": 5.3002232310305336e-05,
+     "realised": 5.3e-05,
+     "ratio_realised_over_predicted": 0.9999578827115759
+    },
+    "model.language_model.layers.42.linear_attn.out_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00013847050100445287,
+     "realised": 0.000138,
+     "ratio_realised_over_predicted": 0.996602157130653
+    },
+    "model.language_model.layers.42.mlp.up_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00012037890960545261,
+     "realised": 0.00012,
+     "ratio_realised_over_predicted": 0.9968523588833418
+    },
+    "model.language_model.layers.42.mlp.gate_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.0003372897382286864,
+     "realised": 0.000337,
+     "ratio_realised_over_predicted": 0.9991409811925853
+    },
+    "model.language_model.layers.42.mlp.down_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.0001687354696888618,
+     "realised": 0.000169,
+     "ratio_realised_over_predicted": 1.0015677220185297
+    },
+    "model.language_model.layers.43.self_attn.k_proj": {
+     "bits": 7,
+     "ladder_predicted": 1.5166033969257203e-05,
+     "realised": 1.5e-05,
+     "ratio_realised_over_predicted": 0.989052248623881
+    },
+    "model.language_model.layers.43.self_attn.v_proj": {
+     "bits": 7,
+     "ladder_predicted": 1.3886000773279107e-05,
+     "realised": 1.4e-05,
+     "ratio_realised_over_predicted": 1.0082096514743295
+    },
+    "model.language_model.layers.43.self_attn.q_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.00014546261659649778,
+     "realised": 0.000145,
+     "ratio_realised_over_predicted": 0.9968196873717662
+    },
+    "model.language_model.layers.43.self_attn.o_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00012382647712909714,
+     "realised": 0.000124,
+     "ratio_realised_over_predicted": 1.0014013389940986
+    },
+    "model.language_model.layers.43.mlp.up_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.0001266345194117191,
+     "realised": 0.000127,
+     "ratio_realised_over_predicted": 1.002886105541986
+    },
+    "model.language_model.layers.43.mlp.gate_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.0003279822241341837,
+     "realised": 0.000328,
+     "ratio_realised_over_predicted": 1.0000541976500807
+    },
+    "model.language_model.layers.43.mlp.down_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00017646153333209552,
+     "realised": 0.000176,
+     "ratio_realised_over_predicted": 0.9973845102477551
+    },
+    "model.language_model.layers.44.linear_attn.in_proj_qkv": {
+     "bits": 5,
+     "ladder_predicted": 0.00020373578211418865,
+     "realised": 0.000204,
+     "ratio_realised_over_predicted": 1.0012968653962968
+    },
+    "model.language_model.layers.44.linear_attn.in_proj_z": {
+     "bits": 6,
+     "ladder_predicted": 4.597260967726233e-05,
+     "realised": 4.6e-05,
+     "ratio_realised_over_predicted": 1.0005957965608208
+    },
+    "model.language_model.layers.44.linear_attn.out_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00014616909734799853,
+     "realised": 0.000146,
+     "ratio_realised_over_predicted": 0.9988431388640517
+    },
+    "model.language_model.layers.44.mlp.up_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00011996422349011441,
+     "realised": 0.00012,
+     "ratio_realised_over_predicted": 1.000298226494906
+    },
+    "model.language_model.layers.44.mlp.gate_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.0003147283951361939,
+     "realised": 0.000314,
+     "ratio_realised_over_predicted": 0.9976856389590183
+    },
+    "model.language_model.layers.44.mlp.down_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.0001792212108083457,
+     "realised": 0.000179,
+     "ratio_realised_over_predicted": 0.998765710780839
+    },
+    "model.language_model.layers.45.linear_attn.in_proj_qkv": {
+     "bits": 5,
+     "ladder_predicted": 0.00022101682725199367,
+     "realised": 0.000221,
+     "ratio_realised_over_predicted": 0.9999238643853371
+    },
+    "model.language_model.layers.45.linear_attn.in_proj_z": {
+     "bits": 6,
+     "ladder_predicted": 4.878782170874608e-05,
+     "realised": 4.9e-05,
+     "ratio_realised_over_predicted": 1.0043490011200045
+    },
+    "model.language_model.layers.45.linear_attn.out_proj": {
+     "bits": 7,
+     "ladder_predicted": 4.438197974552235e-05,
+     "realised": 4.5e-05,
+     "ratio_realised_over_predicted": 1.013925026734302
+    },
+    "model.language_model.layers.45.mlp.up_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00011769634504533458,
+     "realised": 0.000118,
+     "ratio_realised_over_predicted": 1.0025799862735623
+    },
+    "model.language_model.layers.45.mlp.gate_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.00031126554642855683,
+     "realised": 0.000311,
+     "ratio_realised_over_predicted": 0.9991468813956326
+    },
+    "model.language_model.layers.45.mlp.down_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00017873402281452208,
+     "realised": 0.000179,
+     "ratio_realised_over_predicted": 1.001488117266593
+    },
+    "model.language_model.layers.46.linear_attn.in_proj_qkv": {
+     "bits": 5,
+     "ladder_predicted": 0.00019978984374523922,
+     "realised": 0.0002,
+     "ratio_realised_over_predicted": 1.0010518865765208
+    },
+    "model.language_model.layers.46.linear_attn.in_proj_z": {
+     "bits": 5,
+     "ladder_predicted": 0.00015114428891560677,
+     "realised": 0.000151,
+     "ratio_realised_over_predicted": 0.9990453564825904
+    },
+    "model.language_model.layers.46.mlp.up_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.0003975871947125093,
+     "realised": 0.000397,
+     "ratio_realised_over_predicted": 0.9985231045659458
+    },
+    "model.language_model.layers.46.mlp.gate_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.00029194697926881346,
+     "realised": 0.000292,
+     "ratio_realised_over_predicted": 1.0001816108230315
+    },
+    "model.language_model.layers.46.linear_attn.out_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.0001316071163990073,
+     "realised": 0.000132,
+     "ratio_realised_over_predicted": 1.0029852762657725
+    },
+    "model.language_model.layers.46.mlp.down_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.0001447702268059348,
+     "realised": 0.000145,
+     "ratio_realised_over_predicted": 1.0015871577957338
+    },
+    "model.language_model.layers.47.self_attn.k_proj": {
+     "bits": 7,
+     "ladder_predicted": 1.5501118610444243e-05,
+     "realised": 1.5e-05,
+     "ratio_realised_over_predicted": 0.9676721001214323
+    },
+    "model.language_model.layers.47.self_attn.v_proj": {
+     "bits": 7,
+     "ladder_predicted": 1.4009577306293271e-05,
+     "realised": 1.4e-05,
+     "ratio_realised_over_predicted": 0.9993163743570643
+    },
+    "model.language_model.layers.47.mlp.up_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.00040311241778932236,
+     "realised": 0.000403,
+     "ratio_realised_over_predicted": 0.9997211254618776
+    },
+    "model.language_model.layers.47.mlp.gate_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.0002833121831779648,
+     "realised": 0.000283,
+     "ratio_realised_over_predicted": 0.9988980947643585
+    },
+    "model.language_model.layers.47.self_attn.q_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.0001584934714980064,
+     "realised": 0.000158,
+     "ratio_realised_over_predicted": 0.9968864869111493
+    },
+    "model.language_model.layers.47.self_attn.o_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00011568104276398211,
+     "realised": 0.000116,
+     "ratio_realised_over_predicted": 1.0027572126633457
+    },
+    "model.language_model.layers.47.mlp.down_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00014979168768955263,
+     "realised": 0.00015,
+     "ratio_realised_over_predicted": 1.0013906800414658
+    },
+    "model.language_model.layers.48.mlp.up_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.0003766641431243513,
+     "realised": 0.000376,
+     "ratio_realised_over_predicted": 0.9982367763524226
+    },
+    "model.language_model.layers.48.mlp.gate_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.00026981378365770545,
+     "realised": 0.00027,
+     "ratio_realised_over_predicted": 1.0006901661574517
+    },
+    "model.language_model.layers.48.linear_attn.in_proj_qkv": {
+     "bits": 5,
+     "ladder_predicted": 0.00021271690278567334,
+     "realised": 0.000214,
+     "ratio_realised_over_predicted": 1.0060319476145225
+    },
+    "model.language_model.layers.48.linear_attn.in_proj_z": {
+     "bits": 6,
+     "ladder_predicted": 4.7229718603117134e-05,
+     "realised": 4.7e-05,
+     "ratio_realised_over_predicted": 0.9951361428797084
+    },
+    "model.language_model.layers.48.linear_attn.out_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00014168114641611656,
+     "realised": 0.000142,
+     "ratio_realised_over_predicted": 1.0022505011566392
+    },
+    "model.language_model.layers.48.mlp.down_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00015232700067516813,
+     "realised": 0.000152,
+     "ratio_realised_over_predicted": 0.9978532980120483
+    },
+    "model.language_model.layers.49.linear_attn.in_proj_qkv": {
+     "bits": 5,
+     "ladder_predicted": 0.00020771994577313297,
+     "realised": 0.000208,
+     "ratio_realised_over_predicted": 1.0013482298285061
+    },
+    "model.language_model.layers.49.linear_attn.in_proj_z": {
+     "bits": 5,
+     "ladder_predicted": 0.00014517855975988125,
+     "realised": 0.000145,
+     "ratio_realised_over_predicted": 0.9987700679757632
+    },
+    "model.language_model.layers.49.mlp.up_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.00034128861463447567,
+     "realised": 0.000341,
+     "ratio_realised_over_predicted": 0.999154338521416
+    },
+    "model.language_model.layers.49.mlp.gate_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.00025655159958621644,
+     "realised": 0.000256,
+     "ratio_realised_over_predicted": 0.997849946805609
+    },
+    "model.language_model.layers.49.linear_attn.out_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00014543720078152877,
+     "realised": 0.000145,
+     "ratio_realised_over_predicted": 0.9969938861640667
+    },
+    "model.language_model.layers.49.mlp.down_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.0001391673383796145,
+     "realised": 0.000139,
+     "ratio_realised_over_predicted": 0.9987975743334399
+    },
+    "model.language_model.layers.50.linear_attn.in_proj_qkv": {
+     "bits": 5,
+     "ladder_predicted": 0.0002003255215489832,
+     "realised": 0.0002,
+     "ratio_realised_over_predicted": 0.9983750370573546
+    },
+    "model.language_model.layers.50.linear_attn.in_proj_z": {
+     "bits": 5,
+     "ladder_predicted": 0.00013318900391646503,
+     "realised": 0.000133,
+     "ratio_realised_over_predicted": 0.9985809345298238
+    },
+    "model.language_model.layers.50.mlp.up_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.0002500972436331597,
+     "realised": 0.00025,
+     "ratio_realised_over_predicted": 0.9996111767097188
+    },
+    "model.language_model.layers.50.mlp.gate_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.00020529012197221765,
+     "realised": 0.000205,
+     "ratio_realised_over_predicted": 0.9985867709102101
+    },
+    "model.language_model.layers.50.linear_attn.out_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00010739589809888074,
+     "realised": 0.000107,
+     "ratio_realised_over_predicted": 0.9963136571704421
+    },
+    "model.language_model.layers.50.mlp.down_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00011864988175881536,
+     "realised": 0.000119,
+     "ratio_realised_over_predicted": 1.0029508520025021
+    },
+    "model.language_model.layers.51.self_attn.k_proj": {
+     "bits": 7,
+     "ladder_predicted": 1.6053676972417645e-05,
+     "realised": 1.6e-05,
+     "ratio_realised_over_predicted": 0.9966564063479121
+    },
+    "model.language_model.layers.51.self_attn.v_proj": {
+     "bits": 7,
+     "ladder_predicted": 1.6012750411179998e-05,
+     "realised": 1.6e-05,
+     "ratio_realised_over_predicted": 0.9992037338463043
+    },
+    "model.language_model.layers.51.mlp.up_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.00030845378524739855,
+     "realised": 0.000308,
+     "ratio_realised_over_predicted": 0.9985288387787669
+    },
+    "model.language_model.layers.51.mlp.gate_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.00021182471488985144,
+     "realised": 0.000212,
+     "ratio_realised_over_predicted": 1.0008275007486247
+    },
+    "model.language_model.layers.51.self_attn.q_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.0001791723937423747,
+     "realised": 0.000179,
+     "ratio_realised_over_predicted": 0.9990378331238762
+    },
+    "model.language_model.layers.51.self_attn.o_proj": {
+     "bits": 6,
+     "ladder_predicted": 8.379468401436233e-05,
+     "realised": 8.4e-05,
+     "ratio_realised_over_predicted": 1.0024502268616764
+    },
+    "model.language_model.layers.51.mlp.down_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00012423823383399555,
+     "realised": 0.000124,
+     "ratio_realised_over_predicted": 0.998082443490674
+    },
+    "model.language_model.layers.52.mlp.up_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.000330372809438076,
+     "realised": 0.00033,
+     "ratio_realised_over_predicted": 0.9988715492697172
+    },
+    "model.language_model.layers.52.mlp.gate_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.00021586859397840168,
+     "realised": 0.000216,
+     "ratio_realised_over_predicted": 1.00060873153976
+    },
+    "model.language_model.layers.52.linear_attn.in_proj_qkv": {
+     "bits": 5,
+     "ladder_predicted": 0.00018577232107377787,
+     "realised": 0.000186,
+     "ratio_realised_over_predicted": 1.001225580457337
+    },
+    "model.language_model.layers.52.linear_attn.in_proj_z": {
+     "bits": 6,
+     "ladder_predicted": 4.418428102159337e-05,
+     "realised": 4.4e-05,
+     "ratio_realised_over_predicted": 0.9958292628660562
+    },
+    "model.language_model.layers.52.linear_attn.out_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00011187977394183921,
+     "realised": 0.000112,
+     "ratio_realised_over_predicted": 1.0010746004744637
+    },
+    "model.language_model.layers.52.mlp.down_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00014782894170672748,
+     "realised": 0.000148,
+     "ratio_realised_over_predicted": 1.0011571366966279
+    },
+    "model.language_model.layers.53.mlp.up_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.00034740134445123474,
+     "realised": 0.000347,
+     "ratio_realised_over_predicted": 0.9988447239550303
+    },
+    "model.language_model.layers.53.mlp.gate_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.00022592138307698349,
+     "realised": 0.000226,
+     "ratio_realised_over_predicted": 1.0003479835416451
+    },
+    "model.language_model.layers.53.linear_attn.in_proj_qkv": {
+     "bits": 5,
+     "ladder_predicted": 0.0001957232825698259,
+     "realised": 0.000195,
+     "ratio_realised_over_predicted": 0.9963045655052926
+    },
+    "model.language_model.layers.53.linear_attn.in_proj_z": {
+     "bits": 6,
+     "ladder_predicted": 4.885101273773064e-05,
+     "realised": 4.9e-05,
+     "ratio_realised_over_predicted": 1.003049829551523
+    },
+    "model.language_model.layers.53.linear_attn.out_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.0001221774482435528,
+     "realised": 0.000122,
+     "ratio_realised_over_predicted": 0.9985476186800115
+    },
+    "model.language_model.layers.53.mlp.down_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.0001609542179510135,
+     "realised": 0.000161,
+     "ratio_realised_over_predicted": 1.0002844414366354
+    },
+    "model.language_model.layers.54.mlp.up_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.00024776710365403417,
+     "realised": 0.000248,
+     "ratio_realised_over_predicted": 1.0009399809035628
+    },
+    "model.language_model.layers.54.mlp.gate_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.0001940947858022505,
+     "realised": 0.000194,
+     "ratio_realised_over_predicted": 0.9995116519907595
+    },
+    "model.language_model.layers.54.linear_attn.in_proj_qkv": {
+     "bits": 5,
+     "ladder_predicted": 0.00024352515275877056,
+     "realised": 0.000243,
+     "ratio_realised_over_predicted": 0.9978435379145794
+    },
+    "model.language_model.layers.54.linear_attn.in_proj_z": {
+     "bits": 6,
+     "ladder_predicted": 5.1712826986814134e-05,
+     "realised": 5.2e-05,
+     "ratio_realised_over_predicted": 1.0055532259580218
+    },
+    "model.language_model.layers.54.linear_attn.out_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00012094247530076195,
+     "realised": 0.000121,
+     "ratio_realised_over_predicted": 1.000475636860375
+    },
+    "model.language_model.layers.54.mlp.down_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00012426606154825154,
+     "realised": 0.000124,
+     "ratio_realised_over_predicted": 0.9978589363424202
+    },
+    "model.language_model.layers.55.self_attn.k_proj": {
+     "bits": 7,
+     "ladder_predicted": 2.1771965926844466e-05,
+     "realised": 2.2e-05,
+     "ratio_realised_over_predicted": 1.0104737474751588
+    },
+    "model.language_model.layers.55.self_attn.v_proj": {
+     "bits": 7,
+     "ladder_predicted": 1.5834504532234873e-05,
+     "realised": 1.6e-05,
+     "ratio_realised_over_predicted": 1.010451572224961
+    },
+    "model.language_model.layers.55.mlp.up_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.0003978475428207797,
+     "realised": 0.000398,
+     "ratio_realised_over_predicted": 1.0003832050290908
+    },
+    "model.language_model.layers.55.mlp.gate_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.00022242240344633933,
+     "realised": 0.000222,
+     "ratio_realised_over_predicted": 0.9981008952344981
+    },
+    "model.language_model.layers.55.self_attn.q_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.00019407322472118205,
+     "realised": 0.000194,
+     "ratio_realised_over_predicted": 0.9996226953960947
+    },
+    "model.language_model.layers.55.self_attn.o_proj": {
+     "bits": 6,
+     "ladder_predicted": 9.621941260796877e-05,
+     "realised": 9.6e-05,
+     "ratio_realised_over_predicted": 0.9977196638181244
+    },
+    "model.language_model.layers.55.mlp.down_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.0001509713914843,
+     "realised": 0.000151,
+     "ratio_realised_over_predicted": 1.0001894962709077
+    },
+    "model.language_model.layers.56.mlp.up_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.00039822746043615645,
+     "realised": 0.000398,
+     "ratio_realised_over_predicted": 0.9994288178019987
+    },
+    "model.language_model.layers.56.mlp.gate_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.00022097587644881,
+     "realised": 0.000221,
+     "ratio_realised_over_predicted": 1.0001091682566337
+    },
+    "model.language_model.layers.56.linear_attn.in_proj_qkv": {
+     "bits": 5,
+     "ladder_predicted": 0.0002233054411662423,
+     "realised": 0.000223,
+     "ratio_realised_over_predicted": 0.9986321821597939
+    },
+    "model.language_model.layers.56.linear_attn.in_proj_z": {
+     "bits": 6,
+     "ladder_predicted": 5.7374184442125564e-05,
+     "realised": 5.7e-05,
+     "ratio_realised_over_predicted": 0.993478174099311
+    },
+    "model.language_model.layers.56.linear_attn.out_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.0001008457998541059,
+     "realised": 0.000101,
+     "ratio_realised_over_predicted": 1.001529068598962
+    },
+    "model.language_model.layers.56.mlp.down_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00015661662095228513,
+     "realised": 0.000157,
+     "ratio_realised_over_predicted": 1.0024478822578586
+    },
+    "model.language_model.layers.57.mlp.up_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.0004211426934215602,
+     "realised": 0.000421,
+     "ratio_realised_over_predicted": 0.9996611755972759
+    },
+    "model.language_model.layers.57.mlp.gate_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.00021700813762016234,
+     "realised": 0.000217,
+     "ratio_realised_over_predicted": 0.9999625008524953
+    },
+    "model.language_model.layers.57.linear_attn.in_proj_qkv": {
+     "bits": 5,
+     "ladder_predicted": 0.00021921685343017383,
+     "realised": 0.000218,
+     "ratio_realised_over_predicted": 0.9944490881465853
+    },
+    "model.language_model.layers.57.linear_attn.in_proj_z": {
+     "bits": 6,
+     "ladder_predicted": 5.69691073774772e-05,
+     "realised": 5.7e-05,
+     "ratio_realised_over_predicted": 1.0005422697308228
+    },
+    "model.language_model.layers.57.linear_attn.out_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00011295792529938446,
+     "realised": 0.000113,
+     "ratio_realised_over_predicted": 1.0003724811738886
+    },
+    "model.language_model.layers.57.mlp.down_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00016969526046071897,
+     "realised": 0.00017,
+     "ratio_realised_over_predicted": 1.0017958046586197
+    },
+    "model.language_model.layers.58.linear_attn.in_proj_qkv": {
+     "bits": 6,
+     "ladder_predicted": 7.002998712697421e-05,
+     "realised": 7e-05,
+     "ratio_realised_over_predicted": 0.999571795909089
+    },
+    "model.language_model.layers.58.linear_attn.in_proj_z": {
+     "bits": 6,
+     "ladder_predicted": 6.22564722316198e-05,
+     "realised": 6.2e-05,
+     "ratio_realised_over_predicted": 0.9958803924728402
+    },
+    "model.language_model.layers.58.mlp.up_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.0003953677642080558,
+     "realised": 0.000395,
+     "ratio_realised_over_predicted": 0.9990698174172281
+    },
+    "model.language_model.layers.58.mlp.gate_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.00021963297830695315,
+     "realised": 0.00022,
+     "ratio_realised_over_predicted": 1.0016710682333594
+    },
+    "model.language_model.layers.58.linear_attn.out_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00011900892450533224,
+     "realised": 0.000119,
+     "ratio_realised_over_predicted": 0.9999250097808267
+    },
+    "model.language_model.layers.58.mlp.down_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.0001162210549181202,
+     "realised": 0.000116,
+     "ratio_realised_over_predicted": 0.9980979787330623
+    },
+    "model.language_model.layers.59.self_attn.k_proj": {
+     "bits": 7,
+     "ladder_predicted": 2.3401499756501588e-05,
+     "realised": 2.3e-05,
+     "ratio_realised_over_predicted": 0.9828429903775702
+    },
+    "model.language_model.layers.59.self_attn.v_proj": {
+     "bits": 7,
+     "ladder_predicted": 1.4110053601089147e-05,
+     "realised": 1.4e-05,
+     "ratio_realised_over_predicted": 0.9922003413877427
+    },
+    "model.language_model.layers.59.mlp.up_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.00036525630906699596,
+     "realised": 0.000365,
+     "ratio_realised_over_predicted": 0.9992982761402516
+    },
+    "model.language_model.layers.59.mlp.gate_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.00021381270967034307,
+     "realised": 0.000214,
+     "ratio_realised_over_predicted": 1.000875955082117
+    },
+    "model.language_model.layers.59.self_attn.q_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.00021678372472757677,
+     "realised": 0.000217,
+     "ratio_realised_over_predicted": 1.0009976545642207
+    },
+    "model.language_model.layers.59.self_attn.o_proj": {
+     "bits": 6,
+     "ladder_predicted": 6.956449738808332e-05,
+     "realised": 7e-05,
+     "ratio_realised_over_predicted": 1.0062604148418857
+    },
+    "model.language_model.layers.59.mlp.down_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.0001319011306303055,
+     "realised": 0.000132,
+     "ratio_realised_over_predicted": 1.0007495718135397
+    },
+    "model.language_model.layers.60.mlp.up_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.0003085882998408702,
+     "realised": 0.000309,
+     "ratio_realised_over_predicted": 1.0013341405339802
+    },
+    "model.language_model.layers.60.mlp.gate_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.00020292161935030342,
+     "realised": 0.000203,
+     "ratio_realised_over_predicted": 1.0003862607145928
+    },
+    "model.language_model.layers.60.linear_attn.in_proj_qkv": {
+     "bits": 5,
+     "ladder_predicted": 0.00020190616373737009,
+     "realised": 0.000201,
+     "ratio_realised_over_predicted": 0.9955119560463307
+    },
+    "model.language_model.layers.60.linear_attn.in_proj_z": {
+     "bits": 6,
+     "ladder_predicted": 4.347302657216327e-05,
+     "realised": 4.3e-05,
+     "ratio_realised_over_predicted": 0.9891190788987727
+    },
+    "model.language_model.layers.60.linear_attn.out_proj": {
+     "bits": 6,
+     "ladder_predicted": 7.440457669569912e-05,
+     "realised": 7.4e-05,
+     "ratio_realised_over_predicted": 0.9945624756746649
+    },
+    "model.language_model.layers.60.mlp.down_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.0001453677157411223,
+     "realised": 0.000145,
+     "ratio_realised_over_predicted": 0.9974704442506537
+    },
+    "model.language_model.layers.61.mlp.up_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.0002577918925055042,
+     "realised": 0.000258,
+     "ratio_realised_over_predicted": 1.0008072693538699
+    },
+    "model.language_model.layers.61.mlp.gate_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.00017335393924939476,
+     "realised": 0.000173,
+     "ratio_realised_over_predicted": 0.9979582855115535
+    },
+    "model.language_model.layers.61.linear_attn.in_proj_qkv": {
+     "bits": 5,
+     "ladder_predicted": 0.0002457373794967922,
+     "realised": 0.000245,
+     "ratio_realised_over_predicted": 0.9969993189546409
+    },
+    "model.language_model.layers.61.linear_attn.in_proj_z": {
+     "bits": 6,
+     "ladder_predicted": 5.467042181865753e-05,
+     "realised": 5.5e-05,
+     "ratio_realised_over_predicted": 1.0060284550654408
+    },
+    "model.language_model.layers.61.linear_attn.out_proj": {
+     "bits": 6,
+     "ladder_predicted": 9.067849274799886e-05,
+     "realised": 9.1e-05,
+     "ratio_realised_over_predicted": 1.0035455734017837
+    },
+    "model.language_model.layers.61.mlp.down_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.00041172429334873146,
+     "realised": 0.000412,
+     "ratio_realised_over_predicted": 1.0006696390174747
+    },
+    "model.language_model.layers.62.linear_attn.in_proj_qkv": {
+     "bits": 5,
+     "ladder_predicted": 0.00017534494729785544,
+     "realised": 0.000175,
+     "ratio_realised_over_predicted": 0.9980327502835341
+    },
+    "model.language_model.layers.62.linear_attn.in_proj_z": {
+     "bits": 5,
+     "ladder_predicted": 0.0001307762437795615,
+     "realised": 0.000131,
+     "ratio_realised_over_predicted": 1.0017109852215644
+    },
+    "model.language_model.layers.62.mlp.up_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.00015993266961713515,
+     "realised": 0.00016,
+     "ratio_realised_over_predicted": 1.000420992052631
+    },
+    "model.language_model.layers.62.mlp.gate_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.0001409961773969213,
+     "realised": 0.000141,
+     "ratio_realised_over_predicted": 1.0000271113951407
+    },
+    "model.language_model.layers.62.linear_attn.out_proj": {
+     "bits": 6,
+     "ladder_predicted": 7.302457871401059e-05,
+     "realised": 7.3e-05,
+     "ratio_realised_over_predicted": 0.9996634186126996
+    },
+    "model.language_model.layers.62.mlp.down_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.0003018744146284505,
+     "realised": 0.000301,
+     "ratio_realised_over_predicted": 0.9971033827774815
+    },
+    "model.language_model.layers.63.mlp.up_proj": {
+     "bits": 4,
+     "ladder_predicted": 0.00028793007628554,
+     "realised": 0.000288,
+     "ratio_realised_over_predicted": 1.0002428496368356
+    },
+    "model.language_model.layers.63.mlp.gate_proj": {
+     "bits": 4,
+     "ladder_predicted": 0.00032127651692576413,
+     "realised": 0.000321,
+     "ratio_realised_over_predicted": 0.9991393179669337
+    },
+    "model.language_model.layers.63.self_attn.q_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.0001297277742630662,
+     "realised": 0.000129,
+     "ratio_realised_over_predicted": 0.9943899888269847
+    },
+    "model.language_model.layers.63.self_attn.k_proj": {
+     "bits": 7,
+     "ladder_predicted": 1.823767046674838e-05,
+     "realised": 1.8e-05,
+     "ratio_realised_over_predicted": 0.9869681565317397
+    },
+    "model.language_model.layers.63.self_attn.v_proj": {
+     "bits": 6,
+     "ladder_predicted": 1.4604997415810215e-05,
+     "realised": 1.5e-05,
+     "ratio_realised_over_predicted": 1.0270457140760727
+    },
+    "model.language_model.layers.63.self_attn.o_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.00011925966099022992,
+     "realised": 0.000119,
+     "ratio_realised_over_predicted": 0.9978227257391652
+    },
+    "model.language_model.layers.63.mlp.down_proj": {
+     "bits": 4,
+     "ladder_predicted": 0.00015571446497392573,
+     "realised": 0.000155,
+     "ratio_realised_over_predicted": 0.9954116981100929
+    },
+    "lm_head": {
+     "bits": 6,
+     "ladder_predicted": 5.9112379125311046e-05,
+     "realised": 5.9e-05,
+     "ratio_realised_over_predicted": 0.9980988901652424
+    },
+    "mtp.fc": {
+     "bits": 4,
+     "ladder_predicted": 0.0023787022315709424,
+     "realised": 0.002379,
+     "ratio_realised_over_predicted": 1.0001251810441447
+    },
+    "mtp.layers.0.self_attn.q_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00020305928038389897,
+     "realised": 0.000203,
+     "ratio_realised_over_predicted": 0.9997080636561555
+    },
+    "mtp.layers.0.self_attn.k_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00031305923052192997,
+     "realised": 0.000313,
+     "ratio_realised_over_predicted": 0.9998108009087252
+    },
+    "mtp.layers.0.self_attn.v_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00030214979182993087,
+     "realised": 0.000302,
+     "ratio_realised_over_predicted": 0.9995042464566212
+    },
+    "mtp.layers.0.self_attn.o_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.00030303234014797056,
+     "realised": 0.000303,
+     "ratio_realised_over_predicted": 0.999893278229133
+    },
+    "mtp.layers.0.mlp.up_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.001335134402831533,
+     "realised": 0.001335,
+     "ratio_realised_over_predicted": 0.9998993338563907
+    },
+    "mtp.layers.0.mlp.gate_proj": {
+     "bits": 5,
+     "ladder_predicted": 0.0013341927796365995,
+     "realised": 0.001334,
+     "ratio_realised_over_predicted": 0.9998555084096227
+    },
+    "mtp.layers.0.mlp.down_proj": {
+     "bits": 6,
+     "ladder_predicted": 0.0003144853571503131,
+     "realised": 0.000314,
+     "ratio_realised_over_predicted": 0.9984566621647788
+    }
+   }
+  }
+ },
+ "identity": {
+  "source_model": "/var/tmp/models/Qwen3.8-27B",
+  "source_revision": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0",
+  "converter": "turboderp-org/exllamav3@5f3c537ca9d89893d771256f5c43c93656553fbb (1.4.2) plus this repository's allocation patch (tools/exllamav3-allocation-bits-override.py)",
+  "converter_worktree_diff_sha256": "578066cda60415e0376f261b7c907baea2baa8239076260013208d8e70c192f2",
+  "command": "convert.py -i Qwen3.8-27B -b 4 -hb 6 -mb 4 -vb 16 -cb mcg with EXL3_BITS_FIXED=solved-fixed.json and EXL3_BITS_OVERRIDE=solved-override.json (per-module exact-key maps from tools/allocate_bits.py)",
+  "recipe": "error-driven per-module allocation at the hydrated serialized-byte budget, solved from the converter's own proxy-error ladder; lm_head K6/mcg, quantized MTP as hydrated, BF16 embed and vision, attention serialized",
+  "build_receipt": {
+   "path": "/var/tmp/work/kld6/qwen38-eda/build-receipt.json",
+   "sha256": "85a4a91ae275b20122e6325e8186f03742b892f3bbcb8b62afa2a1074da18a84",
+   "mtime_utc": "2026-08-16T04:19:45Z",
+   "bytes": 3635
+  },
+  "upstream_logical_tensor_check": {
+   "dir": "/work/upstream-index",
+   "index_sha256": "77042094076611b69791a610065f28b7013b8c621795fa86ddccc8bac7d1b9df",
+   "logical_tensors": 1199,
+   "shapes_verified": 0
+  },
+  "bits_fixed_spec": {
+   "path": "/var/tmp/work/kld6/solved-fixed.json",
+   "sha256": "565199ec49b22a6efd9d89cf04086674db31aa23d1f834206ae91c2a14da2870",
+   "mtime_utc": "2026-08-16T03:37:18Z",
+   "bytes": 14862
+  },
+  "bits_override_spec": {
+   "path": "/var/tmp/work/kld6/solved-override.json",
+   "sha256": "e7c17cb99ecd3de793a57030c00159020d6dfa2b22690f1867e035b6bdd281c7",
+   "mtime_utc": "2026-08-16T03:37:18Z",
+   "bytes": 12262
+  },
+  "build_script": {
+   "path": "/var/tmp/work/kld6/build_solved.sh",
+   "sha256": "d76194f98ab1d061bf65e5895c659de974f5449916b38d3a0a3fd3a5834f5375",
+   "mtime_utc": "2026-08-16T03:38:09Z",
+   "bytes": 2416
+  },
+  "measure_script": {
+   "path": "/var/tmp/work/kld6/measure_eda.sh",
+   "sha256": "b4d0dc764ac8c56fc350adac21526357a013bad7332c3dd278a4c2dd909da9a8",
+   "mtime_utc": "2026-08-16T01:38:51Z",
+   "bytes": 2789
+  },
+  "ladder_script": {
+   "path": "/var/tmp/work/kld6/run_ladder.sh",
+   "sha256": "64ea797a98dcdd2b865f1e03135bf018b88cabc5dfdffe235b9fc50b8bc71566",
+   "mtime_utc": "2026-08-16T01:22:07Z",
+   "bytes": 1093
+  },
+  "solver": {
+   "path": "tools/allocate_bits.py",
+   "sha256": "a4c0f29d92a5930504b1f0f698c7a8f3c4df0bc89eee2adf294bdff21e20d218",
+   "mtime_utc": "2026-08-16T03:44:10Z",
+   "bytes": 24881
+  },
+  "receipt_tool": {
+   "path": "tools/error_driven_receipt.py",
+   "sha256": "61cd8dee4b6d5f4643cc7dccc1a1ccfdd4db7b77991c6ff0249e8637075c8aab",
+   "mtime_utc": "2026-08-16T04:45:27Z",
+   "bytes": 37526
+  },
+  "checkpoint_dir": "/var/tmp/work/kld6/qwen38-eda",
+  "checkpoint_index_sha256": "48021b68951e30daea378bcbd9a2dfb07c780147764cedd5211d53659e438462",
+  "hardware": "1x RTX PRO 6000 Blackwell Server Edition, SM120, driver 595.58.03, rental box (never AIBoss's 5090; no number here is comparable across the two cards)"
+ },
+ "preservation": {
+  "policy": "docs/29 'Preservation: preserve before delete'; tier 3 requires a receipt naming a deleted artifact to state its recompute cost",
+  "kept": {
+   "checkpoint": {
+    "path": "/var/tmp/work/kld6/qwen38-eda",
+    "bytes": 21610916627,
+    "destination": "malaiwah/Qwen3.8-27B-EXL3-EDA-research (own model repo, public, research artifact and explicitly not a release)",
+    "recompute_cost": "~50 min GPU conversion, on top of the 2 h 04 ladder pass that produced its input map (or ~25 min with tools/allocate_bits.py --ladder-from-log)",
+    "published": {
+     "repo": "malaiwah/Qwen3.8-27B-EXL3-EDA-research",
+     "revision": "bbbe6a7eaae578d2e9deb75f36c472035fccd391",
+     "files": 27,
+     "bytes": 21611155800,
+     "note": "public model repo, card headed 'research artifact, not a release'. The tree also carries allocation/{solved-fixed,solved-override,plan-error-driven-allocation}.json, allocation/build_solved.sh and allocation/convert-eda.log, so the build is reproducible from the repo alone.",
+     "local_copy_released": "/var/tmp/work/kld6/qwen38-eda deleted 2026-08-16T05:16:57Z after all 27 files verified against the remote copy"
+    }
+   },
+   "captures": {
+    "paths": [
+     "/var/tmp/work/kld6/hidden/eda",
+     "/var/tmp/work/kld6/hidden/hyd-rematch"
+    ],
+    "bytes_each": 10485688000,
+    "destination": "malaiwah/qwen38-27b-fidelity-suite-v5 under captures/shard-0000/, via tools/preserve_artifacts.sh --deep",
+    "recompute_cost": "~6 min GPU per 512-context capture (anchor: the surviving shard-0 BF16 capture's 170.08 s elapsed), and only while the checkpoint still exists",
+    "note": "the eda capture plus the already-published shard-0 BF16 reference lets anyone re-derive the headline number with `fidelity.py replay` alone, no GPU and no checkpoint",
+    "published": {
+     "repo": "malaiwah/qwen38-27b-fidelity-suite-v5",
+     "eda": {
+      "path": "captures/shard-0000/hidden-eda",
+      "revision": "99b7468dea168061f0a5b30de3cebf627f2800fc",
+      "files": 513,
+      "bytes": 10732324101
+     },
+     "hyd_rematch": {
+      "path": "captures/shard-0000/hidden-hyd-rematch",
+      "revision": "17777e7e0f68bd9dfd87becb34897e3e92137c17",
+      "files": 513,
+      "bytes": 10732324091
+     },
+     "local_copies_released": "/var/tmp/work/kld6/hidden/{eda,hyd-rematch} deleted 2026-08-16T05:16:57Z after all 1,026 files verified against the remote copies"
+    }
+   },
+   "ladder": {
+    "path": "receipts/error-driven-ladder.json",
+    "note": "in the repository verbatim; the reusable part of this work",
+    "published": {
+     "repo": "malaiwah/qwen38-27b-fidelity-suite-v5",
+     "path": "captures/shard-0000/error-driven-ladder.json",
+     "revision": "2762570217c6c6c94a664af354b5bf1ba5d6d0af",
+     "note": "beside the two captures it adjudicates; the committed copy at receipts/error-driven-ladder.json is the same 284,807 bytes and the same sha256."
+    }
+   }
+  },
+  "deleted": {
+   "stale_conversion_working_directories": {
+    "paths": [
+     "wd-hyd",
+     "wd-ctx",
+     "wd-k4",
+     "wd-v2"
+    ],
+    "bytes": 162000000000,
+    "held": "exllamav3 resume state (ckpt/state.safetensors) and per-layer quantized tensors already compiled into the four published checkpoints; no Hessians, no error records",
+    "recompute_cost": "~35-50 min GPU per build, and only the resume capability is lost, never an artifact"
+   },
+   "wd_eda": {
+    "path": "/var/tmp/work/kld6/wd-eda",
+    "bytes": 31000000000,
+    "held": "this build's own conversion scratch, deleted after the checkpoint was written and finalized",
+    "recompute_cost": "~50 min GPU"
+   },
+   "wd_ladder": {
+    "path": "/var/tmp/work/kld6/wd-ladder",
+    "bytes": 41000000000,
+    "held": "the ladder pass's scratch: resume state plus the per-layer quantized tensors of a byproduct rebuild of the hydrated recipe",
+    "recompute_cost": "~35 min GPU for a plain hydrated rebuild",
+    "cost_of_deleting_it_here": "it was the input to a converter-determinism comparison (are a fresh rebuild's shard digests identical to the published hydrated checkpoint's?) that this ticket did NOT run. The ladder pass died at its compile step on the missing marisa_trie with every module already quantized, and by the time the shim existed the box was down to 49 GB free with a peer's ten-shard fidelity run in progress, so the 21 GB rebuild was dropped in favour of the peer. Cost to answer the question later: ~35 min GPU plus a compile, comparing SHA256SUMS against receipts/hydrated-SHA256SUMS. Not answered here, and not claimed either way."
+   }
+  },
+  "publication_receipt": "receipts/error-driven-publication.json - every upload's revision, per-file or digest-of-digests evidence, what each verification kind actually proves, and the recompute cost of each released local copy"
+ }
+}
