@@ -135,6 +135,11 @@ startup_facts() {
     grep -oE 'Using [A-Z_]+ attention backend[^.]*' "$log" | head -1 || true
     grep -oE 'Model loading took [0-9.]+ GiB memory and [0-9.]+ seconds' "$log" || true
     grep -oE 'init engine \(profile, create kv cache, warmup model\) took [0-9.]+ s[^)]*.' "$log" || true
+    # what the engine actually chose, not what the flag asked for
+    grep -oE "'enable_prefix_caching': [A-Za-z]+" "$log" | head -1 || true
+    grep -oE "'mamba_cache_mode': '[a-z]+'" "$log" | head -1 || true
+    grep -oE "'max_num_seqs': [0-9]+" "$log" | head -1 || true
+    grep -oE 'Prefix caching in Mamba cache .[a-z]+. mode is[^.]*.' "$log" || true
   } | sed 's/^ *//' | sort -u >"$OUT/startup-facts-$tag.txt"
   cat "$OUT/startup-facts-$tag.txt" >&2
 }
@@ -186,6 +191,8 @@ ARM_IMAGE=; ARM_DESC=
 
 configure_arm() {
   ARM_ENV=(); ARM_ARGS=(); ARM_MOUNTS=()
+  SEQS=1
+  COMPILE='{"cudagraph_mode":"FULL_DECODE_ONLY","cudagraph_capture_sizes":[4]}'
   case $1 in
   A)
     ARM_IMAGE=$RELEASE_IMAGE
@@ -196,6 +203,23 @@ configure_arm() {
     ARM_IMAGE=$RELEASE_IMAGE
     ARM_DESC='release image gg-r34-patched, prefix caching off: the condition every published measurement ran in'
     ARM_ARGS=(--no-enable-prefix-caching)
+    ;;
+  # The reporter runs --max-num-seqs 1. A2/B2 change exactly that one flag, because a
+  # batch of one never produces the mixed batch upstream says PR #51812 needs, and because
+  # concurrency is the most plausible amplifier this probe would otherwise not model.
+  A2)
+    ARM_IMAGE=$RELEASE_IMAGE
+    ARM_DESC='arm A at --max-num-seqs 4: the reporter'"'"'s condition plus concurrency, the one deviation, so mixed batches exist'
+    ARM_ARGS=(--enable-prefix-caching --mamba-cache-mode align)
+    SEQS=4
+    COMPILE='{"cudagraph_mode":"FULL_DECODE_ONLY","cudagraph_capture_sizes":[16]}'
+    ;;
+  B2)
+    ARM_IMAGE=$RELEASE_IMAGE
+    ARM_DESC='arm B at --max-num-seqs 4: the concurrency control for arm A2'
+    ARM_ARGS=(--no-enable-prefix-caching)
+    SEQS=4
+    COMPILE='{"cudagraph_mode":"FULL_DECODE_ONLY","cudagraph_capture_sizes":[16]}'
     ;;
   C)
     ARM_IMAGE=$APC_IMAGE
@@ -356,9 +380,12 @@ phase_arm() {
   start_sampler "$arm"
   launch "$arm" "$log" || { startup_facts "$log" "$arm"; tail -40 "$log" >&2; stop_server; die "arm $arm failed to start"; }
   startup_facts "$log" "$arm"
+  # the client's wave width matches the server's --max-num-seqs, so the concurrency arms
+  # actually produce mixed batches instead of serialising into batches of one
   python3 "$TOOLS/apc_poison_probe.py" run \
     --base "http://127.0.0.1:$PORT" --model m --prompts "$W/prompts.json" \
     --arm "$arm" --description "$ARM_DESC" --expect-prompts-sha256 "$sha" \
+    --concurrency "$SEQS" \
     --out "$OUT/arm-$arm.json" 2>&1 | tee "$LOGS/probe-$arm.out"
   stop_server
   python3 "$TOOLS/apc_poison_probe.py" scrape --log "$log" --arm "$arm" \
@@ -388,7 +415,7 @@ phase_reuse() {
 phase_verdict() {
   local -a args=()
   local arm
-  for arm in A B C D; do
+  for arm in A B C D A2 B2; do
     [[ -f $OUT/arm-$arm.json ]] && args+=(--arm-file "$arm=$OUT/arm-$arm.json")
   done
   python3 "$TOOLS/apc_poison_probe.py" verdict "${args[@]}" --out "$OUT/verdict.json"
@@ -405,7 +432,7 @@ def load(name, default=None):
 stage = load("stage.json")
 verdict = load("verdict.json")
 arms, windows, commands, facts = {}, {}, {}, {}
-for tag in "ABCDE":
+for tag in ("A", "B", "C", "D", "A2", "B2", "E"):
     data = load(f"arm-{tag}.json")
     if data:
         arms[tag] = data

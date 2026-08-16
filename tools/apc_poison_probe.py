@@ -52,6 +52,7 @@ import statistics
 import time
 import unicodedata
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 # --------------------------------------------------------------------------------------
@@ -245,6 +246,11 @@ def _needle_record(rng: random.Random, index: int, key: str) -> tuple[str, str]:
     return text, code
 
 
+# Retrieval is the ground truth this model class answers reliably; the arithmetic item is
+# carried and scored per request but, after the pilot measured 8/30 on a demonstrably
+# uncorrupted arm, it is not part of the pass/fail rule. See the receipt's pilot_run block.
+
+
 def generate_document(seed: int, target_tokens: int, tokenizer, needle_every: int = 18):
     """Build an ASCII English document of at least ``target_tokens`` tokens with needles.
 
@@ -253,14 +259,14 @@ def generate_document(seed: int, target_tokens: int, tokenizer, needle_every: in
     """
     rng = random.Random(seed)
     parts: list[str] = []
-    needle_meta: list[tuple[str, str]] = []  # (key, code), positional
+    needle_meta: list[tuple[str, str, int]] = []  # (key, code, record index)
     index = 0
     chars_per_token = 3.6
     while sum(len(p) for p in parts) < target_tokens * chars_per_token * 1.15:
         if index and index % needle_every == 0:
             key = f"N{len(needle_meta) + 1:02d}"
             text, code = _needle_record(rng, index, key)
-            needle_meta.append((key, code))
+            needle_meta.append((key, code, index))
         else:
             text = _record(rng, index)
         parts.append(text)
@@ -281,14 +287,22 @@ def generate_document(seed: int, target_tokens: int, tokenizer, needle_every: in
 
     ends = [end for _, end in offsets]
     needles = []
-    for key, code in needle_meta:
+    for key, code, record_index in needle_meta:
         char_end = doc_text.index(f"NEEDLE-{key} resolves to code {code}") + len(
             f"NEEDLE-{key} resolves to code {code}"
         )
         token_end = next(
             (i for i, end in enumerate(ends) if end >= char_end), len(ends) - 1
         )
-        needles.append({"key": key, "code": code, "token_end": token_end + 1})
+        needles.append(
+            {
+                "key": key,
+                "code": code,
+                "record_index": record_index,
+                "record_label": f"{record_index:05d}",
+                "token_end": token_end + 1,
+            }
+        )
     return ids[:target_tokens], needles
 
 
@@ -296,18 +310,27 @@ def generate_document(seed: int, target_tokens: int, tokenizer, needle_every: in
 # build mode
 # --------------------------------------------------------------------------------------
 CORRECTNESS_LENGTHS = [3000, 5300, 4100, 7700, 6500, 9900, 8200, 12300, 11000, 15400]
+# Pairs that straddle a 1600-token block boundary of the shared prefix: the first request
+# of each pair ends 300 tokens short of the boundary, so in align mode its slot holds a
+# short state, and the second request of the pair crosses that same boundary and can only
+# get there through the entry the first one published. This is the narrowest form of the
+# trigger, and with a 35-token chat head the shared prefixes are 2900/3500, 4500/5100,
+# 6100/6700 and 7700/8300 tokens.
+BOUNDARY_STRADDLE = [2865, 3465, 4465, 5065, 6065, 6665, 7665, 8265]
 MAMBA_BLOCK = 1600
 CHUNK_TOKENS = 2048
 
 
-def _question_text(k1: str, k2: str, a: int, b: int, c: int) -> str:
+def _question_text(k1: str, k2: str, a: int, b: int) -> str:
     return (
-        "\n\nAnswer using only the records above. Reply with exactly four lines and "
+        "\n\nAnswer using only the records above. Reply with exactly five lines and "
         "nothing else, in this order and this format:\n"
         f"A1=<the 8 character code for NEEDLE-{k1}>\n"
         f"A2=<the 8 character code for NEEDLE-{k2}>\n"
-        f"A3=<the value of {a} * {b} + {c}>\n"
-        "A4=<a 40 to 60 word English summary of what these records contain>"
+        f"A3=<the five digit record numbers of the records holding NEEDLE-{k1} and "
+        f"NEEDLE-{k2}, in that order, separated by a comma>\n"
+        f"A4=<the value of {a} + {b}>\n"
+        "A5=<a 40 to 60 word English summary of what these records contain>"
     )
 
 
@@ -340,7 +363,7 @@ def build(args: argparse.Namespace) -> int:
     tail_ids = tokenizer(tail_text, add_special_tokens=False)["input_ids"]
 
     doc_ids, needles = generate_document(
-        args.seed, max(CORRECTNESS_LENGTHS) + 200, tokenizer
+        args.seed, max(CORRECTNESS_LENGTHS + BOUNDARY_STRADDLE) + 200, tokenizer
     )
 
     requests = []
@@ -349,6 +372,7 @@ def build(args: argparse.Namespace) -> int:
         ("interleaved", CORRECTNESS_LENGTHS),
         ("interleaved-replay", CORRECTNESS_LENGTHS),
         ("ascending-persistence", sorted(CORRECTNESS_LENGTHS)),
+        ("boundary-straddle", BOUNDARY_STRADDLE),
     ]
     for pass_index, (pass_name, lengths) in enumerate(passes):
         for slot, doc_tokens in enumerate(lengths):
@@ -357,8 +381,10 @@ def build(args: argparse.Namespace) -> int:
                 (n for n in needles if n["token_end"] < doc_tokens - 64),
                 key=lambda n: n["token_end"],
             )
-            a, b, c = rng.randint(21, 89), rng.randint(21, 89), rng.randint(101, 999)
-            question = _question_text(shallow["key"], deep["key"], a, b, c)
+            if deep["key"] == shallow["key"]:
+                raise SystemExit(f"only one needle fits the {doc_tokens}-token prefix")
+            a, b = rng.randint(21, 89), rng.randint(21, 89)
+            question = _question_text(shallow["key"], deep["key"], a, b)
             q_ids = tokenizer(question, add_special_tokens=False)["input_ids"]
             prompt_ids = head_ids + doc_ids[:doc_tokens] + q_ids + tail_ids
             decoded = tokenizer.decode(doc_ids[:doc_tokens])
@@ -386,7 +412,8 @@ def build(args: argparse.Namespace) -> int:
                     "expected": {
                         "A1": shallow["code"],
                         "A2": deep["code"],
-                        "A3": str(a * b + c),
+                        "A3": f"{shallow['record_label']},{deep['record_label']}",
+                        "A4": str(a + b),
                     },
                     "needle_keys": [shallow["key"], deep["key"]],
                     "prompt_ids": prompt_ids,
@@ -530,7 +557,16 @@ def streamed_completion(base: str, payload: dict, timeout: int = 3600) -> dict:
     }
 
 
-ANSWER_RE = {key: re.compile(rf"^{key}\s*=\s*(.*)$", re.MULTILINE) for key in ("A1", "A2", "A3")}
+ANSWER_KEYS = ("A1", "A2", "A3", "A4")
+# Fields the pass/fail rule uses. A4 is the arithmetic item: it is asked, parsed and
+# reported on every row, but the pilot measured it wrong on 22 of 30 requests of a run
+# whose needle retrieval was 30/30 and whose corruption detector never fired, so it scores
+# this model's mental arithmetic rather than the integrity of its recurrent state. Scoring
+# it would drown the signal this probe exists to find.
+SCORING_KEYS = ("A1", "A2", "A3")
+ANSWER_RE = {
+    key: re.compile(rf"^{key}\s*=\s*(.*)$", re.MULTILINE) for key in ANSWER_KEYS
+}
 
 
 def score_answers(text: str, expected: dict) -> dict:
@@ -543,6 +579,12 @@ def score_answers(text: str, expected: dict) -> dict:
             value = value.strip("`<>*\" ")
         got[key] = value
         if key == "A3":
+            # a comma separated pair of five digit record numbers; compare as integers so
+            # "18,54" and "00018, 00054" are both accepted
+            want = [int(v) for v in expected[key].split(",")]
+            found = [int(v) for v in re.findall(r"\d+", value)] if value else []
+            ok[key] = found == want
+        elif key == "A4":
             digits = re.sub(r"[^0-9-]", "", value) if value else ""
             ok[key] = digits == expected[key]
         else:
@@ -550,85 +592,130 @@ def score_answers(text: str, expected: dict) -> dict:
     return {
         "answers": got,
         "per_answer_correct": ok,
-        "answers_all_correct": all(ok.values()),
+        "scored_answers_correct": all(ok[key] for key in SCORING_KEYS),
+        "arithmetic_correct_diagnostic_only": ok["A4"],
     }
 
 
 # --------------------------------------------------------------------------------------
 # run mode: the correctness schedule
 # --------------------------------------------------------------------------------------
+def _issue(base: str, model: str, spec: dict, max_tokens: int) -> tuple[dict, dict, float]:
+    t0 = time.perf_counter()
+    response = completion(
+        base,
+        {
+            "model": model,
+            "prompt": spec["prompt_ids"],
+            "max_tokens": max_tokens,
+            "temperature": 0.0,
+            "top_p": 1.0,
+            "seed": 0,
+            "stream": False,
+            # one logprob per emitted token: greedy decoding makes the token ids
+            # comparable across arms, and the chosen-token logprobs turn "the text
+            # happened to match" into a graded measurement of state divergence, which
+            # is the same instrument upstream used to measure PR #51812
+            "logprobs": 1,
+        },
+    )
+    return spec, response, time.perf_counter() - t0
+
+
+def _row(arm: str, spec: dict, response: dict, elapsed: float, delta: dict, wave: int) -> dict:
+    choice = response["choices"][0]
+    text = choice["text"]
+    logprobs = choice.get("logprobs") or {}
+    row = {
+        "arm": arm,
+        "request_id": spec["request_id"],
+        "pass": spec["pass"],
+        "slot": spec["slot"],
+        "wave": wave,
+        "doc_prefix_tokens": spec["doc_prefix_tokens"],
+        "prompt_tokens": spec["prompt_tokens"],
+        "prompt_tokens_mod_mamba_block": spec["prompt_tokens_mod_mamba_block"],
+        "chunk_ends_off_block": spec["chunk_ends_off_block"],
+        "needle_keys": spec["needle_keys"],
+        "expected": spec["expected"],
+        "wall_s": round(elapsed, 4),
+        "finish_reason": choice.get("finish_reason"),
+        "usage": response.get("usage", {}),
+        "response_text": text,
+        "response_tokens": logprobs.get("tokens"),
+        "chosen_token_logprobs": [
+            round(v, 6) if v is not None else None
+            for v in (logprobs.get("token_logprobs") or [])
+        ],
+        "metric_delta": {
+            k: round(v, 4) for k, v in delta.items() if not k.startswith("_")
+        },
+        "metric_delta_scope": "this request" if delta.get("_solo") else "this wave, shared",
+        "prefix_cache_hit_rate_this_request": (
+            round(delta["prefix_cache_hits"] / delta["prefix_cache_queries"], 6)
+            if delta.get("prefix_cache_queries")
+            else None
+        ),
+        "draft_acceptance_rate_this_request": (
+            round(delta["accepted"] / delta["draft_tokens"], 6)
+            if delta.get("draft_tokens")
+            else None
+        ),
+    }
+    row.update(score_answers(text, spec["expected"]))
+    row["corruption"] = corruption_report(text)
+    row["failed"] = bool(
+        row["corruption"]["corrupted"] or not row["scored_answers_correct"]
+    )
+    return row
+
+
 def run(args: argparse.Namespace) -> int:
     prompts = json.loads(Path(args.prompts).read_text())
     if args.expect_prompts_sha256 and prompts["prompts_sha256"] != args.expect_prompts_sha256:
         raise SystemExit("prompt file digest mismatch: arms would not be comparable")
+    specs = prompts["correctness_requests"]
+    width = max(1, args.concurrency)
     rows = []
     started = time.time()
-    for spec in prompts["correctness_requests"]:
+    # At width 1 the counter deltas belong to exactly one request. Above that the requests
+    # in a wave share the engine's counters, which is the whole point of the concurrency
+    # arms: the deltas are recorded per wave and labelled as such rather than pretended
+    # to be per request.
+    for wave, index in enumerate(range(0, len(specs), width)):
+        batch = specs[index : index + width]
         before = scrape_metrics(args.base)
-        t0 = time.perf_counter()
-        response = completion(
-            args.base,
-            {
-                "model": args.model,
-                "prompt": spec["prompt_ids"],
-                "max_tokens": args.max_tokens,
-                "temperature": 0.0,
-                "top_p": 1.0,
-                "seed": 0,
-                "stream": False,
-            },
-        )
-        elapsed = time.perf_counter() - t0
+        if width == 1:
+            results = [_issue(args.base, args.model, batch[0], args.max_tokens)]
+        else:
+            with ThreadPoolExecutor(max_workers=width) as pool:
+                results = list(
+                    pool.map(
+                        lambda spec: _issue(args.base, args.model, spec, args.max_tokens),
+                        batch,
+                    )
+                )
         after = scrape_metrics(args.base)
-        text = response["choices"][0]["text"]
         delta = metric_delta(before, after)
-        row = {
-            "arm": args.arm,
-            "request_id": spec["request_id"],
-            "pass": spec["pass"],
-            "slot": spec["slot"],
-            "doc_prefix_tokens": spec["doc_prefix_tokens"],
-            "prompt_tokens": spec["prompt_tokens"],
-            "prompt_tokens_mod_mamba_block": spec["prompt_tokens_mod_mamba_block"],
-            "chunk_ends_off_block": spec["chunk_ends_off_block"],
-            "needle_keys": spec["needle_keys"],
-            "expected": spec["expected"],
-            "wall_s": round(elapsed, 4),
-            "finish_reason": response["choices"][0].get("finish_reason"),
-            "usage": response.get("usage", {}),
-            "response_text": text,
-            "metric_delta": {k: round(v, 4) for k, v in delta.items()},
-            "prefix_cache_hit_rate_this_request": (
-                round(delta["prefix_cache_hits"] / delta["prefix_cache_queries"], 6)
-                if delta.get("prefix_cache_queries")
-                else None
-            ),
-            "draft_acceptance_rate_this_request": (
-                round(delta["accepted"] / delta["draft_tokens"], 6)
-                if delta.get("draft_tokens")
-                else None
-            ),
-        }
-        row.update(score_answers(text, spec["expected"]))
-        row["corruption"] = corruption_report(text)
-        row["failed"] = bool(
-            row["corruption"]["corrupted"] or not row["answers_all_correct"]
-        )
-        rows.append(row)
-        print(
-            json.dumps(
-                {
-                    "request_id": row["request_id"],
-                    "prompt_tokens": row["prompt_tokens"],
-                    "correct": row["answers_all_correct"],
-                    "corrupted": row["corruption"]["corrupted"],
-                    "cache_hit_rate": row["prefix_cache_hit_rate_this_request"],
-                    "acceptance": row["draft_acceptance_rate_this_request"],
-                    "wall_s": row["wall_s"],
-                }
-            ),
-            flush=True,
-        )
+        delta["_solo"] = float(width == 1)
+        for spec, response, elapsed in results:
+            row = _row(args.arm, spec, response, elapsed, delta, wave + 1)
+            rows.append(row)
+            print(
+                json.dumps(
+                    {
+                        "request_id": row["request_id"],
+                        "prompt_tokens": row["prompt_tokens"],
+                        "scored_correct": row["scored_answers_correct"],
+                        "arithmetic": row["arithmetic_correct_diagnostic_only"],
+                        "corrupted": row["corruption"]["corrupted"],
+                        "cache_hit_rate": row["prefix_cache_hit_rate_this_request"],
+                        "acceptance": row["draft_acceptance_rate_this_request"],
+                        "wall_s": row["wall_s"],
+                    }
+                ),
+                flush=True,
+            )
 
     failures = [r for r in rows if r["failed"]]
     summary = {
@@ -636,7 +723,15 @@ def run(args: argparse.Namespace) -> int:
         "requests": len(rows),
         "failed_requests": len(failures),
         "corrupted_requests": sum(1 for r in rows if r["corruption"]["corrupted"]),
-        "answer_wrong_requests": sum(1 for r in rows if not r["answers_all_correct"]),
+        "scored_answer_wrong_requests": sum(
+            1 for r in rows if not r["scored_answers_correct"]
+        ),
+        "per_field_correct": {
+            key: sum(1 for r in rows if r["per_answer_correct"][key]) for key in ANSWER_KEYS
+        },
+        "arithmetic_correct_diagnostic_only": sum(
+            1 for r in rows if r["arithmetic_correct_diagnostic_only"]
+        ),
         "first_failure_request_id": failures[0]["request_id"] if failures else None,
         "detectors_fired_counts": {
             name: sum(1 for r in rows if name in r["corruption"]["detectors_fired"])
@@ -684,11 +779,29 @@ def run(args: argparse.Namespace) -> int:
         "base_url": args.base,
         "prompts_sha256": prompts["prompts_sha256"],
         "thresholds": THRESHOLDS,
+        "scoring_fields": list(SCORING_KEYS),
+        "diagnostic_only_fields": ["A4 (arithmetic)"],
         "summary": summary,
         "rows": rows,
     }
     Path(args.out).write_text(json.dumps(out, indent=2) + "\n")
-    print(json.dumps({"wrote": args.out, **{k: summary[k] for k in ("requests", "failed_requests", "corrupted_requests", "answer_wrong_requests")}}))
+    print(
+        json.dumps(
+            {
+                "wrote": args.out,
+                **{
+                    k: summary[k]
+                    for k in (
+                        "requests",
+                        "failed_requests",
+                        "corrupted_requests",
+                        "scored_answer_wrong_requests",
+                        "arithmetic_correct_diagnostic_only",
+                    )
+                },
+            }
+        )
+    )
     return 0
 
 
@@ -791,10 +904,21 @@ ENGINE_RE = re.compile(
     r"(?:GPU KV cache usage:\s*([0-9.]+)%,?\s*)?"
     r"(?:Prefix cache hit rate:\s*([0-9.]+)%)?"
 )
+# The pinned build's actual line, measured from a server log rather than assumed:
+#   SpecDecoding metrics: Mean acceptance length: 2.68, Current speculative depth: 3,
+#   Accepted throughput: 16.25 tokens/s, Drafted throughput: 29.05 tokens/s,
+#   Accepted: 292 tokens, Drafted: 522 tokens,
+#   Per-position acceptance rate: 0.747, 0.557, 0.374, Avg Draft acceptance rate: 55.9%
 SPEC_RE = re.compile(
-    r"SpecDecoding metrics:\s*Draft acceptance rate:\s*([0-9.]+)%,\s*"
-    r"Accepted:\s*(\d+) tokens,\s*Drafted:\s*(\d+) tokens"
-    r"(?:,\s*Per-position acceptance rate:\s*([0-9.,\s]+))?"
+    r"SpecDecoding metrics:\s*"
+    r"Mean acceptance length:\s*([0-9.]+),\s*"
+    r"Current speculative depth:\s*(\d+),\s*"
+    r"Accepted throughput:\s*([0-9.]+) tokens/s,\s*"
+    r"Drafted throughput:\s*([0-9.]+) tokens/s,\s*"
+    r"Accepted:\s*(\d+) tokens,\s*"
+    r"Drafted:\s*(\d+) tokens,\s*"
+    r"Per-position acceptance rate:\s*([0-9.,\s]+?),\s*"
+    r"Avg Draft acceptance rate:\s*([0-9.]+)%"
 )
 TS_RE = re.compile(r"(\d{2}-\d{2} \d{2}:\d{2}:\d{2})")
 
@@ -823,14 +947,16 @@ def scrape_log(args: argparse.Namespace) -> int:
             spec.append(
                 {
                     "log_time": stamp,
-                    "draft_acceptance_rate_pct": float(match.group(1)),
-                    "accepted_tokens": int(match.group(2)),
-                    "drafted_tokens": int(match.group(3)),
-                    "per_position_acceptance_rate": (
-                        [float(v) for v in match.group(4).split(",") if v.strip()]
-                        if match.group(4)
-                        else None
-                    ),
+                    "mean_acceptance_length": float(match.group(1)),
+                    "speculative_depth": int(match.group(2)),
+                    "accepted_throughput_tok_s": float(match.group(3)),
+                    "drafted_throughput_tok_s": float(match.group(4)),
+                    "accepted_tokens": int(match.group(5)),
+                    "drafted_tokens": int(match.group(6)),
+                    "per_position_acceptance_rate": [
+                        float(v) for v in match.group(7).split(",") if v.strip()
+                    ],
+                    "draft_acceptance_rate_pct": float(match.group(8)),
                 }
             )
     active = [w for w in spec if w["drafted_tokens"] > 0]
@@ -906,9 +1032,78 @@ VERDICT_RULES = {
     "arm_d_reporting": (
         "arm D (arm C plus the PR #51812 GDN speculative gate module) is reported on its "
         "own row and is never merged into the arm C verdict, so the two fixes are not "
-        "conflated."
+        "conflated. At --max-num-seqs 1 there are no mixed batches, which is the only "
+        "condition upstream says PR #51812 bites in, so arm D can show the module is "
+        "harmless here but cannot show it fixing anything."
+    ),
+    "secondary_concurrency_pair": (
+        "arms A2 and B2 repeat arms A and B at --max-num-seqs 4, the one deviation from "
+        "the reporter's flags, to test whether concurrency is the missing amplifier. If A2 "
+        "fails and B2 is clean the defect is reproduced with that deviation named."
+    ),
+    "divergence_measure": (
+        "for every arm, each request's greedy continuation is compared against the same "
+        "request on arm B: identical token ids, and the mean and maximum absolute "
+        "difference of the chosen-token logprobs over the shared positions. Greedy "
+        "sampling makes any divergence a statement about state, not about sampling. This "
+        "is the instrument upstream used for PR #51812 and it detects state truncation "
+        "even when the argmax is unchanged."
     ),
 }
+
+
+def _divergence(reference_rows: list[dict], rows: list[dict]) -> dict:
+    """Compare one arm's greedy continuations against the reference arm, request by request."""
+    by_id = {r["request_id"]: r for r in reference_rows}
+    per_request, deltas = [], []
+    identical_text = identical_tokens = compared = 0
+    for row in rows:
+        ref = by_id.get(row["request_id"])
+        if ref is None:
+            continue
+        compared += 1
+        same_text = ref["response_text"] == row["response_text"]
+        same_tokens = ref.get("response_tokens") == row.get("response_tokens")
+        identical_text += same_text
+        identical_tokens += same_tokens
+        pairs = [
+            (x, y)
+            for x, y in zip(
+                ref.get("chosen_token_logprobs") or [], row.get("chosen_token_logprobs") or []
+            )
+            if x is not None and y is not None
+        ]
+        diffs = [abs(x - y) for x, y in pairs]
+        first = next(
+            (
+                i
+                for i, (x, y) in enumerate(
+                    zip(ref.get("response_tokens") or [], row.get("response_tokens") or [])
+                )
+                if x != y
+            ),
+            None,
+        )
+        deltas.extend(diffs)
+        per_request.append(
+            {
+                "request_id": row["request_id"],
+                "identical_text": same_text,
+                "identical_tokens": same_tokens,
+                "first_differing_token_position": first,
+                "positions_compared": len(diffs),
+                "mean_abs_chosen_logprob_delta": round(statistics.fmean(diffs), 8) if diffs else None,
+                "max_abs_chosen_logprob_delta": round(max(diffs), 8) if diffs else None,
+            }
+        )
+    return {
+        "requests_compared": compared,
+        "identical_text_requests": identical_text,
+        "identical_token_id_requests": identical_tokens,
+        "mean_abs_chosen_logprob_delta": round(statistics.fmean(deltas), 8) if deltas else None,
+        "max_abs_chosen_logprob_delta": round(max(deltas), 8) if deltas else None,
+        "per_request": per_request,
+    }
 
 
 def verdict(args: argparse.Namespace) -> int:
@@ -932,6 +1127,20 @@ def verdict(args: argparse.Namespace) -> int:
     else:
         reproduction = "not_reproduced"
 
+    secondary = None
+    if "A2" in summaries and "B2" in summaries:
+        a2, b2 = summaries["A2"], summaries["B2"]
+        secondary = {
+            "arms": "A2 vs B2, --max-num-seqs 4",
+            "a2_failed_requests": a2["failed_requests"],
+            "b2_failed_requests": b2["failed_requests"],
+            "verdict": (
+                "reproduced_with_concurrency_deviation"
+                if a2["failed_requests"] >= 1 and b2["failed_requests"] == 0
+                else "not_reproduced"
+            ),
+        }
+
     if reproduction == "not_reproduced":
         fix = "fix_not_exercised"
     elif c is None:
@@ -944,13 +1153,22 @@ def verdict(args: argparse.Namespace) -> int:
     else:
         fix = "not_fixed"
 
+    reference = arms["B"]["rows"]
+    divergence = {
+        tag: _divergence(reference, data["rows"])
+        for tag, data in arms.items()
+        if tag != "B"
+    }
+
     out = {
-        "schema": "qwen38-apc-poison-verdict/1",
+        "schema": "qwen38-apc-poison-verdict/2",
         "pre_registered_rules": VERDICT_RULES,
         "thresholds": THRESHOLDS,
         "arm_summaries": summaries,
         "reproduction_verdict": reproduction,
         "fix_verdict": fix,
+        "secondary_concurrency_pair": secondary,
+        "divergence_vs_arm_B": divergence,
         "arm_d_note": VERDICT_RULES["arm_d_reporting"],
         "next_experiment_if_not_reproduced": (
             "run the reporter's exact stack including LMCache 0.5.2 in kv_both disk mode "
@@ -984,6 +1202,12 @@ def main() -> int:
     p.add_argument("--description", default="")
     p.add_argument("--out", required=True)
     p.add_argument("--max-tokens", type=int, default=220)
+    p.add_argument(
+        "--concurrency",
+        type=int,
+        default=1,
+        help="requests issued per wave; above 1 the counter deltas are per wave",
+    )
     p.add_argument("--expect-prompts-sha256", default="")
     p.set_defaults(func=run)
 

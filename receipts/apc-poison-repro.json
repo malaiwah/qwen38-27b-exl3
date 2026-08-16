@@ -3,14 +3,12 @@
   "generated_utc": "2026-08-16T02:52:00Z",
   "status": "PRE-REGISTERED. Thresholds, arms and decision rules are frozen here before any GPU arm has been started. The results block is null and will be filled by a later commit; git history is the proof of ordering.",
   "purpose": "Turn the source-level claim in receipts/mamba-align-defect.json into a measurement on the reporter's own hardware class: does the pinned r34 release image, run in the reporter's --enable-prefix-caching --mamba-cache-mode align condition, actually produce corrupted output on a physical RTX 5090, and does the ported vLLM PR #51113 stop it. Separately, and kept apart from that verdict, measure what prefix reuse buys so that shipping it can be justified with numbers.",
-
   "reported_by": {
     "where": "https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6-context/discussions/1",
     "user": "cosmicnag",
     "symptoms": "intermittent multilingual token soup with repeated blocks and replacement characters after 1-2 turns, HTTP 200, no crash; SpecDecoding acceptance walking 39.4 % -> 0.0 % -> 64.5 % -> 20.4 % -> 0.0 %",
     "his_stack_not_fully_modelled_here": "LMCache 0.5.2 in kv_both disk mode with chunk 1600, and a custom chat template. Neither is exercised by this probe; see unproven_after_this_receipt."
   },
-
   "established_before_this_run_not_re_derived": {
     "mamba_align_defect": {
       "receipt": "receipts/mamba-align-defect.json",
@@ -36,7 +34,6 @@
       "measured_where": "startup banner of this edition on this card"
     }
   },
-
   "hardware": {
     "host": "aiboss",
     "address": "10.15.0.151",
@@ -44,7 +41,6 @@
     "container_engine": "podman version 4.9.3 (rootless, user mbelleau)",
     "note": "same card class as the reporter's; the user's live qwen38-27b service is stopped for this window and is restored and proven healthy by the restore phase"
   },
-
   "images": {
     "release": {
       "tag": "localhost/vllm:gg-r34-patched",
@@ -63,17 +59,15 @@
     "common_base": "docker.io/voipmonitor/vllm@sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b",
     "asymmetry_asserted_by_the_harness": "the stage phase fails closed if the release image already carries b431c106... or if the superset image does not; arms A and C are otherwise not distinct"
   },
-
   "harness": {
     "probe": "tools/apc_poison_probe.py",
-    "probe_sha256": "3019f4d8d7f61824826211179800de62c542b86ac84e09c2a055ef6fdb99f24b",
+    "probe_sha256": "f415414ddf9dfc762eb872e6f6dca33ed1c040a22d3de976cd2e3ca4a65a5b1c",
     "driver": "tools/run_apc_repro.sh",
-    "driver_sha256": "be31d44886d382829ae26c57da8ffa052fc9b05668c83c310819dfde108f224c",
+    "driver_sha256": "293011dcca33103d75f452017c7edb168cc3e0710fefd944bb21fc8bebdc85b3",
     "probe_dependencies": "standard library only for every mode that talks to a server; the one-off build mode uses the model's own tokenizer inside the image, CPU only, because exact token lengths are the whole point of the experiment",
-    "prompts_sha256": "c1dae2341718d8dc521a26c8d16ee0e0d025333828487a50234e0a2096521d9a",
+    "prompts_sha256": "9978404b0ce2d032ebf762e17335d7b5a37dbc424f57f61db66ecf3f946f39df",
     "prompts_not_committed": "prompts.json is ~5 MB of token ids and is fully deterministic from seed 20260816 plus the edition's tokenizer; rebuild with `run_apc_repro.sh stage` (~30 s, CPU only) and compare prompts_sha256. Every arm asserts this digest before issuing a request, so no two arms can differ by prompt."
   },
-
   "trigger_model": {
     "why_a_single_request_is_accidentally_safe": "align mode skips null blocks, so the defect needs mixed-length requests over a shared prefix; the probe drives that condition deliberately rather than hoping for it",
     "construction": [
@@ -81,11 +75,11 @@
       "Ten document prefix lengths, none a multiple of the 1600-token mamba block: 3000, 4100, 5300, 6500, 7700, 8200, 9900, 11000, 12300, 15400. With the 35-token chat head and the question tail the ten prompt lengths are 3141, 4241, 5441, 6641, 7841, 8341, 10041, 11141, 12441, 15541 and their residues mod 1600 are 1541, 641, 1041, 1441, 241, 441, 341, 1241, 1541, 1141 - no prompt is block aligned.",
       "--max-num-batched-tokens 2048 puts chunk ends at multiples of 2048; between 1 and 7 chunk ends per request land mid-block, which is exactly the window the vendored guard fails to align.",
       "Three passes of thirty requests total: pass 1 interleaved short/long/shorter/longer, pass 2 the same order replayed against a warm cache, pass 3 ascending as a persistence check, because a poisoned entry survives until process restart.",
-      "Sampling is greedy: temperature 0, top_p 1, seed 0, max_tokens 220, OpenAI-compatible /v1/completions with explicit token ids."
+      "Sampling is greedy: temperature 0, top_p 1, seed 0, max_tokens 220, OpenAI-compatible /v1/completions with explicit token ids.",
+      "Fourth pass, boundary-straddle: four pairs whose shared prefixes are 2900/3500, 4500/5100, 6100/6700 and 7700/8300 tokens. The first of each pair ends 300 tokens short of a 1600-token block boundary; the second crosses exactly that boundary and can only get there through the entry the first one published. 38 requests in total."
     ],
     "ground_truth_per_request": "two planted needle codes that must be retrieved verbatim (one shallow, always inside the shortest prefix; one as deep as the request's own prefix allows), one arithmetic answer, and a 40-60 word English summary that gives the corruption detector material. 16 needles are planted at measured token depths 891 through 12722."
   },
-
   "pre_registration": {
     "written_before_any_gpu_arm_was_started": true,
     "thresholds": {
@@ -103,7 +97,7 @@
       "ngram5_repetition_ratio_ge": "1 - unique_5grams / total_5grams over whitespace-split words, computed only at 30 words or more. Catches degenerate looping that does not produce one single long verbatim block.",
       "answer_noise_band_requests": "how many differing requests out of the thirty are tolerated when asking whether the patched arm matches the prefix-caching-off arm. Greedy decoding is deterministic per state, but cached and uncached paths take different kernel routes, so one differing request out of thirty is treated as probe noise."
     },
-    "a_request_fails_if": "the corruption detector fires on its response, or any of the three checkable answers is wrong",
+    "a_request_fails_if": "the corruption detector fires on its response, or any SCORED checkable answer is wrong. The scored answers are A1 and A2 (the two planted needle codes) and A3 (the record numbers of the two needle records). A4, the arithmetic item, is asked, parsed and reported on every row but is not scored; see amendment_1.",
     "verdict_rules": {
       "reproduced": "arm A has at least one failing request AND arm B has none on the identical prompt set",
       "partially_reproduced": "neither arm is clean but arm A fails at least three more requests than arm B; recorded as degradation, not as the reported defect",
@@ -111,10 +105,27 @@
       "fixed": "arm A reproduced AND arm C has zero corrupted requests AND arm C fails at most one more request than arm B",
       "fix_not_exercised": "arm A did not reproduce, so a clean arm C cannot be read as the fix working",
       "arm_d_reporting": "arm D is reported on its own row and is never folded into the arm C verdict, so the two absent upstream fixes are never conflated",
-      "arm_e_is_not_part_of_the_correctness_verdict": "arm E measures prefix-reuse economics only; it can neither create nor rescue a correctness verdict"
+      "arm_e_is_not_part_of_the_correctness_verdict": "arm E measures prefix-reuse economics only; it can neither create nor rescue a correctness verdict",
+      "secondary_concurrency_pair": "arms A2 and B2 repeat A and B at --max-num-seqs 4. If A2 has at least one failing request and B2 has none, the verdict is reproduced_with_concurrency_deviation and the deviation is named in every statement of it. A2/B2 cannot make the primary A/B verdict positive."
+    },
+    "amendment_1": {
+      "made_utc": "2026-08-16T03:50:00Z",
+      "made_before_any_scored_arm_ran": true,
+      "what_changed": [
+        "The arithmetic item was a two-digit multiplication plus a three-digit addend and is no longer scored; it is replaced in the pass/fail rule by a third retrieval item (A3, the record numbers of the two needle records) and demoted to a reported diagnostic (A4, now a two-digit addition).",
+        "Added a fourth prompt pass, boundary-straddle: four pairs whose shared prefixes are 2900/3500, 4500/5100, 6100/6700 and 7700/8300 tokens, so the first request of each pair ends 300 tokens short of a 1600-token block boundary and the second crosses exactly that boundary. 30 requests became 38.",
+        "Added logprobs=1 to every request. Greedy sampling plus identical prompts makes the emitted token ids and their chosen-token logprobs directly comparable across arms, so every arm is additionally compared against arm B by identical-token count and by mean and maximum absolute chosen-logprob delta. This is the instrument upstream used to measure PR #51812 and it detects state divergence even when the argmax never changes.",
+        "Added arms A2 and B2 at --max-num-seqs 4 (the reporter runs 1). A batch of one never forms the mixed batch that upstream says PR #51812 needs, and concurrency is the most plausible amplifier the original design did not model.",
+        "Fixed the SpecDecoding log regex, which had been written against a format this build does not emit and matched zero windows."
+      ],
+      "why": "A pilot run of arm A on the original prompt set, published in full at receipts/apc-repro-raw/pilot/, failed 22 of 30 requests. Every one of those failures was the arithmetic item, and nothing else: needle retrieval was 30/30 on A1 and 30/30 on A2, the corruption detector never fired on any request, the longest repeated block over the whole run was 13 characters against a threshold of 80, and the 5-gram repetition ratio was 0.0 throughout. The arithmetic item was therefore measuring this model's mental arithmetic, not the integrity of its recurrent state, and scoring it would have drowned the signal the probe exists to find. The errors were near misses of exactly the kind a language model makes on multi-digit multiplication (2472 answered as 2482, 2546 as 2566, 1809 as 1789).",
+      "what_did_not_change": "Every corruption threshold above is untouched, and no threshold was moved after seeing any data. The pilot is published rather than discarded, including its 30 full responses.",
+      "pilot_artifacts": "receipts/apc-repro-raw/pilot/ (arm-A.json with all 30 rows, server-A.log, command-A.json, startup-facts-A.txt, gpu-A.csv)",
+      "pilot_prompts_sha256": "c1dae2341718d8dc521a26c8d16ee0e0d025333828487a50234e0a2096521d9a",
+      "amended_prompts_sha256": "9978404b0ce2d032ebf762e17335d7b5a37dbc424f57f61db66ecf3f946f39df",
+      "pilot_confirmed_the_condition_was_real": "the pilot server log records 'mamba_cache_mode': 'align' and enable_prefix_caching=True in the engine configuration, the banner warning that prefix caching in align mode is experimental, a measured mamba/attention block size of 1600 tokens, a GPU KV cache of 223,677 tokens, and a final prefix cache hit rate of 63.6 %. The reporter's condition was genuinely in effect and the cache was genuinely being hit."
     }
   },
-
   "arms": {
     "shared_serving_profile": {
       "model": "/models/ctx-repo/snapshots/c45c273b0d6ef2859cb2d85b36dd52253c80d878 (malaiwah/Qwen3.8-27B-EXL3-K5K6-context)",
@@ -146,11 +157,11 @@
       "the edition's own chat template with enable_thinking=false, not the reporter's custom template: his template is not published and a reasoning preamble would spend the answer budget.",
       "NO LMCache. The reporter runs LMCache 0.5.2 in kv_both disk mode with chunk 1600. This probe exercises only vLLM's own prefix cache. This is the single largest gap between his stack and this measurement and it is called out in the verdict either way.",
       "arm B additionally passes --no-enable-prefix-caching and no --mamba-cache-mode, which is the point of that arm."
-    ]
+    ],
+    "A2": "arm A at --max-num-seqs 4: the reporter's condition plus concurrency, so mixed batches exist",
+    "B2": "arm B at --max-num-seqs 4: the concurrency control for A2"
   },
-
   "results": null,
-
   "unproven_after_this_receipt": [
     "LMCache 0.5.2 kv_both disk reuse is not exercised at all; it is a second, independent state-restore path on top of vLLM's prefix cache.",
     "The reporter's custom chat template is not used.",

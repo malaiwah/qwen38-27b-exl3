@@ -1,0 +1,2016 @@
+{
+  "schema": "qwen38-apc-poison-arm/1",
+  "arm": "A",
+  "arm_description": "release image gg-r34-patched (PR #51113 ABSENT), --enable-prefix-caching --mamba-cache-mode align: the reporter's condition",
+  "base_url": "http://127.0.0.1:8241",
+  "prompts_sha256": "c1dae2341718d8dc521a26c8d16ee0e0d025333828487a50234e0a2096521d9a",
+  "thresholds": {
+    "out_of_script_fraction_gt": 0.02,
+    "replacement_char_count_ge": 1,
+    "longest_repeated_block_chars_ge": 80,
+    "ngram5_repetition_ratio_ge": 0.5,
+    "ngram5_min_words": 30,
+    "answer_noise_band_requests": 1
+  },
+  "summary": {
+    "arm": "A",
+    "requests": 30,
+    "failed_requests": 22,
+    "corrupted_requests": 0,
+    "answer_wrong_requests": 22,
+    "first_failure_request_id": "p1s2",
+    "detectors_fired_counts": {
+      "out_of_script_fraction": 0,
+      "replacement_char_count": 0,
+      "longest_repeated_block_chars": 0,
+      "ngram5_repetition_ratio": 0
+    },
+    "acceptance_rates_per_request": [
+      0.531746,
+      0.605442,
+      0.55,
+      0.542636,
+      0.587719,
+      0.587719,
+      0.646667,
+      0.658915,
+      0.621622,
+      0.638095,
+      0.522727,
+      0.516667,
+      0.526316,
+      0.561404,
+      0.587719,
+      0.520325,
+      0.612613,
+      0.707317,
+      0.606838,
+      0.612903,
+      0.511628,
+      0.559748,
+      0.511905,
+      0.566667,
+      0.653846,
+      0.676471,
+      0.541667,
+      0.606838,
+      0.68254,
+      0.536585
+    ],
+    "acceptance_min": 0.511628,
+    "acceptance_median": 0.587719,
+    "cumulative_prefix_cache_hit_rate": 0.647722,
+    "wall_s_total": 61.4,
+    "cumulative_metrics": {
+      "drafts": 1235.0,
+      "draft_tokens": 3705.0,
+      "accepted": 2160.0,
+      "prefix_cache_queries": 254430.0,
+      "prefix_cache_hits": 164800.0,
+      "preemptions": 0.0
+    }
+  },
+  "rows": [
+    {
+      "arm": "A",
+      "request_id": "p1s1",
+      "pass": "interleaved",
+      "slot": 1,
+      "doc_prefix_tokens": 3000,
+      "prompt_tokens": 3141,
+      "prompt_tokens_mod_mamba_block": 1541,
+      "chunk_ends_off_block": [
+        2048
+      ],
+      "needle_keys": [
+        "N01",
+        "N03"
+      ],
+      "expected": {
+        "A1": "90E1F14D",
+        "A2": "0E4E87AD",
+        "A3": "1764"
+      },
+      "wall_s": 2.1133,
+      "finish_reason": "stop",
+      "usage": {
+        "prompt_tokens": 3141,
+        "total_tokens": 3249,
+        "completion_tokens": 108,
+        "prompt_tokens_details": null
+      },
+      "response_text": "A1=90E1F14D\nA2=0E4E87AD\nA3=1764\nA4=The records contain technical descriptions of mechanical and electrical components, including struts, vessels, turbines, and gauges. They detail various states such as annealed, sealed, and calibrated, along with specific actions like tracking, recording, and confirming. Additionally, the text includes authoritative calibration markers with unique codes and standard engineering terminology related to industrial machinery maintenance and assembly processes.",
+      "metric_delta": {
+        "prefix_cache_queries": 3141.0,
+        "prefix_cache_hits": 0.0,
+        "drafts": 42.0,
+        "draft_tokens": 126.0,
+        "accepted": 67.0,
+        "preemptions": 0.0
+      },
+      "prefix_cache_hit_rate_this_request": 0.0,
+      "draft_acceptance_rate_this_request": 0.531746,
+      "answers": {
+        "A1": "90E1F14D",
+        "A2": "0E4E87AD",
+        "A3": "1764"
+      },
+      "per_answer_correct": {
+        "A1": true,
+        "A2": true,
+        "A3": true
+      },
+      "answers_all_correct": true,
+      "corruption": {
+        "out_of_script_fraction": 0.0,
+        "out_of_script_sample": [],
+        "replacement_char_count": 0,
+        "longest_repeated_block_chars": 9,
+        "ngram5_repetition_ratio": 0.0,
+        "response_words": 60,
+        "detectors_fired": [],
+        "corrupted": false
+      },
+      "failed": false
+    },
+    {
+      "arm": "A",
+      "request_id": "p1s2",
+      "pass": "interleaved",
+      "slot": 2,
+      "doc_prefix_tokens": 5300,
+      "prompt_tokens": 5441,
+      "prompt_tokens_mod_mamba_block": 641,
+      "chunk_ends_off_block": [
+        2048,
+        4096
+      ],
+      "needle_keys": [
+        "N01",
+        "N06"
+      ],
+      "expected": {
+        "A1": "90E1F14D",
+        "A2": "7F956197",
+        "A3": "2472"
+      },
+      "wall_s": 2.9894,
+      "finish_reason": "stop",
+      "usage": {
+        "prompt_tokens": 5441,
+        "total_tokens": 5578,
+        "completion_tokens": 137,
+        "prompt_tokens_details": null
+      },
+      "response_text": "A1=90E1F14D\nA2=7F956197\nA3=2482\nA4=The provided records consist of a sequence of technical entries describing various mechanical and electrical components, such as struts, vessels, and turbines. Each entry lists specific states, actions, and associated parts in a structured format. Interspersed within this data are specific calibration markers, labeled NEEDLE-N01 through NEEDLE-N06, which resolve to unique hexadecimal codes. These markers serve as authoritative identifiers within the dataset, appearing exactly once each, amidst the detailed descriptions of industrial machinery and system configurations.",
+      "metric_delta": {
+        "prefix_cache_queries": 5441.0,
+        "prefix_cache_hits": 0.0,
+        "drafts": 49.0,
+        "draft_tokens": 147.0,
+        "accepted": 89.0,
+        "preemptions": 0.0
+      },
+      "prefix_cache_hit_rate_this_request": 0.0,
+      "draft_acceptance_rate_this_request": 0.605442,
+      "answers": {
+        "A1": "90E1F14D",
+        "A2": "7F956197",
+        "A3": "2482"
+      },
+      "per_answer_correct": {
+        "A1": true,
+        "A2": true,
+        "A3": false
+      },
+      "answers_all_correct": false,
+      "corruption": {
+        "out_of_script_fraction": 0.0,
+        "out_of_script_sample": [],
+        "replacement_char_count": 0,
+        "longest_repeated_block_chars": 10,
+        "ngram5_repetition_ratio": 0.0,
+        "response_words": 79,
+        "detectors_fired": [],
+        "corrupted": false
+      },
+      "failed": true
+    },
+    {
+      "arm": "A",
+      "request_id": "p1s3",
+      "pass": "interleaved",
+      "slot": 3,
+      "doc_prefix_tokens": 4100,
+      "prompt_tokens": 4241,
+      "prompt_tokens_mod_mamba_block": 1041,
+      "chunk_ends_off_block": [
+        2048,
+        4096
+      ],
+      "needle_keys": [
+        "N01",
+        "N04"
+      ],
+      "expected": {
+        "A1": "90E1F14D",
+        "A2": "13730B33",
+        "A3": "2546"
+      },
+      "wall_s": 1.8384,
+      "finish_reason": "stop",
+      "usage": {
+        "prompt_tokens": 4241,
+        "total_tokens": 4347,
+        "completion_tokens": 106,
+        "prompt_tokens_details": null
+      },
+      "response_text": "A1=90E1F14D\nA2=13730B33\nA3=2566\nA4=The records contain a series of technical entries describing various mechanical and electrical components, such as struts, vessels, and turbines. They detail specific states like annealed, sealed, or calibrated, along with actions like tracking or mounting. Interspersed are authoritative calibration markers with unique codes, providing a structured log of industrial system parameters and component statuses.",
+      "metric_delta": {
+        "prefix_cache_queries": 4241.0,
+        "prefix_cache_hits": 1600.0,
+        "drafts": 40.0,
+        "draft_tokens": 120.0,
+        "accepted": 66.0,
+        "preemptions": 0.0
+      },
+      "prefix_cache_hit_rate_this_request": 0.37727,
+      "draft_acceptance_rate_this_request": 0.55,
+      "answers": {
+        "A1": "90E1F14D",
+        "A2": "13730B33",
+        "A3": "2566"
+      },
+      "per_answer_correct": {
+        "A1": true,
+        "A2": true,
+        "A3": false
+      },
+      "answers_all_correct": false,
+      "corruption": {
+        "out_of_script_fraction": 0.0,
+        "out_of_script_sample": [],
+        "replacement_char_count": 0,
+        "longest_repeated_block_chars": 10,
+        "ngram5_repetition_ratio": 0.0,
+        "response_words": 58,
+        "detectors_fired": [],
+        "corrupted": false
+      },
+      "failed": true
+    },
+    {
+      "arm": "A",
+      "request_id": "p1s4",
+      "pass": "interleaved",
+      "slot": 4,
+      "doc_prefix_tokens": 7700,
+      "prompt_tokens": 7841,
+      "prompt_tokens_mod_mamba_block": 1441,
+      "chunk_ends_off_block": [
+        2048,
+        4096,
+        6144
+      ],
+      "needle_keys": [
+        "N01",
+        "N09"
+      ],
+      "expected": {
+        "A1": "90E1F14D",
+        "A2": "19779982",
+        "A3": "1809"
+      },
+      "wall_s": 2.5918,
+      "finish_reason": "stop",
+      "usage": {
+        "prompt_tokens": 7841,
+        "total_tokens": 7955,
+        "completion_tokens": 114,
+        "prompt_tokens_details": null
+      },
+      "response_text": "A1=90E1F14D\nA2=19779982\nA3=1789\nA4=The records contain a sequence of technical entries describing various mechanical and electrical components, such as struts, vessels, and turbines. They detail specific states like annealed, sealed, or calibrated, along with actions like tracking or mounting. Interspersed within the data are authoritative calibration markers, specifically NEEDLE-N01 through NEEDLE-N09, which resolve to unique hexadecimal codes.",
+      "metric_delta": {
+        "prefix_cache_queries": 7841.0,
+        "prefix_cache_hits": 3200.0,
+        "drafts": 43.0,
+        "draft_tokens": 129.0,
+        "accepted": 70.0,
+        "preemptions": 0.0
+      },
+      "prefix_cache_hit_rate_this_request": 0.408111,
+      "draft_acceptance_rate_this_request": 0.542636,
+      "answers": {
+        "A1": "90E1F14D",
+        "A2": "19779982",
+        "A3": "1789"
+      },
+      "per_answer_correct": {
+        "A1": true,
+        "A2": true,
+        "A3": false
+      },
+      "answers_all_correct": false,
+      "corruption": {
+        "out_of_script_fraction": 0.0,
+        "out_of_script_sample": [],
+        "replacement_char_count": 0,
+        "longest_repeated_block_chars": 10,
+        "ngram5_repetition_ratio": 0.0,
+        "response_words": 57,
+        "detectors_fired": [],
+        "corrupted": false
+      },
+      "failed": true
+    },
+    {
+      "arm": "A",
+      "request_id": "p1s5",
+      "pass": "interleaved",
+      "slot": 5,
+      "doc_prefix_tokens": 6500,
+      "prompt_tokens": 6641,
+      "prompt_tokens_mod_mamba_block": 241,
+      "chunk_ends_off_block": [
+        2048,
+        4096,
+        6144
+      ],
+      "needle_keys": [
+        "N01",
+        "N07"
+      ],
+      "expected": {
+        "A1": "90E1F14D",
+        "A2": "58121B95",
+        "A3": "7366"
+      },
+      "wall_s": 1.5483,
+      "finish_reason": "stop",
+      "usage": {
+        "prompt_tokens": 6641,
+        "total_tokens": 6747,
+        "completion_tokens": 106,
+        "prompt_tokens_details": null
+      },
+      "response_text": "A1=90E1F14D\nA2=58121B95\nA3=7346\nA4=The records contain a series of technical entries describing various mechanical and electrical components, such as struts, vessels, and turbines. They detail specific states, actions, and relationships between these parts, including terms like calibrated, sealed, and mounted. Interspersed within the text are authoritative calibration markers, each resolving to a unique eight-character hexadecimal code.",
+      "metric_delta": {
+        "prefix_cache_queries": 6641.0,
+        "prefix_cache_hits": 4800.0,
+        "drafts": 38.0,
+        "draft_tokens": 114.0,
+        "accepted": 67.0,
+        "preemptions": 0.0
+      },
+      "prefix_cache_hit_rate_this_request": 0.722783,
+      "draft_acceptance_rate_this_request": 0.587719,
+      "answers": {
+        "A1": "90E1F14D",
+        "A2": "58121B95",
+        "A3": "7346"
+      },
+      "per_answer_correct": {
+        "A1": true,
+        "A2": true,
+        "A3": false
+      },
+      "answers_all_correct": false,
+      "corruption": {
+        "out_of_script_fraction": 0.0,
+        "out_of_script_sample": [],
+        "replacement_char_count": 0,
+        "longest_repeated_block_chars": 10,
+        "ngram5_repetition_ratio": 0.0,
+        "response_words": 56,
+        "detectors_fired": [],
+        "corrupted": false
+      },
+      "failed": true
+    },
+    {
+      "arm": "A",
+      "request_id": "p1s6",
+      "pass": "interleaved",
+      "slot": 6,
+      "doc_prefix_tokens": 9900,
+      "prompt_tokens": 10041,
+      "prompt_tokens_mod_mamba_block": 441,
+      "chunk_ends_off_block": [
+        2048,
+        4096,
+        6144,
+        8192
+      ],
+      "needle_keys": [
+        "N01",
+        "N12"
+      ],
+      "expected": {
+        "A1": "90E1F14D",
+        "A2": "96C4AAFF",
+        "A3": "2601"
+      },
+      "wall_s": 2.6947,
+      "finish_reason": "stop",
+      "usage": {
+        "prompt_tokens": 10041,
+        "total_tokens": 10146,
+        "completion_tokens": 105,
+        "prompt_tokens_details": null
+      },
+      "response_text": "A1=90E1F14D\nA2=96C4AAFF\nA3=2601\nA4=The records contain a series of technical entries describing various mechanical and electrical components, such as struts, vessels, and turbines. They detail specific states, actions, and relationships between these parts, including terms like calibrated, sealed, and mounted. Additionally, the text includes specific calibration markers with unique codes, providing a structured log of industrial or engineering data points.",
+      "metric_delta": {
+        "prefix_cache_queries": 10041.0,
+        "prefix_cache_hits": 4800.0,
+        "drafts": 38.0,
+        "draft_tokens": 114.0,
+        "accepted": 67.0,
+        "preemptions": 0.0
+      },
+      "prefix_cache_hit_rate_this_request": 0.47804,
+      "draft_acceptance_rate_this_request": 0.587719,
+      "answers": {
+        "A1": "90E1F14D",
+        "A2": "96C4AAFF",
+        "A3": "2601"
+      },
+      "per_answer_correct": {
+        "A1": true,
+        "A2": true,
+        "A3": true
+      },
+      "answers_all_correct": true,
+      "corruption": {
+        "out_of_script_fraction": 0.0,
+        "out_of_script_sample": [],
+        "replacement_char_count": 0,
+        "longest_repeated_block_chars": 10,
+        "ngram5_repetition_ratio": 0.0,
+        "response_words": 60,
+        "detectors_fired": [],
+        "corrupted": false
+      },
+      "failed": false
+    },
+    {
+      "arm": "A",
+      "request_id": "p1s7",
+      "pass": "interleaved",
+      "slot": 7,
+      "doc_prefix_tokens": 8200,
+      "prompt_tokens": 8341,
+      "prompt_tokens_mod_mamba_block": 341,
+      "chunk_ends_off_block": [
+        2048,
+        4096,
+        6144,
+        8192
+      ],
+      "needle_keys": [
+        "N01",
+        "N10"
+      ],
+      "expected": {
+        "A1": "90E1F14D",
+        "A2": "07197187",
+        "A3": "7009"
+      },
+      "wall_s": 1.8895,
+      "finish_reason": "stop",
+      "usage": {
+        "prompt_tokens": 8341,
+        "total_tokens": 8488,
+        "completion_tokens": 147,
+        "prompt_tokens_details": null
+      },
+      "response_text": "A1=90E1F14D\nA2=07197187\nA3=6929\nA4=The records contain a series of technical entries describing various mechanical and electrical components, such as struts, vessels, and turbines. Each entry lists specific states, actions, and associated parts like gauges, sensors, and actuators. Interspersed among these descriptions are authoritative calibration markers, specifically NEEDLE-N01 through NEEDLE-N10, which resolve to unique hexadecimal codes. The text serves as a detailed log of system configurations, maintenance statuses, and component interactions within an industrial or engineering context, providing precise data for tracking and calibration purposes.",
+      "metric_delta": {
+        "prefix_cache_queries": 8341.0,
+        "prefix_cache_hits": 6400.0,
+        "drafts": 50.0,
+        "draft_tokens": 150.0,
+        "accepted": 97.0,
+        "preemptions": 0.0
+      },
+      "prefix_cache_hit_rate_this_request": 0.767294,
+      "draft_acceptance_rate_this_request": 0.646667,
+      "answers": {
+        "A1": "90E1F14D",
+        "A2": "07197187",
+        "A3": "6929"
+      },
+      "per_answer_correct": {
+        "A1": true,
+        "A2": true,
+        "A3": false
+      },
+      "answers_all_correct": false,
+      "corruption": {
+        "out_of_script_fraction": 0.0,
+        "out_of_script_sample": [],
+        "replacement_char_count": 0,
+        "longest_repeated_block_chars": 13,
+        "ngram5_repetition_ratio": 0.0,
+        "response_words": 84,
+        "detectors_fired": [],
+        "corrupted": false
+      },
+      "failed": true
+    },
+    {
+      "arm": "A",
+      "request_id": "p1s8",
+      "pass": "interleaved",
+      "slot": 8,
+      "doc_prefix_tokens": 12300,
+      "prompt_tokens": 12441,
+      "prompt_tokens_mod_mamba_block": 1241,
+      "chunk_ends_off_block": [
+        2048,
+        4096,
+        6144,
+        8192,
+        10240,
+        12288
+      ],
+      "needle_keys": [
+        "N01",
+        "N15"
+      ],
+      "expected": {
+        "A1": "90E1F14D",
+        "A2": "6FEDC96C",
+        "A3": "2084"
+      },
+      "wall_s": 2.6225,
+      "finish_reason": "stop",
+      "usage": {
+        "prompt_tokens": 12441,
+        "total_tokens": 12568,
+        "completion_tokens": 127,
+        "prompt_tokens_details": null
+      },
+      "response_text": "A1=90E1F14D\nA2=6FEDC96C\nA3=2104\nA4=The records contain a series of technical entries describing mechanical and electrical components, such as struts, vessels, and turbines, along with their states and actions. Interspersed within these descriptions are specific calibration markers, labeled NEEDLE-N01 through NEEDLE-N15, each resolving to a unique eight-character hexadecimal code. These markers serve as authoritative identifiers within the dataset, appearing exactly once each, amidst the detailed logs of industrial equipment maintenance and configuration.",
+      "metric_delta": {
+        "prefix_cache_queries": 12441.0,
+        "prefix_cache_hits": 8000.0,
+        "drafts": 43.0,
+        "draft_tokens": 129.0,
+        "accepted": 85.0,
+        "preemptions": 0.0
+      },
+      "prefix_cache_hit_rate_this_request": 0.643035,
+      "draft_acceptance_rate_this_request": 0.658915,
+      "answers": {
+        "A1": "90E1F14D",
+        "A2": "6FEDC96C",
+        "A3": "2104"
+      },
+      "per_answer_correct": {
+        "A1": true,
+        "A2": true,
+        "A3": false
+      },
+      "answers_all_correct": false,
+      "corruption": {
+        "out_of_script_fraction": 0.0,
+        "out_of_script_sample": [],
+        "replacement_char_count": 0,
+        "longest_repeated_block_chars": 11,
+        "ngram5_repetition_ratio": 0.0,
+        "response_words": 71,
+        "detectors_fired": [],
+        "corrupted": false
+      },
+      "failed": true
+    },
+    {
+      "arm": "A",
+      "request_id": "p1s9",
+      "pass": "interleaved",
+      "slot": 9,
+      "doc_prefix_tokens": 11000,
+      "prompt_tokens": 11141,
+      "prompt_tokens_mod_mamba_block": 1541,
+      "chunk_ends_off_block": [
+        2048,
+        4096,
+        6144,
+        8192,
+        10240
+      ],
+      "needle_keys": [
+        "N01",
+        "N13"
+      ],
+      "expected": {
+        "A1": "90E1F14D",
+        "A2": "BD1C0712",
+        "A3": "1918"
+      },
+      "wall_s": 2.001,
+      "finish_reason": "stop",
+      "usage": {
+        "prompt_tokens": 11141,
+        "total_tokens": 11247,
+        "completion_tokens": 106,
+        "prompt_tokens_details": null
+      },
+      "response_text": "A1=90E1F14D\nA2=BD1C0712\nA3=1918\nA4=The records contain a series of technical entries describing various mechanical and electrical components, such as struts, vessels, and turbines. Each entry lists specific states, actions, and associated parts, including calibration markers with unique codes. The text details the condition and relationships of these industrial elements, providing a comprehensive log of their operational status and configuration within a complex system.",
+      "metric_delta": {
+        "prefix_cache_queries": 11141.0,
+        "prefix_cache_hits": 8000.0,
+        "drafts": 37.0,
+        "draft_tokens": 111.0,
+        "accepted": 69.0,
+        "preemptions": 0.0
+      },
+      "prefix_cache_hit_rate_this_request": 0.718068,
+      "draft_acceptance_rate_this_request": 0.621622,
+      "answers": {
+        "A1": "90E1F14D",
+        "A2": "BD1C0712",
+        "A3": "1918"
+      },
+      "per_answer_correct": {
+        "A1": true,
+        "A2": true,
+        "A3": true
+      },
+      "answers_all_correct": true,
+      "corruption": {
+        "out_of_script_fraction": 0.0,
+        "out_of_script_sample": [],
+        "replacement_char_count": 0,
+        "longest_repeated_block_chars": 7,
+        "ngram5_repetition_ratio": 0.0,
+        "response_words": 63,
+        "detectors_fired": [],
+        "corrupted": false
+      },
+      "failed": false
+    },
+    {
+      "arm": "A",
+      "request_id": "p1s10",
+      "pass": "interleaved",
+      "slot": 10,
+      "doc_prefix_tokens": 15400,
+      "prompt_tokens": 15541,
+      "prompt_tokens_mod_mamba_block": 1141,
+      "chunk_ends_off_block": [
+        2048,
+        4096,
+        6144,
+        8192,
+        10240,
+        12288,
+        14336
+      ],
+      "needle_keys": [
+        "N01",
+        "N16"
+      ],
+      "expected": {
+        "A1": "90E1F14D",
+        "A2": "CB0C807E",
+        "A3": "1136"
+      },
+      "wall_s": 2.9821,
+      "finish_reason": "stop",
+      "usage": {
+        "prompt_tokens": 15541,
+        "total_tokens": 15644,
+        "completion_tokens": 103,
+        "prompt_tokens_details": null
+      },
+      "response_text": "A1=90E1F14D\nA2=CB0C807E\nA3=1136\nA4=The records contain a series of technical entries describing various mechanical and electrical components, such as struts, vessels, and turbines. Each entry lists specific states, actions, and associated parts like gauges, sensors, and actuators. Interspersed among these descriptions are authoritative calibration markers, each resolving to a unique eight-character hexadecimal code.",
+      "metric_delta": {
+        "prefix_cache_queries": 15541.0,
+        "prefix_cache_hits": 9600.0,
+        "drafts": 35.0,
+        "draft_tokens": 105.0,
+        "accepted": 67.0,
+        "preemptions": 0.0
+      },
+      "prefix_cache_hit_rate_this_request": 0.617721,
+      "draft_acceptance_rate_this_request": 0.638095,
+      "answers": {
+        "A1": "90E1F14D",
+        "A2": "CB0C807E",
+        "A3": "1136"
+      },
+      "per_answer_correct": {
+        "A1": true,
+        "A2": true,
+        "A3": true
+      },
+      "answers_all_correct": true,
+      "corruption": {
+        "out_of_script_fraction": 0.0,
+        "out_of_script_sample": [],
+        "replacement_char_count": 0,
+        "longest_repeated_block_chars": 8,
+        "ngram5_repetition_ratio": 0.0,
+        "response_words": 53,
+        "detectors_fired": [],
+        "corrupted": false
+      },
+      "failed": false
+    },
+    {
+      "arm": "A",
+      "request_id": "p2s1",
+      "pass": "interleaved-replay",
+      "slot": 1,
+      "doc_prefix_tokens": 3000,
+      "prompt_tokens": 3141,
+      "prompt_tokens_mod_mamba_block": 1541,
+      "chunk_ends_off_block": [
+        2048
+      ],
+      "needle_keys": [
+        "N01",
+        "N03"
+      ],
+      "expected": {
+        "A1": "90E1F14D",
+        "A2": "0E4E87AD",
+        "A3": "3122"
+      },
+      "wall_s": 2.0876,
+      "finish_reason": "stop",
+      "usage": {
+        "prompt_tokens": 3141,
+        "total_tokens": 3253,
+        "completion_tokens": 112,
+        "prompt_tokens_details": null
+      },
+      "response_text": "A1=90E1F14D\nA2=0E4E87AD\nA3=3092\nA4=The records contain a series of technical entries describing various mechanical and electrical components, such as struts, vessels, and turbines. They detail specific states, actions, and relationships between these parts, including terms like annealed, machined, and calibrated. Additionally, the text includes specific calibration markers with unique codes, providing authoritative references within the dataset for precise identification and tracking of system elements.",
+      "metric_delta": {
+        "prefix_cache_queries": 3141.0,
+        "prefix_cache_hits": 0.0,
+        "drafts": 44.0,
+        "draft_tokens": 132.0,
+        "accepted": 69.0,
+        "preemptions": 0.0
+      },
+      "prefix_cache_hit_rate_this_request": 0.0,
+      "draft_acceptance_rate_this_request": 0.522727,
+      "answers": {
+        "A1": "90E1F14D",
+        "A2": "0E4E87AD",
+        "A3": "3092"
+      },
+      "per_answer_correct": {
+        "A1": true,
+        "A2": true,
+        "A3": false
+      },
+      "answers_all_correct": false,
+      "corruption": {
+        "out_of_script_fraction": 0.0,
+        "out_of_script_sample": [],
+        "replacement_char_count": 0,
+        "longest_repeated_block_chars": 10,
+        "ngram5_repetition_ratio": 0.0,
+        "response_words": 64,
+        "detectors_fired": [],
+        "corrupted": false
+      },
+      "failed": true
+    },
+    {
+      "arm": "A",
+      "request_id": "p2s2",
+      "pass": "interleaved-replay",
+      "slot": 2,
+      "doc_prefix_tokens": 5300,
+      "prompt_tokens": 5441,
+      "prompt_tokens_mod_mamba_block": 641,
+      "chunk_ends_off_block": [
+        2048,
+        4096
+      ],
+      "needle_keys": [
+        "N01",
+        "N06"
+      ],
+      "expected": {
+        "A1": "90E1F14D",
+        "A2": "7F956197",
+        "A3": "1290"
+      },
+      "wall_s": 1.7605,
+      "finish_reason": "stop",
+      "usage": {
+        "prompt_tokens": 5441,
+        "total_tokens": 5544,
+        "completion_tokens": 103,
+        "prompt_tokens_details": null
+      },
+      "response_text": "A1=90E1F14D\nA2=7F956197\nA3=1320\nA4=The records contain a series of technical entries describing various mechanical and electrical components, such as struts, vessels, and turbines. They detail specific states like annealed, sealed, or calibrated, along with associated actions and interactions. Interspersed within the text are authoritative calibration markers, each resolving to a unique eight-character hexadecimal code.",
+      "metric_delta": {
+        "prefix_cache_queries": 5441.0,
+        "prefix_cache_hits": 3200.0,
+        "drafts": 40.0,
+        "draft_tokens": 120.0,
+        "accepted": 62.0,
+        "preemptions": 0.0
+      },
+      "prefix_cache_hit_rate_this_request": 0.588127,
+      "draft_acceptance_rate_this_request": 0.516667,
+      "answers": {
+        "A1": "90E1F14D",
+        "A2": "7F956197",
+        "A3": "1320"
+      },
+      "per_answer_correct": {
+        "A1": true,
+        "A2": true,
+        "A3": false
+      },
+      "answers_all_correct": false,
+      "corruption": {
+        "out_of_script_fraction": 0.0,
+        "out_of_script_sample": [],
+        "replacement_char_count": 0,
+        "longest_repeated_block_chars": 9,
+        "ngram5_repetition_ratio": 0.0,
+        "response_words": 54,
+        "detectors_fired": [],
+        "corrupted": false
+      },
+      "failed": true
+    },
+    {
+      "arm": "A",
+      "request_id": "p2s3",
+      "pass": "interleaved-replay",
+      "slot": 3,
+      "doc_prefix_tokens": 4100,
+      "prompt_tokens": 4241,
+      "prompt_tokens_mod_mamba_block": 1041,
+      "chunk_ends_off_block": [
+        2048,
+        4096
+      ],
+      "needle_keys": [
+        "N01",
+        "N04"
+      ],
+      "expected": {
+        "A1": "90E1F14D",
+        "A2": "13730B33",
+        "A3": "1603"
+      },
+      "wall_s": 2.2722,
+      "finish_reason": "stop",
+      "usage": {
+        "prompt_tokens": 4241,
+        "total_tokens": 4387,
+        "completion_tokens": 146,
+        "prompt_tokens_details": null
+      },
+      "response_text": "A1=90E1F14D\nA2=13730B33\nA3=1593\nA4=The records contain a series of technical entries describing various mechanical and electrical components, such as struts, vessels, and turbines. They detail specific states like annealed, sealed, or calibrated, along with actions like tracking, recording, or confirming. Interspersed within these descriptions are authoritative calibration markers, specifically NEEDLE-N01 through NEEDLE-N05, which resolve to unique hexadecimal codes. The text serves as a log of system statuses and component interactions within an industrial or engineering context, providing precise data for maintenance and operational verification purposes.",
+      "metric_delta": {
+        "prefix_cache_queries": 4241.0,
+        "prefix_cache_hits": 1600.0,
+        "drafts": 57.0,
+        "draft_tokens": 171.0,
+        "accepted": 90.0,
+        "preemptions": 0.0
+      },
+      "prefix_cache_hit_rate_this_request": 0.37727,
+      "draft_acceptance_rate_this_request": 0.526316,
+      "answers": {
+        "A1": "90E1F14D",
+        "A2": "13730B33",
+        "A3": "1593"
+      },
+      "per_answer_correct": {
+        "A1": true,
+        "A2": true,
+        "A3": false
+      },
+      "answers_all_correct": false,
+      "corruption": {
+        "out_of_script_fraction": 0.0,
+        "out_of_script_sample": [],
+        "replacement_char_count": 0,
+        "longest_repeated_block_chars": 10,
+        "ngram5_repetition_ratio": 0.0,
+        "response_words": 85,
+        "detectors_fired": [],
+        "corrupted": false
+      },
+      "failed": true
+    },
+    {
+      "arm": "A",
+      "request_id": "p2s4",
+      "pass": "interleaved-replay",
+      "slot": 4,
+      "doc_prefix_tokens": 7700,
+      "prompt_tokens": 7841,
+      "prompt_tokens_mod_mamba_block": 1441,
+      "chunk_ends_off_block": [
+        2048,
+        4096,
+        6144
+      ],
+      "needle_keys": [
+        "N01",
+        "N09"
+      ],
+      "expected": {
+        "A1": "90E1F14D",
+        "A2": "19779982",
+        "A3": "8092"
+      },
+      "wall_s": 1.9643,
+      "finish_reason": "stop",
+      "usage": {
+        "prompt_tokens": 7841,
+        "total_tokens": 7944,
+        "completion_tokens": 103,
+        "prompt_tokens_details": null
+      },
+      "response_text": "A1=90E1F14D\nA2=19779982\nA3=8132\nA4=The records contain a series of technical entries describing various mechanical and electrical components, such as struts, vessels, and turbines. They detail specific states like annealed, sealed, or calibrated, along with associated actions and interactions. Interspersed within the text are authoritative calibration markers, each resolving to a unique eight-character hexadecimal code.",
+      "metric_delta": {
+        "prefix_cache_queries": 7841.0,
+        "prefix_cache_hits": 4800.0,
+        "drafts": 38.0,
+        "draft_tokens": 114.0,
+        "accepted": 64.0,
+        "preemptions": 0.0
+      },
+      "prefix_cache_hit_rate_this_request": 0.612167,
+      "draft_acceptance_rate_this_request": 0.561404,
+      "answers": {
+        "A1": "90E1F14D",
+        "A2": "19779982",
+        "A3": "8132"
+      },
+      "per_answer_correct": {
+        "A1": true,
+        "A2": true,
+        "A3": false
+      },
+      "answers_all_correct": false,
+      "corruption": {
+        "out_of_script_fraction": 0.0,
+        "out_of_script_sample": [],
+        "replacement_char_count": 0,
+        "longest_repeated_block_chars": 9,
+        "ngram5_repetition_ratio": 0.0,
+        "response_words": 54,
+        "detectors_fired": [],
+        "corrupted": false
+      },
+      "failed": true
+    },
+    {
+      "arm": "A",
+      "request_id": "p2s5",
+      "pass": "interleaved-replay",
+      "slot": 5,
+      "doc_prefix_tokens": 6500,
+      "prompt_tokens": 6641,
+      "prompt_tokens_mod_mamba_block": 241,
+      "chunk_ends_off_block": [
+        2048,
+        4096,
+        6144
+      ],
+      "needle_keys": [
+        "N01",
+        "N07"
+      ],
+      "expected": {
+        "A1": "90E1F14D",
+        "A2": "58121B95",
+        "A3": "4021"
+      },
+      "wall_s": 1.5607,
+      "finish_reason": "stop",
+      "usage": {
+        "prompt_tokens": 6641,
+        "total_tokens": 6747,
+        "completion_tokens": 106,
+        "prompt_tokens_details": null
+      },
+      "response_text": "A1=90E1F14D\nA2=58121B95\nA3=4071\nA4=The records contain a series of technical entries describing various mechanical and electrical components, such as struts, vessels, and turbines. They detail specific states, actions, and relationships between these parts, including terms like calibrated, sealed, and mounted. Interspersed within the text are authoritative calibration markers, each resolving to a unique eight-character hexadecimal code.",
+      "metric_delta": {
+        "prefix_cache_queries": 6641.0,
+        "prefix_cache_hits": 4800.0,
+        "drafts": 38.0,
+        "draft_tokens": 114.0,
+        "accepted": 67.0,
+        "preemptions": 0.0
+      },
+      "prefix_cache_hit_rate_this_request": 0.722783,
+      "draft_acceptance_rate_this_request": 0.587719,
+      "answers": {
+        "A1": "90E1F14D",
+        "A2": "58121B95",
+        "A3": "4071"
+      },
+      "per_answer_correct": {
+        "A1": true,
+        "A2": true,
+        "A3": false
+      },
+      "answers_all_correct": false,
+      "corruption": {
+        "out_of_script_fraction": 0.0,
+        "out_of_script_sample": [],
+        "replacement_char_count": 0,
+        "longest_repeated_block_chars": 10,
+        "ngram5_repetition_ratio": 0.0,
+        "response_words": 56,
+        "detectors_fired": [],
+        "corrupted": false
+      },
+      "failed": true
+    },
+    {
+      "arm": "A",
+      "request_id": "p2s6",
+      "pass": "interleaved-replay",
+      "slot": 6,
+      "doc_prefix_tokens": 9900,
+      "prompt_tokens": 10041,
+      "prompt_tokens_mod_mamba_block": 441,
+      "chunk_ends_off_block": [
+        2048,
+        4096,
+        6144,
+        8192
+      ],
+      "needle_keys": [
+        "N01",
+        "N12"
+      ],
+      "expected": {
+        "A1": "90E1F14D",
+        "A2": "96C4AAFF",
+        "A3": "3793"
+      },
+      "wall_s": 1.7057,
+      "finish_reason": "stop",
+      "usage": {
+        "prompt_tokens": 10041,
+        "total_tokens": 10146,
+        "completion_tokens": 105,
+        "prompt_tokens_details": null
+      },
+      "response_text": "A1=90E1F14D\nA2=96C4AAFF\nA3=3753\nA4=The records contain a series of technical entries describing various mechanical and electrical components, such as struts, vessels, and turbines. They detail specific states, actions, and relationships between these parts, including terms like calibrated, sealed, and mounted. Additionally, the text includes specific calibration markers with unique codes, providing a structured log of industrial or engineering data points.",
+      "metric_delta": {
+        "prefix_cache_queries": 10041.0,
+        "prefix_cache_hits": 8000.0,
+        "drafts": 41.0,
+        "draft_tokens": 123.0,
+        "accepted": 64.0,
+        "preemptions": 0.0
+      },
+      "prefix_cache_hit_rate_this_request": 0.796733,
+      "draft_acceptance_rate_this_request": 0.520325,
+      "answers": {
+        "A1": "90E1F14D",
+        "A2": "96C4AAFF",
+        "A3": "3753"
+      },
+      "per_answer_correct": {
+        "A1": true,
+        "A2": true,
+        "A3": false
+      },
+      "answers_all_correct": false,
+      "corruption": {
+        "out_of_script_fraction": 0.0,
+        "out_of_script_sample": [],
+        "replacement_char_count": 0,
+        "longest_repeated_block_chars": 10,
+        "ngram5_repetition_ratio": 0.0,
+        "response_words": 60,
+        "detectors_fired": [],
+        "corrupted": false
+      },
+      "failed": true
+    },
+    {
+      "arm": "A",
+      "request_id": "p2s7",
+      "pass": "interleaved-replay",
+      "slot": 7,
+      "doc_prefix_tokens": 8200,
+      "prompt_tokens": 8341,
+      "prompt_tokens_mod_mamba_block": 341,
+      "chunk_ends_off_block": [
+        2048,
+        4096,
+        6144,
+        8192
+      ],
+      "needle_keys": [
+        "N01",
+        "N10"
+      ],
+      "expected": {
+        "A1": "90E1F14D",
+        "A2": "07197187",
+        "A3": "3918"
+      },
+      "wall_s": 1.5811,
+      "finish_reason": "stop",
+      "usage": {
+        "prompt_tokens": 8341,
+        "total_tokens": 8447,
+        "completion_tokens": 106,
+        "prompt_tokens_details": null
+      },
+      "response_text": "A1=90E1F14D\nA2=07197187\nA3=3978\nA4=The records contain a series of technical entries describing various mechanical and electrical components, such as struts, vessels, and turbines. They detail specific states, actions, and relationships between these parts, including terms like calibrated, sealed, and mounted. Interspersed within the text are authoritative calibration markers, each resolving to a unique eight-character hexadecimal code.",
+      "metric_delta": {
+        "prefix_cache_queries": 8341.0,
+        "prefix_cache_hits": 6400.0,
+        "drafts": 37.0,
+        "draft_tokens": 111.0,
+        "accepted": 68.0,
+        "preemptions": 0.0
+      },
+      "prefix_cache_hit_rate_this_request": 0.767294,
+      "draft_acceptance_rate_this_request": 0.612613,
+      "answers": {
+        "A1": "90E1F14D",
+        "A2": "07197187",
+        "A3": "3978"
+      },
+      "per_answer_correct": {
+        "A1": true,
+        "A2": true,
+        "A3": false
+      },
+      "answers_all_correct": false,
+      "corruption": {
+        "out_of_script_fraction": 0.0,
+        "out_of_script_sample": [],
+        "replacement_char_count": 0,
+        "longest_repeated_block_chars": 10,
+        "ngram5_repetition_ratio": 0.0,
+        "response_words": 56,
+        "detectors_fired": [],
+        "corrupted": false
+      },
+      "failed": true
+    },
+    {
+      "arm": "A",
+      "request_id": "p2s8",
+      "pass": "interleaved-replay",
+      "slot": 8,
+      "doc_prefix_tokens": 12300,
+      "prompt_tokens": 12441,
+      "prompt_tokens_mod_mamba_block": 1241,
+      "chunk_ends_off_block": [
+        2048,
+        4096,
+        6144,
+        8192,
+        10240,
+        12288
+      ],
+      "needle_keys": [
+        "N01",
+        "N15"
+      ],
+      "expected": {
+        "A1": "90E1F14D",
+        "A2": "6FEDC96C",
+        "A3": "2199"
+      },
+      "wall_s": 2.0301,
+      "finish_reason": "stop",
+      "usage": {
+        "prompt_tokens": 12441,
+        "total_tokens": 12568,
+        "completion_tokens": 127,
+        "prompt_tokens_details": null
+      },
+      "response_text": "A1=90E1F14D\nA2=6FEDC96C\nA3=2179\nA4=The records contain a series of technical entries describing mechanical and electrical components, such as struts, vessels, and turbines, along with their states and actions. Interspersed within these descriptions are specific calibration markers, labeled NEEDLE-N01 through NEEDLE-N15, each resolving to a unique eight-character hexadecimal code. These markers serve as authoritative identifiers within the dataset, appearing exactly once each, amidst the detailed logs of industrial equipment maintenance and configuration.",
+      "metric_delta": {
+        "prefix_cache_queries": 12441.0,
+        "prefix_cache_hits": 9600.0,
+        "drafts": 41.0,
+        "draft_tokens": 123.0,
+        "accepted": 87.0,
+        "preemptions": 0.0
+      },
+      "prefix_cache_hit_rate_this_request": 0.771642,
+      "draft_acceptance_rate_this_request": 0.707317,
+      "answers": {
+        "A1": "90E1F14D",
+        "A2": "6FEDC96C",
+        "A3": "2179"
+      },
+      "per_answer_correct": {
+        "A1": true,
+        "A2": true,
+        "A3": false
+      },
+      "answers_all_correct": false,
+      "corruption": {
+        "out_of_script_fraction": 0.0,
+        "out_of_script_sample": [],
+        "replacement_char_count": 0,
+        "longest_repeated_block_chars": 11,
+        "ngram5_repetition_ratio": 0.0,
+        "response_words": 71,
+        "detectors_fired": [],
+        "corrupted": false
+      },
+      "failed": true
+    },
+    {
+      "arm": "A",
+      "request_id": "p2s9",
+      "pass": "interleaved-replay",
+      "slot": 9,
+      "doc_prefix_tokens": 11000,
+      "prompt_tokens": 11141,
+      "prompt_tokens_mod_mamba_block": 1541,
+      "chunk_ends_off_block": [
+        2048,
+        4096,
+        6144,
+        8192,
+        10240
+      ],
+      "needle_keys": [
+        "N01",
+        "N13"
+      ],
+      "expected": {
+        "A1": "90E1F14D",
+        "A2": "BD1C0712",
+        "A3": "5015"
+      },
+      "wall_s": 2.0623,
+      "finish_reason": "stop",
+      "usage": {
+        "prompt_tokens": 11141,
+        "total_tokens": 11249,
+        "completion_tokens": 108,
+        "prompt_tokens_details": null
+      },
+      "response_text": "A1=90E1F14D\nA2=BD1C0712\nA3=5015\nA4=The records contain a series of technical entries describing various mechanical and electrical components, such as struts, vessels, and turbines. Each entry lists specific states, actions, and associated parts, including calibration markers with unique codes. The text appears to be a log of maintenance, testing, or assembly procedures for industrial equipment, detailing the condition and configuration of numerous system elements.",
+      "metric_delta": {
+        "prefix_cache_queries": 11141.0,
+        "prefix_cache_hits": 8000.0,
+        "drafts": 39.0,
+        "draft_tokens": 117.0,
+        "accepted": 71.0,
+        "preemptions": 0.0
+      },
+      "prefix_cache_hit_rate_this_request": 0.718068,
+      "draft_acceptance_rate_this_request": 0.606838,
+      "answers": {
+        "A1": "90E1F14D",
+        "A2": "BD1C0712",
+        "A3": "5015"
+      },
+      "per_answer_correct": {
+        "A1": true,
+        "A2": true,
+        "A3": true
+      },
+      "answers_all_correct": true,
+      "corruption": {
+        "out_of_script_fraction": 0.0,
+        "out_of_script_sample": [],
+        "replacement_char_count": 0,
+        "longest_repeated_block_chars": 7,
+        "ngram5_repetition_ratio": 0.0,
+        "response_words": 63,
+        "detectors_fired": [],
+        "corrupted": false
+      },
+      "failed": false
+    },
+    {
+      "arm": "A",
+      "request_id": "p2s10",
+      "pass": "interleaved-replay",
+      "slot": 10,
+      "doc_prefix_tokens": 15400,
+      "prompt_tokens": 15541,
+      "prompt_tokens_mod_mamba_block": 1141,
+      "chunk_ends_off_block": [
+        2048,
+        4096,
+        6144,
+        8192,
+        10240,
+        12288,
+        14336
+      ],
+      "needle_keys": [
+        "N01",
+        "N16"
+      ],
+      "expected": {
+        "A1": "90E1F14D",
+        "A2": "CB0C807E",
+        "A3": "3060"
+      },
+      "wall_s": 1.78,
+      "finish_reason": "stop",
+      "usage": {
+        "prompt_tokens": 15541,
+        "total_tokens": 15629,
+        "completion_tokens": 88,
+        "prompt_tokens_details": null
+      },
+      "response_text": "A1=90E1F14D\nA2=CB0C807E\nA3=3060\nA4=The records consist of technical logs detailing mechanical and electrical components, such as turbines, valves, and sensors, along with their operational states. They include specific calibration markers with unique codes and describe various maintenance actions like testing, sealing, and aligning parts within industrial systems.",
+      "metric_delta": {
+        "prefix_cache_queries": 15541.0,
+        "prefix_cache_hits": 12800.0,
+        "drafts": 31.0,
+        "draft_tokens": 93.0,
+        "accepted": 57.0,
+        "preemptions": 0.0
+      },
+      "prefix_cache_hit_rate_this_request": 0.823628,
+      "draft_acceptance_rate_this_request": 0.612903,
+      "answers": {
+        "A1": "90E1F14D",
+        "A2": "CB0C807E",
+        "A3": "3060"
+      },
+      "per_answer_correct": {
+        "A1": true,
+        "A2": true,
+        "A3": true
+      },
+      "answers_all_correct": true,
+      "corruption": {
+        "out_of_script_fraction": 0.0,
+        "out_of_script_sample": [],
+        "replacement_char_count": 0,
+        "longest_repeated_block_chars": 6,
+        "ngram5_repetition_ratio": 0.0,
+        "response_words": 47,
+        "detectors_fired": [],
+        "corrupted": false
+      },
+      "failed": false
+    },
+    {
+      "arm": "A",
+      "request_id": "p3s1",
+      "pass": "ascending-persistence",
+      "slot": 1,
+      "doc_prefix_tokens": 3000,
+      "prompt_tokens": 3141,
+      "prompt_tokens_mod_mamba_block": 1541,
+      "chunk_ends_off_block": [
+        2048
+      ],
+      "needle_keys": [
+        "N01",
+        "N03"
+      ],
+      "expected": {
+        "A1": "90E1F14D",
+        "A2": "0E4E87AD",
+        "A3": "7959"
+      },
+      "wall_s": 2.0779,
+      "finish_reason": "stop",
+      "usage": {
+        "prompt_tokens": 3141,
+        "total_tokens": 3249,
+        "completion_tokens": 108,
+        "prompt_tokens_details": null
+      },
+      "response_text": "A1=90E1F14D\nA2=0E4E87AD\nA3=7689\nA4=The records contain technical descriptions of mechanical and electrical components, including struts, vessels, turbines, and gauges. They detail various states such as annealed, sealed, and calibrated, along with specific actions like tracking, recording, and confirming. Additionally, the text includes authoritative calibration markers with unique codes and standard engineering terminology related to industrial machinery maintenance and assembly processes.",
+      "metric_delta": {
+        "prefix_cache_queries": 3141.0,
+        "prefix_cache_hits": 0.0,
+        "drafts": 43.0,
+        "draft_tokens": 129.0,
+        "accepted": 66.0,
+        "preemptions": 0.0
+      },
+      "prefix_cache_hit_rate_this_request": 0.0,
+      "draft_acceptance_rate_this_request": 0.511628,
+      "answers": {
+        "A1": "90E1F14D",
+        "A2": "0E4E87AD",
+        "A3": "7689"
+      },
+      "per_answer_correct": {
+        "A1": true,
+        "A2": true,
+        "A3": false
+      },
+      "answers_all_correct": false,
+      "corruption": {
+        "out_of_script_fraction": 0.0,
+        "out_of_script_sample": [],
+        "replacement_char_count": 0,
+        "longest_repeated_block_chars": 9,
+        "ngram5_repetition_ratio": 0.0,
+        "response_words": 60,
+        "detectors_fired": [],
+        "corrupted": false
+      },
+      "failed": true
+    },
+    {
+      "arm": "A",
+      "request_id": "p3s2",
+      "pass": "ascending-persistence",
+      "slot": 2,
+      "doc_prefix_tokens": 4100,
+      "prompt_tokens": 4241,
+      "prompt_tokens_mod_mamba_block": 1041,
+      "chunk_ends_off_block": [
+        2048,
+        4096
+      ],
+      "needle_keys": [
+        "N01",
+        "N04"
+      ],
+      "expected": {
+        "A1": "90E1F14D",
+        "A2": "13730B33",
+        "A3": "5110"
+      },
+      "wall_s": 2.1851,
+      "finish_reason": "stop",
+      "usage": {
+        "prompt_tokens": 4241,
+        "total_tokens": 4382,
+        "completion_tokens": 141,
+        "prompt_tokens_details": null
+      },
+      "response_text": "A1=90E1F14D\nA2=13730B33\nA3=5070\nA4=The records contain a series of technical entries describing various mechanical and electrical components, such as struts, vessels, and turbines. They detail specific states, actions, and relationships between these parts, including terms like annealed, machined, and calibrated. Interspersed within the text are authoritative calibration markers, specifically NEEDLE-N01 through NEEDLE-N05, which resolve to unique hexadecimal codes. These markers serve as distinct identifiers within the otherwise dense collection of industrial terminology and component status descriptions found throughout the dataset.",
+      "metric_delta": {
+        "prefix_cache_queries": 4241.0,
+        "prefix_cache_hits": 1600.0,
+        "drafts": 53.0,
+        "draft_tokens": 159.0,
+        "accepted": 89.0,
+        "preemptions": 0.0
+      },
+      "prefix_cache_hit_rate_this_request": 0.37727,
+      "draft_acceptance_rate_this_request": 0.559748,
+      "answers": {
+        "A1": "90E1F14D",
+        "A2": "13730B33",
+        "A3": "5070"
+      },
+      "per_answer_correct": {
+        "A1": true,
+        "A2": true,
+        "A3": false
+      },
+      "answers_all_correct": false,
+      "corruption": {
+        "out_of_script_fraction": 0.0,
+        "out_of_script_sample": [],
+        "replacement_char_count": 0,
+        "longest_repeated_block_chars": 12,
+        "ngram5_repetition_ratio": 0.0,
+        "response_words": 80,
+        "detectors_fired": [],
+        "corrupted": false
+      },
+      "failed": true
+    },
+    {
+      "arm": "A",
+      "request_id": "p3s3",
+      "pass": "ascending-persistence",
+      "slot": 3,
+      "doc_prefix_tokens": 5300,
+      "prompt_tokens": 5441,
+      "prompt_tokens_mod_mamba_block": 641,
+      "chunk_ends_off_block": [
+        2048,
+        4096
+      ],
+      "needle_keys": [
+        "N01",
+        "N06"
+      ],
+      "expected": {
+        "A1": "90E1F14D",
+        "A2": "7F956197",
+        "A3": "1439"
+      },
+      "wall_s": 2.1684,
+      "finish_reason": "stop",
+      "usage": {
+        "prompt_tokens": 5441,
+        "total_tokens": 5582,
+        "completion_tokens": 141,
+        "prompt_tokens_details": null
+      },
+      "response_text": "A1=90E1F14D\nA2=7F956197\nA3=1439\nA4=The records contain a series of technical entries describing various mechanical and electrical components, such as struts, vessels, and turbines. They detail specific states, actions, and relationships between these parts, including terms like annealed, machined, and calibrated. Interspersed within the text are authoritative calibration markers, specifically NEEDLE-N01 through NEEDLE-N06, which resolve to unique hexadecimal codes. These markers serve as distinct identifiers within the otherwise dense collection of industrial terminology and component status descriptions found throughout the dataset.",
+      "metric_delta": {
+        "prefix_cache_queries": 5441.0,
+        "prefix_cache_hits": 3200.0,
+        "drafts": 56.0,
+        "draft_tokens": 168.0,
+        "accepted": 86.0,
+        "preemptions": 0.0
+      },
+      "prefix_cache_hit_rate_this_request": 0.588127,
+      "draft_acceptance_rate_this_request": 0.511905,
+      "answers": {
+        "A1": "90E1F14D",
+        "A2": "7F956197",
+        "A3": "1439"
+      },
+      "per_answer_correct": {
+        "A1": true,
+        "A2": true,
+        "A3": true
+      },
+      "answers_all_correct": true,
+      "corruption": {
+        "out_of_script_fraction": 0.0,
+        "out_of_script_sample": [],
+        "replacement_char_count": 0,
+        "longest_repeated_block_chars": 12,
+        "ngram5_repetition_ratio": 0.0,
+        "response_words": 80,
+        "detectors_fired": [],
+        "corrupted": false
+      },
+      "failed": false
+    },
+    {
+      "arm": "A",
+      "request_id": "p3s4",
+      "pass": "ascending-persistence",
+      "slot": 4,
+      "doc_prefix_tokens": 6500,
+      "prompt_tokens": 6641,
+      "prompt_tokens_mod_mamba_block": 241,
+      "chunk_ends_off_block": [
+        2048,
+        4096,
+        6144
+      ],
+      "needle_keys": [
+        "N01",
+        "N07"
+      ],
+      "expected": {
+        "A1": "90E1F14D",
+        "A2": "58121B95",
+        "A3": "6086"
+      },
+      "wall_s": 1.6173,
+      "finish_reason": "stop",
+      "usage": {
+        "prompt_tokens": 6641,
+        "total_tokens": 6748,
+        "completion_tokens": 107,
+        "prompt_tokens_details": null
+      },
+      "response_text": "A1=90E1F14D\nA2=58121B95\nA3=6086\nA4=The records contain a series of technical entries describing various mechanical and electrical components, such as struts, vessels, and turbines. They detail specific states, actions, and relationships between these parts, including terms like calibrated, sealed, and mounted. Additionally, the text includes specific calibration markers with unique codes, providing a structured log of industrial or engineering data points.",
+      "metric_delta": {
+        "prefix_cache_queries": 6641.0,
+        "prefix_cache_hits": 4800.0,
+        "drafts": 40.0,
+        "draft_tokens": 120.0,
+        "accepted": 68.0,
+        "preemptions": 0.0
+      },
+      "prefix_cache_hit_rate_this_request": 0.722783,
+      "draft_acceptance_rate_this_request": 0.566667,
+      "answers": {
+        "A1": "90E1F14D",
+        "A2": "58121B95",
+        "A3": "6086"
+      },
+      "per_answer_correct": {
+        "A1": true,
+        "A2": true,
+        "A3": true
+      },
+      "answers_all_correct": true,
+      "corruption": {
+        "out_of_script_fraction": 0.0,
+        "out_of_script_sample": [],
+        "replacement_char_count": 0,
+        "longest_repeated_block_chars": 10,
+        "ngram5_repetition_ratio": 0.0,
+        "response_words": 60,
+        "detectors_fired": [],
+        "corrupted": false
+      },
+      "failed": false
+    },
+    {
+      "arm": "A",
+      "request_id": "p3s5",
+      "pass": "ascending-persistence",
+      "slot": 5,
+      "doc_prefix_tokens": 7700,
+      "prompt_tokens": 7841,
+      "prompt_tokens_mod_mamba_block": 1441,
+      "chunk_ends_off_block": [
+        2048,
+        4096,
+        6144
+      ],
+      "needle_keys": [
+        "N01",
+        "N09"
+      ],
+      "expected": {
+        "A1": "90E1F14D",
+        "A2": "19779982",
+        "A3": "2289"
+      },
+      "wall_s": 1.6773,
+      "finish_reason": "stop",
+      "usage": {
+        "prompt_tokens": 7841,
+        "total_tokens": 7916,
+        "completion_tokens": 75,
+        "prompt_tokens_details": null
+      },
+      "response_text": "A1=90E1F14D\nA2=19779982\nA3=2329\nA4=The records consist of technical logs detailing mechanical and electrical components, such as turbines, struts, and circuits, along with their states and actions. They also include specific calibration markers with unique codes.",
+      "metric_delta": {
+        "prefix_cache_queries": 7841.0,
+        "prefix_cache_hits": 4800.0,
+        "drafts": 26.0,
+        "draft_tokens": 78.0,
+        "accepted": 51.0,
+        "preemptions": 0.0
+      },
+      "prefix_cache_hit_rate_this_request": 0.612167,
+      "draft_acceptance_rate_this_request": 0.653846,
+      "answers": {
+        "A1": "90E1F14D",
+        "A2": "19779982",
+        "A3": "2329"
+      },
+      "per_answer_correct": {
+        "A1": true,
+        "A2": true,
+        "A3": false
+      },
+      "answers_all_correct": false,
+      "corruption": {
+        "out_of_script_fraction": 0.0,
+        "out_of_script_sample": [],
+        "replacement_char_count": 0,
+        "longest_repeated_block_chars": 6,
+        "ngram5_repetition_ratio": 0.0,
+        "response_words": 35,
+        "detectors_fired": [],
+        "corrupted": false
+      },
+      "failed": true
+    },
+    {
+      "arm": "A",
+      "request_id": "p3s6",
+      "pass": "ascending-persistence",
+      "slot": 6,
+      "doc_prefix_tokens": 8200,
+      "prompt_tokens": 8341,
+      "prompt_tokens_mod_mamba_block": 341,
+      "chunk_ends_off_block": [
+        2048,
+        4096,
+        6144,
+        8192
+      ],
+      "needle_keys": [
+        "N01",
+        "N10"
+      ],
+      "expected": {
+        "A1": "90E1F14D",
+        "A2": "07197187",
+        "A3": "3195"
+      },
+      "wall_s": 1.513,
+      "finish_reason": "stop",
+      "usage": {
+        "prompt_tokens": 8341,
+        "total_tokens": 8445,
+        "completion_tokens": 104,
+        "prompt_tokens_details": null
+      },
+      "response_text": "A1=90E1F14D\nA2=07197187\nA3=3205\nA4=The records contain a series of technical entries describing various mechanical and electrical components, such as struts, vessels, and turbines. Each entry lists specific states, actions, and associated parts like gauges, sensors, and actuators. Interspersed among these descriptions are authoritative calibration markers, each resolving to a unique eight-character hexadecimal code.",
+      "metric_delta": {
+        "prefix_cache_queries": 8341.0,
+        "prefix_cache_hits": 6400.0,
+        "drafts": 34.0,
+        "draft_tokens": 102.0,
+        "accepted": 69.0,
+        "preemptions": 0.0
+      },
+      "prefix_cache_hit_rate_this_request": 0.767294,
+      "draft_acceptance_rate_this_request": 0.676471,
+      "answers": {
+        "A1": "90E1F14D",
+        "A2": "07197187",
+        "A3": "3205"
+      },
+      "per_answer_correct": {
+        "A1": true,
+        "A2": true,
+        "A3": false
+      },
+      "answers_all_correct": false,
+      "corruption": {
+        "out_of_script_fraction": 0.0,
+        "out_of_script_sample": [],
+        "replacement_char_count": 0,
+        "longest_repeated_block_chars": 8,
+        "ngram5_repetition_ratio": 0.0,
+        "response_words": 53,
+        "detectors_fired": [],
+        "corrupted": false
+      },
+      "failed": true
+    },
+    {
+      "arm": "A",
+      "request_id": "p3s7",
+      "pass": "ascending-persistence",
+      "slot": 7,
+      "doc_prefix_tokens": 9900,
+      "prompt_tokens": 10041,
+      "prompt_tokens_mod_mamba_block": 441,
+      "chunk_ends_off_block": [
+        2048,
+        4096,
+        6144,
+        8192
+      ],
+      "needle_keys": [
+        "N01",
+        "N12"
+      ],
+      "expected": {
+        "A1": "90E1F14D",
+        "A2": "96C4AAFF",
+        "A3": "7301"
+      },
+      "wall_s": 1.6883,
+      "finish_reason": "stop",
+      "usage": {
+        "prompt_tokens": 10041,
+        "total_tokens": 10146,
+        "completion_tokens": 105,
+        "prompt_tokens_details": null
+      },
+      "response_text": "A1=90E1F14D\nA2=96C4AAFF\nA3=7341\nA4=The records contain a series of technical entries describing various mechanical and electrical components, such as struts, vessels, and turbines. They detail specific states, actions, and relationships between these parts, including terms like calibrated, sealed, and mounted. Additionally, the text includes specific calibration markers with unique codes, providing a structured log of industrial or engineering data points.",
+      "metric_delta": {
+        "prefix_cache_queries": 10041.0,
+        "prefix_cache_hits": 8000.0,
+        "drafts": 40.0,
+        "draft_tokens": 120.0,
+        "accepted": 65.0,
+        "preemptions": 0.0
+      },
+      "prefix_cache_hit_rate_this_request": 0.796733,
+      "draft_acceptance_rate_this_request": 0.541667,
+      "answers": {
+        "A1": "90E1F14D",
+        "A2": "96C4AAFF",
+        "A3": "7341"
+      },
+      "per_answer_correct": {
+        "A1": true,
+        "A2": true,
+        "A3": false
+      },
+      "answers_all_correct": false,
+      "corruption": {
+        "out_of_script_fraction": 0.0,
+        "out_of_script_sample": [],
+        "replacement_char_count": 0,
+        "longest_repeated_block_chars": 10,
+        "ngram5_repetition_ratio": 0.0,
+        "response_words": 60,
+        "detectors_fired": [],
+        "corrupted": false
+      },
+      "failed": true
+    },
+    {
+      "arm": "A",
+      "request_id": "p3s8",
+      "pass": "ascending-persistence",
+      "slot": 8,
+      "doc_prefix_tokens": 11000,
+      "prompt_tokens": 11141,
+      "prompt_tokens_mod_mamba_block": 1541,
+      "chunk_ends_off_block": [
+        2048,
+        4096,
+        6144,
+        8192,
+        10240
+      ],
+      "needle_keys": [
+        "N01",
+        "N13"
+      ],
+      "expected": {
+        "A1": "90E1F14D",
+        "A2": "BD1C0712",
+        "A3": "2255"
+      },
+      "wall_s": 2.0735,
+      "finish_reason": "stop",
+      "usage": {
+        "prompt_tokens": 11141,
+        "total_tokens": 11249,
+        "completion_tokens": 108,
+        "prompt_tokens_details": null
+      },
+      "response_text": "A1=90E1F14D\nA2=BD1C0712\nA3=2265\nA4=The records contain a series of technical entries describing various mechanical and electrical components, such as struts, vessels, and turbines. Each entry lists specific states, actions, and associated parts, including calibration markers with unique codes. The text appears to be a log of maintenance, testing, or assembly procedures for industrial equipment, detailing the condition and configuration of numerous system elements.",
+      "metric_delta": {
+        "prefix_cache_queries": 11141.0,
+        "prefix_cache_hits": 8000.0,
+        "drafts": 39.0,
+        "draft_tokens": 117.0,
+        "accepted": 71.0,
+        "preemptions": 0.0
+      },
+      "prefix_cache_hit_rate_this_request": 0.718068,
+      "draft_acceptance_rate_this_request": 0.606838,
+      "answers": {
+        "A1": "90E1F14D",
+        "A2": "BD1C0712",
+        "A3": "2265"
+      },
+      "per_answer_correct": {
+        "A1": true,
+        "A2": true,
+        "A3": false
+      },
+      "answers_all_correct": false,
+      "corruption": {
+        "out_of_script_fraction": 0.0,
+        "out_of_script_sample": [],
+        "replacement_char_count": 0,
+        "longest_repeated_block_chars": 7,
+        "ngram5_repetition_ratio": 0.0,
+        "response_words": 63,
+        "detectors_fired": [],
+        "corrupted": false
+      },
+      "failed": true
+    },
+    {
+      "arm": "A",
+      "request_id": "p3s9",
+      "pass": "ascending-persistence",
+      "slot": 9,
+      "doc_prefix_tokens": 12300,
+      "prompt_tokens": 12441,
+      "prompt_tokens_mod_mamba_block": 1241,
+      "chunk_ends_off_block": [
+        2048,
+        4096,
+        6144,
+        8192,
+        10240,
+        12288
+      ],
+      "needle_keys": [
+        "N01",
+        "N15"
+      ],
+      "expected": {
+        "A1": "90E1F14D",
+        "A2": "6FEDC96C",
+        "A3": "4119"
+      },
+      "wall_s": 2.0714,
+      "finish_reason": "stop",
+      "usage": {
+        "prompt_tokens": 12441,
+        "total_tokens": 12568,
+        "completion_tokens": 127,
+        "prompt_tokens_details": null
+      },
+      "response_text": "A1=90E1F14D\nA2=6FEDC96C\nA3=4179\nA4=The records contain a series of technical entries describing mechanical and electrical components, such as struts, vessels, and turbines, along with their states and actions. Interspersed within these descriptions are specific calibration markers, labeled NEEDLE-N01 through NEEDLE-N15, each resolving to a unique eight-character hexadecimal code. These markers serve as authoritative identifiers within the dataset, appearing exactly once each, amidst the detailed logs of industrial equipment maintenance and configuration.",
+      "metric_delta": {
+        "prefix_cache_queries": 12441.0,
+        "prefix_cache_hits": 9600.0,
+        "drafts": 42.0,
+        "draft_tokens": 126.0,
+        "accepted": 86.0,
+        "preemptions": 0.0
+      },
+      "prefix_cache_hit_rate_this_request": 0.771642,
+      "draft_acceptance_rate_this_request": 0.68254,
+      "answers": {
+        "A1": "90E1F14D",
+        "A2": "6FEDC96C",
+        "A3": "4179"
+      },
+      "per_answer_correct": {
+        "A1": true,
+        "A2": true,
+        "A3": false
+      },
+      "answers_all_correct": false,
+      "corruption": {
+        "out_of_script_fraction": 0.0,
+        "out_of_script_sample": [],
+        "replacement_char_count": 0,
+        "longest_repeated_block_chars": 11,
+        "ngram5_repetition_ratio": 0.0,
+        "response_words": 71,
+        "detectors_fired": [],
+        "corrupted": false
+      },
+      "failed": true
+    },
+    {
+      "arm": "A",
+      "request_id": "p3s10",
+      "pass": "ascending-persistence",
+      "slot": 10,
+      "doc_prefix_tokens": 15400,
+      "prompt_tokens": 15541,
+      "prompt_tokens_mod_mamba_block": 1141,
+      "chunk_ends_off_block": [
+        2048,
+        4096,
+        6144,
+        8192,
+        10240,
+        12288,
+        14336
+      ],
+      "needle_keys": [
+        "N01",
+        "N16"
+      ],
+      "expected": {
+        "A1": "90E1F14D",
+        "A2": "CB0C807E",
+        "A3": "3168"
+      },
+      "wall_s": 2.0359,
+      "finish_reason": "stop",
+      "usage": {
+        "prompt_tokens": 15541,
+        "total_tokens": 15647,
+        "completion_tokens": 106,
+        "prompt_tokens_details": null
+      },
+      "response_text": "A1=90E1F14D\nA2=CB0C807E\nA3=3128\nA4=The records contain a series of technical entries describing various mechanical and electrical components, such as struts, vessels, and turbines. They detail specific states, actions, and relationships between these parts, including calibration markers with unique codes. The text uses precise terminology to document the condition and configuration of industrial equipment, providing a comprehensive log of system elements and their interactions.",
+      "metric_delta": {
+        "prefix_cache_queries": 15541.0,
+        "prefix_cache_hits": 12800.0,
+        "drafts": 41.0,
+        "draft_tokens": 123.0,
+        "accepted": 66.0,
+        "preemptions": 0.0
+      },
+      "prefix_cache_hit_rate_this_request": 0.823628,
+      "draft_acceptance_rate_this_request": 0.536585,
+      "answers": {
+        "A1": "90E1F14D",
+        "A2": "CB0C807E",
+        "A3": "3128"
+      },
+      "per_answer_correct": {
+        "A1": true,
+        "A2": true,
+        "A3": false
+      },
+      "answers_all_correct": false,
+      "corruption": {
+        "out_of_script_fraction": 0.0,
+        "out_of_script_sample": [],
+        "replacement_char_count": 0,
+        "longest_repeated_block_chars": 7,
+        "ngram5_repetition_ratio": 0.0,
+        "response_words": 63,
+        "detectors_fired": [],
+        "corrupted": false
+      },
+      "failed": true
+    }
+  ]
+}
