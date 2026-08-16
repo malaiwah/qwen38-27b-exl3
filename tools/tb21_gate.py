@@ -1,0 +1,547 @@
+#!/usr/bin/env python3
+"""TB2.1 fidelity gate (docs/46 §6): five checks against a live endpoint.
+
+Runs before any scored TB pass on a new serving config. Each check reports
+PASS / FAIL / SKIP with evidence in the receipt; exit is nonzero iff any
+check FAILs (SKIP-with-reason never fails the gate).
+
+  1. liveness      - /health 200 + /v1/models served id.
+  2. generation    - 8-token proof, finish_reason present.
+  3. repeatability - 8 deterministic frozen prompts (temperature 0, seed
+                     passed when the server accepts it) run TWICE in the SAME
+                     server process; token-identical both times. Cross-restart
+                     identity is NOT claimable on this stack (greedy text
+                     differs across engine restarts 7/8, identical
+                     within-process 8/8 - receipts/scratch-arena.json); this
+                     gate only ever claims within-process repeatability.
+  4. needle        - deterministic ~N-token document (--needle-tokens, default
+                     the 262,144 native window minus a 2,048-token reserve for
+                     chat template + question + answer), needle at depth 0.5,
+                     exact-match retrieval required. Token estimation via the
+                     server's /tokenize when present, else the chars/4
+                     heuristic (method named in the receipt).
+                     --tp-smoke relaxes to a 32k document (the 2x G0 gate
+                     needs fast turnaround); --skip-needle for rehearsal.
+  5. MTP sanity    - /metrics counter deltas across check 3: draft/accepted
+                     present and acceptance > 0.3 when a speculative config is
+                     active; SKIP with reason when absent (BF16 arm without
+                     MTP, TP smoke, or an endpoint without /metrics).
+
+Both /metrics snapshots are stored verbatim in the receipt with parsed deltas
+(counter-delta discipline, docs/46 §3). HTTP failures are recorded outcomes.
+Stdlib only; runs on the driver VM's python3.12 with no venv.
+
+The mock preflight double (tools/tb_mock_endpoint.py, id owned_by
+"mock-preflight-endpoint") has no /health, no /metrics, and its replies embed
+a global call counter, so checks 3-5 SKIP against it with the reason recorded;
+checks 1-2 run for real. A gate receipt produced against the mock is
+self-identifying and never backs a scored pass.
+
+Usage:
+  tb21_gate.py --base-url http://10.0.0.3:8000 --out receipts/tb21-gate-1x-quant-dp1.json \
+      [--api-key K] [--tp-smoke] [--skip-needle] [--needle-tokens 262144] [--seed 46]
+"""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import http.client
+import json
+import random
+import re
+import ssl
+import sys
+import time
+import urllib.parse
+from datetime import datetime, timezone
+
+SCHEMA = "qwen38-tb21-gate/1"
+MOCK_OWNER = "mock-preflight-endpoint"
+CROSS_RESTART_NOTE = (
+    "Within-process repeatability only. Cross-restart bit-exactness is NOT "
+    "claimable on this stack: greedy text differs across engine restarts 7/8 "
+    "and is identical within a process 8/8 (exl3_gemm autotune selects kernel "
+    "configs by measured time per process) - receipts/scratch-arena.json."
+)
+
+WORDS = (
+    "ledger granite harbor lattice ember quorum vessel timber orchard nickel "
+    "meadow cipher walnut breeze summit copper hollow prairie anchor tundra "
+    "marble falcon lantern gravel monsoon pigment thicket saffron drizzle "
+    "boulder canyon iodine juniper kestrel liquorice mineral nectar obsidian "
+    "paprika quartz russet sequoia tamarind umber vertex willow xenon yarrow"
+).split()
+
+
+def utcnow() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+# ---------------------------------------------------------------- transport
+
+
+class Endpoint:
+    def __init__(self, base_url: str, api_key: str | None, timeout: float):
+        u = urllib.parse.urlsplit(base_url.rstrip("/"))
+        self.scheme = u.scheme or "http"
+        self.host = u.hostname or "127.0.0.1"
+        self.port = u.port or (443 if self.scheme == "https" else 80)
+        self.root = u.path[:-3] if u.path.endswith("/v1") else u.path
+        self.api_key = api_key
+        self.timeout = timeout
+
+    def call(self, method: str, path: str, payload=None,
+             timeout: float | None = None) -> dict:
+        """One exchange; never raises. Returns
+        {status, body(str), json, error, latency_s}."""
+        hdrs = {"Accept": "*/*", "Connection": "close",
+                "User-Agent": "tb21-gate/1"}
+        if self.api_key:
+            hdrs["Authorization"] = f"Bearer {self.api_key}"
+        body = None
+        if payload is not None:
+            body = json.dumps(payload)
+            hdrs["Content-Type"] = "application/json"
+        t0 = time.perf_counter()
+        try:
+            if self.scheme == "https":
+                conn = http.client.HTTPSConnection(
+                    self.host, self.port, timeout=timeout or self.timeout,
+                    context=ssl.create_default_context())
+            else:
+                conn = http.client.HTTPConnection(
+                    self.host, self.port, timeout=timeout or self.timeout)
+            conn.request(method, self.root + path, body=body, headers=hdrs)
+            resp = conn.getresponse()
+            raw = resp.read()
+            out = {"status": resp.status,
+                   "body": raw.decode("utf-8", "replace"),
+                   "latency_s": round(time.perf_counter() - t0, 4),
+                   "error": None}
+            try:
+                out["json"] = json.loads(raw)
+            except ValueError:
+                out["json"] = None
+            conn.close()
+            return out
+        except Exception as exc:
+            return {"status": 0, "body": "", "json": None,
+                    "latency_s": round(time.perf_counter() - t0, 4),
+                    "error": f"{type(exc).__name__}: {exc}"}
+
+    def chat(self, model: str, prompt: str, max_tokens: int,
+             seed: int | None = None, timeout: float | None = None) -> dict:
+        payload = {
+            "model": model,
+            "messages": [{"role": "user", "content": prompt}],
+            "max_tokens": max_tokens,
+            "temperature": 0.0,
+        }
+        if seed is not None:
+            payload["seed"] = seed
+        return self.call("POST", "/v1/chat/completions", payload,
+                         timeout=timeout)
+
+
+# ---------------------------------------------------------------- metrics
+
+METRIC_FAMILIES = {
+    "prompt_tokens": r"^vllm:prompt_tokens_total(\{[^}]*\})?\s+([0-9eE+.\-]+)",
+    "generation_tokens": r"^vllm:generation_tokens_total(\{[^}]*\})?\s+([0-9eE+.\-]+)",
+    "draft_tokens": r"^vllm:spec_decode_num_draft_tokens_total(\{[^}]*\})?\s+([0-9eE+.\-]+)",
+    "accepted_tokens": r"^vllm:spec_decode_num_accepted_tokens_total(\{[^}]*\})?\s+([0-9eE+.\-]+)",
+    "prefix_cache_queries": r"^vllm:(?:gpu_)?prefix_cache_queries_total(\{[^}]*\})?\s+([0-9eE+.\-]+)",
+    "prefix_cache_hits": r"^vllm:(?:gpu_)?prefix_cache_hits_total(\{[^}]*\})?\s+([0-9eE+.\-]+)",
+}
+
+
+def metrics_snapshot(ep: Endpoint) -> dict:
+    out = ep.call("GET", "/metrics")
+    if out["error"] or out["status"] != 200:
+        return {"available": False, "utc": utcnow(),
+                "reason": out["error"] or f"HTTP {out['status']}"}
+    text = out["body"]
+    sums = {}
+    lines = {}
+    for fam, pat in METRIC_FAMILIES.items():
+        matches = list(re.finditer(pat, text, re.M))
+        if matches:
+            sums[fam] = sum(float(m.group(2)) for m in matches)
+            lines[fam] = [m.group(0) for m in matches]
+    return {"available": True, "utc": utcnow(), "verbatim": text,
+            "sums": sums, "counter_lines_verbatim": lines}
+
+
+# ---------------------------------------------------------------- checks
+
+
+def synth_words(rng: random.Random, n_chars: int) -> str:
+    out, total = [], 0
+    while total < n_chars:
+        w = rng.choice(WORDS)
+        out.append(w)
+        total += len(w) + 1
+    return " ".join(out)[:n_chars]
+
+
+def frozen_prompts(seed: int) -> list[str]:
+    prompts = []
+    for i in range(8):
+        rng = random.Random(f"tb21-gate-frozen:{seed}:{i}")
+        prompts.append(
+            f"[tb21-gate frozen prompt {i}, seed {seed}] Continue the "
+            f"following text in the same style:\n\n{synth_words(rng, 800)}"
+        )
+    return prompts
+
+
+def check_liveness(ep: Endpoint) -> tuple[dict, str | None, bool]:
+    """Returns (check, served_model_id, is_mock)."""
+    health = ep.call("GET", "/health")
+    models = ep.call("GET", "/v1/models")
+    model_id, owned_by = None, None
+    if models["status"] == 200 and models["json"]:
+        data = (models["json"].get("data") or [{}])[0]
+        model_id = data.get("id")
+        owned_by = data.get("owned_by")
+    is_mock = owned_by == MOCK_OWNER
+    ev = {
+        "health_status": health["status"],
+        "health_error": health["error"],
+        "health_latency_s": health["latency_s"],
+        "models_status": models["status"],
+        "served_model_id": model_id,
+        "owned_by": owned_by,
+        "models_payload": models["json"],
+    }
+    if model_id is None:
+        status = "FAIL"
+        ev["why"] = "/v1/models did not return a served model id"
+    elif health["status"] == 200:
+        status = "PASS"
+    elif is_mock:
+        status = "PASS"
+        ev["why"] = ("/health absent by design on the mock preflight double "
+                     "(tools/tb_mock_endpoint.py serves only /v1/models and "
+                     "chat completions); /v1/models proves liveness")
+    else:
+        status = "FAIL"
+        ev["why"] = (f"/health returned {health['status']} "
+                     f"({health['error']}) on a non-mock endpoint")
+    return ({"name": "liveness", "status": status, "evidence": ev},
+            model_id, is_mock)
+
+
+def check_generation(ep: Endpoint, model: str) -> dict:
+    out = ep.chat(model, "Reply with the single word: ready", max_tokens=8)
+    ev = {"http_status": out["status"], "latency_s": out["latency_s"],
+          "error": out["error"]}
+    status = "FAIL"
+    if out["status"] == 200 and out["json"]:
+        ch = (out["json"].get("choices") or [{}])[0]
+        msg = (ch.get("message") or {}).get("content")
+        ev.update(content=msg, finish_reason=ch.get("finish_reason"),
+                  usage=out["json"].get("usage"))
+        if msg and ch.get("finish_reason") is not None:
+            status = "PASS"
+        else:
+            ev["why"] = "missing content or finish_reason"
+    else:
+        ev["why"] = "non-200 or unparseable response"
+        ev["body_head"] = out["body"][:300]
+    return {"name": "generation_proof", "status": status, "evidence": ev}
+
+
+def check_repeatability(ep: Endpoint, model: str, seed: int,
+                        is_mock: bool) -> dict:
+    if is_mock:
+        return {"name": "frozen_prompt_repeatability", "status": "SKIP",
+                "evidence": {"reason": (
+                    "mock preflight double: replies embed a global call "
+                    "counter (terminus_reply(call_index) in "
+                    "tb_mock_endpoint.py), so two runs can never be "
+                    "token-identical by design; repeatability is only "
+                    "meaningful against the real engine"),
+                    "note": CROSS_RESTART_NOTE}}
+    prompts = frozen_prompts(seed)
+    seed_supported = True
+    probe = ep.chat(model, prompts[0], max_tokens=4, seed=seed)
+    if probe["status"] == 400:
+        seed_supported = False  # server rejects the seed param; rerun without
+
+    def run_once(tag: str) -> list[dict]:
+        rows = []
+        for i, p in enumerate(prompts):
+            out = ep.chat(model, p, max_tokens=64,
+                          seed=seed if seed_supported else None)
+            if out["status"] != 200 or not out["json"]:
+                rows.append({"i": i, "ok": False, "status": out["status"],
+                             "error": out["error"],
+                             "body_head": out["body"][:300]})
+                continue
+            ch = (out["json"].get("choices") or [{}])[0]
+            content = (ch.get("message") or {}).get("content") or ""
+            rows.append({
+                "i": i, "ok": True,
+                "sha256": hashlib.sha256(content.encode()).hexdigest(),
+                "completion_tokens":
+                    (out["json"].get("usage") or {}).get("completion_tokens"),
+                "finish_reason": ch.get("finish_reason"),
+                "content_head": content[:120],
+            })
+        return rows
+
+    run_a = run_once("A")
+    run_b = run_once("B")
+    matches = []
+    for a, b in zip(run_a, run_b):
+        matches.append(bool(
+            a.get("ok") and b.get("ok")
+            and a["sha256"] == b["sha256"]
+            and a["completion_tokens"] == b["completion_tokens"]))
+    all_ok = all(r.get("ok") for r in run_a + run_b)
+    identical = all(matches) and len(matches) == 8
+    ev = {
+        "prompts": 8,
+        "prompt_synthesis": f"seeded word filler, seed {seed}, 800 chars each",
+        "temperature": 0.0,
+        "seed_param_supported": seed_supported,
+        "identity_criterion": "sha256(content) equal AND "
+                              "usage.completion_tokens equal, per prompt "
+                              "(text equality implies token identity under "
+                              "one tokenizer)",
+        "matches": matches,
+        "run_a": run_a,
+        "run_b": run_b,
+        "combined_sha256_run_a": hashlib.sha256(
+            "".join(r.get("sha256", "x") for r in run_a).encode()).hexdigest(),
+        "combined_sha256_run_b": hashlib.sha256(
+            "".join(r.get("sha256", "x") for r in run_b).encode()).hexdigest(),
+        "note": CROSS_RESTART_NOTE,
+    }
+    status = "PASS" if (all_ok and identical) else "FAIL"
+    if not all_ok:
+        ev["why"] = "one or more requests failed outright"
+    elif not identical:
+        ev["why"] = f"non-identical prompts: {[i for i, m in enumerate(matches) if not m]}"
+    return {"name": "frozen_prompt_repeatability", "status": status,
+            "evidence": ev}
+
+
+def build_needle_doc(seed: int, target_chars: int) -> tuple[str, str, str]:
+    """Deterministic document with the needle at char-depth 0.5."""
+    rng = random.Random(f"tb21-gate-needle:{seed}")
+    code = "".join(str(rng.randint(0, 9)) for _ in range(9))
+    needle = f"The vault access code is {code}."
+    half = max(0, (target_chars - len(needle)) // 2)
+    front = synth_words(random.Random(f"tb21-needle-front:{seed}"), half)
+    back = synth_words(random.Random(f"tb21-needle-back:{seed}"),
+                       target_chars - half - len(needle))
+    doc = f"{front}\n{needle}\n{back}"
+    return doc, needle, code
+
+
+def check_needle(ep: Endpoint, model: str, args, is_mock: bool) -> dict:
+    name = "needle_retrieval"
+    if args.skip_needle:
+        return {"name": name, "status": "SKIP",
+                "evidence": {"reason": "--skip-needle (rehearsal run)"}}
+    if is_mock:
+        return {"name": name, "status": "SKIP",
+                "evidence": {"reason": (
+                    "mock preflight double returns canned Terminus-2 JSON "
+                    "regardless of the prompt; retrieval is not meaningful "
+                    "without a real model")}}
+    window = 32768 if args.tp_smoke else args.needle_tokens
+    reserve = 2048  # chat template + question + answer headroom
+    doc_target_tokens = window - reserve
+
+    # chars-per-token: /tokenize when present, else chars/4 (named).
+    sample = synth_words(random.Random("tb21-gate-cpt"), 8000)
+    tk = ep.call("POST", "/tokenize", {"model": model, "prompt": sample})
+    if tk["status"] == 200 and tk["json"] and tk["json"].get("count"):
+        cpt = len(sample) / int(tk["json"]["count"])
+        cpt_method = (f"/tokenize calibration: {len(sample)} chars -> "
+                      f"{tk['json']['count']} tokens")
+    else:
+        cpt = 4.0
+        cpt_method = "chars/4 heuristic (/tokenize unavailable)"
+
+    doc, needle, code = build_needle_doc(args.seed,
+                                         int(doc_target_tokens * cpt))
+    measured_tokens = None
+    tk2 = ep.call("POST", "/tokenize", {"model": model, "prompt": doc},
+                  timeout=max(ep.timeout, 300))
+    if tk2["status"] == 200 and tk2["json"] and tk2["json"].get("count"):
+        measured_tokens = int(tk2["json"]["count"])
+
+    prompt = (
+        f"{doc}\n\nQuestion: what is the vault access code stated in the "
+        "document above? Answer with the digits only."
+    )
+    out = ep.chat(model, prompt, max_tokens=32,
+                  timeout=max(ep.timeout, 1800))
+    ev = {
+        "mode": "tp-smoke 32k" if args.tp_smoke else "full window",
+        "window_tokens": window,
+        "reserve_tokens": reserve,
+        "doc_target_tokens": doc_target_tokens,
+        "doc_chars": len(doc),
+        "chars_per_token": round(cpt, 4),
+        "token_estimation_method": cpt_method,
+        "doc_measured_tokens_via_tokenize": measured_tokens,
+        "needle_depth": 0.5,
+        "needle": needle,
+        "expected_code": code,
+        "http_status": out["status"],
+        "latency_s": out["latency_s"],
+        "error": out["error"],
+    }
+    if out["status"] != 200 or not out["json"]:
+        ev["why"] = "request refused or failed (recorded outcome)"
+        ev["body_head"] = out["body"][:500]
+        return {"name": name, "status": "FAIL", "evidence": ev}
+    ch = (out["json"].get("choices") or [{}])[0]
+    answer = (ch.get("message") or {}).get("content") or ""
+    ev["answer"] = answer
+    ev["usage"] = out["json"].get("usage")
+    ev["retrieved_exact"] = code in answer
+    return {"name": name,
+            "status": "PASS" if code in answer else "FAIL",
+            "evidence": ev}
+
+
+def check_mtp(before: dict, after: dict, is_mock: bool) -> dict:
+    name = "mtp_sanity"
+    if is_mock:
+        return {"name": name, "status": "SKIP",
+                "evidence": {"reason": "mock preflight double has no /metrics"}}
+    if not (before.get("available") and after.get("available")):
+        return {"name": name, "status": "SKIP",
+                "evidence": {"reason": (
+                    "/metrics unavailable on this endpoint: "
+                    f"{before.get('reason') or after.get('reason')}")}}
+    b, a = before["sums"], after["sums"]
+    if "draft_tokens" not in a or "accepted_tokens" not in a:
+        return {"name": name, "status": "SKIP",
+                "evidence": {
+                    "reason": ("speculative counters absent from /metrics - "
+                               "no active speculative config on this arm "
+                               "(e.g. BF16 without MTP, or TP smoke)"),
+                    "families_present": sorted(a.keys()),
+                }}
+    draft = a["draft_tokens"] - b.get("draft_tokens", 0.0)
+    accepted = a["accepted_tokens"] - b.get("accepted_tokens", 0.0)
+    ev = {
+        "window": "counter deltas across check 3 (frozen-prompt runs)",
+        "draft_delta": draft,
+        "accepted_delta": accepted,
+        "acceptance": round(accepted / draft, 4) if draft > 0 else None,
+        "threshold": 0.3,
+        "counter_lines_before": {
+            k: before["counter_lines_verbatim"].get(k)
+            for k in ("draft_tokens", "accepted_tokens")},
+        "counter_lines_after": {
+            k: after["counter_lines_verbatim"].get(k)
+            for k in ("draft_tokens", "accepted_tokens")},
+    }
+    if draft <= 0:
+        ev["why"] = ("speculative counters present but no draft tokens were "
+                     "produced during check 3 - speculative path inactive")
+        return {"name": name, "status": "FAIL", "evidence": ev}
+    ok = (accepted / draft) > 0.3
+    if not ok:
+        ev["why"] = "acceptance <= 0.3 with active speculative config"
+    return {"name": name, "status": "PASS" if ok else "FAIL", "evidence": ev}
+
+
+# ---------------------------------------------------------------- main
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    ap.add_argument("--base-url", required=True,
+                    help="http://HOST:8000 (with or without /v1)")
+    ap.add_argument("--out", required=True, help="receipt JSON path")
+    ap.add_argument("--api-key", default=None)
+    ap.add_argument("--model", default=None,
+                    help="served model id (default: first from /v1/models)")
+    ap.add_argument("--needle-tokens", type=int, default=262144,
+                    help="context window the needle doc targets "
+                         "(doc = window - 2048 reserve; default 262144)")
+    ap.add_argument("--tp-smoke", action="store_true",
+                    help="G0 fast path: 32k needle window")
+    ap.add_argument("--skip-needle", action="store_true",
+                    help="rehearsal: skip check 4")
+    ap.add_argument("--seed", type=int, default=46)
+    ap.add_argument("--timeout", type=float, default=120.0,
+                    help="per-request timeout (needle/tokenize get more)")
+    args = ap.parse_args()
+
+    ep = Endpoint(args.base_url, args.api_key, args.timeout)
+    started = utcnow()
+    checks = []
+
+    c1, model_id, is_mock = check_liveness(ep)
+    checks.append(c1)
+    model = args.model or model_id
+    print(f"[gate] 1 liveness: {c1['status']} (model={model}, "
+          f"mock={is_mock})", flush=True)
+
+    if model:
+        c2 = check_generation(ep, model)
+    else:
+        c2 = {"name": "generation_proof", "status": "FAIL",
+              "evidence": {"why": "no served model id to address"}}
+    checks.append(c2)
+    print(f"[gate] 2 generation: {c2['status']}", flush=True)
+
+    m_before = metrics_snapshot(ep)
+    c3 = (check_repeatability(ep, model, args.seed, is_mock) if model else
+          {"name": "frozen_prompt_repeatability", "status": "FAIL",
+           "evidence": {"why": "no served model id"}})
+    m_after = metrics_snapshot(ep)
+    checks.append(c3)
+    print(f"[gate] 3 repeatability: {c3['status']}", flush=True)
+
+    c4 = (check_needle(ep, model, args, is_mock) if model else
+          {"name": "needle_retrieval", "status": "FAIL",
+           "evidence": {"why": "no served model id"}})
+    checks.append(c4)
+    print(f"[gate] 4 needle: {c4['status']}", flush=True)
+
+    c5 = check_mtp(m_before, m_after, is_mock)
+    checks.append(c5)
+    print(f"[gate] 5 mtp: {c5['status']}", flush=True)
+
+    failed = [c["name"] for c in checks if c["status"] == "FAIL"]
+    receipt = {
+        "schema": SCHEMA,
+        "generated_utc": utcnow(),
+        "started_utc": started,
+        "argv": sys.argv,
+        "base_url": args.base_url,
+        "endpoint_identity": {
+            "served_model_id": model_id,
+            "is_mock_preflight_double": is_mock,
+        },
+        "seed": args.seed,
+        "cross_restart_note": CROSS_RESTART_NOTE,
+        "metrics_before_check3": m_before,
+        "metrics_after_check3": m_after,
+        "checks": checks,
+        "verdict": "FAIL" if failed else "PASS",
+        "failed_checks": failed,
+        "finished_utc": utcnow(),
+    }
+    with open(args.out, "w") as f:
+        json.dump(receipt, f, indent=1)
+    print(f"[gate] receipt -> {args.out}", flush=True)
+    print(f"[gate] verdict: {receipt['verdict']}"
+          + (f" (failed: {', '.join(failed)})" if failed else ""), flush=True)
+    return 1 if failed else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
