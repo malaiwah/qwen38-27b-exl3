@@ -474,6 +474,27 @@ the K5/K6 builds instead.
    `UD-Q5_K_XL`'s 0.003936 net at 18.83 GiB, about 13 % better fidelity for **0.445 GiB** more
    payload.
 
+**Update 2026-08-16 — the 6-bit loss was a byte gap, and closing it closes the gap.** The obvious
+reply to "`Q6_K` wins at 6 bits" is that `Q6_K` spends more bytes on the transformer body, so we
+built the variant that spends them: the hydrated recipe with `gate_proj` and `up_proj` promoted
+K5 -> K6, pre-registered with its acceptance rule and its predicted payload **before** converting.
+It measures **0.001634 mean KLD [0.001541, 0.001742]**, top-1 98.248 % — **between `Q6_K`'s net
+0.001528 and its measured 0.002035**, i.e. parity at the 6-bit operating point
+([`k6-parity-kld.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/k6-parity-kld.json)).
+Paired per context it beats this family's hydrated build by 0.001066 [0.000974, 0.001173] on
+**511 of 512** contexts — a **39.5 % cut in mean KLD for +1.348 GiB** — and beats `Q6_K`'s *measured*
+value by 0.000401 [0.000378, 0.000425] on 493 of 512, interval excluding zero. It sits 0.000106 above
+`Q6_K`'s *net-of-floor* estimate, and because KL is not additive that particular ordering is **not**
+pressed. It carries **2.306 GiB (13.5 %) less transformer body** than `Q6_K` while matching it.
+
+Two disciplines this exercise was run under, both worth more than the result: the payload was
+predicted at 23,035,310,148 B and measured at **23,035,310,148 B**, zero error; and the registered
+95 % interval **[0.001175, 0.001601] missed** — the measurement is 0.0000328 (2.0 %) above its upper
+bound, so all three estimators bracketed on the pessimistic side, with the role-share bound worst
+and the byte-law-at-`Q6_K`'s-surplus form best, the opposite of what the surrogate's calibration
+implied. The published point prediction of ~0.0016 was within 2.1 % of measurement, the most accurate
+advance prediction this project has made — and the miss is printed beside it rather than dropped.
+
 **Correction, 2026-08-16 — the byte axis in the table above is not one axis, and every mixed
 comparison flattered us.** A GGUF row is the **whole file** of a **text-only** artifact; our row is
 **tensor payload** of a **multimodal** tree that also carries an MTP draft. Read from each artifact's
