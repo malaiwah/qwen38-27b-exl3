@@ -131,7 +131,8 @@ class Endpoint:
                     "error": f"{type(exc).__name__}: {exc}"}
 
     def chat(self, model: str, prompt: str, max_tokens: int,
-             seed: int | None = None, timeout: float | None = None) -> dict:
+             seed: int | None = None, timeout: float | None = None,
+             no_think: bool = False) -> dict:
         payload = {
             "model": model,
             "messages": [{"role": "user", "content": prompt}],
@@ -140,6 +141,8 @@ class Endpoint:
         }
         if seed is not None:
             payload["seed"] = seed
+        if no_think:
+            payload["chat_template_kwargs"] = {"enable_thinking": False}
         return self.call("POST", "/v1/chat/completions", payload,
                          timeout=timeout)
 
@@ -234,19 +237,32 @@ def check_liveness(ep: Endpoint) -> tuple[dict, str | None, bool]:
 
 
 def check_generation(ep: Endpoint, model: str) -> dict:
-    out = ep.chat(model, "Reply with the single word: ready", max_tokens=8)
+    # no_think=True: this is a graded liveness probe, not a capability probe.
+    # Without it a reasoning model can spend the whole token budget on its
+    # <think> preamble and never reach `content`, which is a false FAIL, not
+    # a serving defect (confirmed live: max_tokens=8 with thinking on emits
+    # content=None, finish_reason="length"; the same request with
+    # enable_thinking=False emits content="ready", finish_reason="stop").
+    out = ep.chat(model, "Reply with the single word: ready", max_tokens=16,
+                  no_think=True)
     ev = {"http_status": out["status"], "latency_s": out["latency_s"],
-          "error": out["error"]}
+          "error": out["error"], "no_think": True}
     status = "FAIL"
     if out["status"] == 200 and out["json"]:
         ch = (out["json"].get("choices") or [{}])[0]
         msg = (ch.get("message") or {}).get("content")
-        ev.update(content=msg, finish_reason=ch.get("finish_reason"),
+        reasoning = (ch.get("message") or {}).get("reasoning")
+        ev.update(content=msg, reasoning=reasoning,
+                  finish_reason=ch.get("finish_reason"),
                   usage=out["json"].get("usage"))
-        if msg and ch.get("finish_reason") is not None:
+        # Accept reasoning-only output too: enable_thinking=False is a
+        # request, not a guarantee every template honours, and a non-empty
+        # reasoning field under a real finish_reason is still proof the
+        # engine is generating - the thing this check exists to establish.
+        if (msg or reasoning) and ch.get("finish_reason") is not None:
             status = "PASS"
         else:
-            ev["why"] = "missing content or finish_reason"
+            ev["why"] = "missing content, missing reasoning, or missing finish_reason"
     else:
         ev["why"] = "non-200 or unparseable response"
         ev["body_head"] = out["body"][:300]
@@ -357,7 +373,10 @@ def check_needle(ep: Endpoint, model: str, args, is_mock: bool) -> dict:
     reserve = 2048  # chat template + question + answer headroom
     doc_target_tokens = window - reserve
 
-    # chars-per-token: /tokenize when present, else chars/4 (named).
+    # chars-per-token: /tokenize when present, else chars/4 (named). This is
+    # only a STARTING estimate - the trim loop below makes the actual send
+    # size self-correcting against the real tokenizer, so a calibration miss
+    # here costs one extra /tokenize round trip, never a 400.
     sample = synth_words(random.Random("tb21-gate-cpt"), 8000)
     tk = ep.call("POST", "/tokenize", {"model": model, "prompt": sample})
     if tk["status"] == 200 and tk["json"] and tk["json"].get("count"):
@@ -370,17 +389,42 @@ def check_needle(ep: Endpoint, model: str, args, is_mock: bool) -> dict:
 
     doc, needle, code = build_needle_doc(args.seed,
                                          int(doc_target_tokens * cpt))
+
+    # Trim-to-fit: /tokenize the ACTUAL doc and shrink proportionally until
+    # it is under budget, rather than trusting the char/token estimate. Bound
+    # at 6 tries; each retokenizes a smaller doc so it converges fast (a
+    # ~0.4 % initial miscalibration on a 260k-token doc needs one pass).
     measured_tokens = None
-    tk2 = ep.call("POST", "/tokenize", {"model": model, "prompt": doc},
-                  timeout=max(ep.timeout, 300))
-    if tk2["status"] == 200 and tk2["json"] and tk2["json"].get("count"):
+    trims = []
+    for attempt in range(6):
+        tk2 = ep.call("POST", "/tokenize", {"model": model, "prompt": doc},
+                      timeout=max(ep.timeout, 300))
+        if not (tk2["status"] == 200 and tk2["json"] and tk2["json"].get("count")):
+            break  # /tokenize itself failed; fall through and let the real
+                   # chat request surface the error, unchanged from before.
         measured_tokens = int(tk2["json"]["count"])
+        trims.append({"attempt": attempt, "doc_chars": len(doc),
+                      "measured_tokens": measured_tokens})
+        if measured_tokens <= doc_target_tokens:
+            break
+        overshoot = measured_tokens - doc_target_tokens
+        # Shrink by the measured overshoot in tokens, converted back to
+        # chars via the doc's OWN just-measured ratio (not the stale
+        # sample estimate), plus 0.5% margin so it doesn't hover at the edge.
+        doc_cpt = len(doc) / measured_tokens
+        cut_chars = int(overshoot * doc_cpt * 1.005)
+        doc, needle, code = build_needle_doc(
+            args.seed, max(1000, len(doc) - cut_chars))
+        trims[-1]["cut_chars"] = cut_chars
 
     prompt = (
         f"{doc}\n\nQuestion: what is the vault access code stated in the "
         "document above? Answer with the digits only."
     )
-    out = ep.chat(model, prompt, max_tokens=32,
+    # no_think=True for the same reason as generation_proof: this is an
+    # exact-match retrieval grade, and reasoning tokens on a 260k-token
+    # document would burn the answer budget before any digits appear.
+    out = ep.chat(model, prompt, max_tokens=64, no_think=True,
                   timeout=max(ep.timeout, 1800))
     ev = {
         "mode": "tp-smoke 32k" if args.tp_smoke else "full window",
@@ -390,10 +434,12 @@ def check_needle(ep: Endpoint, model: str, args, is_mock: bool) -> dict:
         "doc_chars": len(doc),
         "chars_per_token": round(cpt, 4),
         "token_estimation_method": cpt_method,
+        "trim_to_fit_attempts": trims,
         "doc_measured_tokens_via_tokenize": measured_tokens,
         "needle_depth": 0.5,
         "needle": needle,
         "expected_code": code,
+        "no_think": True,
         "http_status": out["status"],
         "latency_s": out["latency_s"],
         "error": out["error"],
