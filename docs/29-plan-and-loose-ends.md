@@ -511,6 +511,16 @@ model. Ship a correct one with the valid effort variants, 262,144 context and im
 
 ## Closed by the audit
 
+- Scratch-arena lever R1 is landed and published: the measured **+17,874 KV tokens** (265,122 ->
+  282,996; 9.28 -> 9.88 GiB; 95.7 % of the +620 MiB / +18.7k static prediction,
+  `receipts/scratch-arena.json`) now sits in all four model cards' serving area as an **opt-in
+  overlay explicitly outside the qualified digest**, with the restart-nondeterminism caveat
+  bounding its byte-identity claim; [43](43-runtime-memory-sharing.md) §3/§7 are relabelled
+  measured-and-PR'd (fork PR #397) with the original [INFERENCE] figure kept as the calibration
+  datum; [34](34-vram-class-profiles.md) §10.2 carries the 24 GB-class effect as [P] arithmetic
+  (24,576 + 17,874 = 42,450 raw; 40,960 at only 3.6 % headroom, so 36,864 is the step that clears
+  the >=15 % envelope) with no 24 GB boot; all six repos re-fetched byte-identical
+  (`receipts/arena-landing.json`, `receipts/arena-card-publication.json`).
 - The KV-dtype sweep is landed where readers act on it (`652c1c9`, published byte-identical to all six
   repos): each card's serving section now carries fp8 as the measured default with the per-token-head
   family's 3.0x-prefill price and `int4_per_token_head`'s two named prices under the receipt's
