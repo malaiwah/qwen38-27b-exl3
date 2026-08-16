@@ -391,14 +391,34 @@ no_gpu_assert() {
 }
 
 # ------------------------------------------------------------------ passes ----
-# Only ever remove Terminal-Bench task images (docker.io/alexgshaw/*). The other
-# images on aiboss are ~192 GB belonging to other agents and services: a global
-# `podman image prune -af` there would be destructive. Never prune globally.
+# Everything reclaimed here is a Terminal-Bench artifact and nothing else. The
+# other images on aiboss are ~192 GB belonging to other agents and services, so a
+# global `podman image prune -af` there would be destructive: there is no global
+# prune anywhere in this tooling, and if the 15G threshold is ever reached that
+# gets reported over hub rather than escalated into a wider cleanup by heuristic.
+#
+# The orphan sweep exists because it was observed: SIGKILLing harbor mid-pass (the
+# resume proof did exactly that) leaves the task container AND its compose network
+# behind, because harbor never gets to tear them down. Over a long interrupted
+# bench those would accumulate on a shared box.
+# Safe because only one pass ever runs at a time -- a live pass's containers would
+# also match, so this must not be run concurrently with a pass.
 disk_guard() {
   rssh 'free_g=$(df --output=avail -BG $HOME | tail -1 | tr -dc 0-9);
         echo "[disk] ${free_g}G free on aiboss $HOME";
+        orph=0;
+        for c in $(docker ps -a --format "{{.ID}} {{.Image}}" | awk "/alexgshaw/ {print \$1}"); do
+          docker rm -f "$c" >/dev/null 2>&1 && orph=$((orph+1));
+        done;
+        netn=0;
+        for n in $(docker network ls --format "{{.Name}}" | grep "__env" 2>/dev/null); do
+          docker network rm "$n" >/dev/null 2>&1 && netn=$((netn+1));
+        done;
+        [ $orph -gt 0 ] || [ $netn -gt 0 ] \
+          && echo "[orphans] reclaimed $orph Terminal-Bench container(s), $netn compose network(s) left by an interrupted pass" \
+          || echo "[orphans] none";
         if [ "$free_g" -lt 15 ]; then
-          echo "[disk] below 15G -> removing unused Terminal-Bench task images only";
+          echo "[disk] below 15G -> removing Terminal-Bench task images ONLY (never a global prune); report this over hub";
           podman images --format "{{.ID}} {{.Repository}}" \
             | awk "/alexgshaw/ {print \$1}" | xargs -r podman rmi -f 2>/dev/null || true;
           df -h $HOME | tail -1;
@@ -534,7 +554,11 @@ case $cmd in
   metrics)       metrics "${args[@]}" ;;
   gpu-evidence)  gpu_evidence "${args[@]}" ;;
   no-gpu-assert) no_gpu_assert "${args[@]:-}" ;;
-  dry-run)       run_pass tb21-dryrun "$(served_now)" ALL 1 "${args[0]:?dry-run <task>}" ;;
+  # The job name carries the served model, so a dry run against the preflight
+  # double (served as 'qwen38' by tb_mock_endpoint.py) can never be mistaken
+  # for, or resumed as, a dry run against the real server -- and a stale dry-run
+  # dir can never make harbor try to resume a job with a different config.
+  dry-run)       s=$(served_now); run_pass "tb21-dryrun-$s-$(date +%Y%m%dT%H%M%S)" "$s" ALL 1 "${args[0]:?dry-run <task>}" ;;
   pass1)         run_pass tb21-pass1-hyd "$SERVED_HYD" ALL "$N" "$TASK" ;;
   pass2)         analyze failures tb21-pass1-hyd | rssh 'cat > pass1-failures.txt'
                  run_pass tb21-pass2-hyd-healing "$SERVED_HYD" pass1-failures.txt "$N" "$TASK" ;;

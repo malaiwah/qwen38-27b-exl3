@@ -187,12 +187,32 @@ checks:
 4. **`nvidia-smi` process lists** are captured on both hosts during every pass.
 
 Per trial, `config.environment.override_gpus` is recorded in `result.json`, and
-`tb_rows.py gpu-assert` fails the pass if any value is not null/0.
+`tb_rows.py gpu-assert` fails the pass if any value is not null/0. On the interrupted 6-task
+validation job: *"no-gpu-assert OK: 6 trials, every `config.environment.override_gpus` is null/0"*.
 
-**Stated plainly, because filtering evidence until it is green is not evidence:** two containers on
-AIBoss *do* hold `/dev/nvidia*` — the owner's `qwen38-27b` vLLM service and a
-`nvidia-gpu-exporter`. They are pre-existing co-tenants, not created by this bench. The assertion is
-scoped to TB task containers, and the checker prints the co-tenant list every time it runs.
+Check 3 has been **observed, not merely argued**, with a task container actually running:
+
+```
+TB-TASK /regex-log__hqzxs9o__env-main-1  image=docker.io/alexgshaw/regex-log:20251031
+        devices=[]  devreq=[]  runtime=oci
+```
+
+**Stated plainly, because filtering evidence until it is green is not evidence:** other containers on
+AIBoss *do* hold `/dev/nvidia*` — the owner's `qwen38-27b` vLLM service, an `nvidia-gpu-exporter`,
+and `/v2fix-v2sched_c` (another agent's GPU work on the same shared box). They are pre-existing
+co-tenants, not created by this bench. The assertion is scoped to TB task containers, and the checker
+prints the co-tenant list **by name** every time it runs.
+
+### One leak the resume proof exposed
+
+`SIGKILL`ing harbor mid-pass leaves the task container *and* its compose network behind — harbor
+never gets to tear them down. After the interrupted job, `/regex-log__hqzxs9o__env-main-1` was still
+`Up 7 minutes` with the network `regex-log__hqzxs9o__env_default` alongside it. On a long,
+interrupted, multi-pass bench sharing a box with other agents, those would accumulate silently — and
+the cause is precisely the interruption that resume exists to make cheap. `disk_guard` now sweeps
+orphaned TB containers and their `__env` networks before every pass and reports the count. Scope is
+TB artifacts only; there is no global prune anywhere in this tooling, and if the 15 GB image
+threshold is ever reached that is reported over hub rather than escalated by heuristic.
 
 ## 4. Resume is a design requirement, not a convenience
 

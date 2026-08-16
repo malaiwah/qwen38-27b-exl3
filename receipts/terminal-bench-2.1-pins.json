@@ -262,7 +262,21 @@
     ],
     "honesty_note": "The two containers above DO hold nvidia devices. They are pre-existing co-tenant workloads on the shared box, are not created by this bench, and are named explicitly rather than filtered out of the evidence. The assertion is scoped to TB task containers, and the checker prints the co-tenant list every time.",
     "per_trial_record": "Every trial's result.json records config.environment.override_gpus; tools/tb_rows.py gpu-assert fails the pass if any value is not null/0.",
-    "status_at_pin_time": "ALL CHECKS PASSED (run in this session with 0 TB containers live, i.e. between passes)"
+    "status_at_pin_time": "ALL CHECKS PASSED (run in this session with 0 TB containers live, i.e. between passes)",
+    "check_3_observed_live_not_argued": {
+      "status": "OBSERVED with a Terminal-Bench task container actually running",
+      "container": "/regex-log__hqzxs9o__env-main-1",
+      "image": "docker.io/alexgshaw/regex-log:20251031",
+      "inspected": "devices=[] devreq=[] runtime=oci",
+      "reading": "A live TB task container held ZERO devices and made zero device requests. This is the assertion observed rather than inferred from the absence of a code path.",
+      "co_tenants_correctly_classified_as_OTHER": [
+        "/nvidia-gpu-exporter (docker.io/utkuozdemir/nvidia_gpu_exporter) -- holds /dev/nvidia0, /dev/nvidiactl, /dev/nvidia-uvm, /dev/dri/*",
+        "/v2fix-v2sched_c (localhost/vllm:gg-r34-patched) -- another agent's GPU work on the shared box, holds the same nvidia devices"
+      ],
+      "honesty": "Both co-tenants DO hold nvidia devices and are printed by name every time the check runs. The assertion is scoped to TB task containers; nothing is filtered out to make the check green.",
+      "per_trial_record": "no-gpu-assert OK: 6 trials, every config.environment.override_gpus is null/0 (job tb21-resume-proof2)",
+      "all_four_checks": "PASSED, rc=0"
+    }
   },
   "concurrency": {
     "flag": "--n-concurrent-trials N in the runner, passed to harbor as -n",
@@ -311,6 +325,12 @@
       "reading": "[INFERENCE from a 6-image sample] Pulling all 89 task images would take roughly 42 GB against 68 GB free, which fits but not comfortably on a box shared with other agents' 192 GB of images.",
       "mitigation_already_in_the_runner": "disk_guard runs before every pass, reports free space, and when aiboss:$HOME drops below 15 GB removes ONLY docker.io/alexgshaw/* images. There is no global prune anywhere in the tooling.",
       "side_benefit_of_the_preflight": "The validation runs already pulled 6 task images, so those tasks start without a pull during pass 1."
+    },
+    "orphan_leak_found_and_handled": {
+      "observed": "SIGKILLing harbor mid-pass -- which the resume proof did deliberately -- leaves the task container AND its compose network behind, because harbor never gets to tear them down. After the interrupted 6-task job, /regex-log__hqzxs9o__env-main-1 was still Up 7 minutes and the network regex-log__hqzxs9o__env_default still existed.",
+      "why_it_matters": "Over a long, interrupted, multi-pass bench on a box shared with other agents these would accumulate silently -- and the leak is caused by exactly the interruption that resume is designed to make cheap.",
+      "fix": "disk_guard now sweeps orphaned Terminal-Bench containers (images matching alexgshaw) and their `__env` compose networks before every pass, reporting the count. Scope is TB artifacts only; safe because only one pass runs at a time.",
+      "verified": "The leaked container and network were removed; a subsequent guard run on the clean box reports '[orphans] none' with 68G free."
     }
   },
   "harness_validation_evidence": {
