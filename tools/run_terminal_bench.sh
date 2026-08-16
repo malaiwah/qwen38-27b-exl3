@@ -52,6 +52,8 @@
 #   run_terminal_bench.sh wait-ready [secs]       # poll /v1/models via aiboss
 #   run_terminal_bench.sh probe [tag]             # 1-token RTT: aiboss vs local
 #   run_terminal_bench.sh headroom [tag]          # concurrency sweep -> pick N
+#   run_terminal_bench.sh warm hydrated|bf16|both # page-cache weights pre-serve
+#   run_terminal_bench.sh warm-images [N]         # bounded task-image warm set
 #   run_terminal_bench.sh metrics <tag>           # vLLM /metrics + MTP accept
 #   run_terminal_bench.sh gpu-evidence <tag>      # nvidia-smi procs, both hosts
 #   run_terminal_bench.sh no-gpu-assert [job]     # hard CPU-only assertions
