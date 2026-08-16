@@ -962,3 +962,73 @@ frames every number as an **agent+model system** score, never model-only. Datase
 `malaiwah/qwen38-27b-terminal-bench-2.1` is live and **verified public unauthenticated**, and passes
 publish as they complete rather than at the end. No GPU taken by this agent; the card is requested
 by name from SixteenFlipCalib2.
+
+## 2026-08-16 — Four rental measurements: head attribution, the v5 replay floor, the int8 embed overlay at 8k, and the live tool-call path (RentalFidelityBatch2)
+
+One rental window, four receipts, each pushed as it landed. The batch resumed a predecessor killed
+mid-flight: its shard-0 recaptures were complete for context, K4, FP8 and unsloth NVFP4 but the
+hydrated capture had died at context 472 on `No space left on device`, and `fidelity.py capture`
+verified the sha256 and shape of all 473 surviving files before finishing the last 39 in 19 s.
+
+**Head attribution is now measured on our own corpus, not reasoned**
+([`receipts/head-attribution-v5.json`](receipts/head-attribution-v5.json)). Each candidate's shard-0
+capture was replayed twice against the published BF16 teacher capture — body-only, with the shared
+BF16 head on both operands, and head-inclusive, with the candidate operand going through *that
+checkpoint's own* serialized head — the bodies byte-identical between the arms. The three EXL3 heads
+were reconstructed with exllamav3's own `reconstruct_had_slice` (`tools/dequant_head.py`, the docs/16
+method; hydrated and context carry `mcg`, K4 carries `mul1`, all K=6, all finite at
+`absmax = 0.34180`), the unsloth head from its FP8 values times its per-row BF16 scales, and the FP8
+export's head straight out of the checkpoint. The control is exact: **all five body-only means
+reproduce the published shard-0 numbers bitwise** (hydrated 0.002699883159684943, context
+0.003409409957186559, official FP8 0.0051970635503104596, K4 0.01034534853668276, unsloth NVFP4
+0.03011540756091421). Head-attributable delta, paired per context with a 10,000-resample
+source-cluster bootstrap: hydrated **+1.425e-04** [1.354e-04, 1.496e-04], context **+1.444e-04**,
+K4 **+1.225e-04**, unsloth NVFP4 **+8.161e-04**, and official FP8 **exactly 0** — not as a rounding
+result but because that export's `lm_head.weight` is byte-identical to the shared head
+(`tensor_sha256 d922b751f014...` on both), which is the internal control that turns the other four
+into measurements. Every interval excludes zero; the candidate's own head is worse in 486-505 of 512
+contexts. That is **1.17 %-5.01 % of head-inclusive divergence**, so docs/35's `[INFERENCE]` on D5
+is resolved by measurement: the head is real and signed as stated, and far too small to be the
+dominant term in a 1.1-1.6x level gap — our published ordering survives the objection instead of
+depending on it.
+
+**The replay-versus-live floor is re-derived on the suite the cards actually use**
+([`receipts/replay-live-floor-v5.json`](receipts/replay-live-floor-v5.json)). The published 6.54e-04
+came from six v3 contexts with no suite, head or capture digest recorded. Serving the unquantized
+BF16 model on the rental and scoring its own full-vocabulary prompt logprobs against the same
+contexts replayed from the published shard-0 capture, through the same shared head, gives
+`KL(live ‖ replayed)` = **5.83e-04** over 32 analysis contexts and 65,504 scored positions,
+context-bootstrap 95 % CI [5.15e-04, 6.64e-04], top-1 99.10 %, worst single position 0.2534. The
+interval **contains** the old number, so the level has not moved materially and the cards' standing
+rule is unchanged; what improves is provenance. `fidelity.py qualify` refuses to run unless the live
+model's index/config/shard digests equal the capture's and the capture's recorded runtime equals the
+requested one, so a mismatched pair cannot produce a number at all.
+
+**The int8 embedding overlay is an opt-in lever on the non-context recipes, not a free switch**
+([`receipts/embed-overlay-8k.json`](receipts/embed-overlay-8k.json)). Four served arms, each the
+published 8,192-token card recipe with exactly one variable added (`VLLM_EXL3_EMBED_BITS=8`), each
+answering the same 22 frozen probe requests greedily at concurrency 1. The engine logs the overlay
+itself — `248320 x 5120 rows narrowed, 2.543 GB -> 1.272 GB` — and the accounting follows: hydrated
+weights 20.31 → 19.14 GiB, available KV 66.45 → 67.62 GiB = **668,852 → 680,899 KV tokens
+(+12,047, +1.80 %)**, concurrency at 8,192 81.65x → 83.12x; online K5-K6 weights 20.56 → 19.38 GiB,
+**345,324 → 352,571 tokens (+7,247, +2.10 %)**, 42.15x → 43.04x. Correctness is untouched: 22/22
+planted answers correct with zero corruption detectors on all four arms. Output identity is **not**:
+13 of 22 (hydrated) and 10 of 22 (online K5-K6) greedy continuations diverge from the BF16-table arm
+tens of tokens in, chosen-token logprob deltas up to 1.71. That is the expected consequence of the
++0.000065 mean KLD docs/32 already published rather than a new defect, but it is why the verdict is
+opt-in with the output change stated plainly, on a profile whose KV is already 42x-82x the window.
+
+**The template's `# Tools` block is finally exercised against a live server**
+([`receipts/tool-calls-e2e.json`](receipts/tool-calls-e2e.json), driver `tools/tool_calls_e2e.py`).
+Eight cases through `/v1/chat/completions` on the unmodified hydrated recipe, greedy, real `tools`
+definitions: a single `get_weather(city=Paris, unit=c)` call with `finish_reason=tool_calls`; a
+multi-turn round where the tool's 21C reaches the answer; whitespace-bearing arguments where
+`'    if x:\n        return 1\n'` and its replacement survive render → generate → parse
+**byte-for-byte**; **two genuinely parallel calls in one turn**, Paris and Lyon both intact; and the
+docs/39 fixtures c17, c31 and c32 replayed as assistant history without mangling. **Zero structural
+P0s.** One case is deliberately not a 200: docs/39's c16 shape, `function.arguments` as a JSON
+object, violates the OpenAI request schema and is refused with a 400 validation error naming that
+field. The harness now classifies that as conformance rather than as a defect — a clean refusal is
+correct, while a 5xx, an unexplained refusal or acceptance-with-loss stays a P0 — and two passes on
+two separate serves of the same build agree on every status and, modulo the server's random per-call
+`tool_call` ids, on every byte of every response.
