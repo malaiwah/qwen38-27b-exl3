@@ -253,3 +253,59 @@ paragraph per tier over hub/receipt, and does not edit cards.
 - **Comparability**: this plan deliberately deviates from the TB2 pins (graph decode, native window,
   batched-token size). Every deviation is named in the receipts; the stock-timeout headline keeps TB-to-TB
   comparability; serving-config differences are what the speed run *measures*.
+
+
+## 12. Campaign decisions, 2026-08-16 (owner + Main)
+
+**Allocation: one serving host at a time, resized per phase — never a fleet.**
+
+| phase | hardware | purpose | why this is the cheap shape |
+|---|---|---|---|
+| A (now, already rented) | the existing 1x RTX PRO 6000 rental + the IN1 driver VM | finish the in-flight owner-protocol passes 2-3 (driven from AIBoss for pass-1 comparability); afterwards the rental doubles as the **1x tier + single-GPU knob lab** driven from the IN1 driver at 0.3 ms | both boxes are already paid; the 1x row needs nothing new |
+| B (next rental) | **one 2x GPU VM in the Jarvis VPC** | the knob lab: G0 EXL3-under-TP gate, TP2-vs-DP2, graph-decode joint config, V2 depth-schedule arm, KV-dtype smokes (fp8 headline; BF16-KV and nvfp4-KV smoke arms), LMCache-fix GPU ladder if the PR lands | 2x is the smallest host that can answer every question that transfers to 4x/8x; every knob found here is a config, not a rebuild |
+| C (short) | 4x for ~a day | one quick TB pass per model at the 2x-derived winner config — a **checkpoint against interpolation**, not a sweep | 1x->2x->4x scaling tells us whether DP scales linearly as expected; if it does, 8x needs no exploration |
+| D (last minute, booked once B/C are banked) | 8x | synthetic probe (hours) to pick DP8 vs TP4xDP2, then the **full three-pass speed run** + BF16 arm + diagnostic | the expensive box only ever runs configs already proven |
+
+Interpolation stance: 1x/2x/4x quick rows bound the curve; 8x is run to **measure the maximum**, not to
+explore. If 2x->4x deviates from linear DP scaling by more than ~10 % on the synthetic ladder, the 4x TB
+quick pass is mandatory before 8x; otherwise it may be skipped and the interpolation stated on the card.
+
+**Measured driver-VM facts (receipt `tb21-driver-vm.json`):** `jl-vm-473296`, 32 vCPU / 125 GB / 968 GB
+NVMe, Ubuntu 24.04.4 fully upgraded 2026-08-16 (kernel 6.8.0-137), docker 29.6.0 + compose v5.2.0 (newer
+than the pinned 27.5.1/2.39.1 — named deviation), harbor 0.21.0 via uv, task tree copied from AIBoss and
+sha-verified **byte-identical** (`c13961ac…`, 89 tasks), private VPC NIC `10.0.0.2/16`. RTTs: **rental <->
+driver 0.3 ms** (same IN1 DC — the G-NET gate is already passed for phase A), driver -> ns1 jump ~250 ms,
+driver -> AIBoss vLLM ~0.56-0.77 s TTFB (two geographic legs; used only for smoke). Adequacy: meets the
+§3 spec; the only watch item is CPU load at -n 64 on the 8x tier, measured before use.
+
+**The in-flight AIBoss run is NOT moved.** Pass 1 was scored with the AIBoss->rental path in its wall
+clock; moving passes 2-3 to the IN1 driver would give the healing and BF16 arms a faster transport than
+the arm they are compared against (and harbor refuses resume under a changed `api_base` anyway). The
+owner-protocol result stays internally consistent; the speed-run campaign starts fresh from the IN1
+driver with the sub-ms path.
+
+**Flagship artifact: frozen — no re-quant.** The published hydrated bytes are the product: every number
+(0.002760 KLD, K6-parity pairing, MMLU, TB pass 1) cites those bytes, conversions are measurably
+nondeterministic (the sibling experiment: 97.6 % of modules differ, fidelity indistinguishable), so a
+re-quant would sever every citation and buy nothing measurable. K6-parity exists as the 6-bit SKU.
+Pre-flight is config-only: graph decode ON, native window, the §4 recipe.
+
+**Campaign image `vllm:gg-r34-tb21-sr1` (build in progress, receipt `tb21-image-sr1.json`):** FROM the
+promoted base **by digest**, plus audited patch layers, each sha-pinned with an in-image sentinel that
+fails the build if absent: scratch arena (PR #397), the V2 FlashInfer decode-shape fix (PR #398 @
+`5723e072e`), a port of the admission-livelock fix (vllm-project/vllm#52530 @ `479413adc`), and — **only
+if the fix lands and passes gates — a patched LMCache** (see below). Canonical artifact: `docker save`
+tar + sha256 on the driver; registry push once the owner names one (ghcr.io/malaiwah proposed; needs a
+token). Rebuild command in the receipt; digests published on the cards with the results.
+
+**LMCache is in the campaign only as an honestly-fixed component.** An agent is root-causing the MP-path
+corruption we reported (LMCache#4247/#4492) and filing a real upstream PR. Inclusion gates, in order:
+CPU tests fail-before/pass-after; the **4-arm corruption ladder re-run on the 2x lab must read
+0-corruption on every arm** including restart-over-warm-L2 (previously 38/38); only then does the sr1
+image enable it, as a labelled arm first. If the fix is not ready, the campaign ships without LMCache
+and the cards say why. This is the battle-test the owner asked for, with the same fail-closed shape as
+everything else here.
+
+**KV dtype arms:** fp8 is the headline (family default, qualified). One smoke each of BF16-KV and
+nvfp4-KV on the 2x lab for the comparison table — noting the prior sweep measured the nvfp4 KV variants
+as refusals on this architecture (SM100/MLA-gated); a refusal is re-recorded, not retried into existence.
