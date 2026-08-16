@@ -563,3 +563,30 @@ the new receipt names it as superseded rather than editing it. The sibling cards
 were **not** given the qualified utilisation, because none of them has been qualified at any
 value on this card; they now carry the context edition's measured result and the same
 utilisation caution instead.
+
+**Card consistency pass: all 16 audit findings resolved and the four cards re-published.**
+`receipts/card-consistency-audit.json` found 4 blockers, 5 drifts and 7 cosmetics across the
+four published cards; `receipts/card-consistency-audit-resolution.json` maps every id to what
+changed, with before/after values and the receipt each corrected figure was read from. Every
+value was read out of its authoritative receipt rather than out of the audit's transcription of
+it, and every site was located by content match because the audit's line numbers had drifted.
+The blockers: `MODEL_CARD-K5K6-context.md` no longer frames itself as engine-budget-proven with
+a pending 5090 check — title, lede, four-builds intro, figure alt, table row and section
+heading all now carry the hardware-qualified framing that its own qualification section already
+had; the hydrated and K5K6 cards no longer contradict their own tables by calling the context
+profile budget-capped; `MODEL_CARD-K4.md` no longer presents checkpoint bytes as resident
+weights or as VRAM (21.92 / 23.42 GB are labelled disk, resident is 22.91 GB for unsloth NVFP4
+and 30.61 GB for FP8, and the wrong 2.7 GB and 4.2 GB deltas are replaced by the measured
+3.70 GB); and the K4 figure alt text is rewritten from the asset's own generator, which is the
+only authoritative source for a matplotlib path-rendered SVG. The drifts: the two 0.97 arms are
+named (34.56 MiB free without the allocator env, 26.50 MiB with it and KV 272,570 -> 280,017),
+every card now states that the context edition has two measured resident figures and why 18.41
+GiB is published rather than 18.19, the download column is whole-tree bytes with its convention
+stated in a note, and the context card's rental and physical-5090 throughput are labelled with
+their hardware and carry the receipt's own rule that the two are never differenced. Two things
+found beyond the audit and fixed: `DOCS-SHA256SUMS` pins the README digest in all four repos, so
+each was regenerated and uploaded in the same commit as its card, and the 37.4 / 33.5 KB/token
+KV rates now say they are ratios at one window rather than extrapolation coefficients, because
+the pool is affine in the window. Local and published are byte-identical, proven by re-fetch:
+51,108 / 63,905 / 63,177 / 57,849 B. The verdict receipt's rental-driver defect was handed to
+its owner rather than edited here.

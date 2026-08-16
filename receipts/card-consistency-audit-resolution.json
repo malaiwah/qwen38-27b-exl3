@@ -1,0 +1,717 @@
+{
+  "schema": "qwen38-card-consistency-audit-resolution/1",
+  "generated_utc": "2026-08-16T03:27:24Z",
+  "generator": "CardFixes",
+  "title": "resolution of every finding in receipts/card-consistency-audit.json, with the receipt each corrected value was read from",
+  "resolves": {
+    "path": "receipts/card-consistency-audit.json",
+    "schema": "qwen38-card-consistency-audit/1",
+    "sha256": "d970aab88e823908db0641b80d5bdc0c4c7dc8f7befdcad93fdb4f70ca673e45",
+    "findings_total": 16
+  },
+  "method": {
+    "grounding": "every corrected value was read from the named authoritative receipt in this repository, not from the audit's transcription of it; where the audit quoted a figure, the receipt was opened and the field located before the card was touched",
+    "line_numbers": "the audit's line numbers had drifted, because all four cards had been edited by other agents after the audit ran, so every site was located by content match rather than by line number",
+    "figure_alt_text": "assets/fidelity-vs-size-light.svg is matplotlib path-rendered and carries no extractable text nodes, so its labels were read from its generator tools/make_charts.py, which is authoritative for every string, value and line in the figure",
+    "blank_lines": "every run of two or more consecutive blank lines outside fenced code blocks was collapsed to one, in all four cards",
+    "publication": "each card was uploaded as README.md together with a refreshed DOCS-SHA256SUMS in the same commit, then re-fetched and compared byte for byte against the local file"
+  },
+  "counts_resolved_by_severity": {
+    "blocker": 4,
+    "drift": 5,
+    "cosmetic": 7
+  },
+  "counts_resolved_total": 16,
+  "findings": [
+    {
+      "id": "B1",
+      "severity": "blocker",
+      "cards": [
+        "MODEL_CARD-K5K6-context.md"
+      ],
+      "resolved": true,
+      "defect": "the context card framed itself as engine-budget-proven and 5090-validation-pending in seven places while its own qualification section already said the opposite",
+      "changes": [
+        {
+          "site": "H1 title",
+          "before": "# Qwen3.8-27B EXL3 K5/K6 context edition — native 262,144 under a 32 GB engine budget, at 34 % lower divergence than official FP8",
+          "after": "# Qwen3.8-27B EXL3 K5/K6 context edition — native 262,144 qualified on a physical RTX 5090, at 34 % lower divergence than official FP8"
+        },
+        {
+          "site": "lede paragraph",
+          "before": "ceiling under a conservative 30.24 GiB vLLM budget ... The proof server was a capped 96 GB SM120, not a physically constrained RTX 5090; hard-limit 5090 validation is still pending.",
+          "after": "All seven acceptance gates pass on one physical NVIDIA GeForce RTX 5090 (GPU-506a575d, 32,607 MiB total, which vLLM sizes as 31.4 GiB usable), qualified at --gpu-memory-utilization 0.955 with PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True: 9.28 GiB of KV = 265,122 tokens and 1.01x concurrency at 262,144"
+        },
+        {
+          "site": "four-builds intro",
+          "before": "The context edition's native result is MTP-3 with an 8.4 MP image cap on a budget-capped RTX PRO 6000",
+          "after": "The context edition's native result is MTP-3 with an 8.4 MP image cap, qualified on a physical RTX 5090 at utilisation 0.955"
+        },
+        {
+          "site": "context-frontier figure alt text",
+          "before": "...under a 30.24 GiB engine budget; the latter's hard-limit 5090 rerun is pending.",
+          "after": "...under a 30.24 GiB engine budget; that engine-budget star has since been superseded by a physical RTX 5090 qualification of the context edition at 265,122 KV tokens and utilisation 0.955. (the wording the other three cards already carried)"
+        },
+        {
+          "site": "four-builds table, this-build row",
+          "before": "native window plus speculative decode; 5090 check pending",
+          "after": "native window plus speculative decode, hardware-qualified on a physical RTX 5090"
+        },
+        {
+          "site": "section heading",
+          "before": "## Native 262,144 under a 32 GB-equivalent engine budget",
+          "after": "## Native 262,144, qualified on a physical RTX 5090"
+        }
+      ],
+      "receipt": "receipts/qualification-5090-context.json",
+      "receipt_fields": [
+        "verdict.all_gates_pass=true",
+        "verdict.qualified_at",
+        "identity.gpu.model/uuid/memory_total_mib/usable_gib_reported_by_vllm",
+        "gates.gate1_startup_native_allocation.available_kv_cache_gib=9.28",
+        "gates.gate1_startup_native_allocation.gpu_kv_cache_tokens=265122",
+        "gates.gate1_startup_native_allocation.maximum_concurrency_for_native_length=1.01"
+      ],
+      "note": "no occurrence of 'pending' or 'budget-capped' remains in the card; the only surviving 'pending'-like string is the word 'spending' in unrelated prose. No anchor pointed at the renamed heading (checked repo-wide), so no link broke."
+    },
+    {
+      "id": "B2",
+      "severity": "blocker",
+      "cards": [
+        "MODEL_CARD-K5K6-hydrated.md",
+        "MODEL_CARD-K5K6.md"
+      ],
+      "resolved": true,
+      "defect": "both cards called the context profile 'on a budget-capped RTX PRO 6000' two lines above their own table row reading 'hardware-qualified on a physical RTX 5090'",
+      "changes": [
+        {
+          "site": "four-builds intro, both cards",
+          "before": "context is MTP-3 with an 8.4 MP cap on a budget-capped RTX PRO 6000.",
+          "after": "context is MTP-3 with an 8.4 MP cap, qualified on a physical RTX 5090 at utilisation 0.955."
+        }
+      ],
+      "receipt": "receipts/qualification-5090-context.json",
+      "receipt_fields": [
+        "verdict.qualified_at = gpu_memory_utilization 0.955 with PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True"
+      ],
+      "note": "wording taken from MODEL_CARD-K4.md, which already carried the corrected sentence; all four cards now read identically here"
+    },
+    {
+      "id": "B3",
+      "severity": "blocker",
+      "cards": [
+        "MODEL_CARD-K4.md"
+      ],
+      "resolved": true,
+      "defect": "checkpoint (disk) sizes were presented as resident weights and as VRAM; both NVFP4 columns carried the identical value in the 'resident weights' and 'checkpoint size' rows",
+      "changes": [
+        {
+          "site": "lede",
+          "before": "Measured resident weights: 17.89 GiB (19.21 GB) ... versus 21.92 GB for nvidia/Qwen3.6-27B-NVFP4 and 23.42 GB for unsloth/Qwen3.8-27B-NVFP4 on the identical architecture — a 2.7 GB smaller resident footprint.",
+          "after": "Measured resident weights: 17.89 GiB (19.21 GB) ... the one NVFP4 build of this architecture whose resident weights were measured here under identical flags is unsloth/Qwen3.8-27B-NVFP4 at 21.34 GiB (22.91 GB), so this build holds 3.70 GB less resident weight; the 21.92 GB and 23.42 GB figures are checkpoint sizes, serialized bytes on disk, never resident memory, and no resident figure has ever been measured here for the nvidia Qwen3.6 checkpoint"
+        },
+        {
+          "site": "'Why this shape' table",
+          "before": "| resident weights | 19.21 GB | 21.92 GB | 23.42 GB |  /  | checkpoint size | 28.31 GB | 21.92 GB | 23.42 GB |",
+          "after": "| resident weights (measured) | 19.21 GB (17.89 GiB) | not measured here — Qwen3.6 generation | 22.91 GB (21.34 GiB) |  /  | checkpoint size on disk | 28.31 GB | 21.92 GB | 23.42 GB |"
+        },
+        {
+          "site": "v1-protocol teacher-forced table and its claim",
+          "before": "| unsloth/Qwen3.8-27B-NVFP4 control ... | 23.42 GB |  and  'while holding 4.2 GB less VRAM'",
+          "after": "| unsloth/Qwen3.8-27B-NVFP4 control ... | 22.91 GB |  and  'while holding 3.70 GB less resident weight'"
+        },
+        {
+          "site": "Tradeoffs bullet (same defect class, found while fixing B3)",
+          "before": "If you want download == VRAM, the v-serialized-k6 variant is the one to ask for.",
+          "after": "If you want the download to equal the resident weight figure, the v-serialized-k6 variant is the one to ask for."
+        }
+      ],
+      "receipt": "docs/22-results-iteration-2.md (resident) and docs/01-nvfp4-composition.md + docs/07-serving-recommendations.md (disk)",
+      "receipt_fields": [
+        "docs/22 L44 unsloth resident 22.91 GB / L69 21.34 GiB",
+        "docs/22 L42 FP8 30.61 GB / L70 28.51 GiB",
+        "docs/01 L42 heading 'nvidia/Qwen3.6-27B-NVFP4 — 21.92 GB'",
+        "docs/01 L61 heading 'unsloth/Qwen3.8-27B-NVFP4 — 23.42 GB'",
+        "docs/07 L509-510 derives both from the 55.56 GB BF16 disk size"
+      ],
+      "arithmetic": "22.91 - 19.21 = 3.70 GB",
+      "note": "the two NVFP4 columns can no longer repeat a value: the nvidia column has no resident figure at all (never loaded here, and a different model generation), and the unsloth column now reads 22.91 GB resident against 23.42 GB on disk"
+    },
+    {
+      "id": "B4",
+      "severity": "blocker",
+      "cards": [
+        "MODEL_CARD-K4.md"
+      ],
+      "resolved": true,
+      "defect": "fidelity-vs-size alt text described three points with wrong weights, omitted the fourth candidate, the BF16 reference, the external cross-protocol series and the memory-ceiling line",
+      "changes": [
+        {
+          "site": "fidelity-vs-size <img> alt",
+          "before": "Overlap-corrected mean KL divergence from BF16 versus resident weight footprint. This quant at 19.2 GB and 0.0297; Qwen FP8 at 30.9 GB and 0.0128; Unsloth NVFP4 at 23.4 GB and 0.0927. Right panel shows top-1 agreement: 94.48, 96.18 and 90.49 percent respectively.",
+          "after": "two-panel description written from the asset: four candidates (EXL3 K5/K6 21.82 GB / 0.0079, Qwen FP8 30.61 GB / 0.0128, K4 19.21 GB / 0.0297, unsloth NVFP4 22.91 GB / 0.0927), the BF16 reference star at 55.56 GB, the grey 'Qwen3.6-27B GGUF/FP8/NVFP4 (external, other protocol)' series with UD-Q4_K_XL / Q8_0 / FP8 (vLLM) labelled and marked not comparable, the dashed 'NVFP4-equivalent memory ceiling 21.9 GB' line in both panels, top-1 96.95 / 96.18 / 94.48 / 90.49 %, and the title 'Distribution fidelity vs memory — held-out corpus, 127 contexts, 259,969 positions'"
+        }
+      ],
+      "receipt": "assets/fidelity-vs-size-light.svg, read through its generator tools/make_charts.py",
+      "receipt_fields": [
+        "MEASURED list L21-28",
+        "EXTERNAL list L37-47",
+        "CEILING = 21.92 L49",
+        "axvline+annotate L87-90 and L143",
+        "ax.set_title L113-114",
+        "legend label L124-125",
+        "panel B annotate L137-139"
+      ],
+      "note": "the SVG is matplotlib path-rendered, so its labels are not extractable as text nodes; the generator is the authoritative source for every string and coordinate in the figure, and its MEASURED tuple is exactly (label, weight GB, mean KLD, top-1 %)"
+    },
+    {
+      "id": "D1",
+      "severity": "drift",
+      "cards": [
+        "MODEL_CARD-K5K6-hydrated.md",
+        "MODEL_CARD-K5K6.md",
+        "MODEL_CARD-K5K6-context.md"
+      ],
+      "resolved": true,
+      "defect": "three cards printed two different free-memory figures for what read as one condition at utilisation 0.97",
+      "changes": [
+        {
+          "site": "hydrated, context-capacity paragraph",
+          "before": "at utilisation 0.97 the context edition's vision tower died wanting 62.00 MiB with 26.50 MiB free",
+          "after": "at utilisation 0.97 with PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True (bounded_negative_results arm B2) ... 62.00 MiB with 26.50 MiB free, and at the same 0.97 with no allocator configuration at all (arm B) ... the same 62.00 MiB with 34.56 MiB free"
+        },
+        {
+          "site": "K5K6, utilisation warning paragraph",
+          "before": "request wanting 62.00 MiB with 26.50 MiB free",
+          "after": "request wanting 62.00 MiB — with 26.50 MiB free under PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True (arm B2) and 34.56 MiB free with no allocator configuration at all (arm B)"
+        },
+        {
+          "site": "context, bounded-negative section",
+          "before": "At --gpu-memory-utilization 0.97 ... it wants 62.00 MiB with 34.56 MiB free. / Adding PYTORCH_CUDA_ALLOC_CONF ... now 26.50 MiB free.",
+          "after": "arm B named explicitly as 'with no allocator configuration' and carrying its 272,570 KV tokens; arm B2 named explicitly, KV 272,570 -> 280,017, 26.50 MiB free, closed with 'The two free-memory figures are two different arms of the same utilisation, not one condition measured twice.'"
+        }
+      ],
+      "receipt": "receipts/qualification-5090-context.json",
+      "receipt_fields": [
+        "bounded_negative_results[0] tag B: pytorch_cuda_alloc_conf=null, gpu_kv_cache_tokens=272570, oom.free_at_failure='34.56 MiB', oom.tried_to_allocate='62.00 MiB'",
+        "bounded_negative_results[1] tag B2: pytorch_cuda_alloc_conf='expandable_segments:True', gpu_kv_cache_tokens=280017, oom.free_at_failure='26.50 MiB'"
+      ]
+    },
+    {
+      "id": "D2",
+      "severity": "drift",
+      "cards": [
+        "MODEL_CARD-K5K6-hydrated.md",
+        "MODEL_CARD-K5K6.md",
+        "MODEL_CARD-K5K6-context.md",
+        "MODEL_CARD-K4.md"
+      ],
+      "resolved": true,
+      "defect": "every card printed 18.41 GiB resident for the context edition while the newest receipt measures 18.19 GiB at the qualified profile, and no card said two measurements exist; the context card printed both without reconciling them",
+      "published_value_kept": "18.41 GiB",
+      "changes": [
+        {
+          "site": "all four cards, note under the four-builds table",
+          "before": "(no statement; 18.41 GiB printed bare)",
+          "after": "The context edition's resident weight is measured twice: 18.41 GiB as run on the rental RTX PRO 6000 engine-budget proof and 18.19 GiB on the physical RTX 5090 at the qualified 0.955 profile. This table prints the larger figure deliberately, because receipts/vram-class-verdict.json elects 18.41 GiB for every class prediction; the 0.22 GiB gap is the rental-versus-5090 delta, not a change in the checkpoint."
+        },
+        {
+          "site": "context card, embedding-overlay table (second mention, 29 lines before the 18.19 figure)",
+          "before": "(18.41 GiB printed in the table, 18.19 GiB printed later in the same section, no link between them)",
+          "after": "explicit reconciliation paragraph naming 18.41 GiB as the rental as-run figure, 18.19 GiB as the physical 5090 figure at 0.955, the 0.22 GiB difference, and 'never adds the two'"
+        }
+      ],
+      "receipt": "receipts/vram-class-verdict.json (election) and receipts/qualification-5090-context.json (18.19)",
+      "receipt_fields": [
+        "vram-class-verdict measured_inputs.resident_weight_observations.as_run_rental=18.41 / as_run_physical_5090=18.19 and its note electing the larger",
+        "qualification gates.gate1.measured_engine_usage_gib.weight=18.19 and startup_facts.model_loading[0]='18.19'"
+      ]
+    },
+    {
+      "id": "D3",
+      "severity": "drift",
+      "cards": [
+        "MODEL_CARD-K5K6-hydrated.md",
+        "MODEL_CARD-K5K6.md",
+        "MODEL_CARD-K5K6-context.md",
+        "MODEL_CARD-K4.md"
+      ],
+      "resolved": true,
+      "defect": "the download column mixed whole-tree and shard-sum bytes, and MODEL_CARD-K5K6.md disagreed with itself by 0.03 GB (30.57 vs 30.60)",
+      "changes": [
+        {
+          "site": "four-builds table, K5/K6 row, all four cards",
+          "before": "30.57 GB",
+          "after": "30.60 GB (whole_tree_bytes 30,597,231,933)"
+        },
+        {
+          "site": "MODEL_CARD-K5K6.md 'Measured results'",
+          "before": "30.60 GB download (already correct, was the figure its own table contradicted)",
+          "after": "unchanged at 30.60 GB; the table now agrees with it"
+        },
+        {
+          "site": "MODEL_CARD-K5K6.md 'why the serialized cell is —'",
+          "before": "30.57 GB on disk",
+          "after": "30.60 GB on disk"
+        },
+        {
+          "site": "MODEL_CARD-K5K6-hydrated.md sibling-comparison table",
+          "before": "| download | 30.57 GB |",
+          "after": "| download | 30.60 GB |"
+        },
+        {
+          "site": "four-builds table note, all four cards",
+          "before": "(no convention stated)",
+          "after": "'The download column is whole-tree bytes — every published file of the artifact as its release evidence counted it (receipts/collection-index.json, serialized_bytes.whole_tree_bytes: hydrated 21,610,933,884 B, K5/K6 30,597,231,933 B, context 20,696,053,306 B) — and they are serialized bytes on disk, never resident memory.'"
+        },
+        {
+          "site": "four-builds table, K4 row, all four cards",
+          "before": "28.31 GB",
+          "after": "28.31 GB* with a footnote"
+        }
+      ],
+      "receipt": "receipts/collection-index.json",
+      "receipt_fields": [
+        "releases[hydrated].serialized_bytes.whole_tree_bytes.value=21610933884",
+        "releases[k5k6].serialized_bytes.whole_tree_bytes.value=30597231933",
+        "releases[context].serialized_bytes.whole_tree_bytes.value=20696053306",
+        "releases[k4].serialized_bytes.whole_tree_bytes=null with whole_tree_not_verified='the release evidence for this artifact records no disk byte count'"
+      ],
+      "deviation_from_instruction": {
+        "asked": "pick whole-tree bytes for every row",
+        "done": "whole-tree for the three rows that have one; the K4 row keeps its safetensors shard sum, 28,313,841,196 B, marked with an asterisk and explained in the note",
+        "why": "no receipt records a whole-tree byte count for the K4 release, so publishing one would have meant inventing a figure or quoting the live Hub tree (28,342,038,868 B today), which includes the README this pass rewrites and is therefore not the release-time quantity the other three rows are. The shard sum is stable, is what the card already printed, and is now labelled rather than silently mixed.",
+        "verification": "the K4 shard sum was confirmed against the published repository: sum of the 3 model-*.safetensors sizes reported by https://huggingface.co/api/models/malaiwah/Qwen3.8-27B-K4?blobs=true = 28,313,841,196 B"
+      }
+    },
+    {
+      "id": "D4",
+      "severity": "drift",
+      "cards": [
+        "MODEL_CARD-K5K6-context.md"
+      ],
+      "resolved": true,
+      "defect": "rental RTX PRO 6000 throughput and physical RTX 5090 throughput were printed without hardware labels, 22 lines apart, inviting exactly the comparison the receipt forbids",
+      "changes": [
+        {
+          "site": "long-context needle table intro",
+          "before": "on a server capped to a 5090-sized budget:",
+          "after": "Every row below was measured on the rental RTX PRO 6000 (SM120, 95.6 GiB) with vLLM budget-capped to a 5090-sized budget — the int8 native rows at the 30.24 GiB engine budget — and not on a physical card of that size, so every wall time and token rate in this table is a rental figure"
+        },
+        {
+          "site": "after that table",
+          "before": "(no cross-hardware statement)",
+          "after": "the physical RTX 5090 re-ran the same 261,794-token needle and retrieved it exactly in 179.218 s at 1,460.8 prompt tok/s including decode; named as a different card from the 123.1 s / 2,127 tok/s row and closed with the receipt's claim_scope rule"
+        },
+        {
+          "site": "native-MTP served-proof paragraph",
+          "before": "Warmed 256-token single-stream decode measured 98.72 tok/s in one run.",
+          "after": "Every figure in this paragraph is from the rental RTX PRO 6000 engine-budget run ... Warmed 256-token single-stream decode measured 98.72 tok/s in one run on that rental card."
+        },
+        {
+          "site": "seven-gates paragraph",
+          "before": "the 261,794-token needle exact; ... median 107.56 tok/s (107.47-108.12, 0.60 % spread)",
+          "after": "the 261,794-token needle exact, in 179.218 s at 1,460.8 prompt tok/s including decode; ... median 107.56 tok/s (107.47-108.12, 0.60 % spread) ... Every number in this paragraph is a physical RTX 5090 measurement, and per the receipt's claim_scope none of them may be differenced against the rental figures earlier on this card."
+        },
+        {
+          "site": "Throughput section",
+          "before": "Median of 3 runs on one RTX PRO 6000 Blackwell ... The native MTP-3 / 8.4 MP / 262,144 profile measured 98.72 tok/s C1 in one warmed 256-token run.",
+          "after": "Median of 3 runs on one rental RTX PRO 6000 Blackwell ... Every figure in this section is a rental measurement ... 98.72 tok/s C1 ... on that same rental card ... The physical RTX 5090 measured that same profile at a median 107.56 tok/s over three warmed runs; the two cards are never differenced, per the qualification receipt's claim_scope."
+        }
+      ],
+      "receipt": "receipts/qualification-5090-context.json (5090) and receipts/native-mtp-8mp-amendment.json (rental)",
+      "receipt_fields": [
+        "qualification gate2.result.wall_sec=179.218, prefill_tok_s_including_decode=1460.8",
+        "qualification gate5.decode runs 108.12 / 107.56 / 107.47, median_decode_tok_s=107.56, dispersion_relative_pct=0.604",
+        "qualification claim_scope: 'Throughput measured here is never comparable with rental numbers and no number in this receipt is differenced against them.'",
+        "native-mtp-8mp-amendment proofs.near_native_text.wall_sec=123.068 / prefill_tok_s_including_decode=2127.2 and proofs.single_stream_decode.runs[0].aggregate_tok_s=98.72",
+        "native-mtp-8mp-amendment claim_scope: engine-budget proof on a 95.6 GiB RTX PRO 6000 hard-budgeted to 30.24 GiB"
+      ],
+      "note": "the four shorter needle rows were traced to receipts/release-evidence-context.json (hardware.gpu = NVIDIA RTX PRO 6000 Blackwell Server Edition) and receipts/native-context-overlay.json (runtime.gpu same, desired_engine_budget_gib 30.24) before being labelled rental, rather than assuming it"
+    },
+    {
+      "id": "D5",
+      "severity": "drift",
+      "cards": [
+        "MODEL_CARD-K4.md",
+        "MODEL_CARD-K5K6.md"
+      ],
+      "resolved": true,
+      "defect": "two cards printed two different weight figures for the same two measurements against identical KLD values",
+      "changes": [
+        {
+          "site": "MODEL_CARD-K4.md v3 table",
+          "before": "| Qwen/Qwen3.8-27B-FP8 | 30.9 GB | ... | this quant | 19.2 GB | ... | unsloth/Qwen3.8-27B-NVFP4 | 23.4 GB |",
+          "after": "| Qwen/Qwen3.8-27B-FP8 | 30.61 GB | ... | this quant | 19.21 GB | ... | unsloth/Qwen3.8-27B-NVFP4 | 22.91 GB |, column renamed from 'weights' to 'resident weights', with a note recording that 30.9 / 19.2 / 23.4 GB was the older docs/18 presentation of the same three measurements and that no fidelity column moved"
+        },
+        {
+          "site": "MODEL_CARD-K4.md figure alt",
+          "before": "30.9 GB / 23.4 GB",
+          "after": "30.61 GB / 22.91 GB (see B4)"
+        },
+        {
+          "site": "MODEL_CARD-K5K6.md",
+          "before": "30.61 GB / 22.91 GB (already correct)",
+          "after": "unchanged; K4 now matches it"
+        }
+      ],
+      "receipt": "docs/22-results-iteration-2.md",
+      "receipt_fields": [
+        "L42 Qwen/Qwen3.8-27B-FP8 30.61 GB",
+        "L43 v1 19.21 GB",
+        "L44 unsloth 22.91 GB",
+        "L70 FP8 28.51 GiB",
+        "L69 unsloth 21.34 GiB"
+      ]
+    },
+    {
+      "id": "C1",
+      "severity": "cosmetic",
+      "cards": [
+        "MODEL_CARD-K5K6-hydrated.md"
+      ],
+      "resolved": true,
+      "defect": "local file carried a blank line the published README did not",
+      "changes": [
+        {
+          "site": "after 'do not expose this unauthenticated generation endpoint directly.'",
+          "before": "two consecutive blank lines",
+          "after": "one blank line"
+        }
+      ],
+      "receipt": "malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated/README.md (published copy)",
+      "note": "local and published are now byte-identical by construction: the local file was pushed and re-fetched and compared byte for byte"
+    },
+    {
+      "id": "C2",
+      "severity": "cosmetic",
+      "cards": [
+        "MODEL_CARD-K5K6.md"
+      ],
+      "resolved": true,
+      "defect": "local file carried 4 blank lines the published README did not, two of them between the fidelity-vs-size </picture> and the KL paragraph",
+      "changes": [
+        {
+          "site": "after the fidelity-vs-size </picture>",
+          "before": "three consecutive blank lines",
+          "after": "the C6/C7 figure note plus a single blank line"
+        },
+        {
+          "site": "after 'unauthenticated generation endpoint directly.'",
+          "before": "two consecutive blank lines",
+          "after": "one blank line"
+        }
+      ],
+      "receipt": "malaiwah/Qwen3.8-27B-EXL3-K5K6/README.md (published copy)"
+    },
+    {
+      "id": "C3",
+      "severity": "cosmetic",
+      "cards": [
+        "MODEL_CARD-K5K6-context.md"
+      ],
+      "resolved": true,
+      "defect": "local file carried blank lines the published README did not",
+      "changes": [
+        {
+          "site": "before the qualified-profile ```bash block",
+          "before": "two consecutive blank lines",
+          "after": "one blank line"
+        },
+        {
+          "site": "after 'do not expose this unauthenticated generation endpoint directly.'",
+          "before": "two consecutive blank lines",
+          "after": "one blank line"
+        }
+      ],
+      "receipt": "malaiwah/Qwen3.8-27B-EXL3-K5K6-context/README.md (published copy)"
+    },
+    {
+      "id": "C4",
+      "severity": "cosmetic",
+      "cards": [
+        "MODEL_CARD-K4.md"
+      ],
+      "resolved": true,
+      "defect": "local file carried 4 blank lines the published README did not, two between the 'Superseded by' blockquote and 'Dense EXL3 quant of'",
+      "changes": [
+        {
+          "site": "after the 'Superseded by' blockquote",
+          "before": "three consecutive blank lines",
+          "after": "one blank line"
+        },
+        {
+          "site": "after 'do not expose this unauthenticated generation endpoint directly.'",
+          "before": "two consecutive blank lines",
+          "after": "one blank line"
+        }
+      ],
+      "receipt": "malaiwah/Qwen3.8-27B-K4/README.md (published copy)",
+      "note": "method: every run of two or more consecutive blank lines outside fenced code was collapsed to one in all four cards; a fresh scan afterwards found zero such runs"
+    },
+    {
+      "id": "C5",
+      "severity": "cosmetic",
+      "cards": [
+        "MODEL_CARD-K5K6-hydrated.md"
+      ],
+      "resolved": true,
+      "defect": "a per-role composition list was closed with the whole-tree figure, reading as the sum of the roles enumerated",
+      "changes": [
+        {
+          "site": "composition paragraph",
+          "before": "norms 0.001 GB — 21.61 GB over three shards.",
+          "after": "norms 0.001 GB. Those roles sum to 21,586,964,548 B = 21.587 GB of tensor payload over three shards; the 21.61 GB download above is the whole published tree, 21,610,933,884 B, which is 24.0 MB larger because it also carries the tokenizer, the configs and the chat template."
+        }
+      ],
+      "receipt": "receipts/vram-class-verdict.json -> measured_inputs.published_manifests.hydrated (role_bytes_total 21586964548, disk_bytes 21610933884), corroborated by receipts/collection-index.json",
+      "arithmetic": "21,610,933,884 - 21,586,964,548 = 23,969,336 B = 24.0 MB; the ten enumerated role figures also sum to 21.586 GB as printed"
+    },
+    {
+      "id": "C6",
+      "severity": "cosmetic",
+      "cards": [
+        "MODEL_CARD-K5K6.md"
+      ],
+      "resolved": true,
+      "defect": "the K5K6 alt text listed the four points correctly but hid the grey external other-protocol series and the memory-ceiling line from a screen reader",
+      "changes": [
+        {
+          "site": "fidelity-vs-size <img> alt",
+          "before": "four points and four top-1 values only",
+          "after": "adds the BF16 reference star, the grey 'Qwen3.6-27B GGUF/FP8/NVFP4 (external, other protocol)' series with UD-Q4_K_XL / Q8_0 / FP8 (vLLM) labelled and marked not comparable, the dashed NVFP4-equivalent memory ceiling 21.9 GB line in both panels, and the figure title with its 127-context / 259,969-position basis"
+        }
+      ],
+      "receipt": "assets/fidelity-vs-size-light.svg via tools/make_charts.py"
+    },
+    {
+      "id": "C7",
+      "severity": "cosmetic",
+      "cards": [
+        "MODEL_CARD-K5K6.md",
+        "MODEL_CARD-K4.md"
+      ],
+      "resolved": true,
+      "defect": "neither alt text said its top-1 values are the overlap-corrected 127-context subset, so they looked like they contradicted the adjacent full-suite table",
+      "changes": [
+        {
+          "site": "both alts",
+          "before": "(no basis stated)",
+          "after": "'Those KLD and top-1 values are the overlap-corrected 127-context subset, which is why they differ from the full-suite 136-context table below this figure.'"
+        },
+        {
+          "site": "visible note under both figures",
+          "before": "(none)",
+          "after": "K5K6: '...which is why 96.95 / 96.18 / 94.48 / 90.49 % there reads 96.97 / 96.22 / 94.50 / 90.53 % here.'  K4: '...which is why 94.48 / 96.18 / 90.49 % there reads 94.50 / 96.22 / 90.53 % here.'"
+        }
+      ],
+      "receipt": "assets/fidelity-vs-size-light.svg via tools/make_charts.py",
+      "receipt_fields": [
+        "MEASURED top-1 96.95 / 96.18 / 94.48 / 90.49 and KLD 0.007945 / 0.012798 / 0.029679 / 0.092727, i.e. the corrected-subset values",
+        "ax.set_title '... held-out corpus, 127 contexts, 259,969 positions'"
+      ]
+    }
+  ],
+  "additional_changes_beyond_the_audit": [
+    {
+      "id": "X1",
+      "what": "MODEL_CARD-K4.md Tradeoffs bullet read 'If you want download == VRAM'",
+      "why": "serialized/disk bytes are never called VRAM or resident; the same defect class as B3, in the same card",
+      "before": "If you want download == VRAM, the v-serialized-k6 variant is the one to ask for.",
+      "after": "If you want the download to equal the resident weight figure, the v-serialized-k6 variant is the one to ask for."
+    },
+    {
+      "id": "X2",
+      "what": "DOCS-SHA256SUMS in all four published repos pins the README.md digest",
+      "why": "pushing a new README without refreshing it would have left four published hash manifests stale, a new inconsistency of exactly the kind this pass exists to remove; the audit did not cover DOCS-SHA256SUMS",
+      "action": "regenerated per repo with the new README digest and uploaded in the same commit as the card. All 16 asset digests plus the .gitattributes and release-evidence.json digests were verified against the local files first and were unchanged, so only the README.md line moved in each of the four manifests",
+      "verified_after_push": "each published DOCS-SHA256SUMS README.md line equals the sha256 of the published README.md"
+    },
+    {
+      "id": "X3",
+      "what": "the 37.4 KB/token and 33.5 KB/token KV rates in MODEL_CARD-K5K6-hydrated.md and MODEL_CARD-K5K6.md were printed as if they were extrapolation coefficients",
+      "why": "TwentyFourGigProxy and SixteenGigVerdict established from the pinned image's own vllm/v1/core/kv_cache_utils.py that 'GPU KV cache size: N tokens' is int(max_concurrency * max_model_len), so the pool one request needs is affine in the window rather than a flat per-token cost; the tell was that neither published KV token count is a multiple of the attention block size",
+      "before": "'The engine needs 9.13 GiB of KV (37.4 KB/token ...). Without MTP that falls to 33.5 KB/token and buys ~11 % more length.' and 'KV costs 37.4 KB/token with MTP-3 ... and 33.5 KB/token without it'",
+      "after": "both sites now add: the KB/token figures are ratios measured at that one window, not coefficients to extrapolate other windows with, because the KV pool one request needs is affine in the window (a per-token term plus a fixed per-request term), so dividing a KV budget by a KB/token figure does not predict a context length",
+      "deliberately_not_done": "no card restates the new bounded per-class window predictions; those belong to docs/34 and TwentyFourGigProxy, and one of them is now a bounded range rather than a point",
+      "measured_kv_facts_unchanged": "9.28 GiB = 265,122 tokens at the qualified profile, 1.01x concurrency at 262,144, 266,612 / 272,570 / 280,017 / 291,933 / 289,577 and 9.13 / 9.31 GiB are untouched in every card"
+    }
+  ],
+  "out_of_scope_observation_from_the_audit": {
+    "what": "receipts/vram-class-verdict.json recorded driver 595.58.03, the rental RTX PRO 6000's, for the physical RTX 5090",
+    "owner": "SixteenGigVerdict, which held the file for an unrelated pass at the time",
+    "action": "reported to that agent with the authoritative values from receipts/qualification-5090-context.json -> identity.host (driver_version 610.57.04, cuda_user_mode_driver 13.3, hostname aiboss). It corrected the file in place and added a driver_note stating that 595.58.03 belongs to the rental inputs only. This receipt was not edited by CardFixes.",
+    "verified_by_cardfixes": {
+      "physical_5090_hardware_now_reads": "driver 610.57.04 with CUDA user-mode driver 13.3, host aiboss",
+      "rental_inputs_still_read": "rental RTX PRO 6000, 95.6 GiB, vLLM hard-budgeted to 30.24 GiB, 595.58.03 retained where it is correct",
+      "content_sha256": "5dc4dd2fa4ae391982ea7995dd384a08d36f4917f39c1d60399d8bf8b5052031",
+      "content_sha256_recomputed_and_matches": true,
+      "superseded_digest_not_to_be_cited": "182e68abec68426bde15018be2f17a41c2c228d75ff665394bf90b170d75d7f4",
+      "resident_weight_election_unchanged": "measured_inputs.resident_weight_observations still records as_run_rental 18.41 and as_run_physical_5090 18.19 and still elects the larger figure, which is what the D2 sentence in all four cards cites"
+    },
+    "no_amendments_entry": "the file had never been published, so the correction was made in place; an amendments entry records post-publication corrections and would have been misleading"
+  },
+  "regression_checks": {
+    "purpose": "the audit listed the categories it found clean; these were re-checked after the edits so that this pass introduced no new inconsistency",
+    "results": [
+      {
+        "category": "table_column_counts_and_ragged_tables",
+        "method": "every markdown table in all four cards parsed outside fenced blocks; header, separator and every body row cell-counted",
+        "result": "pass, no ragged table in any card"
+      },
+      {
+        "category": "broken_relative_links_and_anchors",
+        "method": "every in-card #anchor resolved against the slugified headings of the same card",
+        "result": "pass; the renamed context-card heading was checked repo-wide for inbound anchors first and had none"
+      },
+      {
+        "category": "assets_present",
+        "method": "every src and srcset resolved locally, then looked up in each published repo tree via the Hub API",
+        "result": "pass; 4 / 8 / 4 / 6 references per card, zero missing locally, zero missing in any published repo, and all four repos still carry the identical 16-file assets set"
+      },
+      {
+        "category": "alt_text_present",
+        "method": "every <img> matched with a non-empty alt attribute",
+        "result": "pass; 2 / 4 / 2 / 3 img tags, all with alt text"
+      },
+      {
+        "category": "kld_means_intervals_top1_maxima_10480640, paired_comparisons, tail_p999_and_exact_maxima, mmlu_pro_matrix, gguf_rows_and_engine_floor, kv_token_counts, scored_window_offset_and_ladder, task_retention_40_case, serving_recipes, utilisation_value, cross_protocol_ratios",
+        "method": "line-level review of every changed line in all four diffs",
+        "result": "pass; the only fidelity figures touched are the K4 v3 table's weight column (D5) and the three figure alt texts (B4, C6, C7), the only utilisation figures touched are the 0.97 arm labels (D1), and no KLD, interval, top-1, tail quantile, MMLU-Pro, GGUF, engine-floor, KV-token, ladder, task-retention or recipe value was altered"
+      },
+      {
+        "category": "serialized_and_payload_bytes",
+        "method": "re-read after the edits",
+        "result": "pass; 21,610,916,123 B = 20.127 GiB and 20,696,033,532 B = 19.275 GiB are still quoted identically in all four cards, and the new download-convention note quotes whole_tree_bytes separately and never conflates the two"
+      },
+      {
+        "category": "local_versus_published_content",
+        "method": "re-fetch and byte compare after the push",
+        "result": "pass, all four byte-identical"
+      }
+    ]
+  },
+  "publication": {
+    "tool": "hf upload, HF_HOME=/var/tmp/hf-home-3, user malaiwah",
+    "per_repo": {
+      "malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated": {
+        "local_card": "MODEL_CARD-K5K6-hydrated.md",
+        "readme_sha256": "13e96fc82c16516172450afdd55108b935928e26600060fc521ae54a05456ce7",
+        "readme_bytes": 51108,
+        "commits": [
+          "4b4ee64a7d8c809efa4095876d88e1e4e7f02956",
+          "8ce9ea5e565ba3d1d51db3a56a6a75559f30f5b2"
+        ],
+        "docs_sha256sums_refreshed": true
+      },
+      "malaiwah/Qwen3.8-27B-EXL3-K5K6": {
+        "local_card": "MODEL_CARD-K5K6.md",
+        "readme_sha256": "a87b40d1229f049614cde4288d2e07f47ed5e07ffc07482703e59be0397fc84f",
+        "readme_bytes": 63905,
+        "commits": [
+          "d4591bc5f37007f2a27d5780b9cfdf86b9071ba0",
+          "25186208a611cc08c6998c72848c4633737117e7"
+        ],
+        "docs_sha256sums_refreshed": true
+      },
+      "malaiwah/Qwen3.8-27B-EXL3-K5K6-context": {
+        "local_card": "MODEL_CARD-K5K6-context.md",
+        "readme_sha256": "d063253b3d2e25f36d8cc92b763f4a823ac7d4212b028a9ab177f44b78ab897f",
+        "readme_bytes": 63177,
+        "commits": [
+          "9d2407d3a78fab8c7789b9bdfa785606aebe697b"
+        ],
+        "docs_sha256sums_refreshed": true
+      },
+      "malaiwah/Qwen3.8-27B-K4": {
+        "local_card": "MODEL_CARD-K4.md",
+        "readme_sha256": "2e8e61b6920a67e2d398850e43c8f38be446766d85dccce6798ede9f46ba9ca2",
+        "readme_bytes": 57849,
+        "commits": [
+          "d181db74ec31d5a85ba3357f3f748c8e92d8c053"
+        ],
+        "docs_sha256sums_refreshed": true
+      }
+    },
+    "verification": {
+      "malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated": {
+        "byte_identical": true,
+        "local_bytes": 51108,
+        "published_bytes": 51108,
+        "local_lines": 687,
+        "published_lines": 687,
+        "readme_sha256": "13e96fc82c16516172450afdd55108b935928e26600060fc521ae54a05456ce7",
+        "docs_sha256sums_readme_current": true,
+        "docs_sha256sums_assets_verified": true,
+        "asset_refs": 4,
+        "missing_referenced_assets": [],
+        "published_asset_file_count": 16,
+        "revision": "8ce9ea5e565ba3d1d51db3a56a6a75559f30f5b2"
+      },
+      "malaiwah/Qwen3.8-27B-EXL3-K5K6": {
+        "byte_identical": true,
+        "local_bytes": 63905,
+        "published_bytes": 63905,
+        "local_lines": 874,
+        "published_lines": 874,
+        "readme_sha256": "a87b40d1229f049614cde4288d2e07f47ed5e07ffc07482703e59be0397fc84f",
+        "docs_sha256sums_readme_current": true,
+        "docs_sha256sums_assets_verified": true,
+        "asset_refs": 8,
+        "missing_referenced_assets": [],
+        "published_asset_file_count": 16,
+        "revision": "25186208a611cc08c6998c72848c4633737117e7"
+      },
+      "malaiwah/Qwen3.8-27B-EXL3-K5K6-context": {
+        "byte_identical": true,
+        "local_bytes": 63177,
+        "published_bytes": 63177,
+        "local_lines": 875,
+        "published_lines": 875,
+        "readme_sha256": "d063253b3d2e25f36d8cc92b763f4a823ac7d4212b028a9ab177f44b78ab897f",
+        "docs_sha256sums_readme_current": true,
+        "docs_sha256sums_assets_verified": true,
+        "asset_refs": 4,
+        "missing_referenced_assets": [],
+        "published_asset_file_count": 16,
+        "revision": "9d2407d3a78fab8c7789b9bdfa785606aebe697b"
+      },
+      "malaiwah/Qwen3.8-27B-K4": {
+        "byte_identical": true,
+        "local_bytes": 57849,
+        "published_bytes": 57849,
+        "local_lines": 810,
+        "published_lines": 810,
+        "readme_sha256": "2e8e61b6920a67e2d398850e43c8f38be446766d85dccce6798ede9f46ba9ca2",
+        "docs_sha256sums_readme_current": true,
+        "docs_sha256sums_assets_verified": true,
+        "asset_refs": 6,
+        "missing_referenced_assets": [],
+        "published_asset_file_count": 16,
+        "revision": "d181db74ec31d5a85ba3357f3f748c8e92d8c053"
+      }
+    }
+  },
+  "authoritative_sources": {
+    "receipts/qualification-5090-context.json": "113194d68e92d551dd3af4f8bfbb21d35c9248476eceb2a6016504b558080f49",
+    "receipts/collection-index.json": "ec762c066ee8d382d59d3e84130f558a9e06acf0657bcdbd4f4564ce3fa492ed",
+    "receipts/native-mtp-8mp-amendment.json": "b7570d9fb7c5d6cd497b6de2b32a7a57c91694f84e6b778fee7fb19e015c5537",
+    "receipts/vram-class-verdict.json": "98f2773449d43c32f36e61ccf8907a8312cadf3b76e1de67ee58338ae566bd99",
+    "receipts/release-evidence-context.json": "6d68e11761b9376c90db5fb1f0f89075cf255af63a9daa6833a5e9da299ff35f",
+    "receipts/native-context-overlay.json": "e7f10eede4377fe79b780d2d91864ba5c731f6240c0d71a1cc43e42e220cc42f",
+    "receipts/release-evidence-k4.json": "d1fc7aaae42f4eafb57f14e937341e5b1b6c0c68e14737cd28a6c6602cea883f",
+    "docs/22-results-iteration-2.md": "848d05a9dcd83c84cdb8d8608dada813883c3f13797f9b6e21c4dcd0f34a49b1",
+    "docs/01-nvfp4-composition.md": "7a71e28197fda53df911d1bb4c8bd0ec2a8b402094e537221e5266f1890ab59a",
+    "docs/07-serving-recommendations.md": "b0def08e5f7b390eb6426a70f5d7a7e2a6454f3cc30fa95b55957e5c6621ce21",
+    "assets/fidelity-vs-size-light.svg": "61ef12b7b07ae57914ba73199614341fa68fce0149d74851e14b4a878aba03df",
+    "tools/make_charts.py": "668b218870eb9f4224a1c5e8bdb929fafc2c096e40c16ac79364c7975a92dd5d"
+  },
+  "source_digest_note": "receipts/vram-class-verdict.json was being amended by SixteenGigVerdict during this pass; the digest recorded above is the file as read when this receipt was written, and its own content_sha256 verified against those bytes at that moment",
+  "content_sha256_excludes": [
+    "generated_utc",
+    "generator",
+    "content_sha256",
+    "content_sha256_excludes"
+  ],
+  "content_sha256": "8b8939f5fa9f62468f6844df8127dd1374d09f571321d998ccbb29874182f95d"
+}

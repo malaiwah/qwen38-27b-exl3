@@ -16,7 +16,7 @@ tags:
   - gilded-gnosis
 ---
 
-# Qwen3.8-27B EXL3 K5/K6 context edition — native 262,144 under a 32 GB engine budget, at 34 % lower divergence than official FP8
+# Qwen3.8-27B EXL3 K5/K6 context edition — native 262,144 qualified on a physical RTX 5090, at 34 % lower divergence than official FP8
 
 > **Requires a custom runtime.** Does **not** load in upstream vLLM, SGLang, TensorRT-LLM,
 > llama.cpp, transformers, or stock exllamav3. It needs the Gilded Gnosis vLLM fork with
@@ -25,10 +25,14 @@ tags:
 
 The long-context member of the family: K5 attention plus an opt-in int8 input embedding
 overlay starts at native 262,144 with MTP-3, decode graphs and an 8,388,608-pixel image
-ceiling under a conservative 30.24 GiB vLLM budget. It retrieved a code from 261,794 text
-tokens and from a 236,824-token prompt containing a seven-megapixel image. The proof server
-was a capped 96 GB SM120, not a physically constrained RTX 5090; hard-limit 5090 validation
-is still pending. On the v5 held-out suite — 5,120 contexts, **10,480,640 scored positions** —
+ceiling. All seven acceptance gates pass on one **physical NVIDIA GeForce RTX 5090**
+(`GPU-506a575d`, 32,607 MiB total, which vLLM sizes as 31.4 GiB usable), qualified at
+`--gpu-memory-utilization 0.955` with `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True`:
+**9.28 GiB of KV = 265,122 tokens** and 1.01x concurrency at 262,144. It retrieved a code from
+261,794 text tokens and from a 236,824-token prompt containing a seven-megapixel image, both
+on that card
+([`receipts/qualification-5090-context.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/qualification-5090-context.json)).
+On the v5 held-out suite — 5,120 contexts, **10,480,640 scored positions** —
 it measures **0.003509** mean `KL(BF16 ‖ candidate)` against official FP8's **0.005294**, a
 paired **−0.001785** that wins **5,109/5,120** contexts. It was already below FP8 on the older
 v3 development and v4 source-disjoint suites.
@@ -40,21 +44,36 @@ Same architecture and tokenizer. The headline KLD column is the v5 held-out suit
 overlap-corrected 127-context v3 subset is kept beside it because absolute KLD is
 suite-specific and the two columns cannot be compared with each other. The frontier figure
 below still plots the v3 axis. The context edition's native result is MTP-3 with an 8.4 MP
-image cap on a budget-capped RTX PRO 6000; the other rows are real RTX 5090 MTP-3 tests.
+image cap, qualified on a physical RTX 5090 at utilisation 0.955; the other rows are real
+RTX 5090 MTP-3 tests.
 These profiles are not interchangeable.
 ([collection](https://huggingface.co/collections/qwen38-27b-mixed-precision-exl3-measured-6a7fe0cb27817c23e4a57025)).
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="assets/context-frontier-dark.svg">
-  <img alt="Overlap-corrected v3 mean KL divergence versus demonstrated or configured context. Circles are real RTX 5090 MTP-3 results: hydrated and online K6 at 185,600, K4 at 262,144. Stars have generation proof: online K5 at 206,400 on the 5090, and the context edition at 262,144 with MTP-3 and an 8.4 MP image cap under a 30.24 GiB engine budget; the latter's hard-limit 5090 rerun is pending." src="assets/context-frontier-light.svg">
+  <img alt="Overlap-corrected v3 mean KL divergence versus demonstrated or configured context. Circles are real RTX 5090 MTP-3 results: hydrated and online K6 at 185,600, K4 at 262,144. Stars have generation proof: online K5 at 206,400 on the 5090, and the context edition at 262,144 with MTP-3 and an 8.4 MP image cap under a 30.24 GiB engine budget; that engine-budget star has since been superseded by a physical RTX 5090 qualification of the context edition at 265,122 KV tokens and utilisation 0.955." src="assets/context-frontier-light.svg">
 </picture>
 
 | build | download | resident | v5 held-out mean KLD | corrected v3 mean KLD | context profile | pick it when |
 |---|---:|---:|---:|---:|---:|---|
 | [-hydrated](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated) | 21.61 GB | 20.31 GiB | **0.002760** | 0.007172 | ~180k, 5090 MTP-3 | fidelity first |
-| [-EXL3-K5K6](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6) | 30.57 GB | 20.32 GiB | 0.003210 | 0.007945 | ~180k, 5090 MTP-3 | you want the width knob at launch |
-| **this build** | 20.70 GB | **18.41 GiB** | **0.003509** | 0.009459 | **262,144, MTP-3, 8.4 MP cap** | native window plus speculative decode; 5090 check pending |
-| [-K4](https://huggingface.co/malaiwah/Qwen3.8-27B-K4) | 28.31 GB | 17.89 GiB | 0.010604 | 0.029679 | **262,144, 5090 MTP-3** | native context is non-negotiable |
+| [-EXL3-K5K6](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6) | 30.60 GB | 20.32 GiB | 0.003210 | 0.007945 | ~180k, 5090 MTP-3 | you want the width knob at launch |
+| **this build** | 20.70 GB | **18.41 GiB** | **0.003509** | 0.009459 | **262,144, MTP-3, 8.4 MP cap** | native window plus speculative decode, hardware-qualified on a physical RTX 5090 |
+| [-K4](https://huggingface.co/malaiwah/Qwen3.8-27B-K4) | 28.31 GB\* | 17.89 GiB | 0.010604 | 0.029679 | **262,144, 5090 MTP-3** | native context is non-negotiable |
+
+**Byte and memory conventions for this table.** The download column is whole-tree bytes —
+every published file of the artifact as its release evidence counted it
+([`receipts/collection-index.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/collection-index.json),
+`serialized_bytes.whole_tree_bytes`: hydrated 21,610,933,884 B, K5/K6 30,597,231,933 B, this
+build 20,696,053,306 B) — and they are serialized bytes on disk, never resident memory.
+\*The K4 release evidence records no tree count, so that one row is the sum of its safetensors
+shards, 28,313,841,196 B, read from the published repository. This build's resident weight is
+measured twice: **18.41 GiB** as run on the rental RTX PRO 6000 engine-budget proof and
+**18.19 GiB** on the physical RTX 5090 at the qualified `0.955` profile. The table prints the
+larger figure deliberately, because
+[`receipts/vram-class-verdict.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/vram-class-verdict.json)
+elects 18.41 GiB for every class prediction; the 0.22 GiB gap is the rental-versus-5090 delta,
+not a change in the checkpoint.
 
 Official `Qwen/Qwen3.8-27B-FP8` reads **0.005294** on the v5 suite and 0.012798 on the
 corrected v3 subset: the three K5/K6 rows are below it on both suites, K4 on neither.
@@ -452,7 +471,10 @@ its extracted-value agreement field is superseded by the
 ## Long context, verified by generation
 
 Not an allocation test. A unique code is planted in held-out literary text at three depths and
-the model is asked to return it, on a server capped to a 5090-sized budget:
+the model is asked to return it. **Every row below was measured on the rental RTX PRO 6000
+(SM120, 95.6 GiB) with vLLM budget-capped to a 5090-sized budget** — the int8 native rows at the
+30.24 GiB engine budget — and not on a physical card of that size, so every wall time and token
+rate in this table is a rental figure:
 
 | profile | prompt tokens | needle depth | retrieved exactly | wall | request-average prompt tok/s* |
 |---|---:|---|---|---:|---:|
@@ -465,7 +487,12 @@ the model is asked to return it, on a server capped to a 5090-sized budget:
 **13/13 exact retrievals.** \*This is prompt tokens divided by total request wall time,
 including decode, queueing and HTTP overhead — not an engine-timed prefill measurement.
 The request-average prompt-token rate falls with length, consistent with increasing attention
-cost; this receipt does not attribute the decline.
+cost; this receipt does not attribute the decline. The **physical RTX 5090** later re-ran the
+same 261,794-token needle at the qualified profile and retrieved it exactly in **179.218 s** at
+**1,460.8 prompt tok/s** including decode. That is a different card from the 123.1 s /
+2,127 tok/s row above, and the qualification receipt's own `claim_scope` sets the rule this
+card follows: throughput measured on the 5090 is never comparable with rental numbers and the
+two are never differenced.
 
 For text-only proof, the harness applies the chat template itself and posts to `/completions`,
 so the server tokenizer can size the exact final prompt. The multimodal chat path is also
@@ -484,7 +511,7 @@ The text-only wrapper is:
 
 ```
 
-## Native 262,144 under a 32 GB-equivalent engine budget
+## Native 262,144, qualified on a physical RTX 5090
 
 The opt-in `VLLM_EXL3_EMBED_BITS=8` overlay narrows the input embedding table. At
 248,320 × 5,120, BF16 costs **2.543 GB resident**; the operation is a gather, so per-row
@@ -499,6 +526,12 @@ symmetric int8 halves it without putting another matmul on the serving path.
 | v3 full-suite mean KLD | 0.009673 | 0.009738 | **0.009738 (same target)** |
 | multimodal smoke score | 24/30 | 24/30 | **24/30 (identical)** |
 
+The **18.41 GiB** in the last column is the as-run figure from the rental engine-budget proof.
+The same checkpoint in the same configuration measured **18.19 GiB** on the physical RTX 5090
+at the qualified `0.955` profile, quoted later in this section — 0.22 GiB lower. Both are real
+measurements on different cards with different allocator settings; this card publishes the
+larger one for the reason given under the four-builds table, and never adds the two.
+
 Fidelity cost of the input overlay, measured on the v3 suite: **+0.000065 mean KLD**, 95 % CI
 [+0.0000046, +0.00013], 49/136 v3 contexts; corrected v3-subset point estimate +0.000082. The
 v5 held-out run scored the serialized checkpoint only, so the overlay delta has not been
@@ -506,11 +539,12 @@ remeasured there and the v3 attribution stands as the only evidence for it.
 MTP does not alter the accepted target distribution; its draft is separately quantized and
 shares the target input table.
 
-The native MTP profile is a served proof, not allocation arithmetic: 261,794 text tokens
+The native MTP profile is a served proof, not allocation arithmetic. Every figure in this
+paragraph is from the **rental RTX PRO 6000** engine-budget run: 261,794 text tokens
 retrieved exactly; a 3,072 × 2,304 image returned `red, blue`; and a single request combining
 that seven-megapixel image with 229,910 measured text tokens produced a **236,824-token**
 prompt and exact `1376346594 | red, blue`. Warmed 256-token single-stream decode measured
-98.72 tok/s in one run.
+**98.72 tok/s** in one run on that rental card.
 
 **Qualified on a physical RTX 5090.** All seven acceptance gates pass on one NVIDIA GeForce
 RTX 5090 (`GPU-506a575d-01d7-b12e-9a0a-c1ab5f38ae0a`, 32,607 MiB total, 32,149 MiB free idle,
@@ -529,11 +563,13 @@ mamba page is padded 0.25 %; 3 padding layers cost at most 6.25 % KV waste. Star
 of which model load is 18.19 GiB in 3.99 s.
 
 The seven gates: startup native allocation within the utilisation ceiling; the 261,794-token
-needle exact; the combined 236,824-token plus 7,077,888-pixel request returning
-`1376346594 | red, blue` exactly; the 30-case image suite at 24/30; three warmed 256-token
-concurrency-1 decode runs at a median **107.56 tok/s** (107.47–108.12, 0.60 % spread); a
-second native-length request after release in the same process;
-and identity complete. Machine-readable proof:
+needle exact, in **179.218 s** at **1,460.8 prompt tok/s** including decode; the combined
+236,824-token plus 7,077,888-pixel request returning `1376346594 | red, blue` exactly; the
+30-case image suite at 24/30; three warmed 256-token concurrency-1 decode runs at a median
+**107.56 tok/s** (107.47–108.12, 0.60 % spread); a second native-length request after release
+in the same process; and identity complete. Every number in this paragraph is a **physical
+RTX 5090** measurement, and per the receipt's `claim_scope` none of them may be differenced
+against the rental figures earlier on this card. Machine-readable proof:
 [`receipts/qualification-5090-context.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/qualification-5090-context.json)
 (schema `qwen38-qualification-5090-context/1`), with per-process server logs
 `receipts/qualification-5090-context-server-{B3,B4,C,D,E,F}.log`.
@@ -549,7 +585,6 @@ The captured run named the pinned image digest but did not preserve a launch-tim
 manifest. The published rerun harness now verifies every extracted-rootfs entry and the three
 installed patch hashes before launch; that stronger image check applies to reruns, not
 retroactively to this historical result.
-
 
 ```bash
 -e VLLM_EXL3_EMBED_BITS=8 -e VLLM_EXL3_GRAPH_DECODE=1 \
@@ -604,16 +639,18 @@ Machine-readable proof and exact artifact hashes:
 
 ### Bounded negative: utilisation is the knob, not the image ceiling
 
-At `--gpu-memory-utilization 0.97` on the physical 5090 the engine starts, serves text and
-retrieves the 261,794-token needle exactly, but the combined 236,824-token plus
-7,077,888-pixel request dies with `torch.OutOfMemoryError` inside
-`vllm/v1/attention/ops/vit_attn_wrappers.py`: it wants **62.00 MiB** with **34.56 MiB free**,
-the engine goes `EngineDeadError` and the request returns HTTP 500.
+At `--gpu-memory-utilization 0.97` **with no allocator configuration** (`bounded_negative_results`
+arm **B**) on the physical 5090 the engine starts, serves text and retrieves the 261,794-token
+needle exactly, but the combined 236,824-token plus 7,077,888-pixel request dies with
+`torch.OutOfMemoryError` inside `vllm/v1/attention/ops/vit_attn_wrappers.py`: it wants
+**62.00 MiB** with **34.56 MiB free** and 272,570 KV tokens allocated, the engine goes
+`EngineDeadError` and the request returns HTTP 500.
 
 Adding `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True` — the setting PyTorch's own OOM
-message recommends — did not save it. The allocator did free memory, and vLLM immediately
-spent it on KV: **272,570 → 280,017 tokens**, the same 62.00 MiB allocation, now **26.50 MiB
-free**.
+message recommends — did not save it (arm **B2**, the same 0.97 budget). The allocator did free
+memory, and vLLM immediately spent it on KV: **272,570 → 280,017 tokens**, the same 62.00 MiB
+allocation, now **26.50 MiB free**. The two free-memory figures are two different arms of the
+same utilisation, not one condition measured twice.
 
 Lowering the image ceiling instead was strictly worse. At 0.97 with
 `--mm-processor-kwargs '{"truncation":false,"max_pixels":4194304}'` the profiled peak
@@ -651,7 +688,8 @@ not the qualified digest) plus a qualification run of its own.
 
 ## Throughput
 
-Median of 3 runs on one RTX PRO 6000 Blackwell, `--max-num-seqs 8`, greedy, 256 output tokens.
+Median of 3 runs on one **rental RTX PRO 6000 Blackwell**, `--max-num-seqs 8`, greedy,
+256 output tokens. Every figure in this section is a rental measurement.
 
 | configuration | TG C1 | TG C4 | TG C8 | PP 2k | PP 6k |
 |---|---:|---:|---:|---:|---:|
@@ -660,7 +698,10 @@ Median of 3 runs on one RTX PRO 6000 Blackwell, `--max-num-seqs 8`, greedy, 256 
 | + FP8 prefill (**rejected**, see below) | 56.7 | 199.5 | 401.6 | 6,650 | 6,285 |
 
 The native MTP-3 / 8.4 MP / 262,144 profile measured **98.72 tok/s C1** in one warmed
-256-token run. It is a capability receipt, not part of the three-run concurrency matrix above.
+256-token run on that same rental card. It is a capability receipt, not part of the three-run
+concurrency matrix above. The **physical RTX 5090** measured that same profile at a median
+**107.56 tok/s** over three warmed runs; the two cards are never differenced, per the
+qualification receipt's `claim_scope`.
 
 **A whole class of matrices was on the wrong kernel at prefill.** The serialized EXL3 path
 routes every K6/MCG shard with 128-divisible dimensions to B12X's native kernel *before* the
@@ -773,7 +814,6 @@ not
 The container listens on all interfaces internally, but Docker publishes the port to host
 loopback only. For remote clients, keep that binding and put an authenticated TLS proxy in
 front; do not expose this unauthenticated generation endpoint directly.
-
 
 The changes remain open upstream:
 [#314](https://github.com/local-inference-lab/vllm/pull/314),

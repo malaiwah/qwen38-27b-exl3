@@ -30,7 +30,7 @@ every cold start. Measured consequences:
 
 | | BF16 attention (sibling) | **this build** |
 |---|---:|---:|
-| download | 30.57 GB | **21.61 GB** (−29 %) |
+| download | 30.60 GB | **21.61 GB** (−29 %) |
 | resident weights | 20.32 GiB | 20.31 GiB (unchanged) |
 | first load, cold | 957 s (encodes 208 projections) | **178 s** (5.4x faster) |
 | restart with a warm cache | 173 s | 178 s (same) |
@@ -52,8 +52,8 @@ fidelity for KV room, and on a 32 GB card that difference matters (see
 Same architecture and tokenizer. The headline KLD column is the **v5 held-out suite,
 10,480,640 scored positions**; the narrower overlap-corrected 127-context v3 subset is kept
 beside it as the prior receipt. Capacity uses each card's documented profile: hydrated,
-online and K4 are real RTX 5090 MTP-3 tests; context is MTP-3 with an 8.4 MP cap on a
-budget-capped RTX PRO 6000.
+online and K4 are real RTX 5090 MTP-3 tests; context is MTP-3 with an 8.4 MP cap, qualified
+on a physical RTX 5090 at utilisation 0.955.
 These profiles are not interchangeable
 ([collection](https://huggingface.co/collections/qwen38-27b-mixed-precision-exl3-measured-6a7fe0cb27817c23e4a57025)).
 
@@ -69,9 +69,23 @@ asset was built from; the v5 ordering of the same five checkpoints is identical 
 | build | download | resident | **v5 mean KLD** (10,480,640 pos) | corrected v3 mean KLD | context profile | pick it when |
 |---|---:|---:|---:|---:|---:|---|
 | [-hydrated](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated) | 21.61 GB | 20.31 GiB | **0.002760** | **0.007172** | ~180k | fidelity first, smallest download |
-| [-EXL3-K5K6](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6) | 30.57 GB | 20.32 GiB | 0.003210 | 0.007945 | ~180k | you want the attention width knob at launch |
+| [-EXL3-K5K6](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6) | 30.60 GB | 20.32 GiB | 0.003210 | 0.007945 | ~180k | you want the attention width knob at launch |
 | [-context](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6-context) | 20.70 GB | **18.41 GiB** | 0.003509 | 0.009459 | **262,144, MTP-3, 8.4 MP cap** | native window, hardware-qualified on a physical RTX 5090 |
-| [-K4](https://huggingface.co/malaiwah/Qwen3.8-27B-K4) | 28.31 GB | 17.89 GiB | 0.010604 | 0.029679 | 262,144 | smallest footprint, native context without any overlay |
+| [-K4](https://huggingface.co/malaiwah/Qwen3.8-27B-K4) | 28.31 GB\* | 17.89 GiB | 0.010604 | 0.029679 | 262,144 | smallest footprint, native context without any overlay |
+
+**Byte and memory conventions for this table.** The download column is whole-tree bytes —
+every published file of the artifact as its release evidence counted it
+([`receipts/collection-index.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/collection-index.json),
+`serialized_bytes.whole_tree_bytes`: this build 21,610,933,884 B, K5/K6 30,597,231,933 B,
+context 20,696,053,306 B) — and they are serialized bytes on disk, never resident memory.
+\*The K4 release evidence records no tree count, so that one row is the sum of its safetensors
+shards, 28,313,841,196 B, read from the published repository. The context edition's resident
+weight is measured twice: **18.41 GiB** as run on the rental RTX PRO 6000 engine-budget proof
+and **18.19 GiB** on the physical RTX 5090 at the qualified `0.955` profile. This table prints
+the larger figure deliberately, because
+[`receipts/vram-class-verdict.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/vram-class-verdict.json)
+elects 18.41 GiB for every class prediction; the 0.22 GiB gap is the rental-versus-5090 delta,
+not a change in the checkpoint.
 
 Official `Qwen/Qwen3.8-27B-FP8` is 28.51 GiB resident at **0.005294** on the v5 suite
 (0.012798 on the v3 subset) and runs on stock vLLM, which none of these do. The two KLD
@@ -93,8 +107,10 @@ rank the family identically.
 Composition, from the emitted manifest: `full_attention` 1.260 GB (64 EXL3 K6 + 32 BF16),
 `linear_attention` 4.207 GB (144 EXL3 K6 + 96 FP16 + 192 BF16), `mlp_gate_proj` 3.568 GB,
 `mlp_up_proj` 3.568 GB, `mlp_down_proj` 4.281 GB, `lm_head` 0.954 GB, `embed_tokens`
-2.543 GB, `vision_tower` 0.921 GB, `mtp_draft` 0.283 GB, norms 0.001 GB — 21.61 GB over
-three shards.
+2.543 GB, `vision_tower` 0.921 GB, `mtp_draft` 0.283 GB, norms 0.001 GB. Those roles sum to
+21,586,964,548 B = **21.587 GB** of tensor payload over three shards; the 21.61 GB download
+above is the whole published tree, 21,610,933,884 B, which is 24.0 MB larger because it also
+carries the tokenizer, the configs and the chat template.
 
 `quantization_manifest.json` and `build-receipt.json` are authoritative for composition;
 `SHA256SUMS` covers the immutable payload. `config.json → quantization_config` keeps one
@@ -552,7 +568,10 @@ graphs, vision enabled):
 **Native 262,144 does not fit this checkpoint with MTP-3 on a 32 GB card.** The engine needs
 **9.13 GiB** of KV (37.4 KB/token: 16 full-attention layers, 4 KV heads, head_dim 256; the
 other 48 layers are Gated DeltaNet and hold per-sequence state). Without MTP that falls to
-33.5 KB/token and buys ~11 % more length. The smaller
+33.5 KB/token and buys ~11 % more length. Both KB/token figures are ratios measured at that
+one window, not coefficients to extrapolate other windows with: the KV pool one request needs
+is affine in the window — a per-token term plus a fixed per-request term — so dividing a KV
+budget by a KB/token figure does not predict a context length. The smaller
 [`malaiwah/Qwen3.8-27B-K4`](https://huggingface.co/malaiwah/Qwen3.8-27B-K4) reaches native
 length on a real 32 GB card (289,577-token capacity) with no overlay at all.
 The context edition is **hardware-qualified at native length on a physical RTX 5090**: 262,144
@@ -563,8 +582,11 @@ concurrency at native length, measured at `--gpu-memory-utilization 0.955` with
 On 48 GB and larger, native context fits here at the best fidelity.
 
 Keep utilisation at **0.95** if you serve images: 0.98 leaves no vision headroom. That 5090
-qualification measured the same trap from the other side — at utilisation 0.97 the context
-edition's vision tower died wanting 62.00 MiB with 26.50 MiB free, and lowering `max_pixels`
+qualification measured the same trap from the other side — at utilisation 0.97 with
+`PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True` (`bounded_negative_results` arm B2) the
+context edition's vision tower died wanting 62.00 MiB with 26.50 MiB free, and at the same
+0.97 with no allocator configuration at all (arm B) it died wanting the same 62.00 MiB with
+34.56 MiB free; lowering `max_pixels`
 instead of utilisation made it strictly worse, because the engine spends every freed byte on
 KV. Utilisation is the knob, on that profile and on this one.
 
@@ -591,7 +613,6 @@ docker run --rm --gpus '"device=0"' --ipc host -p 127.0.0.1:8000:8000 \
 The container listens on all interfaces internally, but Docker publishes the port to host
 loopback only. For remote clients, keep that binding and put an authenticated TLS proxy in
 front; do not expose this unauthenticated generation endpoint directly.
-
 
 No `VLLM_EXL3_ONLINE_TRELLIS_BITS`, no `VLLM_EXL3_ONLINE_CACHE_DIR`: nothing is encoded at
 load, which is the point of this build. Three notes carry over from the sibling:

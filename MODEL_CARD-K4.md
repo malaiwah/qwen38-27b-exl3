@@ -34,8 +34,6 @@ tags:
 > rather than the `mcg` implied by the documented `-cb mcg`, an artefact of that run's
 > crash-and-resume; the successor is `mcg` throughout and reproducible from its command.
 
-
-
 Dense EXL3 quant of [`Qwen/Qwen3.8-27B`](https://huggingface.co/Qwen/Qwen3.8-27B)
 built on one principle: **spend 4 bits only where the two independent NVFP4
 recipes for this architecture also spend 4 bits, and protect everything they
@@ -51,10 +49,16 @@ protect — but protect it with Trellis, not with FP8.**
 - **`embed_tokens`, vision tower (27 blocks), MTP draft head, norms** → **BF16**,
   untouched.
 
-**Measured resident weights: 17.89 GiB (19.21 GB)** on a single RTX PRO 6000
-Blackwell, versus **21.92 GB** for `nvidia/Qwen3.6-27B-NVFP4` and **23.42 GB**
-for `unsloth/Qwen3.8-27B-NVFP4` on the identical architecture — a
-**2.7 GB smaller** resident footprint. Per-role bit widths are not directly comparable
+**Measured resident weights: 17.89 GiB (19.21 GB)** on a single RTX PRO 6000 Blackwell. The
+one NVFP4 build of this architecture whose resident weights were measured here under identical
+flags is `unsloth/Qwen3.8-27B-NVFP4` at **21.34 GiB (22.91 GB)**, so this build holds
+**3.70 GB less** resident weight
+([`docs/22-results-iteration-2.md`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/docs/22-results-iteration-2.md)).
+Those are load-time device allocations. They are **not** the same quantity as the **21.92 GB**
+of `nvidia/Qwen3.6-27B-NVFP4` and the **23.42 GB** of `unsloth/Qwen3.8-27B-NVFP4` quoted
+elsewhere: those two are checkpoint sizes — serialized bytes on disk, never resident memory —
+and no resident figure has ever been measured here for the `nvidia` checkpoint, which is a
+different model generation (Qwen3.6). Per-role bit widths are not directly comparable
 across Trellis, NVFP4 and FP8, so the comparison that matters is the measured fidelity
 below, not a per-role precision claim.
 
@@ -101,9 +105,23 @@ These profiles are not interchangeable
 | build | download | resident | v5 mean KLD | corrected v3 mean KLD | context profile | pick it when |
 |---|---:|---:|---:|---:|---:|---|
 | [-hydrated](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated) | 21.61 GB | 20.31 GiB | **0.002760** | **0.007172** | ~180k | fidelity first, smallest download |
-| [-EXL3-K5K6](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6) | 30.57 GB | 20.32 GiB | 0.003210 | 0.007945 | ~180k | you want the attention width knob at launch |
+| [-EXL3-K5K6](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6) | 30.60 GB | 20.32 GiB | 0.003210 | 0.007945 | ~180k | you want the attention width knob at launch |
 | [-context](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6-context) | 20.70 GB | **18.41 GiB** | 0.003509 | 0.009459 | **262,144, MTP-3, 8.4 MP cap** | native window, hardware-qualified on a physical RTX 5090 |
-| [-K4](https://huggingface.co/malaiwah/Qwen3.8-27B-K4) | 28.31 GB | 17.89 GiB | 0.010604 | 0.029679 | 262,144 | smallest footprint, native context without any overlay |
+| [-K4](https://huggingface.co/malaiwah/Qwen3.8-27B-K4) | 28.31 GB\* | 17.89 GiB | 0.010604 | 0.029679 | 262,144 | smallest footprint, native context without any overlay |
+
+**Byte and memory conventions for this table.** The download column is whole-tree bytes —
+every published file of the artifact as its release evidence counted it
+([`receipts/collection-index.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/collection-index.json),
+`serialized_bytes.whole_tree_bytes`: hydrated 21,610,933,884 B, K5/K6 30,597,231,933 B,
+context 20,696,053,306 B) — and they are serialized bytes on disk, never resident memory.
+\*This build's release evidence records no tree count, so its own row is the sum of its
+safetensors shards, 28,313,841,196 B, read from the published repository. The context
+edition's resident weight is measured twice: **18.41 GiB** as run on the rental RTX PRO 6000
+engine-budget proof and **18.19 GiB** on the physical RTX 5090 at the qualified `0.955`
+profile. This table prints the larger figure deliberately, because
+[`receipts/vram-class-verdict.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/vram-class-verdict.json)
+elects 18.41 GiB for every class prediction; the 0.22 GiB gap is the rental-versus-5090 delta,
+not a change in the checkpoint.
 
 Official `Qwen/Qwen3.8-27B-FP8` is 28.51 GiB resident at **0.005294** on the v5 suite and
 0.012798 on the corrected v3 subset, and runs on stock vLLM, which none of these do. On both
@@ -119,8 +137,8 @@ suites it is more faithful than this K4 build and less faithful than the other t
 | `embed_tokens` | BF16 | BF16 | BF16 |
 | vision tower | BF16 | BF16 | BF16 (explicit per-block ignore) |
 | MTP head | BF16 | BF16 (`ignore: ["mtp*"]`) | BF16 (`re:^mtp.*`) |
-| resident weights | **19.21 GB** | 21.92 GB | 23.42 GB |
-| checkpoint size | 28.31 GB | 21.92 GB | 23.42 GB |
+| resident weights (measured) | **19.21 GB** (17.89 GiB) | not measured here — Qwen3.6 generation | 22.91 GB (21.34 GiB) |
+| checkpoint size on disk | 28.31 GB | 21.92 GB | 23.42 GB |
 
 Trellis at K4 needs no per-group scale tensor, so 4-bit MLP costs 4.004 bpw here
 against NVFP4's 4.50 bpw. That saved 1.07 GB, plus the 1.80 GB from serving
@@ -509,7 +527,6 @@ The container listens on all interfaces internally, but Docker publishes the por
 loopback only. For remote clients, keep that binding and put an authenticated TLS proxy in
 front; do not expose this unauthenticated generation endpoint directly.
 
-
 Four flags are load-bearing:
 
 1. **`--quantization exl3` is mandatory.** Auto-detection only fires for the
@@ -579,8 +596,12 @@ this section's 278,392. Kept unchanged, including its own correction history.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="assets/fidelity-vs-size-dark.svg">
-  <img alt="Overlap-corrected mean KL divergence from BF16 versus resident weight footprint. This quant at 19.2 GB and 0.0297; Qwen FP8 at 30.9 GB and 0.0128; Unsloth NVFP4 at 23.4 GB and 0.0927. Right panel shows top-1 agreement: 94.48, 96.18 and 90.49 percent respectively." src="assets/fidelity-vs-size-light.svg">
+  <img alt="Two panels. Left: mean KL divergence from BF16 on a log scale against resident weight footprint in decimal GB, measured on the overlap-corrected 127-context v3 subset. Four candidates with bootstrap 95 % confidence bars: malaiwah/Qwen3.8-27B-EXL3-K5K6 (iteration 2) at 21.82 GB and 0.0079; Qwen/Qwen3.8-27B-FP8 at 30.61 GB and 0.0128; malaiwah/Qwen3.8-27B-K4 (iteration 1, this quant) at 19.21 GB and 0.0297; unsloth/Qwen3.8-27B-NVFP4 at 22.91 GB and 0.0927. A grey star marks the Qwen3.8-27B BF16 reference at 55.56 GB, KLD zero by definition. A grey series legended 'Qwen3.6-27B GGUF/FP8/NVFP4 (external, other protocol)' runs behind them, with UD-Q4_K_XL, Q8_0 and FP8 (vLLM) labelled: a different model generation measured by someone else under a different protocol, plotted as context only and not comparable with our points. A dashed vertical line in both panels marks the NVFP4-equivalent memory ceiling 21.9 GB. Right panel: top-1 agreement with BF16 against the same axis, 96.95 / 96.18 / 94.48 / 90.49 percent in that same candidate order, with a dashed line at BF16 = 100 percent. Title: Distribution fidelity vs memory — held-out corpus, 127 contexts, 259,969 positions. Those KLD and top-1 values are the overlap-corrected 127-context subset, which is why they differ from the full-suite 136-context table below this figure." src="assets/fidelity-vs-size-light.svg">
 </picture>
+
+*The figure's four points and four top-1 values are the overlap-corrected 127-context subset;
+the table below is the original full 136-context receipt, which is why 94.48 / 96.18 / 90.49 %
+there reads 94.50 / 96.22 / 90.53 % here.*
 
 **136 analysis contexts x 2047 positions = 278,392 scored positions** from separately
 sourced Gutenberg, arXiv, Wikipedia and CPython documents. The original fixed-stride
@@ -589,11 +610,18 @@ exact overlap in 2/41 source documents. Exact full-vocabulary two-pass
 `KL(BF16 reference || candidate)` through one shared BF16 LM head, float32 within each
 vocabulary chunk and float64 across chunks, source-cluster bootstrap.
 
-| candidate | weights | mean KLD | bootstrap 95 % CI | median | p99.9 | JSD (bits) | top-1 |
+| candidate | resident weights | mean KLD | bootstrap 95 % CI | median | p99.9 | JSD (bits) | top-1 |
 |---|---|---:|---:|---:|---:|---:|---:|
-| `Qwen/Qwen3.8-27B-FP8` | 30.9 GB | 0.013126 | [0.00981, 0.01709] | 0.002343 | 0.773 | 0.004528 | 96.22 % |
-| **this quant** | **19.2 GB** | **0.030736** | [0.02238, 0.04073] | 0.004218 | 1.758 | 0.010051 | 94.50 % |
-| `unsloth/Qwen3.8-27B-NVFP4` | 23.4 GB | 0.094978 | [0.06858, 0.12688] | 0.012911 | 4.509 | 0.028663 | 90.53 % |
+| `Qwen/Qwen3.8-27B-FP8` | 30.61 GB | 0.013126 | [0.00981, 0.01709] | 0.002343 | 0.773 | 0.004528 | 96.22 % |
+| **this quant** | **19.21 GB** | **0.030736** | [0.02238, 0.04073] | 0.004218 | 1.758 | 0.010051 | 94.50 % |
+| `unsloth/Qwen3.8-27B-NVFP4` | 22.91 GB | 0.094978 | [0.06858, 0.12688] | 0.012911 | 4.509 | 0.028663 | 90.53 % |
+
+*The weight column prints the measured resident weights of
+[`docs/22-results-iteration-2.md`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/docs/22-results-iteration-2.md)
+— 28.51 GiB = 30.61 GB for FP8, 17.89 GiB = 19.21 GB here, 21.34 GiB = 22.91 GB for unsloth
+NVFP4. Earlier revisions of this card printed 30.9 / 19.2 / 23.4 GB in this column, the older
+docs/18 presentation of the same three measurements. The KLD, interval, median, p99.9, JSD and
+top-1 columns are unchanged.*
 
 **Overlap-corrected subset:** conservatively removing all nine analysis contexts from either
 affected source document gives K4 **0.029679**, FP8 **0.012798**, and NVFP4 **0.092727**
@@ -661,10 +689,10 @@ the per-run means and `run SD` is the sample SD across those means.
 | candidate | mean KLD | run SD | SD across positions | resident weights |
 |---|---:|---:|---:|---:|
 | **this quant** (`--quantization exl3` + `exl3-b6` overlay) | **0.034030** | 0.000000 | 0.4628 | 19.21 GB |
-| `unsloth/Qwen3.8-27B-NVFP4` control, same generation | **0.091457** | 0.000000 | 0.8036 | 23.42 GB |
+| `unsloth/Qwen3.8-27B-NVFP4` control, same generation | **0.091457** | 0.000000 | 0.8036 | 22.91 GB |
 
 **This quant is 2.7x closer to the BF16 teacher than the same-generation NVFP4
-checkpoint, while holding 4.2 GB less VRAM.** That is the whole point of the
+checkpoint, while holding 3.70 GB less resident weight.** That is the whole point of the
 recipe: Trellis K4 spends 4.004 bpw where NVFP4 spends 4.50, and the savings buy
 K6 attention instead of FP8.
 
@@ -711,8 +739,8 @@ Without that patch the loader refuses non-eager execution and you must pass
 
 - **The download is 28.31 GB for a 19.21 GB resident model.** Attention ships
   BF16 so the runtime can encode it at K6 (and, later, at another width) instead
-  of being locked to a serialized choice. If you want download == VRAM, the
-  `v-serialized-k6` variant is the one to ask for.
+  of being locked to a serialized choice. If you want the download to equal the
+  resident weight figure, the `v-serialized-k6` variant is the one to ask for.
 - **CUDA graphs need a patched loader** (see the throughput section). Unpatched, the
   loader refuses non-eager execution and you lose 46-50 % of decode throughput
   ([local-inference-lab/vllm#311](https://github.com/local-inference-lab/vllm/issues/311)

@@ -1,0 +1,390 @@
+{
+  "schema": "qwen38-card-consistency-audit/1",
+  "generated_utc": "2026-08-16T03:05:07Z",
+  "generator": "CardConsistencyAudit",
+  "scope": "read-only audit of the four published model cards against their Hub copies and against the receipts; nothing was edited",
+  "cards": {
+    "hydrated": {
+      "local": "MODEL_CARD-K5K6-hydrated.md",
+      "local_lines": 667,
+      "published": "malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated/README.md",
+      "published_lines": 665
+    },
+    "k5k6": {
+      "local": "MODEL_CARD-K5K6.md",
+      "local_lines": 854,
+      "published": "malaiwah/Qwen3.8-27B-EXL3-K5K6/README.md",
+      "published_lines": 850
+    },
+    "context": {
+      "local": "MODEL_CARD-K5K6-context.md",
+      "local_lines": 836,
+      "published": "malaiwah/Qwen3.8-27B-EXL3-K5K6-context/README.md",
+      "published_lines": 833
+    },
+    "k4": {
+      "local": "MODEL_CARD-K4.md",
+      "local_lines": 783,
+      "published": "malaiwah/Qwen3.8-27B-K4/README.md",
+      "published_lines": 779
+    }
+  },
+  "method": {
+    "published_fetch": "https://huggingface.co/<repo>/raw/main/README.md, read verbatim",
+    "diff": "heading/table/code-fence anchor alignment across the whole file to locate every line-count change, plus line-for-line comparison of every utilisation, qualification-framing, KLD, KV and byte-size line",
+    "receipt_grounding": "every quantitative claim traced to the named receipt file and field"
+  },
+  "counts": {
+    "blocker": 4,
+    "drift": 5,
+    "cosmetic": 7,
+    "total": 16
+  },
+  "findings": [
+    {
+      "id": "B1",
+      "severity": "blocker",
+      "category": "claim_versus_receipt",
+      "card": "MODEL_CARD-K5K6-context.md",
+      "lines": [
+        19,
+        28,
+        29,
+        30,
+        31,
+        43,
+        49,
+        56,
+        487
+      ],
+      "claimed": "native 262,144 under a 32 GB engine budget; under a conservative 30.24 GiB vLLM budget; the proof server was a capped 96 GB SM120, not a physically constrained RTX 5090; hard-limit 5090 validation is still pending; on a budget-capped RTX PRO 6000; the latter's hard-limit 5090 rerun is pending; 5090 check pending; ## Native 262,144 under a 32 GB-equivalent engine budget",
+      "receipt_value": "all seven acceptance gates PASS on one physical NVIDIA GeForce RTX 5090 (GPU-506a575d-01d7-b12e-9a0a-c1ab5f38ae0a, 32,607 MiB total, 31.4 GiB usable), qualified_at gpu_memory_utilization 0.955 with PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True; verdict.all_gates_pass true; generated_utc 2026-08-16T01:35:21Z",
+      "authoritative_file": "receipts/qualification-5090-context.json",
+      "note": "the same card already states 'Qualified on a physical RTX 5090.' at L509 and prints 265,122 KV tokens / 0.955 / 9.28 GiB at L520-534, so the card contradicts itself; the other three cards carry the corrected framing at hydrated L73, k5k6 L80, k4 L78/L92/L105"
+    },
+    {
+      "id": "B2",
+      "severity": "blocker",
+      "category": "cross_card_consistency",
+      "card": [
+        "MODEL_CARD-K5K6-hydrated.md",
+        "MODEL_CARD-K5K6.md"
+      ],
+      "lines": {
+        "MODEL_CARD-K5K6-hydrated.md": [
+          55,
+          56
+        ],
+        "MODEL_CARD-K5K6.md": [
+          64,
+          65
+        ]
+      },
+      "claimed": "context is MTP-3 with an 8.4 MP cap on a budget-capped RTX PRO 6000",
+      "receipt_value": "context is MTP-3 with an 8.4 MP cap, qualified on a physical RTX 5090 at utilisation 0.955 (the wording MODEL_CARD-K4.md L91-92 already uses)",
+      "authoritative_file": "receipts/qualification-5090-context.json",
+      "note": "each card contradicts its own four-builds table two lines later, which reads 'native window, hardware-qualified on a physical RTX 5090'"
+    },
+    {
+      "id": "B3",
+      "severity": "blocker",
+      "category": "presentation_serialized_bytes_called_vram",
+      "card": "MODEL_CARD-K4.md",
+      "lines": [
+        57,
+        58,
+        59,
+        60,
+        122,
+        123,
+        676
+      ],
+      "claimed": "Measured resident weights: 17.89 GiB (19.21 GB) ... versus 21.92 GB for nvidia/Qwen3.6-27B-NVFP4 and 23.42 GB for unsloth/Qwen3.8-27B-NVFP4 ... a 2.7 GB smaller resident footprint; table rows 'resident weights | 19.21 GB | 21.92 GB | 23.42 GB' and 'checkpoint size | 28.31 GB | 21.92 GB | 23.42 GB'; 'while holding 4.2 GB less VRAM'",
+      "receipt_value": "21.92 GB and 23.42 GB are checkpoint (disk) sizes, not resident weights: docs/01-nvfp4-composition.md L42 and L61 head their sections with them, and docs/07-serving-recommendations.md L509-510 derives them from the 55.56 GB BF16 disk size. Measured resident weight for unsloth/Qwen3.8-27B-NVFP4 under identical flags is 21.34 GiB = 22.91 GB (docs/22-results-iteration-2.md L44 and L69), which MODEL_CARD-K5K6.md L88-90 also publishes. Correct resident delta is 22.91 - 19.21 = 3.70 GB, not 2.7 GB and not 4.2 GB",
+      "authoritative_file": "docs/22-results-iteration-2.md (resident) and docs/01-nvfp4-composition.md (disk)",
+      "note": "the two NVFP4 columns carry the identical value in both the 'resident weights' and 'checkpoint size' rows, which is the tell; the three K5/K6 cards each carry the explicit 'serialized bytes, never VRAM' sentence and are clean"
+    },
+    {
+      "id": "B4",
+      "severity": "blocker",
+      "category": "presentation_alt_text",
+      "card": "MODEL_CARD-K4.md",
+      "lines": [
+        576
+      ],
+      "claimed": "alt text describing three points: 'This quant at 19.2 GB and 0.0297; Qwen FP8 at 30.9 GB and 0.0128; Unsloth NVFP4 at 23.4 GB and 0.0927. Right panel shows top-1 agreement: 94.48, 96.18 and 90.49 percent respectively.'",
+      "receipt_value": "assets/fidelity-vs-size-light.svg contains four labelled candidates - malaiwah/Qwen3.8-27B-EXL3-K5K6 (iteration 2) 0.0079, Qwen/Qwen3.8-27B-FP8 0.0128, malaiwah/Qwen3.8-27B-K4 (iteration 1) 0.0297, unsloth/Qwen3.8-27B-NVFP4 0.0927 - four top-1 labels 96.95 / 96.18 / 94.48 / 90.49 percent, a grey external series legended 'Qwen3.6-27B GGUF/FP8/NVFP4 (external, other protocol)' with UD-Q4_K_XL / Q8_0 / FP8 (vLLM) point labels, and an 'NVFP4-equivalent / memory ceiling 21.9 GB' line; title 'Distribution fidelity vs memory - held-out corpus, 127 contexts, 259,969 positions'",
+      "authoritative_file": "assets/fidelity-vs-size-light.svg",
+      "note": "the asset is byte-identical (git oid a886c56f9eb1091e3a35924a79f26d06578069df, 181,294 B for the dark twin) in all four published repos, so the K4 and K5K6 alt texts describe the same file and cannot both be right; the K4 alt also hides the only cross-protocol series in the figure from a screen reader"
+    },
+    {
+      "id": "D1",
+      "severity": "drift",
+      "category": "cross_card_consistency",
+      "card": [
+        "MODEL_CARD-K5K6-hydrated.md",
+        "MODEL_CARD-K5K6.md",
+        "MODEL_CARD-K5K6-context.md"
+      ],
+      "lines": {
+        "MODEL_CARD-K5K6-hydrated.md": [
+          566,
+          567
+        ],
+        "MODEL_CARD-K5K6.md": [
+          480,
+          481,
+          482
+        ],
+        "MODEL_CARD-K5K6-context.md": [
+          607,
+          610
+        ]
+      },
+      "claimed": "hydrated and k5k6: 'at utilisation 0.97 the context edition's vision tower died wanting 62.00 MiB with 26.50 MiB free'; context: 'At --gpu-memory-utilization 0.97 ... it wants 62.00 MiB with 34.56 MiB free'",
+      "receipt_value": "two distinct arms at 0.97: commands.B / bounded_negative_results with no allocator config = 62.00 MiB wanted, 34.56 MiB free; commands.B2 with PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True = 62.00 MiB wanted, 26.50 MiB free, KV 272,570 -> 280,017 tokens",
+      "authoritative_file": "receipts/qualification-5090-context.json",
+      "note": "hydrated and k5k6 quote the B2 number while naming only '0.97', so the three cards print two different free-memory figures for what a reader reads as one condition"
+    },
+    {
+      "id": "D2",
+      "severity": "drift",
+      "category": "stale_relative_to_newest_receipt",
+      "card": [
+        "MODEL_CARD-K5K6-hydrated.md",
+        "MODEL_CARD-K5K6.md",
+        "MODEL_CARD-K5K6-context.md",
+        "MODEL_CARD-K4.md"
+      ],
+      "lines": {
+        "MODEL_CARD-K5K6-hydrated.md": [
+          73
+        ],
+        "MODEL_CARD-K5K6.md": [
+          80
+        ],
+        "MODEL_CARD-K5K6-context.md": [
+          56,
+          500,
+          525
+        ],
+        "MODEL_CARD-K4.md": [
+          105
+        ]
+      },
+      "claimed": "context edition resident 18.41 GiB in every four-builds table and in the context card's own embedding table; the context card separately prints '18.19 weight' at L525",
+      "receipt_value": "18.19 GiB of weights measured on the physical RTX 5090 at the qualified profile (gates[*].measured_engine_usage_gib.weight); 18.41 GiB is the rental as-run figure (native-mtp-8mp-amendment.json). vram-class-verdict.json -> measured_inputs.resident_weight_observations records both, calls the 0.22 GiB gap out explicitly, and elects the larger 18.41 GiB for all predictions",
+      "authoritative_file": "receipts/vram-class-verdict.json (election) and receipts/qualification-5090-context.json (18.19)",
+      "note": "the choice of 18.41 is defensible and matches the verdict receipt; the defect is that no card states the two figures exist or which one it is using, and the context card prints both 22 lines apart"
+    },
+    {
+      "id": "D3",
+      "severity": "drift",
+      "category": "cross_card_consistency",
+      "card": [
+        "MODEL_CARD-K5K6-hydrated.md",
+        "MODEL_CARD-K5K6.md",
+        "MODEL_CARD-K5K6-context.md",
+        "MODEL_CARD-K4.md"
+      ],
+      "lines": {
+        "MODEL_CARD-K5K6.md": [
+          79,
+          88
+        ],
+        "MODEL_CARD-K5K6-hydrated.md": [
+          71,
+          72
+        ],
+        "MODEL_CARD-K5K6-context.md": [
+          54,
+          55
+        ],
+        "MODEL_CARD-K4.md": [
+          103,
+          104
+        ]
+      },
+      "claimed": "download column: hydrated 21.61 GB, K5K6 30.57 GB, context 20.70 GB, K4 28.31 GB; MODEL_CARD-K5K6.md L88 says '30.60 GB download' for the same artifact its own table calls 30.57 GB",
+      "receipt_value": "whole_tree_bytes hydrated 21,610,933,884 = 21.61 GB, context 20,696,053,306 = 20.70 GB, k5k6 30,597,231,933 = 30.60 GB; immutable_payload_bytes k5k6 30,597,223,337 = 30.60 GB (17 files); K4 shard sum 28,313,841,196 = 28.31 GB. So hydrated and context quote whole-tree bytes while K5K6 and K4 quote shard-sum bytes",
+      "authoritative_file": "receipts/collection-index.json",
+      "note": "one table, two byte conventions, replicated across all four cards; MODEL_CARD-K5K6.md additionally disagrees with itself by 0.03 GB"
+    },
+    {
+      "id": "D4",
+      "severity": "drift",
+      "category": "claim_versus_receipt",
+      "card": "MODEL_CARD-K5K6-context.md",
+      "lines": [
+        458,
+        512,
+        534,
+        776
+      ],
+      "claimed": "'Warmed 256-token single-stream decode measured 98.72 tok/s in one run'; needle row '261,794 | 0.5 | 1/1 | 123.1 s | 2,127 tok/s'; and, 22 lines later, the physical-5090 'median 107.56 tok/s (107.47-108.12, 0.60 % spread)'",
+      "receipt_value": "the 5090 receipt measures the same 261,794-token needle at wall_sec 179.218 and 1,460.8 prompt tok/s including decode, and three warmed 256-token runs at 108.12 / 107.56 / 107.47 tok/s, median 107.56, dispersion 0.604 %. The receipt states in claim_scope: 'Throughput measured here is never comparable with rental numbers and no number in this receipt is differenced against them'",
+      "authoritative_file": "receipts/qualification-5090-context.json (5090) and receipts/native-mtp-8mp-amendment.json (rental)",
+      "note": "the 98.72 tok/s and the needle-table timings are rental RTX PRO 6000 / 30.24 GiB-budget figures presented without a hardware label, immediately beside physical-5090 figures"
+    },
+    {
+      "id": "D5",
+      "severity": "drift",
+      "category": "cross_card_consistency",
+      "card": [
+        "MODEL_CARD-K4.md",
+        "MODEL_CARD-K5K6.md"
+      ],
+      "lines": {
+        "MODEL_CARD-K4.md": [
+          576,
+          597,
+          598,
+          599
+        ],
+        "MODEL_CARD-K5K6.md": [
+          357,
+          380,
+          381,
+          382
+        ]
+      },
+      "claimed": "K4 card v3 table and figure alt: Qwen FP8 30.9 GB, unsloth NVFP4 23.4 GB; K5K6 card v3 table and figure alt: Qwen official FP8 30.61 GB, Unsloth NVFP4 22.91 GB - against identical KLD values 0.013126 and 0.094978",
+      "receipt_value": "measured resident weights are FP8 28.51 GiB = 30.61 GB and unsloth NVFP4 21.34 GiB = 22.91 GB (docs/22-results-iteration-2.md L42, L44, L69-70); the 30.9 / 23.4 GB pair is the older docs/18 presentation",
+      "authoritative_file": "docs/22-results-iteration-2.md, corroborated by receipts/collection-index.json resident_weights conventions",
+      "note": "same measurement, two published weight figures across two cards"
+    },
+    {
+      "id": "C1",
+      "severity": "cosmetic",
+      "category": "local_versus_published_diff",
+      "card": "MODEL_CARD-K5K6-hydrated.md",
+      "lines": [
+        601,
+        602
+      ],
+      "claimed": "local file carries 2 blank lines the published README does not (667 local lines vs 665 published); the visible one is the doubled blank after 'do not expose this unauthenticated generation endpoint directly.'",
+      "receipt_value": "published README.md is otherwise content-identical line for line, including every KLD, KV, byte and utilisation line",
+      "authoritative_file": "malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated/README.md"
+    },
+    {
+      "id": "C2",
+      "severity": "cosmetic",
+      "category": "local_versus_published_diff",
+      "card": "MODEL_CARD-K5K6.md",
+      "lines": [
+        359,
+        360,
+        361
+      ],
+      "claimed": "local file carries 4 blank lines the published README does not (854 local lines vs 850 published); two of them sit between the fidelity-vs-size </picture> and the 'KL(BF16 reference || candidate)' paragraph",
+      "receipt_value": "published README.md is otherwise content-identical line for line",
+      "authoritative_file": "malaiwah/Qwen3.8-27B-EXL3-K5K6/README.md"
+    },
+    {
+      "id": "C3",
+      "severity": "cosmetic",
+      "category": "local_versus_published_diff",
+      "card": "MODEL_CARD-K5K6-context.md",
+      "lines": [
+        552,
+        553,
+        774
+      ],
+      "claimed": "local file carries 3 blank lines the published README does not (836 local lines vs 833 published)",
+      "receipt_value": "published README.md is otherwise content-identical line for line, including the engine-budget framing of finding B1, which is present in both copies",
+      "authoritative_file": "malaiwah/Qwen3.8-27B-EXL3-K5K6-context/README.md"
+    },
+    {
+      "id": "C4",
+      "severity": "cosmetic",
+      "category": "local_versus_published_diff",
+      "card": "MODEL_CARD-K4.md",
+      "lines": [
+        42,
+        43,
+        512
+      ],
+      "claimed": "local file carries 4 blank lines the published README does not (783 local lines vs 779 published); two sit between the 'Superseded by' blockquote and 'Dense EXL3 quant of'",
+      "receipt_value": "published README.md is otherwise content-identical line for line",
+      "authoritative_file": "malaiwah/Qwen3.8-27B-K4/README.md"
+    },
+    {
+      "id": "C5",
+      "severity": "cosmetic",
+      "category": "claim_versus_receipt",
+      "card": "MODEL_CARD-K5K6-hydrated.md",
+      "lines": [
+        93,
+        94,
+        95,
+        96
+      ],
+      "claimed": "the per-role composition list is closed with '- 21.61 GB over three shards', reading as the sum of the roles enumerated",
+      "receipt_value": "the enumerated roles sum to 21,586,964,548 B = 21.587 GB (role_bytes_total); 21,610,933,884 B = 21.611 GB is the whole tree, which is 24.0 MB of tokenizer, configs and chat template larger",
+      "authoritative_file": "receipts/vram-class-verdict.json -> measured_inputs.published_manifests.hydrated, corroborated by receipts/collection-index.json"
+    },
+    {
+      "id": "C6",
+      "severity": "cosmetic",
+      "category": "presentation_alt_text",
+      "card": "MODEL_CARD-K5K6.md",
+      "lines": [
+        357
+      ],
+      "claimed": "alt text lists the four measured points and the four top-1 values correctly, but does not mention the grey external series or the memory-ceiling line",
+      "receipt_value": "assets/fidelity-vs-size-light.svg legends 'Qwen3.6-27B GGUF/FP8/NVFP4 (external, other protocol)' and draws an 'NVFP4-equivalent / memory ceiling 21.9 GB' line",
+      "authoritative_file": "assets/fidelity-vs-size-light.svg",
+      "note": "a screen-reader user cannot tell the figure contains a series measured under a different protocol; the alt text makes no comparability claim, so this is presentation completeness rather than a wrong number"
+    },
+    {
+      "id": "C7",
+      "severity": "cosmetic",
+      "category": "presentation_alt_text",
+      "card": [
+        "MODEL_CARD-K5K6.md",
+        "MODEL_CARD-K4.md"
+      ],
+      "lines": {
+        "MODEL_CARD-K5K6.md": [
+          357
+        ],
+        "MODEL_CARD-K4.md": [
+          576
+        ]
+      },
+      "claimed": "alt-text top-1 values 96.95 / 96.18 / 94.48 / 90.49 percent",
+      "receipt_value": "the adjacent v3 tables print the full-suite values 96.97 / 96.22 / 94.50 / 90.53 percent; the alt values are the overlap-corrected 127-context subset, which the figure title states ('127 contexts, 259,969 positions') but neither alt text does",
+      "authoritative_file": "assets/fidelity-vs-size-light.svg"
+    }
+  ],
+  "categories_with_no_findings": {
+    "local_versus_published_content": "none. All four published READMEs are content-identical to their local files; the only differences are 2 / 4 / 3 / 4 blank lines (recorded as C1-C4).",
+    "kld_means_intervals_top1_maxima_10480640": "none. hydrated 0.002760 [0.002540, 0.003020] 97.70 % max 8.258; k5k6 0.003210 [0.002982, 0.003480] 97.52 % max 22.241; context 0.003509 [0.003220, 0.003852] 97.44 % max 5.557; FP8 0.005294 [0.004927, 0.005728] 96.79 % max 10.714; K4 0.010604 [0.009640, 0.011746] 95.76 % max 14.283 - identical in every card that prints them and matching receipts/kld5-10M-{hyd,k5k6,ctx,fp8,k4}.json to the printed precision.",
+    "paired_comparisons": "none. -0.002534 / 5,118, -0.002084 / 5,105, -0.001785 / 5,109, +0.005310 / 7 (FP8 wins 5,113), -0.000450 / 4,922, with intervals, all matching receipts/kld5-10M-paired.json.",
+    "tail_p999_and_exact_maxima": "none. The nine-column tail table is character-identical in all four cards and matches receipts/kld5-1M-tail-*.json (p50 0.00109, p95 0.0082, p99 0.0276, p99.9 0.1319, p99.99 0.463, max 3.735 for hydrated etc.); the exceedance counts implied by the percentages (23 / 21 / 62 / 399 positions in 1,048,064) are exact.",
+    "mmlu_pro_matrix": "none. BF16 57/70 [70.8, 88.8]; context 58/70 [72.4, 89.9], 56/57, 90.7 %, 1 regression, 2 improvements, 3 cap failures; K4 57/70, 55/57, 88.1 %, 2/2, 4; hydrated 56/70 [69.2, 87.7], 54/57, 85.6 %, 3/2, 4; FP8 56/70, 55/57, 88.1 %, 2/1, 4; k5k6 55/70 [67.6, 86.6], 54/57, 85.6 %, 3/1, 4. Every figure matches receipts/public-capability-{bf16,ctx,k4,hyd,fp8,k5k6}.json, including exact-answer agreement 0/70 and 1/70 for FP8 and the completion-cap counts recounted from finish_reason=length.",
+    "gguf_rows_and_engine_floor": "none. Q8_0 0.001087 / ~0.000579 / 98.53 % / 0.0351 / 27.05 GiB; Q6_K 0.002035 / ~0.001528 / 97.98 % / 0.0794 / 21.31 GiB; UD-Q5_K_XL 0.004444 / ~0.003936 / 97.20 % / 0.2144 / 18.83 GiB; hydrated 0.002700 / 97.80 % / 0.1313 / 20.12 GiB payload; k5k6 0.003141 / 97.61 % / 0.1447; context 0.003409 / 97.55 % / 0.1632 / 19.27 GiB payload; FP8 0.005197 / 96.92 % / 0.2440 / 28.51 GiB resident; K4 0.010345 / 95.91 % / 0.5576. Engine floor 0.000507 mean, 99.07 % top-1, p99.9 0.0113. All identical across the four cards and matching receipts/cross-engine-comparator.json and receipts/gguf-report-engine-floor.json.",
+    "serialized_and_payload_bytes": "none in the K5/K6 cards. 21,610,916,123 B = 20.127 GiB and 20,696,033,532 B = 19.275 GiB are quoted identically in all four cards and match receipts/collection-index.json immutable_payload_bytes.",
+    "kv_token_counts": "none. 265,122 / 9.28 GiB, 266,612 / 9.31 GiB, 280,017, 272,570, 291,933, 289,577, 9.13 GiB, 37.4 and 33.5 KB/token, 1.01x concurrency - consistent across cards and against receipts/qualification-5090-context.json, receipts/native-mtp-8mp-amendment.json and receipts/context-capacity-5090-budget.json.",
+    "utilisation_value": "none. No card prints a stale utilisation for the context edition: every context-edition recipe and every cross-reference reads 0.955 with PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True. The 0.97 mentions are all explicitly the superseded or failed arm; the 0.95 / 0.98 / 0.96 values belong to the online-K6 build's own tester table and the 0.85 to the K4 card's 8,192-token recipe. receipts/qualification-5090-context.json -> qualified_profile.delta_from_published_card still says 'the card prints --gpu-memory-utilization 0.97', which is now historical and no longer true of any card.",
+    "serving_recipes": "none. The context card's native recipe, its 196,608 fallback and its inherited-default caveat all match the qualified profile; the hydrated and K5K6 recipes match their own documented profiles.",
+    "scored_window_offset_and_ladder": "none. 0.002660 / 0.002580, 0.003100 / 0.003020, 0.003342 / 0.003243, 0.010154 / 0.009876 match receipts/scored-window-offset.json; the 1M/2M/5M/10M ladder 0.002700 / 0.002759 / 0.002699 / 0.002760 is identical in all four cards.",
+    "task_retention_40_case": "none. 35/40 hydrated, 34/40 k5k6, 32/40 context, 33/40 K4, all 40/40 strict passes and zero regressions, matching receipts/task-retention-v2-strict-rescore.json.",
+    "table_column_counts_and_ragged_tables": "none. Every table in all four cards has a separator row whose cell count equals its header's, and no row is ragged.",
+    "broken_relative_links_and_anchors": "none. Every in-card anchor resolves to a heading in the same card, including #context-capacity, #distribution-tail, #suite-identity, #attention-width-is-a-runtime-knob-and-native-context-needs-the-k4-build, #v5-held-out-suite--10480640-scored-positions and #distribution-fidelity--v5-held-out-suite-10480640-scored-positions.",
+    "assets_present": "none. Every asset referenced by a card exists in the repo and in all four published repos, which each carry the identical 16-file assets/ set (context-frontier, context-per-card, fidelity-vs-size, kld-family-comparison, dark and light, svg and png).",
+    "alt_text_present": "none missing. Every <img> in all four cards has alt text; accuracy defects are recorded as B4, C6 and C7.",
+    "cross_protocol_ratios": "none. No card computes a ratio against turboderp's OpenWebText protocol; the kld-family-comparison alt text states 'the columns are not interchangeable and no ratio between them is meaningful' and 'no y-value because we have never run his protocol', and the GGUF net-of-floor ratios are each bounded in text as estimates rather than identities.",
+    "gguf_rows_marked_as_carrying_the_cross_engine_term": "none missing. All four cards carry the 'Every GGUF row above contains that term; no vLLM row - ours or FP8's - does' sentence and the 'KL is not additive, so the net column is an estimate, not an identity' bound."
+  },
+  "out_of_scope_observation": {
+    "what": "receipts/vram-class-verdict.json -> measured_inputs.physical_5090_qualification.hardware records 'driver 595.58.03' for the physical RTX 5090, while receipts/qualification-5090-context.json -> identity.host records driver 610.57.04 and CUDA UMD 13.3 for the same run; 595.58.03 is the rental RTX PRO 6000's driver.",
+    "card_impact": "none - MODEL_CARD-K5K6-context.md L516-518 prints 610.57.04 / CUDA UMD 13.3, which matches the qualification receipt. Reported here only so the receipt owner can fix the verdict receipt."
+  },
+  "audit_limits": [
+    "the audit compared published copies fetched from the Hub at read time; a later push would invalidate C1-C4",
+    "figure content was read from the SVG's embedded text nodes, which is exact for labels but does not verify marker positions",
+    "local assets were not byte-compared against the published assets; the published copies share one git oid per file across all four repos"
+  ],
+  "written_by": "Main; body reproduced verbatim from CardConsistencyAudit, which had no write tool"
+}
