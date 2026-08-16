@@ -895,6 +895,28 @@ and build differences are explicitly reduced to a measured numerical equivalence
 independent operator signs the receipt or publishes it from a separate account. A copy of this
 workstation is not an independent reproduction.
 
+**V2-runner replay fault: root-caused, fixed and filed 2026-08-16.** The `cudaErrorIllegalAddress` that
+made docs/41's rank-1 lever (`VLLM_USE_V2_MODEL_RUNNER=1` plus a per-batch-size speculative depth
+schedule) unavailable is a one-line gate bug in FlashInfer's decode-wrapper selection: persistent
+(CUDA-graph) wrappers were admitted only when `decode_q_len == 1 + num_spec_tokens`, so the V2
+speculator's draft-decode graphs at `q_len == 1` were captured *and* replayed on the **dynamic**
+wrapper, whose plan rebinds `_paged_kv_indptr_buf` / `_paged_kv_last_page_len_buf` and reallocates
+`_qo_indptr_buf` on every call - the captured graph replays against freed plan buffers. Causal, not
+correlational: a run that changes nothing except pinning the capture-time plan buffers alive becomes
+ready and serves. Fixed by recording the shapes capture actually plans, keyed `(num_decodes,
+q_len_per_req)`, and admitting only recorded shapes - 26/26 unit tests, and after the fix 0 dynamic
+builds, 396 persistent, 268 replay builds byte-identical to capture, 0 moved. PR
+[local-inference-lab/vllm#398](https://github.com/local-inference-lab/vllm/pull/398), closing
+[#396](https://github.com/local-inference-lab/vllm/issues/396). **Still open and stated in the PR body
+rather than hidden:** at `--gpu-memory-utilization 0.97` the V2 runner leaves no headroom and the EXL3
+prefill reconstruct OOMs inside `_reconstruct_hgemm_into` on the first 2,048-token prefill, in **both**
+arms, so it is not the depth schedule - V2 costs ~780-820 MiB more than MRV1 on the same profile, of
+which the fix's own extra persistent wrappers are ~64 MiB. No throughput number is published until a
+probe completes rc=0; the inherited +30.67 % aggregate-decode claim at C8 remains unconfirmed. Whether
+the same gate exists in upstream `vllm-project/vllm` - which would make this a latent upstream bug for
+any capture whose decode `q_len` differs from `1 + num_spec_tokens` - is being checked now, to be filed
+upstream if it does.
+
 **LMCache corruption landed upstream 2026-08-16 - as corroboration, not a new issue.** Owner granted standing
 approval to post on the LMCache project (and any other upstream project) on his behalf. A duplicate search
 (six queries, recorded in [`receipts/lmcache-upstream-filing.json`](../receipts/lmcache-upstream-filing.json))
