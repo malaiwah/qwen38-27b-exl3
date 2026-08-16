@@ -764,3 +764,71 @@ DOCS-SHA256SUMS rebound and re-fetch digest verification, all four cards carry t
 honest paired paragraph each (and the dead collection link is fixed), shard-0 capture preserved to
 the v5 dataset (`captures/shard-0000/hidden-gt5090@ea1244fc`, deep-verified). Ladder map extension
 (`gt5090`, `--quantization modelopt_fp4`) follows the nvfp4 pattern and is explicit-only.
+
+## 2026-08-16: the KV-dtype lever is measured — fp8 is confirmed, and 4-bit is a small-class lever, not a free one
+
+[docs/29](docs/29-plan-and-loose-ends.md) §F5 had carried this since the release megathread: the
+pinned r34 build advertises seventeen `--kv-cache-dtype` values, **every number we publish used
+`fp8`**, and no 4-bit scheme had ever been measured here for capacity, retrieval or fidelity. A
+reader asked directly whether quantized KV destroys long-context quality. Both are now answered on
+the physical RTX 5090, on the promoted four-module release image with no bind mounts, in 43 vLLM
+launches over a 4 h 15 min window: [`docs/38`](docs/38-kv-dtype-sweep.md),
+[`receipts/kv-dtype-sweep-5090.json`](receipts/kv-dtype-sweep-5090.json).
+
+**The baseline reproduces, which is what licenses the rest.** The `fp8` arm was re-measured, not
+cited, and printed 29.98 GiB budget, 18.19 / 1.78 / 0.27 / 0.45 usage, a 9.28 GiB pool, **265,122**
+KV tokens, 1.01x at 262,144, block 1600 and 107.36 tok/s median decode — every figure identical to
+the qualification's gate 1, which ran on the three-module image.
+
+**Eight of seventeen dtypes start; nine refuse, with verbatim errors.** Two refusals retire plan
+items. All four **TurboQuant** presets load the model and then die in KV cache creation with
+`Unknown TurboQuant cache dtype: 'auto'` — the presets are not mapped into `KVQuantMode`, so the
+spec reports `NONE`, the literal string `auto` reaches `TurboQuantConfig.from_cache_dtype`, and it
+raises; §F5's `turboquant_4bit_nc` arm cannot exist in this image. **`nvfp4`** (added mid-run at
+Main's request, on the owner's unverified report that this fork serves GLM-5.2 with nvfp4 KV)
+fails in backend selection with all five candidates reporting `kv_cache_dtype not supported` — not
+`head_size` 256, not sm120, not the GDN hybrid — and an off-GPU replay of the build's own
+`get_valid_backends` finds no backend in any shape probed, MLA included.
+
+**Fidelity is the part that decided it, and retrieval would have lied.** Graded against a
+**`bfloat16` KV cache** at a 98,304-token context on byte-identical greedy prompts, `fp8` holds
+0.9560 top-1 agreement and 0.001655 nats of truncated top-20 KL — so quantized KV does *not*
+destroy long-context quality and the shipped default is not the weak link. `int4_per_token_head`
+retrieved **10/10** needles exactly while carrying **3.6x** that error (0.005948). Forty-four
+needle retrievals across five arms, forty-four exact: a needle table alone would have called 4-bit
+free. Every arm's repeat run was byte-identical with a maximum logprob delta of exactly 0.0, so the
+harness has no run-to-run noise. These are **not** v5 KLD numbers and may never be differenced
+against them.
+
+**Two arms dominate `fp8` on capacity and fidelity at once, and lose on prefill.**
+`int8_per_token_head` and `fp8_per_token_head` both allocate **272,453** tokens against 265,122 and
+both sit closer to the bfloat16 reference than `fp8` does — and both pay **3.0x prefill**, 544 s
+against 180 s on the same 261,795-token prompt, because TRITON_ATTN is the only backend that
+accepts them. Their capacity edge is not even a KV-byte effect: they cost *more* per token, and the
+0.39 GiB comes from a 0.06 GiB CUDA-graph pool against `fp8`'s 0.45.
+
+**The affine law is re-derived per dtype from twenty startup refusals**, and using the engine's own
+block quantisation pins `a` to an integer count of charged layers — **17 with MTP-3, 16 with MTP
+off**, for every dtype. `fp8` MTP-3 comes out at **34,816 B/token and 0.63 GiB**, digit for digit
+the published law, from independent refusals on a different image. `M` turns out to be essentially
+**dtype-independent** (0.619–0.631 GiB with MTP-3) across a 3.9x range of per-token cost, and
+4-bit is 51.6 % of fp8 rather than 50 % because the dynamic scales add 32 B/token/layer back. One
+sharpening is offered and **not** applied: the exact form makes MTP-off `a` exactly 32,768 rather
+than the published 32,932.
+
+**Class consequence, memory form of the ≥15 % rule, controlled by reproducing 24,576 and 28,672
+exactly from the published law.** Exactly one arm moves them: `int4_per_token_head` takes 24 GB
+MTP-3 to **53,248** and 16 GB MTP-off to **57,344**, roughly doubling both. The two 8-bit
+per-token-head schemes change neither. And the **withdrawn 16 GB MTP-3 row stays withdrawn for
+every dtype** — its pool allows 0.4809 GiB and the smallest fixed term any dtype achieves is
+0.6188, so a free KV cache would not start it. Every class window here is a prediction; none was
+started, and the pool itself moved with dtype on the 5090.
+
+**Verdict: `fp8` is confirmed as the right default, and the alternatives are now measured rather
+than assumed.** What would change it is one build: if a FLASHINFER build accepted per-token-head
+scales and the 3.0x prefill went away, `int8_per_token_head` would be strictly better on this card.
+The owner's `qwen38-27b` was restored and proven before hand-over — systemd active, podman healthy,
+`/health` 200, `Qwen3.8-27B` at 262,144, an 8-token greedy completion on the expected fingerprint,
+and all fifteen snapshot-enumerated `podman inspect` fields identical to
+`receipts/aiboss-live-service-snapshot.json`. It was then stopped at 13:04:44Z by `V2RunnerDepth`
+taking the next 5090 window, confirmed directly; the final restore belongs to `LMCacheTest`.
