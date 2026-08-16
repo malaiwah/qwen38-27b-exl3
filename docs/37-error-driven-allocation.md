@@ -147,6 +147,17 @@ K8→K4 and K7→K3, four and five bits from the anchor. Only 3 of 400 modules e
 the worst is `layers.1.linear_attn.out_proj` at 47 % predicting K4 from K8. Adjacent-width
 prediction, which is what an allocator actually needs, is the ~1 % case.
 
+**Out-of-sample, on modules the ladder never measured (2026-08-16).** Everything above is held out
+*within* the five-rung ladder. The S16-V conversion supplied the first test outside it. The ladder
+has **no K3 rung at all** for the 96 body modules below the 52M-parameter big-module threshold, so
+the S16-V pre-registration extrapolated them as `eps(3) = eps(4)·eps(4)/eps(5)` and committed that
+before converting. The converter's **realised** K3 proxy errors match that extrapolation at a
+**median ratio of 1.0164 and a maximum of 1.0455**, while the 304 modules that *do* have a measured
+rung match theirs at median 0.9957 (min 0.9731, max 1.0093). So the per-bit shape holds one rung
+below its fit, on modules where it was never measured, to within about 4.5 %
+([`sixteen-flip-kld.json`](../receipts/sixteen-flip-kld.json) → `ladder_extension`). It came free:
+the conversion was run to answer the 16 GB question, not to test this law.
+
 ### 3.4 Why 3.73 and not 4
 
 A pure information argument — one extra bit halves the quantization step, quartering a squared

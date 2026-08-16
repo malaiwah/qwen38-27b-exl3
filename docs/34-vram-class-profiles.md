@@ -178,6 +178,14 @@ Whole-tree bytes are the tensor payload plus tokenizer, configs and chat templat
 21,610,933,884 − 21,586,964,548 = 23,969,336 B for hydrated and 23,971,318 B for context, so
 **predicted disk bytes = payload + 24.0 MB [P]**.
 
+**Two more loader observations, 2026-08-16, and they change how the allowance should be read.**
+**+0.0402 GiB on S16-V at a 12.7698 GiB payload** and **+0.1067 GiB on K6-parity at 21.4533 GiB**,
+beside the existing +0.206 on hydrated at 20.1044 and +0.305/+0.312/+0.342 on the context build. The
+term clearly **scales with payload rather than being flat**, so the +0.35 [P] planning allowance is
+very conservative for small builds - at the 16 GB class it over-charges by roughly 0.31 GiB, which is
+about a third of that class's entire KV pool. S16-V's is the first loader term ever measured for a
+sub-4-bit build ([`sixteen-flip-kld.json`](../receipts/sixteen-flip-kld.json)).
+
 **Resident weights** are the same payload with the embedding replaced by its resident form,
 plus a loader overhead measured at +0.305 to +0.312 GiB on the context build across all four of
 its published embed/MTP combinations, +0.206 GiB on hydrated, and +0.342 GiB in the
@@ -553,6 +561,18 @@ cost appears in the hydrated as-served comparison, +0.000125 [+0.000107, +0.0001
 | resident payload, int8 embed **[P]** | | 12,440,105,028 | | 11.586 |
 | **resident weights [P]** | | | | **11.94** |
 
+**The prediction above is now measured, and the error is zero.** S16-V was converted and scored on
+2026-08-16: the conversion landed a tensor payload of **13,711,503,428 B**, identical to the
+predicted 13,711,503,428 B, and the K6-parity build repeats the feat exactly at 23,035,310,148 B -
+the affine law's first two tests below and above this profile's width, both exact
+([`sixteen-flip-kld.json`](../receipts/sixteen-flip-kld.json),
+[`k6-parity-kld.json`](../receipts/k6-parity-kld.json)). Note what made the comparison meaningful:
+the MLP width override had to be scoped to the language-model body, because the loose form the
+hydrated build used also promotes the MTP draft's three MLP projections; left loose, the build would
+have undershot this row by 33,423,360 B and the row would have read as "correct" against a recipe it
+does not describe. **And the fidelity verdict is now measured too - see §6.4: it is NO, but not for
+the reason this document originally gave.**
+
 **Which recipe each row above prices, and one build-script trap.** Audited row by row against the
 published manifests, independently of this document's own arithmetic
 ([`byte-law-recipe-audit.json`](../receipts/byte-law-recipe-audit.json),
@@ -638,6 +658,31 @@ lower on the head (K6 → K4) — every one of them in the direction that made K
 published candidate. The result could plausibly land anywhere in 0.03-0.10 **[P, extrapolation
 only: the ladder has no point below 4 bits, so this is a range with a shape, not an estimate]**.
 A card that prints a number here without §8.2 having passed is fabricating it.
+
+**Measured 2026-08-16, and the answer is NO — but the reason this document gave was wrong.**
+S16-V was built and scored on shard 0 of the v5 suite: **0.045374 mean KLD [0.041959, 0.049351]**,
+top-1 91.73 %, p99.9 2.3704, max 12.5031, 512 contexts and 1,048,064 scored positions. Paired per
+context it loses **512 of 512 to K4** (+0.035028 [+0.032382, +0.038117], **4.39x** its 0.010345) and
+**512 of 512 to the context edition** (+0.041964 [+0.038790, +0.045661], **13.31x**), with every one
+of the five strata losing and every interval excluding zero — worst on code and literary, best on
+scientific ([`sixteen-flip-kld.json`](../receipts/sixteen-flip-kld.json)). The pre-registered rule
+keyed NO to a mean above 0.030, so this is a NO at 1.5x the threshold. It is the first sub-4-bit
+width ever measured for KLD in this family, at any role, on any suite.
+
+**The pre-registration held, including a miss worth printing.** The registered range [0.03, 0.10]
+contains the result and so does the independent `sqrt_energy` surrogate bracket [0.0318, 0.0585],
+but the registered primary point estimate of **0.0689 was 1.52x too high** — the build is *better*
+than the byte-law estimate and still nowhere near good enough. Direction and magnitude of that miss
+are in the receipt rather than reframed after the fact.
+
+**And the class was never lost on bytes.** With the measured loader term for this build (+0.0402 GiB,
+§2) the int8-embedding resident figure is **11.626 GiB against budgets of 12.70 and 12.49 — 1.07 and
+0.86 GiB of headroom**. The weights fit comfortably. The 16 GB no-go therefore now rests on
+**measured fidelity**, which is a harder and cleaner finding than the budget argument it replaces,
+and the paragraph above stands only as the reasoning that was available before the measurement
+existed. Flip items (2) a physical 16 GB boot, (3) needle and image-plus-text at the 4.2 MP cap on a
+K3 body, and (4) the weighted non-termination check remain untouched and open. The rejected
+checkpoint is kept and published rather than deleted, because a NO nobody can audit is an assertion.
 
 ## 7. Knobs, ranked
 
