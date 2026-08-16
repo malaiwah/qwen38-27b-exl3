@@ -1128,7 +1128,7 @@ rather than against your own conversion, and read a byte diff below this floor a
 rather than as tampering, corruption or a changed recipe. The same run also showed the recorded
 build environment is incomplete: the pinned image has no `marisa_trie`, which the conversion
 imports on an unconditional path, so that image provably could not have finished the job. The
-conversion-capable image is `docker/Dockerfile.gg-r34-convert`. This is the converter's sense of
+conversion-capable image is `gg-r34-convert`. This is the converter's sense of
 reconstruction only — the runtime's `reconstruct_had_slice` / `reconstruct_fp8_slice` path, which
 turns stored trellis bytes back into weights at load, is a different claim and is untouched here.
 

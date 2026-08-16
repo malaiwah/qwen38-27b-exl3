@@ -255,7 +255,7 @@ than a broken one. The numbers on this card measure the bytes published here, so
 converter, not as tampering or corruption. Two footnotes from the same measurement: the recorded
 build environment is incomplete — the pinned r34 image has no `marisa_trie`, which the conversion
 imports on an unconditional path, so the conversion-capable image is
-`docker/Dockerfile.gg-r34-convert` — and none of this touches the runtime's weight-reconstruction
+`gg-r34-convert` — and none of this touches the runtime's weight-reconstruction
 path (`reconstruct_fp8_slice`, reconstructed prefill), which is a different sense of the word.
 
 **You do not need this checkpoint to check the headline.** Its 512-context hidden-state capture and

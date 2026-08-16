@@ -161,7 +161,7 @@ against the output of your own conversion. One environment gap came with the sam
 image the build record names has no `marisa_trie`, which this conversion imports twice on
 unconditional paths, so that environment provably could not have run the job to completion. The
 published environment record is therefore incomplete, and the conversion-capable image is
-`docker/Dockerfile.gg-r34-convert`. None of this touches the **runtime's** weight reconstruction
+`gg-r34-convert`. None of this touches the **runtime's** weight reconstruction
 (`reconstruct_fp8_slice`, the reconstructed-prefill path below), which turns stored trellis bytes
 back into weights at load; that is a different sense of the word and nothing here bears on it. The
 1,199-tensor check above is the converter-side sense: names and shapes, verified by the finalizer.
@@ -1032,7 +1032,7 @@ One correction to that chain: the container digest it records is **not** a compl
 record. The image behind that digest has no `marisa_trie`, which this conversion imports on two
 unconditional paths, so it could not have run the build to completion on its own; something in the
 published run supplied the dependency and nothing recorded what. The conversion-capable image is
-`docker/Dockerfile.gg-r34-convert`. The shard digests the file carries are unaffected — they
+`gg-r34-convert`. The shard digests the file carries are unaffected — they
 describe the published bytes, which is the artifact.
 
 That file's fidelity chain is the v3/v4 evidence. The v5 headline numbers live in their own

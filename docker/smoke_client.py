@@ -44,9 +44,13 @@ def served_models(url: str, timeout: int = 60) -> list[str]:
         return [entry["id"] for entry in json.loads(response.read()).get("data", [])]
 
 
-def chat(url: str, content, timeout: int, max_tokens: int = 64) -> tuple[dict, float]:
+def chat(url: str, content, timeout: int, max_tokens: int = 64, model: str | None = None
+         ) -> tuple[dict, float]:
+    # The recipes serve different --served-model-name values (qwen38, qwen38-k4, m), and vLLM
+    # answers 404 for an unknown model, which silently turned this fail-closed gate into four
+    # 404s. Resolve the served id from /models instead of assuming one.
     payload = {
-        "model": "m",
+        "model": model or served_models(url)[0],
         "max_tokens": max_tokens,
         "temperature": 0,
         # thinking mode would eat the whole token budget before the answer
@@ -83,7 +87,10 @@ def main() -> int:
         f"BEGIN RECORD\nsite: aiboss\nrole: production runtime smoke\n"
         f"access code: {text_code}\nEND RECORD\n"
     )
-    text_result, text_seconds = chat(args.url, text_prompt, args.timeout)
+    served = served_models(args.url)
+    if not served:
+        raise SystemExit(f"{args.url}/models served no model id")
+    text_result, text_seconds = chat(args.url, text_prompt, args.timeout, model=served[0])
     text_answer = text_result["choices"][0]["message"]["content"].strip()
     text_ok = digits_only(text_answer) == text_code
 
@@ -96,6 +103,7 @@ def main() -> int:
                                      "Answer with the digits only."},
         ],
         args.timeout,
+        model=served[0],
     )
     image_answer = image_result["choices"][0]["message"]["content"].strip()
     image_ok = digits_only(image_answer) == image_code
@@ -105,7 +113,8 @@ def main() -> int:
         "label": args.label,
         "seed": args.seed,
         "url": args.url,
-        "served_model_ids": served_models(args.url),
+        "served_model_ids": served,
+        "requested_model": served[0],
         "text": {
             "expected": text_code,
             "answer": text_answer[:120],

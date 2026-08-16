@@ -1,0 +1,23 @@
+{
+  "schema": "qwen38-external-protocol-release/1",
+  "purpose": "records what Run A deleted, and exactly what it costs to get each piece back",
+  "scope": "logits",
+  "released_at": "2026-08-16T03:09:55+0000",
+  "policy": "preserve before delete; these are the exception because every line below names either a durable source with a digest or a measured recompute cost",
+  "measurements_survive_in": [
+    "/home/mbelleau/research/receipts/wikitext-kld-run-a.json",
+    "/home/mbelleau/research/receipts/wikitext-kld-fetch-verify.json"
+  ],
+  "freed_bytes": 73455427060,
+  "freed": [
+    {
+      "what": "pipeline_base_logits.bin",
+      "bytes": 73455427060,
+      "sha256": null,
+      "recovery": "recompute",
+      "source": null,
+      "cost": "one llama-perplexity --save-all-logits pass over the two-part BF16 GGUF, measured at 2 min 54 s on an RTX PRO 6000. The remake is self-checking: it is correct only if it is again exactly 73455427060 B."
+    }
+  ],
+  "note": "serialized bytes on disk; none of this was VRAM or KV"
+}

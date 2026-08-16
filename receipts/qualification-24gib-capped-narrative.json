@@ -1,0 +1,468 @@
+{
+  "head": {
+    "title": "24 GiB-class PROXY qualification of malaiwah/Qwen3.8-27B-EXL3-K5K6-context, by capping the engine's budget on a physical RTX 5090",
+    "one_line": "both published 24 GB-class predictions PASS all seven gates at a capped 24 GiB-class budget on the physical RTX 5090, and the board-faithful arm passes them at exactly the 22.49 GiB budget a 24 GiB board computes at the qualified 0.955 -- but 32,768 with MTP-3 clears the KV requirement by only 5.8 % and clears the combined text-plus-7 MP-image gate by 68 MiB of a 24 GiB board's 24,118 MiB, so it is a pass on the edge, it fails outright under the conservative 18.41 GiB resident figure, and it does not meet this project's own >=15 % headroom rule. 45,056 with MTP off passes with 70.8 % headroom. The physical-board gate remains OPEN.",
+    "claim_scope": "NO 24 GB BOARD WAS USED. This receipt caps what the engine may take on the physical RTX 5090 that receipts/qualification-5090-context.json qualified, and runs that qualification's own gates 1-7 at the capped budget. It is a proxy for a 24 GiB board and must never be cited as a qualification of one. The physical-board gate that docs/34 requires before any 24 GB fit claim REMAINS OPEN, and `physical_board_gate` in this receipt says so on purpose. Nothing here licenses a fit claim, a 24 GB row in a model card, or a 24 GB context length quoted as a capability.",
+    "what_this_measures_and_what_it_cannot": {
+      "measures": [
+        "whether the engine starts at a 24 GiB-class budget at each published length, and how many KV tokens it then allocates, which is a property of the budget alone and therefore transfers to a physical board of the same budget",
+        "whether requests of the published shapes complete at that budget: a native-length-for-the-profile text needle, a combined long-text-plus-7 MP-image request, three warmed decode runs, and a second long request after the first is released",
+        "the four memory components the engine reports, which is the direct test of whether a capped budget changes weight, activation, non-torch or CUDAGraph memory"
+      ],
+      "cannot_measure": [
+        "the CUDA context size and driver framebuffer reserve of a real 24 GiB board. Both are properties of the physical device. This card's reserve is 458 MiB and its context is 0.496 GiB; a 24 GiB board's may differ, and the whole 24 GiB arithmetic is only as good as those two numbers",
+        "anything about a board whose memory bus, clocks or power limit differ. Throughput here is an RTX 5090's and is never comparable with a 24 GB board's",
+        "the failure mode receipts/vram-class-verdict.json open_work F3-open-2 names, in the budget arm: an engine budget carved out of a larger card leaves the rest of that card available for allocations that live OUTSIDE the budget, which is exactly what refused the 7 MP image at utilisation 0.97 on this hardware. The board arm exists to remove that unearned slack, and only the board arm can see that failure mode"
+      ]
+    },
+    "engine_budget_mechanism": {
+      "why_it_is_here": "the brief asked for a utilisation value that lands the engine's own reported budget at or just under 24.0 GiB. That requires knowing what the engine multiplies, and the answer corrects a soft constant in receipts/vram-class-verdict.json.",
+      "rule": "requested = ceil(init_snapshot.total_memory * gpu_memory_utilization), from vllm/v1/worker/utils.py request_memory() in this image; startup then raises ValueError if init_snapshot.free_memory < requested",
+      "base_is_total_never_free": "init_snapshot.total_memory is cudaMemGetInfo's total, which is nvidia-smi FB Total minus nvidia-smi FB Reserved: 32,607 - 458 = 32,149 MiB = 31.3955 GiB = 33,710,669,824 B on this card. It coincides with nvidia-smi's free-at-idle figure only because idle used is 2 MiB, so the 0.98125 nominal-to-usable fraction in receipts/vram-class-verdict.json is really nominal-to-(total-minus-driver-reserve). Reported to SixteenGigVerdict, who amended that receipt's card_budget_model.constants.",
+      "base_confirmed_to_the_byte_from_a_log": "at utilisation 0.7643 the engine printed budget 24.0 GiB and advised `--kv-cache-memory-bytes=3385755786` to fit the request and `=10799671296` to fill the card. Both advice figures subtract the same non-KV term and the same 150 MiB redundancy buffer, so their difference is free - requested = 7,413,915,510 B = 6.9047 GiB; with free = 30.9 GiB that puts requested at 23.995 GiB, which is ceil(33,710,669,824 x 0.7643) exactly.",
+      "kv_pool_is_not_clamped_by_free_memory": "available_kv = requested - non_kv_cache_memory - cudagraph_estimate, with no free-memory term (vllm/v1/worker/gpu_worker.py). The free-memory figure appears only in the startup refusal and in the advisory `to fully utilize gpu memory` number. This is why the budget arm and the board arm allocate KV as if they were the boards they emulate, and why only the outside-budget behaviour differs.",
+      "why_not_0_7643": "0.7643 prints '24.0 GiB', which is 23.995 rounded to the engine's two decimals and therefore not evidence of anything at or below 24.0. The published budget arm uses 0.7635, which prints 23.97 and cannot be misread."
+    },
+    "arms": {
+      "budget": {
+        "what_it_emulates": "a 24 GiB board's engine budget only",
+        "gpu_memory_utilization": 0.7635,
+        "derivation": "24.0 GiB / 31.3955 GiB = 0.76431, rounded DOWN to 0.7635 so the printed budget is unambiguously below 24.0",
+        "expected_budget_gib": 23.97,
+        "ballast": null,
+        "honest_label": "over-generous. The engine is capped but the card is not: roughly 7 GiB of this 32 GiB board stays free for allocations outside the budget, which no 24 GiB board would have."
+      },
+      "board": {
+        "what_it_emulates": "a 24 GiB board's engine budget AND its card, at the qualified 0.955 utilisation",
+        "gpu_memory_utilization": 0.7164,
+        "derivation": "a physical 24 GiB board's cudaMemGetInfo total is 24,576 - 458 = 24,118 MiB = 23.5527 GiB, so at the qualified 0.955 its budget is 22.4928 GiB; 22.4928 / 31.3955 = 0.71643 -> 0.7164, which prints 22.49 and matches receipts/vram-class-verdict.json card_budget_model's 22.49 GiB engine budget for the class",
+        "expected_budget_gib": 22.49,
+        "ballast": "a second process in the same image holds cudaMemGetInfo free at 23.553 GiB before the engine starts, so the engine's own init snapshot sees the free figure a 24 GiB board would report and the card outside the budget is as small as that board's",
+        "honest_label": "the informative arm. It is the one that can fail, and a failure here is a statement about the published prediction, not about the proxy."
+      }
+    },
+    "identity": {
+      "inherits_from": "receipts/qualification-5090-context.json identity, unchanged and deliberately so: same physical GPU (GPU-506a575d-01d7-b12e-9a0a-c1ab5f38ae0a), same runtime image by digest sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b, same three read-only patch bind mounts verified by sha256 before every launch, same harness files, same model revision c45c273b0d6ef2859cb2d85b36dd52253c80d878, same PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True, same --max-num-seqs 1, --max-num-batched-tokens 2048, --kv-cache-dtype fp8, --max-pixels 8388608 and FULL_DECODE_ONLY cudagraphs with capture size [4]. Only three things change: --gpu-memory-utilization, --max-model-len, and whether --speculative-config is passed at all.",
+      "why_identity_is_reused": "so every number here is differenceable against the full-budget qualification line for line. A baked-patch image was available and was deliberately not used.",
+      "gpu": {
+        "model": "NVIDIA GeForce RTX 5090",
+        "uuid": "GPU-506a575d-01d7-b12e-9a0a-c1ab5f38ae0a",
+        "physical_card": true,
+        "emulated_board": "24 GiB class, by capped engine budget and by ballast; NOT a 24 GiB board",
+        "memory_total_mib": 32607,
+        "memory_reserved_by_driver_mib": 458,
+        "cuda_total_mib": 32149,
+        "cuda_total_bytes": 33710669824
+      },
+      "runner": {
+        "tools/proxy24_capped.sh": "one invocation = one engine process serving one subset of gates",
+        "tools/proxy24_chain.sh": "the eight invocations, with the arithmetic for both utilisation values in its header",
+        "tools/proxy24_ballast.py": "the board arm's ballast process",
+        "tools/assemble_proxy24_receipt.py": "builds this receipt from the run artifacts; every number in it is parsed from an artifact"
+      },
+      "gate_set": "receipts/qualification-5090-context.json gates 1-7, same harness files (longctx.py a63b087d..., longmm.py bcd6527f..., vision_eval.py 7bf9a7be..., bench.py d5dfd9db..., fixture 7e3748a4...), with only the request lengths scaled to each profile's window",
+      "process_split": "each profile x arm ran TWO engine processes, tags ending -e (gates 1, 2, 5, 6) and -m (gates 1, 3, 4), because the r34 image lacks upstream vLLM #51113 and no long-context gate may reuse a process that already served a different-length long request. Gate 6 deliberately reuses gate 2's process at the same length, since in-process recovery of the allocation is what it tests.",
+      "runs_included": "twelve run entries: eight gate runs (two arms x two profiles x two engine processes), four startup-only KV-law probes, and the discarded utilisation-0.7643 calibration run, kept because it is the evidence for the byte-exact CUDA total and for why 0.7643 was rejected."
+    },
+    "pre_registered_predictions": {
+      "why": "written before the gates ran, so the measurement can falsify something. Predictions use the KV law SixteenGigVerdict traced to vllm/v1/core/kv_cache_utils.py get_kv_cache_capacity(): reported tokens = int(max_concurrency * max_model_len) with max_concurrency = num_blocks / cdiv(max_memory_usage_per_request, memory_per_block), so pool = a*T + M*(T/L) and the per-request cost is affine in the WINDOW, not in the token count.",
+      "law_constants": {
+        "a_mtp3_bytes_per_token": 34816,
+        "a_mtp3_derivation": "solved from two measured windows -- the physical qualification (L=262,144, pool 9.28 GiB, 265,122 tokens) and this agent's L=32,768 run (pool 3,543,042,186 B, 62,557 tokens) -- which give a in [34,839, 34,894] B/token across the qualification pool's 2-decimal rounding; 34,816 = 32,768 x 17/16 is inside that interval and is the engine's own 'may waste at most 6.25% KV cache memory' padding line, so it is used as the exact value",
+        "M_mtp3_gib": 0.6659,
+        "M_mtp3_derivation": "1.7284 GiB measured per-request cost at L=32,768 minus a x 32,768 = 1.0625 GiB",
+        "a_mtpoff_bytes_per_token": 32929,
+        "a_mtpoff_source": "docs/34 section 4, from receipts/context-capacity-5090-budget.json runs['attn-k5'] (8.18 GiB, 266,743 tokens, L=262,144); that run used max_num_seqs 4 and this one uses 1, which is a known imperfection in the comparison",
+        "M_mtpoff_gib": 0.0,
+        "M_mtpoff_note": "the MTP-off datapoint leaves no room for a fixed term at all: subtracting one would put a below the 32,768 B fp8 tensor floor. SixteenGigVerdict bounds it at <= 0.039 GiB.",
+        "non_kv_gib_mtp3": 20.69,
+        "non_kv_gib_mtpoff": 20.438,
+        "non_kv_source": "18.19 weight + 1.78 activation + 0.27 non-torch + 0.45 CUDAGraph, measured identically at the full 29.98 GiB budget and at a 23.995 GiB budget; MTP off subtracts the 0.252 GiB of draft weights"
+      },
+      "predictions": {
+        "budget/mtp3_32768": {
+          "budget_gib": 23.9705,
+          "pool_gib": 3.2805,
+          "per_request_gib": 1.7284,
+          "tokens": 62193,
+          "concurrency": 1.898,
+          "starts": true
+        },
+        "budget/mtpoff_45056": {
+          "budget_gib": 23.9705,
+          "pool_gib": 3.5325,
+          "per_request_gib": 1.3818,
+          "tokens": 115186,
+          "concurrency": 2.557,
+          "starts": true
+        },
+        "board/mtp3_32768": {
+          "budget_gib": 22.4917,
+          "pool_gib": 1.8017,
+          "per_request_gib": 1.7284,
+          "tokens": 34158,
+          "concurrency": 1.042,
+          "starts": true
+        },
+        "board/mtpoff_45056": {
+          "budget_gib": 22.4917,
+          "pool_gib": 2.0537,
+          "per_request_gib": 1.3818,
+          "tokens": 66967,
+          "concurrency": 1.486,
+          "starts": true
+        },
+        "probe_131072_mtp3": {
+          "per_request_gib": 4.9159,
+          "starts": false,
+          "purpose": "a refusal is the cheapest possible measurement of a*L + M at a second window, because the engine prints the KV GiB it needed for one request"
+        },
+        "probe_131072_mtpoff": {
+          "per_request_gib": 4.0197,
+          "starts": false,
+          "purpose": "same, for the MTP-off constants"
+        }
+      },
+      "the_tight_one": "board/mtp3_32768 at concurrency 1.042. The published 32,768 [P] for the 24 GB class survives on 4 % of margin if the 18.19 GiB resident figure is used and fails outright at the 18.41 GiB figure receipts/vram-class-verdict.json chose to be conservative with; the two published resident weights therefore straddle the prediction, which is why this arm is the measurement that matters.",
+      "outside_budget_slack_gib": {
+        "budget_arm": 6.9295,
+        "board_arm": 0.5658,
+        "why_it_matters": "the qualification's combined 236,824-token plus 7 MP request peaked at 31,690 MiB of 32,607 with 917 MiB of card still free, and the same request at utilisation 0.97 failed with 26.5 MiB free. The board arm leaves 0.566 GiB outside the budget, so gate 3 there is a genuine test and gate 3 in the budget arm is not."
+      }
+    }
+  },
+  "body": {
+    "gpu_stewardship": {
+      "queue": "physical 5090: PerfSweep5090 -> ApcPoisonRepro -> TwentyFourGigProxy, announced over hub and handed over by name",
+      "contention_incident": "at 2026-08-16T02:59:13Z this agent ran what it intended as a REFUSAL test of its preflight guard while PerfSweep5090 owned the card. nvidia-smi reported memory.used = 2 MiB at that instant because that agent's sweep tears its server down between rows, so the guard allowed it and an engine ran for 128 s. It collided with PerfSweep5090's `eagerbase` arm, which produced no probe output and had to be rerun. Reported to that agent immediately with timestamps. No other run was affected and nothing of theirs was modified.",
+      "fix": "ownership is now a hub fact, not a memory reading: tools/proxy24_capped.sh refuses to launch unless a handover token file exists naming the agent that handed the card over, and the nvidia-smi check survives only as a secondary sanity test. Verified by running the script with no token: it exits 4 before creating any CUDA context. Compute mode Exclusive_Process does not help here, since it only bars a second context while one is live and therefore admits anything starting in a teardown gap.",
+      "restore": {
+        "handed_to": "ShipPrefixCaching at 2026-08-16T05:02Z, named explicitly over hub",
+        "service_state_at_handover": "UP and healthy. The service was running when ApcPoisonRepro handed the card over, so it was restored rather than left down, and the next owner stops the unit themselves as this agent did.",
+        "restore_proof": {
+          "unit": "systemctl --user start qwen38-27b.service -> active; podman health -> healthy after 95 s",
+          "health_http": 200,
+          "models_endpoint": "Qwen3.8-27B at max_model_len 262144",
+          "real_completion": "prompt 'The capital of France is' -> ' Paris.' (5 prompt tokens, 8 completion tokens)",
+          "gpu_after_restore": "30,449 MiB used / 1,702 MiB free, which is receipts/aiboss-live-service-snapshot.json gpu_state_before_stop to the MiB",
+          "compute_mode": "Exclusive_Process, restored at 04:59Z after the board arm needed DEFAULT",
+          "persistence_mode": "Enabled",
+          "power_limit_w": 400.0,
+          "podman_inspect_fields_identical": [
+            "image_id",
+            "image_name",
+            "entrypoint",
+            "cmd",
+            "env_count",
+            "env_set_of_108",
+            "network_mode",
+            "ipc_mode",
+            "shm_size",
+            "devices",
+            "stop_signal"
+          ],
+          "podman_inspect_fields_differing": {
+            "binds": "identical as a SET of three, but podman does not preserve their order between runs",
+            "user": "'' against the snapshot's 'root'; podman exec qwen38-27b id -un returns root, the representation artefact ApcPoisonRepro documented"
+          }
+        },
+        "left_behind": "nothing running. No proxy24-* containers, port 8300 free, /home/mbelleau/qual5090/cache/jit and cache/exl3-online untouched and still warm, /home/mbelleau/apcrepro untouched."
+      }
+    },
+    "verdict": {
+      "physical_board_gate": "open -- and nothing here closes it. Every figure below is measured on an RTX 5090 whose engine budget, and in the board arm whose available card, were capped to 24 GiB-class values.",
+      "gates_1_to_7": {
+        "budget_arm_mtp3_32768": "7/7 PASS",
+        "budget_arm_mtpoff_45056": "7/7 PASS",
+        "board_arm_mtp3_32768": "7/7 PASS, on the edge (see kv_headroom and the vision peak)",
+        "board_arm_mtpoff_45056": "7/7 PASS with margin"
+      },
+      "gate7_receipt_identity_complete": "PASS: this receipt carries GPU identity, image digest, patch digests, harness digests, model revision, every podman and vllm argv, both utilisation derivations, the ballast calibration and per-gate artifacts with sha256.",
+      "what_passed_that_could_have_failed": "the board arm at 22.49 GiB is the arithmetic receipts/vram-class-verdict.json publishes for a 24 GiB board at the qualified utilisation. It started, allocated 33,760 KV tokens for a 32,768 window (1.03x concurrency), retrieved a 32,601-token needle exactly twice in the same process, served a 30,903-token-plus-7 MP-image request with code and colours exact, scored 24/30 on the image suite and decoded at 98.96 tok/s.",
+      "what_this_does_not_say": "it does not say a 24 GB board serves 32,768 tokens. It says an RTX 5090 restricted to a 24 GiB-class budget and a 23.55 GiB-class card does. The CUDA context (0.496 GiB here) and driver framebuffer reserve (458 MiB here) are properties of the physical device, and at 68 MiB of measured margin on the vision gate either one moving by a tenth of a gigabyte flips the result."
+    },
+    "capped_budget_log_evidence": {
+      "requirement": "the brief required the engine's own startup log, not arithmetic, to show a budget at or under 24.0 GiB.",
+      "budget_arm_line": "Free memory on device (30.9/31.4 GiB) on startup. Desired GPU memory utilization is (0.7635, 23.97 GiB). Actual usage is 18.19 GiB for weight, 1.78 GiB for peak activation, 0.27 GiB for non-torch memory, and 0.45 GiB for CUDAGraph memory",
+      "budget_arm_verdict": "23.97 GiB <= 24.0 GiB, printed by the engine, in all four budget-arm runs (a32e, a32m, a45e, a45m)",
+      "board_arm_line": "Free memory on device (23.06/31.4 GiB) on startup. Desired GPU memory utilization is (0.7164, 22.49 GiB). Actual usage is 18.19 GiB for weight, 1.78 GiB for peak activation, 0.27 GiB for non-torch memory, and 0.45 GiB for CUDAGraph memory",
+      "board_arm_verdict": "22.49 GiB, which is the figure receipts/vram-class-verdict.json card_budget_model derives for a physical 24 GiB board at the qualified 0.955 utilisation, and the free figure the engine reports at its own init is 23.06 GiB, which is that board's 23.5527 GiB CUDA total minus the engine's own 0.496 GiB context",
+      "rejected_value": "utilisation 0.7643 printed '24.0 GiB'. That is 23.995 rounded to the engine's two decimals and is not evidence of anything at or under 24.0, so it was discarded and rerun at 0.7635. The discarded run is receipts/qualification-24gib-capped-server-preflight.log and is where the byte-exact CUDA total was established.",
+      "ballast_calibration": {
+        "target_cuda_free_gib": 23.553,
+        "achieved_cuda_free_gib": 23.551,
+        "target_error_mib": -1.71,
+        "ballast_tensor_gib": 7.237,
+        "ballast_process_context_gib": 0.607,
+        "ballast_total_device_footprint_gib": 7.845,
+        "engine_free_at_init_gib": 23.06,
+        "note": "the ballast pays a 0.607 GiB CUDA context of its own, which a physical 24 GiB board does not; it is inside the 7.845 GiB held and therefore does not distort the free figure the engine sees, which is the only figure that matters."
+      },
+      "compute_mode_deviation": {
+        "what": "the board arm needs two CUDA contexts on one device (ballast plus engine) and this card runs Exclusive_Process, so the first board-arm attempt failed at ~25 s with cudaErrorDevicesUnavailable and 'CUDA-capable device(s) is/are busy or unavailable'.",
+        "fix": "compute mode was set to DEFAULT for the board arm and back to EXCLUSIVE_PROCESS at 04:59Z, verified by nvidia-smi. The live service's unit re-applies EXCLUSIVE_PROCESS on every start, so the relaxation is self-healing.",
+        "does_it_affect_the_result": "no. Compute mode gates context creation, not allocation, scheduling or kernel behaviour. The budget arm ran under Exclusive_Process and the board arm under Default, and their weight, activation, non-torch and CUDAGraph figures are identical to the hundredth of a GiB.",
+        "failed_attempt_artifacts": "the first board attempt survives in full in receipts/qualification-24gib-capped-chain.log (all four b* runs, including the cudaErrorDevicesUnavailable traces) and in the per-tag driver logs, which append rather than truncate: qualification-24gib-capped-driver-b32e.log carries both the 04:40:55Z attempt with its 'STARTUP FAILED' line and the 04:49:02Z rerun. The per-tag gates and server files were truncated by the rerun, which is why the chain and driver logs are published."
+      }
+    },
+    "kv_law_measured": {
+      "why_this_is_here": "the published 24 GB lengths depend entirely on how many KV tokens a pool buys, and receipts/vram-class-verdict.json had to bound that with a range because only one window had ever been measured. Two startup refusals per configuration pin it exactly, at a cost of four 100-second runs.",
+      "mechanism": "get_kv_cache_capacity() returns int(max_concurrency * max_model_len) with max_concurrency = num_blocks / cdiv(max_memory_usage_per_request, memory_per_block) (vllm/v1/core/kv_cache_utils.py, traced by SixteenGigVerdict). So the quantity that scales is the per-REQUEST cost at the configured window, and a refusal prints it directly: 'To serve at least one request with the model's max seq len (L), (X GiB KV cache is needed, which is larger than the available KV cache memory (P GiB). Based on the available memory, the estimated maximum model length is L_max'.",
+      "measurements": [
+        {
+          "config": "MTP-3, fp8 KV, max_num_seqs 1",
+          "window": 131072,
+          "kv_needed_gib": 4.88,
+          "pool_gib": 3.27,
+          "engine_estimated_max_len": 81600,
+          "tag": "p131k3"
+        },
+        {
+          "config": "MTP-3, fp8 KV, max_num_seqs 1",
+          "window": 262144,
+          "kv_needed_gib": 9.13,
+          "pool_gib": 3.27,
+          "engine_estimated_max_len": 81600,
+          "tag": "p262k3"
+        },
+        {
+          "config": "MTP off, fp8 KV, max_num_seqs 1",
+          "window": 131072,
+          "kv_needed_gib": 4.16,
+          "pool_gib": 4.08,
+          "engine_estimated_max_len": 128576,
+          "tag": "p131koff"
+        },
+        {
+          "config": "MTP off, fp8 KV, max_num_seqs 1",
+          "window": 262144,
+          "kv_needed_gib": 8.18,
+          "pool_gib": 4.08,
+          "engine_estimated_max_len": 128576,
+          "tag": "p262koff"
+        }
+      ],
+      "law": {
+        "form": "kv_needed(L) = a * L + M, and reported tokens = int(L * pool / kv_needed(L))",
+        "mtp3": {
+          "a_bytes_per_token": 34816.0,
+          "a_as_multiple_of_fp8_floor": 1.0625,
+          "a_note": "exactly 32,768 x 17/16, i.e. the fp8 tensor floor plus one sixteenth, which is the engine's own 'Add 3 padding layers, may waste at most 6.25% KV cache memory' line; the two refusal windows give this to the byte with no rounding slack",
+          "M_gib": 0.63
+        },
+        "mtpoff": {
+          "a_bytes_per_token": 32931.8,
+          "a_as_multiple_of_fp8_floor": 1.005,
+          "M_gib": 0.14,
+          "a_note": "matches docs/34 section 4's independently derived 32,929 B/token to 0.009 %"
+        },
+        "self_check": "inverting the law on each pool reproduces the engine's own 'estimated maximum model length' to within its two-decimal print: 81,600 tokens needs 3.2759 GiB against a pool printed as 3.27, and 128,576 needs 4.0834 against 4.08.",
+        "what_it_retires": "the H + c_tok*T model of docs/34 section 4 and its H = 0.20 GiB. The fixed term is 0.63 GiB with MTP-3 and 0.14 GiB with MTP off -- three times and one fifth of the reserve that model carried -- and it is a per-REQUEST cost at the configured window, not a per-pool constant, which is why the same pool buys 265,122 tokens at a 262,144 window and 62,557 at a 32,768 one."
+      },
+      "mtp_is_the_fixed_term": "MTP-3 costs 0.49 GiB of fixed KV per request plus 5.75 % on every token, on top of its 0.252 GiB of draft weights. At the 24 GB class that fixed term is 35 % of the entire 1.79 GiB pool, which is what makes 32,768 tight with MTP-3 and 45,056 comfortable without it."
+    },
+    "published_prediction_outcomes": {
+      "prediction_1": {
+        "published": "32,768 tokens with MTP-3 and fp8 KV (docs/34 Verdict, receipts/vram-class-verdict.json class_24_gib)",
+        "outcome": "PASS at both capped budgets, but on the edge at the board-faithful one",
+        "board_arm_measured": {
+          "pool_gib": 1.79,
+          "kv_tokens_allocated": 33760,
+          "concurrency_at_32768": 1.03,
+          "kv_needed_for_one_request_gib": 1.6925,
+          "headroom_pct": 5.8,
+          "engine_supported_window_at_this_pool": 35774
+        },
+        "why_it_is_still_a_warning": [
+          "5.8 % headroom is below the >=15 % rule docs/34 section 5.3 applies to every other published length; the largest 4,096-multiple that clears that rule at the measured pool is 24,576",
+          "it fails outright if the conservative resident-weight figure is used. At 18.41 GiB resident (receipts/native-mtp-8mp-amendment.json as-run, which the verdict deliberately chose) the pool is 1.582 GiB and the engine supports 29,350 tokens, i.e. 32,768 does NOT fit. At the 18.19 GiB this card measures, the pool is 1.802 GiB and it supports 36,135. The published figure sits between the project's own two resident-weight measurements, and which one applies is a property of the loader on the day, not of the class",
+          "the combined text-plus-image gate passed with 68 MiB of a 24 GiB board's 24,118 MiB unused"
+        ],
+        "recommended_correction": "publish 24,576 with MTP-3 for the 24 GB class, not 32,768. That clears the 15 % rule at the measured pool, survives the conservative resident figure (29,350 supported against 24,576 needed, 19.4 % headroom), and needs no new artifact. 32,768 should be described as measured-to-start on a proxy with 5.8 % KV headroom and 68 MiB of card headroom, which is not a margin anyone should ship."
+      },
+      "prediction_2": {
+        "published": "45,056 tokens with MTP off",
+        "outcome": "PASS with margin, and the published figure is conservative",
+        "board_arm_measured": {
+          "pool_gib": 2.6,
+          "kv_tokens_allocated": 76032,
+          "concurrency_at_45056": 1.69,
+          "kv_needed_for_one_request_gib": 1.5219,
+          "headroom_pct": 70.8,
+          "engine_supported_window_at_this_pool": 80208
+        },
+        "note": "the engine supports 80,208 tokens at this pool, and 65,536 is the largest 4,096-multiple clearing the 15 % rule (69,150 at the measured pool). 45,056 is therefore safe and could be raised; this receipt does not raise it, because raising a published length is a card edit and the card set is being landed centrally.",
+        "conservative_case": "at 18.41 GiB resident the pool is 2.384 GiB and the engine supports 73,155 tokens, so 45,056 survives the conservative figure too, unlike 32,768."
+      }
+    },
+    "memory_component_comparison": {
+      "question": "the brief asked whether a capped budget changes the memory components, and specifically how non-torch and CUDAGraph memory compare with the 0.27 / 0.45 GiB of the full-budget qualification.",
+      "answer": "they do not change at all with the budget. Non-torch is 0.27 GiB and CUDAGraph 0.45 GiB at 29.98, 23.97 and 22.49 GiB of budget alike, and weight and peak activation are equally invariant. Every byte the cap removes comes out of the KV pool and nothing else.",
+      "table": {
+        "full_budget_qualification_29_98_gib": {
+          "weight": 18.19,
+          "peak_activation": 1.78,
+          "non_torch": 0.27,
+          "cudagraph": 0.45,
+          "sum": 20.69,
+          "kv_pool": 9.28,
+          "source": "receipts/qualification-5090-context.json gate1"
+        },
+        "budget_arm_23_97_gib_mtp3": {
+          "weight": 18.19,
+          "peak_activation": 1.78,
+          "non_torch": 0.27,
+          "cudagraph": 0.45,
+          "sum": 20.69,
+          "kv_pool": 3.27
+        },
+        "board_arm_22_49_gib_mtp3": {
+          "weight": 18.19,
+          "peak_activation": 1.78,
+          "non_torch": 0.27,
+          "cudagraph": 0.45,
+          "sum": 20.69,
+          "kv_pool": 1.79
+        },
+        "budget_arm_23_97_gib_mtpoff": {
+          "weight": 17.94,
+          "peak_activation": 1.68,
+          "non_torch": 0.27,
+          "cudagraph": 0.0,
+          "sum": 19.89,
+          "kv_pool": 4.08
+        },
+        "board_arm_22_49_gib_mtpoff": {
+          "weight": 17.94,
+          "peak_activation": 1.68,
+          "non_torch": 0.27,
+          "cudagraph": 0.0,
+          "sum": 19.89,
+          "kv_pool": 2.6
+        }
+      },
+      "deltas_that_are_real": {
+        "non_torch": "0.27 GiB in all five configurations. Identical to the full-budget qualification. This is the CUDA context plus allocator bookkeeping and it is a property of the device and driver, not of the budget -- which is exactly why it is the component a physical 24 GiB board is most likely to differ on, and why this receipt cannot close the physical gate.",
+        "cudagraph": "0.45 GiB with MTP-3 and 0.00 GiB with MTP off, at every budget. Turning MTP off does not merely remove draft weights: it removes the captured decode graph entirely in this configuration, so MTP off is worth 0.25 GiB of weights plus 0.45 GiB of graph pool = 0.70 GiB, which is 39 % of the MTP-3 pool at this class. Nothing in docs/34 charged the graph pool to MTP.",
+        "peak_activation": "1.78 GiB with MTP-3, 1.68 GiB with MTP off. The 0.10 GiB difference is the draft model's activation.",
+        "weight": "18.19 GiB with MTP-3 and 17.94 GiB with MTP off, a 0.25 GiB difference that matches the 0.252 GiB of draft weights docs/34 section 2 predicts from the byte law."
+      },
+      "outside_the_budget": {
+        "what_it_is": "the engine's peak device footprint exceeds its budget during a combined text-plus-image request, because the vision tower's transient allocation is not part of the profiled budget.",
+        "measured_excess_gib": {
+          "budget_arm_mtp3": 1.02,
+          "budget_arm_mtpoff": 0.89,
+          "board_arm_mtp3": 0.97,
+          "board_arm_mtpoff": 0.92
+        },
+        "board_arm_peaks_mib": {
+          "after_startup": 22746,
+          "during_combined_text_and_image": 24026,
+          "during_image_suite": 24050,
+          "a_24gib_boards_cuda_total": 24118,
+          "margin_at_peak_mib": 68
+        },
+        "budget_arm_peaks_mib": {
+          "after_startup": 24290,
+          "during_combined_text_and_image": 25590,
+          "during_image_suite": 25614,
+          "a_24gib_boards_cuda_total": 24118,
+          "margin_at_peak_mib": -1496
+        },
+        "the_finding": "the budget arm's engine peaked at 25,614 MiB, which is 1,496 MiB MORE than a 24 GiB board has. A budget-only cap therefore cannot be a proxy for a board: it passed the image gates on bytes no 24 GiB board would own. This is receipts/vram-class-verdict.json open_work F3-open-2 confirmed by measurement rather than argument, and it is why the board arm exists. The board arm's engine peaked at 24,050 MiB against 24,118 available -- a pass, by 68 MiB."
+      }
+    },
+    "throughput": {
+      "comparability": "physical RTX 5090 numbers. They are not comparable with any rental RTX PRO 6000 figure and are never differenced against one. They ARE comparable with receipts/qualification-5090-context.json, same card, same image, same harness, same day.",
+      "protocol": "one warm-up request, then three timed runs, greedy, ignore_eos, 256 output tokens, concurrency 1",
+      "runs": {
+        "budget_arm_mtp3_32768": {
+          "median_tok_s": 108.9,
+          "all": [
+            109.66,
+            108.9,
+            108.75
+          ],
+          "spread_pct": 0.836,
+          "ttft_proxy_sec": 0.0555,
+          "mtp_acceptance": 0.5556,
+          "mean_accepted_length": 2.6667
+        },
+        "board_arm_mtp3_32768": {
+          "median_tok_s": 98.96,
+          "all": [
+            99.38,
+            98.96,
+            98.84
+          ],
+          "spread_pct": 0.546,
+          "ttft_proxy_sec": 0.0547,
+          "mtp_acceptance": 0.4822,
+          "mean_accepted_length": 2.4465
+        },
+        "budget_arm_mtpoff_45056": {
+          "median_tok_s": 47.47,
+          "all": [
+            47.3,
+            47.47,
+            47.71
+          ],
+          "spread_pct": 0.864,
+          "ttft_proxy_sec": 0.051
+        },
+        "board_arm_mtpoff_45056": {
+          "median_tok_s": 47.76,
+          "all": [
+            47.75,
+            47.87,
+            47.76
+          ],
+          "spread_pct": 0.251,
+          "ttft_proxy_sec": 0.0509
+        }
+      },
+      "reference_full_budget": {
+        "median_tok_s": 107.56,
+        "mtp_acceptance": 0.5648,
+        "mean_accepted_length": 2.6944,
+        "source": "receipts/qualification-5090-context.json gate5, budget 29.98 GiB, window 262,144"
+      },
+      "the_cap_costs_nothing_by_itself": "MTP off decodes at 47.47 and 47.76 tok/s at the two budgets, a 0.6 % difference in favour of the SMALLER budget, i.e. inside run-to-run noise. Capping the budget does not slow decoding.",
+      "but_the_smaller_kv_pool_costs_mtp_acceptance": {
+        "observation": "with MTP-3, the board arm decodes at 98.96 tok/s against the budget arm's 108.9, a 9.1 % loss, while MTP draft acceptance falls from 0.5556 to 0.4822 and mean accepted length from 2.6667 to 2.4465.",
+        "is_it_the_acceptance": "yes, to within a fifth of a percent: the accepted-length ratio is 2.4465/2.6667 = 0.9174 and the throughput ratio is 98.96/108.9 = 0.9087. Speculative decoding throughput tracks accepted length, so the decode loss IS the acceptance loss and not a memory-bandwidth effect.",
+        "why_acceptance_moved": "the only difference between the two arms is the KV pool size, 1.79 against 3.27 GiB, which changes the block count and therefore the paged-attention geometry the same prompt is decoded through. Numerics that differ in the last bits change which draft tokens are accepted. This is an observation from two arms, not an explanation, and it is worth a dedicated experiment: if it holds, MTP's benefit shrinks as the pool shrinks, which is precisely the direction that matters for small boards.",
+        "consistency_check": "the full-budget qualification at a 9.28 GiB pool accepted 0.5648, the 3.27 GiB pool 0.5556 and the 1.79 GiB pool 0.4822 -- monotone in pool size across three independent pools."
+      }
+    },
+    "residual_risk_versus_a_physical_board": {
+      "statement": "a physical 24 GiB board differs from this capped 32 GiB board in exactly two quantities, and both are properties of the device rather than of the configuration: the driver's framebuffer reserve, which sets how much of the nominal board CUDA can see at all, and the CUDA context, which is the first thing subtracted from what CUDA can see.",
+      "quantified_here": {
+        "driver_framebuffer_reserve_mib": 458,
+        "reserve_measured_how": "nvidia-smi -q -d MEMORY on this card: FB Total 32,607 MiB, Reserved 458 MiB, and cudaMemGetInfo total is the difference, 32,149 MiB, confirmed to the byte from the engine's own budget arithmetic",
+        "cuda_context_gib": 0.496,
+        "context_measured_how": "cudaMemGetInfo total 31.3955 GiB minus the 30.9 GiB the engine reports free at its own init, in every run of the budget arm",
+        "non_torch_gib": 0.27,
+        "non_torch_note": "identical at every budget and identical to the full-budget qualification's 0.27; this is the component the brief asked to compare and it did not move",
+        "cudagraph_gib": {
+          "mtp3": 0.45,
+          "mtpoff": 0.0,
+          "note": "the full-budget qualification measured 0.45 with MTP-3, identical. With MTP off the graph pool is 0.00, which is a configuration effect and not a budget effect"
+        }
+      },
+      "what_the_deltas_would_have_to_be_to_flip_the_result": {
+        "mtp3_32768_vision_gate": "it passed with 68 MiB spare of a 24 GiB board's 24,118 MiB. A board whose driver reserves 68 MiB more than this one's 458 MiB, or whose CUDA context is 68 MiB larger than 0.496 GiB, fails it. Both are 0.3 % perturbations. This is the single most fragile number in the receipt.",
+        "mtp3_32768_kv_allocation": "it passed with 5.8 % KV headroom. A 0.10 GiB increase in any non-KV component, or the 0.22 GiB difference between this project's two published resident-weight figures, takes 32,768 below 1.0x concurrency and the engine refuses to start.",
+        "mtpoff_45056": "70.8 % KV headroom and 120 MiB of vision margin. The KV side is not fragile; the vision margin is the same order as the MTP-3 case, because the vision transient is a property of max_pixels and not of the window."
+      },
+      "the_gate_that_remains_open": "docs/34 requires a startup on a physical board of the class before any fit claim. That gate is OPEN. This receipt is a proxy: it removes the arithmetic risk in the published lengths and replaces it with a measured allocation, and it removes the 'engine budget carved out of a big card' objection by ballasting the card down as well -- but it cannot manufacture a 24 GiB board's reserve or context, and at 68 MiB of margin that is not a rounding detail. Nobody may write 'fits on 24 GB' on the strength of this receipt.",
+      "inherited_caveats": [
+        "receipts/vram-class-verdict.json open_work F3-open-2 is NOT closed by the budget arm and is only partly answered by the board arm: the budget arm demonstrably used 1,496 MiB more than a 24 GiB board has, which is that objection made numeric.",
+        "the runtime image lacks upstream vLLM #51113, so every long-context gate ran in a freshly started process and gate 6 deliberately reuses gate 2's process at the same length.",
+        "prefix caching is off in this profile, as in the qualification, so the poisoning path is not exercised.",
+        "gate 4 scored 24/30 in the board arm, exactly on the acceptance threshold, and 25/30 in the budget arm; per-case answers are published in the run entries so the threshold can be audited.",
+        "the MTP-off comparison against docs/34 section 4's 32,929 B/token uses a max_num_seqs 4 run as its source; everything measured here is max_num_seqs 1."
+      ]
+    }
+  }
+}

@@ -6,9 +6,11 @@ model. The numbers are still not interchangeable, because the two protocols diff
 scoring geometry, reference numerics, what is inside the measured path, and how uncertainty is
 computed. Neither protocol is wrong. They measure different things, and this file says exactly
 which things, so that both numbers can be published side by side without either being quoted
-as a refutation of the other. Two of the differences it lists are no longer arguments: the
-scoring window (D1) and the cross-engine term have both been measured on our own data, and this
-file reports both. One run — theirs, on their corpus — is still open.
+as a refutation of the other. Three of the differences it lists are no longer arguments: the
+scoring window (D1), the cross-engine term, and tokenizer identity (D10) have all been measured
+on our own data. And their protocol has now been run here in full, so the two axes can be
+compared directly: the ordering agrees, the level differs by 1.1-1.6×, and the delta table
+below says which differences account for that and in which direction each one runs.
 
 Every external number below carries a source tag defined in [Sources](#sources). Every
 internal number carries a receipt path. Every byte size is serialized bytes on disk — never
@@ -184,7 +186,7 @@ measurement.
 | **D7** | uncertainty model | per-token SEM assuming i.i.d. tokens, e.g. `± 0.000073` on 0.006949 [U-LOG-Q5]; 147,900 positions | source-cluster bootstrap, 842 clusters x 10,000 resamples; 10,480,640 positions ([`kld5-10M-hyd.json`](../receipts/kld5-10M-hyd.json)) | no effect on the point estimate | their interval is narrower than an honest one for correlated tokens; do not place the two intervals side by side without saying so |
 | **D8** | framing | raw text, no chat template, no system prompt [U-LOG-B] | raw text, `add_special_tokens=False` | **none** | recorded so it is not mistaken for a difference; their own Dynamic-2.0 page argues text-only evaluation is inadequate for instruct models [U-DYN2], but that argument applies to both sides equally |
 | **D9** | contamination auditability | eval set is deliberately not their calibration set [U-DYN2], but the calibration set is private and no imatrix blob ships in the GGUF repo [HF-GGUF], so overlap is unauditable | whole-document pre-exclusion on exact 12-word calibration overlap, 44 documents removed before any result was visible ([`kld5-suite-manifest.json`](../receipts/kld5-suite-manifest.json)) | unknown; overlap would push theirs lower | asymmetry of evidence, not of intent — ours is auditable, theirs is not, and that must be stated when both numbers appear together |
-| **D10** | engine, kernels, KV | llama.cpp CUDA, flash-attn on, f16 KV, batch/ubatch 16384, `n_seq=32` [U-LOG-B] | vLLM/EXL3, `enforce_eager`, `max_num_seqs=1`, one chunk per prefill, `kv_cache_dtype=auto` ([05-kld-protocol.md](05-kld-protocol.md)) | unknown, small at ctx 512 | second tokenizer implementation too: GGUF BPE (`tokenizer.ggml.model=gpt2`, `pre=qwen35`) vs HF `tokenizers`. Token-ID equality must be asserted per chunk, not assumed |
+| **D10** | engine, kernels, KV | llama.cpp CUDA, flash-attn on, f16 KV, batch/ubatch 16384, `n_seq=32` [U-LOG-B] | vLLM/EXL3, `enforce_eager`, `max_num_seqs=1`, one chunk per prefill, `kv_cache_dtype=auto` ([05-kld-protocol.md](05-kld-protocol.md)) | unknown, small at ctx 512 | second tokenizer implementation too: GGUF BPE (`tokenizer.ggml.model=gpt2`, `pre=qwen35`) vs HF `tokenizers`. **Asserted, not assumed, and it is a null: the two streams over `wiki.test.raw` are bit-identical, 297,194 tokens, same `sha256` of the int32 stream ([`wikitext-kld-token-identity.json`](../receipts/wikitext-kld-token-identity.json))** |
 | **D11** | top-1 definition | `Same top p` = argmax(candidate logits) vs argmax of the **uint16-quantized** reference, no tie handling [LC:224-240] | exact argmax on both operands | theirs lower | near-ties flip under 16-bit reference storage; at 98-99 % agreement this is a real contributor |
 | **D12** | the NVFP4 rows have no protocol at all | corpus labels only (zh, code, refgen, chat, ja/ko/ru/es); no tokens, ctx, reference precision, direction or engine [U-Q38]; NVFP4 cannot run under `llama-perplexity` | 278,392 positions, protocol above | not comparable in either direction | our 0.094978 ([`v3-report-nvfp4-analysis.json`](../receipts/v3-report-nvfp4-analysis.json)), 0.092727 contamination-corrected ([`analysis-v3-contamination-corrected.json`](../receipts/analysis-v3-contamination-corrected.json)) and their 0.0124-0.05818 [U-Q38] should both be published, never divided |
 
@@ -308,7 +310,7 @@ benchmarks coming soon!"* [U-Q38]. There is no per-quant KLD table, and no proto
 for the figure. So the F2 comparison against `Q5_K_XL` / `Q6_K` / `Q8_0` could not be closed by
 citation and was run instead — on our suite, in the section above
 ([29-plan-and-loose-ends.md](29-plan-and-loose-ends.md) F2). What citation still cannot give us,
-and Run A below still would, is a number on *their* axis.
+and Run A below now gives, is a number on *their* axis.
 
 ### The Qwen3.8 top-1 chart: digitized, therefore not a published number
 
@@ -473,9 +475,9 @@ and against his GGUF ladder that same 16.61 GiB undercuts UD-Q6_K_XL by 6.5 GiB 
 FP8 by 8.5 GiB of decoder weight.
 
 What we still cannot say is where our y-value would land on his chart, because we have never
-run his protocol. Run A below is what would settle it; with the GGUF work now done on our own
-axis, his qbench is the natural second harness to add, since it already contains every
-comparator we care about.
+run his protocol — Run A is Unsloth's harness, not his, and settles nothing about openwebtext at
+8×8192. With the GGUF work now done on both our axis and theirs, his qbench is the natural
+third harness to add, since it already contains every comparator we care about.
 
 ## Pinned artifacts
 
@@ -499,9 +501,21 @@ The three targets alone are 72,149,672,960 B = 67.19 GiB; adding the BF16 refere
 serialized disk bytes; none of them is VRAM, resident weights or KV, and the size-class labels
 above refer to the card a build is intended for, not to what these files occupy in memory.
 
-## Execution plan: two runs and one control — B and C are done, A is open
+Those five blobs were fetched, digest-verified, used and then deleted
+([`wikitext-kld-fetch-verify.json`](../receipts/wikitext-kld-fetch-verify.json),
+[`wikitext-kld-release-blobs.json`](../receipts/wikitext-kld-release-blobs.json)). They are
+re-fetchable from the archival mirror `malaiwah/Qwen3.8-27B-GGUF-archival-f1bfb127` at commit
+`06992e2f16022347149d8545b1df04c68d46e6e7`, which carries the same five files under the same
+paths and the same digests. That mirror exists because a pinned upstream revision is not a
+durable citation: `unsloth/Qwen3.8-27B-NVFP4` squashed its history on 2026-08-15 and took the
+revision our v3 comparison cites with it. It preserves the **citation**, not independent
+byte-level redundancy — Hugging Face Xet storage is content-addressed, and the 126.8 GB mirror
+moved 2.13 GB on the wire, so both copies plausibly reference the same chunks. `f1bfb127…`
+still resolves upstream; the mirror is insurance, not rescue.
 
-### Run A — their protocol, exactly, for cross-citation (open, not run)
+## Execution plan: two runs and one control — all three are done
+
+### Run A — their protocol, exactly, for cross-citation (**done**)
 
 1. Fetch the corpus pinned at [HF-WT2] and verify `wiki.test.raw` against
    sha256 `173c87a53759e0201f33e0ccf978e510c2042d7f2cb78229d9a50d79b9e7dd08`, 1,290,590 B.
@@ -515,9 +529,141 @@ above refer to the card a build is intended for, not to what these files occupy 
 5. Assert cross-engine token identity: hash the per-chunk token ids read back from `base.bin`
    against our HF-tokenizer stream over the same file (D10), and publish the comparison.
 
-Output: three rows on the same axis as their Qwen3.5 ladder [U-Q35] and as any third-party
-`llama-perplexity` row (bartowski, AesSedai, ubergarm), plus their `Minimum KLD` values for
-our own build, which measures their harness floor on our hardware rather than assuming it.
+**Run.** [`tools/run_wikitext_kld.sh`](../tools/run_wikitext_kld.sh) does all five steps at the
+same pinned llama.cpp commit as the capture engine, in a second build tree configured
+`LLAMA_BUILD_TOOLS=ON` because the published capture tree has no `llama-perplexity` and
+relinking it would invalidate digests other receipts quote. That tree's flags, binary digests
+and KV-cache inventory are carried in the `build` block of
+[`wikitext-kld-preflight.json`](../receipts/wikitext-kld-preflight.json), which is also the
+pre-flight gate; the measurement is
+[`wikitext-kld-run-a.json`](../receipts/wikitext-kld-run-a.json), the inputs are
+[`wikitext-kld-fetch-verify.json`](../receipts/wikitext-kld-fetch-verify.json) and step 5 is
+[`wikitext-kld-token-identity.json`](../receipts/wikitext-kld-token-identity.json).
+
+One build detail worth stating because it is a trap: `--cache-type-k` advertises nine KV types
+in `--help`, but a stock CUDA build compiles FlashAttention kernels for only four K/V pairs —
+`f16-f16`, `bf16-bf16`, `q8_0-q8_0`, `q4_0-q4_0` — because `GGML_CUDA_FA_ALL_QUANTS` is OFF by
+default. Run A uses the default `f16` cache, which is in both lists, and the receipt records
+both lists rather than the advertised one alone.
+
+The protocol was checked before it was trusted, not after. The corpus tokenises to 297,194
+tokens under the BF16 GGUF's own vocabulary → 580 chunks → 296,960 processed → 147,900 scored,
+and the runner refuses to start the GPU if any of those four integers is wrong. The base
+logits then came out at exactly **73,455,427,060 B**, which is
+`20 + 580*512*4 + 580*255*248324*2` — chunk count, scoring window, processed-token count and
+vocabulary all land in that one number, so byte identity is the cheapest available proof that
+our run and theirs are the same procedure.
+
+That 297,194 corrects [INV]'s 297,193 by one token, and the discrepancy is now explained rather
+than tolerated: `common`'s `-f` handler drops a single trailing newline before tokenising
+([LC] `common/arg.cpp:1791-1800`), so `llama-perplexity` never sees the last byte of the file.
+Measured both ways with the same tokenizer: the file as shipped gives 297,193, the bytes
+`llama-perplexity` actually reads give 297,194. Both floor to 580 chunks, so nothing downstream
+moves.
+
+**Step 5, token identity (D10): the two tokenizers agree exactly.** The 297,194-token stream
+from llama.cpp's GGUF BPE and the stream from the HF tokenizer this project measures everything
+else with (`tokenizer.json` sha256 `0997f410…`, `add_special_tokens=False`) are bit-identical —
+same length, same `sha256` `cd9ca15e…` over the int32 stream, no divergence at any index — and
+so is the 296,960-token prefix that `llama-perplexity` actually stores and scores
+(`47a496dc…`). D10 is therefore closed as *no difference*: the two protocols disagree about
+many things, but not about what text they are reading. One caveat on how it was checked: the
+comparison is against the `llama-tokenize` stream over the same bytes with the same
+`common_tokenize` call, not against the token block inside `base.bin`, which had been released
+by then.
+
+#### Run A results
+
+`KL(BF16 GGUF ‖ candidate)`, both operands in llama.cpp, each candidate's own output head
+inside the measured path, 147,900 scored positions, `Mean PPL(base) 6.950230 ± 0.044933`:
+
+| quant | mean KLD | 99.9 % | median | max | min | RMS Δp | Same top p | PPL(Q) |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| `Q8_0` | **0.000926 ± 0.000042** | 0.044331 | 0.000328 | 4.0598 | −0.000080 | 0.878 % | 98.761 % | 6.954896 |
+| `Q6_K` | **0.002286 ± 0.000108** | 0.085161 | 0.000926 | 13.0006 | −0.000056 | 1.356 % | 97.875 % | 6.951016 |
+| `UD-Q5_K_XL` | **0.004426 ± 0.000167** | 0.201710 | 0.001627 | 18.5281 | −0.000077 | 1.858 % | 97.178 % | 6.968430 |
+
+Three things fall out of that table before any comparison with our own axis.
+
+**Their harness floor, measured on our hardware rather than assumed.** The `Minimum KLD`
+column is negative for all three — −0.000080, −0.000056, −0.000077 — which is the uint16
+16-nat log-probability encoding [LC:79-100] showing through, not a candidate beating its own
+reference. D3 previously bounded this at ≥5e-5 nats/token from their published logs [U-LOG-Q8];
+on our build it is 5.6e-5 to 8.0e-5. The same term is visible in the perplexity: the capture
+log's `Final estimate: PPL = 6.9525 ± 0.04498` and the scoring runs' `Mean PPL(base)
+6.950230` differ by 0.0023 for identical weights on identical tokens, and the only thing
+between them is that round trip through stored uint16.
+
+**Perplexity does not reproduce the KLD ordering, and KLD is the one to trust.** `Q6_K` has the
+*smallest* PPL delta of the three (+0.00079 against base) while `Q8_0`, which is unambiguously
+the better quant by every divergence statistic, is +0.00467. A quantization that shifts the
+distribution can shift it in the direction that happens to help the corpus mean. This is an
+argument for the metric Unsloth actually leads with, not against them.
+
+**The distribution scales almost uniformly, which is worth saying because the opposite would
+have been more interesting.** From `Q8_0` to `UD-Q5_K_XL` the mean rises 4.78×, the median
+4.96×, the 99.9th percentile 4.55× and the exact maximum 4.56× (4.06 → 18.53 nats). No part of
+the distribution degrades disproportionately across these three quants, so on this corpus the
+mean is a sufficient statistic for ranking them and the percentile columns add confidence
+rather than information. What the mean does hide is the absolute scale of the worst case: a
+single token at 18.5 nats is a token where the 5-bit build has essentially replaced the
+reference's answer, and no average over 147,900 positions will surface that.
+
+#### Cross-citation: same order, different scale, and the difference is protocol
+
+Our three GGUF rows on our own axis are Run B — v5 suite shard 0, 512 contexts, 1,048,064
+positions, one shared BF16 head, reference captured in vLLM
+([`cross-engine-comparator.json`](../receipts/cross-engine-comparator.json)). Side by side:
+
+| quant | Run A, their protocol | Run B measured, ours | Run B net of the 0.000507 engine floor | A ÷ B-net |
+|---|---:|---:|---:|---:|
+| `Q8_0` | 0.000926 | 0.001087 | ~0.000579 | 1.60× |
+| `Q6_K` | 0.002286 | 0.002035 | ~0.001528 | 1.50× |
+| `UD-Q5_K_XL` | 0.004426 | 0.004444 | ~0.003936 | 1.12× |
+
+**The ordering is identical on both axes**, and so is the spacing to within a factor of 1.43
+across a 4.8× range of quality. Two protocols that disagree about corpus, window length,
+scoring geometry, vocabulary coverage, reference engine and what is inside the measured path
+still rank `Q8_0` < `Q6_K` < `UD-Q5_K_XL` and still separate them by similar multiples. That is
+what makes a cross-citation defensible, and it is the strongest form the result could have
+taken.
+
+What a reader must **not** do is convert one column into the other. The differences are
+enumerated as D1-D12 above; the ones that matter here run in opposite directions and are not a
+single scale factor:
+
+- **Their number is pushed *down*** by D1 (they score only the second half of each window, so
+  every scored position has ≥256 tokens of left context, while ours scores from position 1 of
+  2,048), by D2 (one English encyclopedic corpus against our five strata), and by D4 (they drop
+  base-side terms with `log p ≤ −16`).
+- **Their number is pushed *up*** by D5, and this is the big one: the candidate's own output
+  head is inside their measured path, while both of our operands go through one shared BF16
+  head, so ours is body-only by construction.
+- **Only our number carries the cross-engine term.** Our GGUF rows are llama.cpp captures scored
+  against a vLLM reference, which the engine-floor control measures at 0.000507 mean
+  ([`gguf-report-engine-floor.json`](../receipts/gguf-report-engine-floor.json)). Run A has both
+  operands in one engine and carries none of it. That is why the honest comparison is against
+  our net-of-floor column, not our measured one.
+
+D1 is the only one of these that is quantified rather than signed, and it is small: Control C
+re-scored our own captures on their geometry and moved every mean by 1.3-2.1 % at a 256-token
+left-context floor and 3.9-4.9 % second-half-only, uniformly across candidates and with no
+ordering change ([`scored-window-offset.json`](../receipts/scored-window-offset.json)). So D1
+cannot explain a 1.1-1.6× gap; the residual is dominated by D5, the head. [INFERENCE] — the
+head-inclusive number is measured separately in
+[16-head-attribution.md](16-head-attribution.md), but not on this corpus, so the decomposition
+is reasoned rather than run.
+
+The publishable sentence is therefore: *on Unsloth's own protocol, on their corpus and their
+geometry, the three GGUF quants measure 0.000926 / 0.002286 / 0.004426 mean KLD, in the same
+order and with similar spacing as on our suite, where net of the cross-engine floor they
+measure ~0.000579 / ~0.001528 / ~0.003936; the roughly 1.1-1.6× difference in level is
+protocol — mostly whether the output head is inside the measured path — and not disagreement
+about which quantization is better.*
+
+What Run A does not do is put our EXL3 builds on their axis. That would need our builds scored
+by `llama-perplexity`, which cannot read them. The comparison that does place both families on
+one axis is Run B, and it stays the primary one.
 
 ### Run B — our v5 suite, for placement on our axis (**done**, shard 0)
 
@@ -579,11 +725,14 @@ explain what remains, which is most of the distance.
 
 ## What each run can and cannot establish
 
-**Run A can establish:** the three GGUFs' position in Unsloth's own published series, on their
+**Run A established:** the three GGUFs' position in Unsloth's own published series, on their
 corpus, their context floor, their reference numerics, their head-in-loop convention, directly
 citable next to their Qwen3.5 rows and next to third-party `llama-perplexity` rows for other
-quantizers. It also measures their harness's own floor for this model (their `Minimum KLD`
-sign) instead of inferring it from someone else's log.
+quantizers — 0.000926 / 0.002286 / 0.004426 mean KLD for `Q8_0` / `Q6_K` / `UD-Q5_K_XL`. It also
+measured their harness's own floor for this model on our hardware rather than inferring it from
+someone else's log: `Minimum KLD` of −0.000080 / −0.000056 / −0.000077, i.e. 5.6e-5 to 8.0e-5,
+consistent with the ≥5e-5 that D3 bounded from [U-LOG-Q8]. And it closed D10 as a null: the
+GGUF BPE and our HF tokenizer produce bit-identical streams over this corpus.
 
 **Run A cannot establish:** anything about our candidates. It has 147,900 scored positions
 [LC, INV] against our 10,480,640
@@ -612,9 +761,10 @@ their absolute context floor, 3.9-4.9 % at their proportional one, no ordering c
 published mean would be consistent with the remaining deltas cancelling, not evidence that they
 are absent; disagreement bounds the residue that D2-D11 must account for.
 
-Two of the three are done. Run A is what remains, and it is the only one of the three that yields
-a number citable against Unsloth's own table; B and C have already produced our-axis placement for
-the GGUFs plus a measured explanation for part of the distance between the two protocols. That is
+All three are done. Run A is the only one of the three that yields a number citable against
+Unsloth's own table, and it lands in the same order as B with a level difference of 1.1-1.6×
+that the delta table accounts for; B places the GGUFs on our axis against everything we ship;
+C measures the one delta that could be isolated without leaving our own data. That is
 the entire claim. Neither
 protocol is being corrected here; the only defect worth naming is publishing a KLD without the
 corpus, position count, context floor, reference precision and engine that produced it, and
@@ -636,5 +786,5 @@ that is the defect this document exists to avoid on our side.
 | [HF-GGUF] | `huggingface.co/unsloth/Qwen3.8-27B-GGUF` @ `f1bfb127c64f7072bdd2cad55f258b9c8b2910fe` (2026-08-15T05:48:44Z, apache-2.0, `base_model: Qwen/Qwen3.8-27B`); file sizes and blob sha256 from the repo tree at that revision |
 | [HF-WT2] | `huggingface.co/datasets/ggml-org/ci` @ `927b3642933080f1b0e811e2f916e14c292992f9`, `wikitext-2-raw-v1.zip` (4,721,645 B, sha256 `ef7edb…5435a11`; member `wiki.test.raw` 1,290,590 B, sha256 `173c87…9e7dd08`) |
 | [HF-WT2-DS] | `huggingface.co/datasets/Salesforce/wikitext` @ `b08601e04326c79dfdd32d625aee71d232d685c3`, config `wikitext-2-raw-v1`, licences cc-by-sa-3.0 + gfdl |
-| [HF-NVFP4] | `huggingface.co/unsloth/Qwen3.8-27B-NVFP4` @ `16b6615af3548b88e2d8e382457bc705b00479cf`; `tokenizer.json` sha256 `06b9509352d2af50381ab2247e083b80d32d5c0aba91c272ca9ff729b6a0e523`, used for the corpus reproduction in [INV] |
-| [INV] | our own offline reproduction, CPU only, no GPU and no repo receipt yet: `wiki.test.raw` tokenized with [HF-NVFP4]'s tokenizer at `add_special_tokens=False` gives 297,193 tokens → 580 chunks → 296,960 processed → 147,900 scored; and the digitization of `q38_top1_vs_size.png`. Recorded in the investigation transcript `agent://UnslothProtocol`. Run A above is what turns these into receipts |
+| [HF-NVFP4] | `huggingface.co/unsloth/Qwen3.8-27B-NVFP4`, **two revisions, and the distinction matters** — `tokenizer.json` differs between them, so a bare digest is ambiguous. **Current HEAD `16b6615af3548b88e2d8e382457bc705b00479cf`**: `tokenizer.json` 19,989,325 B, sha256 `06b9509352d2af50381ab2247e083b80d32d5c0aba91c272ca9ff729b6a0e523` — this is the digest used for the corpus reproduction in [INV]. **The revision our KLD comparison measures, `9c73e2daee1d0fd494ffbd1d8753f2174a953796`**: `tokenizer.json` 19,989,424 B, sha256 `f399b3cd12fa270d51457bb749fb30863521e8359b8a27059c71b6c2f7d6dd6c`. That revision is **no longer resolvable upstream** — the repository was super-squashed on 2026-08-15 and the Hub now answers `{"error":"Invalid rev id"}` for it — and is reachable only through our archival mirror `huggingface.co/malaiwah/Qwen3.8-27B-NVFP4-archival-9c73e2da` @ `7a66267ebd34a01ba9a13e56aa2cea0b27bdacd4`, whose copy hashes byte-identically to our local snapshot. Both digests were re-hashed from the two live revisions to settle which belonged to which ([`nvfp4-v5-measurement.json`](../receipts/nvfp4-v5-measurement.json)). **The two tokenizers are equivalent for every number in this document**, and that is measured rather than assumed: their `vocab` (248,044 entries), `merges` and `added_tokens` are identical, and the *only* difference in the whole 20 MB file is the `truncation` block — `{"direction":"Right","max_length":2048,"strategy":"LongestFirst","stride":0}` at `9c73e2da` versus `null` at HEAD, 99 bytes. Under `transformers.AutoTokenizer` both produce identical streams (probe: a 12,002-token input gives 12,002 either way), because `PreTrainedTokenizerFast` sets truncation per call and defaults to off. Under the raw `tokenizers.Tokenizer` API they do **not**: the `9c73e2da` file silently truncates that same input to 2,048 tokens while HEAD's returns all 12,002. Anyone reproducing [INV] through the raw library against the mirrored revision must disable truncation explicitly. Note also that none of this touches the KLD measurement itself, which replays a pre-tokenized suite and consults no tokenizer |
+| [INV] | our own offline reproduction, CPU only: `wiki.test.raw` tokenized with [HF-NVFP4]'s tokenizer at `add_special_tokens=False` gives 297,193 tokens → 580 chunks → 296,960 processed → 147,900 scored; and the digitization of `q38_top1_vs_size.png`. Recorded in the investigation transcript `agent://UnslothProtocol`. **Run A turned these into receipts and corrected the first number by one**: 297,193 is the file as shipped, but `-f` drops its trailing newline, so `llama-perplexity` tokenizes 297,194 — same 580 chunks ([`wikitext-kld-preflight.json`](../receipts/wikitext-kld-preflight.json)) |

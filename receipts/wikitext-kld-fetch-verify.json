@@ -1,0 +1,84 @@
+{
+  "schema": "qwen38-external-protocol-fetch/1",
+  "purpose": "digest-verified inputs for Run A of docs/35-external-protocol-comparability.md",
+  "fetched_at": "2026-08-16T02:48:07+0000",
+  "corpus": {
+    "source": "https://huggingface.co/datasets/ggml-org/ci/resolve/927b3642933080f1b0e811e2f916e14c292992f9/wikitext-2-raw-v1.zip",
+    "archive": {
+      "path": "/var/tmp/work/wikitext-kld/corpus/wikitext-2-raw-v1.zip",
+      "bytes": 4721645,
+      "sha256": "ef7edb566e3e2b2d31b29c1fdb0c89a4cc683597484c3dc2517919c615435a11",
+      "verified": true
+    },
+    "member": {
+      "name": "wikitext-2-raw/wiki.test.raw",
+      "path": "/var/tmp/work/wikitext-kld/corpus/wikitext-2-raw/wiki.test.raw",
+      "bytes": 1290590,
+      "sha256": "173c87a53759e0201f33e0ccf978e510c2042d7f2cb78229d9a50d79b9e7dd08",
+      "verified": true
+    },
+    "perplexity_input": {
+      "path": "/var/tmp/work/wikitext-kld/corpus/wiki.test.raw.perplexity-input",
+      "bytes": 1290589,
+      "derivation": "wiki.test.raw with a single trailing newline removed, which is what llama-perplexity -f tokenises (common/arg.cpp:1791-1800)"
+    }
+  },
+  "models": {
+    "repo": "unsloth/Qwen3.8-27B-GGUF",
+    "revision": "f1bfb127c64f7072bdd2cad55f258b9c8b2910fe",
+    "files": [
+      {
+        "tag": "bf16-1",
+        "repo_path": "BF16/Qwen3.8-27B-BF16-00001-of-00002.gguf",
+        "path": "/var/tmp/work/wikitext-kld/models/BF16/Qwen3.8-27B-BF16-00001-of-00002.gguf",
+        "bytes": 49986159616,
+        "sha256": "b9966e82b7a4d87028b5eae061d578ee826305ebf8baea5bfc6e09bad0ba191f",
+        "bytes_on_disk": 49986159616,
+        "verified": true
+      },
+      {
+        "tag": "bf16-2",
+        "repo_path": "BF16/Qwen3.8-27B-BF16-00002-of-00002.gguf",
+        "path": "/var/tmp/work/wikitext-kld/models/BF16/Qwen3.8-27B-BF16-00002-of-00002.gguf",
+        "bytes": 4671576000,
+        "sha256": "92e3943c4f9bd6292a7bef82369f65fed9bfed088b9df0fb2fa2ce17c9edfa02",
+        "bytes_on_disk": 4671576000,
+        "verified": true
+      },
+      {
+        "tag": "q8_0",
+        "repo_path": "Qwen3.8-27B-Q8_0.gguf",
+        "path": "/var/tmp/work/wikitext-kld/models/Qwen3.8-27B-Q8_0.gguf",
+        "bytes": 29047086048,
+        "sha256": "a680f44a06920e5d689774823782006aa3acc8db95750323373b24139b67e348",
+        "bytes_on_disk": 29047086048,
+        "verified": true
+      },
+      {
+        "tag": "q6_k",
+        "repo_path": "Qwen3.8-27B-Q6_K.gguf",
+        "path": "/var/tmp/work/wikitext-kld/models/Qwen3.8-27B-Q6_K.gguf",
+        "bytes": 22884408288,
+        "sha256": "562fbf760503008f118e5df38de5b3e97992d1f693f475815631198547486727",
+        "bytes_on_disk": 22884408288,
+        "verified": true
+      },
+      {
+        "tag": "q5_k_xl",
+        "repo_path": "Qwen3.8-27B-UD-Q5_K_XL.gguf",
+        "path": "/var/tmp/work/wikitext-kld/models/Qwen3.8-27B-UD-Q5_K_XL.gguf",
+        "bytes": 20218178624,
+        "sha256": "176a6a3f034e9cdc447c10cd00329fc9b31002e6589b9295f2ad4f1eefe0f6ab",
+        "bytes_on_disk": 20218178624,
+        "verified": true
+      }
+    ]
+  },
+  "retention": {
+    "policy": "preserve before delete",
+    "this_pipeline_deletes_nothing": true,
+    "bytes_on_disk": 126814711400,
+    "recovery": "re-obtainable, not recomputable: every file above is a pinned public blob and the digests here make a re-fetch verifiable. Cost of losing them is one 126.8 GB download, about 17 minutes at the rate measured here."
+  },
+  "note": "every size here is serialized bytes on disk; none of it is VRAM, resident weights or KV"
+}

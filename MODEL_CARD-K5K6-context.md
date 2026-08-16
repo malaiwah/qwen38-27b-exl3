@@ -115,7 +115,7 @@ rather than against your own conversion, and read a byte diff below this floor a
 rather than as tampering, corruption or a changed recipe. The same run also showed the recorded
 build environment is incomplete — the pinned image has no `marisa_trie`, which the conversion
 imports on an unconditional path, so that image provably could not have finished the job; the
-conversion-capable image is `docker/Dockerfile.gg-r34-convert`. Keep the two senses of
+conversion-capable image is `gg-r34-convert`. Keep the two senses of
 reconstruction apart: the 1,199-tensor check above is the converter-side one, names and shapes
 verified by the finalizer, while the runtime's `reconstruct_fp8_slice` / reconstruct+GEMM prefill
 path turns stored trellis bytes back into weights at load and is untouched by any of this.

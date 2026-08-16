@@ -1,0 +1,128 @@
+{
+  "schema": "qwen38-external-protocol-preflight/1",
+  "purpose": "CPU-only gate for Run A: chunk arithmetic, vocabulary, build inventory",
+  "checked_at": "2026-08-16T02:56:34+0000",
+  "gpu_touched": false,
+  "how_gpu_was_excluded": "llama-tokenize runs vocab_only under CUDA_VISIBLE_DEVICES=-1",
+  "build": {
+    "commit": "ece963f41b0b02d7a0d61436ae365762c073a4c8",
+    "tree": "f59cbdf04f233655507cc98ee9f704b71bfd1403",
+    "source_digest": {
+      "algorithm": "sha256",
+      "over": "git ls-files -s",
+      "value": "a4324243d219e65c7b783f3856bd1f29835ff595566025baf46823a4369f8ab3"
+    },
+    "cmake_flags": [
+      "-DCMAKE_BUILD_TYPE=Release",
+      "-DBUILD_SHARED_LIBS=ON",
+      "-DGGML_CUDA=ON",
+      "-DCMAKE_CUDA_ARCHITECTURES=120",
+      "-DCMAKE_CUDA_HOST_COMPILER=/usr/bin/g++-13",
+      "-DGGML_NATIVE=ON",
+      "-DLLAMA_CURL=OFF",
+      "-DLLAMA_BUILD_TESTS=OFF",
+      "-DLLAMA_BUILD_EXAMPLES=OFF",
+      "-DLLAMA_BUILD_TOOLS=ON",
+      "-DLLAMA_BUILD_SERVER=OFF"
+    ],
+    "cuda_architectures": "120",
+    "kv_cache": {
+      "advertised_types": [
+        "f32",
+        "f16",
+        "bf16",
+        "q8_0",
+        "q4_0",
+        "q4_1",
+        "iq4_nl",
+        "q5_0",
+        "q5_1"
+      ],
+      "advertised_source": "llama-perplexity --help, --cache-type-k allowed values",
+      "ggml_cuda_fa_all_quants": false,
+      "flash_attn_kv_pairs_compiled": [
+        "bf16-bf16",
+        "f16-f16",
+        "q4_0-q4_0",
+        "q8_0-q8_0"
+      ],
+      "flash_attn_pairs_source": "compiled fattn-vec-instance-*.cu.o objects in the build tree",
+      "note": "the CLI accepts every advertised type, but with GGML_CUDA_FA_ALL_QUANTS OFF (upstream default) only the compiled K/V pairs have a CUDA FlashAttention kernel. Run A uses the default f16/f16 cache, which is in both lists."
+    },
+    "artifacts": {
+      "llama-perplexity": {
+        "path": "/var/tmp/work/llamacpp/build-tools/bin/llama-perplexity",
+        "bytes": 15968,
+        "sha256": "d8b91e64b1944ae07cf2e244c418ca3755baafa4d944248f7e2c7a314e9ee3ce"
+      },
+      "llama-tokenize": {
+        "path": "/var/tmp/work/llamacpp/build-tools/bin/llama-tokenize",
+        "bytes": 40808,
+        "sha256": "cb0b451074380c4e5b6e6df4be8185608936f2df1ab5cf4643becf6438084062"
+      },
+      "libggml-base.so": {
+        "path": "/var/tmp/work/llamacpp/build-tools/bin/libggml-base.so",
+        "bytes": 922584,
+        "sha256": "44d93c39ecb8ed6bed62d4dca03e69bae0ec62bf172b7a510749bd3f332672e4"
+      },
+      "libggml-cpu.so": {
+        "path": "/var/tmp/work/llamacpp/build-tools/bin/libggml-cpu.so",
+        "bytes": 1366776,
+        "sha256": "4f9d226222d855e41c994bf102eb829d890929b11486417ae4d4d0265bf9dbac"
+      },
+      "libggml-cuda.so": {
+        "path": "/var/tmp/work/llamacpp/build-tools/bin/libggml-cuda.so",
+        "bytes": 66590160,
+        "sha256": "3de370687eadfe3bbf848311bdbee15061c48aa6df224ca80fe48d0381acae10"
+      },
+      "libggml.so": {
+        "path": "/var/tmp/work/llamacpp/build-tools/bin/libggml.so",
+        "bytes": 56016,
+        "sha256": "02978931f890e3f03b94f13fb6e60db93ff4beacb370c0eb1edde950c6e8b752"
+      },
+      "libllama-common.so": {
+        "path": "/var/tmp/work/llamacpp/build-tools/bin/libllama-common.so",
+        "bytes": 6227336,
+        "sha256": "3470287a25c89dea2b2a4c4896bc885d4a94b902c7505bb25c1345ab12262078"
+      },
+      "libllama-perplexity-impl.so": {
+        "path": "/var/tmp/work/llamacpp/build-tools/bin/libllama-perplexity-impl.so",
+        "bytes": 168440,
+        "sha256": "52c0f911cc08068b555c3acb5a426a71a4864d7c8395217a8713030b3551cf91"
+      },
+      "libllama.so": {
+        "path": "/var/tmp/work/llamacpp/build-tools/bin/libllama.so",
+        "bytes": 4425544,
+        "sha256": "b20cfc8cb0ab046c390a19139373a16e185f40f65733497d9d3479467e7d9180"
+      }
+    }
+  },
+  "corpus": {
+    "perplexity_input_bytes": 1290589,
+    "token_ids": {
+      "path": "/var/tmp/work/wikitext-kld/wiki.test.raw.token-ids.json",
+      "bytes": 1676438,
+      "sha256": "ab5625b919bc18e58fc7c32385b0c3112ef712443c9218ed02d73ff6ff89d077",
+      "use": "step 5 of Run A, cross-engine token identity (D10)"
+    },
+    "tokenizer_log": {
+      "path": "/var/tmp/work/wikitext-kld/logs/tokenize.log",
+      "sha256": "7edd410f7b3de53f910fba8b6cf67108e93e1f5e926ebddb9f5c22a904815dd2"
+    }
+  },
+  "arithmetic": {
+    "n_tokens": 297194,
+    "n_tokens_reference_INV": 297193,
+    "n_ctx": 512,
+    "n_vocab": 248320,
+    "nv_uint16_stride": 248324,
+    "n_chunk": 580,
+    "processed_tokens": 296960,
+    "first_scored_index": 256,
+    "scored_per_chunk": 255,
+    "scored_positions": 147900,
+    "base_logits_bytes": 73455427060,
+    "base_logits_formula": "20 + n_chunk*n_ctx*4 + n_chunk*(n_ctx-1-n_ctx/2)*nv*2",
+    "all_match_protocol": true
+  }
+}

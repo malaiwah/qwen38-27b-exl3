@@ -1,0 +1,52 @@
+# Conversion-side image. NOT the serving runtime and NOT the qualified digest.
+#
+# The pinned r34 venv is missing marisa_trie, which exllamav3 imports from
+# exllamav3/loader/safetensors.py. Both conversion entry points reach that module, so the
+# gap only ever appears at the very end of a long job: it has already cost one 2h05 ladder
+# pass that died at compile_model with all 409 modules quantized, and one conversion that
+# died at util/add_quant_config.py with the checkpoint already written.
+#
+# It is deliberately NOT added to localhost/vllm:gg-r34-patched. marisa_trie is never
+# imported at serve time, and adding any layer to the serving image would change the digest
+# that receipts/production-image.json and the RTX 5090 serving qualification are both
+# pinned against. Fixing a build-tool import is not worth invalidating a qualification, so
+# the dependency goes on the conversion path only, where nothing is pinned against it.
+#
+# Parent is the release image so the conversion path runs the same reviewed vLLM modules;
+# the serving digest itself is untouched and remains the release unit.
+#
+#   podman build -f docker/Dockerfile.gg-r34-convert -t localhost/vllm:gg-r34-convert .
+#   (docker/build-image.sh handles this as VARIANT=convert)
+
+ARG PARENT=localhost/vllm:gg-r34-patched
+FROM ${PARENT}
+
+# One wheel, pinned by URL and by content. Fetched and verified before install, so the
+# build fails closed if PyPI ever serves different bytes for this filename. --no-deps
+# because marisa_trie has none and nothing else in the venv may be resolved or upgraded:
+# this layer must not perturb the 224 packages the serving image was inventoried with.
+RUN set -eu; \
+    WHEEL=marisa_trie-1.4.1-cp312-cp312-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl; \
+    URL=https://files.pythonhosted.org/packages/bb/95/cd6e73d0857608f2946f3bc5ccac86488073b96fb37bc1b45b0184268bed/$WHEEL; \
+    cd /tmp; \
+    /opt/venv/bin/python -c 'import sys,urllib.request;urllib.request.urlretrieve(sys.argv[1],sys.argv[2])' \
+      "$URL" "/tmp/$WHEEL"; \
+    printf '%s  %s\n' \
+      4d51bdd22a7238ef4d681effd7c224a267ddae054b64b1cec9ce95bbcd2b6a88 "/tmp/$WHEEL" \
+      | sha256sum -c -; \
+    /opt/venv/bin/pip install --no-deps --no-cache-dir "/tmp/$WHEEL"; \
+    rm -f "/tmp/$WHEEL"; \
+    /opt/venv/bin/python -c 'import marisa_trie, importlib.metadata as m; \
+t = marisa_trie.Trie(["alpha", "beta"]); assert "alpha" in t; \
+print("marisa_trie", m.version("marisa-trie"), "import and Trie() ok")'; \
+    PYTHONPATH=/opt/exllamav3-python /opt/venv/bin/python -c 'import sys;\
+exec("try:\n import exllamav3.loader.safetensors\n print(\"probe: exllamav3.loader.safetensors imports\")\nexcept Exception as e:\n print(f\"probe: importing the exllamav3 package root fails with {type(e).__name__}: {e}. This layer guarantees marisa_trie only; that is a separate pre-existing gap in the pinned venv, unrelated to the missing import this image fixes.\")")'
+
+LABEL org.opencontainers.image.title="Gilded Gnosis vLLM r34 + native-context patches + conversion dependencies" \
+      org.opencontainers.image.description="Conversion-side image: release runtime plus marisa_trie 1.4.1 for exllamav3 compile_model and util/add_quant_config.py. Not the qualified serving digest." \
+      org.opencontainers.image.base.digest="sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b" \
+      io.malaiwah.image.qualified="false" \
+      io.malaiwah.image.role="conversion and quantization only; serving qualification is pinned to localhost/vllm:gg-r34-patched and is unaffected by this tag" \
+      io.malaiwah.added.marisa_trie.version="1.4.1" \
+      io.malaiwah.added.marisa_trie.wheel_sha256="4d51bdd22a7238ef4d681effd7c224a267ddae054b64b1cec9ce95bbcd2b6a88" \
+      io.malaiwah.added.marisa_trie.reason="imported by exllamav3/loader/safetensors.py, reached by compile_model and util/add_quant_config.py"

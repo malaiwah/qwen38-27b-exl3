@@ -1,0 +1,32 @@
+{
+  "schema": "qwen38-external-protocol-token-identity/1",
+  "purpose": "Run A step 5 / D10: do the two tokenizers produce the same stream?",
+  "checked_at": "2026-08-16T03:13:51+0000",
+  "input": {
+    "path": "/work/wikitext-kld/corpus/wiki.test.raw.perplexity-input",
+    "bytes": 1290589,
+    "sha256": "1fac759f5d0b026fe6a123d00ddd31ec88458a0284f72bdf5c0adf164b789e18"
+  },
+  "llama_cpp": {
+    "source": "llama-tokenize on the BF16 GGUF's own vocabulary; the same common_tokenize call llama-perplexity makes on the same bytes",
+    "n_tokens": 297194,
+    "sha256_int32le": "cd9ca15e7ec195fe4bf9b6debfa3b9bf6db8ae3e83021fcfe470d6c91edf84e7"
+  },
+  "huggingface": {
+    "source": "/models/Qwen3.8-27B/tokenizer.json",
+    "add_special_tokens": false,
+    "tokenizer_sha256": "0997f410c57a1f4e53b09e4be8f4a172d90edd9564368fb0847030937229b9f3",
+    "truncation": "disabled explicitly; tokenizer.json ships a 2,048 policy",
+    "n_tokens": 297194,
+    "sha256_int32le": "cd9ca15e7ec195fe4bf9b6debfa3b9bf6db8ae3e83021fcfe470d6c91edf84e7"
+  },
+  "identical": true,
+  "first_divergence_index": null,
+  "processed_prefix": {
+    "n_tokens": 296960,
+    "identical": true,
+    "sha256_int32le": "47a496dc36d6ca4b108795701e76f8f0c98a42795c2b3aeeec4b99305b5e4733",
+    "why": "llama-perplexity stores and scores exactly this prefix, 580 chunks of 512"
+  },
+  "caveat": "compared against the llama-tokenize stream, not against the token block inside the base logits file, which was released after the run"
+}

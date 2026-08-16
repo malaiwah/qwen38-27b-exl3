@@ -1,0 +1,233 @@
+{
+  "schema": "qwen38-external-protocol-run-a/1",
+  "question": "what do our three GGUF targets measure under the external protocol, run exactly as its authors run it?",
+  "protocol": {
+    "harness": "llama.cpp llama-perplexity --kl-divergence",
+    "source": "docs/35-external-protocol-comparability.md, Run A; commands verbatim from [U-LOG-B]",
+    "corpus": "WikiText-2 raw test",
+    "n_ctx": 512,
+    "direction": "KL(BF16 \u2016 candidate), reference = unquantized BF16 GGUF in the same engine",
+    "not_our_protocol": "no v5 suite, no shared BF16 head, no float64 replay; the candidate's own output head is inside the measured path. Run B in receipts/cross-engine-comparator.json is the comparable one."
+  },
+  "ran_at": "2026-08-16T03:08:33+0000",
+  "build": {
+    "commit": "ece963f41b0b02d7a0d61436ae365762c073a4c8",
+    "tree": "f59cbdf04f233655507cc98ee9f704b71bfd1403",
+    "source_digest": {
+      "algorithm": "sha256",
+      "over": "git ls-files -s",
+      "value": "a4324243d219e65c7b783f3856bd1f29835ff595566025baf46823a4369f8ab3"
+    },
+    "cmake_flags": [
+      "-DCMAKE_BUILD_TYPE=Release",
+      "-DBUILD_SHARED_LIBS=ON",
+      "-DGGML_CUDA=ON",
+      "-DCMAKE_CUDA_ARCHITECTURES=120",
+      "-DCMAKE_CUDA_HOST_COMPILER=/usr/bin/g++-13",
+      "-DGGML_NATIVE=ON",
+      "-DLLAMA_CURL=OFF",
+      "-DLLAMA_BUILD_TESTS=OFF",
+      "-DLLAMA_BUILD_EXAMPLES=OFF",
+      "-DLLAMA_BUILD_TOOLS=ON",
+      "-DLLAMA_BUILD_SERVER=OFF"
+    ],
+    "cuda_architectures": "120",
+    "kv_cache": {
+      "advertised_types": [
+        "f32",
+        "f16",
+        "bf16",
+        "q8_0",
+        "q4_0",
+        "q4_1",
+        "iq4_nl",
+        "q5_0",
+        "q5_1"
+      ],
+      "advertised_source": "llama-perplexity --help, --cache-type-k allowed values",
+      "ggml_cuda_fa_all_quants": false,
+      "flash_attn_kv_pairs_compiled": [
+        "bf16-bf16",
+        "f16-f16",
+        "q4_0-q4_0",
+        "q8_0-q8_0"
+      ],
+      "flash_attn_pairs_source": "compiled fattn-vec-instance-*.cu.o objects in the build tree",
+      "note": "the CLI accepts every advertised type, but with GGML_CUDA_FA_ALL_QUANTS OFF (upstream default) only the compiled K/V pairs have a CUDA FlashAttention kernel. Run A uses the default f16/f16 cache, which is in both lists."
+    },
+    "artifacts": {
+      "llama-perplexity": {
+        "path": "/var/tmp/work/llamacpp/build-tools/bin/llama-perplexity",
+        "bytes": 15968,
+        "sha256": "d8b91e64b1944ae07cf2e244c418ca3755baafa4d944248f7e2c7a314e9ee3ce"
+      },
+      "llama-tokenize": {
+        "path": "/var/tmp/work/llamacpp/build-tools/bin/llama-tokenize",
+        "bytes": 40808,
+        "sha256": "cb0b451074380c4e5b6e6df4be8185608936f2df1ab5cf4643becf6438084062"
+      },
+      "libggml-base.so": {
+        "path": "/var/tmp/work/llamacpp/build-tools/bin/libggml-base.so",
+        "bytes": 922584,
+        "sha256": "44d93c39ecb8ed6bed62d4dca03e69bae0ec62bf172b7a510749bd3f332672e4"
+      },
+      "libggml-cpu.so": {
+        "path": "/var/tmp/work/llamacpp/build-tools/bin/libggml-cpu.so",
+        "bytes": 1366776,
+        "sha256": "4f9d226222d855e41c994bf102eb829d890929b11486417ae4d4d0265bf9dbac"
+      },
+      "libggml-cuda.so": {
+        "path": "/var/tmp/work/llamacpp/build-tools/bin/libggml-cuda.so",
+        "bytes": 66590160,
+        "sha256": "3de370687eadfe3bbf848311bdbee15061c48aa6df224ca80fe48d0381acae10"
+      },
+      "libggml.so": {
+        "path": "/var/tmp/work/llamacpp/build-tools/bin/libggml.so",
+        "bytes": 56016,
+        "sha256": "02978931f890e3f03b94f13fb6e60db93ff4beacb370c0eb1edde950c6e8b752"
+      },
+      "libllama-common.so": {
+        "path": "/var/tmp/work/llamacpp/build-tools/bin/libllama-common.so",
+        "bytes": 6227336,
+        "sha256": "3470287a25c89dea2b2a4c4896bc885d4a94b902c7505bb25c1345ab12262078"
+      },
+      "libllama-perplexity-impl.so": {
+        "path": "/var/tmp/work/llamacpp/build-tools/bin/libllama-perplexity-impl.so",
+        "bytes": 168440,
+        "sha256": "52c0f911cc08068b555c3acb5a426a71a4864d7c8395217a8713030b3551cf91"
+      },
+      "libllama.so": {
+        "path": "/var/tmp/work/llamacpp/build-tools/bin/libllama.so",
+        "bytes": 4425544,
+        "sha256": "b20cfc8cb0ab046c390a19139373a16e185f40f65733497d9d3479467e7d9180"
+      }
+    }
+  },
+  "kv_cache_used": {
+    "cache_type_k": "f16",
+    "cache_type_v": "f16",
+    "why": "upstream default; no -ctk/-ctv is passed, so the protocol is unchanged",
+    "enabled_types": {
+      "advertised_types": [
+        "f32",
+        "f16",
+        "bf16",
+        "q8_0",
+        "q4_0",
+        "q4_1",
+        "iq4_nl",
+        "q5_0",
+        "q5_1"
+      ],
+      "advertised_source": "llama-perplexity --help, --cache-type-k allowed values",
+      "ggml_cuda_fa_all_quants": false,
+      "flash_attn_kv_pairs_compiled": [
+        "bf16-bf16",
+        "f16-f16",
+        "q4_0-q4_0",
+        "q8_0-q8_0"
+      ],
+      "flash_attn_pairs_source": "compiled fattn-vec-instance-*.cu.o objects in the build tree",
+      "note": "the CLI accepts every advertised type, but with GGML_CUDA_FA_ALL_QUANTS OFF (upstream default) only the compiled K/V pairs have a CUDA FlashAttention kernel. Run A uses the default f16/f16 cache, which is in both lists."
+    }
+  },
+  "arithmetic": {
+    "n_tokens": 297194,
+    "n_tokens_reference_INV": 297193,
+    "n_ctx": 512,
+    "n_vocab": 248320,
+    "nv_uint16_stride": 248324,
+    "n_chunk": 580,
+    "processed_tokens": 296960,
+    "first_scored_index": 256,
+    "scored_per_chunk": 255,
+    "scored_positions": 147900,
+    "base_logits_bytes": 73455427060,
+    "base_logits_formula": "20 + n_chunk*n_ctx*4 + n_chunk*(n_ctx-1-n_ctx/2)*nv*2",
+    "all_match_protocol": true
+  },
+  "base_logits": {
+    "path": "/var/tmp/work/wikitext-kld/logits/pipeline_base_logits.bin",
+    "bytes": 73455427060,
+    "bytes_required": 73455427060,
+    "byte_identity_holds": true,
+    "why_this_is_the_proof": "chunk count, scoring window, processed-token count and vocabulary all appear in this single integer",
+    "capture_log": {
+      "path": "/var/tmp/work/wikitext-kld/logs/base.log",
+      "sha256": "cd266a0949a3c8db85a12215fe3e2ec7ef6422178d015356e97e430fab1e4be6"
+    }
+  },
+  "inputs": {
+    "fetch_receipt": "/home/mbelleau/research/receipts/wikitext-kld-fetch-verify.json",
+    "preflight_receipt": "/home/mbelleau/research/receipts/wikitext-kld-preflight.json"
+  },
+  "results": {
+    "q8_0": {
+      "mean_kld": 0.000926,
+      "mean_kld_sem": 4.2e-05,
+      "max_kld": 4.059774,
+      "kld_99_9": 0.044331,
+      "median_kld": 0.000328,
+      "min_kld": -8e-05,
+      "rms_dp_pct": 0.878,
+      "rms_dp_pct_sem": 0.035,
+      "same_top_pct": 98.761,
+      "same_top_pct_sem": 0.029,
+      "mean_ppl_q": 6.954896,
+      "mean_ppl_q_sem": 0.044995,
+      "mean_ppl_base": 6.95023,
+      "mean_ppl_base_sem": 0.044933,
+      "log": {
+        "path": "/var/tmp/work/wikitext-kld/logs/q8_0.log",
+        "sha256": "4a605a1e0ea3df2aea2896f212cde92948f0f5aa0c29752c3ae1c50508941614"
+      }
+    },
+    "q6_k": {
+      "mean_kld": 0.002286,
+      "mean_kld_sem": 0.000108,
+      "max_kld": 13.000574,
+      "kld_99_9": 0.085161,
+      "median_kld": 0.000926,
+      "min_kld": -5.6e-05,
+      "rms_dp_pct": 1.356,
+      "rms_dp_pct_sem": 0.034,
+      "same_top_pct": 97.875,
+      "same_top_pct_sem": 0.038,
+      "mean_ppl_q": 6.951016,
+      "mean_ppl_q_sem": 0.044975,
+      "mean_ppl_base": 6.95023,
+      "mean_ppl_base_sem": 0.044933,
+      "log": {
+        "path": "/var/tmp/work/wikitext-kld/logs/q6_k.log",
+        "sha256": "54ed41c1083056f95027fe4ae79a574832f4bc1820620a8c4881413d521e5c0d"
+      }
+    },
+    "q5_k_xl": {
+      "mean_kld": 0.004426,
+      "mean_kld_sem": 0.000167,
+      "max_kld": 18.528065,
+      "kld_99_9": 0.20171,
+      "median_kld": 0.001627,
+      "min_kld": -7.7e-05,
+      "rms_dp_pct": 1.858,
+      "rms_dp_pct_sem": 0.032,
+      "same_top_pct": 97.178,
+      "same_top_pct_sem": 0.043,
+      "mean_ppl_q": 6.96843,
+      "mean_ppl_q_sem": 0.04511,
+      "mean_ppl_base": 6.95023,
+      "mean_ppl_base_sem": 0.044933,
+      "log": {
+        "path": "/var/tmp/work/wikitext-kld/logs/q5_k_xl.log",
+        "sha256": "6895406d45d4f14c08455d15fdd5f34d35438cd8ec18e98dc3a1ad6b24404d8f"
+      }
+    }
+  },
+  "retention": {
+    "policy": "preserve before delete",
+    "this_pipeline_deletes_nothing": true,
+    "base_logits_recompute_cost": "one full BF16 forward pass over 296,960 tokens of wikitext-2 raw test on a single card; the inputs are pinned public blobs, this file is not - if it is ever removed it has to be recomputed, not re-downloaded.",
+    "inputs_recovery": "see the retention block of the fetch receipt"
+  },
+  "note": "every byte size in the inputs is serialized bytes on disk; none of it is VRAM or KV"
+}
