@@ -86,6 +86,19 @@ ships as receipts (`receipts/kld5-*.json`).
 > ([`receipts/qualification-5090-context.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/qualification-5090-context.json)),
 > so between the two the trade is footprint and overlay-free simplicity against fidelity, not
 > capability.
+>
+> **That `0.955` is a per-card measurement, not a constant.** It is the value that qualified on
+> one board, `GPU-506a575d` (32,607 MiB, 458 MiB of it held by the driver); a second physical
+> RTX 5090 needed **`0.956`**, missing at 0.955 by about **0.01 GiB**
+> ([`receipts/second-5090-datapoint.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/second-5090-datapoint.json)).
+> Two nominally identical boards differ in exactly two quantities no configuration can move —
+> the driver's framebuffer reserve and the CUDA context size — and a **68 MiB** perturbation in
+> either was measured to be enough to flip a gate
+> ([`receipts/qualification-24gib-capped.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/qualification-24gib-capped.json)
+> → `residual_risk_versus_a_physical_board`), while one thousandth of utilisation is only about
+> 32 MiB. **So if a card refuses to start or OOMs at startup, raise utilisation by `0.001` at a
+> time** rather than dropping the window — and do not lower `max_pixels` to make room, because
+> at fixed utilisation that enlarges the KV pool and makes the large-image case fail *sooner*.
 
 ## Which of the four builds
 

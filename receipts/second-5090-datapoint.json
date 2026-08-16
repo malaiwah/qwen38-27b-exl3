@@ -1,0 +1,233 @@
+{
+  "schema": "qwen38-second-5090-datapoint/1",
+  "generated_utc": "2026-08-16T12:05:00Z",
+  "title": "A second physical RTX 5090 corroborates the prefix-caching-plus-align result and falsifies the universality of --gpu-memory-utilization 0.955",
+  "one_line": "cosmicnag ran the context edition at the native 262,144 window with MTP-3 and prefix caching on a second physical RTX 5090 without LMCache and it works, which leaves LMCache 0.5.2 kv_both as the sole remaining suspect in his original garbling; and his card needed 0.956 where ours qualified at 0.955, so the cards stop presenting 0.955 as a constant and now say it is one board's measurement with a thin margin.",
+  "claim_scope": "This receipt records a USER REPORT and what we changed because of it. No GPU was used by this agent: the physical RTX 5090 was held by another measurement for the whole of this ticket. Nothing here is a new measurement of ours. Every number attributed to this project is quoted from a named prior receipt; every number attributed to the reporter is quoted from his own comment and is unverified by us.",
+  "reported_by": {
+    "where": "https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6-context/discussions/1",
+    "user": "cosmicnag",
+    "comment_id": "6a81879b7b39659645aa7a82",
+    "posted_utc": "2026-08-16T09:49:15Z",
+    "verbatim": "Thanks again for the detailed reply. Just saw your post, and aligned myself to pretty much same level now. I am at mtp-3 running at full context but I had to use 0.956 (0.955 was OOM by just 0.01 GiB)\nCurrent situation :\n```\n Full 262K MTP + prefix caching works.\n\n - LMCache remains disabled.\n - Pi entry points correctly.\n - 0.956 GPU utilization fixes KV startup margin.\n - 262144 context active.\n```\nChat template link (this is definitely not the issue) :\nhttps://huggingface.co/froggeric/Qwen-Fixed-Chat-Templates/blob/main/chat_template.jinja\n\nLooks like LMCache is the issue. Lets hope we can get it working if possible, IMO this quant is already the best option for 5090  - with LMCache it will be like the holy grail lol.Cheers.",
+    "hardware": "a second physical NVIDIA GeForce RTX 5090, his own machine. Its driver framebuffer reserve, driver version and CUDA context size are NOT known to us; that is one reason the questions below were asked.",
+    "not_verified_by_us": "we did not observe his server, his logs or his engine banner. Everything in his_configuration_as_reported is his statement."
+  },
+  "consequence_1_corroboration": {
+    "what_he_closed": "prefix caching plus --mamba-cache-mode align, at the native 262,144 window, on a second physical RTX 5090, with LMCache disabled: works. That is the one arm this project could not supply, because it has access to one card.",
+    "why_that_completes_a_decomposition": "his original decisive control removed FOUR things at once -- the LMCache wrapper and connector, the cleared LMCache L2 files, --enable-prefix-caching, and --mamba-cache-mode align -- so it proved the SET was guilty and not which member (receipts/apc-poison-repro.json -> published.reporter_update_that_changes_the_reading).",
+    "our_half_of_the_decomposition": {
+      "receipt": "receipts/apc-poison-repro.json",
+      "headline_quoted": "NOT REPRODUCED. In the reporter's own condition on the same card class, all 38 requests of every arm returned correct planted answers and the corruption detector never fired once, in any arm, on any request.",
+      "arms": 7,
+      "requests_per_arm": 38,
+      "scored_requests_total": 266,
+      "corrupted_requests": 0,
+      "on_the_unpatched_image_too": "arm A is the release image with upstream PR #51113 ABSENT, in his exact --enable-prefix-caching --mamba-cache-mode align condition: 0 failed, 0 corrupted, 62.9 % prefix cache hit rate"
+    },
+    "the_conclusion_and_its_exact_strength": "the two flags are now cleared on two independent physical 5090s, so LMCache 0.5.2 in kv_both disk mode at chunk 1600 is the only member of the set he removed that is still standing. This is ELIMINATION, not a positive identification: this project has never run LMCache and makes no claim that it is guilty.",
+    "still_not_ours_to_claim": [
+      "we did not run LMCache, then or now",
+      "his success is his measurement, not a gate of ours; the context edition's native-window recipe still declines prefix caching on our evidence",
+      "his window/batch/sequence settings are unknown, which is precisely what open_questions asks"
+    ]
+  },
+  "consequence_2_falsification_of_a_universality": {
+    "what_the_cards_claimed": "--gpu-memory-utilization 0.955 printed as THE qualified value, without saying which board qualified it.",
+    "what_is_actually_measured": {
+      "receipt": "receipts/qualification-5090-context.json",
+      "gpu_uuid": "GPU-506a575d-01d7-b12e-9a0a-c1ab5f38ae0a",
+      "memory_total_mib": 32607,
+      "free_mib_with_gpu_idle": 32149,
+      "usable_gib_reported_by_vllm": 31.4,
+      "driver_version": "610.57.04",
+      "gates": "all seven pass",
+      "available_kv_gib": 9.28,
+      "gpu_kv_cache_tokens": 265122,
+      "max_concurrency_at_262144": 1.01,
+      "qualified_at": "gpu_memory_utilization 0.955 with PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True"
+    },
+    "what_he_measured": "0.956; 0.955 OOMed 'by just 0.01 GiB' (his words).",
+    "the_honest_claim_now": "0.955 is the value measured on the board named above and the margin is thin. It is NOT the value an RTX 5090 needs. 0.955 is not withdrawn and is not wrong: it is measured, and it is correct for the card it was measured on.",
+    "mechanism_already_measured_elsewhere": {
+      "receipt": "receipts/qualification-24gib-capped.json",
+      "section": "residual_risk_versus_a_physical_board",
+      "statement_quoted": "a physical 24 GiB board differs from this capped 32 GiB board in exactly two quantities, and both are properties of the device rather than of the configuration: the driver's framebuffer reserve, which sets how much of the nominal board CUDA can see at all, and the CUDA context, which is the first thing subtracted from what CUDA can see.",
+      "driver_framebuffer_reserve_mib_on_our_card": 458,
+      "cuda_context_gib_on_our_card": 0.496,
+      "the_68_mib_result_quoted": "it passed with 68 MiB spare of a 24 GiB board's 24,118 MiB. A board whose driver reserves 68 MiB more than this one's 458 MiB, or whose CUDA context is 68 MiB larger than 0.496 GiB, fails it. Both are 0.3 % perturbations. This is the single most fragile number in the receipt.",
+      "budget_rule": "requested = ceil(init_snapshot.total_memory * gpu_memory_utilization), and init_snapshot.total_memory on our card is FB Total minus FB Reserved, 32,607 - 458 = 32,149 MiB (qualification-24gib-capped.json -> engine_budget_mechanism)",
+      "one_thousandth_in_mib": 32,
+      "one_thousandth_derivation": "32,149 MiB x 0.001 = 32.1 MiB; receipts/qualification-5090-apc.json -> utilisation_band.budget_rule states the same rule as 'about 16 MiB' for 0.0005",
+      "why_this_is_the_mechanism": "a per-card difference of one thousandth of utilisation is about 32 MiB, which is the same order as the two device quantities that cannot be emulated and smaller than the 68 MiB perturbation already measured to flip a gate. Two nominally identical 5090s landing 0.001 apart is expected behaviour, not a defect in either board."
+    },
+    "a_competing_explanation_we_did_not_dismiss": {
+      "observation": "his 0.01 GiB shortfall is numerically identical to our own published align-mode startup refusal: at 0.955 with --enable-prefix-caching --mamba-cache-mode align our engine needs 9.29 GiB of KV for one 262,144-token request against an unchanged 9.28 GiB supply and names 260,800 as the longest window it could serve (receipts/qualification-5090-apc.json -> bounded_negative_results).",
+      "so_the_two_readings_are": [
+        "he reproduced our published align-mode startup refusal exactly, and 0.956 is a coarser version of our 0.9555 bump -- in which case his card's reserve may not differ from ours at all",
+        "his board's driver reserve or CUDA context genuinely differs, which the mechanism above says is entirely possible"
+      ],
+      "why_it_does_not_change_the_card_edit": "either way the cards were wrong to print 0.955 as universal, because only one board was ever measured. The card edit is correct under both readings; which reading is true is what open_questions is for.",
+      "we_never_probed_0_956": "receipts/qualification-5090-apc.json -> utilisation_band probed 0.955, 0.9555, 0.958, 0.9585, 0.959 and 0.96. 0.956 is not among them, so this project has no pool figure for it and states none."
+    }
+  },
+  "why_his_success_needs_care_rather_than_celebration": {
+    "our_own_attempt_to_qualify_prefix_caching_at_262144_failed_three_ways": {
+      "receipt": "receipts/qualification-5090-apc.json",
+      "outcome": "SCOPED DECLINE for the native 262,144 window",
+      "rows": [
+        {
+          "gpu_memory_utilization": 0.955,
+          "available_kv_cache_gib": 9.28,
+          "pool_tokens": null,
+          "outcome": "refuses to start; needs 9.29 GiB; engine names 260,800 as the longest window it could serve"
+        },
+        {
+          "gpu_memory_utilization": 0.9555,
+          "available_kv_cache_gib": 9.3,
+          "pool_tokens": 262144,
+          "max_concurrency": 1.0,
+          "outcome": "starts, then deadlocks mid-prefill"
+        },
+        {
+          "gpu_memory_utilization": 0.958,
+          "available_kv_cache_gib": 9.38,
+          "pool_tokens": 263608,
+          "max_concurrency": 1.01,
+          "outcome": "starts; no long request sent"
+        },
+        {
+          "gpu_memory_utilization": 0.9585,
+          "available_kv_cache_gib": 9.39,
+          "pool_tokens": 265072,
+          "max_concurrency": 1.01,
+          "outcome": "starts, then livelocks"
+        },
+        {
+          "gpu_memory_utilization": 0.959,
+          "available_kv_cache_gib": 9.41,
+          "pool_tokens": 265072,
+          "max_concurrency": 1.01,
+          "outcome": "starts; identical pool"
+        },
+        {
+          "gpu_memory_utilization": 0.96,
+          "available_kv_cache_gib": 9.44,
+          "pool_tokens": 265072,
+          "max_concurrency": 1.01,
+          "outcome": "starts; identical pool"
+        }
+      ],
+      "the_livelock_in_detail_quoted": "the request was accepted, prefilled to 98.9 % of the KV pool, dropped back to the waiting queue with the pool freed to 0 %, and re-prefilled. The cycle repeats with a 30-second period. Prompt throughput pins at about 960 tok/s, generation throughput is 0.0 throughout, and not one output token is produced. It was stopped by the operator after 656 s; nothing suggests it would ever have terminated.",
+      "livelock_wall_sec": 656.325,
+      "livelock_prefix_cache_queries": 261794.0,
+      "livelock_prefix_cache_hits": 0.0,
+      "our_flags_in_that_attempt": {
+        "max_model_len": 262144,
+        "max_num_seqs": 1,
+        "max_num_batched_tokens": 2048,
+        "kv_cache_dtype": "fp8",
+        "mtp_depth": 3,
+        "max_pixels": 8388608
+      },
+      "filed_upstream": "https://github.com/local-inference-lab/vllm/issues/394"
+    },
+    "why_that_is_not_a_contradiction_of_his_report": "our failure is invisible below the pool ceiling. A server answering 8k or 128k prompts with the cache on looks perfectly healthy; the livelock only appears when a single request needs nearly the whole pool. His report does not state that he has driven a request near 262,144, so his success and our failure may simply be measuring different things.",
+    "candidate_explanations_that_the_questions_distinguish": [
+      "a different --max-num-batched-tokens, which changes prefill chunking",
+      "a different effective --max-model-len (the engine reduces it silently if asked, and his YAML value need not be the banner value)",
+      "a shorter needle / no request ever near the pool ceiling",
+      "a different --max-num-seqs, which changes whether mixed batches form",
+      "a genuinely different driver reserve or CUDA context on his board"
+    ]
+  },
+  "open_questions": [
+    {
+      "question": "What --max-model-len and --max-num-batched-tokens do you run with prefix caching on?",
+      "why_asked": "ours were 262144 and 2048 (receipts/qualification-5090-apc.json -> identity.qualified_profile). max_model_len sets the startup KV requirement that align-mode block rounding acts on, and max_num_batched_tokens sets the prefill chunking; either differing could be the whole difference between his success and our refusal, and would mean his 0.956 is buying something other than what we think."
+    },
+    {
+      "question": "Have you ever sent a single request close to the full window with prefix caching enabled -- a 250k+ token prompt -- and received tokens back?",
+      "why_asked": "our failure was a livelock at 98.9 % of the pool with zero output tokens over 656 s, only reachable when one request needs nearly the whole pool. Below the ceiling the same server looks healthy, so a positive answer here is the only thing that would turn our SCOPED DECLINE into a configuration we can publish."
+    },
+    {
+      "question": "What is your --max-num-seqs?",
+      "why_asked": "ours was 1. It decides whether mixed batches can form at all, which bears on the scheduling path in issue #394 and on whether the #51812 GDN overlay is relevant to him: at --max-num-seqs 1 no mixed batch can form and the overlay is a no-op (receipts/gdn-gate-concurrency.json)."
+    }
+  ],
+  "what_we_offered_him": "if his configuration really does serve a near-full-window request with the cache on, we publish it as HIS configuration with his flags and his credit. It is currently the only evidence anywhere that prefix caching can be made to work at 262,144 on a 32,607 MiB card.",
+  "what_we_told_him_shipped_since": {
+    "prefix_caching": {
+      "receipt": "receipts/qualification-5090-apc.json",
+      "shipped_on": "the three 8,192-token recipes (k4, k5k6, hydrated) with --enable-prefix-caching --mamba-cache-mode align",
+      "declined_at": "the context edition's native 262,144 window",
+      "measured_option": {
+        "max_model_len": 256000,
+        "gpu_memory_utilization": 0.9585,
+        "gpu_kv_cache_tokens": 264777,
+        "maximum_concurrency": 1.03,
+        "needle": "254,964 measured prompt tokens retrieved exactly in 179.098 s; a second 254,967-token request served in the same process after release in 180.14 s",
+        "window_price_vs_native_tokens": 6144,
+        "window_price_pct": 2.34,
+        "status": "OFFERED as a documented option, not a qualified profile: it does not carry gate 3 or gate 4"
+      }
+    },
+    "gdn_overlay": {
+      "receipt": "receipts/gdn-gate-concurrency.json",
+      "recommendation": "recommended where a recipe ships prefix caching AND speculative decoding together, i.e. K5K6 Recipe B",
+      "measured_rate": "3 events in 5,825 metadata builds = 0.515 miscomputed metadata builds per thousand, at eight concurrent streams with prefix caching on and MTP-3",
+      "control": "zero events in 3,329 builds at eight streams with prefix caching off (below 0.9012 per thousand, 95 % upper bound, rule of three)",
+      "file": "tools/vllm-qwen-gdn-spec-gates.py",
+      "file_sha256": "7cd3f5fe763b621048af4817951a841d99c8b700d9a56ded27ccaca5a56ccbe0",
+      "mount_destination": "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py, read-only over the vendored file",
+      "not_promoted_into_the_image": "the qualified digest is sha256:16a936b877b90fc080181e842f47dbafc5cb8e62688799596836e34ba0b79218 and a reachability count is not evidence that would survive a re-qualification",
+      "no_op_condition": "at --max-num-seqs 1 no mixed batch can form and the overlay changes nothing"
+    },
+    "what_we_did_not_tell_him": "nothing about his chat template link. That work is a separate live audit and this agent has no receipt for it, so making a claim would have been restating a number we have not read."
+  },
+  "cards_changed": {
+    "principle": "0.955 is not restated as wrong. It is measured and correct for the board it was measured on. What is removed is the implication that it is a property of the RTX 5090.",
+    "every_edit_says": [
+      "the value qualified on ONE physical RTX 5090, named by UUID GPU-506a575d, 32,607 MiB with 458 MiB held by the driver",
+      "a second physical RTX 5090 needed 0.956",
+      "the margin is about 0.01 GiB",
+      "a user seeing a startup OOM should raise utilisation by 0.001 at a time rather than dropping the window",
+      "the existing warning is kept: lowering max_pixels makes the vision case worse, because at fixed utilisation the engine spends the freed bytes on more KV (4,194,304 pixels OOMed with 6.56 MiB free against 8,388,608 pixels' 26.50 MiB)"
+    ],
+    "per_card": {
+      "MODEL_CARD-K5K6-context.md": [
+        "header paragraph: 0.955 flagged as that board's measured value, with the second card's 0.956 and a pointer to the new section",
+        "the 'Qualified on a physical RTX 5090' paragraph: utilisation called a measurement on that board, not a property of the RTX 5090",
+        "new section 'Utilisation is a per-card measurement': the board identity, the second data point, the two unemulatable device quantities, the 68 MiB gate-flip result, the 32 MiB-per-thousandth arithmetic, the raise-by-0.001 instruction, and the max_pixels warning restated with its measured numbers",
+        "the '0.955 is the measured value, not a round number' paragraph: now says 'that one physical 5090' and points at the new section",
+        "the primary docker recipe note: raise by 0.001 rather than lowering --max-model-len or max_pixels"
+      ],
+      "MODEL_CARD-K4.md": [
+        "the 'Position in the family' blockquote gains the per-card paragraph after the 265,122-token/0.955 sentence"
+      ],
+      "MODEL_CARD-K5K6.md": [
+        "the '32 GB Blackwell card with MTP-3' recommendation gains the per-card paragraph after the 0.955 sentence"
+      ],
+      "MODEL_CARD-K5K6-hydrated.md": [
+        "the 'hardware-qualified at native length' paragraph gains the per-card paragraph after it"
+      ]
+    },
+    "cards_not_touched": {
+      "MODEL_CARD-EDA-research.md": "does not print 0.955",
+      "DATASET_CARD-v5.md": "does not print 0.955"
+    },
+    "narrative_files_not_touched": "docs/29 and docs/34 quote 0.955 as the qualified constant in derivations owned by other work; this ticket edited cards only and did not touch any existing receipt."
+  },
+  "our_reply": {
+    "discussion": "https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6-context/discussions/1",
+    "comment_id": "6a81a57b3cdb89e45df62ab7",
+    "comment_author": "malaiwah",
+    "comment_posted_utc": "2026-08-16T11:56:43Z",
+    "comment_url": "https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6-context/discussions/1#6a81a57b3cdb89e45df62ab7",
+    "body_source": "receipts/second-5090-datapoint-comment.md",
+    "body_sha256": "55e8556c141cd5798e1f8a19fe78573ef8e2ed63e2ade8a533f74170332f4ec5",
+    "verified": "the posted comment body was compared byte-for-byte against the local file at post time and matched"
+  },
+  "no_gpu_was_used": "the physical RTX 5090 was held by an unrelated KV-dtype measurement for the whole of this ticket and was never contended for. This receipt contains no new measurement.",
+  "publication": "see receipts/second-5090-datapoint-publication.json for the re-publication of the four changed cards and the byte-identity re-fetch"
+}

@@ -32,6 +32,10 @@ ceiling. All seven acceptance gates pass on one **physical NVIDIA GeForce RTX 50
 261,794 text tokens and from a 236,824-token prompt containing a seven-megapixel image, both
 on that card
 ([`receipts/qualification-5090-context.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/qualification-5090-context.json)).
+**`0.955` is that board's measured value, not a constant every RTX 5090 shares:** a second
+physical 5090 reported by a user needed **`0.956`**, missing at 0.955 by about **0.01 GiB**
+([`receipts/second-5090-datapoint.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/second-5090-datapoint.json)).
+See *Utilisation is a per-card measurement* below before copying the number.
 On the v5 held-out suite — 5,120 contexts, **10,480,640 scored positions** —
 it measures **0.003509** mean `KL(BF16 ‖ candidate)` against official FP8's **0.005294**, a
 paired **−0.001785** that wins **5,109/5,120** contexts. It was already below FP8 on the older
@@ -714,7 +718,9 @@ image digest below plus the three content-pinned patch modules, vLLM
 `0.11.2.dev280+gilded.gnosis.v20.vllm4d006a4.b12xcd3ce19.fi1ac6942.cu132.20260810.r34`.
 The qualified profile is **`--gpu-memory-utilization 0.955` with
 `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True`**; everything else is the published recipe
-unchanged.
+unchanged. That utilisation is a measurement **on that board**, not a property of the RTX 5090:
+a second physical 5090 needed `0.956`, and *Utilisation is a per-card measurement* below gives
+the mechanism and what to do about it.
 
 At startup the engine budget is **29.98 GiB** (free 30.9 of 31.4 GiB) and measured usage is
 18.19 weight + 1.78 peak activation + 0.27 non-torch + 0.45 CUDAGraph = **20.69 GiB**, leaving
@@ -758,13 +764,54 @@ retroactively to this historical result.
 ```
 
 `0.955` is the measured value, not a round number: it is what passes the combined
-long-text-plus-large-image case on a physical 5090 with the full 8,388,608-pixel ceiling, and
-`0.97` does not
+long-text-plus-large-image case on that one physical 5090 with the full 8,388,608-pixel ceiling,
+and `0.97` does not
 ([`receipts/qualification-5090-context.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/qualification-5090-context.json)).
+It is also not universal — a second physical 5090 needed `0.956`. Read *Utilisation is a
+per-card measurement* below before treating it as a constant.
 
 Two model files must pass their existing quant config into `VocabParallelEmbedding`:
 `qwen3_5.py` and `qwen3_5_mtp.py`. Backends without an `embedding()` method retain BF16.
 The exact patched files and SHA-256 digests are in the companion repository.
+
+### Utilisation is a per-card measurement
+
+**`0.955` is what qualified on one board, and it is not a constant.** That board is
+`GPU-506a575d-01d7-b12e-9a0a-c1ab5f38ae0a`: 32,607 MiB of framebuffer, **458 MiB of it held by
+the driver**, so 32,149 MiB CUDA-visible, driver 610.57.04 — all seven gates, 265,122 KV tokens
+at 262,144, 1.01x
+([`receipts/qualification-5090-context.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/qualification-5090-context.json)).
+A **second physical RTX 5090**, reported by a user running this edition at 262,144 with MTP-3,
+needed **`0.956`**: 0.955 missed by about **0.01 GiB**
+([`receipts/second-5090-datapoint.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/second-5090-datapoint.json)).
+Two data points, two different minimum values, so the claim this card makes is "0.955 is
+measured, on the board named above, and the margin is thin" — never "0.955 is what an RTX 5090
+needs".
+
+**Why a thousandth is enough to matter, measured.** Two nominally identical boards differ in
+exactly two quantities that no configuration can move: the **driver's framebuffer reserve**,
+which sets how much of the board CUDA can see at all, and the **CUDA context**, which is the
+first thing subtracted from what CUDA can see. On the qualified board those are **458 MiB** and
+**0.496 GiB**. In the 24 GiB-class proxy run the most fragile gate — the combined long-text
+plus seven-megapixel request — passed with **68 MiB** of margin, so a board reserving 68 MiB
+more, or carrying a 68 MiB larger context, would have failed it; both are 0.3 % perturbations
+([`receipts/qualification-24gib-capped.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/qualification-24gib-capped.json)
+→ `residual_risk_versus_a_physical_board`). The engine requests
+`ceil(cudaMemGetInfo_total × utilisation)`, and on a 32,149 MiB CUDA total one thousandth of
+utilisation is about **32 MiB** — the same order as the differences between two cards. A 0.001
+bump between two 5090s is therefore expected behaviour, not a defect in either card.
+
+**So if your card refuses to start or OOMs at startup, raise utilisation by `0.001` at a time**
+— `0.956`, then `0.957` — and stop at the first value that starts. Do **not** drop
+`--max-model-len` first: the window is the capability and the shortfall is tens of MiB. And do
+**not** reach for `max_pixels`: at fixed utilisation, lowering it lowers profiled activation,
+the engine spends every freed byte on more KV, and the large-image request then fails *sooner*
+— at 0.97 the 4,194,304-pixel profile OOMed with **6.56 MiB** free against 8,388,608 pixels'
+**26.50 MiB** (`bounded_negative_results` in
+[`receipts/qualification-5090-context.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/qualification-5090-context.json),
+and *Bounded negative: utilisation is the knob, not the image ceiling* below). The ceiling on
+the bump is the one gate 3 sets: `0.97` starts and serves text but cannot serve a large image on
+this board, so treat anything approaching it as text-only.
 
 ### Correction: no second resident MTP embedding
 
@@ -1081,10 +1128,17 @@ docker run --rm --gpus '"device=0"' --ipc host -p 127.0.0.1:8000:8000 \
 ```
 
 `--gpu-memory-utilization 0.955` plus `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True` is
-the profile qualified on a physical RTX 5090: it is the measured value that passes the
-combined long-text-plus-large-image case at the full 8,388,608-pixel ceiling, and 0.97 does
-not
+the profile qualified on one physical RTX 5090: it is the measured value that passes the
+combined long-text-plus-large-image case at the full 8,388,608-pixel ceiling on that board, and
+0.97 does not
 ([`receipts/qualification-5090-context.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/qualification-5090-context.json)).
+**If your own card refuses to start or OOMs at startup, raise it by `0.001` at a time** rather
+than lowering `--max-model-len` or `max_pixels`: a second physical 5090 needed `0.956`, missing
+at 0.955 by about 0.01 GiB
+([`receipts/second-5090-datapoint.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/second-5090-datapoint.json)),
+and *Utilisation is a per-card measurement* above explains why a thousandth is the right step
+size and why `max_pixels` makes the vision case worse rather than better.
+
 The container listens on all interfaces internally, but Docker publishes the port to host
 loopback only. For remote clients, keep that binding and put an authenticated TLS proxy in
 front; do not expose this unauthenticated generation endpoint directly.
