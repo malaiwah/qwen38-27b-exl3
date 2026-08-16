@@ -600,6 +600,49 @@ doc = {
     "addenda": [
         {
             "when": "before any of the three conversions ran",
+            "what": "condition 3's parity is quantified as FILE parity with a measured body "
+                    "deficit, and the condition is run as pre-registered rather than respecified",
+            "evidence": "receipts/cross-candidate-byte-accounting.json, nine rows read from the "
+                        "artifacts themselves",
+            "the_body_deficit": {
+                "definition": "transformer body = tensor payload minus embedding, output head, "
+                              "vision tower and MTP draft: the weights both families quantize "
+                              "and multiply",
+                "gguf_q6_k_body_gib": 19.3599,
+                "k6_parity_predicted_body_gib": 17.0537,
+                "deficit_gib": 2.3062,
+                "deficit_pct_of_ours": 13.5,
+                "the_uncomfortable_neighbour": "the parity build's predicted body is within 0.02 "
+                    "GiB of GGUF UD-Q5_K_XL's 17.034 GiB. At file parity with Q6_K our build "
+                    "carries a FIVE-BIT GGUF's transformer body.",
+                "where_the_bytes_go_instead": "our embedding is BF16 (2.3682 GiB against their "
+                    "0.9713), our payload carries a 0.8582 GiB BF16 vision tower their text file "
+                    "does not have at all (it ships as mmproj-BF16.gguf), and we ship a 0.2848 "
+                    "GiB MTP draft they have no equivalent of",
+                "the_other_direction": "on whole deployed multimodal bytes -- their text file "
+                    "plus mmproj -- Q6_K is 22.18 GiB against hydrated's 20.1268, so our "
+                    "artifact is 2.053 GiB SMALLER for the same advertised capability",
+            },
+            "decision": "run condition 3 exactly as pre-registered. The registered question is "
+                "whether spending the byte surplus our own law says Q6_K spends closes the "
+                "6-bit-class gap; that question is answered by this build, and body parity is a "
+                "different and newer question that deserves its own pre-registration rather "
+                "than being bolted onto this one. Owner-confirmed, and explicitly not to grow "
+                "into a fourth conversion in this window.",
+            "reporting_rule": "every statement of this result names its axis in the claim, not "
+                "in a footnote: 'at equal FILE bytes, with Q6_K carrying 2.3062 GiB (13.5 %) "
+                "more transformer body because our embedding is BF16, our payload includes the "
+                "vision tower and we ship an MTP draft'. A match or a win is therefore stronger "
+                "than the headline; a miss is softer.",
+            "what_a_body_parity_build_would_look_like": "gate/up/down K6 plus attention promoted "
+                "K6 -> K7 puts roughly 19.4 GiB of body on the table, about +1.4 GiB over this "
+                "build. Recorded as a named follow-up with its own pre-registration, not run "
+                "here.",
+            "predictions_changed": "none. No threshold, no interval and no predicted byte count "
+                "moves; the reading moves.",
+        },
+        {
+            "when": "before any of the three conversions ran",
             "what": "condition 3's byte-parity claim is qualified: 'equal bytes' on the file is "
                     "NOT equal bytes on the transformer body, because GGUF Q6_K quantizes its "
                     "token embedding and our builds serialize the embedding at BF16",
