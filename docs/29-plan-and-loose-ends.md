@@ -1030,6 +1030,18 @@ caching only, no connector. LMCache stays excluded from sr1 until the 4-arm ladd
 remaining restart-path defect. One blind spot remains unexplained and is named as such: `p1s1` in L3restart
 failed with zero hit tokens retrieved.
 
+**GG scheduler fix filed 2026-08-16.** The defect requires **both** a hybrid model **and** an attached
+external KV connector - relying on the connector to restore the lagging recurrent state at the
+full-attention hit boundary, a contract only nixl fulfils. Measured on the four-arm ladder: L0 (no
+connector) 0/38 failed, L1cold/L2warm (connector attached) 7/38, L3restart 38/38
+([`lmcache-reuse-test.json`](../receipts/lmcache-reuse-test.json)). **No currently running GG serving is
+affected** - the TB2.1 campaign's sr1 image and every in-flight AIBoss pass use native vLLM prefix caching
+only, no connector attached. A fix mirroring upstream's own resolution of this defect class
+([vllm-project/vllm#48425](https://github.com/vllm-project/vllm/pull/48425)) is filed as
+[local-inference-lab/vllm#402](https://github.com/local-inference-lab/vllm/issues/402) (root cause) and
+[#403](https://github.com/local-inference-lab/vllm/pull/403) (patch): CPU-verified only - GPU behavioral
+proof awaits the four-arm ladder re-run on the 2x lab, planned separately.
+
 **LMCache corruption landed upstream 2026-08-16 - as corroboration, not a new issue.** Owner granted standing
 approval to post on the LMCache project (and any other upstream project) on his behalf. A duplicate search
 (six queries, recorded in [`receipts/lmcache-upstream-filing.json`](../receipts/lmcache-upstream-filing.json))
