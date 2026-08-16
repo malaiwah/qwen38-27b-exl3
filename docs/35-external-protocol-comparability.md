@@ -196,7 +196,7 @@ measurement.
 | **D2** | corpus | WikiText-2 raw test only: English encyclopedic, 1,290,590 B [HF-WT2] | 941 documents, 70,348,971 B, five strata ([`kld5-corpus-fetch-log.json`](../receipts/kld5-corpus-fetch-log.json)) | **theirs lower** | their own NVFP4 rows span 4.7x across domains, 0.0124 → 0.05818 [U-Q38]; our own encyclopedic stratum sits below our all-strata mean, 0.004889 vs 0.005197 on the first shard ([`kld5-1M-tail-fp8.json`](../receipts/kld5-1M-tail-fp8.json)) |
 | **D3** | reference numerics | BF16 GGUF in llama.cpp, logits stored `uint16` over a 16-nat span [LC:79-100]; observed `Minimum KLD: -0.000140` [U-LOG-Q8], so floor ≥5e-5 nats/token | float64 two-pass replay of BF16 hidden states ([`tools/fidelity.py`](../tools/fidelity.py)); own floor 6.54e-04 measured, not assumed ([`v3-qualification-bf16.json`](../receipts/v3-qualification-bf16.json)) | unknown, bounded | a noise floor, not a bias: it can push individual positions negative. Matters only near Q8-class means |
 | **D4** | vocabulary coverage | all 248,320 entries **minus** base-side terms with `log p ≤ -16` [LC:224-240] | exact, all 248,320 entries, no truncation | theirs lower (small, unproved) | the dropped region carries positive divergence when a quantization under-represents rare tokens, which is the usual failure mode; the operator is not the one we call "full vocabulary" |
-| **D5** | output head | candidate's own head is in the loop, and its precision varies by quant recipe | both operands through one shared BF16 head, body-only by construction | **theirs higher** | opposite sign to D1/D2; a head-inclusive number of ours exists separately ([16-head-attribution.md](16-head-attribution.md)) |
+| **D5** | output head | candidate's own head is in the loop, and its precision varies by quant recipe | both operands through one shared BF16 head, body-only by construction | **theirs higher** | opposite sign to D1/D2, and **now measured on our own corpus, not just signed**: putting a candidate's own head in the path costs **≤5.28 %** of its mean (hydrated +5.01 % of head-inclusive divergence, context +4.06 %, K4 +1.17 %, unsloth NVFP4 +2.64 %, official FP8 exactly 0 % because its head is byte-identical to the shared one), 512 contexts, 1,048,064 positions, every interval excluding zero ([`head-attribution-v5.json`](../receipts/head-attribution-v5.json); earlier off-corpus number in [16-head-attribution.md](16-head-attribution.md)). Bound applies to *our* heads - a GGUF's own `output.weight` width is not measured here |
 | **D6** | window length | 512 [U-LOG-B] | 2,048 ([`kld5-suite-manifest.json`](../receipts/kld5-suite-manifest.json)) | unknown | interacts with D1; their windows never exercise long-range behaviour |
 | **D7** | uncertainty model | per-token SEM assuming i.i.d. tokens, e.g. `± 0.000073` on 0.006949 [U-LOG-Q5]; 147,900 positions | source-cluster bootstrap, 842 clusters x 10,000 resamples; 10,480,640 positions ([`kld5-10M-hyd.json`](../receipts/kld5-10M-hyd.json)) | no effect on the point estimate | their interval is narrower than an honest one for correlated tokens; do not place the two intervals side by side without saying so |
 | **D8** | framing | raw text, no chat template, no system prompt [U-LOG-B] | raw text, `add_special_tokens=False` | **none** | recorded so it is not mistaken for a difference; their own Dynamic-2.0 page argues text-only evaluation is inadequate for instruct models [U-DYN2], but that argument applies to both sides equally |
@@ -651,30 +651,64 @@ single scale factor:
   every scored position has ≥256 tokens of left context, while ours scores from position 1 of
   2,048), by D2 (one English encyclopedic corpus against our five strata), and by D4 (they drop
   base-side terms with `log p ≤ −16`).
-- **Their number is pushed *up*** by D5, and this is the big one: the candidate's own output
-  head is inside their measured path, while both of our operands go through one shared BF16
-  head, so ours is body-only by construction.
+- **Their number is pushed *up*** by D5: the candidate's own output head is inside their measured
+  path, while both of our operands go through one shared BF16 head, so ours is body-only by
+  construction. **This one is now measured rather than signed, and it is small** - see below.
 - **Only our number carries the cross-engine term.** Our GGUF rows are llama.cpp captures scored
   against a vLLM reference, which the engine-floor control measures at 0.000507 mean
   ([`gguf-report-engine-floor.json`](../receipts/gguf-report-engine-floor.json)). Run A has both
   operands in one engine and carries none of it. That is why the honest comparison is against
   our net-of-floor column, not our measured one.
 
-D1 is the only one of these that is quantified rather than signed, and it is small: Control C
-re-scored our own captures on their geometry and moved every mean by 1.3-2.1 % at a 256-token
-left-context floor and 3.9-4.9 % second-half-only, uniformly across candidates and with no
-ordering change ([`scored-window-offset.json`](../receipts/scored-window-offset.json)). So D1
-cannot explain a 1.1-1.6× gap; the residual is dominated by D5, the head. [INFERENCE] — the
-head-inclusive number is measured separately in
-[16-head-attribution.md](16-head-attribution.md), but not on this corpus, so the decomposition
-is reasoned rather than run.
+Two of these are now quantified rather than signed, and **both are small**.
+
+D1: Control C re-scored our own captures on their geometry and moved every mean by 1.3-2.1 % at a
+256-token left-context floor and 3.9-4.9 % second-half-only, uniformly across candidates and with
+no ordering change ([`scored-window-offset.json`](../receipts/scored-window-offset.json)).
+
+D5: measured on this project's own corpus, all 512 shard-0 contexts and 1,048,064 scored positions,
+by replaying each candidate through **its own output head** against the shared BF16 reference and
+pairing that against the body-only report context by context
+([`head-attribution-v5.json`](../receipts/head-attribution-v5.json)). Putting a candidate's own
+head inside the measured path raises its mean KLD by **at most 5.28 %**:
+
+| candidate | body-only mean | head-inclusive mean | paired delta [95 % CI] | head share of head-inclusive |
+|---|---:|---:|---:|---:|
+| hydrated K5/K6 | 0.002700 | 0.002842 | +1.425e-04 [1.354e-04, 1.496e-04] | 5.01 % |
+| context edition | 0.003409 | 0.003554 | +1.444e-04 [1.371e-04, 1.514e-04] | 4.06 % |
+| K4 | 0.010345 | 0.010468 | +1.225e-04 [1.149e-04, 1.299e-04] | 1.17 % |
+| unsloth NVFP4 | 0.030115 | 0.030932 | +8.161e-04 [7.758e-04, 8.546e-04] | 2.64 % |
+| official FP8 | 0.005197 | 0.005197 | **exactly 0** | 0 % |
+
+The FP8 row is the internal control that makes the other four a measurement rather than an
+assertion: that export leaves `lm_head` in BF16 and its bytes are the shared head's bytes
+(`d922b751f014ee11...`), so its head-attributable delta is zero by construction and the harness
+returns exactly zero. The second control is that all five body-only means reproduce the published
+shard-0 numbers **bitwise** (absolute difference 0.0), so nothing about the re-run drifted. Every
+interval excludes zero, and 486-505 of 512 contexts get worse with the candidate's own head, so D5
+is real and signed exactly as this table has always said - it is just far too small to be the
+dominant term.
+
+**Consequence, and it is a correction to what this section previously said.** The earlier text
+read "the residual is dominated by D5, the head. [INFERENCE]". That inference is now falsified on
+our own corpus: D1 moves means by ≤4.9 %, D5 by ≤5.3 %, and the cross-engine floor is already
+netted out in the comparison column, so the enumerated deltas cannot account for a 1.1-1.6×
+level difference. **The residual is unexplained.** What remains unmeasured, in the order we would
+test it: D2/D6 jointly (their 512-token windows on English encyclopedic text against our
+2,048-token windows across five strata - the corpus and the window are confounded in their
+protocol and cannot be separated by any control of ours), the precision of a **GGUF's** own head
+specifically (llama.cpp stores `output.weight` at its own width, which is not the EXL3 K6 or FP8
+head measured above, so the ≤5.3 % bound is a bound on *our* heads, not on theirs), and
+llama.cpp's prefill numerics. Anyone reading the two columns should treat the level difference as
+protocol-in-general, not as a known decomposition.
 
 The publishable sentence is therefore: *on Unsloth's own protocol, on their corpus and their
 geometry, the three GGUF quants measure 0.000926 / 0.002286 / 0.004426 mean KLD, in the same
 order and with similar spacing as on our suite, where net of the cross-engine floor they
-measure ~0.000579 / ~0.001528 / ~0.003936; the roughly 1.1-1.6× difference in level is
-protocol — mostly whether the output head is inside the measured path — and not disagreement
-about which quantization is better.*
+measure ~0.000579 / ~0.001528 / ~0.003936; the roughly 1.1-1.6× difference in level is protocol,
+not disagreement about which quantization is better - and the two protocol terms we have
+quantified, scoring geometry (≤4.9 %) and output-head inclusion (≤5.3 %, measured), are together
+too small to account for it, so the level difference is not yet decomposed.*
 
 What Run A does not do is put our EXL3 builds on their axis. That would need our builds scored
 by `llama-perplexity`, which cannot read them. The comparison that does place both families on

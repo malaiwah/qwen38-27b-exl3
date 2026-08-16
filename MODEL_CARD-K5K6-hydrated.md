@@ -562,9 +562,20 @@ full protocol, delta by delta, in
 **The ordering is identical on both axes**, and the level difference is protocol rather than
 disagreement about which quantization is better: their number is pushed down by scoring only the
 second half of each window, by a single English corpus and by dropping base-side terms below
-`log p ≤ −16`, and pushed up — this is the large one — by having the candidate's own output head
-inside the measured path, while both of our operands go through one shared BF16 head. Only our
-number carries a cross-engine term, which is why the honest comparison is against our net column.
+`log p ≤ −16`, and pushed up by having the candidate's own output head inside the measured path,
+while both of our operands go through one shared BF16 head. Only our number carries a cross-engine
+term, which is why the honest comparison is against our net column. **Correction, 2026-08-16:** this
+paragraph used to call the output head "the large one". It is now measured on our own corpus and it
+is not: replaying each candidate through its own head over all 512 shard-0 contexts and 1,048,064
+positions raises its mean by **at most 5.28 %** (hydrated 5.01 % of head-inclusive divergence,
+context 4.06 %, K4 1.17 %, unsloth NVFP4 2.64 %, and exactly 0 % for the official FP8 export, whose
+head is byte-identical to the shared one — the internal control), every interval excluding zero
+([`receipts/head-attribution-v5.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/head-attribution-v5.json)).
+Scoring geometry is worth ≤4.9 % by the same kind of control. So the two protocol terms we have
+quantified are together far too small to explain a 1.1-1.6x level difference: **the level gap is
+not decomposed**, the leading unmeasured candidates being their 512-token English-encyclopedic
+windows against our 2,048-token five-strata ones, and the width of a GGUF's own `output.weight`,
+which is a different tensor from any head measured above.
 
 **Their harness's own floor, measured on our hardware instead of assumed.** The `Minimum KLD`
 column is negative for all three — −0.000080, −0.000056, −0.000077, i.e. **5.6e-5 to 8.0e-5** — the
