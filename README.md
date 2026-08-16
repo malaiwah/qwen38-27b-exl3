@@ -130,7 +130,7 @@ What that table says, in the order that matters:
   on our own suite, and it is the first measurement here where an off-the-shelf artifact beats
   the recipe.
 - **At the 5-bit operating point our context edition wins** — 0.003409 at 19.27 GiB against
-  `UD-Q5_K_XL`'s 0.003936 net at 18.83 GiB, about 13 % better fidelity for about 0.44 GiB more
+  `UD-Q5_K_XL`'s 0.003936 net at 18.83 GiB, about 13 % better fidelity for **0.445 GiB** more
   payload.
 - **`Q8_0` is the fidelity leader**, 0.001087 at 27.05 GiB, and only about twice the engine floor,
   so its own number sits near the resolution limit of any cross-engine comparison: the net column is
@@ -142,7 +142,10 @@ What that table says, in the order that matters:
 - **K4 is the weakest point in the table**, worse than every GGUF measured here and worse than
   official FP8.
 
-What it does **not** settle: this is text-only teacher-forced fidelity on one shard. It says
+What it does **not** settle: this is text-only teacher-forced fidelity on one shard — one tenth of the
+suite, though a close tenth: over all 10,480,640 positions the five vLLM means read 0.002760 / 0.003210 /
+0.003509 / 0.005294 / 0.010604, **1.9-2.9 % above** these shard-0 values with the ordering unchanged
+(`receipts/kld5-10M-*.json`), and the GGUFs have no ten-shard equivalent. It says
 nothing about serving 262,144 tokens with vision and MTP on a 32 GB card, which is where these
 artifacts actually differ, and llama.cpp KV-quant behaviour, prefill and decode speed are separate
 axes that were not measured. A separate control bounds the protocol objection instead of arguing
@@ -236,7 +239,7 @@ See [PROGRESS.md](PROGRESS.md) for the full session record.
 | [docs/28-external-validation-and-corrections.md](docs/28-external-validation-and-corrections.md) | external RTX 5090 validation and the corrected capacity boundary |
 | [docs/30-iteration-4-context-edition.md](docs/30-iteration-4-context-edition.md) | serialized-K5 context build, receipts and rejected vision quant |
 | [docs/31-frozen-qualification.md](docs/31-frozen-qualification.md) | source-disjoint frozen v4 qualification |
-| [docs/32-native-context-embedding-overlay.md](docs/32-native-context-embedding-overlay.md) | int8 input table, native MTP-3 plus 8.4 MP engine-budget proof, and corrected draft accounting |
+| [docs/32-native-context-embedding-overlay.md](docs/32-native-context-embedding-overlay.md) | int8 input table, native MTP-3 plus 8.4 MP engine-budget proof (since superseded by the physical 5090 qualification at utilisation 0.955), and corrected draft accounting |
 | [docs/33-evidence-volume-and-intervals.md](docs/33-evidence-volume-and-intervals.md) | the 10,480,640-position rerun, the measured tail, and why ten times the positions did not narrow the interval |
 | [docs/29-plan-and-loose-ends.md](docs/29-plan-and-loose-ends.md) | ranked open work and acceptance gates, including the evidence-volume objection (F1) this session closed |
 | [docs/35-external-protocol-comparability.md](docs/35-external-protocol-comparability.md) | why our KLD and Unsloth's are not interchangeable, the twelve deltas, and the two of them now measured: the scoring-window offset and the cross-engine floor |
@@ -275,7 +278,9 @@ collection index are these files:
 - [x] Serializing attention offline instead of encoding it at load — the "hydrated" build — measures **0.007172**, i.e. calibrated offline K6 beats the runtime overlay by 0.000773 on the overlap-corrected subset
 - [x] Graph-vs-eager decode drift measured properly and traced to the build, not to EXL3 ([docs/27](docs/27-graph-decode-drift-control.md))
 - [x] Frozen v4 suite: 160 source-disjoint contexts, 100 documents, zero token/document/content overlap; all five candidate capture sets and qualification receipts published (**2,708 files / 51.0 GB**)
-- [x] Context edition plus per-row int8 input table starts native 262,144 with **MTP-3, decode graphs and an 8.4 MP image cap** under a 30.24 GiB engine budget; 266,612 KV tokens, exact retrieval at 261,794 text tokens and in a 236,824-token seven-megapixel request; hard-limit RTX 5090 rerun pending
+- [x] Context edition plus per-row int8 input table starts native 262,144 with **MTP-3, decode graphs and an 8.4 MP image cap** under a 30.24 GiB engine budget; 266,612 KV tokens, exact retrieval at 261,794 text tokens and in a 236,824-token seven-megapixel request — that engine-budget run is now superseded by the physical-card qualification below
+- [x] **Hard-limit qualification on a physical RTX 5090 closed** (`receipts/qualification-5090-context.json`, per-process server logs `receipts/qualification-5090-context-server-{B3,B4,C,D,E,F}.log`): the context edition serves native **262,144 with MTP-3, the full 8,388,608-pixel image ceiling and fp8 KV on one 32,607 MiB card** — but at **`--gpu-memory-utilization 0.955`** with `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True`, not the 0.97 the cards used to print. Measured at startup: engine budget **29.98 GiB**, free 30.9 of 31.4 GiB usable, usage 18.19 weight + 1.78 peak activation + 0.27 non-torch + 0.45 CUDAGraph = **20.69 GiB**, **available KV 9.28 GiB = 265,122 KV tokens**, 1.01x maximum concurrency at 262,144, attention block size forced to 1600 tokens so the attention page is at least the mamba page, 3 padding layers at at most 6.25 % KV waste, startup 55.7 s, model load 18.19 GiB in 3.99 s. **All seven gates PASS:** (1) startup allocates a native-length request inside the utilisation ceiling; (2) the 261,794-token needle retrieved exactly; (3) a combined 236,824-token plus 7,077,888-pixel request returns `1376346594 | red, blue` exactly; (4) the 30-case image suite at **24/30**; (5) three warmed 256-token concurrency-1 decode runs; (6) a second native-length request after release in the same process; (7) receipt identity complete
+- [x] **0.97 published as a bounded negative, with its mechanism:** at 0.97 the combined text-plus-image request dies with `torch.OutOfMemoryError` inside `vllm/v1/attention/ops/vit_attn_wrappers.py` wanting 62.00 MiB with 26.50 MiB free, and `expandable_segments` does not rescue it because vLLM spends the freed bytes on more KV (272,570 → 280,017 tokens); lowering `max_pixels` to 4,194,304 at 0.97 is **strictly worse** (profiled peak activation falls to 1.35 GiB, KV grows to 291,933 tokens, OOM with 6.56 MiB free). The knob is utilisation, not the image ceiling — seven megapixels is **not** a hard 32 GB ceiling, since the identical request succeeds at 0.955 with the full 8,388,608-pixel ceiling
 - [x] Task-retention smoke: BF16, all four EXL3 profiles and official FP8 each pass **40/40** deterministic paired tasks with zero regressions; a hardened rescore leaves every pass unchanged and corrects exact-final-answer agreement to 32/40–35/40 (`receipts/task-retention-v2-summary.json`, `receipts/task-retention-v2-strict-rescore.json`)
 - [x] Evidence volume objection (F1) closed: fidelity re-measured on the held-out v5 suite at **10,480,640 scored positions** / **5,120 contexts** / **842 source clusters**, ten verified shards welded by `tools/kld_aggregate.py` — hydrated **0.002760**, online K5/K6 **0.003210**, context **0.003509**, official FP8 **0.005294**, K4 **0.010604**, all body-only through one shared BF16 head (`receipts/kld5-10M-*.json`)
 - [x] Paired at 5,120 contexts: hydrated **-0.002534** (5,118 wins), online K5/K6 **-0.002084** (5,105), context **-0.001785** (5,109) against official FP8; hydrated beats the runtime overlay by **-0.000450** (4,922); K4 loses to FP8 on 5,113 of 5,120 (`receipts/kld5-10M-paired.json`)

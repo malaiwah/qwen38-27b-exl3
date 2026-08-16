@@ -246,7 +246,7 @@ per-candidate reports
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="assets/kld-family-comparison-dark.svg">
-  <img alt="Two protocols side by side, never mixed. Left column is one protocol — shard 0 of our v5 held-out suite, 1,048,064 scored positions, one shared BF16 head — on a shared logarithmic y-axis with two size axes. Upper sub-panel, x is weights measured resident under vLLM: hydrated K5/K6 0.002700 at 20.31 GiB, online K5/K6 0.003141 at 20.32, context edition 0.003409 at 18.41, official Qwen FP8 0.005197 at 28.51, K4 0.010345 at 17.89, each with a 95 percent source-cluster bootstrap bar and a hollow triangle for its p99.9 tail; no GGUF point appears here because llama.cpp resident weights were never measured. Lower sub-panel, x is serialized bytes: GGUF Q8_0 0.001087 at 27.05 GiB, Q6_K 0.002035 at 21.31 and UD-Q5_K_XL 0.004444 at 18.83, each with an open square for its naive net-of-engine-floor estimate of 0.000579, 0.001528 and 0.003936, plus circles for the two builds of ours that have a published payload receipt, hydrated at 0.002700 and the context edition at 0.003409 at 19.27 GiB. A dashed horizontal line at 0.000507 marks the measured llama.cpp-versus-vLLM engine floor on identical unquantized BF16 weights, which every GGUF value carries and no vLLM value does. Right panel is turboderp's published chart labels on his own OpenWebText protocol, on his own axis." src="assets/kld-family-comparison-light.svg">
+  <img alt="Quantization families: every family we have measured on one protocol with two size axes on the left, and one published protocol we have never run on the right; the columns are not interchangeable and no ratio between them is meaningful. Left column is shard 0 of our v5 held-out suite — the same 512 contexts, the same 1,048,064 scored positions and the same 330 source clusters for every candidate, both operands through one shared BF16 head — split into two sub-panels that share a logarithmic y-axis and deliberately do not share an x-axis. Upper sub-panel, x is weights measured resident under vLLM, with no GGUF point because llama.cpp resident weights were never measured: hydrated K5/K6 0.002700 at 20.31 GiB, online K5/K6 0.003141 at 20.32, context edition 0.003409 at 18.41, official Qwen FP8 0.005197 at 28.51, K4 0.010345 at 17.89, each mean marker joined by a vertical line to a hollow triangle at its p99.9 — 0.1313, 0.1447, 0.1632, 0.2440 and 0.5576 — and a printed value table repeating mean, p99.9, top-1 and GiB for all five, noting that a circle is captured under vLLM and carries no engine term. Lower sub-panel, same suite and same y-axis, x is serialized bytes on disk: filled squares for the three GGUFs measured under llama.cpp, Q8_0 0.001087 at 27.052 GiB, Q6_K 0.002035 at 21.313 and UD-Q5_K_XL 0.004444 at 18.830, each with a hollow square below it for its naive net-of-engine-floor estimate of 0.000579, 0.001528 and 0.003936, plus circles for the two builds of ours that have a published payload receipt, hydrated 0.002700 at 20.127 GiB and the context edition 0.003409 at 19.275; online K5/K6 and K4 are absent here because they ship BF16 attention quantized at load and have no payload receipt. A dashed line at 0.000507 marks the measured llama.cpp-versus-vLLM engine floor on the same unquantized BF16 weights and a dotted line marks that floor’s p99.9 of 0.0113; every square contains that term and no circle does. Two crossings are called out in boxes: at 6 bits GGUF Q6_K wins, 0.001528 net at 21.313 GiB against hydrated 0.002700 at 20.127, 43 percent lower KL for 1.186 GiB more weight; at 5 bits our context edition wins, 0.003409 at 19.275 GiB against UD-Q5_K_XL 0.003936 net at 18.830, 13 percent lower KL for 0.445 GiB more weight. A second printed value table repeats mean, net of floor, p99.9, top-1 and GiB for every point in this sub-panel. Right panel is a different protocol entirely: turboderp’s published chart labels on his own OpenWebText run, 8 x 8192 = 65,536 formatted positions against his own BF16 reference, x is quantized decoder weight with embeddings excluded and the output head included, his EXL3 bpw ladder, GGUF UD ladder, one GGUF-IQ point, Unsloth NVFP4 and Qwen FP8, his two synthetic noise floors at 0.0052 mean and 0.0007 median, and vertical markers where our context and hydrated builds fall on his size axis with no y-value because we have never run his protocol." src="assets/kld-family-comparison-light.svg">
 </picture>
 
 | candidate | engine | measured mean KLD | net of engine floor | top-1 | p99.9 | serialized |
@@ -285,12 +285,12 @@ construction, not by measurement.
 
 **Where this build sits, without spin.** This is the build that wins the 5-bit comparison.
 `UD-Q5_K_XL` measures 0.004444 and ~0.003936 net of the floor at 18.83 GiB against this build's
-0.003409 at 19.27 GiB of payload: **about 13 % lower divergence for about 0.44 GiB more file**, and
+0.003409 at 19.27 GiB of payload: **about 13 % lower divergence for 0.445 GiB more file**, and
 the win is larger under the measured reading (0.004444), which is the reading that includes their
 cross-engine term. Its tail is lighter too, at the one quantile both receipts publish: p99.9
 **0.1632** against `UD-Q5_K_XL`'s **0.2144**. Against official FP8 it is
 **34 % lower** at two thirds of the resident weight. What it does **not** win: `Q6_K` at 0.001528
-net for 21.31 GiB — about 2.04 GiB more file for **55 % lower divergence** than this build — and `Q8_0`,
+net for 21.31 GiB — 2.038 GiB more file for **55 % lower divergence** than this build — and `Q8_0`,
 the leader, at 27.05 GiB. A 13 % win at 5 bits is the honest size of this result; it is not a
 format-wide victory.
 
@@ -301,7 +301,7 @@ format-wide victory.
    further ahead of this build. It is the first measurement in this project where an off-the-shelf
    artifact beats the recipe, and it is published as such.
 2. **At the 5-bit operating point this build wins** — 0.003409 at 19.27 GiB against `UD-Q5_K_XL`'s
-   0.003936 net at 18.83 GiB, about 13 % better fidelity for about 0.44 GiB more payload.
+   0.003936 net at 18.83 GiB, about 13 % better fidelity for **0.445 GiB** more payload.
 
 So the format advantage at this bitrate is real at 5 bits, negative at 6 bits, and far short of a
 full bit. Two further readings that are not flattering: **`Q8_0` is the fidelity leader** at
@@ -318,7 +318,10 @@ entire reason to exist — and llama.cpp KV-quant behaviour, prefill and decode 
 axes that were not measured here. Nothing above should be read as a capacity comparison: the GGUF
 numbers come with no measured resident weights, no KV budget and no native-context proof of ours.
 The GGUF rows are also a shard-0 ranking, not a paired per-context bootstrap against the ten-shard
-rows above, because those were welded from a different position count.
+rows above, because those were welded from a different position count. Shard 0 is one tenth of the suite, and it is close to it: over all 10,480,640 positions the five vLLM
+means read 0.002760 / 0.003210 / 0.003509 / 0.005294 / 0.010604 — **1.9-2.9 % above** these shard-0
+values, ordering unchanged (`receipts/kld5-10M-{hyd,k5k6,ctx,fp8,k4}.json`). The GGUFs have no
+ten-shard equivalent; extending them is unrun.
 
 **One protocol objection, bounded rather than argued.** `llama-perplexity` scores only the second
 half of each window, so every position it scores has at least 256 tokens of left context, while our
@@ -509,10 +512,38 @@ that seven-megapixel image with 229,910 measured text tokens produced a **236,82
 prompt and exact `1376346594 | red, blue`. Warmed 256-token single-stream decode measured
 98.72 tok/s in one run.
 
-Scope matters. The server was an RTX PRO 6000 with vLLM capped to **30.24 GiB**, below the
-30.44 GiB budget of a 31.39 GiB RTX 5090 at utilisation 0.97. That proves the engine budget
-and served path, but the physical GPU retained memory beyond the cap. A real 5090 rerun
-remains pending.
+**Qualified on a physical RTX 5090.** All seven acceptance gates pass on one NVIDIA GeForce
+RTX 5090 (`GPU-506a575d-01d7-b12e-9a0a-c1ab5f38ae0a`, 32,607 MiB total, 32,149 MiB free idle,
+which vLLM sizes as **31.4 GiB usable**; driver 610.57.04, CUDA UMD 13.3), running the pinned
+image digest below plus the three content-pinned patch modules, vLLM
+`0.11.2.dev280+gilded.gnosis.v20.vllm4d006a4.b12xcd3ce19.fi1ac6942.cu132.20260810.r34`.
+The qualified profile is **`--gpu-memory-utilization 0.955` with
+`PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True`**; everything else is the published recipe
+unchanged.
+
+At startup the engine budget is **29.98 GiB** (free 30.9 of 31.4 GiB) and measured usage is
+18.19 weight + 1.78 peak activation + 0.27 non-torch + 0.45 CUDAGraph = **20.69 GiB**, leaving
+**9.28 GiB of KV = 265,122 tokens** and **1.01x maximum concurrency at 262,144**. Attention
+block size is forced to 1600 tokens so the attention page is at least the mamba page; the
+mamba page is padded 0.25 %; 3 padding layers cost at most 6.25 % KV waste. Startup is 55.7 s,
+of which model load is 18.19 GiB in 3.99 s.
+
+The seven gates: startup native allocation within the utilisation ceiling; the 261,794-token
+needle exact; the combined 236,824-token plus 7,077,888-pixel request returning
+`1376346594 | red, blue` exactly; the 30-case image suite at 24/30; three warmed 256-token
+concurrency-1 decode runs at a median **107.56 tok/s** (107.47–108.12, 0.60 % spread); a
+second native-length request after release in the same process;
+and identity complete. Machine-readable proof:
+[`receipts/qualification-5090-context.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/qualification-5090-context.json)
+(schema `qwen38-qualification-5090-context/1`), with per-process server logs
+`receipts/qualification-5090-context-server-{B3,B4,C,D,E,F}.log`.
+
+**Prior receipt, superseded in hardware scope.** The earlier result ran on an RTX PRO 6000
+with vLLM capped to **30.24 GiB**, below the 30.44 GiB budget of a 31.39 GiB RTX 5090 at
+utilisation 0.97. That remains a valid engine-budget and served-path proof, and it is the
+historical source of the 0.97 value earlier revisions of this card printed; what it could not
+prove is a physical card, because the real GPU retained memory beyond the cap. The 5090
+qualification above replaces it as the hardware claim and corrects the utilisation.
 
 The captured run named the pinned image digest but did not preserve a launch-time full-rootfs
 manifest. The published rerun harness now verifies every extracted-rootfs entry and the three
@@ -522,12 +553,18 @@ retroactively to this historical result.
 
 ```bash
 -e VLLM_EXL3_EMBED_BITS=8 -e VLLM_EXL3_GRAPH_DECODE=1 \
-  ... --max-model-len 262144 --gpu-memory-utilization 0.97 --max-num-seqs 1 \
+  -e PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
+  ... --max-model-len 262144 --gpu-memory-utilization 0.955 --max-num-seqs 1 \
       --kv-cache-dtype fp8 --max-num-batched-tokens 2048 \
       --speculative-config '{"method":"mtp","num_speculative_tokens":3}' \
       --mm-processor-kwargs '{"truncation":false,"max_pixels":8388608}' \
       --compilation-config '{"cudagraph_mode":"FULL_DECODE_ONLY","cudagraph_capture_sizes":[4]}'
 ```
+
+`0.955` is the measured value, not a round number: it is what passes the combined
+long-text-plus-large-image case on a physical 5090 with the full 8,388,608-pixel ceiling, and
+`0.97` does not
+([`receipts/qualification-5090-context.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/qualification-5090-context.json)).
 
 Two model files must pass their existing quant config into `VocabParallelEmbedding`:
 `qwen3_5.py` and `qwen3_5_mtp.py`. Backends without an `embedding()` method retain BF16.
@@ -564,6 +601,53 @@ profile. A compact KV-group experiment remains rejected: it reduced padding from
 to one but raised graph memory from 0.46 to 1.25 GiB and increased total required KV.
 Machine-readable proof and exact artifact hashes:
 [`receipts/native-mtp-8mp-amendment.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/native-mtp-8mp-amendment.json).
+
+### Bounded negative: utilisation is the knob, not the image ceiling
+
+At `--gpu-memory-utilization 0.97` on the physical 5090 the engine starts, serves text and
+retrieves the 261,794-token needle exactly, but the combined 236,824-token plus
+7,077,888-pixel request dies with `torch.OutOfMemoryError` inside
+`vllm/v1/attention/ops/vit_attn_wrappers.py`: it wants **62.00 MiB** with **34.56 MiB free**,
+the engine goes `EngineDeadError` and the request returns HTTP 500.
+
+Adding `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True` — the setting PyTorch's own OOM
+message recommends — did not save it. The allocator did free memory, and vLLM immediately
+spent it on KV: **272,570 → 280,017 tokens**, the same 62.00 MiB allocation, now **26.50 MiB
+free**.
+
+Lowering the image ceiling instead was strictly worse. At 0.97 with
+`--mm-processor-kwargs '{"truncation":false,"max_pixels":4194304}'` the profiled peak
+activation fell to **1.35 GiB**, so KV grew to **291,933 tokens**, and the request OOMed
+sooner: 20.00 MiB wanted, **6.56 MiB free**.
+
+The mechanism is that vLLM sizes the KV cache to consume whatever is left of the budget after
+profiling, so every byte freed anywhere else is spent on KV and the slack never materialises;
+lowering `max_pixels` lowers profiled activation, which enlarges KV, which leaves *less* room
+for the real vision activation. The knob is therefore **utilisation, not `max_pixels`** —
+and lowering `max_pixels` additionally downscales large images silently.
+
+Seven megapixels is **not** a hard ceiling on a 32 GB card. The identical request succeeds on
+the same physical card at 0.955 with the full 8,388,608-pixel ceiling, native 262,144 and MTP
+depth 3 all intact; the only cost is KV slack, 280,017 → **265,122 tokens**, still 1.01x
+concurrency at native length. Failures and pass are recorded as `bounded_negative_results`
+runs B, B2 and B4 in
+[`receipts/qualification-5090-context.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/qualification-5090-context.json),
+with server logs `receipts/qualification-5090-context-server-{B3,B4}.log`.
+
+### Prefix caching is off by default for this model
+
+vLLM disables prefix caching for this hybrid mamba model: the engine banner of every recipe
+here reports `enable_prefix_caching=False` with no flag from us, and every scheduler line logs
+`Prefix cache hit rate: 0.0%`. The absent upstream fix
+[vLLM #51113](https://github.com/vllm-project/vllm/pull/51113) — a prefill chunk ending
+mid-block can publish a truncated GDN state that a later request over a shared prefix could
+consume — is therefore **latent** on this profile, never exercised, and **no gate depended on
+it**; a control arm run with `--no-enable-prefix-caching` reproduced the needle and the decode
+bench unchanged
+([`receipts/qualification-5090-context.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/qualification-5090-context.json),
+`prefix_caching_control_arm`). Turning prefix caching on is **outside** this qualification: it
+requires the declared-superset image that adds #51113 (`localhost/vllm:gg-r34-patched-apc`,
+not the qualified digest) plus a qualification run of its own.
 
 ## Throughput
 
@@ -617,6 +701,7 @@ inside a 236,824-token combined prompt. This is still synthetic, not OCR/documen
 ```bash
 docker run --rm --gpus '"device=0"' --ipc host -p 127.0.0.1:8000:8000 \
   -v /models:/models:ro \
+  -e PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
   --entrypoint /opt/venv/bin/vllm \
   voipmonitor/vllm@sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b \
   serve /models/Qwen3.8-27B-EXL3-K5K6-context \
@@ -624,11 +709,19 @@ docker run --rm --gpus '"device=0"' --ipc host -p 127.0.0.1:8000:8000 \
     --quantization-config '{"linear":{"weight":"mxfp8"},"ignore":["re:.*visual\\..*","re:.*in_proj_a$","re:.*in_proj_b$","re:.*in_proj_ba$","re:.*mtp\\..*","lm_head"]}' \
     --mm-processor-kwargs '{"truncation":false}' \
     --reasoning-parser qwen3 --enable-auto-tool-choice --tool-call-parser qwen3_coder \
-    --max-model-len 196608 --gpu-memory-utilization 0.97 --max-num-seqs 4 \
+    --max-model-len 196608 --gpu-memory-utilization 0.955 --max-num-seqs 4 \
     --kv-cache-dtype fp8 --max-num-batched-tokens 2048 \
     --speculative-config '{"method":"mtp","num_speculative_tokens":3}' \
     --host 0.0.0.0 --port 8000
 ```
+
+This 196,608 profile was **not** itself measured on the 5090; it inherits `0.955` and the
+allocator setting from the qualified native profile for the same reason — 0.97 leaves too
+little card for the vision tower on a combined long-text-plus-large-image request — rather
+than on a gate of its own
+([`receipts/qualification-5090-context.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/qualification-5090-context.json)).
+Its shorter window and `--max-num-seqs 4` are a different memory split, so treat the value as
+a safe inherited default, not a qualified one.
 
 Nothing is encoded at load: no `VLLM_EXL3_ONLINE_TRELLIS_BITS`, no cache directory. This is
 what the pinned image runs without modification. It does not include the input-table overlay,
@@ -657,12 +750,13 @@ docker run --rm --gpus '"device=0"' --ipc host -p 127.0.0.1:8000:8000 \
   -v "$PATCH/vllm-qwen3_5_mtp-embed-quant-config.py:$VLLM/model_executor/models/qwen3_5_mtp.py:ro" \
   -e VLLM_EXL3_EMBED_BITS=8 -e VLLM_EXL3_GRAPH_DECODE=1 \
   -e VLLM_EXL3_PREFILL_RECONSTRUCT_M=128 \
+  -e PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
   --entrypoint /opt/venv/bin/vllm \
   voipmonitor/vllm@sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b \
   serve /models/Qwen3.8-27B-EXL3-K5K6-context \
     --served-model-name qwen38 --quantization exl3 \
     --quantization-config '{"linear":{"weight":"mxfp8"},"ignore":["re:.*visual\\..*","re:.*in_proj_a$","re:.*in_proj_b$","re:.*in_proj_ba$","re:.*mtp\\..*","lm_head"]}' \
-    --max-model-len 262144 --gpu-memory-utilization 0.97 --max-num-seqs 1 \
+    --max-model-len 262144 --gpu-memory-utilization 0.955 --max-num-seqs 1 \
     --kv-cache-dtype fp8 --max-num-batched-tokens 2048 \
     --speculative-config '{"method":"mtp","num_speculative_tokens":3}' \
     --mm-processor-kwargs '{"truncation":false,"max_pixels":8388608}' \
@@ -670,6 +764,12 @@ docker run --rm --gpus '"device=0"' --ipc host -p 127.0.0.1:8000:8000 \
     --reasoning-parser qwen3 --enable-auto-tool-choice --tool-call-parser qwen3_coder \
     --host 0.0.0.0 --port 8000
 ```
+
+`--gpu-memory-utilization 0.955` plus `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True` is
+the profile qualified on a physical RTX 5090: it is the measured value that passes the
+combined long-text-plus-large-image case at the full 8,388,608-pixel ceiling, and 0.97 does
+not
+([`receipts/qualification-5090-context.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/qualification-5090-context.json)).
 The container listens on all interfaces internally, but Docker publishes the port to host
 loopback only. For remote clients, keep that binding and put an authenticated TLS proxy in
 front; do not expose this unauthenticated generation endpoint directly.

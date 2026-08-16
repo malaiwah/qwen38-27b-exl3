@@ -475,3 +475,91 @@ same suite cannot move a bound set by its denominator. The plan's own P1 is the 
 /MBPP-style executable cases, IFEval-style verifiable constraints, schema-constrained tool
 calls, and a larger MMLU-Pro draw. No capability claim graduates from "measured" to "certified"
 before that.
+
+## 2026-08-16: the context edition is hardware-qualified on a physical RTX 5090, at 0.955 rather than 0.97
+
+**P0 rank 1 is closed.** The native-context claim no longer rests on an engine budget. The
+context edition (`malaiwah/Qwen3.8-27B-EXL3-K5K6-context`, revision
+`c45c273b0d6ef2859cb2d85b36dd52253c80d878`) ran on **one physical NVIDIA GeForce RTX 5090**,
+`GPU-506a575d-01d7-b12e-9a0a-c1ab5f38ae0a`, 32,607 MiB total and 32,149 MiB free with the card
+idle, which vLLM sizes as **31.4 GiB usable**; driver 610.57.04, CUDA user-mode driver 13.3;
+image `voipmonitor/vllm@sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b`
+plus the three content-pinned patch modules, sha256-verified before every launch; vLLM
+`0.11.2.dev280+gilded.gnosis.v20.vllm4d006a4.b12xcd3ce19.fi1ac6942.cu132.20260810.r34`. Receipt
+`receipts/qualification-5090-context.json` (schema `qwen38-qualification-5090-context/1`), with
+per-process server logs `receipts/qualification-5090-context-server-{B3,B4,C,D,E,F}.log`.
+
+**The recipe is corrected, in exactly two places.** The qualified profile is
+**`--gpu-memory-utilization 0.955` with `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True`**;
+the cards printed 0.97 and set no allocator config. Nothing else moved: `--max-model-len 262144
+--max-num-seqs 1 --kv-cache-dtype fp8 --max-num-batched-tokens 2048 --speculative-config
+'{"method":"mtp","num_speculative_tokens":3}' --mm-processor-kwargs
+'{"truncation":false,"max_pixels":8388608}'`, `VLLM_EXL3_EMBED_BITS=8`,
+`VLLM_EXL3_GRAPH_DECODE=1`, `VLLM_EXL3_PREFILL_RECONSTRUCT_M=128`. Window, MTP depth, image
+ceiling, KV dtype, sequence count and cudagraph mode are all unchanged from the published card.
+
+**What the card measured at startup.** Engine budget **29.98 GiB** at utilisation 0.955; free
+30.9 of 31.4 GiB; usage 18.19 weight + 1.78 peak activation + 0.27 non-torch + 0.45 CUDAGraph =
+**20.69 GiB**; **available KV 9.28 GiB = 265,122 KV tokens**; maximum concurrency at 262,144
+tokens **1.01x**; attention block size forced to 1600 tokens so the attention page is at least
+the mamba page; mamba page padded 0.25 %; 3 padding layers, at most 6.25 % KV waste; startup
+**55.7 s**; model load 18.19 GiB in 3.99 s. The 20,672,382,926 bytes of shards behind that load
+are serialized bytes in the vault cache and are never called VRAM.
+
+**All seven gates PASS.**
+
+1. **Startup native allocation** inside the utilisation ceiling — the numbers above, 55.7 s.
+2. **Long needle exact** — 261,794 prompt tokens, planted code `1376346594` retrieved exactly.
+3. **Combined long text plus seven megapixels** — 236,824 prompt tokens with a 3,072 × 2,304,
+   7,077,888-pixel fixture, answered `1376346594 | red, blue` exactly.
+4. **Image suite 24/30** — digits 8/10, bars 9/10, grid 7/10, seed 20260815. Exactly on the
+   threshold: a pass with no margin, per-case answers published.
+5. **Three warmed 256-token C1 decode runs** — median **107.56 tok/s**, dispersion 0.60 %, MTP
+   acceptance **56.48 %** at mean accepted length 2.69. Physical-card numbers; they are never
+   differenced against the rental RTX PRO 6000 figures.
+6. **Second native-length request after release**, in the same process — recovery, not one lucky
+   allocation.
+7. **Receipt identity complete** — GPU UUID and model, driver, image digest, patch hashes, full
+   commands, four memory points, KV allocation, outputs and wall times.
+
+**0.97 is published as a bounded negative, and the mechanism is the interesting part.** At 0.97
+the engine starts and serves text fine (KV 272,570 tokens, 1.04x at native length), but the
+combined text-plus-image request dies with `torch.OutOfMemoryError` inside
+`vllm/v1/attention/ops/vit_attn_wrappers.py`, wanting 62.00 MiB with 26.50 MiB free.
+`expandable_segments` does not save it: the allocator hands memory back and **vLLM immediately
+spends it on more KV**, 272,570 → 280,017 tokens. Lowering the image ceiling instead of
+utilisation is **strictly worse** — at 0.97 with `max_pixels` 4,194,304 the profiled peak
+activation falls to 1.35 GiB, KV grows to 291,933 tokens, and it OOMs sooner with 6.56 MiB free.
+So **the right knob is utilisation, not the image ceiling**, because the engine spends every
+freed byte on KV; and seven megapixels is **not** a hard 32 GB ceiling, since the identical
+request succeeds at 0.955 with the full 8,388,608-pixel ceiling. Lowering `max_pixels` would
+also silently downscale large images, which 0.955 does not.
+
+**Prefix caching was a non-issue here, and that is measured rather than assumed.** This build
+lacks upstream vLLM #51113, so an explicit `--no-enable-prefix-caching` control arm was run. It
+found the published profile already runs with prefix caching **off** — `enable_prefix_caching=False`
+in the engine config with no flag from us, and 0.0 % hit rate on every scheduler line — because
+the build disables it for this hybrid mamba model. The #51113 poisoning path is therefore never
+exercised by this profile and no gate depended on it.
+
+**The production image exists and is verified, but its serving gates are not ours to claim.**
+`localhost/vllm:gg-r34-patched`, manifest
+`sha256:6eca4c693f01b6f4e112c04eacd30673b7cfbba4150e6fe2ea3ba1bbfde14c27`, carries all three
+patch modules **inside** the image, digest-verified there against the published map instead of
+bind-mounted, with the import machinery proven to resolve to them and no stale bytecode
+(`receipts/production-image.json`, schema `qwen38-production-image/2`) — which closes the build
+half of P0 rank 2. The serving half is not closed and the receipt says so itself: no recipe has
+served a request from the image, so every runtime gate — mounts, writes, endpoint exposure — is
+recorded as `null` rather than passed. Those gates are owned by the current 5090 performance
+window, so rank 2 stays open as built-and-verified-with-serving-gates-pending.
+
+**Published surfaces updated:** `README.md` evidence list, `docs/29-plan-and-loose-ends.md`
+(rank 1 CLOSED, its residual pixel-count and concurrency frontier moved to rank 11, rank 2
+re-statused), `docs/32-native-context-embedding-overlay.md` (its engine-budget proof annotated
+as superseded, every number kept), and the three sibling cards
+`MODEL_CARD-K5K6{,-hydrated}.md` and `MODEL_CARD-K4.md`. No published receipt was rewritten:
+`receipts/native-mtp-8mp-amendment.json` stands as the engine-budget proof it always was, and
+the new receipt names it as superseded rather than editing it. The sibling cards' own profiles
+were **not** given the qualified utilisation, because none of them has been qualified at any
+value on this card; they now carry the context edition's measured result and the same
+utilisation caution instead.

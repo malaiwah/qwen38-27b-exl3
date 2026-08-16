@@ -49,7 +49,7 @@ import re
 from collections import defaultdict
 from pathlib import Path
 
-import numpy as np
+# no third-party imports: this must run on the box's bare python3, which has no numpy
 
 UNIT = 655_360           # bytes: params/8 of the smallest quantized module (k_proj/v_proj)
 FULL_ATTN_LAYERS = [i for i in range(64) if i % 4 == 3]
@@ -87,7 +87,7 @@ def inventory() -> dict[str, tuple[int, int, str]]:
                          ("mlp.gate_proj", 5120, 17408), ("mlp.up_proj", 5120, 17408),
                          ("mlp.down_proj", 17408, 5120)):
         mods[f"mtp.layers.0.{nm}"] = (inf, out, "mtp_draft")
-    mods["mtp.input_layer.eh_proj"] = (5120, 10240, "mtp_draft")
+    mods["mtp.fc"] = (5120, 10240, "mtp_draft")   # the MTP input projection, at the -mb width
     mods["lm_head"] = (5120, 248320, "lm_head")
     return mods
 
@@ -207,7 +207,12 @@ def total_error(lad: dict, w: dict[str, float], bits: dict[str, int],
 
 def solve(lad: dict, w: dict[str, float], free: list[str], budget_units: int,
           min_bits: int) -> tuple[dict[str, int], float]:
-    """Exact DP over the 655,360-byte grid. Returns (bits for free modules, objective)."""
+    """Exact DP over the 655,360-byte grid. Returns (bits for free modules, objective).
+
+    Every module's byte cost is `units * K` grid steps, so the grid is exact and the optimum is
+    provable rather than greedy. Reachability pruning keeps the inner loop to the states that any
+    prefix of the module list can actually occupy.
+    """
     n = len(free)
     U = budget_units
     units = [numel(k) // 8 // UNIT for k in free]
@@ -215,33 +220,42 @@ def solve(lad: dict, w: dict[str, float], free: list[str], budget_units: int,
         if numel(k) // 8 != u * UNIT:
             raise SystemExit(f"{k}: params/8 is not a multiple of {UNIT}")
     cands = [sorted(kk for kk in lad[k]["eps"] if kk >= min_bits) for k in free]
+    if any(not c for c in cands):
+        raise SystemExit("a module has no candidate width at or above --min-bits")
     INF = float("inf")
-    dp = np.full(U + 1, INF)
+    dp = [INF] * (U + 1)
     dp[0] = 0.0
-    choice = np.zeros((n, U + 1), dtype=np.int8)
+    choice = [bytearray(U + 1) for _ in range(n)]
+    lo = hi = 0                                  # reachable window after the modules done so far
     for j in range(n):
-        ndp = np.full(U + 1, INF)
-        cj, uj, wj, ej = choice[j], units[j], w[free[j]], lad[free[j]]["eps"]
+        uj, wj, ej, cj = units[j], w[free[j]], lad[free[j]]["eps"], choice[j]
+        nlo = lo + uj * cands[j][0]
+        nhi = min(U, hi + uj * cands[j][-1])
+        if nlo > U:
+            raise SystemExit("no feasible allocation within budget")
+        ndp = [INF] * (U + 1)
         for ci, Kc in enumerate(cands[j]):
             c = uj * Kc
-            if c > U:
-                continue
-            vals = dp[: U + 1 - c] + wj * ej[Kc]
-            tgt = ndp[c:]
-            better = vals < tgt
-            tgt[better] = vals[better]
-            cj[c:][better] = ci
-        dp = ndp
-    u_best = int(np.argmin(dp))
-    if not math.isfinite(dp[u_best]):
+            val = wj * ej[Kc]
+            for u in range(max(nlo, lo + c), min(nhi, hi + c) + 1):
+                v = dp[u - c] + val
+                if v < ndp[u]:
+                    ndp[u] = v
+                    cj[u] = ci
+        dp, lo, hi = ndp, nlo, nhi
+    u_best, best = -1, INF
+    for u in range(lo, hi + 1):
+        if dp[u] < best:
+            best, u_best = dp[u], u
+    if u_best < 0:
         raise SystemExit("no feasible allocation within budget")
     bits, u = {}, u_best
     for j in range(n - 1, -1, -1):
-        Kc = cands[j][int(choice[j, u])]
+        Kc = cands[j][choice[j][u]]
         bits[free[j]] = Kc
         u -= units[j] * Kc
     assert u == 0, u
-    return bits, float(dp[u_best])
+    return bits, best
 
 
 def main() -> int:

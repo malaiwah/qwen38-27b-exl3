@@ -325,7 +325,7 @@ perf_serve_argv() {
     --served-model-name m
     --quantization exl3 --quantization-config "$QUANT_CFG"
     --max-model-len 262144
-    --gpu-memory-utilization 0.97
+    --gpu-memory-utilization 0.955
     --kv-cache-dtype fp8
     --max-num-seqs "$SEQS"
     --max-num-batched-tokens 2048

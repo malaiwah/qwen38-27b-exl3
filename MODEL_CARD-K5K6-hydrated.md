@@ -59,7 +59,7 @@ These profiles are not interchangeable
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="assets/context-frontier-dark.svg">
-  <img alt="Overlap-corrected v3 mean KL divergence versus demonstrated or configured context. Circles are real RTX 5090 MTP-3 results: hydrated and online K6 at 185,600, K4 at 262,144. Stars have generation proof: online K5 at 206,400 on the 5090, and the context edition at 262,144 with MTP-3 and an 8.4 MP image cap under a 30.24 GiB engine budget; the latter's hard-limit 5090 rerun is pending." src="assets/context-frontier-light.svg">
+  <img alt="Overlap-corrected v3 mean KL divergence versus demonstrated or configured context. Circles are real RTX 5090 MTP-3 results: hydrated and online K6 at 185,600, K4 at 262,144. Stars have generation proof: online K5 at 206,400 on the 5090, and the context edition at 262,144 with MTP-3 and an 8.4 MP image cap under a 30.24 GiB engine budget; that engine-budget star has since been superseded by a physical RTX 5090 qualification of the context edition at 265,122 KV tokens and utilisation 0.955." src="assets/context-frontier-light.svg">
 </picture>
 
 The figure's axis is still the overlap-corrected v3 receipt, because that is what the plotted
@@ -70,7 +70,7 @@ asset was built from; the v5 ordering of the same five checkpoints is identical 
 |---|---:|---:|---:|---:|---:|---|
 | [-hydrated](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated) | 21.61 GB | 20.31 GiB | **0.002760** | **0.007172** | ~180k | fidelity first, smallest download |
 | [-EXL3-K5K6](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6) | 30.57 GB | 20.32 GiB | 0.003210 | 0.007945 | ~180k | you want the attention width knob at launch |
-| [-context](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6-context) | 20.70 GB | **18.41 GiB** | 0.003509 | 0.009459 | **262,144, MTP-3, 8.4 MP cap** | native window; hard-limit RTX 5090 check pending |
+| [-context](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6-context) | 20.70 GB | **18.41 GiB** | 0.003509 | 0.009459 | **262,144, MTP-3, 8.4 MP cap** | native window, hardware-qualified on a physical RTX 5090 |
 | [-K4](https://huggingface.co/malaiwah/Qwen3.8-27B-K4) | 28.31 GB | 17.89 GiB | 0.010604 | 0.029679 | 262,144 | smallest footprint, native context without any overlay |
 
 Official `Qwen/Qwen3.8-27B-FP8` is 28.51 GiB resident at **0.005294** on the v5 suite
@@ -281,7 +281,7 @@ per-candidate reports
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="assets/kld-family-comparison-dark.svg">
-  <img alt="Two protocols side by side, never mixed. Left column is one protocol — shard 0 of our v5 held-out suite, 1,048,064 scored positions, one shared BF16 head — on a shared logarithmic y-axis with two size axes. Upper sub-panel, x is weights measured resident under vLLM: hydrated K5/K6 0.002700 at 20.31 GiB, online K5/K6 0.003141 at 20.32, context edition 0.003409 at 18.41, official Qwen FP8 0.005197 at 28.51, K4 0.010345 at 17.89, each with a 95 percent source-cluster bootstrap bar and a hollow triangle for its p99.9 tail; no GGUF point appears here because llama.cpp resident weights were never measured. Lower sub-panel, x is serialized bytes: GGUF Q8_0 0.001087 at 27.05 GiB, Q6_K 0.002035 at 21.31 and UD-Q5_K_XL 0.004444 at 18.83, each with an open square for its naive net-of-engine-floor estimate of 0.000579, 0.001528 and 0.003936, plus circles for the two builds of ours that have a published payload receipt, hydrated at 0.002700 and the context edition at 0.003409 at 19.27 GiB. A dashed horizontal line at 0.000507 marks the measured llama.cpp-versus-vLLM engine floor on identical unquantized BF16 weights, which every GGUF value carries and no vLLM value does. Right panel is turboderp's published chart labels on his own OpenWebText protocol, on his own axis." src="assets/kld-family-comparison-light.svg">
+  <img alt="Quantization families: every family we have measured on one protocol with two size axes on the left, and one published protocol we have never run on the right; the columns are not interchangeable and no ratio between them is meaningful. Left column is shard 0 of our v5 held-out suite — the same 512 contexts, the same 1,048,064 scored positions and the same 330 source clusters for every candidate, both operands through one shared BF16 head — split into two sub-panels that share a logarithmic y-axis and deliberately do not share an x-axis. Upper sub-panel, x is weights measured resident under vLLM, with no GGUF point because llama.cpp resident weights were never measured: hydrated K5/K6 0.002700 at 20.31 GiB, online K5/K6 0.003141 at 20.32, context edition 0.003409 at 18.41, official Qwen FP8 0.005197 at 28.51, K4 0.010345 at 17.89, each mean marker joined by a vertical line to a hollow triangle at its p99.9 — 0.1313, 0.1447, 0.1632, 0.2440 and 0.5576 — and a printed value table repeating mean, p99.9, top-1 and GiB for all five, noting that a circle is captured under vLLM and carries no engine term. Lower sub-panel, same suite and same y-axis, x is serialized bytes on disk: filled squares for the three GGUFs measured under llama.cpp, Q8_0 0.001087 at 27.052 GiB, Q6_K 0.002035 at 21.313 and UD-Q5_K_XL 0.004444 at 18.830, each with a hollow square below it for its naive net-of-engine-floor estimate of 0.000579, 0.001528 and 0.003936, plus circles for the two builds of ours that have a published payload receipt, hydrated 0.002700 at 20.127 GiB and the context edition 0.003409 at 19.275; online K5/K6 and K4 are absent here because they ship BF16 attention quantized at load and have no payload receipt. A dashed line at 0.000507 marks the measured llama.cpp-versus-vLLM engine floor on the same unquantized BF16 weights and a dotted line marks that floor’s p99.9 of 0.0113; every square contains that term and no circle does. Two crossings are called out in boxes: at 6 bits GGUF Q6_K wins, 0.001528 net at 21.313 GiB against hydrated 0.002700 at 20.127, 43 percent lower KL for 1.186 GiB more weight; at 5 bits our context edition wins, 0.003409 at 19.275 GiB against UD-Q5_K_XL 0.003936 net at 18.830, 13 percent lower KL for 0.445 GiB more weight. A second printed value table repeats mean, net of floor, p99.9, top-1 and GiB for every point in this sub-panel. Right panel is a different protocol entirely: turboderp’s published chart labels on his own OpenWebText run, 8 x 8192 = 65,536 formatted positions against his own BF16 reference, x is quantized decoder weight with embeddings excluded and the output head included, his EXL3 bpw ladder, GGUF UD ladder, one GGUF-IQ point, Unsloth NVFP4 and Qwen FP8, his two synthetic noise floors at 0.0052 mean and 0.0007 median, and vertical markers where our context and hydrated builds fall on his size axis with no y-value because we have never run his protocol." src="assets/kld-family-comparison-light.svg">
 </picture>
 
 | candidate | engine | measured mean KLD | net of engine floor | top-1 | p99.9 | serialized |
@@ -320,7 +320,7 @@ measurement.
 **Where this build sits, without spin.** This is the best-measuring build in the family, and it
 **loses the 6-bit comparison**. `Q6_K` reads 0.002035 measured and ~0.001528 net of the floor, at
 21.31 GiB, against this build's 0.002700 at 20.12 GiB of payload — about **43 % lower divergence
-for about 1.2 GiB more file** — and it is still **25 %** lower on the measured value that includes
+for 1.186 GiB more file** — and it is still **25 %** lower on the measured value that includes
 the cross-engine term, so no treatment of that term rescues this build there. What it does win on
 this shard: `UD-Q5_K_XL`, whose net 0.003936 at 18.83 GiB is **46 % higher divergence** than this
 build's, and official FP8, which this build sits **48 % below** at 28.51 GiB resident. Its tail
@@ -333,7 +333,7 @@ heavier than `Q6_K`'s 0.0794. `Q8_0` leads everything at 27.05 GiB.
    at 21.31 GiB versus 0.002700 at 20.12 GiB. This is the first measurement in this project where
    an off-the-shelf artifact beats the recipe, and it is published as such.
 2. **At the 5-bit operating point our context edition wins** — 0.003409 at 19.27 GiB against
-   `UD-Q5_K_XL`'s 0.003936 net at 18.83 GiB, about 13 % better fidelity for about 0.44 GiB more
+   `UD-Q5_K_XL`'s 0.003936 net at 18.83 GiB, about 13 % better fidelity for **0.445 GiB** more
    payload.
 
 So the format advantage at this bitrate is real at 5 bits, negative at 6 bits, and far short of a
@@ -350,7 +350,10 @@ ten. It says nothing about serving 262,144 tokens with vision and MTP on a 32 GB
 where these artifacts actually differ, and llama.cpp KV-quant behaviour, prefill and decode speed
 are separate axes that were not measured here. The GGUF rows are also a shard-0 ranking, not a
 paired per-context bootstrap against the ten-shard rows in
-[Fidelity](#fidelity), because those were welded from a different position count.
+[Fidelity](#fidelity), because those were welded from a different position count. Shard 0 is one tenth of the suite, and it is close to it: over all 10,480,640 positions the five vLLM
+means read 0.002760 / 0.003210 / 0.003509 / 0.005294 / 0.010604 — **1.9-2.9 % above** these shard-0
+values, ordering unchanged (`receipts/kld5-10M-{hyd,k5k6,ctx,fp8,k4}.json`). The GGUFs have no
+ten-shard equivalent; extending them is unrun.
 
 **One protocol objection, bounded rather than argued.** `llama-perplexity` scores only the second
 half of each window, so every position it scores has at least 256 tokens of left context, while our
@@ -550,13 +553,20 @@ graphs, vision enabled):
 **9.13 GiB** of KV (37.4 KB/token: 16 full-attention layers, 4 KV heads, head_dim 256; the
 other 48 layers are Gated DeltaNet and hold per-sequence state). Without MTP that falls to
 33.5 KB/token and buys ~11 % more length. The smaller
-[`malaiwah/Qwen3.8-27B-K4`](https://huggingface.co/malaiwah/Qwen3.8-27B-K4) is the only family
-member hardware-qualified at native length on a real 32 GB card (289,577-token capacity).
-The context edition starts natively with MTP-3 and an 8.4 MP image ceiling under a capped
-32 GB-equivalent engine budget, but its physical RTX 5090 rerun remains pending. On 48 GB and
-larger, native context fits here at the best fidelity.
+[`malaiwah/Qwen3.8-27B-K4`](https://huggingface.co/malaiwah/Qwen3.8-27B-K4) reaches native
+length on a real 32 GB card (289,577-token capacity) with no overlay at all.
+The context edition is **hardware-qualified at native length on a physical RTX 5090**: 262,144
+with MTP-3 and the full 8.4 MP image ceiling, **265,122 KV tokens** of capacity and 1.01x
+concurrency at native length, measured at `--gpu-memory-utilization 0.955` with
+`PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True`, all seven gates passing
+([`receipts/qualification-5090-context.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/qualification-5090-context.json)).
+On 48 GB and larger, native context fits here at the best fidelity.
 
-Keep utilisation at **0.95** if you serve images: 0.98 leaves no vision headroom.
+Keep utilisation at **0.95** if you serve images: 0.98 leaves no vision headroom. That 5090
+qualification measured the same trap from the other side — at utilisation 0.97 the context
+edition's vision tower died wanting 62.00 MiB with 26.50 MiB free, and lowering `max_pixels`
+instead of utilisation made it strictly worse, because the engine spends every freed byte on
+KV. Utilisation is the knob, on that profile and on this one.
 
 Numbers measured locally at a simulated 31.2 GiB budget (196,608 starts with 246,903 KV
 tokens; 262,144 refused) agree with the hardware within a few percent, but the hardware

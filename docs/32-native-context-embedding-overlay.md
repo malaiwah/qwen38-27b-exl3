@@ -15,8 +15,22 @@ tokens**; retrieved a planted code from 261,794 text tokens; and, in a separate 
 request, retrieved the code and read a 3,072 × 2,304 image from a 236,824-token prompt.
 
 That proves the engine budget and served paths together. It does **not** reproduce a hard
-32 GB physical limit: the host GPU still had memory outside vLLM's budget. A real RTX
-5090 rerun remains required before calling this hardware-qualified.
+32 GB physical limit: the host GPU still had memory outside vLLM's budget.
+
+> **Superseded by measurement, 2026-08-16.** The physical RTX 5090 rerun this section asked for
+> has been run and **passed**, so the native-context claim no longer rests on this
+> engine-budget proof. Every number in this document stands exactly as measured; the hardware
+> claim now comes from `receipts/qualification-5090-context.json` (schema
+> `qwen38-qualification-5090-context/1`), measured on one physical RTX 5090 of 32,607 MiB,
+> 31.4 GiB usable as vLLM sizes it. There the same window, MTP depth, KV dtype and
+> 8,388,608-pixel ceiling serve native 262,144 at **`--gpu-memory-utilization 0.955`** with
+> `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True`: engine budget **29.98 GiB**, available KV
+> **9.28 GiB = 265,122 tokens**, 1.01x maximum concurrency at 262,144, all seven gates passing.
+> **The utilisation 0.97 named just above does not survive on the physical card:** it does size
+> the budget at 30.45 GiB and it serves text, but the combined 236,824-token plus
+> 7,077,888-pixel request dies in the vision tower wanting 62.00 MiB with 26.50 MiB free, and
+> lowering `max_pixels` to 4,194,304 instead of utilisation is strictly worse — KV grows to
+> 291,933 tokens and it OOMs with 6.56 MiB free. Utilisation is the knob, not the image ceiling.
 
 ## What was done
 
@@ -114,6 +128,8 @@ multimodality coexist; it is not a claim that every 16.8 MP input fits. Full log
 fixture hash, module identities and the engine-budget caveat are in
 `receipts/native-mtp-8mp-amendment.json`.
 
-The physical RTX 5090 rerun remains P0. Compact KV grouping remains rejected: it reduced
+The physical RTX 5090 rerun is **closed**: run, all seven gates passed, published as
+`receipts/qualification-5090-context.json` — at utilisation **0.955**, not the 0.97 this
+document assumed. Compact KV grouping remains rejected: it reduced
 padding from three layers to one but raised graph memory from 0.46 to 1.25 GiB and increased
 the required KV allocation. More compression of the aliased draft embedding is not a route.

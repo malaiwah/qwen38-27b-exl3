@@ -17,9 +17,16 @@ import statistics
 from collections import defaultdict
 from pathlib import Path
 
+# The converter labels the number `proxy_err` for calibrated modules and `rmse` only for the
+# uncalibrated fallback path (vision tower, MTP without a Hessian). Matching `rmse` alone -
+# as this did until it was checked against convert-ctx.log - silently drops all 400 calibrated
+# body modules and keeps only the 118 fallback ones, i.e. exactly the modules an allocator has
+# no use for. The flag field between the number and `g_sc` is two characters (`o.`/`of`), not
+# the literal `of`.
 LINE = re.compile(
-    r"Quantized:\s+(?P<key>\S+)\s+bpw:\s+(?P<bpw>[\d.]+)\s+rmse\s*:\s*(?P<rmse>[\d.eE+-]+)"
-    r"(?:\s+of\s+g_sc:\s*(?P<gsc>[\d.]+))?"
+    r"Quantized:\s+(?P<key>\S+)\s+bpw:\s+(?P<bpw>[\d.]+)\s+"
+    r"(?:proxy_err|rmse)\s*:\s*(?P<rmse>[\d.eE+-]+)"
+    r"(?:\s+\S{2})?(?:\s+g_sc:\s*(?P<gsc>[\d.]+))?"
 )
 
 

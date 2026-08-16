@@ -13,15 +13,19 @@ KLD is `KL(BF16 || candidate)` through one shared BF16 head on the overlap-corre
 |---|---:|---:|---:|---|
 | hydrated K6 | 20.31 GiB | **0.007172** | 185,600, MTP-3 | physical RTX 5090 |
 | online K6 | 20.32 GiB | 0.007945 | 185,600, MTP-3 | physical RTX 5090 |
-| context + int8 input | **18.41 GiB** | 0.009459 | **262,144, MTP-3, 8.4 MP cap** | 30.24 GiB engine budget on RTX PRO 6000 |
+| context + int8 input | **18.41 GiB** | 0.009459 | **262,144, MTP-3, 8.4 MP cap** | physical RTX 5090, utilisation 0.955 |
 | K4 | 17.89 GiB | 0.029679 | **262,144, MTP-3** | physical RTX 5090 |
 | official FP8 | 28.51 GiB | 0.012798 | not measured here | — |
 
-The context profile now combines native context, speculative decode and multimodality:
-266,612 KV tokens allocated; exact retrieval from 261,794 text tokens; and exact code plus
-image answer from a 236,824-token prompt containing a 3,072 × 2,304 image. Its one-run
-warmed C1 decode result is 98.72 tok/s. This is an engine-budget proof, not a physical
-RTX 5090 proof.
+The context profile now combines native context, speculative decode and multimodality, and it is
+**hardware-qualified**: on one physical RTX 5090 it allocates **265,122 KV tokens** at 262,144
+with MTP-3 and the full 8.4 MP ceiling, retrieves exactly from 261,794 text tokens, answers code
+plus colours exactly from a 236,824-token prompt containing a 3,072 × 2,304 image, and decodes at
+a median **107.56 tok/s** warmed at C1 — all seven gates passing at
+`--gpu-memory-utilization 0.955` with `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True`
+(`receipts/qualification-5090-context.json`). The earlier 266,612-token, 98.72 tok/s result
+remains valid as the engine-budget proof it was (`receipts/native-mtp-8mp-amendment.json`); the
+two throughput figures come from different GPUs and are never differenced.
 
 The frozen post-selection ranking also survives the offset-independent correction. After
 excluding every context from four qualification source documents with an exact calibration
@@ -31,8 +35,8 @@ excluding every context from four qualification source documents with an exact c
 ## Priorities added from public feedback, 2026-08-15
 
 Four independent readers attacked the same weak point: the fidelity claim is strong but
-thin, and the comparator set is narrow. These outrank everything below except the physical
-RTX 5090 qualification.
+thin, and the comparator set is narrow. They now head the list: the physical RTX 5090
+qualification that used to outrank them is closed (rank 1).
 
 ### F1 — evidence volume: 278,392 scored positions is not enough
 
@@ -108,11 +112,11 @@ names. The two differ by construction, not by measurement.
 
 - **At the 6-bit operating point we lose.** GGUF `Q6_K` is genuinely better than our best build:
   0.001528 net at 21.31 GiB against hydrated's 0.002700 at 20.12 GiB of payload. That is a
-  1.2 GiB-larger file measuring better, on our own suite, and it is the first published
+  1.186 GiB-larger file measuring better, on our own suite, and it is the first published
   measurement in this project where an off-the-shelf artifact beats the recipe.
 - **At the 5-bit operating point we win.** The context edition reads 0.003409 at 19.27 GiB
-  against `UD-Q5_K_XL`'s 0.003936 net at 18.83 GiB — about 13 % better fidelity for about
-  0.44 GiB more payload.
+  against `UD-Q5_K_XL`'s 0.003936 net at 18.83 GiB — about 13 % better fidelity for
+  **0.445 GiB** more payload.
 - **`Q8_0` is the fidelity leader**, 0.001087 at 27.05 GiB, and its measured value is only about
   twice the engine floor, so its own number sits near the resolution limit of any cross-engine
   comparison: the net column is an estimate and not an identity, so **no ordering closer than a
@@ -130,7 +134,11 @@ names. The two differ by construction, not by measurement.
 **Scope, stated with the result.** This is text-only teacher-forced fidelity on one shard, and it
 says nothing about serving 262,144 tokens with vision and MTP on a 32 GB card, which is where
 these artifacts actually differ. llama.cpp KV-quant behaviour, prefill and decode speed are
-separate axes and none of them is measured here.
+separate axes and none of them is measured here. Shard 0 is one tenth of the suite and close to it: over
+all 10,480,640 positions the five vLLM means read 0.002760 / 0.003210 / 0.003509 / 0.005294 / 0.010604,
+**1.9-2.9 % above** these shard-0 values, ordering unchanged
+([`receipts/kld5-10M-hyd.json`](../receipts/kld5-10M-hyd.json) and siblings); the GGUFs have no ten-shard
+equivalent and extending them is unrun.
 
 **One protocol objection bounded at the same time.** The largest structural difference between our
 protocol and `llama-perplexity`'s is which positions each scores: theirs floors every scored
@@ -375,10 +383,10 @@ this rental's `/var/tmp` paths.
 
 | local rank | global rank | investigation | first action | push target |
 |---:|---:|---|---|---|
-| L1 | 1 | physical RTX 5090 qualification | run the exact context/int8/MTP-3/8.4 MP profile and all seven gates below | receipt + raw logs to this repo; corrected context card to GitHub and its Hub README |
+| L1 — **done** | 1 | physical RTX 5090 qualification — **CLOSED 2026-08-16**, all seven gates pass at utilisation 0.955 | — | `receipts/qualification-5090-context.json` plus per-process server logs, with the corrected cards |
 | L2 | 11 | image-cap/concurrency frontier | after L1, sweep 4.2/6.3/8.4/10.5 MP at sequence counts 1/2 | frontier receipt and card-supported ceiling |
 | L3 | 7 | lifecycle/cache reliability | run cold/warm/corrupt/interrupted/restart cases against the L1 runtime | transition matrix and negative logs |
-| L4 | 2 | immutable production image | build the reviewed patch stack into one OCI image, then repeat L1 smoke | Dockerfile/source map, OCI digest, SBOM and simplified card commands |
+| L4 | 2 | immutable production image | image built and module-verified inside the image (`localhost/vllm:gg-r34-patched`); the L1-equivalent serving smoke is still to run | Dockerfile/source map, OCI digest, SBOM and simplified card commands |
 | L5 | 8 | fair speculative matrix | run every quant artifact at MTP off/depth 1/depth 3, C1/C4/C8 | raw three-run matrix and revised throughput claims |
 | L6 | 4–6, 13 | candidate sides of paired quality tests | consume the content-hashed rental BF16 bundles; run quant profiles with identical prompts/scorers | candidate reports plus summaries bound to each BF16 receipt hash |
 | L7 | 3 | clean-room reproduction | use a fresh checkout/cache and only public model/dataset revisions | independent data-only and runtime reproduction receipt |
@@ -396,6 +404,11 @@ before sending requests. Run L1 in order: exact 261,794-token needle, 30-case im
 236,824-token combined seven-megapixel request, three warmed 256-token decode runs, then a
 second long request after release. Do not tune after seeing a partial result; a failed gate
 is published as a bounded negative result.
+
+**L1 is closed.** It ran on 2026-08-16 and all seven gates passed, but at
+`--gpu-memory-utilization 0.955` with `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True`, not at
+0.97 (`receipts/qualification-5090-context.json`). This sequence stays as the reproduction
+procedure, with 0.955 as the launch value.
 
 All local work lands in this repository: tools under `tools/`, immutable JSON/log evidence
 under `receipts/`, and narrative in this file and `PROGRESS.md`; then run
@@ -424,40 +437,84 @@ the record. Any post-hoc correction gets a new amendment that names the supersed
 old evidence is never rewritten. A result closes a row only when a fresh checkout can run the
 documented verifier without private paths, mutable branches or unrecorded model state.
 
-## P0 / rank 1 — physical RTX 5090 qualification
+## P0 / rank 1 — physical RTX 5090 qualification — CLOSED 2026-08-16
 
-This is the highest-value remaining test because it changes the context card from
-“budget-proven” to “hardware-qualified”.
+**Closed and passed.** Receipt `receipts/qualification-5090-context.json` (schema
+`qwen38-qualification-5090-context/1`), per-process server logs
+`receipts/qualification-5090-context-server-{B3,B4,C,D,E,F}.log`. This was the highest-value
+remaining test because it changes the context card from “budget-proven” to
+“hardware-qualified”, and that is what it did.
 
-Run the exact native profile on a real 31.39 GiB RTX 5090:
+One physical NVIDIA GeForce RTX 5090, `GPU-506a575d-01d7-b12e-9a0a-c1ab5f38ae0a`, 32,607 MiB
+total and 32,149 MiB free with the card idle, which vLLM sizes as **31.4 GiB usable**; driver
+610.57.04, CUDA user-mode driver 13.3; image
+`voipmonitor/vllm@sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b` plus
+the three content-pinned patch modules bind-mounted read-only and sha256-verified before every
+launch; vLLM `0.11.2.dev280+gilded.gnosis.v20.…r34`. No other process on the card, `nvidia-smi`
+sampled before load, after startup, at peak prefill and after release.
 
-- int8 input overlay, MTP-3, FP8 KV, decode graphs, one sequence;
-- native 262,144;
-- `max_pixels=8388608`;
-- the three content-hashed runtime patches from the amendment receipt;
-- no other process on the GPU, with `nvidia-smi` memory sampled before load, after startup,
-  at peak prefill and after release.
+**Qualified profile: `--gpu-memory-utilization 0.955` with
+`PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True`.** Everything else is the published recipe
+unchanged: `--max-model-len 262144 --max-num-seqs 1 --kv-cache-dtype fp8
+--max-num-batched-tokens 2048`, MTP depth 3, `max_pixels 8388608`, `VLLM_EXL3_EMBED_BITS=8`,
+`VLLM_EXL3_GRAPH_DECODE=1`, `VLLM_EXL3_PREFILL_RECONSTRUCT_M=128`.
 
-Acceptance is all-or-nothing:
+Measured at startup on the card: engine budget **29.98 GiB** at utilisation 0.955; free 30.9 of
+31.4 GiB; usage 18.19 weight + 1.78 peak activation + 0.27 non-torch + 0.45 CUDAGraph =
+**20.69 GiB**; **available KV 9.28 GiB = 265,122 KV tokens**; maximum concurrency at 262,144
+tokens **1.01x**; attention block size forced to 1600 tokens so the attention page is at least
+the mamba page; mamba page padded 0.25 %; 3 padding layers, at most 6.25 % KV waste; startup
+**55.7 s**; model load 18.19 GiB in 3.99 s.
 
-1. startup allocates at least one native-length request without exceeding utilisation 0.97;
+All seven acceptance gates PASS, in the order they were pre-registered:
+
+1. startup allocates a native-length request without exceeding the utilisation ceiling;
 2. the 261,794-token text needle is exact;
-3. the combined 236,824-token / seven-megapixel request returns both code and colours exactly;
-4. the 30-case image suite remains 24/30 or better;
-5. three warmed 256-token C1 runs report median decode, MTP acceptance and dispersion;
-6. a second long request succeeds after the first is released, proving recovery rather than
-   one lucky allocation;
-7. receipt includes GPU UUID/model, driver, image digest, patch hashes, command, peak memory,
-   KV allocation, outputs and wall times.
+3. the combined 236,824-token plus 7,077,888-pixel request returns `1376346594 | red, blue`
+   exactly;
+4. the 30-case image suite holds **24/30** (digits 8/10, bars 9/10, grid 7/10, seed 20260815) —
+   exactly on the threshold, a pass with no margin, per-case answers published;
+5. three warmed 256-token C1 runs: median **107.56 tok/s**, dispersion 0.60 %, MTP acceptance
+   **56.48 %** at mean accepted length 2.69 — physical-card numbers, never differenced against
+   any rental figure;
+6. a second native-length request succeeds after the first is released, in the same process, so
+   this is recovery rather than one lucky allocation;
+7. receipt identity complete: GPU UUID and model, driver, image digest, patch hashes, commands,
+   the four memory points, KV allocation, outputs and wall times.
 
-Failure is still useful: report the exact shortfall and lower `max_pixels` before sacrificing
-MTP or native length. A 4.2 MP trial fit at 30.44 GiB and the 8.4 MP profile fit at the exact
-30.24 GiB budget, so this is a bounded frontier rather than an open-ended search.
+**The published 0.97 is a bounded negative, and its mechanism is the part worth keeping.** At
+0.97 the engine starts and serves text (KV 272,570 tokens, 1.04x at native length), but the
+combined text-plus-image request dies with `torch.OutOfMemoryError` inside
+`vllm/v1/attention/ops/vit_attn_wrappers.py` wanting 62.00 MiB with 26.50 MiB free, and
+`expandable_segments` does not save it: vLLM spends the freed bytes on more KV, 272,570 →
+280,017 tokens. Lowering `max_pixels` to 4,194,304 at 0.97 is **strictly worse** — profiled peak
+activation falls to 1.35 GiB, KV grows to 291,933 tokens, and it OOMs sooner with 6.56 MiB free.
+So this plan's old failure advice — lower `max_pixels` before sacrificing anything — was wrong:
+**the knob is utilisation**, because the engine spends every freed byte on KV. Seven megapixels
+is not a hard 32 GB ceiling either: the identical request succeeds at 0.955 with the full
+8,388,608-pixel ceiling. The remaining pixel-count and sequence-count frontier is now rank 11.
+
+Prefix caching is default-off for this hybrid model (`enable_prefix_caching=False`, 0.0 % hit
+rate on every scheduler line), so the absent upstream fix PR #51113 is latent here and no gate
+depended on it; the explicit `--no-enable-prefix-caching` control arm is published with the
+receipt.
 
 ## P0 / rank 2 — immutable production runtime
 
 The published r34 image predates every required patch. Bind-mounting Python modules is
 reproducible but not a production distribution.
+
+**Status: built and verified, serving gates pending.** The immutable image exists —
+`localhost/vllm:gg-r34-patched`, manifest
+`sha256:6eca4c693f01b6f4e112c04eacd30673b7cfbba4150e6fe2ea3ba1bbfde14c27`, with all three patch
+modules verified by digest *inside* the image against the published map, the import machinery
+proven to resolve to them and no stale bytecode (`receipts/production-image.json`, schema
+`qwen38-production-image/2`). Items 1 and 4 below are satisfied there, and item 2 only in its
+no-runtime-package-install part. What is **not** done is the serving half: no recipe has served a
+request from the image, so item 3 and the mount, privilege and endpoint gates in items 5 and 6
+are recorded as `null` rather than passed, and item 7 cannot fire while the cards still document
+the three-mount recipe. Those gates are owned by the current 5090 performance window, so this
+rank stays open until that receipt lands.
 
 Build one immutable image from the pinned r34 digest plus reviewed versions of:
 
@@ -652,6 +709,16 @@ physical 5090, sweep 4.2 / 6.3 / 8.4 / 10.5 MP and sequence counts 1 / 2 without
 other knobs. Report startup activation, KV tokens, actual resized dimensions and combined
 request success. Select the largest cap with at least 256 KV-token margin after the full
 262,144 request; do not publish a zero-headroom maximum.
+
+**Moved here from rank 1 when it closed.** The qualification answered one point — 8.4 MP at
+utilisation 0.955 — and nothing about the others, so the frontier is this item's work. It must
+start from the measured mechanism: at fixed utilisation, lowering `max_pixels` *enlarges* the KV
+cache, so a lower cap can OOM sooner than a higher one. At 0.97 the 4.2 MP profile failed with
+6.56 MiB free against 8.4 MP's 26.50 MiB, with KV at 291,933 against 280,017 tokens
+(`receipts/qualification-5090-context.json`). Sweep the cap **and** utilisation together, never
+the cap alone, and treat the 4.2 MP-fits-at-30.44-GiB datum in
+`receipts/native-mtp-8mp-amendment.json` as a rental engine-budget observation rather than a
+physical bound.
 
 ## P2 / rank 12 — portability and package quality
 

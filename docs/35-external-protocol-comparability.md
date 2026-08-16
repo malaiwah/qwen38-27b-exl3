@@ -537,7 +537,10 @@ every candidate saw — receipt
 deviations from the plan as written, both stated in the receipt: it is one shard of ten rather than
 the full 10,480,640-position suite, and the comparison is a shard-0 ranking rather than a paired
 per-context bootstrap against the ten-shard rows, because those rows were welded from a different
-position count. Extending the GGUFs to all ten shards is unrun.
+position count. Extending the GGUFs to all ten shards is unrun. How much that costs in accuracy is itself
+measurable: over all ten shards the five vLLM means read 0.002760 / 0.003210 / 0.003509 / 0.005294 /
+0.010604, i.e. **1.9-2.9 % above** their shard-0 values, with the ordering unchanged, so shard 0 is a
+slightly optimistic but faithful tenth of the suite.
 
 ### Control C — isolate D1 on our own data (**done**)
 

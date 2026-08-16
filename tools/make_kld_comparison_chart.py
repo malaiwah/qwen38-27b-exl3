@@ -376,10 +376,13 @@ def draw_serialized(ax, c: dict) -> None:
         # the size difference in the same breath.
         win, lose = sorted(pts, key=lambda p: p[3])
         pct = (lose[3] - win[3]) / lose[3] * 100
+        # Both GiB values in this panel print at 3 decimals, so the difference
+        # does too: 0.445 cannot be misread as a rounding of rounded inputs,
+        # where 0.45 invites exactly that reading.
         dgib = win[2] - lose[2]
         text = "\n".join([
             title, fmt(win), fmt(lose),
-            f"{pct:.0f} % lower KL, {abs(dgib):.2f} GiB "
+            f"{pct:.0f} % lower KL, {abs(dgib):.3f} GiB "
             f"{'more' if dgib > 0 else 'less'} weight",
         ])
         ax.annotate(text, (bx, by), ha="left", va="top", fontsize=7.6,
@@ -508,7 +511,10 @@ def draw(theme: str) -> list[Path]:
     draw_serialized(ax_ser, c)
     draw_his(ax_his, c)
 
-    drift = max(abs(FULL_SUITE[k] - CAND[k]["mean_kld"]) / FULL_SUITE[k]
+    # The footer states this as a difference FROM the shard-0 values, so the
+    # shard-0 value is the denominator: the same gap is 2.8 % of a full-run
+    # mean and 2.9 % of a shard-0 mean, and the larger number is the safe one.
+    drift = max(abs(FULL_SUITE[k] - CAND[k]["mean_kld"]) / CAND[k]["mean_kld"]
                 for k in FULL_SUITE) * 100
     fmean = FLOOR["mean_kld"]
 
