@@ -895,6 +895,20 @@ and build differences are explicitly reduced to a measured numerical equivalence
 independent operator signs the receipt or publishes it from a separate account. A copy of this
 workstation is not an independent reproduction.
 
+**Upstream fix filed 2026-08-16.** The admission livelock we reported as
+[vllm-project/vllm#52520](https://github.com/vllm-project/vllm/issues/52520) now has a pull request:
+[#52530](https://github.com/vllm-project/vllm/pull/52530) (+381/-2, one commit, DCO green). It was gated on
+reproducing the defect **on unmodified upstream `main`** at commit `4d2a68d6` first, CPU-only with no model
+weights: a hybrid FullAttention + Mamba(align) config accepts a 69-block pool while the true ceiling is
+1,008 tokens (one block is the null block, five are speculative), admits a 1,023-token request, prefills to
+exactly 1,008, self-preempts, and then schedules nothing forever — while the same request runs at 70 blocks
+(`upstream/repro-52520-stock-main.py/.out`). The fix follows merged **#40946**'s precedent — one bound,
+two call sites: a shared `_estimate_max_model_len_from_groups` helper feeding both the startup check and a
+new runtime `max_servable_num_tokens`, with over-long requests failed at admission and drained as
+`FINISHED_IGNORED`. Regression test `tests/v1/core/test_kv_pool_unservable_requests.py` fails 3/5 before and
+passes 5/5 after; `tests/v1/core/` shows the same pre-existing failures on the branch as on stock main
+(all four need a GPU-backed engine core). `receipts/upstream-pr-52520.json`.
+
 **Amended 2026-08-16: the byte-identity branch of that acceptance clause is dead for a rebuilt
 checkpoint, because the converter is measurably nondeterministic.** A fresh conversion of the
 published hydrated recipe, same box, same flags, same source, returns 13 of 16 pinned payload
