@@ -1,0 +1,749 @@
+{
+ "schema": "qwen38-embed-overlay-8k/1",
+ "what": "VLLM_EXL3_EMBED_BITS=8 (per-row symmetric int8 input embedding table, docs/32) applied to the two NON-context published recipes at their own published 8,192-token profile: hydrated K5-K6 and online K5-K6. Four served arms, off and on per recipe, each answering the same frozen probe schedule.",
+ "why": "docs/32 built the overlay for the 262,144-token context edition, where it is the lever that makes native context fit, and measured its fidelity cost only on the context recipe. The cards for the other two recipes say nothing about it. This measures what it buys and what it costs at 8,192 tokens, where KV is not the binding constraint, so the cards can either recommend it or say why not.",
+ "protocol_identity": {
+  "arms": {
+   "hyd-off": {
+    "argv_script": "/work/kld9/serve-arm.sh hyd-off 8099",
+    "environment_delta": "none (published recipe as shipped)"
+   },
+   "hyd-on": {
+    "argv_script": "/work/kld9/serve-arm.sh hyd-on 8099",
+    "environment_delta": "VLLM_EXL3_EMBED_BITS=8"
+   },
+   "k5k6-off": {
+    "argv_script": "/work/kld9/serve-arm.sh k5k6-off 8099",
+    "environment_delta": "none (published recipe as shipped)"
+   },
+   "k5k6-on": {
+    "argv_script": "/work/kld9/serve-arm.sh k5k6-on 8099",
+    "environment_delta": "VLLM_EXL3_EMBED_BITS=8"
+   }
+  },
+  "serve_script_sha256": "aa1311d10d74afd4b423faf339fcb14db54c2c903f29d7993a65e2153d9b8fde",
+  "probe": {
+   "tool": "/work/kld9/probe/apc_poison_probe.py = tools/apc_poison_probe.py",
+   "tool_sha256": "a96168f9b0c32387fe0cd2b180cb23ff67061b6dbe8f46c1423041c904e7aeb6",
+   "identical_to_repo_tool": true,
+   "prompts": "/work/kld9/probe/prompts-8k.json",
+   "prompts_sha256": "7628a52de5ee43593134a4437de3309af6726dbd633d874f8536e0461158bc29",
+   "prompts_window_filter": {
+    "window": 8192,
+    "response_budget": 220,
+    "parent_prompts_sha256": "41215e596c72a643c6fe5d185d0c30ed39c4389529eaa0e33f3e0e912a450c9f",
+    "kept_requests": 22,
+    "dropped_request_ids": [
+     "p1s6",
+     "p1s7",
+     "p1s8",
+     "p1s9",
+     "p1s10",
+     "p2s6",
+     "p2s7",
+     "p2s8",
+     "p2s9",
+     "p2s10",
+     "p3s6",
+     "p3s7",
+     "p3s8",
+     "p3s9",
+     "p3s10",
+     "p4s8"
+    ],
+    "policy": "same token ids from the same frozen file; a filter, not a refreeze"
+   },
+   "filter_tool": "/work/kld9/probe/filter_prompts.py",
+   "filter_tool_sha256": "dc37a8bc016d75d2d90082ad80fa0ea8a6efcc3c6ec3e8e092137265c7e624e0",
+   "sampling": "temperature 0, top_p 1, seed 0, max_tokens 220, concurrency 1",
+   "arms_share_prompt_digest": true
+  },
+  "driver": "/work/kld9/embed-arms.sh",
+  "gpu": "one NVIDIA RTX PRO 6000 Blackwell Server Edition, 97,887 MiB"
+ },
+ "per_recipe": {
+  "hyd": {
+   "recipe": "MODEL_CARD-K5K6-hydrated.md prefix-caching recipe at --max-model-len 8192: exl3, --enforce-eager, utilisation 0.95, --max-num-seqs 8, --enable-prefix-caching --mamba-cache-mode align",
+   "arms": {
+    "off": "hyd-off",
+    "on": "hyd-on",
+    "only_difference": "VLLM_EXL3_EMBED_BITS=8 on the -on arm"
+   },
+   "engine": {
+    "off": {
+     "server_log": "/work/kld9/logs/serve-hyd-off.log",
+     "server_log_sha256": "0c3b0bd483d3ca2e53e2e4410bea922f7eab72dcc963e35fd5c51288f8a92067",
+     "engine_version_banner": "v0.11.2.dev280+gilded.gnosis.v20.vllm4d006a4.b12xcd3ce19.fi1ac6942.cu132.20260810.r34",
+     "engine_config_line": "model='/work/qwen38-hyd', speculative_config=None, tokenizer='/work/qwen38-hyd', skip_tokenizer_init=False, tokenizer_mode=auto, revision=None, tokenizer_revision=None, trust_remote_code=False, dtype=torch.bfloat16, max_seq_len=8192, download_dir=None, load_format=auto, tensor_parallel_size=1, pipeline_parallel_size=1, data_parallel_size=1, decode_context_parallel_size=1, dcp_comm_backend=ag_rs, disable_custom_all_reduce=False, quantization=exl3, quantization_config=QuantizationConfigArgs(linear=QuantSpec(weight=QuantKey(dtype=torch.float8_e4m3fn, scale=ScaleDesc(dtype=torch.uint8, static=False, group_shape=GroupShape(row=1, col=32)), scale2=None, symmetric=True), activation=None), moe=None, shared_experts=None, ignore=['re:.*visual\\\\..*', 're:.*in_proj_a$', 're:.*in_proj_b$', 're:.*in_proj_ba$', 're:.*mtp\\\\..*', 'lm_head']), enforce_eager=True, enable_return_routed_experts=False, kv_cache_dtype=auto, device_config=cuda, structured_outputs_config=StructuredOutputsConfig(backend='auto', disable_any_whitespace=False, disable_additional_properties=False, reasoning_parser='qwen3', reasoning_parser_plugin='', enable_in_reasoning=False), observability_config=ObservabilityConfig(show_hidden_metrics_for_version=None, otlp_traces_endpoint=None, collect_detailed_traces=None, kv_cache_metrics=False, kv_cache_metrics_sample=0.01, cudagraph_metrics=False, enable_layerwise_nvtx_tracing=False, enable_mfu_metrics=False, enable_mm_processor_stats=False, enable_logging_iteration_details=False, jit_monitor_mode='warn', jit_monitor_verbose=False), seed=0, served_model_name=qwen38, enable_prefix_caching=True, enable_chunked_prefill=True, pooler_config=None, compilation_config={'mode': <CompilationMode.NONE: 0>, 'debug_dump_path': None, 'cache_dir': '', 'compile_cache_save_format': 'binary', 'backend': 'inductor', 'custom_ops': ['all'], 'ir_enable_torch_wrap': False, 'splitting_ops': [], 'compile_mm_encoder': False, 'cudagraph_mm_encoder': False, 'encoder_cudagraph_token_budgets': [], 'encoder_cudagraph_max_vision_items_per_batch': 0, 'encoder_cudagraph_max_frames_per_batch': None, 'compile_sizes': [], 'compile_ranges_endpoints': [8192], 'inductor_compile_config': {'enable_auto_functionalized_v2': False, 'combo_kernels': True, 'benchmark_combo_kernel': True}, 'inductor_passes': {}, 'cudagraph_mode': <CUDAGraphMode.NONE: 0>, 'cudagraph_num_of_warmups': 0, 'cudagraph_capture_sizes'",
+     "resolved_argv_namespace": null,
+     "available_kv_gib": 66.45,
+     "model_load_gib": 20.31,
+     "weight_gib": 20.31,
+     "peak_activation_gib": 3.2,
+     "non_torch_gib": 0.27,
+     "cudagraph_gib": 0.0,
+     "engine_budget_gib": 90.22,
+     "kv_cache_tokens": 668852,
+     "max_concurrency": 81.65,
+     "embed_overlay_log_lines": [],
+     "startup_complete": true,
+     "errors": []
+    },
+    "on": {
+     "server_log": "/work/kld9/logs/serve-hyd-on.log",
+     "server_log_sha256": "df6795cdbe8585550b9d25f211f6cc913d5c3fc766a33094b76db8c9383e9717",
+     "engine_version_banner": "v0.11.2.dev280+gilded.gnosis.v20.vllm4d006a4.b12xcd3ce19.fi1ac6942.cu132.20260810.r34",
+     "engine_config_line": "model='/work/qwen38-hyd', speculative_config=None, tokenizer='/work/qwen38-hyd', skip_tokenizer_init=False, tokenizer_mode=auto, revision=None, tokenizer_revision=None, trust_remote_code=False, dtype=torch.bfloat16, max_seq_len=8192, download_dir=None, load_format=auto, tensor_parallel_size=1, pipeline_parallel_size=1, data_parallel_size=1, decode_context_parallel_size=1, dcp_comm_backend=ag_rs, disable_custom_all_reduce=False, quantization=exl3, quantization_config=QuantizationConfigArgs(linear=QuantSpec(weight=QuantKey(dtype=torch.float8_e4m3fn, scale=ScaleDesc(dtype=torch.uint8, static=False, group_shape=GroupShape(row=1, col=32)), scale2=None, symmetric=True), activation=None), moe=None, shared_experts=None, ignore=['re:.*visual\\\\..*', 're:.*in_proj_a$', 're:.*in_proj_b$', 're:.*in_proj_ba$', 're:.*mtp\\\\..*', 'lm_head']), enforce_eager=True, enable_return_routed_experts=False, kv_cache_dtype=auto, device_config=cuda, structured_outputs_config=StructuredOutputsConfig(backend='auto', disable_any_whitespace=False, disable_additional_properties=False, reasoning_parser='qwen3', reasoning_parser_plugin='', enable_in_reasoning=False), observability_config=ObservabilityConfig(show_hidden_metrics_for_version=None, otlp_traces_endpoint=None, collect_detailed_traces=None, kv_cache_metrics=False, kv_cache_metrics_sample=0.01, cudagraph_metrics=False, enable_layerwise_nvtx_tracing=False, enable_mfu_metrics=False, enable_mm_processor_stats=False, enable_logging_iteration_details=False, jit_monitor_mode='warn', jit_monitor_verbose=False), seed=0, served_model_name=qwen38, enable_prefix_caching=True, enable_chunked_prefill=True, pooler_config=None, compilation_config={'mode': <CompilationMode.NONE: 0>, 'debug_dump_path': None, 'cache_dir': '', 'compile_cache_save_format': 'binary', 'backend': 'inductor', 'custom_ops': ['all'], 'ir_enable_torch_wrap': False, 'splitting_ops': [], 'compile_mm_encoder': False, 'cudagraph_mm_encoder': False, 'encoder_cudagraph_token_budgets': [], 'encoder_cudagraph_max_vision_items_per_batch': 0, 'encoder_cudagraph_max_frames_per_batch': None, 'compile_sizes': [], 'compile_ranges_endpoints': [8192], 'inductor_compile_config': {'enable_auto_functionalized_v2': False, 'combo_kernels': True, 'benchmark_combo_kernel': True}, 'inductor_passes': {}, 'cudagraph_mode': <CUDAGraphMode.NONE: 0>, 'cudagraph_num_of_warmups': 0, 'cudagraph_capture_sizes'",
+     "resolved_argv_namespace": null,
+     "available_kv_gib": 67.62,
+     "model_load_gib": 19.14,
+     "weight_gib": 19.14,
+     "peak_activation_gib": 3.2,
+     "non_torch_gib": 0.27,
+     "cudagraph_gib": 0.0,
+     "engine_budget_gib": 90.22,
+     "kv_cache_tokens": 680899,
+     "max_concurrency": 83.12,
+     "embed_overlay_log_lines": [
+      "(APIServer pid=1561379) WARNING 08-16 15:37:50 [envs.py:2421] Unknown vLLM environment variable detected: VLLM_EXL3_EMBED_BITS",
+      "(EngineCore pid=1561561) INFO 08-16 15:38:10 [exl3.py:2269] EXL3 int8 embedding overlay: 248320 x 5120 rows narrowed, 2.543 GB -> 1.272 GB"
+     ],
+     "startup_complete": true,
+     "errors": []
+    }
+   },
+   "weight_delta": {
+    "weight_gib_off": 20.31,
+    "weight_gib_on": 19.14,
+    "delta_gib": -1.17,
+    "model_loading_gib_off": 20.31,
+    "model_loading_gib_on": 19.14,
+    "engine_budget_gib_off": 90.22,
+    "engine_budget_gib_on": 90.22,
+    "peak_activation_gib": {
+     "off": 3.2,
+     "on": 3.2
+    },
+    "expected_from_docs_32": "the 248,320 x 5,120 BF16 input table is 2.543 GB = 2.368 GiB resident and int8 halves it, so about -1.184 GiB of weights",
+    "source_line": "the engine's own startup accounting: \"Actual usage is X GiB for weight, Y GiB for peak activation, ...\""
+   },
+   "kv_delta": {
+    "available_kv_gib_off": 66.45,
+    "available_kv_gib_on": 67.62,
+    "delta_gib": 1.17,
+    "kv_cache_tokens_off": 668852,
+    "kv_cache_tokens_on": 680899,
+    "delta_tokens": 12047,
+    "relative_tokens": 1.018011,
+    "max_concurrency_off": 81.65,
+    "max_concurrency_on": 83.12
+   },
+   "bit_exactness_guard": {
+    "definition": "every frozen probe request replayed on both arms with greedy decoding (temperature 0, top_p 1, seed 0, 220 max tokens); the guard passes only if every request's emitted token id sequence and text are identical between the arms. It is a strict output-identity guard, and docs/32 already establishes that the overlay is not numerically identical (+0.000065 mean KLD on the context recipe), so a failure here is a measurement of where the arithmetic difference becomes visible in greedy decoding, not a defect",
+    "requests_compared": 22,
+    "identical_token_id_requests": 9,
+    "identical_text_requests": 9,
+    "bit_exact": false,
+    "mean_abs_chosen_logprob_delta": 0.09683752,
+    "max_abs_chosen_logprob_delta": 1.714226,
+    "per_request": [
+     {
+      "request_id": "p1s1",
+      "identical_text": false,
+      "identical_tokens": false,
+      "first_differing_token_position": 136,
+      "positions_compared": 154,
+      "mean_abs_chosen_logprob_delta": 0.06123127,
+      "max_abs_chosen_logprob_delta": 1.338184
+     },
+     {
+      "request_id": "p1s2",
+      "identical_text": true,
+      "identical_tokens": true,
+      "first_differing_token_position": null,
+      "positions_compared": 131,
+      "mean_abs_chosen_logprob_delta": 0.00788179,
+      "max_abs_chosen_logprob_delta": 0.084609
+     },
+     {
+      "request_id": "p1s3",
+      "identical_text": false,
+      "identical_tokens": false,
+      "first_differing_token_position": 71,
+      "positions_compared": 139,
+      "mean_abs_chosen_logprob_delta": 0.17617553,
+      "max_abs_chosen_logprob_delta": 1.652876
+     },
+     {
+      "request_id": "p1s4",
+      "identical_text": true,
+      "identical_tokens": true,
+      "first_differing_token_position": null,
+      "positions_compared": 151,
+      "mean_abs_chosen_logprob_delta": 0.01049152,
+      "max_abs_chosen_logprob_delta": 0.147527
+     },
+     {
+      "request_id": "p1s5",
+      "identical_text": true,
+      "identical_tokens": true,
+      "first_differing_token_position": null,
+      "positions_compared": 128,
+      "mean_abs_chosen_logprob_delta": 0.00917337,
+      "max_abs_chosen_logprob_delta": 0.083549
+     },
+     {
+      "request_id": "p2s1",
+      "identical_text": true,
+      "identical_tokens": true,
+      "first_differing_token_position": null,
+      "positions_compared": 149,
+      "mean_abs_chosen_logprob_delta": 0.0100176,
+      "max_abs_chosen_logprob_delta": 0.111195
+     },
+     {
+      "request_id": "p2s2",
+      "identical_text": false,
+      "identical_tokens": false,
+      "first_differing_token_position": 59,
+      "positions_compared": 138,
+      "mean_abs_chosen_logprob_delta": 0.2238133,
+      "max_abs_chosen_logprob_delta": 1.289721
+     },
+     {
+      "request_id": "p2s3",
+      "identical_text": false,
+      "identical_tokens": false,
+      "first_differing_token_position": 76,
+      "positions_compared": 158,
+      "mean_abs_chosen_logprob_delta": 0.12484423,
+      "max_abs_chosen_logprob_delta": 1.097792
+     },
+     {
+      "request_id": "p2s4",
+      "identical_text": true,
+      "identical_tokens": true,
+      "first_differing_token_position": null,
+      "positions_compared": 152,
+      "mean_abs_chosen_logprob_delta": 0.00974529,
+      "max_abs_chosen_logprob_delta": 0.108179
+     },
+     {
+      "request_id": "p2s5",
+      "identical_text": false,
+      "identical_tokens": false,
+      "first_differing_token_position": 114,
+      "positions_compared": 130,
+      "mean_abs_chosen_logprob_delta": 0.06776116,
+      "max_abs_chosen_logprob_delta": 0.863752
+     },
+     {
+      "request_id": "p3s1",
+      "identical_text": false,
+      "identical_tokens": false,
+      "first_differing_token_position": 137,
+      "positions_compared": 155,
+      "mean_abs_chosen_logprob_delta": 0.06222444,
+      "max_abs_chosen_logprob_delta": 1.263261
+     },
+     {
+      "request_id": "p3s2",
+      "identical_text": false,
+      "identical_tokens": false,
+      "first_differing_token_position": 77,
+      "positions_compared": 152,
+      "mean_abs_chosen_logprob_delta": 0.16844442,
+      "max_abs_chosen_logprob_delta": 1.440035
+     },
+     {
+      "request_id": "p3s3",
+      "identical_text": false,
+      "identical_tokens": false,
+      "first_differing_token_position": 60,
+      "positions_compared": 138,
+      "mean_abs_chosen_logprob_delta": 0.21356964,
+      "max_abs_chosen_logprob_delta": 1.349411
+     },
+     {
+      "request_id": "p3s4",
+      "identical_text": true,
+      "identical_tokens": true,
+      "first_differing_token_position": null,
+      "positions_compared": 130,
+      "mean_abs_chosen_logprob_delta": 0.00760629,
+      "max_abs_chosen_logprob_delta": 0.118669
+     },
+     {
+      "request_id": "p3s5",
+      "identical_text": true,
+      "identical_tokens": true,
+      "first_differing_token_position": null,
+      "positions_compared": 151,
+      "mean_abs_chosen_logprob_delta": 0.01192024,
+      "max_abs_chosen_logprob_delta": 0.133281
+     },
+     {
+      "request_id": "p4s1",
+      "identical_text": false,
+      "identical_tokens": false,
+      "first_differing_token_position": 68,
+      "positions_compared": 107,
+      "mean_abs_chosen_logprob_delta": 0.15867245,
+      "max_abs_chosen_logprob_delta": 1.116094
+     },
+     {
+      "request_id": "p4s2",
+      "identical_text": false,
+      "identical_tokens": false,
+      "first_differing_token_position": 91,
+      "positions_compared": 166,
+      "mean_abs_chosen_logprob_delta": 0.14312554,
+      "max_abs_chosen_logprob_delta": 1.19245
+     },
+     {
+      "request_id": "p4s3",
+      "identical_text": true,
+      "identical_tokens": true,
+      "first_differing_token_position": null,
+      "positions_compared": 146,
+      "mean_abs_chosen_logprob_delta": 0.01167444,
+      "max_abs_chosen_logprob_delta": 0.101862
+     },
+     {
+      "request_id": "p4s4",
+      "identical_text": false,
+      "identical_tokens": false,
+      "first_differing_token_position": 33,
+      "positions_compared": 136,
+      "mean_abs_chosen_logprob_delta": 0.22557388,
+      "max_abs_chosen_logprob_delta": 1.494316
+     },
+     {
+      "request_id": "p4s5",
+      "identical_text": false,
+      "identical_tokens": false,
+      "first_differing_token_position": 50,
+      "positions_compared": 107,
+      "mean_abs_chosen_logprob_delta": 0.24258605,
+      "max_abs_chosen_logprob_delta": 1.714226
+     },
+     {
+      "request_id": "p4s6",
+      "identical_text": false,
+      "identical_tokens": false,
+      "first_differing_token_position": 32,
+      "positions_compared": 144,
+      "mean_abs_chosen_logprob_delta": 0.23132824,
+      "max_abs_chosen_logprob_delta": 1.132669
+     },
+     {
+      "request_id": "p4s7",
+      "identical_text": true,
+      "identical_tokens": true,
+      "first_differing_token_position": null,
+      "positions_compared": 152,
+      "mean_abs_chosen_logprob_delta": 0.01020793,
+      "max_abs_chosen_logprob_delta": 0.080069
+     }
+    ]
+   },
+   "correctness": {
+    "off": {
+     "requests": 22,
+     "failed_requests": 0,
+     "corrupted_requests": 0,
+     "scored_answer_wrong_requests": 0,
+     "per_field_correct": {
+      "A1": 22,
+      "A2": 22,
+      "A3": 22,
+      "A4": 22
+     },
+     "wall_s_total": 180.39
+    },
+    "on": {
+     "requests": 22,
+     "failed_requests": 0,
+     "corrupted_requests": 0,
+     "scored_answer_wrong_requests": 0,
+     "per_field_correct": {
+      "A1": 22,
+      "A2": 22,
+      "A3": 22,
+      "A4": 22
+     },
+     "wall_s_total": 149.0
+    },
+    "failed_request_delta": 0
+   },
+   "arm_receipts": {
+    "hyd-off": {
+     "path": "/work/kld9/reports/probe-hyd-off.json",
+     "sha256": "acb7db42832fc07b9e634f03a38b9b1612bdf7d5ab1cb0364f311faa3977bfee"
+    },
+    "hyd-on": {
+     "path": "/work/kld9/reports/probe-hyd-on.json",
+     "sha256": "6dad91e358421914b65014e5b645dbea773618ab49ca511df55604a30bef8738"
+    }
+   }
+  },
+  "k5k6": {
+   "recipe": "MODEL_CARD-K5K6.md recipe B at --max-model-len 8192: online K6 (VLLM_EXL3_ONLINE_TRELLIS_BITS=6), VLLM_EXL3_GRAPH_DECODE=1, FULL_DECODE_ONLY decode graphs, MTP-3 speculative decoding, utilisation 0.85, --max-num-seqs 8, --enable-prefix-caching --mamba-cache-mode align",
+   "arms": {
+    "off": "k5k6-off",
+    "on": "k5k6-on",
+    "only_difference": "VLLM_EXL3_EMBED_BITS=8 on the -on arm"
+   },
+   "engine": {
+    "off": {
+     "server_log": "/work/kld9/logs/serve-k5k6-off.log",
+     "server_log_sha256": "dd59c0ebd082879cba776a08ef7e0cc1eeb27f8728c012c58337c697b867c255",
+     "engine_version_banner": "v0.11.2.dev280+gilded.gnosis.v20.vllm4d006a4.b12xcd3ce19.fi1ac6942.cu132.20260810.r34",
+     "engine_config_line": "model='/work/Qwen3.8-27B-K5K6', speculative_config=SpeculativeConfig(method='mtp', model='/work/Qwen3.8-27B-K5K6', num_spec_tokens=3), tokenizer='/work/Qwen3.8-27B-K5K6', skip_tokenizer_init=False, tokenizer_mode=auto, revision=None, tokenizer_revision=None, trust_remote_code=False, dtype=torch.bfloat16, max_seq_len=8192, download_dir=None, load_format=auto, tensor_parallel_size=1, pipeline_parallel_size=1, data_parallel_size=1, decode_context_parallel_size=1, dcp_comm_backend=ag_rs, disable_custom_all_reduce=False, quantization=exl3, quantization_config=QuantizationConfigArgs(linear=QuantSpec(weight=QuantKey(dtype=torch.float8_e4m3fn, scale=ScaleDesc(dtype=torch.uint8, static=False, group_shape=GroupShape(row=1, col=32)), scale2=None, symmetric=True), activation=None), moe=None, shared_experts=None, ignore=['re:.*visual\\\\..*', 're:.*in_proj_a$', 're:.*in_proj_b$', 're:.*in_proj_ba$', 're:.*mtp\\\\..*', 'lm_head']), enforce_eager=False, enable_return_routed_experts=False, kv_cache_dtype=auto, device_config=cuda, structured_outputs_config=StructuredOutputsConfig(backend='auto', disable_any_whitespace=False, disable_additional_properties=False, reasoning_parser='qwen3', reasoning_parser_plugin='', enable_in_reasoning=False), observability_config=ObservabilityConfig(show_hidden_metrics_for_version=None, otlp_traces_endpoint=None, collect_detailed_traces=None, kv_cache_metrics=False, kv_cache_metrics_sample=0.01, cudagraph_metrics=False, enable_layerwise_nvtx_tracing=False, enable_mfu_metrics=False, enable_mm_processor_stats=False, enable_logging_iteration_details=False, jit_monitor_mode='warn', jit_monitor_verbose=False), seed=0, served_model_name=qwen38, enable_prefix_caching=True, enable_chunked_prefill=True, pooler_config=None, compilation_config={'mode': <CompilationMode.VLLM_COMPILE: 3>, 'debug_dump_path': None, 'cache_dir': '', 'compile_cache_save_format': 'binary', 'backend': 'inductor', 'custom_ops': ['none'], 'ir_enable_torch_wrap': True, 'splitting_ops': ['vllm::unified_attention_with_output', 'vllm::unified_mla_attention_with_output', 'vllm::mamba_mixer2', 'vllm::mamba_mixer', 'vllm::short_conv', 'vllm::linear_attention', 'vllm::plamo2_mamba_mixer', 'vllm::qwen_gdn_attention_core', 'vllm::gdn_attention_core_xpu', 'vllm::olmo_hybrid_gdn_full_forward', 'vllm::kda_attention', 'vllm::sparse_attn_indexer', 'vllm::rocm_aiter_sparse_attn_indexer', 'vllm::mini",
+     "resolved_argv_namespace": null,
+     "available_kv_gib": 56.87,
+     "model_load_gib": 20.56,
+     "weight_gib": 20.56,
+     "peak_activation_gib": 2.86,
+     "non_torch_gib": 0.29,
+     "cudagraph_gib": 0.11,
+     "engine_budget_gib": 80.73,
+     "kv_cache_tokens": 345324,
+     "max_concurrency": 42.15,
+     "embed_overlay_log_lines": [],
+     "startup_complete": true,
+     "errors": []
+    },
+    "on": {
+     "server_log": "/work/kld9/logs/serve-k5k6-on.log",
+     "server_log_sha256": "890e29f033804f31f59743771f002c0eda907aa22565aff4d511829ce99ea43f",
+     "engine_version_banner": "v0.11.2.dev280+gilded.gnosis.v20.vllm4d006a4.b12xcd3ce19.fi1ac6942.cu132.20260810.r34",
+     "engine_config_line": "model='/work/Qwen3.8-27B-K5K6', speculative_config=SpeculativeConfig(method='mtp', model='/work/Qwen3.8-27B-K5K6', num_spec_tokens=3), tokenizer='/work/Qwen3.8-27B-K5K6', skip_tokenizer_init=False, tokenizer_mode=auto, revision=None, tokenizer_revision=None, trust_remote_code=False, dtype=torch.bfloat16, max_seq_len=8192, download_dir=None, load_format=auto, tensor_parallel_size=1, pipeline_parallel_size=1, data_parallel_size=1, decode_context_parallel_size=1, dcp_comm_backend=ag_rs, disable_custom_all_reduce=False, quantization=exl3, quantization_config=QuantizationConfigArgs(linear=QuantSpec(weight=QuantKey(dtype=torch.float8_e4m3fn, scale=ScaleDesc(dtype=torch.uint8, static=False, group_shape=GroupShape(row=1, col=32)), scale2=None, symmetric=True), activation=None), moe=None, shared_experts=None, ignore=['re:.*visual\\\\..*', 're:.*in_proj_a$', 're:.*in_proj_b$', 're:.*in_proj_ba$', 're:.*mtp\\\\..*', 'lm_head']), enforce_eager=False, enable_return_routed_experts=False, kv_cache_dtype=auto, device_config=cuda, structured_outputs_config=StructuredOutputsConfig(backend='auto', disable_any_whitespace=False, disable_additional_properties=False, reasoning_parser='qwen3', reasoning_parser_plugin='', enable_in_reasoning=False), observability_config=ObservabilityConfig(show_hidden_metrics_for_version=None, otlp_traces_endpoint=None, collect_detailed_traces=None, kv_cache_metrics=False, kv_cache_metrics_sample=0.01, cudagraph_metrics=False, enable_layerwise_nvtx_tracing=False, enable_mfu_metrics=False, enable_mm_processor_stats=False, enable_logging_iteration_details=False, jit_monitor_mode='warn', jit_monitor_verbose=False), seed=0, served_model_name=qwen38, enable_prefix_caching=True, enable_chunked_prefill=True, pooler_config=None, compilation_config={'mode': <CompilationMode.VLLM_COMPILE: 3>, 'debug_dump_path': None, 'cache_dir': '', 'compile_cache_save_format': 'binary', 'backend': 'inductor', 'custom_ops': ['none'], 'ir_enable_torch_wrap': True, 'splitting_ops': ['vllm::unified_attention_with_output', 'vllm::unified_mla_attention_with_output', 'vllm::mamba_mixer2', 'vllm::mamba_mixer', 'vllm::short_conv', 'vllm::linear_attention', 'vllm::plamo2_mamba_mixer', 'vllm::qwen_gdn_attention_core', 'vllm::gdn_attention_core_xpu', 'vllm::olmo_hybrid_gdn_full_forward', 'vllm::kda_attention', 'vllm::sparse_attn_indexer', 'vllm::rocm_aiter_sparse_attn_indexer', 'vllm::mini",
+     "resolved_argv_namespace": null,
+     "available_kv_gib": 58.06,
+     "model_load_gib": 19.38,
+     "weight_gib": 19.38,
+     "peak_activation_gib": 2.86,
+     "non_torch_gib": 0.29,
+     "cudagraph_gib": 0.11,
+     "engine_budget_gib": 80.73,
+     "kv_cache_tokens": 352571,
+     "max_concurrency": 43.04,
+     "embed_overlay_log_lines": [
+      "(APIServer pid=1566958) WARNING 08-16 15:56:30 [envs.py:2421] Unknown vLLM environment variable detected: VLLM_EXL3_EMBED_BITS",
+      "(EngineCore pid=1567144) INFO 08-16 15:56:51 [exl3.py:2269] EXL3 int8 embedding overlay: 248320 x 5120 rows narrowed, 2.543 GB -> 1.272 GB",
+      "(EngineCore pid=1567144) INFO 08-16 15:56:52 [exl3.py:2269] EXL3 int8 embedding overlay: 248320 x 5120 rows narrowed, 2.543 GB -> 1.272 GB"
+     ],
+     "startup_complete": true,
+     "errors": []
+    }
+   },
+   "weight_delta": {
+    "weight_gib_off": 20.56,
+    "weight_gib_on": 19.38,
+    "delta_gib": -1.18,
+    "model_loading_gib_off": 20.56,
+    "model_loading_gib_on": 19.38,
+    "engine_budget_gib_off": 80.73,
+    "engine_budget_gib_on": 80.73,
+    "peak_activation_gib": {
+     "off": 2.86,
+     "on": 2.86
+    },
+    "expected_from_docs_32": "the 248,320 x 5,120 BF16 input table is 2.543 GB = 2.368 GiB resident and int8 halves it, so about -1.184 GiB of weights",
+    "source_line": "the engine's own startup accounting: \"Actual usage is X GiB for weight, Y GiB for peak activation, ...\""
+   },
+   "kv_delta": {
+    "available_kv_gib_off": 56.87,
+    "available_kv_gib_on": 58.06,
+    "delta_gib": 1.19,
+    "kv_cache_tokens_off": 345324,
+    "kv_cache_tokens_on": 352571,
+    "delta_tokens": 7247,
+    "relative_tokens": 1.020986,
+    "max_concurrency_off": 42.15,
+    "max_concurrency_on": 43.04
+   },
+   "bit_exactness_guard": {
+    "definition": "every frozen probe request replayed on both arms with greedy decoding (temperature 0, top_p 1, seed 0, 220 max tokens); the guard passes only if every request's emitted token id sequence and text are identical between the arms. It is a strict output-identity guard, and docs/32 already establishes that the overlay is not numerically identical (+0.000065 mean KLD on the context recipe), so a failure here is a measurement of where the arithmetic difference becomes visible in greedy decoding, not a defect",
+    "requests_compared": 22,
+    "identical_token_id_requests": 12,
+    "identical_text_requests": 12,
+    "bit_exact": false,
+    "mean_abs_chosen_logprob_delta": 0.05090525,
+    "max_abs_chosen_logprob_delta": 1.617807,
+    "per_request": [
+     {
+      "request_id": "p1s1",
+      "identical_text": false,
+      "identical_tokens": false,
+      "first_differing_token_position": 85,
+      "positions_compared": 141,
+      "mean_abs_chosen_logprob_delta": 0.12756706,
+      "max_abs_chosen_logprob_delta": 1.222641
+     },
+     {
+      "request_id": "p1s2",
+      "identical_text": true,
+      "identical_tokens": true,
+      "first_differing_token_position": null,
+      "positions_compared": 144,
+      "mean_abs_chosen_logprob_delta": 0.00926722,
+      "max_abs_chosen_logprob_delta": 0.09324
+     },
+     {
+      "request_id": "p1s3",
+      "identical_text": true,
+      "identical_tokens": true,
+      "first_differing_token_position": null,
+      "positions_compared": 144,
+      "mean_abs_chosen_logprob_delta": 0.00782356,
+      "max_abs_chosen_logprob_delta": 0.113103
+     },
+     {
+      "request_id": "p1s4",
+      "identical_text": false,
+      "identical_tokens": false,
+      "first_differing_token_position": 49,
+      "positions_compared": 87,
+      "mean_abs_chosen_logprob_delta": 0.21263157,
+      "max_abs_chosen_logprob_delta": 1.617807
+     },
+     {
+      "request_id": "p1s5",
+      "identical_text": false,
+      "identical_tokens": false,
+      "first_differing_token_position": 58,
+      "positions_compared": 128,
+      "mean_abs_chosen_logprob_delta": 0.20576417,
+      "max_abs_chosen_logprob_delta": 1.36315
+     },
+     {
+      "request_id": "p2s1",
+      "identical_text": false,
+      "identical_tokens": false,
+      "first_differing_token_position": 96,
+      "positions_compared": 150,
+      "mean_abs_chosen_logprob_delta": 0.01838464,
+      "max_abs_chosen_logprob_delta": 0.521769
+     },
+     {
+      "request_id": "p2s2",
+      "identical_text": true,
+      "identical_tokens": true,
+      "first_differing_token_position": null,
+      "positions_compared": 144,
+      "mean_abs_chosen_logprob_delta": 0.00760978,
+      "max_abs_chosen_logprob_delta": 0.105105
+     },
+     {
+      "request_id": "p2s3",
+      "identical_text": true,
+      "identical_tokens": true,
+      "first_differing_token_position": null,
+      "positions_compared": 143,
+      "mean_abs_chosen_logprob_delta": 0.00579564,
+      "max_abs_chosen_logprob_delta": 0.074931
+     },
+     {
+      "request_id": "p2s4",
+      "identical_text": true,
+      "identical_tokens": true,
+      "first_differing_token_position": null,
+      "positions_compared": 129,
+      "mean_abs_chosen_logprob_delta": 0.00734128,
+      "max_abs_chosen_logprob_delta": 0.091279
+     },
+     {
+      "request_id": "p2s5",
+      "identical_text": true,
+      "identical_tokens": true,
+      "first_differing_token_position": null,
+      "positions_compared": 128,
+      "mean_abs_chosen_logprob_delta": 0.00665146,
+      "max_abs_chosen_logprob_delta": 0.073408
+     },
+     {
+      "request_id": "p3s1",
+      "identical_text": true,
+      "identical_tokens": true,
+      "first_differing_token_position": null,
+      "positions_compared": 151,
+      "mean_abs_chosen_logprob_delta": 0.00715641,
+      "max_abs_chosen_logprob_delta": 0.095751
+     },
+     {
+      "request_id": "p3s2",
+      "identical_text": true,
+      "identical_tokens": true,
+      "first_differing_token_position": null,
+      "positions_compared": 144,
+      "mean_abs_chosen_logprob_delta": 0.01107404,
+      "max_abs_chosen_logprob_delta": 0.075674
+     },
+     {
+      "request_id": "p3s3",
+      "identical_text": false,
+      "identical_tokens": false,
+      "first_differing_token_position": 101,
+      "positions_compared": 145,
+      "mean_abs_chosen_logprob_delta": 0.05872025,
+      "max_abs_chosen_logprob_delta": 1.083249
+     },
+     {
+      "request_id": "p3s4",
+      "identical_text": true,
+      "identical_tokens": true,
+      "first_differing_token_position": null,
+      "positions_compared": 152,
+      "mean_abs_chosen_logprob_delta": 0.00944466,
+      "max_abs_chosen_logprob_delta": 0.101397
+     },
+     {
+      "request_id": "p3s5",
+      "identical_text": false,
+      "identical_tokens": false,
+      "first_differing_token_position": 59,
+      "positions_compared": 122,
+      "mean_abs_chosen_logprob_delta": 0.20687952,
+      "max_abs_chosen_logprob_delta": 1.469749
+     },
+     {
+      "request_id": "p4s1",
+      "identical_text": true,
+      "identical_tokens": true,
+      "first_differing_token_position": null,
+      "positions_compared": 150,
+      "mean_abs_chosen_logprob_delta": 0.00795825,
+      "max_abs_chosen_logprob_delta": 0.136254
+     },
+     {
+      "request_id": "p4s2",
+      "identical_text": false,
+      "identical_tokens": false,
+      "first_differing_token_position": 98,
+      "positions_compared": 152,
+      "mean_abs_chosen_logprob_delta": 0.02116488,
+      "max_abs_chosen_logprob_delta": 0.515013
+     },
+     {
+      "request_id": "p4s3",
+      "identical_text": false,
+      "identical_tokens": false,
+      "first_differing_token_position": 108,
+      "positions_compared": 146,
+      "mean_abs_chosen_logprob_delta": 0.01673736,
+      "max_abs_chosen_logprob_delta": 0.186016
+     },
+     {
+      "request_id": "p4s4",
+      "identical_text": false,
+      "identical_tokens": false,
+      "first_differing_token_position": 49,
+      "positions_compared": 107,
+      "mean_abs_chosen_logprob_delta": 0.27937221,
+      "max_abs_chosen_logprob_delta": 1.588816
+     },
+     {
+      "request_id": "p4s5",
+      "identical_text": true,
+      "identical_tokens": true,
+      "first_differing_token_position": null,
+      "positions_compared": 157,
+      "mean_abs_chosen_logprob_delta": 0.0088407,
+      "max_abs_chosen_logprob_delta": 0.072957
+     },
+     {
+      "request_id": "p4s6",
+      "identical_text": true,
+      "identical_tokens": true,
+      "first_differing_token_position": null,
+      "positions_compared": 143,
+      "mean_abs_chosen_logprob_delta": 0.00713048,
+      "max_abs_chosen_logprob_delta": 0.084635
+     },
+     {
+      "request_id": "p4s7",
+      "identical_text": false,
+      "identical_tokens": false,
+      "first_differing_token_position": 116,
+      "positions_compared": 128,
+      "mean_abs_chosen_logprob_delta": 0.04462825,
+      "max_abs_chosen_logprob_delta": 0.793312
+     }
+    ]
+   },
+   "correctness": {
+    "off": {
+     "requests": 22,
+     "failed_requests": 0,
+     "corrupted_requests": 0,
+     "scored_answer_wrong_requests": 0,
+     "per_field_correct": {
+      "A1": 22,
+      "A2": 22,
+      "A3": 22,
+      "A4": 22
+     },
+     "wall_s_total": 38.56
+    },
+    "on": {
+     "requests": 22,
+     "failed_requests": 0,
+     "corrupted_requests": 0,
+     "scored_answer_wrong_requests": 0,
+     "per_field_correct": {
+      "A1": 22,
+      "A2": 22,
+      "A3": 22,
+      "A4": 22
+     },
+     "wall_s_total": 37.9
+    },
+    "failed_request_delta": 0
+   },
+   "arm_receipts": {
+    "k5k6-off": {
+     "path": "/work/kld9/reports/probe-k5k6-off.json",
+     "sha256": "3d7d7744945a56ff882ac9a3fdd0fd3889c25fc6b77b86d065e19b16901df9c9"
+    },
+    "k5k6-on": {
+     "path": "/work/kld9/reports/probe-k5k6-on.json",
+     "sha256": "ab26839866c717297af9dadef5e5479ba7be38270d16774e188cc9010c3d9f67"
+    }
+   }
+  }
+ },
+ "verdict": {
+  "output_identical_on_both_recipes": false,
+  "no_new_failing_requests": true,
+  "kv_token_gain": {
+   "hyd": 12047,
+   "k5k6": 7247
+  },
+  "kv_token_gain_relative": {
+   "hyd": 1.018011,
+   "k5k6": 1.020986
+  },
+  "concurrency_gain_at_8192": {
+   "hyd": {
+    "off": 81.65,
+    "on": 83.12
+   },
+   "k5k6": {
+    "off": 42.15,
+    "on": 43.04
+   }
+  },
+  "recommend_as_default": false,
+  "recommend_as_opt_in": true,
+  "decision_rule": "recommend as a default only if the overlay is output-identical AND buys KV the profile needs; recommend as an opt-in if the frozen schedule does not regress and there is real KV headroom to gain; otherwise do not mention it on these cards",
+  "statement": "At the published 8,192-token profiles, VLLM_EXL3_EMBED_BITS=8 measured: hyd: weights 20.31 -> 19.14 GiB (-1.17), available KV 66.45 -> 67.62 GiB = 668852 -> 680899 tokens (+12047, +1.80 %), concurrency at 8,192 81.65x -> 83.12x, probe 22/22 correct on both arms, 9/22 continuations token-identical (first divergence between tokens 32 and 137, max chosen-logprob delta 1.714226); k5k6: weights 20.56 -> 19.38 GiB (-1.18), available KV 56.87 -> 58.06 GiB = 345324 -> 352571 tokens (+7247, +2.10 %), concurrency at 8,192 42.15x -> 43.04x, probe 22/22 correct on both arms, 12/22 continuations token-identical (first divergence between tokens 49 and 116, max chosen-logprob delta 1.617807). Verdict: mention it on the hydrated and online K5-K6 cards as an OPT-IN memory lever, not as a default. It does what docs/32 says - about 1.2 GiB of weights become KV, which at 8,192 tokens is +1.8 % (hydrated) and +2.1 % (online K5-K6) of KV tokens and about one point of concurrency - and it costs no correctness on the frozen schedule (22/22 planted answers, zero corruption detectors, on all four arms). But it is NOT output-identical: with greedy decoding the continuations diverge from the BF16-table arm on 13 of 22 (hydrated) and 10 of 22 (online K5-K6) requests, tens of tokens in, with chosen-token logprob deltas up to 1.71. That is the expected consequence of the +0.000065 mean KLD docs/32 already published, not a new defect, but it means the overlay must not be presented as a free switch on a recipe whose KV is already 42x-82x the window: a reader who flips it gets different text for the same prompt. Recommend it where KV is the binding constraint - long windows, smaller cards, the context edition it was built for - and say plainly that output changes.",
+  "scope": "22 frozen probe requests of 1,024-6,144 prompt tokens inside an 8,192 window, greedy, concurrency 1. This is a served-output guard, not a KLD measurement: the overlay's fidelity cost is the +0.000065 mean KLD already published in docs/32 / receipts/paired-ctx-embed8.json."
+ },
+ "content_sha256_excludes": [
+  "content_sha256"
+ ],
+ "generated_utc": "2026-08-16T16:06:34Z",
+ "content_sha256": "9540eab374dab56d380bf3dd00326ca3f95e830767ae0565916ebe5071537493"
+}
