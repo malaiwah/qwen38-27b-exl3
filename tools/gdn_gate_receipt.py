@@ -126,6 +126,29 @@ ANALYSIS = {
                     "where": "scheduler.py:865-878 pad_spec_decode (requires num_spec_tokens > 0, dynamic_sd_lookup None, num_new_tokens == 1, running requests already scheduled and no prefill chunk scheduled) and scheduler.py:1052 which writes [-1] * num_spec_tokens into scheduled_spec_decode_tokens",
                     "how_to_reach_it": "prefix caching on, then re-send an identical prompt: the whole prompt hits the cache, admission has to recompute exactly one token, and the padding fires while the other streams decode",
                     "note": "this is the mechanism the adversarial arm R2 targets. It needs a non-speculative request ordered ahead of it as well, which region 1 can supply in the form of a chunked prefill whose final chunk is 2-4 tokens.",
+                    "but_it_is_mechanism_only_for_us": (
+                        "it requires prefix caching, and prefix caching is not shippable for "
+                        "this model at the native window on this card. Measured independently by "
+                        "agent ShipPrefixCaching on this same promoted digest with "
+                        "--enable-prefix-caching --mamba-cache-mode align: at utilisation 0.955 "
+                        "the engine refuses to start at 262144 because align rounds the request "
+                        "up to 164 whole 1600-token blocks and it needs 9.29 GiB of KV against "
+                        "9.28 available; at 0.9555 it starts with a pool of exactly 262144 and "
+                        "deadlocks mid-prefill with reason=capacity; at 0.9585 with a pool of "
+                        "265072 it livelocks, re-prefilling on a 30 second period at 960 tok/s "
+                        "with zero output tokens while vllm:num_preemptions_total stays at 0. "
+                        "The admission rule is not pool >= window but pool >= window rounded up "
+                        "to whole mamba blocks plus MTP draft slots plus a decode block. So R2 "
+                        "measures a configuration we do not ship and is reported as evidence "
+                        "about the mechanism only, never as evidence about our recipes."
+                    ),
+                    "how_R2_avoids_that_wall": (
+                        "R2 runs at a 32768 window instead of 262144. The longest frozen prompt "
+                        "is 15400 tokens plus 220 of output, so every request clears 21 whole "
+                        "mamba blocks with room to spare and no single prefill can approach the "
+                        "pool, which makes the livelock impossible rather than merely unlikely. "
+                        "The padding path depends on prefix-cache hits, not on window size."
+                    ),
                 },
                 {
                     "mechanism": "token-budget clamping of a speculative decode down to exactly one token, which silently reclassifies it as non-speculative. This is the only mechanism found that needs no prefix caching, no async scheduling and no contrivance, so it is the one that could fire on ordinary mixed traffic.",

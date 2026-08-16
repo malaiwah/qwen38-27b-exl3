@@ -286,14 +286,22 @@ configure_arm() {
     ARM_DESC='our published 8-stream concurrency recipe, gdn_attn.py instrumented: does the defective gather composition ever occur?'
     ;;
   R2)
-    ARM_DESC='adversarial mixed traffic (eight speculative streams plus injected short prompts and full-prefix-cache-hit repeats), prefix caching and align mode ON to open the scheduler spec-padding path, gdn_attn.py instrumented'
+    ARM_DESC='MECHANISM ONLY, not a configuration we ship: adversarial mixed traffic (eight speculative streams plus injected short prompts and full-prefix-cache-hit repeats) with prefix caching and align mode ON to open the scheduler spec-padding path, gdn_attn.py instrumented, at a 32768 window'
     ARM_ARGS=(--enable-prefix-caching --mamba-cache-mode align)
-    # align mode rounds the prefix-cache window up to whole 1600-token mamba blocks and so
-    # needs more KV than plain mode for the same context. ShipPrefixCaching hit exactly
-    # that wall at eight streams, so R2 runs at half the context. R2 is a mechanism probe,
-    # not a comparison arm, and nothing is compared across it, so the context is free to
-    # differ as long as it is recorded.
-    ARM_MAXLEN=131072
+    # Two reasons this arm runs at a small window rather than the recipe's 262144.
+    #
+    # 1. ShipPrefixCaching measured that prefix caching is not shippable for this model at
+    #    the native window on this card: align rounds the request up to whole 1600-token
+    #    mamba blocks, and at 262144 the engine either refuses to start, deadlocks
+    #    mid-prefill with reason="capacity", or livelocks by re-prefilling on a 30 s period
+    #    while vllm:num_preemptions_total stays at 0. So there is no qualified utilisation
+    #    to borrow, and this arm is labelled mechanism-only throughout.
+    # 2. Nothing here needs a large window. The longest frozen prompt is 15400 tokens plus
+    #    220 of output, so a 32768 window (21 whole mamba blocks, 33600 tokens) clears every
+    #    request with room to spare and keeps the pool far larger than any single prefill,
+    #    which is what the livelock needs to be impossible rather than merely unlikely.
+    #    The padding path this arm probes depends on prefix-cache hits, not on window size.
+    ARM_MAXLEN=32768
     ;;
   # R3 is the mechanism amplifier, and it is what turns a zero in R1 from "we saw
   # nothing" into "we saw nothing where the derivation says the rate is lowest, and we

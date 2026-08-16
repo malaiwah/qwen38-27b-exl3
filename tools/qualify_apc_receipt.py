@@ -557,9 +557,9 @@ def main():
     # assumed: if a rerun moves it, the receipt moves with it.
     utils = {p["command"]["gpu_memory_utilization"] for p in processes.values()
              if p.get("command")}
-    if len(utils) != 1:
+    if len(utils) > 1:
         raise SystemExit(f"the gate processes did not share one utilisation: {sorted(utils)}")
-    qualified_util = utils.pop()
+    qualified_util = utils.pop() if utils else None
 
     def probe_row(tag, proc):
         f = proc["startup_facts"]
@@ -664,6 +664,7 @@ def main():
             "utilisation_ceiling_from_the_original_gate": 0.97,
         },
         "commands": {tag: proc["command"] for tag, proc in processes.items()},
+        "probe_commands": {tag: proc["command"] for tag, proc in probes.items()},
     }
     required = {
         "gpu": identity["gpu"], "host": identity["host"],
@@ -697,6 +698,46 @@ def main():
                 "max_prefix_cache_hit_rate_pct": max(float(x) for x in rates) if rates else None,
                 "last_prefix_cache_hit_rate_pct": float(rates[-1]) if rates else None,
             }
+
+    # ------------------------------------------------- the reduced-window option (c)
+    # Offered on the cards only if it was actually run. An option nobody executed is not an
+    # option, it is a guess with a code block around it.
+    rw = probes.get("p256k")
+    if rw:
+        rw_gates = rw["gates"]
+        rw_facts = rw["startup_facts"]
+        rw_needle = read_json(out_dir / "g2-needle-p256k.json")
+        rw_second = read_json(out_dir / "gate6-needle-p256k.json")
+        rw_pass = bool(rw_gates) and all(row["rc"] == 0 for row in rw_gates.values())
+        reduced_window = {
+            "what": "prefix caching at a window below the native 262,144, on the promoted "
+                    "digest, at the same utilisation the native attempt used",
+            "why_it_exists": "the native window livelocks. A user whose workload never "
+                             "approaches 262,144 can still have the cache by capping the "
+                             "window so the pool clears the request with room for the "
+                             "align-mode rounding, the MTP draft slots and a decode block.",
+            "max_model_len": (rw["command"] or {}).get("max_model_len"),
+            "gpu_memory_utilization": (rw["command"] or {}).get("gpu_memory_utilization"),
+            "gpu_kv_cache_tokens": rw_facts.get("gpu_kv_cache_tokens_int"),
+            "maximum_concurrency": rw_facts.get("maximum_concurrency_float"),
+            "enable_prefix_caching_banner": rw_facts.get("enable_prefix_caching"),
+            "mamba_cache_mode_banner": rw_facts.get("mamba_cache_mode"),
+            "gates_run": {name: row["rc"] for name, row in rw_gates.items()},
+            "all_run_gates_passed": rw_pass,
+            "long_needle": rw_needle,
+            "second_long_request": rw_second,
+            "window_price_vs_native": (262144 - ((rw["command"] or {}).get("max_model_len") or 0)),
+            "status": "OFFERED as a documented option" if rw_pass else
+                      "NOT OFFERED: the probe did not pass, so no card prints it",
+            "not_a_qualification": "this is a bounded probe, not the nine-gate set. It does "
+                                   "not carry gate 3 (the combined long text plus "
+                                   "seven-megapixel request) or gate 4 (the image suite), so "
+                                   "it is offered as an option a user may take, never as a "
+                                   "qualified profile.",
+            "server_log": "receipts/qualification-5090-apc-server-p256k.log",
+        }
+    else:
+        reduced_window = {"status": "NOT RUN", "offered": False}
 
     order = ["gate1_startup_native_allocation", "gate2_long_needle_exact",
              "gate3_combined_long_text_and_7mp_image", "gate4_image_suite_24_of_30",
@@ -774,6 +815,7 @@ def main():
                 "qualification and add two flags to. Publishing only the profile that works "
                 "would leave that reader with a startup crash and no explanation.",
         },
+        "reduced_window_option": reduced_window,
         "utilisation_band": {
             "why_it_is_here": "the general answer is 'align mode raises the KV requirement by "
                               "one partial block', not 'use 0.9555'. Someone serving a "
