@@ -909,3 +909,56 @@ request side (never admit what can never be scheduled), and it remains the backs
 filed; and the failure is `finish_reason="length"` rather than a literal HTTP 400, offered as a
 follow-up rather than smuggled in. Receipt `receipts/upstream-pr-52520.json`. CPU only: no GPU was
 taken and no service was touched.
+
+**Terminal-Bench 2.1, CPU-side complete and pinned before the GPU window** — the marquee item's
+infrastructure is finished, published and pushed; only the three passes themselves now wait on the
+rental card. The container-runtime question is closed with evidence: the rental box **cannot run
+containers at all** (it is itself a container whose seccomp profile denies
+`clone(CLONE_NEWUSER|CLONE_NEWNS)` — `unshare -U` and `-m` both return `EPERM`, no docker/podman, no
+systemd), so under the owner's route **(c)** the model serves on the rental while all 89 task
+containers run on AIBoss under **rootless podman 4.9.3**, reached by a static user-local **docker
+CLI 27.5.1 + compose 2.39.1** with `DOCKER_HOST` on the podman socket — which works unmodified
+because harbor shells out to the `docker` CLI rather than using the Python SDK. Proven end-to-end
+before spending any GPU time: an **oracle trial scored 1.0** through that stack, published at
+`harness-validation/oracle-smoke`.
+Two preflight findings changed the design. First, the tunnel's round-trip is **~581 ms per request**
+(AIBoss→tunnel→rental 0.579–0.587 s TTFB vs 0.00072–0.00088 s on the rental's own loopback) and it
+is **not** connection setup — with five requests on one reused connection `time_connect` was
+0.0001 s while `time_starttransfer` stayed ~0.582 s, so LiteLLM's pooling cannot amortise it. The
+cause is distance: the rental's TCP RTT to the jump host is **266 ms** median against AIBoss's
+**12 ms**, and the rental has no direct route to AIBoss at all. It is a time-to-first-token cost,
+not per-token; it is **common-mode across both arms** so it cannot corrupt the
+capability-vs-quantisation split; and tok/s is therefore read from vLLM's own `/metrics` on the
+rental loopback rather than from agent-side wall clock. Second, `ssh -R <port>` is **unsafe here**:
+after an unclean client death sshd keeps the listener, which accepts and instantly resets every
+connection (`curl rc=56`), and it belongs to sshd's **root** privsep process — `fuser -k` and
+`lsof -iTCP` see nothing, so an unprivileged agent cannot reclaim it, and the port cannot be changed
+either because harbor bakes `api_base` into the job config and resume requires an identical one.
+Fixed by taking port ownership away from sshd: ssh binds a **unix socket** with
+`StreamLocalBindUnlink=yes` and `tools/tb_tunnel_proxy.py` — our own process — owns
+`127.0.0.1:18010`. Verified with `SIGKILL` rather than a polite shutdown: `attempt 1 → dropped
+rc=137 → attempt 2`, same port serving `http=200 ttfb=0.581403` ~14 s later, proxy alive across the
+drop; on deliberate stop it released the port at once while the old 18000 stayed held by root sshd.
+Resume is delegated to harbor and **verified by source read** rather than assumed: a trial dir
+without `result.json` is deleted and re-run (`job.py:258-260`), a completed trial is preserved and
+skipped (`_init_remaining_trial_configs`, `job.py:327-357`), and the job config is identity-checked
+(`job.py:246`) — which is why resume must go through `harbor job resume`. In-run retries are
+**transport-only** so a tunnel drop can never score as a task failure, while `AgentTimeoutError` is
+deliberately excluded because running out of task time is a real TB failure mode. CPU-only is
+**asserted, not assumed**, by four independent checks (89/89 tasks pin `gpus = 0`; harbor's docker
+environment contains no `DeviceRequests`/`--gpus`/`nvidia` code path at all; live TB containers are
+inspected for devices; `nvidia-smi` process lists on both hosts) — and the two co-tenant containers
+that *do* hold `/dev/nvidia*`, the owner's `qwen38-27b` service and an `nvidia-gpu-exporter`, are
+named in the evidence rather than filtered out of it. Concurrency will come from a measurement, not
+a guess: the 89 tasks' declared agent timeouts sum to **149,160 s = 41.4 h** serially, so a pass
+must be concurrent, and since 83 of 89 tasks ask for a single core against AIBoss's 28, the binding
+constraint is the single vLLM server — `headroom` sweeps 1/2/4/8/16 and records it.
+Pins frozen in `receipts/terminal-bench-2.1-pins.json` + `-task-inventory.json`: harbor 0.21.0,
+`terminal-bench-2-1@6` run from a **local tree pinned by sha256** so a registry change cannot alter
+a pass mid-protocol, terminus-2 **2.0.0** with the explicit `model_info` that `hosted_vllm/` names
+require, vLLM r34, 32k window + fp8 KV + MTP-3, and `generation_config` **byte-identical** across
+the hydrated and BF16 checkpoints — which is what makes pass 3 like-for-like. `docs/45-terminal-bench.md`
+frames every number as an **agent+model system** score, never model-only. Dataset
+`malaiwah/qwen38-27b-terminal-bench-2.1` is live and **verified public unauthenticated**, and passes
+publish as they complete rather than at the end. No GPU taken by this agent; the card is requested
+by name from SixteenFlipCalib2.
