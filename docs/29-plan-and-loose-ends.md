@@ -1,23 +1,44 @@
 # What is left, ordered by evidence value
 
-State on 2026-08-15 after four published builds, two independent reviews, one external
-RTX 5090 test, a source-disjoint qualification, a contamination re-audit, and paired
-downstream smoke testing. Priority is the claim each item can close, not implementation cost.
+State on 2026-08-16 after four published builds, two independent reviews, a physical
+RTX 5090 qualification, a source-disjoint qualification, a contamination re-audit, paired
+downstream smoke testing, a 10,480,640-position held-out ladder, a cross-engine GGUF
+comparison, an external-protocol cross-citation and one user-reported defect investigated
+to a measured negative. Priority is the claim each item can close, not implementation cost.
 
 ## Current measured frontier
 
-KLD is `KL(BF16 || candidate)` through one shared BF16 head on the overlap-corrected
-127-context v3 subset. Capacity profiles are deliberately not treated as interchangeable.
+KLD is `KL(BF16 || candidate)` through one shared BF16 head. The headline suite is now the
+v5 held-out corpus at **5,120 contexts x 2,047 = 10,480,640 scored positions** over 842
+source clusters; the older 127-context v3 numbers are retained further down as a superseded
+protocol and are **never** mixed with these. Capacity profiles are deliberately not treated
+as interchangeable.
 
-| profile | resident weights | corrected mean KLD | demonstrated/configured context | hardware |
-|---|---:|---:|---:|---|
-| hydrated K6 | 20.31 GiB | **0.007172** | 185,600, MTP-3 | physical RTX 5090 |
-| online K6 | 20.32 GiB | 0.007945 | 185,600, MTP-3 | physical RTX 5090 |
-| context + int8 input | **18.41 GiB** | 0.009459 | **262,144, MTP-3, 8.4 MP cap** | physical RTX 5090, utilisation 0.955 |
-| K4 | 17.89 GiB | 0.029679 | **262,144, MTP-3** | physical RTX 5090 |
-| official FP8 | 28.51 GiB | 0.012798 | not measured here | — |
+| profile | resident weights | mean KLD, 10.48 M positions | 95 % interval | top-1 | demonstrated/configured context | hardware |
+|---|---:|---:|---:|---:|---:|---|
+| hydrated K6 | 20.31 GiB | **0.002760** | [0.002540, 0.003020] | 97.70 % | 185,600, MTP-3 | physical RTX 5090 |
+| online K5/K6 | 20.32 GiB | 0.003210 | [0.002982, 0.003480] | 97.52 % | 185,600, MTP-3 | physical RTX 5090 |
+| context + int8 input | **18.41 GiB** | 0.003509 | [0.003220, 0.003852] | 97.44 % | **262,144, MTP-3, 8.4 MP cap** | physical RTX 5090, utilisation 0.955 |
+| official FP8 | 28.51 GiB | 0.005294 | [0.004927, 0.005728] | 96.79 % | not measured here | — |
+| K4 | 17.89 GiB | 0.010604 | [0.009640, 0.011746] | 95.76 % | **262,144, MTP-3** | physical RTX 5090 |
+| `unsloth/Qwen3.8-27B-NVFP4` | 21.34 GiB | 0.031059 | [0.027916, 0.034795] | 92.90 % | not measured here | — |
 
-The context profile now combines native context, speculative decode and multimodality, and it is
+Every one of our builds beats official FP8 on this suite, and NVFP4 — the only other
+4-bit-weight row — loses **5,120 of 5,120 contexts** to both the context edition and FP8.
+Ten times the positions did not move any mean by more than 2.9 % of its own value and
+changed no ordering: the interval is governed by source diversity, not by scored positions
+(`receipts/kld5-ladder-convergence.json`).
+
+Also measured, and not comparable to the column above because it carries a cross-engine
+term: `llama.cpp` GGUF on the same 512 contexts, with the floor between engines measured on
+the same unquantized BF16 weights at **0.000507** (99.07 % top-1). `Q8_0` 0.001087 at 27.05
+GiB serialized, `Q6_K` 0.002035 at 21.31 GiB, `UD-Q5_K_XL` 0.004444 at 18.83 GiB
+(`receipts/cross-engine-comparator.json`). Every published KLD number here is
+**re-derivable, not merely re-runnable**: 5,240,320 scored positions reproduced bit-for-bit
+across independent runs and three harness generations under eager single-sequence capture
+(`receipts/capture-determinism.json`).
+
+The context profile combines native context, speculative decode and multimodality, and it is
 **hardware-qualified**: on one physical RTX 5090 it allocates **265,122 KV tokens** at 262,144
 with MTP-3 and the full 8.4 MP ceiling, retrieves exactly from 261,794 text tokens, answers code
 plus colours exactly from a 236,824-token prompt containing a 3,072 × 2,304 image, and decodes at
@@ -30,7 +51,10 @@ two throughput figures come from different GPUs and are never differenced.
 The frozen post-selection ranking also survives the offset-independent correction. After
 excluding every context from four qualification source documents with an exact calibration
 12-gram, hydrated / online / context score 0.003093 / 0.003455 / 0.003990 against FP8
-0.005891, each winning 36/36 paired contexts. Absolute KLD is suite-specific.
+0.005891, each winning 36/36 paired contexts. Absolute KLD is suite-specific: the v3 subset
+and v5 differ by a measured **2.46x to 3.08x** across all six candidates, a 1.25x spread with
+**identical ordering**, so ratios carry between suites and absolute values do not
+(`receipts/nvfp4-v5-measurement.json`).
 
 ## Priorities added from public feedback, 2026-08-15
 
@@ -220,33 +244,47 @@ physical 5090 logged 18.19 GiB for the same configuration, and the verdict uses 
 On the constants the physical qualification measured — 31.4 GiB usable of a 32 GB board,
 `--gpu-memory-utilization` 0.955, 1.78 + 0.27 + 0.45 = 2.50 GiB of non-KV overheads
 (`receipts/qualification-5090-context.json`) — a 24 GB board leaves
-`24 × 0.98125 × 0.955 − 2.50 − 18.41 = 1.58 GiB` of KV **[P]**. Turning that into a window needs
-the engine's real capacity law, which is **not** pool ÷ per-token cost: `vllm/v1/core/kv_cache_utils.py`
+`24 × 0.98125 × 0.955 − 2.50 − 18.41 = 1.58 GiB` of KV **[P]**. Turning that into a window needs the
+engine's real capacity law, which is **not** pool ÷ per-token cost: `vllm/v1/core/kv_cache_utils.py`
 in the pinned image computes `GPU KV cache size` as `int(max_concurrency × max_model_len)`, so the
-pool one request needs is affine in the window, `P(L) = a·L + M`, and a logged
-`(pool, tokens, window)` triple satisfies `P = a·T + M·(T/L)`. Our single measured window
-(9.28 GiB, 265,122 tokens, 262,144) is one equation in two unknowns, bounded by the fp8 tensor
-floor below and the engine's own "may waste at most 6.25 % KV cache memory" line above:
-`a ∈ [32,768, 34,816]` B/token, `M ∈ [1.176, 0.676]` GiB. That gives a 24 GB MTP-3 window of
-**20,480 [P]**, bounded 13,246-27,887, and **49,152 [P]** with MTP off — where the fixed term is at
-most 0.039 GiB, which independently confirms that the residual over the tensor floor is MTP-driven,
-not GDN-driven. Fidelity is the already-measured **0.003409** on shard 0
+pool one request needs is affine in the window, `P(L) = a·L + M`. Both terms are now **measured**,
+from four startup refusals at two windows per KV configuration
+(`receipts/qualification-24gib-capped.json`):
+
+| | per-token `a` | fixed `M` | non-KV overheads |
+|---|---:|---:|---:|
+| MTP-3 | **34,816 B** = 32,768 × 17/16 exactly | **0.63 GiB** | 2.50 GiB (1.78 + 0.27 + 0.45) |
+| MTP off | **32,931.8 B** = 1.0050 × the fp8 floor | **0.14 GiB** | 1.95 GiB (1.68 + 0.27 + 0.00) |
+
+The per-token cost is the fp8 tensor floor plus exactly one padding sixteenth — the engine's own
+"may waste at most 6.25 % KV cache memory" line made numeric — and [34](34-vram-class-profiles.md)
+§4's 32,929.0 B/token was right to within **0.009 %** as a *rate*; the error was treating it as the
+whole cost. That gives a 24 GB MTP-3 window of **24,576 [P]**, the only 4,096-multiple that survives
+both of our measured resident-weight figures, and **45,056** with MTP off — the latter not a
+prediction but the window a ballasted 24 GiB proxy started and passed 7/7 gates on, with 76,032
+tokens allocated and 70.8 % headroom. Fidelity is the already-measured **0.003409** on shard 0
 (`receipts/kld5-1M-tail-ctx.json`) and 0.003509 over 10,480,640 positions
 (`receipts/kld5-10M-ctx.json`), carried unchanged because it is the same weights: the class adds
 **no new fidelity risk**. So this is a serving profile over an existing artifact plus one
-qualification — not a conversion project. Two lengths are retired:
-`--max-model-len 40960` from [34](34-vram-class-profiles.md) §5.3, which fails under every
-admissible parameter pair, and **32,768**, which this item itself published earlier today — it
-needs about 1.73 GiB against 1.58 available, and its implied 36,765 B/token exceeds the 34,816
-padding ceiling.
+qualification — not a conversion project. Three lengths are retired: `--max-model-len 40960` from
+§5.3, which needs 1.9581 GiB against a pool of at most 1.80; **32,768**, which fits an 18.19 GiB-resident
+board (and the proxy gated it there) but not an 18.41 GiB one; and **20,480**, this item's own
+conservative figure from before the parameters were pinned.
+
+**MTP-3 is far more expensive than any earlier model here showed.** It costs 0.252 GiB of draft
+weights, the whole 0.45 GiB CUDA-graph pool, 0.10 GiB of draft activation and 0.49 GiB of fixed KV
+per request — roughly 35 % of a 24 GB board's entire KV pool. That is the structural reason the
+16 GB MTP-3 row below is absent rather than small.
 
 **16 GB: no-go as a SKU; published as a design study.** The byte law puts the cheapest
 multimodal build that keeps the MLP stack at 4 bits at 13.58 GiB resident **[P]** against a 12.70
 GiB budget — **0.88 GiB over before a single KV byte**, and 1.09 GiB over at the measured 0.955
 utilisation. Every remaining path is sub-4-bit, and **no width below 4 bits has ever been measured
 for KLD in this family**. The S16-V candidate is all prediction: 11.94 GiB resident **[P]** and
-**16,384 tokens [P]** with MTP off; **MTP-3 is impossible at this class at any window**, because
-its fixed per-request KV term of 0.676-1.176 GiB exceeds the entire 0.55 GiB pool. Fidelity is
+**32,768 tokens [P]** with MTP off — twice [34](34-vram-class-profiles.md) §6.2's figure, because
+the measured MTP-off fixed term is only 0.14 GiB and turning MTP off frees the CUDA-graph pool too.
+**MTP-3 is impossible at this class at any window**: its measured 0.63 GiB fixed KV term exceeds the
+entire 0.553 GiB pool, short by 0.077 GiB. Fidelity is
 unknown — the nearest measured neighbour is K4 at 0.010604
 (`receipts/kld5-10M-k4.json`) with p99.9 0.5555 (`receipts/kld5-1M-tail-k4.json`), already the
 worst published candidate, and S16-V is below it on every role. Two
@@ -265,33 +303,36 @@ profile.
   the no-go, and it replaces [34](34-vram-class-profiles.md) §6.4's "0.03-0.10" — a range with a
   shape, not an estimate — with a number.
 - **Obtain or emulate a 24 GB card for a real qualification, not an engine-budget proof.** The
-  24 GB go is a go to *qualify*: "predicted 40,293 KV tokens" and "allocated 40,293 KV tokens" are
-  different sentences. Today's 5090 result showed exactly why an engine-budget proof on a larger
+  24 GB go is a go to *qualify*: "predicted", "allocated on a ballasted proxy" and "allocated on a
+  24 GB board" are three different sentences, and only the third closes the class. Today's 5090
+  result showed why an engine-budget proof on a larger
   card can mislead — the rental proof at 30.24 GiB inside a 95.6 GiB board said utilisation 0.97
   was fine, and the physical card then refused the combined 236,824-token plus 7 MP request at that
   utilisation, because vLLM spends every freed byte on KV and left the vision tower without the
-  ~62 MiB of transient it needed, while lowering `max_pixels` made it strictly worse. A budget
-  carved out of a larger card keeps real headroom behind it and cannot see that failure mode, so an
-  emulated 24 GB qualification inherits the caveat verbatim and the physical run stays P0. The
+  ~62 MiB of transient it needed, while lowering `max_pixels` made it strictly worse. **That
+  objection is now numeric.** The 24 GiB proxy ran both arms: capping only the engine budget to
+  24.0 GiB on an otherwise idle 32 GB card peaked at **25,614 MiB**, which is 1,496 MiB more CUDA
+  memory than a 24 GiB board owns *in total*, so it passed on bytes no such board has; the ballasted
+  arm, which also holds the card down to 23.553 GiB free, peaked at **24,050 MiB** and passed by
+  68 MiB (`receipts/qualification-24gib-capped.json`, `physical_board_gate: open`). A budget cap is
+  not a board, and the difference is measurable in megabytes — so the physical run stays P0. The
   supported-hardware tuple still has to be stated rather than assumed, and it is not one tuple: the
   physical 5090 qualification ran **driver 610.57.04, CUDA UMD 13.3** on `aiboss`
   (`receipts/qualification-5090-context.json` → `identity.host`), while the rental RTX PRO 6000
   measurements are **595.58.03**. Both are SM120, TP1, and the 24 GB class spans more than one
   architecture.
-- **Pin the two KV cost terms with one logged second window.** The capacity law itself is settled:
-  the engine reports `concurrency × window`, so pool-per-request is `a·L + M`
-  (`vllm/v1/core/kv_cache_utils.py`, read out of the pinned image). What is not settled is the
-  split — one measured window leaves `a ∈ [32,768, 34,816]` B/token and `M ∈ [1.176, 0.676]` GiB,
-  which is why the 24 GB MTP-3 window is published as **20,480, bounded 13,246-27,887**, instead of
-  a single number. **Any** startup that logs a `(pool, tokens, window)` triple at a window other
-  than 262,144 closes it exactly, since two triples are two equations in two unknowns — the 24 GiB
-  proxy run in progress supplies one, and its preliminary datapoint already puts the answer at the
-  padding-ceiling corner (`a` ≈ 34,861, `M` ≈ 0.665 GiB), which is the plausible end. Note what
-  this correction did in both directions: MTP-3 rows fell (24 GB 32,768 → 20,480; 16 GB withdrawn
-  entirely) while MTP-off rows rose (24 GB 45,056 → 49,152; 16 GB 12,288 → 16,384), because the old
-  `H = 0.20 GiB` reserve was simultaneously too small for MTP-3 and too large for MTP-off
-  (`receipts/vram-class-verdict.json` → `open_risks_to_this_verdict`). Neither class decision moved:
-  24 GB rests on weights, 16 GB on fidelity.
+- ~~Pin the two KV cost terms.~~ **Closed.** The capacity law came out of the pinned engine's source
+  (`vllm/v1/core/kv_cache_utils.py`: capacity is reported as `concurrency × window`, so
+  pool-per-request is `a·L + M`) and both terms were then measured by startup refusal at two windows
+  per KV configuration — MTP-3 `a` = 34,816 B/token exactly and `M` = 0.63 GiB, MTP off 32,931.8 and
+  0.14 GiB (`receipts/qualification-24gib-capped.json`). Worth keeping on the record because the
+  corrections ran in **both** directions and none of them touched a class decision: MTP-3 rows fell
+  (24 GB 40,960 → 32,768 → 20,480 → **24,576**; 16 GB 12,288 → **withdrawn entirely**) while MTP-off
+  rows rose (16 GB 12,288 → **32,768**) or were held at a *started* length rather than raised to an
+  unstarted one (24 GB **45,056**, with 80,208 supported at the measured pool). Two methodological
+  lessons: a rate fitted at one window says nothing about a fixed per-request term, and inverting an
+  *allocated* pool over-estimates that term because reported concurrency divides by a `cdiv`, so the
+  refusal threshold is what should be measured.
 
 ### F4 — collection presentation
 
@@ -821,22 +862,43 @@ Run, for every artifact whose preserved MTP head loads:
 The closing result is a matrix, not a single favourable ratio. Unsupported comparator paths
 must be reported as such rather than silently run without MTP.
 
-## P2 / rank 9 — error-driven mixed-precision allocation
+## P2 / rank 9 — error-driven mixed-precision allocation — **CLOSED, negative**
 
-This is the last untried lever likely to improve fidelity without spending more memory.
-The role split was hand-designed; exllamav3 already emits per-module proxy errors during
-conversion, but the original logs were lost.
+Done and measured: [37](37-error-driven-allocation.md),
+`receipts/error-driven-allocation.json`, `receipts/error-driven-surrogate-calibration.json`,
+`receipts/error-driven-ladder.json`.
 
-For the next conversion:
+**The candidate lost.** An allocation solved exactly (dynamic programming, not greedy) to minimise
+the converter's own summed relative proxy error at the hydrated build's byte budget measured
+**0.003066180** against hydrated's **0.002699883** on shard 0 of the v5 suite — paired
+**−0.00036630 [−0.00039779, −0.00033477]** over 512 contexts and 330 clusters, hydrated winning
+**470 of 512** — at **21,586,964,548 serialized bytes in both, equal to the byte**, with all ten
+per-role realised figures equal to the pre-registered prediction. Predicted −0.000211, measured
++0.000366: wrong sign.
 
-1. tee immutable converter stdout and preserve `args.json`, codebook and per-module errors;
-2. measure each eligible module at two or more adjacent bit widths;
-3. solve the byte-constrained benefit curve rather than assigning one width per role;
-4. build one candidate only if predicted gains exceed the ~1e-3 replay-resolution caveat;
-5. select on v4 analysis, then run one untouched source-disjoint qualification.
+The five steps this item asked for were all executed, and the failure is in none of them: converter
+stdout is teed and preserved, every eligible module was measured at five widths, the byte-constrained
+curve was solved exactly, the plan was pre-registered with its digest before the conversion ran, and
+the paired interval excludes zero — against the candidate. The proxy error the real conversion
+achieved matched the fixed-propagation ladder at a median ratio of 0.9997, so error accumulation is
+not the explanation: **total relative proxy error fell 13.1 % while KLD rose 13.6 %.** The objective
+is not a monotone surrogate for fidelity, and the selection rule that chose it could not have caught
+that, because both of its validation deltas were uniform role-group moves and none tested a
+reallocation *between* roles.
 
-Expected improvement is a hypothesis, not a promised 10–30 %. The candidate must beat the
-current profile at equal resident bytes with a paired interval excluding zero.
+What is reusable, and is the actual result: `log eps(m,K) = a_m + s(K)` — one universal shape across
+all 400 body modules, per-bit ratio declining 3.860 → 3.559, held-out width prediction within 1.2 %
+mean — so **one rung per module from an ordinary teed conversion log reproduces the same allocation
+(396 of 400 widths, 99.98 % of the objective improvement) in ~25 min instead of a 2 h measurement
+pass**. `tools/allocate_bits.py --ladder-from-log` is that path. Also settled: at equal width
+`down_proj` really does carry 1.79× `gate_proj`'s proxy error, so the shipped K6-down choice is
+right — though the justification originally given for it compared widths rather than tensors.
+
+**Do not reopen this on the same objective.** A next attempt needs a calibrated surrogate first, and
+none of the four weightings tested is calibrated: `rel` and `numel` get the sign of the reallocation
+delta wrong, `abs` and `sqrt(out_energy)` get every sign right but are 13.3× and 2.51× uncertain in
+scale. `sqrt(out_energy)` is the pre-registrable candidate; it was selected knowing this run's
+answer, so it must be validated on a between-role delta before any GPU is spent.
 
 ## P2 / rank 10 — prefill kernels
 
