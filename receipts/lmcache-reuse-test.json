@@ -1,0 +1,117 @@
+{
+  "schema": "qwen38-lmcache-reuse-test/1",
+  "generated_utc": "2026-08-16T13:20:00Z",
+  "status": "PRE-REGISTERED. Everything in pre_registration below, including every verdict rule and the exercise gate, is committed to git before any scored arm runs on the GPU. The results block is empty at commit time and is the only block that will change.",
+  "purpose": "Test-or-retire for LMCache: the one real user corruption report (cosmicnag, context edition discussion #1) has LMCache 0.5.2 kv_both disk reuse at chunk 1600 as its sole surviving suspect after receipts/apc-poison-repro.json (266 scored requests, NOT REPRODUCED without LMCache) and receipts/second-5090-datapoint.json (prefix caching + align clean at the native window on a second physical 5090, LMCache disabled) eliminated every other member of his decisive control. This experiment puts LMCache back in the loop, alone, through the image's own wrapper, and drives the identical frozen poisoning probe through the one path vLLM's own prefix cache can never exercise: reuse after process restart from a warm disk L2.",
+  "reported_by": {
+    "where": "https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6-context/discussions/1",
+    "user": "cosmicnag",
+    "symptoms": "intermittent multilingual token soup with repeated blocks and replacement characters after 1-2 turns, HTTP 200, no crash; SpecDecoding acceptance walking 39.4 % -> 0.0 % -> 64.5 % -> 20.4 % -> 0.0 %",
+    "his_lmcache_configuration_verbatim_from_his_diagnostic_dump": {
+      "Mode": "disk",
+      "Chunk size": 1600,
+      "L1 size": "12 GiB",
+      "L1 initial size": "2 GiB",
+      "L2 size": "32 GiB",
+      "L2 backend": "fs_native",
+      "L2 workers": 4,
+      "use_odirect": false,
+      "Eviction": "LRU",
+      "Eviction watermark": 0.90,
+      "Eviction ratio": 0.10,
+      "Prefetch policy": "retain",
+      "separate_object_groups": true,
+      "Mamba cache mode": "align",
+      "LMCache kv_role": "kv_both",
+      "MQ timeout": "60 seconds",
+      "Heartbeat interval": 5,
+      "lmcache_version": "0.5.2+glm52dcp.4"
+    },
+    "mirrored": "the full discussion thread, including this configuration block, was re-fetched from the HuggingFace discussions API on 2026-08-16 before this pre-registration was written; the earlier mirror of our own comment is receipts/apc-repro-raw/discussion-comment-6a813d32a479dd58850ab03b.md"
+  },
+  "established_before_this_run_not_re_derived": {
+    "without_lmcache_this_condition_is_clean": {
+      "receipt": "receipts/apc-poison-repro.json",
+      "headline": "NOT REPRODUCED: 266 scored requests across seven freshly started servers on this same physical RTX 5090, in the reporter's exact serving condition, zero corrupted responses, zero wrong scored answers, zero acceptance collapses",
+      "the_no_lmcache_control_on_the_identical_image_and_profile": "arm C: promoted image gg-r34-patched-apc, --enable-prefix-caching --mamba-cache-mode align, same flags as every arm below, 0 failing of 38",
+      "second_card": "receipts/second-5090-datapoint.json: the reporter himself then ran prefix caching + align at the native window without LMCache on his own 5090 and reported it clean, leaving LMCache the only member of his four-variable control still standing"
+    },
+    "lmcache_identity_is_baked_into_the_pinned_stack": {
+      "sbom": "receipts/production-image-sbom-pip.txt line 79: lmcache 0.5.2+glm52dcp.4 wheel, sha256 83207aace71604d936ef874f38ff9ef269dc8460a97927e01c3b710349659e65",
+      "source": "https://github.com/local-inference-lab/LMCache.git ref release/v0.5.2-glm52-dcp-base, commit 9cebd405d0caf4bebe01d694b5a8bf4e3e354314 (image build labels, receipts/production-image.json)",
+      "consequence": "the exact version the reporter ran installs nothing at all: it is already inside the promoted image, so 'which LMCache version installs cleanly against the pinned vLLM' has the strongest possible answer - his, byte-pinned by the image digest"
+    },
+    "the_wrapper_is_the_reporters_wrapper": {
+      "path_inside_image": "/usr/local/bin/glm52-lmcache-wrapper.sh",
+      "behaviour": "starts the lmcache MP server (L1 CPU cache, LRU eviction watermark 0.90 ratio 0.10, l2-prefetch-policy retain, fs_native disk L2 with use_odirect false) and launches the model server with --kv-transfer-config {\"kv_connector\":\"LMCacheMPConnector\",\"kv_role\":\"kv_both\",...,\"lmcache.mp.mq_timeout\":60,\"lmcache.mp.heartbeat_interval\":5}; every one of those constants matches the reporter's dump",
+      "sha256": "measured at stage time into out/stage-identity.txt",
+      "expandable_segments": "the wrapper force-disables PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True whenever LMCache is live, with the comment that LMCache registers KV storage by address and vLLM intentionally rejects the pairing"
+    },
+    "upstream_context": {
+      "sweep": "receipts/upstream-issue-sweep.json: three upstream reports in eleven days say hybrid mamba + external KV reuse returns silently wrong tokens (#51094 closed, #51468 merged, #51766 merged); #51766 is a core/worker disagreement about the live mamba state column when an externally loaded prefix supplies every block a continuation needs - exactly this path",
+      "none_of_those_fixes_are_in_the_pinned_image": "the promoted image carries #51113 and nothing newer; if the probe reproduces corruption here, those three PRs are the first places to look"
+    }
+  },
+  "hardware": {
+    "host": "aiboss",
+    "gpu": "NVIDIA GeForce RTX 5090, GPU-506a575d-01d7-b12e-9a0a-c1ab5f38ae0a, 32607 MiB, driver 610.57.04, Exclusive_Process",
+    "gpu_discipline": "runs only after ScratchArena hands the card over by name on hub; LMCacheTest is last in the 5090 queue and owns the final qwen38-27b restore with health proof"
+  },
+  "image": {
+    "tag": "localhost/vllm:gg-r34-patched-apc",
+    "manifest_digest": "sha256:16a936b877b90fc080181e842f47dbafc5cb8e62688799596836e34ba0b79218",
+    "role": "the promoted four-module release unit, PR #51113 PRESENT (scheduler sha256 b431c1066dfee3ed56bfa7e71cc8606f9afadc300f22d7fc542c43835d1b22bf, re-verified inside the image at stage time)"
+  },
+  "harness": {
+    "driver": "tools/run_lmcache_test.sh",
+    "probe": "tools/apc_poison_probe.py",
+    "probe_sha256": "f415414ddf9dfc762eb872e6f6dca33ed1c040a22d3de976cd2e3ca4a65a5b1c",
+    "probe_unchanged": "byte-identical to the probe of receipts/apc-poison-repro.json; every threshold, prompt, needle and scoring rule is inherited unchanged and asserted by digest before any request is issued",
+    "prompts_sha256": "9978404b0ce2d032ebf762e17335d7b5a37dbc424f57f61db66ecf3f946f39df",
+    "thresholds_inherited_unchanged": {
+      "out_of_script_fraction_gt": 0.02,
+      "replacement_char_count_ge": 1,
+      "longest_repeated_block_chars_ge": 80,
+      "ngram5_repetition_ratio_ge": 0.5,
+      "ngram5_min_words": 30,
+      "answer_noise_band_requests": 1
+    },
+    "a_request_fails_if": "the corruption detector fires on its response, or any scored answer (A1, A2, A3) is wrong; A4 arithmetic stays diagnostic-only, exactly as amended and published in apc-poison-repro"
+  },
+  "arms": {
+    "shared_serving_profile": {
+      "what": "the reporter's own stack shape, verbatim where this edition loads at all: --max-model-len 196608 --gpu-memory-utilization 0.92 --max-num-seqs 1 --kv-cache-dtype fp8 --max-num-batched-tokens 2048 --enable-prefix-caching --mamba-cache-mode align, MTP-3, FULL_DECODE_ONLY[4], VLLM_EXL3_EMBED_BITS=8 VLLM_EXL3_GRAPH_DECODE=1 VLLM_EXL3_PREFILL_RECONSTRUCT_M=128, DCP=1",
+      "why_not_the_capped_card_profile": "the card's capped-window prefix-caching option (256,000 at 0.9585) requires PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True, which the LMCache wrapper force-disables because vLLM rejects that pairing when LMCache registers KV by address; the reporter's 196,608 window is itself a capped profile, it fits every frozen prompt (longest 15,541 tokens + 220 output), and it is the one profile with a published no-LMCache control on the identical image (apc-poison-repro arm C, 0 failing of 38)",
+      "allocator_pinned_for_all_arms": "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:False for every arm INCLUDING the control, so the control differs from the LMCache arms by exactly one variable; the reporter's failing runs predate his adoption of the expandable allocator"
+    },
+    "L0": "control: promoted image, reporter profile, glm52-lmcache-wrapper.sh with LMCACHE_MODE=off (the wrapper execs the model server untouched). Fresh server, 38 requests.",
+    "L1cold": "LMCache kv_both disk, EMPTY L2 (directory wiped, recorded): fresh server, 38 requests. Cold pass: every chunk is stored, nothing can be retrieved from a prior life.",
+    "L2warm": "the SAME live server immediately after L1cold, 38 requests again. Warm pass: vLLM's own prefix cache and LMCache L1/L2 are all live; whichever layer serves the hit is recorded from the counters, not assumed.",
+    "L3restart": "full server stop, then a NEW server over the RETAINED L2 directory, 38 requests. Restart pass: vLLM's own prefix cache and LMCache's L1 start empty by construction, so any prefix reuse is LMCache disk retrieval. This is the reuse-after-restart path the reporter's workflow exercised and vLLM's own cache never can, and it is the prime suspect mechanism.",
+    "environment_per_arm": "LMCACHE_MODE=disk LMCACHE_CHUNK_SIZE=1600 LMCACHE_L1_GB=12 LMCACHE_L1_INIT_GB=2 LMCACHE_L2_GB=32 LMCACHE_L2_WORKERS=4 for the three LMCache arms; eviction LRU 0.90/0.10, prefetch retain, use_odirect false, fs_native, mq_timeout 60, heartbeat 5 are the wrapper's own constants and match the reporter's dump field for field; separate_object_groups is whatever the pinned lmcache server binary defaults to, captured verbatim at stage time",
+    "one_variable_at_a_time": "L0 -> L1cold changes exactly LMCACHE_MODE; L1cold -> L2warm changes only cache warmth; L2warm -> L3restart changes only process identity over the same disk state"
+  },
+  "pre_registration": {
+    "written_before_any_gpu_arm_was_started": true,
+    "exercise_gate": "the experiment is EXERCISED only if the L3restart pass shows nonzero LMCache retrieval activity: nonzero retrieve/hit counters in the lmcache prometheus deltas between the L3restart-pre and L3restart-post snapshots, or explicit successful retrieve lines in the LMCache MP log for that pass, together with a nonempty L2 directory at pass start (file count and bytes recorded). If the gate fails, the verdict is NOT_EXERCISED regardless of how clean the responses are, because a probe that never touched the suspect path proves nothing about it.",
+    "verdict_rules": {
+      "corruption_reproduced": "at least one failing request in any of L1cold / L2warm / L3restart AND zero failing requests in L0. Reported immediately to Main as P0 with the failing arm's server log, LMCache MP log and per-request rows. The failing arm's name travels with every statement of the verdict.",
+      "reproduced_without_lmcache_attribution": "L0 also has at least one failing request: the profile itself is implicated and LMCache cannot be attributed; escalated identically but named as such.",
+      "bounded_clean": "zero failing requests in all four arms AND the exercise gate passes: LMCache kv_both disk reuse at chunk 1600 did not corrupt this workload on this card, stated with per-pass request counts, hit rates and retrieval counters. This bounds the suspect, it does not acquit it: one workload, one card, single-turn text.",
+      "not_exercised": "the exercise gate fails, or the LMCache stack refuses to start after the pre-registered fallback ladder: published as the measured obstruction, never as a clean result.",
+      "fallback_ladder": "if the server OOMs at startup with LMCache live, raise --gpu-memory-utilization by 0.001 at a time to at most 0.925 (the card's own OOM guidance), recording every step as a deviation; if vLLM rejects the kv-transfer-config for this hybrid model, record the rejection verbatim and stop - that is a NOT_EXERCISED result with the error as the finding"
+    },
+    "secondary_reported_never_verdict": [
+      "chosen-logprob divergence of each LMCache arm against L0, same instrument as apc-poison-repro amendment_1: state divergence below the argmax is reported even when no answer changes",
+      "SpecDecoding acceptance windows per arm, scraped from the server log: the reporter's signature was acceptance walking to 0.0 %",
+      "TTFT of the first wave of L3restart against the same wave of L1cold: what disk reuse actually buys across a restart, reported only if the correctness verdict is clean"
+    ]
+  },
+  "results": {
+    "run_utc": null,
+    "note": "empty at pre-registration commit time; filled by the receipt phase after the GPU window"
+  },
+  "live_service_restore": {
+    "note": "LMCacheTest is last in the physical 5090 queue and owns the final restore of qwen38-27b against receipts/aiboss-live-service-snapshot.json, with unit/health/endpoint/generation proofs recorded here"
+  }
+}
