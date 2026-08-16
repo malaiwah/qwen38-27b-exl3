@@ -341,28 +341,36 @@ def panel_a_ylim() -> tuple[float, float]:
     return min(vals) * 0.55, max(vals) * 1.15
 
 
-def reserve_top(ax, points: float) -> None:
-    """Grow a log y-axis upward by exactly `points` of blank space.
+def reserve_top(ax, points: float, above: float | None = None) -> None:
+    """Grow a log y-axis so `points` of blank space sit above `above`.
 
     A value table is a fixed number of points tall, not a fixed fraction of the
     data range, so multiplying the top value by a constant either wastes half
     the panel or lets the table land on a curve as soon as the range changes --
     which is exactly what a new candidate does. This converts the table's height
-    into the decades it occupies on this particular axis instead.
+    into the decades it occupies on this particular axis, and counts whatever
+    room is already free above the highest thing this panel draws, so a tall
+    shared axis is not stretched twice.
     """
     height_pt = ax.get_position().height * ax.figure.get_figheight() * 72.0
     if points <= 0 or height_pt <= points:
         return
     lo, hi = ax.get_ylim()
     decades = log10(hi / lo)
+    if above is not None and above < hi:
+        points -= height_pt * log10(hi / above) / decades
+        if points <= 0:
+            return
     ax.set_ylim(lo, hi * 10 ** (decades * points / (height_pt - points)))
 
 
-def draw_candidate(ax, c: dict, cid: str, x: float, tail_label: bool = True) -> None:
+def draw_candidate(ax, c: dict, cid: str, x: float, name_label: bool = True,
+                   tail_label: bool = True) -> None:
     """Mean with its bootstrap interval, its p99.9, and the spine between them.
 
-    tail_label is off where the panel already carries a p99.9 column in its own
-    value table: the number is printed once, not twice.
+    Labels are off where the panel already names the candidate on its x-axis
+    and prints every number in its own value table: once is enough, and in a
+    narrow lane a second copy is what collides.
     """
     _name, short, key = identity(cid)
     d = CAND[cid]
@@ -388,15 +396,16 @@ def draw_candidate(ax, c: dict, cid: str, x: float, tail_label: bool = True) -> 
                 alpha=0.75, zorder=2)
         ax.scatter([x], [net], s=72, marker="s", facecolor=c["bg"],
                    edgecolor=c[key], linewidth=1.5, zorder=4)
-    ax.annotate(short, (x, mean), textcoords="offset points", xytext=(dx, dy),
-                ha=ha, va=va, fontsize=8.5, color=c[key], zorder=5,
-                bbox=dict(boxstyle="round,pad=0.12", facecolor=c["bg"],
-                          edgecolor="none", alpha=0.85))
+    if name_label:
+        ax.annotate(short, (x, mean), textcoords="offset points", xytext=(dx, dy),
+                    ha=ha, va=va, fontsize=8.5, color=c[key], zorder=5,
+                    bbox=dict(boxstyle="round,pad=0.12", facecolor=c["bg"],
+                              edgecolor="none", alpha=0.85))
     if p999 and tail_label:
         ax.annotate(f"p99.9 {p999:.4f}", (x, p999), textcoords="offset points",
                     xytext=(tdx, tdy), ha=tha, va=tva, fontsize=7.5,
                     color=c[key], zorder=5)
-    elif not p999:
+    elif not p999 and tail_label:
         # A candidate whose run carries no tail histogram gets no invented tail.
         ax.annotate("p99.9 not published", (x, mean), textcoords="offset points",
                     xytext=(tdx, tdy + 12), ha=tha, va=tva, fontsize=7.0,
@@ -431,8 +440,14 @@ def draw_size_panel(ax, c: dict) -> None:
     ax.set_xlim(min(xs) - 1.15, max(xs) + 1.35)
     ax.set_yscale("log")
     ax.set_ylim(*panel_a_ylim())
-    # Seven table rows at 10.2 pt, plus a little air under the lowest one.
-    reserve_top(ax, 10.2 * (len(CAND) - len(unsized()) + 2) + 10)
+    # The table carries every candidate of this run, including the ones drawn
+    # in the lane, so no number has to be crammed next to a marker. Only the
+    # room this panel's own drawing does not already leave has to be added:
+    # the shared y-axis is set by the tallest tail in the lane, which is often
+    # well above anything plotted here.
+    drawn_max = max(max(CAND[cid]["p999_kld"] or CAND[cid]["mean_kld"],
+                        CAND[cid]["ci95"][1]) for cid, _g in rows)
+    reserve_top(ax, 9.4 * (len(CAND) + 3) + 34, above=drawn_max)
     ax.set_xlabel(f"{SIZE_MEASURE}, GiB  —  never VRAM, resident weights or KV",
                   color=c["fg"], fontsize=9)
     ax.set_ylabel("KL(BF16 reference || candidate), nats/token (log)",
@@ -440,17 +455,21 @@ def draw_size_panel(ax, c: dict) -> None:
 
     table = [(None, f"{'candidate':<15}{'GiB':>6}  {'mean':>8}  "
                     f"{'95 % interval':>19}  {'p99.9':>7}  {'top-1':>7}")]
-    for cid, gib in rows:
+    for cid, gib in rows + [(cid, None) for cid in unsized()]:
         name, _short, key = identity(cid)
         d = CAND[cid]
         lo, hi = d["ci95"]
-        table.append((key, f"{name:<15}{gib:6.2f}  {d['mean_kld']:8.6f}  "
-                           f"[{lo:.6f}, {hi:.6f}]  "
-                           f"{(f'{tail:.4f}' if (tail := d.get('p999_kld')) else 'n/a'):>7}  "
+        tail = d.get("p999_kld")
+        table.append((key, f"{name:<15}"
+                           f"{(f'{gib:6.2f}' if gib else '     —'):>6}  "
+                           f"{d['mean_kld']:8.6f}  [{lo:.6f}, {hi:.6f}]  "
+                           f"{(f'{tail:.4f}' if tail else 'n/a'):>7}  "
                            f"{d['top1_agreement'] * 100:6.2f} %"))
+    table.append((None, "— in the GiB column: no published serialized size, so the "
+                        "candidate is in the lane at the right, not given an x"))
     table.append((None, "hollow square = measured value minus the engine floor; "
                         "KL is not additive, so it is an estimate, not an identity"))
-    draw_table(ax, c, (0.012, 0.985), table)
+    draw_table(ax, c, (0.012, 0.985), table, fontsize=6.6, step=9.4)
 
     handles = [
         Line2D([], [], marker="o", ls="none", color=c["fg"], markersize=7,
@@ -482,7 +501,7 @@ def draw_lane_panel(ax, c: dict) -> None:
     style_axes(ax, c)
     ids = unsized()
     for i, cid in enumerate(ids):
-        draw_candidate(ax, c, cid, i)
+        draw_candidate(ax, c, cid, i, name_label=False, tail_label=False)
         ax.annotate(NO_SIZE_REASON.get(cid, "no published serialized size"),
                     (i, 0.015), xycoords=("data", "axes fraction"),
                     textcoords="offset points", xytext=(-10, 0),
@@ -622,9 +641,12 @@ def draw_prior_panel(ax, c: dict, data: dict, title: str, positions: int,
                        ha="right")
     lo = min(metrics[k]["ci95"]["ci95_low"] for k, _s, _c in rows)
     hi = max(metrics[k]["ci95"]["ci95_high"] for k, _s, _c in rows)
-    # The ratio band needs its own clear lane above the data.
-    ylo, yhi = lo * 0.55, hi * (4.0 if ratios else 2.4)
-    ax.set_ylim(ylo, yhi)
+    # The ratio band, where it is drawn, needs its own clear lane above the data.
+    ax.set_ylim(lo * 0.55, hi * 1.35)
+    if ratios:
+        rows_needed = 3 + -(-len(ratios["per_candidate"]) // 3)
+        reserve_top(ax, 9.0 * rows_needed + 10)
+    ylo, yhi = ax.get_ylim()
     # Each prior suite gets the ticks its own range needs. The two tick sets
     # come out different, which is the point: these are two separate axes.
     yticks = [t for t in (0.002, 0.003, 0.005, 0.01, 0.02, 0.03, 0.05, 0.1, 0.2)
@@ -655,8 +677,7 @@ def draw_prior_panel(ax, c: dict, data: dict, title: str, positions: int,
         table.append((None, ("ordering identical in both suites"
                              if ratios["ordering_identical"] else
                              "ordering differs between the suites")
-                            + ": absolute values do not carry across suites, "
-                              "the ordering does"))
+                            + ": only absolute values fail to carry"))
         draw_table(ax, c, (0.012, 0.985), table, fontsize=6.4, step=9.0)
     panel_title(ax, c, f"{title}\n{contexts} contexts, {positions:,} scored positions "
                        "— OWN y-axis")
