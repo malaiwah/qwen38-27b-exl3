@@ -1,0 +1,1218 @@
+{
+  "schema": "qwen38-upstream-issue-sweep/1",
+  "generated_utc": "2026-08-16T11:55:00Z",
+  "owner": "UpstreamIssueSweep",
+  "purpose": "Classify each of our three prefix-caching / align-mode findings against prior art in vllm-project/vllm, verify no double-filing of the admission livelock, check every upstream item we track for activity we owe a reply to, and sweep upstream for new work that affects our build. Read-mostly: exactly one comment was posted.",
+  "claim_scope": "A GitHub-and-source audit. No GPU was used and no model was loaded: the physical RTX 5090 was held by KvDtypeSweep throughout. Source claims are read out of the extracted read-only rootfs /var/tmp/gg-rootfs (the pinned r34 image) and out of GitHub at the commits named. Nothing here re-measures throughput or fidelity, and no receipt owned by another agent was edited.",
+  "access": {
+    "gh_cli": "not authenticated; GITHUB_TOKEN and GH_TOKEN unset",
+    "credential_used": "~/.git-credentials entry for github.com, user malaiwah, classic PAT (ghp_), used directly against api.github.com with Authorization: Bearer",
+    "search_endpoint": "GET /search/issues with advanced_search=true",
+    "search_api_caveat": "A `repo:` qualifier is silently dropped when the query also contains a quoted phrase joined by OR (e.g. `\"a\" OR \"b\"`); such a query returns results from unrelated repositories. Every query below was therefore re-run in single-phrase form and every hit was verified against item.repository_url before being counted. The `in_repo` and `off_repo_dropped` fields record that filter.",
+    "rate_limits_observed": {
+      "core_limit": 5000,
+      "search_limit_per_minute": 30
+    }
+  },
+  "findings": [
+    {
+      "id": "A",
+      "title": "admission livelock: with --enable-prefix-caching --mamba-cache-mode align at a window near the KV pool ceiling, a 261,794-token request is accepted, prefilled to 98.9 %, requeued with the pool freed, and re-prefilled forever on a 30 s period at ~960 tok/s with zero output tokens",
+      "our_evidence": "receipts/qualification-5090-apc.json (owner ShipPrefixCaching), gate 2 plus utilisation_band; receipts/qual-apc-raw/",
+      "verdict": "NET-NEW as a whole, with two of its four stated expectations already covered by prior art and one of its two headline observations RETRACTED as a duplicate",
+      "components": [
+        {
+          "component": "the unbounded re-prefill loop itself (accepted, ~260 k tokens of work, requeued, repeat, indefinitely, zero output tokens)",
+          "classification": "net-new",
+          "basis": "No issue or PR found describing an admitted request being re-prefilled on a fixed period indefinitely. The closest failures in the corpus are (i) requests that never start at all and (ii) requests that make zero progress per step; neither burns a full prefill per cycle.",
+          "prior_art_url": "NONE FOUND. A thorough search of vllm-project/vllm issues and PRs, open and closed, returned no prior art for this component; the queries that establish the negative are in search_log.queries and the reasoning is in this component's `basis` field."
+        },
+        {
+          "component": "vllm:num_preemptions_total staying at 0.0 across 63 full re-prefills, so the only signal is num_requests_waiting_by_reason{reason=\"capacity\"}",
+          "classification": "net-new",
+          "basis": "Query \"num_preemptions_total\" returns 10 in-repo items, none about a descheduled-after-partial-prefill request being unaccounted. Query num_requests_waiting_by_reason returns 0 items in the whole corpus.",
+          "prior_art_url": "NONE FOUND. A thorough search of vllm-project/vllm issues and PRs, open and closed, returned no prior art for this component; the queries that establish the negative are in search_log.queries and the reasoning is in this component's `basis` field."
+        },
+        {
+          "component": "the 0.9555 row: pool sized to exactly max_model_len, startup check passes and logs Maximum concurrency 1.00x, engine then never schedules the request and sits at 0 tok/s",
+          "classification": "duplicate",
+          "prior_art_url": "https://github.com/vllm-project/vllm/pull/47272",
+          "prior_art_state": "open PR, created 2026-07-01, updated 2026-07-21, labels bug/v1, fixes #35541",
+          "difference": "None for this row: #47272 describes exactly this (BlockPool permanently reserves the null block, so only num_gpu_blocks - 1 are usable, while _check_enough_kv_cache_memory compares against the total). It does not cover the align-mode whole-block rounding, the speculative lookahead slots, the retry loop, or the accounting gap."
+        },
+        {
+          "component": "the ask 'reject at admission a request the engine can never schedule, with a 400-class error naming the maximum servable length'",
+          "classification": "related-but-different; the ask itself is prior art and was declined",
+          "prior_art_url": "https://github.com/vllm-project/vllm/issues/35541",
+          "prior_art_state": "closed as not_planned, labelled stale, closed 2026-07-30 by the stale bot after 4 comments",
+          "difference": "#35541's mechanism is a prompt that needs more blocks than exist, where allocate_slots returns None on the first attempt and the request never starts (num_gpu_blocks_override=50, 63 blocks needed, 49 available). Ours prefills to 98.9 % first. Same remedy asked for; the fact that it was closed as stale rather than rejected on merit is the reason to re-raise it with a stronger trace rather than to treat it as settled."
+        },
+        {
+          "component": "the ask 'make the startup bound and the admission bound one function'",
+          "classification": "related-but-different; the design already exists upstream for another spec family",
+          "prior_art_url": "https://github.com/vllm-project/vllm/pull/40946",
+          "prior_art_state": "merged 2026-04-27, merge commit 7b1bc0a3eb01, +213/-23 over 8 files",
+          "difference": "#40946 fixed exactly this class of drift (runtime admission vs startup pool sizing) for SlidingWindowSpec and ChunkedLocalAttentionSpec by adding max_admission_blocks_per_request on the spec and calling it from both max_memory_usage_bytes and get_num_blocks_to_allocate. MambaSpec in align mode is not covered by it. It is the precedent to cite, not a duplicate."
+        },
+        {
+          "component": "the observation '261,794 prefix-cache queries against 0 hits, so the partial prefill is discarded rather than published' and the expectation built on it",
+          "classification": "DUPLICATE — retracted on our side",
+          "prior_art_url": "https://github.com/vllm-project/vllm/issues/45238",
+          "prior_art_state": "open issue, created 2026-06-11, 3 comments",
+          "difference": "None that matters: #45238 establishes that in align mode MambaManager.allocate_new_blocks gives real blocks only at/near the last aligned boundary, BlockPool.cache_full_blocks skips null blocks when registering hashes, so only ~1-2 mamba block hashes per request ever enter the cache, and HybridKVCacheCoordinator requires every group to hit, so a mamba miss vetoes the attention groups' matches. That produces a 0 % hit rate independently of anything the requeue path does. Our 0-hit trace is therefore evidence for #45238, not for a new publish-on-requeue defect, and the claim that this was 'the more important of the two defects' is withdrawn.",
+          "action_taken": "posted as a retraction on local-inference-lab/vllm#394"
+        }
+      ],
+      "already_filed": {
+        "where": "https://github.com/local-inference-lab/vllm/issues/394",
+        "filed_by": "ShipPrefixCaching at 2026-08-16T06:12:51Z, at Main's instruction",
+        "body_source": "upstream/vllm-apc-align-admission-livelock.md",
+        "double_file_check": "PASS - not double-filed",
+        "how_checked": [
+          "upstream/filed.json records issue 394 with number, url, filed_utc, body sha256 and filer",
+          "receipts/qualification-5090-apc.json gate2.reported_upstream names issue 394",
+          "search `repo:local-inference-lab/vllm livelock in:title,body` returns exactly #394 and nothing else",
+          "search `repo:local-inference-lab/vllm author:malaiwah` enumerates all 57 of our items in that repo; #394 is the only livelock report",
+          "search `repo:vllm-project/vllm author:malaiwah` returns 10 items (#52054, #51397, #51396, #38261, #38230, #37802, #37801, #37443, #37435, #32237) and NONE of them is this finding, so nothing was filed upstream either"
+        ]
+      },
+      "recommendation": {
+        "action": "file upstream as a NEW issue in vllm-project/vllm, after amending the body for the prior art above",
+        "draft": "upstream/vllm-upstream-align-admission-livelock.md",
+        "needs_approval": true,
+        "why_not_folded_into_392": "#392 asks the fork to cherry-pick two merged upstream fixes; this defect is present WITH #51113 already applied, so it is not a cherry-pick request.",
+        "why_not_a_comment_on_47272": "The overlap is one row of six. A comment there is also drafted (upstream/comment-vllm-47272-align-boundary-evidence.md) and is the cheaper first move if Main prefers to test the water before opening an issue.",
+        "stock_vllm_support": "NOT reproduced on stock vLLM and not claimed there. The scheduler in the image is upstream's own post-#51113 file (sha256 b431c106...), and kv_cache_interface.py, kv_cache_manager.py and single_type_kv_cache_manager.py are unmodified vendored upstream code in the image, but the observation is a fork build on one card. The draft says so in its own words and offers a stock reproduction on request."
+      }
+    },
+    {
+      "id": "B",
+      "title": "align mode raises the per-request KV requirement to whole mamba blocks, so a window that starts with prefix caching off refuses to start with it on (9.29 GiB needed against 9.28 GiB available at 262,144, engine suggests max len 260,800)",
+      "our_evidence": "receipts/qualification-5090-apc.json bounded_negative_results.the_qualified_profile_does_not_start_with_prefix_caching_on, probe n955",
+      "verdict": "NOT A DEFECT, by our own receipt: 'prefix caching on this card costs either a 0.0005 utilisation bump or 1,344 tokens of window (262,144 -> 260,800, 0.51 %). It is a price, not a defect, and it is paid deliberately.' Nothing to file as a bug. What is genuinely missing upstream is documentation, and the neighbouring startup-check defect is already filed by someone else.",
+      "components": [
+        {
+          "component": "the startup refusal itself",
+          "classification": "working as designed; documentation gap",
+          "prior_art_url": "https://github.com/vllm-project/vllm/pull/46778",
+          "prior_art_state": "open docs PR, created 2026-06-26, labels documentation; rewrites the stale 'prefix caching is not yet supported' note in docs/usage/v1_guide.md and adds a one-time hint",
+          "difference": "That PR tells an operator how to turn prefix caching ON. It does not say that turning it on raises the KV requirement and can make a previously-serving window refuse to boot, which is the first thing that happens on a long-context deployment. Our measured price is a two-sentence addition. Draft comment: upstream/comment-vllm-46778-align-window-price.md"
+        },
+        {
+          "component": "the startup check being unfriendly / not overridable",
+          "classification": "related-but-different, already raised twice",
+          "prior_art_url": "https://github.com/vllm-project/vllm/issues/38516",
+          "prior_art_state": "closed as not_planned, labelled stale, 9 comments",
+          "difference": "#38516 argues the check should not be fatal at all; #50509 (open, 2026-07-31) asks for an expert-only override of the same check. Neither is about align mode changing the requirement, and we do not want the check weakened - our band shows the configurations it lets through are worse than the ones it refuses."
+        },
+        {
+          "component": "the exact-boundary case where the check passes and the engine then cannot serve the request",
+          "classification": "duplicate",
+          "prior_art_url": "https://github.com/vllm-project/vllm/pull/47272",
+          "difference": "See finding A, same row."
+        },
+        {
+          "component": "the reported 'GPU KV cache size' being an unreliable basis for block arithmetic on a hybrid model",
+          "classification": "related-but-different, already filed",
+          "prior_art_url": "https://github.com/vllm-project/vllm/pull/40384",
+          "prior_art_state": "open PR, created 2026-04-20, labels bug/needs-rebase/v1, 8 comments",
+          "difference": "#40384 shows both _report_kv_cache_config and Scheduler.__init__ compute per-token capacity as num_blocks // len(kv_cache_groups) * min_block_size, which deflates the figure by the number of mamba groups. Consequence for us: the 265,072-token log line cannot be inverted into a block count, which is why finding A's draft does not assert which term tips the allocation."
+        }
+      ],
+      "recommendation": {
+        "action": "file nothing as a bug; optionally comment on #46778 with the measured price",
+        "needs_approval": true,
+        "draft": "upstream/comment-vllm-46778-align-window-price.md"
+      }
+    },
+    {
+      "id": "C",
+      "title": "the #51812 GDN gate-ordering path is reachable in a shipped configuration at 0.515 events per thousand metadata builds, via the scheduler's speculative padding of a request that a full prefix-cache hit leaves needing exactly one new token",
+      "our_evidence": "receipts/gdn-gate-concurrency.json (owner GdnGateAtConcurrency), arm R2: 3 misordered gathers over 5,825 metadata builds, composition 6s/1p/0d, max_displaced_spec_tokens 4, first misordered token index 20",
+      "verdict": "NOT A BUG REPORT: the defect it exercises is already fixed upstream by #51812, merged 2026-08-11 (5af7c8dad798). Our contribution is a reachability measurement of the precondition, which is net-new as data and has no prior art as a report.",
+      "components": [
+        {
+          "component": "the gate/QKV misalignment itself (a and b passed ungathered while mixed_qkv is gathered with spec_token_indx)",
+          "classification": "duplicate - already fixed upstream",
+          "prior_art_url": "https://github.com/vllm-project/vllm/pull/51812",
+          "prior_art_state": "merged 2026-08-11T15:35:30Z, +6/-2 in one file",
+          "difference": "None. We carry the port as tools/vllm-qwen-gdn-spec-gates.py (sha256 7cd3f5fe...), diff-identical to upstream, and it is requested for the fork in local-inference-lab/vllm#393."
+        },
+        {
+          "component": "a measurement that the misordered batch composition actually occurs on real traffic with the batch reorder in place",
+          "classification": "net-new (as data, not as a defect)",
+          "basis": "No issue or PR in the corpus reports a rate, or an instrumented count, for this composition. Query `repo:vllm-project/vllm 51812 in:title,body` returns 0 items; `\"spec_token_indx\"` returns 3 items (#51812 itself, #36754, #27152), none of which measures reachability. Cross-reference timeline on #51812 shows only three inbound references, two of them ours (#392, #393) and one a recipes PR.",
+          "prior_art_url": "NONE FOUND. A thorough search of vllm-project/vllm issues and PRs, open and closed, returned no prior art for this component; the queries that establish the negative are in search_log.queries and the reasoning is in this component's `basis` field."
+        },
+        {
+          "component": "the scheduler padding a one-new-token request into a pseudo-speculative request (scheduler.py:865-878, :1052) so the runner classifies it as speculative while the reorder leaves it in region 1",
+          "classification": "related-but-different; the same misclassification family is filed several times, never this instance",
+          "prior_art_urls": [
+            "https://github.com/vllm-project/vllm/issues/49918",
+            "https://github.com/vllm-project/vllm/pull/47123",
+            "https://github.com/vllm-project/vllm/issues/51562",
+            "https://github.com/vllm-project/vllm/issues/49495",
+            "https://github.com/vllm-project/vllm/pull/47381"
+          ],
+          "difference": "#49918 (open) and its fix #47123 (open) are about a PREFILL whose prompt is exactly 1 + num_speculative_tokens being misclassified as a uniform decode by _is_uniform_decode, dispatched through the FULL spec-verify cudagraph, so the recurrent state is never written - a shape-only classification bug in the runner, not the scheduler's deliberate padding, and its consequence is a never-written state rather than a permuted gate gather. #51562 (open) is a stateless FIRST chunk classified as a decode in the GDN metadata builder, reading an unzeroed state slot. #49495 (closed) is a one-token prefill remainder mistaken for a decode in DiffusionGemma, and is the only one that names pad_spec_decode. #47381 (closed, unmerged) ordered uniform decodes first on Model Runner V2 so spec decodes are not misclassified as prefills - the same invariant, on the other runner. None of them describes a full-prefix-cache-hit request being padded and thereby breaking the leading-speculative-token assumption the GDN gather depends on."
+        },
+        {
+          "component": "the token-budget clamp mechanism (a speculative decode clamped to exactly one token, silently reclassified as non-speculative)",
+          "classification": "unobserved by us; not filed by anyone",
+          "basis": "Derived from source (scheduler.py:511-518 then :637-642) and given a 4x amplifier in arm R3; produced zero events in 9,027 gather-branch builds across R1+R3, 95 % upper bound 0.332 per thousand. Reported as bounded-rare, never as reachable.",
+          "prior_art_url": "NONE FOUND. A thorough search of vllm-project/vllm issues and PRs, open and closed, returned no prior art for this component; the queries that establish the negative are in search_log.queries and the reasoning is in this component's `basis` field."
+        }
+      ],
+      "recommendation": {
+        "action": "comment on the merged #51812 with the reachability measurement; do not open an issue",
+        "draft": "upstream/comment-vllm-51812-reachability-measured.md",
+        "needs_approval": true,
+        "why": "The bug is fixed; a new issue would be noise. The rate matters to whoever decides whether #51812 deserves a backport to a release branch, and to the open misclassification issues in the same family."
+      }
+    }
+  ],
+  "activity_on_what_we_track": {
+    "checked_utc": "2026-08-16T11:40:00Z",
+    "headline": "NOTHING is owed to a maintainer. There has been no maintainer or reviewer activity of any kind on any of the seven items: zero human reviews, zero review requests, zero maintainer comments. On every one of them the last human speaker is malaiwah. The only non-bot action outstanding is a repository-policy CI gate that only a maintainer can clear.",
+    "items": [
+      {
+        "repo": "local-inference-lab/vllm",
+        "number": 392,
+        "kind": "issue",
+        "state": "open",
+        "updated": "2026-08-16",
+        "comments": 1,
+        "who_commented": [
+          "malaiwah (our own amendment/retraction, 04:34)"
+        ],
+        "reviews": "n/a (issue)",
+        "ci": "n/a",
+        "owed": "nothing"
+      },
+      {
+        "repo": "local-inference-lab/vllm",
+        "number": 393,
+        "kind": "pr",
+        "state": "open",
+        "updated": "2026-08-16",
+        "comments": 2,
+        "who_commented": [
+          "coderabbitai[bot] walkthrough 02:38",
+          "malaiwah amendment 04:34"
+        ],
+        "reviews": [
+          [
+            "coderabbitai[bot]",
+            "COMMENTED",
+            "2026-08-16T02:41"
+          ]
+        ],
+        "review_comments": 1,
+        "review_comment_substance": "One minor maintainability nit on tests/v1/core/test_mamba_align_chunk_split.py line 40: helper docstrings lack Google-style Args:/Returns: sections.",
+        "ci": {
+          "combined_status": "success (CodeRabbit)",
+          "check_runs": [
+            [
+              "pre-commit",
+              "skipped"
+            ],
+            [
+              "pre-run-check",
+              "FAILURE"
+            ],
+            [
+              "reminder-comment",
+              "success"
+            ],
+            [
+              "update-description",
+              "success"
+            ]
+          ],
+          "failing_step": "pre-run-check / 'Check PR label and author merge count' (run 31922350144, job 95104176894, failed in 3 s)",
+          "root_cause": ".github/workflows/pre-commit.yml requires one of the labels verified/ready/ready-run-all-tests OR an author with >=4 merged PRs in the repo; malaiwah has none merged there and holds pull-only permissions, so the label cannot be self-applied. pre-commit is `needs: pre-run-check` and is therefore skipped, so NO lint or test signal exists for this PR yet.",
+          "not_a_code_failure": true
+        },
+        "owed": "a maintainer must add a label before CI can run; drafted, needs approval",
+        "draft": "upstream/comment-fork-393-ci-label-and-docstrings.md"
+      },
+      {
+        "repo": "local-inference-lab/vllm",
+        "number": 312,
+        "kind": "pr",
+        "state": "open",
+        "updated": "2026-08-14T21:48:09Z",
+        "comments": 2,
+        "who_commented": [
+          "coderabbitai[bot] review-skipped notice",
+          "malaiwah verification report"
+        ],
+        "reviews": [],
+        "mergeable_state": "unstable",
+        "owed": "nothing; same label gate as #393"
+      },
+      {
+        "repo": "local-inference-lab/vllm",
+        "number": 314,
+        "kind": "pr",
+        "state": "open",
+        "updated": "2026-08-15T01:04:05Z",
+        "comments": 5,
+        "who_commented": [
+          "coderabbitai[bot] review-skipped notice",
+          "malaiwah x4 (qualification, matched eager/graph run, disposition, and a retraction of our own parity receipt)"
+        ],
+        "reviews": [],
+        "mergeable_state": "unstable",
+        "owed": "nothing from us to anyone else; the open question in that thread is ours to answer with hardware, and the thread already states the HOLD"
+      },
+      {
+        "repo": "local-inference-lab/vllm",
+        "number": 316,
+        "kind": "pr",
+        "state": "open",
+        "updated": "2026-08-15T01:04:42Z",
+        "comments": 2,
+        "who_commented": [
+          "coderabbitai[bot] review-skipped notice",
+          "malaiwah attribution measurements"
+        ],
+        "reviews": [],
+        "mergeable_state": "unstable",
+        "owed": "nothing"
+      },
+      {
+        "repo": "local-inference-lab/vllm",
+        "number": 318,
+        "kind": "pr",
+        "state": "open",
+        "updated": "2026-08-15T10:27:52Z",
+        "comments": 2,
+        "who_commented": [
+          "coderabbitai[bot] review-skipped notice",
+          "malaiwah hardware-validation request"
+        ],
+        "reviews": [],
+        "mergeable_state": "unstable",
+        "owed": "nothing; we are waiting on someone with an RTX 5090, and we now hold one - see note_for_main"
+      },
+      {
+        "repo": "local-inference-lab/vllm",
+        "number": 319,
+        "kind": "pr",
+        "state": "open",
+        "updated": "2026-08-15T10:28:30Z",
+        "comments": 2,
+        "who_commented": [
+          "coderabbitai[bot] review-skipped notice",
+          "malaiwah post-publication correction"
+        ],
+        "reviews": [],
+        "mergeable_state": "unstable",
+        "owed": "nothing"
+      },
+      {
+        "repo": "vllm-project/vllm",
+        "number": 51113,
+        "kind": "pr",
+        "state": "merged 2026-08-06T17:21:00Z",
+        "merge_commit": "c56f169d9ae4",
+        "owed": "nothing; we carry the port"
+      },
+      {
+        "repo": "vllm-project/vllm",
+        "number": 51812,
+        "kind": "pr",
+        "state": "merged 2026-08-11T15:35:30Z",
+        "merge_commit": "5af7c8dad798",
+        "owed": "nothing; a reachability comment is drafted"
+      }
+    ],
+    "coderabbit_reviews_are_disabled_on_312_to_319": "The bot posts 'Auto reviews are disabled on base/target branches other than the default branch' on every one of #312-#319, so none of those five PRs has had even a bot review of its diff. #393 targets dev/gilded-gnosis and did get one.",
+    "pr393_file_identity_verified_by_this_agent": {
+      "head_sha": "50248cdb9261",
+      "vllm/v1/core/sched/scheduler.py": "b431c1066dfee3ed56bfa7e71cc8606f9afadc300f22d7fc542c43835d1b22bf (equals tools/vllm-mamba-align-scheduler.py)",
+      "vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py": "7cd3f5fe763b621048af4817951a841d99c8b700d9a56ded27ccaca5a56ccbe0 (equals tools/vllm-qwen-gdn-spec-gates.py)",
+      "tests/v1/core/test_mamba_align_chunk_split.py": "6b57360273223dbd208c7712b440a3fa267a61a039a8ec47c4fa476cf23e0b81 (byte-identical to vllm-project/vllm at c56f169d9ae46ca420617e2cf5f0c9135da0f651)",
+      "why_it_matters": "It grounds the answer to the CodeRabbit docstring nit: restyling that test file would create a diff against upstream in the one file whose value is being upstream's unmodified regression test."
+    }
+  },
+  "new_upstream_work_that_affects_us": {
+    "our_base": "image tag names upstream integration tree 4d006a43928cdee01306691a766542c1e9bebb59, fork commit e2666d9a65f4, base image built 2026-08-10; the short sha 4d006a4 does not resolve in either repo via the API, so 'what is in our base' is decided by reading the extracted rootfs rather than by date",
+    "candidates": [
+      {
+        "url": "https://github.com/vllm-project/vllm/pull/51603",
+        "title": "[V1][Scheduler] Apply Mamba alignment before encoder caps",
+        "state": "merged 2026-08-10T08:37:17Z, merge commit 243c63baf523, +105/-20",
+        "affects_us": "same function we patch (_mamba_block_aligned_split) - our port of #51113 does NOT include it",
+        "relevance": "MEDIUM. Fixes a different align livelock: a multimodal encoder cap landing mid-block floors the chunk end back to the chunk start, the split returns 0, and the same cap is re-applied every step. We serve a vision-capable model at up to 8,388,608 pixels, so multiple large images in one request is a reachable shape for us even though our own trace is text-only.",
+        "recommendation": "candidate third cherry-pick for the fork after #393 lands; conflicts with our patched scheduler must be resolved by hand since both touch the same function",
+        "supersedes_anything_we_carry": false
+      },
+      {
+        "url": "https://github.com/vllm-project/vllm/pull/51582",
+        "title": "[V1][Scheduler] Fix Mamba-align livelock when an encoder cap lands mid-block",
+        "state": "closed WITHOUT merge, needs-rebase",
+        "relevance": "superseded by #51603; recorded only so nobody ports the abandoned one"
+      },
+      {
+        "url": "https://github.com/vllm-project/vllm/pull/51468",
+        "title": "[BugFix] Preserve divergent FA hits with external Mamba state",
+        "state": "merged (created 2026-08-08)",
+        "affects_us": "NO - verified by reading the image",
+        "basis": "truncate_computed_blocks does not exist anywhere in the vendored vllm tree in /var/tmp/gg-rootfs, so the assert this PR relaxes is not in our build and the fix has nothing to apply to.",
+        "relevance": "none for the shipped image; relevant if the fork rebases forward"
+      },
+      {
+        "url": "https://github.com/vllm-project/vllm/pull/51766",
+        "title": "[Bugfix][Core] Preserve Mamba running CoW after external hits",
+        "state": "merged 2026-08-11, labels bug/ready",
+        "affects_us": "only with a KV connector (LMCache / OffloadingConnector) in front of an align-mode hybrid; our qualified recipes use no connector",
+        "relevance": "HIGH for the outstanding user report, LOW for our published numbers. Core and worker disagree about the live Mamba state column when an externally loaded prefix supplies every block the first continuation needs. That is silent state corruption on exactly the path cosmicnag was running (LMCache 0.5.2 kv_both disk reuse), which upstream/filed.json already names as the leading suspect after our reproduction came back NOT REPRODUCED without LMCache.",
+        "recommendation": "hand to whoever owns the HF follow-up; do not fold into #392/#393"
+      },
+      {
+        "url": "https://github.com/vllm-project/vllm/issues/51094",
+        "title": "[Bug]: OffloadingConnector can silently return wrong output at exact chunk boundaries with mamba_cache_mode=all",
+        "state": "closed as completed 2026-08-07",
+        "relevance": "MEDIUM, same family as #51766: resolve_mamba_align_size() only aligns the hit window for mamba_cache_mode == 'align', so in 'all' mode an exact-chunk-boundary refetch restores a state that already contains the token being recomputed, and the token is applied twice. Silent wrong output, no exception. Third independent 'hybrid mamba + external KV reuse returns wrong tokens' report in eleven days."
+      },
+      {
+        "url": "https://github.com/vllm-project/vllm/pull/52148",
+        "title": "[Attention] Fix FlashInfer SM12x prefill with sinks",
+        "state": "merged 2026-08-13",
+        "affects_us": "NO, on current evidence: it is scoped to attention sinks, and Qwen3.5 does not use sink attention (the model has no SinkFullAttentionSpec group in our config). Recorded because SM12x is exactly our compute capability and any other SM12x FlashInfer fix should be re-checked against our build.",
+        "relevance": "low; flagged for the next rebase review"
+      },
+      {
+        "url": "https://github.com/vllm-project/vllm/pull/51674",
+        "title": "[Kernel][Perf] Add fused CUDA post-conv MTP decode kernel for Qwen3.5 GDN",
+        "state": "merged 2026-08-10",
+        "relevance": "PERF ONLY, and directly on our hot path (Qwen3.5 GDN + MTP decode). Not a correctness cherry-pick; worth a look if decode throughput is ever the target again."
+      },
+      {
+        "url": "https://github.com/vllm-project/vllm/issues/52317",
+        "title": "[Bug]: MRv2: --enable-prefix-caching (mamba_cache_mode 'all') + dspark spec decode crashes at startup",
+        "state": "open 2026-08-14, with PR #52460 open against it",
+        "relevance": "none directly (we are on MRv1 and align mode, not 'all', and not dspark). Recorded as evidence that hybrid prefix caching plus spec decode is still actively breaking upstream two weeks after #51113, which supports the cards' current 'optional overlay / opt-in' posture."
+      },
+      {
+        "url": "https://github.com/vllm-project/vllm/pull/51098",
+        "title": "Revert \"[Mamba] enable prefix cache by default\" (#50991)",
+        "state": "closed 2026-08-05",
+        "relevance": "context, not action: upstream tried making hybrid prefix caching the default and reverted it. Consistent with arg_utils.py:2532-2534 in our build keeping it opt-in for hybrid models, and worth citing if anyone asks why we do not ship it on by default."
+      },
+      {
+        "url": "https://github.com/vllm-project/vllm/issues/19896",
+        "title": "[Feature]: EXL3 support",
+        "state": "closed",
+        "relevance": "none actionable. EXL3 appears in only 6 items upstream and none of them is an integration path; the live EXL3 work remains fork-side (#312/#314/#316/#318). B12X kernels are landing upstream though: #51696 merged 2026-08-10 ('Add native B12X linear, MoE, and causal attention backends') and #52018 is open ('Add B12X FP4 MoE backend'), both of which touch the kernel family our image pins at b12x cd3ce19."
+      },
+      {
+        "url": "https://github.com/vllm-project/vllm/issues/45407",
+        "title": "[Bug]: vLLM crashes during generation with LMCacheMPConnector on Qwen3.6/Qwen3.5 hybrid model: AssertionError 'External KV connector is not verified yet'",
+        "state": "open, created 2026-06-12",
+        "affects_us": "only with LMCache in front of a hybrid Qwen3.5/3.6; no shipped recipe of ours uses a KV connector",
+        "relevance": "MEDIUM, added after CommunityRefresh flagged it. Same component (LMCache connector) and same model family as the outstanding user report, but a DIFFERENT failure mode: a hard AssertionError crash, not silent wrong tokens. So it is not a fourth instance of the silent-corruption family (#51094 / #51468 / #51766); it is the only LMCache-on-hybrid item in the set still open, which is itself a signal about how well that combination is supported.",
+        "recommendation": "cite as corroborating context for 'LMCache + hybrid Qwen3.5 is not a settled combination upstream'; not a cherry-pick candidate (no fix attached)",
+        "credited_to": "CommunityRefresh, by hub message 2026-08-16"
+      }
+    ],
+    "nothing_supersedes_a_patch_we_carry": "Checked for each of the four modules in the promoted image. #51113 is what we carry (still the current upstream fix for that function; #51603 is additive, not a replacement). #51812 is what we carry for the GDN gates and is unchanged since merge. The two EXL3/embedding modules have no upstream counterpart at all.",
+    "released_versions_containing_the_two_fixes_we_carry": {
+      "why_this_is_here": "A megathread commenter (u/mythikal03, comment p3vbdyr) reported that #51113 ships in tagged builds, relayed by CommunityRefresh. It is checkable, it was checked, and the answer changes what our cherry-pick request and our cards should say: for #51113 a reader can name a released version instead of mounting our overlay.",
+      "method": "For each tag, read vllm/v1/core/sched/scheduler.py and vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py at that ref through the contents API and count the fixes' own identifiers. Commit-ancestry comparison alone is NOT sufficient and was misleading here: a cherry-pick onto a release branch has a different sha, so `compare/<merge_sha>...<tag>` reports 'diverged' for v0.27.0 and v0.27.1 even though #51113's code IS present in both. The content check is the decisive one. Identifier counts for the vendored (unfixed) and patched scheduler are recorded independently in receipts/mamba-align-defect.json: unfixed = 0 prefill_end / 8 last_cache_position, fixed = 3 / 5.",
+      "results": [
+        {
+          "tag": "v0.27.0",
+          "released": "2026-08-10",
+          "51113_present": true,
+          "51113_evidence": "prefill_end x3, last_cache_position x5",
+          "51812_present": false,
+          "51812_evidence": "a_spec x0, b_spec x0"
+        },
+        {
+          "tag": "v0.27.1",
+          "released": "2026-08-11",
+          "51113_present": true,
+          "51113_evidence": "prefill_end x3, last_cache_position x5",
+          "51812_present": false,
+          "51812_evidence": "a_spec x0, b_spec x0"
+        },
+        {
+          "tag": "v0.27.2rc0",
+          "released": "prerelease",
+          "51113_present": true,
+          "51113_evidence": "prefill_end x3, last_cache_position x5",
+          "51812_present": true,
+          "51812_evidence": "a_spec x3, b_spec x3"
+        },
+        {
+          "tag": "main",
+          "released": "2026-08-16",
+          "51113_present": true,
+          "51812_present": true
+        }
+      ],
+      "verdict": "The Reddit claim is CORRECT as stated and incomplete as advice. v0.27.1 carries #51113 (it has the 'v0.27.0 cherry picks' milestone and the code is in both v0.27.0 and v0.27.1) but NOT #51812; the first tag carrying both is v0.27.2rc0. #51812 has no milestone, so it was not cherry-picked back.",
+      "consequences": [
+        "Anyone who can move to stock v0.27.1 no longer needs our tools/vllm-mamba-align-scheduler.py overlay for #51113 - BUT that excludes every reader of our model cards, and the exclusion is proven, not assumed: `exl3` is not among the registered quantization methods in stock vLLM at v0.27.1 (31 entries), v0.27.2rc0 (30) or main (30), and the string does not occur anywhere in vllm/model_executor/layers/quantization/__init__.py at any of those refs. So `--quantization exl3` cannot be passed to a stock build, and dropping to v0.27.1 to obtain #51113 would cost a reader the ability to load our artefacts at all. The released-version route is real for someone running unsloth NVFP4 or official FP8 weights; it is NOT a route for anyone running our quants, for whom the overlay (or the fork image) remains the only option. Recorded so 'just upgrade' does not propagate. This also does not change the ask in local-inference-lab/vllm#392/#393, which is about the fork branch dev/gilded-gnosis (both fixes absent at fa033bd4e); it only gives the fork maintainers a released reference point.",
+        "The GDN gate module (tools/vllm-qwen-gdn-spec-gates.py) is still the only route to #51812 short of a v0.27.2 prerelease, which supports the cards keeping it as an optional overlay.",
+        "Not verified by us: which PyPI/container artefacts correspond to these tags, or the commenter's specific '0.27.2rc1.dev110' build string. Only the git tags above were checked."
+      ],
+      "applicability_limit_credited_to": "CommunityRefresh raised the limit by hub message 2026-08-16; the EXL3-registry check that proves it was run by UpstreamIssueSweep against v0.27.1, v0.27.2rc0 and main.",
+      "superseded_wording": "Anyone who can move to stock v0.27.1 no longer needs our tools/vllm-mamba-align-scheduler.py overlay for #51113. That does not change the ask in local-inference-lab/vllm#392/#393, which is about the FORK branch dev/gilded-gnosis (both fixes absent at fa033bd4e), but it does give the fork maintainers a released reference point."
+    }
+  },
+  "what_was_posted_vs_what_needs_approval": {
+    "posted": [
+      {
+        "url": "https://github.com/local-inference-lab/vllm/issues/394#issuecomment-5307296506",
+        "target": "our own issue local-inference-lab/vllm#394",
+        "posted_utc": "2026-08-16T11:52:55Z",
+        "body_length": 4882,
+        "source": "upstream/posted-fork-394-prior-art-crossrefs.md",
+        "why_this_one_was_in_scope": "It is a duplicate/prior-art cross-reference comment on our own filing, and its only substantive act is to RETRACT a claim of ours (that the discarded partial prefill was a new defect) in favour of upstream #45238. It makes no new claim on the project's behalf.",
+        "contents": "cross-references #45238 (duplicate, retracted), #47272 (duplicate of the 0.9555 row), #35541 and #40946 (related), #51603/#51582/#40757 and #45387/#45388 (explicitly not the same), lists what survives as net-new, and corrects the body's arithmetic section to stop asserting which term tips the allocation"
+      },
+      {
+        "url": "https://github.com/vllm-project/vllm/pull/47272#issuecomment-5307330064",
+        "target": "vllm-project/vllm#47272 (open PR)",
+        "source": "upstream/comment-vllm-47272-align-boundary-evidence.md",
+        "posted_utc": "2026-08-16T12:0x",
+        "final_length_chars": 4625,
+        "note": "posted first, per Main, because the author is already working the same row; later PATCHed to back-link the filed issue"
+      },
+      {
+        "url": "https://github.com/vllm-project/vllm/issues/52520",
+        "target": "vllm-project/vllm, NEW ISSUE #52520",
+        "source": "upstream/vllm-upstream-align-admission-livelock.md",
+        "title_length": 208,
+        "body_length": 18819,
+        "verified_after_posting": [
+          "no duplicated H1 in the body",
+          "scope paragraph verbatim including 'have not reproduced it on stock vLLM and do not claim it there' plus the standing offer",
+          "the #45238 retraction survived ('so I am not offering that as a new finding')",
+          "cross-links to local-inference-lab/vllm#394 and to the #47272 comment",
+          "the #40384 non-inversion note present and the '2 blocks of headroom' inversion removed"
+        ],
+        "auto_label_applied_by_upstream_bot": "quantization",
+        "auto_label_is_wrong": "This is a scheduler/KV-admission bug, not a quantization bug; the bot almost certainly keyed on the EXL3 flags in the argv. We hold no label permission on vllm-project/vllm, so it cannot be corrected from our side. Flagged because a wrong label routes it to the wrong reviewers."
+      },
+      {
+        "url": "https://github.com/vllm-project/vllm/issues/45238#issuecomment-5307331518",
+        "target": "vllm-project/vllm#45238 (open issue)",
+        "source": "upstream/comment-vllm-45238-align-zero-hit-corroboration.md",
+        "final_length_chars": 2903
+      },
+      {
+        "url": "https://github.com/vllm-project/vllm/pull/51812#issuecomment-5307331574",
+        "target": "vllm-project/vllm#51812 (merged PR)",
+        "source": "upstream/comment-vllm-51812-reachability-measured.md",
+        "final_length_chars": 5459
+      },
+      {
+        "url": "https://github.com/vllm-project/vllm/pull/46778#issuecomment-5307331622",
+        "target": "vllm-project/vllm#46778 (open docs PR)",
+        "source": "upstream/comment-vllm-46778-align-window-price.md",
+        "final_length_chars": 3264
+      },
+      {
+        "url": "https://github.com/local-inference-lab/vllm/pull/393#issuecomment-5307331684",
+        "target": "local-inference-lab/vllm#393 (our own PR)",
+        "source": "upstream/comment-fork-393-ci-label-and-docstrings.md",
+        "final_length_chars": 2448,
+        "asks_for": "a maintainer to add a ready/verified label so pre-commit can run at all"
+      },
+      {
+        "url": "https://github.com/local-inference-lab/vllm/issues/394#issuecomment-5307333055",
+        "target": "local-inference-lab/vllm#394 (our own issue)",
+        "source": "written inline at posting time",
+        "note": "records where the report went upstream and what changed in the rewrite; keeps #394 as the fork-side record"
+      }
+    ],
+    "needs_main_approval": [],
+    "explicitly_not_drafted": "No comment to cosmicnag or any HuggingFace discussion: that surface belongs to CommunityRefresh. The #51766 / #51094 pointer was handed over by hub message instead.",
+    "approval": {
+      "granted_by": "Main, by hub message 2026-08-16, after reading the drafts",
+      "instruction": "post all six; #47272 first, then the new issue, then the rest; cross-link both directions; keep the retraction prominent and the scope paragraph verbatim; fold in the #40384 non-inversion correction wherever it applies; do not edit the cards",
+      "order_executed_as_instructed": true
+    },
+    "all_drafts_now_posted": true,
+    "posted_count": 8
+  },
+  "note_for_main": [
+    "PR #318's own comment asks for an RTX 5090 to close its memory claim, and this project currently has one (held by KvDtypeSweep). That is a coincidence worth deciding about, not something I acted on.",
+    "Three separate upstream reports in eleven days now say hybrid mamba + external KV reuse returns silently wrong tokens (#51094 closed, #51468 merged, #51766 merged). filed.json already names LMCache 0.5.2 kv_both as the leading suspect for the cosmicnag report after our own reproduction came back NOT REPRODUCED; #51766 in particular is a core/worker disagreement about the live mamba state column on exactly that path.",
+    "#35541 asked upstream for the exact behaviour our #394 asks for and was closed by the stale bot, not on merit. If Main files the upstream issue, expect the same fate unless a maintainer picks it up; the draft therefore leads with the trace and the two source formulas rather than with the request.",
+    "Verified a third-party claim that #51113 ships in tagged vLLM: it does, in v0.27.0 and v0.27.1 (content check, not ancestry - the cherry-pick has a different sha and ancestry comparison says 'diverged' misleadingly). #51812 is NOT in either; first tag with both is v0.27.2rc0. See new_upstream_work_that_affects_us.released_versions_containing_the_two_fixes_we_carry. Relevant to what the cards recommend and to how #392/#393 are framed.",
+    "The upstream bot auto-labelled #52520 `quantization`, which is wrong (it is a scheduler/KV-admission bug; the bot keyed on the EXL3 argv). We have no label permission on vllm-project/vllm. If it stalls, a maintainer ping asking for `bug`/`v1` is the cheap fix."
+  ],
+  "no_gpu_used": "No GPU work of any kind. The physical RTX 5090 was held by KvDtypeSweep for the kv-dtype sweep throughout; nothing here launched a server, loaded a model or allocated device memory. /var/tmp/gg-rootfs was read only.",
+  "files_not_touched": [
+    "the four model cards",
+    "docs/29",
+    "every pre-existing receipt",
+    "upstream/filed.json",
+    "upstream/vllm-apc-align-admission-livelock.md",
+    "upstream/vllm-gg-cherry-pick-51113-51812.md"
+  ],
+  "search_log": {
+    "queries_total": 38,
+    "how_to_reproduce_a_negative": "GET https://api.github.com/search/issues?advanced_search=true&per_page=40&q=<query>, then filter items by repository_url. total_count is GitHub's own count for the query (which may include other repositories when the repo: qualifier is dropped, see access.search_api_caveat); in_repo is the count after filtering.",
+    "queries": [
+      {
+        "query": "repo:vllm-project/vllm mamba align livelock in:title,body",
+        "note": "A: livelock wording",
+        "total_count": 4,
+        "in_repo": 4,
+        "off_repo_dropped": 0,
+        "hits": [
+          "#50021 pr/open [Bugfix] Bound accepted-token state lookups in GDN/KDA spec decode",
+          "#51582 pr/closed [V1][Scheduler] Fix Mamba-align livelock when an encoder cap lands mid-block",
+          "#51603 pr/closed [V1][Scheduler] Apply Mamba alignment before encoder caps",
+          "#50630 issue/open No capability flag declares which KV-cache kinds may be peeked past a candidate boundary — each margin implementation excludes Mamba by hand"
+        ]
+      },
+      {
+        "query": "repo:vllm-project/vllm \"re-prefill\" in:title,body",
+        "note": "A: re-prefill wording",
+        "total_count": 23,
+        "in_repo": 23,
+        "off_repo_dropped": 0,
+        "hits": [
+          "#47235 pr/open [Bugfix][KVOffload] Restore evicted CPU blocks and fix cursor advancement",
+          "#50265 pr/open [Feature] add the option to continue serving unfinished requests after the recovery",
+          "#42644 pr/open [Bugfix] Thread kv_transfer_params into engine for /inference/v1/generate (disagg)",
+          "#50559 pr/open [NIXL] Feed decoder the prefiller's first sampled token in toy proxy",
+          "#44295 pr/open [Bugfix][OffloadingConnector] avoid request convoy when concurrent requests share blocks being loaded",
+          "#44294 issue/open [Bug][OffloadingConnector] _blocks_being_loaded serialises concurrent requests through a single load, causing 12× TTFT inflation",
+          "#52463 issue/open [Bug][DP] Tie-break rotation from #47420 destroys prefix-cache locality for multi-turn traffic under internal DP LB",
+          "#42359 pr/open Fix/full attention ghost block race",
+          "#48892 pr/closed [Model Runner V2][Spec Decode] Add multi-layer MTP speculator",
+          "#43996 issue/open [Bug]: [PD + SpecDec] Prefix-cache trimming drops wrong block when P has extra lookahead block",
+          "#50062 pr/closed [Model Runner V2][Spec Decode] Add KV cache support for multi-layer MTP",
+          "#51476 issue/open [RFC]: DP pause latches the coordinator's engines_running, and per-mode request admission is unimplemented",
+          "#48245 pr/closed [BugFix] Fix `num_output_placeholders` preemption underflow",
+          "#44594 pr/closed [Core] Add kvcache watermark to reduce preemptions",
+          "#50379 pr/closed [Spec Decode][Core] Run the Kimi K3 DFlash drafter with prefix caching enabled",
+          "#43797 pr/closed [kv_offload] Skip decode-phase blocks in CPU offload",
+          "#42346 pr/closed Support routed-experts replay with prefix caching",
+          "#40676 pr/closed [Core][KV] Retain prefix-cache across hybrid SWA+Full via `is_pinned` blocks",
+          "#37746 issue/closed [Bug] prompt_logprobs causes livelock with IsHybrid models (Qwen3.5) in DP mode",
+          "#43302 pr/closed [KVConnector] Multi-storage replication for shared-prefix KV blocks (fixes #42948 cascade collapse)",
+          "#39568 pr/closed [RFC] Replace shared-memory routed experts with ModelRunnerOutput transfer and HTTP support",
+          "#39809 issue/closed [Bug]: Mamba prefix caching + MTP speculative decoding crashes on startup for NemotronH models",
+          "#28973 pr/closed [Feature] add session based streaming input support to v1"
+        ]
+      },
+      {
+        "query": "repo:vllm-project/vllm scheduler admits request cannot schedule kv cache pool in:title,body",
+        "note": "A: admission cannot schedule",
+        "total_count": 1,
+        "in_repo": 1,
+        "off_repo_dropped": 0,
+        "hits": [
+          "#40946 pr/closed [Bugfix] Cap SWA/chunked-local runtime admission to startup pool-sizing bound"
+        ]
+      },
+      {
+        "query": "repo:vllm-project/vllm \"infinite loop\" prefill scheduler kv cache in:title,body",
+        "note": "A: infinite prefill loop",
+        "total_count": 1,
+        "in_repo": 1,
+        "off_repo_dropped": 0,
+        "hits": [
+          "#39223 issue/closed [Bug]: Nemotron 3 super has corrupted output on 0.19.0, no issues on 0.18.1"
+        ]
+      },
+      {
+        "query": "repo:vllm-project/vllm request larger than kv cache never scheduled waiting forever in:title,body",
+        "note": "A: waiting forever",
+        "total_count": 2,
+        "in_repo": 2,
+        "off_repo_dropped": 0,
+        "hits": [
+          "#45388 issue/closed [Bug]: Scheduler permanently deadlocks under KV-cache pressure when a KV-offloading connector is enabled",
+          "#45387 issue/closed [Bug]: Scheduler permanently deadlocks (Running=0, Waiting=N, zero throughput) under KV-cache pressure when a KV-offloading connector is enabled"
+        ]
+      },
+      {
+        "query": "repo:vllm-project/vllm \"cannot be scheduled\" request in:title,body",
+        "note": "A: cannot be scheduled phrase",
+        "total_count": 12,
+        "in_repo": 12,
+        "off_repo_dropped": 0,
+        "hits": [
+          "#40004 issue/open [Feature]: Priority scheduling supports preemption of requests in the running queue by requests in the waiting queue",
+          "#45595 pr/closed [KV Connector][Offloading] Avoid blocking the engine to flush offloads on idle",
+          "#49097 issue/closed [Bug]: PRIORITY scheduling can silently skip a running request for a full step when the preemption victim was already deferred earlier in the same schedule() call",
+          "#35541 issue/closed [Bug]: vLLM hangs indefinitely with low `num_gpu_blocks_override`",
+          "#45387 issue/closed [Bug]: Scheduler permanently deadlocks (Running=0, Waiting=N, zero throughput) under KV-cache pressure when a KV-offloading connector is enabled",
+          "#45388 issue/closed [Bug]: Scheduler permanently deadlocks under KV-cache pressure when a KV-offloading connector is enabled",
+          "#31765 pr/closed [BUGFIX] free encode inputs in _update_after_schedule to avoid dead lock in sc…",
+          "#31699 pr/closed [BUGFIX] free encode cache in _update_after_schedule to avoid dead lock in sc…",
+          "#31857 pr/closed [Bugfix] fix encoder cache leak of waiting requests in scheduler to solve stuck in CPU scheduling",
+          "#8378 pr/closed [Core] Multi-Step + Single Step Prefills via Chunked Prefill code path",
+          "#4557 pr/closed [Core] Ignore infeasible swap requests.",
+          "#1776 pr/closed [bugfix] unresponsive when required_blocks exceed max_gpu_blocks"
+        ]
+      },
+      {
+        "query": "repo:vllm-project/vllm partial prefill discarded requeue prefix cache not published in:title,body",
+        "note": "A: partial prefill not published",
+        "total_count": 0,
+        "in_repo": 0,
+        "off_repo_dropped": 0,
+        "hits": []
+      },
+      {
+        "query": "repo:vllm-project/vllm \"num_preemptions_total\" in:title,body",
+        "note": "A: preemption accounting",
+        "total_count": 10,
+        "in_repo": 10,
+        "off_repo_dropped": 0,
+        "hits": [
+          "#39456 pr/open [Metrics] Add num_requests_prefilling/decoding Prometheus gauges",
+          "#42948 issue/open [Bug]: Prefix-cache 0% hit on re-sent request — DeepSeek-V4-Flash hybrid groups lose all first-block cache keys on every request reassignment (DSv4 variant of #32802)",
+          "#42897 issue/closed [Bug]: EngineCore hangs in `_to_list` -> `cuEventSynchronize` under sustained traffic (Qwen3.6-35B-A3B-NVFP4 hybrid MoE, RTX 5090 sm_120; v0.21.0 + nightly dev39/dev42)",
+          "#13169 pr/closed [V1][Metrics] Handle preemptions",
+          "#11117 pr/closed Support Lora prometheus metrics",
+          "#23341 issue/closed [Bug]: Metrics from only one GPU are available through the API",
+          "#8115 issue/closed [Bug]: Mismatch in TTFT count and number of successful requests completed ",
+          "#8178 issue/closed [Bug]: In v0.6.0 and above, Some of monitoring metrics are not correct.",
+          "#7782 issue/closed [Bug]: /metrics endpoint shows less information at latest (0.5.4) vllm docker container.",
+          "#8819 issue/closed [Bug]: Later version have degradation based on `vllm:time_to_first_token_seconds_sum` metric"
+        ]
+      },
+      {
+        "query": "repo:vllm-project/vllm \"head-of-line\" kv cache admission startup bound in:title,body",
+        "note": "A: admission vs startup bound family",
+        "total_count": 1,
+        "in_repo": 1,
+        "off_repo_dropped": 0,
+        "hits": [
+          "#40946 pr/closed [Bugfix] Cap SWA/chunked-local runtime admission to startup pool-sizing bound"
+        ]
+      },
+      {
+        "query": "repo:vllm-project/vllm request at max_model_len does not fit kv cache pool align whole blocks in:title,body",
+        "note": "B: align rounding to whole blocks",
+        "total_count": 0,
+        "in_repo": 0,
+        "off_repo_dropped": 0,
+        "hits": []
+      },
+      {
+        "query": "repo:vllm-project/vllm \"estimated maximum model length\" in:title,body",
+        "note": "B: startup refusal message",
+        "total_count": 25,
+        "in_repo": 25,
+        "off_repo_dropped": 0,
+        "hits": [
+          "#50509 issue/open [Feature]: Allow an explicit expert override of the startup KV capacity check",
+          "#47272 pr/open [Bugfix][Core] Reserve the KV null block when validating max_model_len",
+          "#44376 issue/open [Bug]: [v0.22]MooncakeStoreConnector causes incorrect KV cache memory pre-check calculation for DeepSeek models(PP2 TP8) (fallback to MHA dimension)",
+          "#42017 issue/open [Bug]: GPU memory not being freed after vLLM crash",
+          "#49672 issue/closed [CI Failure]: distributed-compile - test_compile_correctness[test_setting3]",
+          "#49333 issue/closed [CI Failure]: Plugin Tests (2 GPUs)",
+          "#44755 pr/closed [XPU][CI] fix qwen3-moe test memory limitation",
+          "#38516 issue/closed [Feature]: It's user unfriendly to panic when there is not enough VRAM to serve at least one request with the max seq len",
+          "#49878 issue/open [Bug]: Dramatic KV cache size increase (~40%) for Gemma4 from v0.25.1 to v0.26",
+          "#37951 issue/closed [Bug]: KV Cache Memory Error with 262K Context on High VRAM Setup (Regression from Previous Version)",
+          "#43755 issue/closed [Bug]: `_check_enough_kv_cache_memory` does not account for TP/PP sharding,  making KV offloading impossible in multi-GPU distributed deployments",
+          "#23087 issue/closed [Bug]: How to Offload KV Cache to CPU without initializing in GPU Memory ?",
+          "#29233 issue/closed [CPU Backend] [Bug]: Default VLLM_CPU_KVCACHE_SPACE is too small for CPU Backend",
+          "#34076 issue/closed [Bug]: KV Cache Memory Bottleneck Calculation in Pipeline Parallel (_check_enough_kv_cache_memory in get_kv_cache_configs)",
+          "#25350 issue/closed [Bug]: The maximum model length calculation should also take into account the kv-cache-dtype",
+          "#17959 pr/closed [Bugfix] fix check kv cache memory log info",
+          "#19407 issue/closed [RFC]: Support automatic max context length via `--max-model-len auto`",
+          "#29431 pr/closed Add `--max-model-len auto` to auto-fit context to available memory",
+          "#32105 issue/closed [Bug]:Pipeline parallelism cannot share kvcache across different GPUs",
+          "#32782 issue/closed [Bug]: KV cache 0.14 regression vs 0.11 and 0.13 ",
+          "#27559 issue/closed [Bug]: vllm0.10.1 can deploy deepseek-70b model with tp=2 and max-model-len 20000 on the machine with two NVIDIA A800(80GiB)  , But vllm 0.11.0 failed",
+          "#22500 pr/closed [XPU] Fix OOM issue for data parallel with Ray backend",
+          "#26612 issue/closed [Usage]: qwen3vl 30 A3B 启动vllm 服务报错",
+          "#20144 pr/closed [CI Failure] Fix OOM with test_oot_registration_embedding",
+          "#20148 issue/closed [CI Failure]: Plugin Tests (2 GPUs) - models/test_oot_registration.py"
+        ]
+      },
+      {
+        "query": "repo:vllm-project/vllm mamba block size 1600 attention block size kv cache needed in:title,body",
+        "note": "B: block size inflation",
+        "total_count": 1,
+        "in_repo": 1,
+        "off_repo_dropped": 0,
+        "hits": [
+          "#26329 issue/closed [Bug]: OffloadingConnector instability with increasing --num-prompts vllm bench values"
+        ]
+      },
+      {
+        "query": "repo:vllm-project/vllm \"scheduled_spec_decode_tokens\" in:title,body",
+        "note": "C: the padding structure by name",
+        "total_count": 166,
+        "in_repo": 40,
+        "off_repo_dropped": 0,
+        "hits": [
+          "#44304 pr/open [Bugfix][KVConnector] Fix token length with speculative decoding",
+          "#46424 pr/open [Bugfix][Mamba2] Fix assert crash when prefill-reclassified-as-decode occurs with no concurrent spec tokens",
+          "#43683 pr/open [Bugfix] Clear stale spec/async state on streaming session rebuild",
+          "#36917 issue/open [Bug]: GDN attention backend crashes with mixed decode/spec_decode batch when serving Qwen3.5 family models with MTP",
+          "#40756 issue/open [Bug]: MTP speculative decoding crash with illegal memory access on long sequences (Qwen3.6-27B-FP8, v0.19.1)",
+          "#46947 pr/open [Bugfix][Spec Decode] Clamp negative placeholder token ids before multimodal text embedding",
+          "#42271 issue/open [Bug]: MTP + FULL_AND_PIECEWISE cudagraph deadlocks at HT batched-decode when bonus-token-only forward shape is scheduled",
+          "#42519 pr/open [Bugfix] Fix async double streaming_update placeholder bug (#42490)",
+          "#42760 issue/open [Bug]: Worker state update can raise KeyError on prev_req_id_to_index for a resumed AsyncLLM request",
+          "#50952 pr/closed [Bugfix] Pad missing draft rows in the grammar bitmask",
+          "#40926 issue/open [Bug]: V1 engine + MTP + GLM-5.1 (DSA + MoE + MLA) — workers hang under sustained traffic, sample_tokens RPC timeout, EngineDeadError",
+          "#36391 pr/open [Core] Decouple draft-token hook from speculative decoding",
+          "#52436 pr/closed [Bugfix][Spec Decode][Structured Output] DSpark: fix the grammar bitmask mapping when the draft budget is zero",
+          "#42655 issue/open [Bug]: Async double streaming_update can break the request ID -> previous batch row mapping and crash the engine",
+          "#42084 issue/open [Bug]: GDN attention `mamba_get_block_table_tensor` torch.gather index out of bounds when prefix caching + num_speculative_tokens>=10 (DFlash, DGX Spark sm_121a, Qwen3.6 hybrid)",
+          "#42490 issue/open [Bug]: Async double streaming_update with shared-prefix reuse can leave invalid -1 token ids in the worker input row",
+          "#46574 pr/closed fix: sanitize invalid speculative draft tokens",
+          "#50662 pr/closed [Core] Track newly admitted prefills for spec-decode padding",
+          "#47417 pr/closed [Bugfix][Spec Decode] Pad mixed running decode batches",
+          "#37035 issue/open [Bug]: cudaErrorIllegalAddress in gdn_attn.py:237 when using qwen3_next_mtp with num_speculative_tokens=5 under load",
+          "#49355 issue/open [Bug]: MTP speculative decoding is broken with pipeline parallelism (PP>1) — three distinct failures",
+          "#52186 pr/open [XPU][Bugfix] Fix XPU crash with speculative decoding + prefix caching in Mamba models",
+          "#46946 pr/closed [Bugfix][Spec Decode] Clamp negative placeholder token ids before multimodal text embedding",
+          "#48752 issue/open [Bug]: sample_tokens RPC timeout with GLM-5.2-FP8 + DSpark speculative decoding, TP=8 across 2 nodes (Blackwell GB200)",
+          "#46899 pr/closed [Bugfix]fix(v1): clear stale async speculative placeholders",
+          "#50934 issue/open [Bug]: CUDA misaligned address crash on GB10 (sm_121) after ~10 days uptime — Nemotron NVFP4 + Marlin MoE + MTP speculative decoding",
+          "#43434 pr/closed [Bugfix][Async][SpecDecode] Fix async MTP placeholder draft token handling",
+          "#44885 pr/closed [Spec Decode] Adaptive verifier step-length for DFlash/PARD (D-Cut-style)",
+          "#42653 pr/closed feat(dllm): non-causal attention, scheduler hooks, and FlashInfer support for block diffusion models",
+          "#36489 issue/open [Bug]: vllm 0.17.0 部署 Qwen3.5 397b-fp8版本运行过程中异常崩溃(vllm 0.17.0 crashed unexpectedly during deployment of Qwen3.5 397b-fp8 version.)",
+          "#39761 issue/open [Bug]:CUDA illegal instruction during decode (V1 Engine + NVFP4) on aarch64 (NVIDIA GB10)",
+          "#44842 issue/open [Bug]: Setting prompt_embeds does not work for vision-language models",
+          "#39202 issue/open [Bug]: Crash on Transcription (size for tensor a must match the size of tensor b) with reproduce",
+          "#49694 issue/open [Bug]: ngram_gpu spec decode + structured outputs (xgrammar) + async scheduling: verifier accepts grammar-illegal draft tokens → \"Failed to advance FSM\", HTTP 500s and silent truncation under concurrency",
+          "#39295 issue/closed [Bug]: Eagle3 speculative decoding CUDA device-side assert crash with gpt-oss-120b under concurrent requests (TP=8, H20)",
+          "#44827 issue/open [Bug]: Inference-time probabilistic error: pre-allocated buffer size mismatch in indexer",
+          "#52441 pr/closed [Bugfix][Multimodal] Keep Gemma 4 video frame counts on CPU",
+          "#37159 issue/open [Bug]: vLLM crashed with V100 by running zai-org/GLM-OCR",
+          "#42603 pr/closed [Bugfix] Fix race condition in MTP speculative decoding draft loop",
+          "#42808 issue/open [Bug]: 这次崩溃的直接原因是 TurboQuant 注意力后端与 MTP 推测解码在 vLLM 0.21.0 版本中的兼容性问题，具体表现为工作区（workspace）预留不足，导致引擎在处理第一个请求时触发断言错误"
+        ]
+      },
+      {
+        "query": "repo:vllm-project/vllm full prefix cache hit one new token speculative padding scheduler in:title,body",
+        "note": "C: num_new_tokens==1 padding",
+        "total_count": 13,
+        "in_repo": 13,
+        "off_repo_dropped": 0,
+        "hits": [
+          "#52047 pr/open [Bugfix][AMD] Annotate draft KV cache groups on the hybrid grouping path",
+          "#36917 issue/open [Bug]: GDN attention backend crashes with mixed decode/spec_decode batch when serving Qwen3.5 family models with MTP",
+          "#50662 pr/closed [Core] Track newly admitted prefills for spec-decode padding",
+          "#45092 issue/open [Bug]: In a dual-machine mixed setup running DP, some nodes fail to reach all_reduce on time, causing Gloo backend 'connection reset by peer'",
+          "#45288 pr/open [Frontend] Add the p-less Sampling Method for LLM Decoding",
+          "#47464 pr/closed [Bugfix][Spec Decode] Skip uniform spec-decode padding for diffusion models",
+          "#44827 issue/open [Bug]: Inference-time probabilistic error: pre-allocated buffer size mismatch in indexer",
+          "#48214 pr/open [Bugfix] Fix pooling input buffer race across chunked prefill steps",
+          "#45670 issue/open [Bug]: CUDA error: an illegal memory access was encountered when using turboquant and cuda graph on GB200",
+          "#50147 issue/closed [Bug]: Kimi-K3 (TP=8, prefix caching): recurring illegal-memory-access crashes under concurrent load",
+          "#36843 issue/closed [Bug]: VLLM 0.17.1 initial mtp with FLASH_ATTN randomly crash",
+          "#25760 issue/closed [Bug]: Qwen3-Next-80B-A3B-Thinking-FP8 fails using flashinfer and `qwen3_next_mtp` spec decode",
+          "#14992 issue/closed [Bug]: ValueError: No available memory for the cache blocks on main branch after commit 46f98893"
+        ]
+      },
+      {
+        "query": "repo:vllm-project/vllm 51812 in:title,body",
+        "note": "C: anything citing 51812",
+        "total_count": 0,
+        "in_repo": 0,
+        "off_repo_dropped": 0,
+        "hits": []
+      },
+      {
+        "query": "repo:vllm-project/vllm gdn gates speculative tokens misaligned mixed batch in:title,body",
+        "note": "C: gate misordering",
+        "total_count": 0,
+        "in_repo": 0,
+        "off_repo_dropped": 0,
+        "hits": []
+      },
+      {
+        "query": "repo:vllm-project/vllm \"spec_token_indx\" in:title,body",
+        "note": "C: gather index by name",
+        "total_count": 3,
+        "in_repo": 3,
+        "off_repo_dropped": 0,
+        "hits": [
+          "#51812 pr/closed [Bugfix] Align Qwen GDN gates with speculative tokens",
+          "#36754 pr/closed [Perf] optimize gdn mtp performance",
+          "#27152 issue/closed [Perf][Qwen3-next]: `torch.compile` GDN attn"
+        ]
+      },
+      {
+        "query": "repo:vllm-project/vllm \"fused_sigmoid_gating_delta_rule_update\" in:title,body",
+        "note": "C: kernel by name",
+        "total_count": 18,
+        "in_repo": 18,
+        "off_repo_dropped": 0,
+        "hits": [
+          "#48475 pr/open [Bugfix] Clamp spec-decode state index load for zero num_accepted_tokens in GDN kernels",
+          "#39483 pr/open [Bugfix] Fix Triton stream capture error on A100 in GDN attention with MTP speculative decoding",
+          "#51562 issue/open [Bug]: GatedDeltaNet metadata builder classifies a stateless first chunk as a decode (same root cause as #51483)",
+          "#49918 issue/open [Bug]: Prefill with prompt length == 1 + num_speculative_tokens misclassified as uniform decode → FULL spec-verify cudagraph skips GDN/hybrid recurrent-state write → deterministic garbage (any spec method incl. ngram; v0.25.1 & v0.26.0)",
+          "#51674 pr/closed [Kernel][Perf] Add fused CUDA post-conv MTP decode kernel for Qwen3.5 GDN",
+          "#49887 pr/open [Kernel] ReplaySSM: cache SSM inputs for faster Gated DeltaNet speculative decode",
+          "#43534 pr/closed [CPU][Perf] Enable fused kernels for GDN's gated delta rules",
+          "#44700 pr/closed [PERF] [Qwen3.5] Split mixed prefill+decode batches: route decodes to the recurrent kernel",
+          "#42406 pr/closed [Model Runner V2] support mamba hybrid models align prefix cache",
+          "#30860 pr/closed add new triton op fused_sigmoid_gating_delta_rule_update.",
+          "#36587 pr/closed skip triton when graph capture",
+          "#35777 pr/closed [Kernel] Add fused_sigmoid_gating_delta_rule_update kernel for Qwen3 Next",
+          "#51008 issue/closed [Bug] (SUPERSEDED 2026-08-06): MTP proposer eager GDN hypothesis — **overturned by 2nd-round attribution**",
+          "#42728 pr/closed [Bugfix] Avoid FULL cudagraph dispatch for DFlash",
+          "#45631 pr/closed Add Triton recompile detection",
+          "#36754 pr/closed [Perf] optimize gdn mtp performance",
+          "#36111 pr/closed [Perf] add cute dsl kernel for gdn decode",
+          "#43009 issue/open [Bug]: Triton kernel JIT compilation during inference"
+        ]
+      },
+      {
+        "query": "repo:vllm-project/vllm \"pad_spec_decode\" in:title,body",
+        "note": "C: the padding helper by name",
+        "total_count": 2,
+        "in_repo": 2,
+        "off_repo_dropped": 0,
+        "hits": [
+          "#50173 pr/open [Bugfix][Core][Spec Decode] Skip spec-decode block reservation on the external-KV-load step (P/D)",
+          "#49495 issue/closed [Bug]: DiffusionGemma crashes when a one-token prefill remainder is mistaken for decode"
+        ]
+      },
+      {
+        "query": "repo:vllm-project/vllm \"reorder_batch_to_split_decodes_and_prefills\" in:title,body",
+        "note": "C: reorder helper by name",
+        "total_count": 5,
+        "in_repo": 5,
+        "off_repo_dropped": 0,
+        "hits": [
+          "#42352 pr/open [Performance] Use np.fromiter for dict-to-array conversion in hot paths",
+          "#47381 pr/closed [Bugfix][Model Runner V2] Order uniform decodes first so spec decodes aren't misclassified as prefills",
+          "#48611 issue/closed [Bug]: #47327 dense-MHA split breaks FlashMLA sparse: OOB write in top-k index conversion, corrupted fp8_ds_mla context gather",
+          "#32118 pr/closed [Bugfix] Fix stale SSM state for new Mamba requests scheduled as decode",
+          "#24463 pr/closed [Attention] Remove unused reorder_batch method"
+        ]
+      },
+      {
+        "query": "repo:vllm-project/vllm speculative tokens must be leading tokens of the batch invariant gdn in:title,body",
+        "note": "C: leading-token invariant",
+        "total_count": 0,
+        "in_repo": 0,
+        "off_repo_dropped": 0,
+        "hits": []
+      },
+      {
+        "query": "repo:vllm-project/vllm \"num_decode_draft_tokens\" in:title,body",
+        "note": "C: runner classification field",
+        "total_count": 9,
+        "in_repo": 9,
+        "off_repo_dropped": 0,
+        "hits": [
+          "#52078 pr/open [Attention] Avoid redundant mask compute in GDN metadata build",
+          "#39483 pr/open [Bugfix] Fix Triton stream capture error on A100 in GDN attention with MTP speculative decoding",
+          "#47428 pr/closed [ModelRunner V2] Fix Mamba2 crash on non-spec-decode",
+          "#49887 pr/open [Kernel] ReplaySSM: cache SSM inputs for faster Gated DeltaNet speculative decode",
+          "#52317 issue/open [Bug]: MRv2: --enable-prefix-caching (mamba_cache_mode 'all') + dspark spec decode crashes at startup — prev_last_scheduled_idx never passed by MambaHybridAttnMetadata",
+          "#49757 pr/closed [BugFix] Stop dummy runs from writing mamba state through stale block-table rows",
+          "#43887 pr/closed [TurboQuant] Add MTP spec-decode routing",
+          "#36634 pr/closed fix mtp launch error in vllm-0.17.1-rc, about cuda graph during memory profile",
+          "#31958 pr/closed [Bugfix] Keep all tensors to be on the same device"
+        ]
+      },
+      {
+        "query": "repo:vllm-project/vllm is:pr is:merged merged:>=2026-08-06 GDN Qwen3.5 in:title",
+        "note": "P5: merged GDN/Qwen3.5 since our base",
+        "total_count": 1,
+        "in_repo": 1,
+        "off_repo_dropped": 0,
+        "hits": [
+          "#51674 pr/closed [Kernel][Perf] Add fused CUDA post-conv MTP decode kernel for Qwen3.5 GDN"
+        ]
+      },
+      {
+        "query": "repo:vllm-project/vllm is:pr is:merged merged:>=2026-08-06 mamba in:title",
+        "note": "P5: merged mamba since our base",
+        "total_count": 7,
+        "in_repo": 7,
+        "off_repo_dropped": 0,
+        "hits": [
+          "#50534 pr/closed [XPU] Add tuned Mamba SSU configs for Intel Arc Pro B70",
+          "#51766 pr/closed [Bugfix][Core] Preserve Mamba running CoW after external hits",
+          "#51603 pr/closed [V1][Scheduler] Apply Mamba alignment before encoder caps",
+          "#51468 pr/closed [BugFix] Preserve divergent FA hits with external Mamba state",
+          "#44857 pr/closed [Attention] Mamba attention module refactor - Final part",
+          "#51113 pr/closed [Bugfix] Keep mamba align prefill chunks block-aligned past last_cache_position",
+          "#51100 pr/closed [Bugfix] Fix Mamba all-mode CPU offload boundary alignment"
+        ]
+      },
+      {
+        "query": "repo:vllm-project/vllm EXL3 in:title,body",
+        "note": "P5: exl3 anywhere",
+        "total_count": 6,
+        "in_repo": 6,
+        "off_repo_dropped": 0,
+        "hits": [
+          "#52018 pr/open [Kernel] Add B12X FP4 MoE backend",
+          "#51696 pr/closed [Kernel] Add native B12X linear, MoE, and causal attention backends",
+          "#35961 pr/open [Core] Add score mode with perplexity and KLD computation",
+          "#49205 issue/open [Bug]: StreamingParserEngine leaks a bare tag fragment (e.g. '<tool_') into content when a PreLexedTerminal supersedes a buffered text-token prefix of the same tag",
+          "#19896 issue/closed [Feature]: EXL3 support",
+          "#31646 issue/closed [Usage]: How can I use GPU12 as standalone KV LMCache?"
+        ]
+      },
+      {
+        "query": "repo:vllm-project/vllm is:pr is:merged merged:>=2026-07-15 flashinfer in:title",
+        "note": "P5: merged flashinfer",
+        "total_count": 20,
+        "in_repo": 20,
+        "off_repo_dropped": 0,
+        "hits": [
+          "#52241 pr/closed [Bugfix] Widen flashinfer.comm import guard so a failed import doesn't abort engine startup",
+          "#52148 pr/closed [Attention] Fix FlashInfer SM12x prefill with sinks",
+          "#49718 pr/closed [Attention] Add FlashInfer XQA decode support on SM12x",
+          "#50569 pr/closed feat: allow shared expert overlapping for FlashInfer one-sided all-to-all",
+          "#51819 pr/closed [Bugfix][MoE] Support GELU tanh in FlashInfer B12x MoE",
+          "#50892 pr/closed Bump Flashinfer version to 0.6.16.post3",
+          "#50157 pr/closed [Kernel] Add support for Flashinfer Mamba SSU algorithm selection",
+          "#51038 pr/closed [Bugfix][Quantization] Fix MXFP4 conversion for FlashInfer CUTLASS",
+          "#48047 pr/closed [DSv4] Remove sparse-MLA q-head padding for FlashInfer >=0.6.14",
+          "#49043 pr/closed [Bugfix]Reject invalid FlashInfer MNNVL workspaces",
+          "#46877 pr/closed [Core][Distributed] Add process-checkpoint lifecycle hooks for communicators (starting with Flashinfer)",
+          "#48914 pr/closed Bump Flashinfer version to 0.6.15",
+          "#44214 pr/closed [RL Infra][FlashInfer] Enable router replay output from FlashInfer monolithic MoE kernel",
+          "#48417 pr/closed [Performance] Use CuTe-DSL for FlashInfer MXFP4 quantization",
+          "#47156 pr/closed [Perf][MoE] Write FlashInfer combine into final output",
+          "#47669 pr/closed Bump flashinfer version to 0.6.14",
+          "#46880 pr/closed [Bugfix][NVFP4 MoE] Pad gated intermediate to 64 for FlashInfer TRT-LLM shuffle (M%128)",
+          "#48167 pr/closed [Bugfix] Fix FlashInfer non-causal draft attention (DFlash/DSpark) on Blackwell",
+          "#48632 pr/closed [LoRA][1/N] Integrate flashinfer MoE LoRA for BF16 model",
+          "#48428 pr/closed fix: size FlashInfer prefill workspace to batch head footprint"
+        ]
+      },
+      {
+        "query": "repo:vllm-project/vllm is:pr is:merged merged:>=2026-08-01 MTP in:title",
+        "note": "P5: merged MTP since Aug 1",
+        "total_count": 10,
+        "in_repo": 10,
+        "off_repo_dropped": 0,
+        "hits": [
+          "#51538 pr/closed [Bugfix] Make DSV4 sparse MLA work end-to-end for plain decode, MTP, and DSpark",
+          "#49793 pr/closed [Spec Decode][Perf] Fuse the MTP trailing all-reduce; local-argmax draft tokens",
+          "#52164 pr/closed [Attention][DSA] Take the native decode path for MTP=3 on SM90",
+          "#51674 pr/closed [Kernel][Perf] Add fused CUDA post-conv MTP decode kernel for Qwen3.5 GDN",
+          "#50062 pr/closed [Model Runner V2][Spec Decode] Add KV cache support for multi-layer MTP",
+          "#47352 pr/closed [Model Runner V2][MTP] Share topk index buffer between draft steps",
+          "#50734 pr/closed [Bugfix][Model] Fix Qwen3.5 MTP for text-only checkpoints",
+          "#50904 pr/closed [GLM Perf] DSv32/glm use skip topk for MTP case, 2.0x kernel performance improvement",
+          "#51045 pr/closed [Model][Frontend] Add Ling 3.0 Flash BF16, MTP, and parser support",
+          "#50806 pr/closed [ROCm] Restore Inkling MTP backend parity"
+        ]
+      },
+      {
+        "query": "repo:vllm-project/vllm is:pr is:merged merged:>=2026-08-01 scheduler in:title",
+        "note": "P5: merged scheduler since Aug 1",
+        "total_count": 3,
+        "in_repo": 3,
+        "off_repo_dropped": 0,
+        "hits": [
+          "#51161 pr/closed [Bugfix][KV Offload] Handle chunked local attention in offloading scheduler",
+          "#51603 pr/closed [V1][Scheduler] Apply Mamba alignment before encoder caps",
+          "#49579 pr/closed [EC Connector] Call to EC Connector update_connector_output from scheduler"
+        ]
+      },
+      {
+        "query": "repo:vllm-project/vllm is:pr is:merged merged:>=2026-08-01 prefix caching in:title",
+        "note": "P5: merged prefix-caching since Aug 1",
+        "total_count": 3,
+        "in_repo": 3,
+        "off_repo_dropped": 0,
+        "hits": [
+          "#51482 pr/closed [BugFix][Core] free_blocks: restore prepend (LIFO) reuse order when prefix caching is off",
+          "#48758 pr/closed [PD][NixlPush][Bugfix] Fix prefix caching",
+          "#51108 pr/closed [BugFix][KV Cache] Fix hybrid prefix caching with hidden-state extraction"
+        ]
+      },
+      {
+        "query": "repo:vllm-project/vllm allocate_slots returns None final prefill chunk request restarted in:title,body",
+        "note": "A: allocate failure on final chunk",
+        "total_count": 0,
+        "in_repo": 0,
+        "off_repo_dropped": 0,
+        "hits": []
+      },
+      {
+        "query": "repo:vllm-project/vllm partial prefill blocks are not added to the prefix cache until the request finishes in:title,body",
+        "note": "A: partial-prefill caching",
+        "total_count": 1,
+        "in_repo": 1,
+        "off_repo_dropped": 0,
+        "hits": [
+          "#49125 issue/open [Bug]: Stale partial prefix-cache hash resurrected into the cache after full-block promotion"
+        ]
+      },
+      {
+        "query": "repo:vllm-project/vllm chunked prefill partial hash publish waiting queue requeue in:title,body",
+        "note": "A: publish-on-requeue",
+        "total_count": 0,
+        "in_repo": 0,
+        "off_repo_dropped": 0,
+        "hits": []
+      },
+      {
+        "query": "repo:vllm-project/vllm mamba align prefix caching request near pool ceiling admission in:title,body",
+        "note": "A: direct restatement",
+        "total_count": 0,
+        "in_repo": 0,
+        "off_repo_dropped": 0,
+        "hits": []
+      },
+      {
+        "query": "repo:vllm-project/vllm \"Cannot get\" free blocks from the pool in:title,body",
+        "note": "A: allocator exhaustion message",
+        "total_count": 4,
+        "in_repo": 4,
+        "off_repo_dropped": 0,
+        "hits": [
+          "#40027 pr/open Handle capped SWA admission in allocator path",
+          "#45856 issue/closed [Bug]: Hybrid SWA model crashes EngineCore with \"Cannot get N free blocks from the pool\" under concurrency",
+          "#41282 pr/closed [Bugfix] Fix failure to allocate KV blocks error",
+          "#40946 pr/closed [Bugfix] Cap SWA/chunked-local runtime admission to startup pool-sizing bound"
+        ]
+      },
+      {
+        "query": "repo:vllm-project/vllm mamba_cache_mode align in:title,body",
+        "note": "A/B: align mode mentions anywhere (re-logged)",
+        "total_count": 74,
+        "in_repo": 40,
+        "off_repo_dropped": 0,
+        "hits": [
+          "#51723 pr/open [Bugfix] Clamp block table indices in align mode to prevent OOB gather",
+          "#52460 pr/open [Bugfix] Fall back Mamba cache 'all' mode to 'align' on Model Runner V2 (#52317)",
+          "#49371 pr/open [Perf] Batch Mamba2 prefill SSM state saves into one indexed copy",
+          "#52317 issue/open [Bug]: MRv2: --enable-prefix-caching (mamba_cache_mode 'all') + dspark spec decode crashes at startup — prev_last_scheduled_idx never passed by MambaHybridAttnMetadata",
+          "#38898 issue/open [Feature]: Mamba `DS` conv state layout | Support speculative decoding with `mamba_cache_mode=align`",
+          "#46424 pr/open [Bugfix][Mamba2] Fix assert crash when prefill-reclassified-as-decode occurs with no concurrent spec tokens",
+          "#46778 pr/open [Docs][Core] Document Mamba/hybrid prefix caching and surface how to enable it",
+          "#46048 pr/open ## [Model][GDN] Add prefix caching support for 'all' mode in Qwen3.5",
+          "#51807 pr/open [Test][Core] Cover Mamba-deferred prefix-cache metrics",
+          "#42574 pr/open [Perf] Skip blocking GPU->CPU sync of num_accepted_tokens in hybrid+a…",
+          "#40757 pr/open [Core] Prevent zero-collapse deadlock in _mamba_block_aligned_split",
+          "#47252 pr/open Fix Qwen3.5 text causal LM hybrid support",
+          "#51055 pr/open [Perf][Hybrid] Skip redundant num_accepted_tokens H2D copy after preprocess_mamba",
+          "#52161 pr/open [Bugfix] Detect all attention-spelling variants in ModelConfig.is_hybrid",
+          "#51855 pr/open [K3] support recoverssm for K3",
+          "#48970 pr/open [Test] e2e hybrid-Mamba prefix-cache corruption regression tests (#43559)",
+          "#44698 pr/open [Spec][PP] Support MTP speculative decoding under pipeline parallelism (PP>1)",
+          "#50409 pr/open [Bugfix] Stop mamba align prefill at the replay boundary",
+          "#51100 pr/closed [Bugfix] Fix Mamba all-mode CPU offload boundary alignment",
+          "#50457 pr/open [Spec Decode][Core] Run an all-sliding DFlash drafter with prefix caching enabled",
+          "#51571 issue/open [Bug]: Async MTP align mode reads accepted counts from mutable InputBatch rows",
+          "#40384 pr/open [Bugfix] Exclude O(1) Mamba groups from hybrid KV cache token capacity",
+          "#50233 pr/open [Model][Perf] Overlap mixed GDN decode and prefill recurrent kernels",
+          "#45407 issue/open [Bug]: vLLM crashes during generation with LMCacheMPConnector on Qwen3.6/Qwen3.5 hybrid model: AssertionError \"External KV connector is not verified yet\"",
+          "#51094 issue/closed [Bug]: OffloadingConnector can silently return wrong output at exact chunk boundaries with mamba_cache_mode=all",
+          "#50897 pr/open [Core][Spec Decode] Add lookahead-aware prefix cache hashing for EAGLE-style draft models",
+          "#45014 issue/open [Bug]: Structured outputs + pipeline parallelism on the V1 model runner: xgrammar FSM desync (\"Failed to advance FSM\")",
+          "#50172 pr/open [Feature] Qwen3-Next (GDN): mamba_cache_mode=\"all\" prefix caching with speculative decoding (MTP) on V1",
+          "#45769 issue/open [Bug]: Qwen3.6 27B pd disagg failed",
+          "#49574 pr/open [Exp][Hybrid KV Cache] Evaluate semantic checkpoints for recurrent-state prefix caching",
+          "#52244 pr/open [Bugfix][V1] Restore hybrid GDN prefix-cache hits under MTP spec decoding",
+          "#51039 issue/open [Model] Kimi-K3: all requests degenerate to a repeated token after long-context prefill (NaN logits; packed KDA prefill suspected)",
+          "#45238 issue/open [Bug]: Hybrid-model prefix caching silently drops to 0% when the align-mode Mamba checkpoint lands in request-unique tokens",
+          "#50287 pr/open [Bugfix][Model Runner V2] Preserve Mamba block table capacity under DCP",
+          "#51102 pr/closed [Bugfix][KV Connector] Align all-mode Mamba offload hits",
+          "#51562 issue/open [Bug]: GatedDeltaNet metadata builder classifies a stateless first chunk as a decode (same root cause as #51483)",
+          "#52047 pr/open [Bugfix][AMD] Annotate draft KV cache groups on the hybrid grouping path",
+          "#51098 pr/closed Revert \"[Mamba] enable prefix cache by default\" (#50991)",
+          "#46693 issue/open [Bug]: Qwen3.5 CPU backend crashes in mamba_utils.batch_memcpy when Triton is unavailable",
+          "#51483 pr/open [Bugfix][Kimi-K3] Do not classify a stateless first chunk as a decode"
+        ]
+      },
+      {
+        "query": "repo:local-inference-lab/vllm livelock in:title,body",
+        "note": "dup-check: livelock filings in the fork",
+        "total_count": 1,
+        "in_repo": 1,
+        "off_repo_dropped": 0,
+        "hits": [
+          "#394 issue/open [Bug] --mamba-cache-mode align: the scheduler admits a request it can never schedule, then re-prefills it forever with zero output"
+        ]
+      },
+      {
+        "query": "repo:vllm-project/vllm author:malaiwah",
+        "note": "dup-check: anything we ever filed upstream",
+        "total_count": 10,
+        "in_repo": 10,
+        "off_repo_dropped": 0,
+        "hits": [
+          "#52054 pr/open [Bugfix][V1] Chunk prompt-logprobs logits to bound the activation peak",
+          "#51397 pr/closed [Bugfix] Do not select Model Runner V2 when weight offloading is enabled",
+          "#51396 issue/open [Bug]: cpu_offload_gb silently no-ops on Model Runner V2 — offloader never installed, model loads fully on-GPU with no warning",
+          "#38261 pr/open Hybrid KV offload: planner, MultiConnector, and mamba alignment for hybrid models",
+          "#38230 issue/open Hybrid KV offload: MultiConnector + planner for mamba+attention models",
+          "#37802 pr/closed [CI/Build] Fix LMCache KV connector install path for CUDA 13 images",
+          "#37801 issue/closed [Bug]: CUDA 13 LMCache KV connector install path still resolves CUDA 12 artifacts",
+          "#37443 pr/open [Bugfix][Core] Preserve target hf_overrides in MTP draft config",
+          "#37435 issue/open Speculative/MTP draft config appears to drop target --hf-overrides (breaks long-context YaRN/RoPE extension)",
+          "#32237 pr/closed [Fix][MoE] Add SM120 support for FP8 MoE path"
+        ]
+      },
+      {
+        "query": "repo:local-inference-lab/vllm author:malaiwah",
+        "note": "dup-check: everything we filed in the fork",
+        "total_count": 57,
+        "in_repo": 40,
+        "off_repo_dropped": 0,
+        "hits": [
+          "#394 issue/open [Bug] --mamba-cache-mode align: the scheduler admits a request it can never schedule, then re-prefills it forever with zero output",
+          "#393 pr/open [Bugfix] Cherry-pick upstream #51113 and #51812 into dev/gilded-gnosis",
+          "#392 issue/open [Bugfix] Cherry-pick upstream #51113 (mamba align prefill split) and #51812 (Qwen GDN spec gates) into dev/gilded-gnosis",
+          "#319 pr/open [Qwen3.5] pass quant_config to VocabParallelEmbedding so the embedding table can be quantized",
+          "#318 pr/open [EXL3] route K6/MCG shards away from the B12X decode kernel at prefill row counts",
+          "#316 pr/open [EXL3] dispatch prefill-shaped GEMMs to reconstruct+hgemm (+113 % prefill, decode unchanged)",
+          "#314 pr/open [EXL3] allow CUDA-graph decode for dense checkpoints by priming exl3_gemm autotune",
+          "#313 issue/open [Bug]: GG v20 r34 / Transformers 5.15 truncates Qwen3.8 vision inputs at 2,048 tokens",
+          "#312 pr/open [EXL3] keep online-overlay shards BF16 when neither Trellis nor MXFP8 can represent them",
+          "#311 issue/open [EXL3 online overlay] MXFP8 fallback raises for shapes divisible by neither 128 nor 32 (Qwen3.5/3.6/3.8 vision tower K=4304)",
+          "#307 pr/open [GG] Fungible Quant: live fixed-budget MoE precision re-tiering",
+          "#306 pr/open fix(exl3): satisfy PR 228 release checks",
+          "#299 pr/open Add hot-swappable EXL3 MSRT expert cartridges with TP support",
+          "#297 pr/open feat(exl3): extend rank-sliced bitrate to accept K2",
+          "#283 issue/open Mixed-Trellis prefill block/tile is allowlisted, not computed from max(tier_bits): a K3+K5 split exceeds the SM120 shared-memory limit (109568 > 101376)",
+          "#282 issue/open EXL3 retains loader tensors until process_weights_after_loading, so borrowed-buffer load formats can silently corrupt any EXL3 checkpoint",
+          "#277 pr/open perf(exl3): load mixed Trellis directly into tier slabs",
+          "#276 issue/open perf(exl3): mixed-Trellis post-load tier repack adds ~336s on GLM-5.2 TP4",
+          "#275 issue/open [Perf][GLM-5.2/B12X] Avoid no-op fused_norm_rope tasks and redundant B12X top-K preclear",
+          "#274 issue/open [perf][research][GLM-5.2] Fuse or selectively overlap independent MLA Q/indexer projection cones",
+          "#273 issue/open [perf][B12X MLA] Preserve specialized decode and prefill attention in mixed batches",
+          "#272 issue/open [perf][MRV2/MTP] Hydrate draft KV but skip discarded logits/proposals for unfinished chunked prefills",
+          "#271 pr/open fix(b12x): prewarm full-CKV prefill kernels before KV sizing",
+          "#270 pr/open fix(exl3): share compatible native prefill buffers",
+          "#269 pr/open serve: load canonical Fruit QSRT atoms",
+          "#268 pr/open security(nccl): validate VLLM_NCCL_SO_PATH before ctypes.CDLL",
+          "#267 issue/open [security] Unvalidated NCCL .so loading via VLLM_NCCL_SO_PATH (H1)",
+          "#266 pr/open security(sampling): reject prompt_logprobs=-1 to prevent OOM DoS",
+          "#265 pr/open security(exl3): harden native-extension loading and config path traversal",
+          "#264 issue/open [security] prompt_logprobs=-1 causes unbounded memory allocation (OOM DoS)",
+          "#263 issue/open [security] EXL3 trust-boundary: unvalidated .so loading and config path traversal (C1+C2+C3)",
+          "#262 issue/closed [shadow] Upstream #33041: NCCL hang on Blackwell PCIe via IOMMU/ACS (BIOS config, fork uses custom NCCL 2.30.4)",
+          "#261 issue/closed [shadow] Upstream #42063: TP4 hang on 4x RTX 6000 Blackwell PCIe (fork uses VLLM_ENABLE_PCIE_ALLREDUCE)",
+          "#260 issue/closed [shadow] Upstream #45317: DSA sparse MLA on SM12x (fork uses B12X_MLA_SPARSE)",
+          "#259 issue/closed [shadow] Upstream #31085: SM120 NVFP4 MoE backend auto-selection (fork uses --moe-backend b12x)",
+          "#258 pr/closed [Model Runner V2] Account for prompt-logprobs memory",
+          "#257 issue/open [Model Runner V2][OOM] Fixed 1024-token prompt_logprobs chunk can kill EngineCore",
+          "#250 pr/closed [GG] fix(exl3): prewarm mixed-Trellis route packing",
+          "#249 pr/open [GG] Support heterogeneous per-layer routed-expert widths (deepseek_v2 + EXL3)",
+          "#240 pr/open qwen3_5: load rank-sliced EXL3 (Trellis) expert checkpoints"
+        ]
+      }
+    ]
+  },
+  "content_sha256": "0e69aa1a1c0e0c49ba0c0cfcef4a5e26d5f6921572877fba4595737b77d9509a",
+  "content_sha256_rule": "sha256 of json.dumps(receipt, indent=2, ensure_ascii=False) with the content_sha256 and content_sha256_rule keys absent"
+}
