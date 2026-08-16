@@ -420,6 +420,64 @@
  "addenda": [
   {
    "when": "before any of the three conversions ran",
+   "what": "condition 3's byte-parity claim is qualified: 'equal bytes' on the file is NOT equal bytes on the transformer body, because GGUF Q6_K quantizes its token embedding and our builds serialize the embedding at BF16",
+   "evidence": "receipts/gguf-q6_k-tensor-accounting.json, produced by tools/gguf_tensor_table.py from the GGUF's own tensor table read over an HTTP range request (the 21 GiB payload is never downloaded)",
+   "gguf_q6_k_composition": {
+    "token_embd.weight": {
+     "type": "Q6_K",
+     "bytes": 1042944000,
+     "gib": 0.9713
+    },
+    "output.weight": {
+     "type": "Q6_K",
+     "bytes": 1042944000,
+     "gib": 0.9713
+    },
+    "body": {
+     "tensors": 864,
+     "bytes": 20787523584,
+     "gib": 19.3599,
+     "types": {
+      "Q6_K": 359,
+      "Q8_0": 49,
+      "F32": 456
+     }
+    },
+    "tensor_bytes_total_gib": 21.3025,
+    "file_bytes_gib": 21.3128,
+    "metadata_and_padding_bytes": 10996704
+   },
+   "our_parity_build_composition_predicted": {
+    "embed_tokens": {
+     "format": "BF16",
+     "bytes": 2542796800,
+     "gib": 2.3682
+    },
+    "lm_head": {
+     "format": "exl3 K6 mcg",
+     "bytes": 954055684,
+     "gib": 0.8885
+    },
+    "body_and_draft": {
+     "bytes": 19538457664,
+     "gib": 18.1963
+    },
+    "payload_gib": 21.4531
+   },
+   "the_asymmetry": {
+    "embedding": "ours 2.3682 GiB against theirs 0.9713 GiB, so we spend +1.3969 GiB on the embedding at nominal parity",
+    "head": "ours 0.8885 GiB against theirs 0.9713 GiB, so we spend 0.0828 GiB less on the head",
+    "body": "ours 18.1963 GiB against theirs 19.3599 GiB: at a nominally LIGHTER file the GGUF's transformer body carries +1.1636 GiB MORE than ours",
+    "matmul_weights_head_plus_body": "ours 19.0848 GiB against theirs 20.3312 GiB, +1.2464 GiB in their favour",
+    "axis_note": "the published 21.31 GiB for Q6_K is the whole FILE; tensor sums compare as ours 21.4531 GiB against theirs 21.3025 GiB, so we are +0.1506 GiB heavier in tensors and the file figure understates our surplus by the GGUF's 10,996,704 B of metadata and padding",
+    "resident_view": "with the int8 embedding overlay our embedding would be 1.184 GiB resident, narrowing the embedding asymmetry to about +0.21 GiB -- but the fidelity protocol runs NO overlay, so the scored artifact is the BF16-embedding one and the disk-form asymmetry is the one that applies to this measurement"
+   },
+   "what_this_does_to_the_acceptance_question": "nothing to the thresholds and nothing to the registered prediction, which is derived from our own byte spend and does not reference Q6_K's composition. What it qualifies is the READING: the parity build is compared against a GGUF that spends more of its equal file budget on the weights that do the matmuls. So a win for our recipe is stronger than the headline suggests, and a loss is softer -- and either way 'at equal bytes' must be written as 'at equal file bytes, with the GGUF carrying +1.1636 GiB more body because our embedding stays BF16'.",
+   "reporting_rule": "this qualification is stated in the same breath as the result on the card and in the receipt, not in a footnote, and specifically alongside any claim of a win.",
+   "predictions_changed": "none."
+  },
+  {
+   "when": "before any of the three conversions ran",
    "what": "run order changed from (S16-V, alt-calibration, K6-parity) to (S16-V, K6-parity, alt-calibration), and the drop candidate is named",
    "why": "owner decision. K6-parity tests docs/29 L189-198's byte-gap decomposition on an artifact already committed to be kept and uploaded, so it outranks the calibration-content experiment, which cannot move a published verdict whichever way it lands.",
    "also_recorded_by_the_owner": "if condition 2 runs at all, the per-stratum readout registered in addendum 2 is the PRIMARY result and the aggregate difference is secondary.",
