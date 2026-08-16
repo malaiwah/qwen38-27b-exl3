@@ -1,0 +1,275 @@
+{
+  "schema": "qwen38-sibling-on-cards/1",
+  "generated_utc": "2026-08-16T10:03:43Z",
+  "agent": "SiblingOnCards",
+  "question": "every published card said a sibling rebuild should land within measurement resolution and that this had not been tested. It has been tested. Does any card still leave a reader with the weaker statement?",
+  "answer": "no. All six cards now carry the measurement, the byte finding beside it, both controls, and the limitation; all six were republished and re-fetched byte-identical.",
+  "gpu_use": "none. No CUDA process, no nvidia-smi, no container. The RTX 5090 was left to KvDtypeSweep. Every number written to a card was read out of receipts/sibling-rebuild-fidelity.json.",
+  "source_receipt": {
+    "path": "receipts/sibling-rebuild-fidelity.json",
+    "file_sha256": "64b928a12e8ddc4eb67d46606907947c23c4238b2c35474d2510b90be863cb4e",
+    "content_sha256": "846adbcd16c5af27346b656fe0dc9e85752a7816ba3df04bb94fa523734be2c9",
+    "verdict": {
+      "outcome": "indistinguishable",
+      "paired_difference_published_minus_sibling": -3.7550331881264944e-06,
+      "paired_ci95_low": -2.8539685967031816e-05,
+      "paired_ci95_high": 2.061765920895481e-05,
+      "paired_interval_contains_zero": true,
+      "published_mean": 0.002699883159684943,
+      "sibling_mean": 0.002703638192873069
+    }
+  },
+  "numbers_used_and_where_they_come_from": {
+    "-3.755e-06 paired, published minus sibling": "/verdict/paired_difference_published_minus_sibling = -3.7550331881264944e-06",
+    "95 % interval [-2.854e-05, +2.062e-05], brackets zero": "/verdict/paired_ci95_low = -2.8539685967031816e-05, /verdict/paired_ci95_high = 2.061765920895481e-05, /verdict/paired_interval_contains_zero = True",
+    "257 contexts to 255, no ties": "/verdict/recount = {'contexts': 512, 'published_strictly_better': 257, 'sibling_strictly_better': 255, 'exact_ties': 0}",
+    "sibling 0.002704 against published 0.002700": "/verdict/sibling_mean, /verdict/published_mean",
+    "identical protocol: 512 contexts, 1,048,064 scored positions, same shared head, same comparator": "/protocol/identical_to_the_published_score = true; /protocol/fields/{contexts,scored_positions,head_sha256,comparator,suite_token_sha256}/identical all true",
+    "330 source clusters, 10,000 resamples, seed 1": "/paired/bootstrap_difference/{clusters,samples} and /paired_aggregate/method/interval",
+    "399 differing tensors, every one a .trellis payload, 399 of 409 = 97.6 %": "/siblinghood/payload_divergence/trellis_tensors_differing = 399, /non_trellis_differing_count = 0, /siblinghood/recipe_reproduction/manifest_scalars/exl3_modules/published = 409",
+    "39-92 % of the bytes inside each, mean 82.3 % (hydrated card only)": "/siblinghood/payload_divergence/differing_byte_fraction_{min,max,mean} = 0.394078, 0.917627, 0.822991",
+    "top-1 97.80 % against 97.78 % (hydrated card only)": "/published_score/top1_agreement, /sibling_score/top1_agreement",
+    "control 1: the reference swap is a measured no-op, published mean and all 512 per-context rows bitwise": "/protocol/reference_capture_interchangeability/reproduces_published_mean_bitwise = true; /capture_noise_floor/paired/{difference_a_minus_b, median_difference} = 0.0 over 512 contexts with a bootstrap interval of [0.0, 0.0] and every largest-advantage row 0.0",
+    "control 2: recapture reproduces the published mean exactly, so the floor is zero and not a tolerance": "/capture_noise_floor/why_it_matters, source receipts/capture-determinism.json",
+    "the limitation as stated on every card": "/implications/this_run/what_it_does_not_license",
+    "no published fidelity number needs amending": "/implications/this_run/for_every_published_fidelity_number[2]",
+    "EDA card: +0.000366 reallocation margin, and -0.0000038 is about 1 % of it": "/scale/anchors/hydrated_vs_error_driven/abs_margin = 0.0003662964754934233 and /sibling_difference_as_fraction_of_this_margin = 0.01025134949242479",
+    "dataset card: the sibling capture is published at captures/shard-0000/hidden-hyd-sibling": "/preservation/sibling_capture/{repo,path,files} = malaiwah/qwen38-27b-fidelity-suite-v5, captures/shard-0000/hidden-hyd-sibling, 513; re-verified here by downloading its capture-manifest.json from the dataset with a throwaway HF_HOME"
+  },
+  "audit_method": "grepped the six cards for 'not been tested', 'untested', 'expectation to test', 'untested expectation', 'open experiment', 'should land' and 'sibling', then read every hit in place rather than trusting receipts/converter-honesty-pass.json's list. That list named the sites where the wording was introduced; the current text held exactly six of them, one per card, and the grep is repeated below post-edit. Pre-edit line numbers are at git 6dbdcb1 (which touched only docs/29), post-edit at 566dda9.",
+  "edits": [
+    {
+      "file": "MODEL_CARD-K5K6-hydrated.md",
+      "pre_edit_lines": "155-157",
+      "post_edit_lines": "155-175",
+      "section": "### What a rebuild of this recipe gives you -> **What it changes, and what it does not.**",
+      "wording_removed": "\"a sibling should land within measurement resolution, but that is now an expectation to test, and it has not been tested\"",
+      "wording_now": "the fullest treatment of the six: the sibling was built on the same converter worktree and differs in 399 .trellis payloads and nothing else; scored on the identical protocol it is 0.002704 against 0.002700, paired -3.755e-06 with a 95 % interval of [-2.854e-05, +2.062e-05] that brackets zero, 257 to 255 with no ties and top-1 97.80 % against 97.78 %; both controls named in one clause; then the joint statement (97.6 % of quantized modules differ in bytes, fidelity the same to within our resolution) and the limitation. The retained sentence about the byte-diff floor now opens 'The consequence of the byte difference is still a floor'.",
+      "carries_the_paired_result": true,
+      "carries_the_byte_finding_beside_it": true,
+      "carries_both_controls": true,
+      "carries_the_limitation": "one sibling, one recipe, one shard, at this protocol's resolution; bounds the converter's fidelity variance rather than estimating it; explicitly not a claim that converter nondeterminism is fidelity-neutral in general",
+      "links": "receipts/sibling-rebuild-fidelity.json"
+    },
+    {
+      "file": "MODEL_CARD-K5K6.md",
+      "pre_edit_lines": "72-73",
+      "post_edit_lines": "72-87",
+      "section": "composition table -> the rebuild paragraph under SHA256SUMS",
+      "wording_removed": "\"that is now an untested expectation\"",
+      "wording_now": "the same measurement in short form, attributed to the hydrated recipe (which is where it was measured), with both controls, the joint byte/fidelity statement and the limitation; the retained 'Practically: check the digest ...' sentence follows.",
+      "carries_the_paired_result": true,
+      "carries_the_byte_finding_beside_it": true,
+      "carries_both_controls": true,
+      "carries_the_limitation": "one sibling, one recipe, one shard, at this protocol's resolution; bounds the converter's fidelity variance rather than estimating it; explicitly not a claim that converter nondeterminism is fidelity-neutral in general",
+      "links": "receipts/sibling-rebuild-fidelity.json"
+    },
+    {
+      "file": "MODEL_CARD-K5K6-context.md",
+      "pre_edit_lines": "112-113",
+      "post_edit_lines": "112-127",
+      "section": "## Recipe -> the rebuild paragraph",
+      "wording_removed": "\"that is now an untested expectation\"",
+      "wording_now": "same short form as MODEL_CARD-K5K6.md, same attribution to the hydrated recipe, same controls and limitation.",
+      "carries_the_paired_result": true,
+      "carries_the_byte_finding_beside_it": true,
+      "carries_both_controls": true,
+      "carries_the_limitation": "one sibling, one recipe, one shard, at this protocol's resolution; bounds the converter's fidelity variance rather than estimating it; explicitly not a claim that converter nondeterminism is fidelity-neutral in general",
+      "links": "receipts/sibling-rebuild-fidelity.json"
+    },
+    {
+      "file": "MODEL_CARD-K4.md",
+      "pre_edit_lines": "1125-1126",
+      "post_edit_lines": "1125-1140",
+      "section": "## Reproducing this quant -> **What that command reproduces, and what it does not.**",
+      "wording_removed": "\"'rebuild this and you get these numbers' is now an untested expectation rather than an identity\"",
+      "wording_now": "same short form, attributed to the hydrated recipe, with both controls, the joint statement and the limitation; the retained 'Check the digest ...' sentence follows.",
+      "carries_the_paired_result": true,
+      "carries_the_byte_finding_beside_it": true,
+      "carries_both_controls": true,
+      "carries_the_limitation": "one sibling, one recipe, one shard, at this protocol's resolution; bounds the converter's fidelity variance rather than estimating it; explicitly not a claim that converter nondeterminism is fidelity-neutral in general",
+      "links": "receipts/sibling-rebuild-fidelity.json"
+    },
+    {
+      "file": "MODEL_CARD-EDA-research.md",
+      "pre_edit_lines": "253",
+      "post_edit_lines": "253-269",
+      "section": "## Reproduce this -> **What step 2 reproduces is the recipe, not this checkpoint.**",
+      "wording_removed": "\"'rebuild it and you get this interval' is an untested expectation\"",
+      "wording_now": "the measurement in this card's units (-0.0000038 with 95 % CI [-0.0000285, +0.0000206] over the same 330 source clusters), both controls, and the limitation.",
+      "carries_the_paired_result": true,
+      "carries_the_byte_finding_beside_it": true,
+      "carries_both_controls": true,
+      "carries_the_limitation": "one sibling, one recipe, one shard, at this protocol's resolution; bounds the converter's fidelity variance rather than estimating it; explicitly not a claim that converter nondeterminism is fidelity-neutral in general",
+      "links": "receipts/sibling-rebuild-fidelity.json",
+      "extra": "the one card that gets the comparison it is for: a byte-budget-identical REALLOCATION moved KLD by +0.000366 and lost, while a byte-different, ALLOCATION-IDENTICAL rebuild moved it by -0.0000038 -- about 1 % of that margin -- and did not. Stated as 'the allocation is what fidelity is made of, and the trellis bytes are not'."
+    },
+    {
+      "file": "DATASET_CARD-v5.md",
+      "pre_edit_lines": "237-238",
+      "post_edit_lines": "244-259",
+      "section": "## Replay: score your own checkpoint against the published BF16 reference -> the sibling paragraph",
+      "wording_removed": "\"whether a sibling lands inside our interval is an open experiment rather than a settled one\"",
+      "wording_now": "the measurement, both controls, the joint byte/fidelity statement, the limitation, and a pointer to the sibling's own capture in this dataset so the difference is re-derivable by replay alone.",
+      "carries_the_paired_result": true,
+      "carries_the_byte_finding_beside_it": true,
+      "carries_both_controls": true,
+      "carries_the_limitation": "one sibling, one recipe, one shard, at this protocol's resolution; bounds the converter's fidelity variance rather than estimating it; explicitly not a claim that converter nondeterminism is fidelity-neutral in general",
+      "links": "receipts/sibling-rebuild-fidelity.json"
+    },
+    {
+      "file": "DATASET_CARD-v5.md",
+      "pre_edit_lines": "inserted after 83",
+      "post_edit_lines": "84-90",
+      "section": "the repository tree listing",
+      "wording_removed": "nothing; the tree listed hidden-nvfp4, hidden-eda and hidden-hyd-rematch but not the sibling capture that was uploaded with the sibling score",
+      "wording_now": "captures/shard-0000/hidden-hyd-sibling/ described as a sibling of the published hydrated checkpoint, differing in 399 .trellis payloads and nothing else, whose replay reproduces the paired -3.755e-06 [-2.854e-05, +2.062e-05]",
+      "verified": "the path was confirmed present in malaiwah/qwen38-27b-fidelity-suite-v5 by downloading captures/shard-0000/hidden-hyd-sibling/capture-manifest.json with a throwaway HF_HOME before the claim was written"
+    }
+  ],
+  "post_edit_grep": {
+    "patterns": [
+      "open experiment",
+      "expectation to test",
+      "has not been tested",
+      "untested expectation"
+    ],
+    "scope": "the six cards",
+    "result": "the only remaining hits are the four cards whose new sentences say the expectation 'is no longer an untested expectation' / 'is no longer an open experiment'. No card asserts the question is open."
+  },
+  "publication": {
+    "tool": "tools/publish_cards.py",
+    "hf_home": "/var/tmp/hf-home-3",
+    "message": "the sibling rebuild was scored: paired -3.755e-06 [-2.854e-05, +2.062e-05], brackets zero, so the untested-expectation wording is replaced by the measurement on all six cards",
+    "receipt": {
+      "path": "receipts/sibling-on-cards-publication.json",
+      "generated_utc": "2026-08-16T10:01:46Z",
+      "all_byte_identical": true
+    },
+    "per_repo": [
+      {
+        "repo": "malaiwah/Qwen3.8-27B-EXL3-K5K6-context",
+        "card": "MODEL_CARD-K5K6-context.md",
+        "bytes": 101909,
+        "sha256": "15b3a4c7fa1ecc4ac9b2b9ae798f4666a68486458e48f2b0f384193526eac71e",
+        "byte_identical": true,
+        "docs_sha256sums_readme_current": true,
+        "published_before_sha256": "3882e9e91fb2f099819dbf535f05a56ef4ead45772099fa76d8aa52d22997936"
+      },
+      {
+        "repo": "malaiwah/Qwen3.8-27B-EXL3-K5K6",
+        "card": "MODEL_CARD-K5K6.md",
+        "bytes": 97730,
+        "sha256": "82e84d809ce7b09d2e6471bdf543e596dfeeb33030a4001ec3fa96a5cece0bdc",
+        "byte_identical": true,
+        "docs_sha256sums_readme_current": true,
+        "published_before_sha256": "25579aeba6ff98e5df219002801cf9c81c0592845a4fa04ce2ead642c49f151f"
+      },
+      {
+        "repo": "malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated",
+        "card": "MODEL_CARD-K5K6-hydrated.md",
+        "bytes": 88039,
+        "sha256": "7d1c824ae755bc65eef3ec3872b88730d5b66be2b7fd0a9340f50b257da12c0e",
+        "byte_identical": true,
+        "docs_sha256sums_readme_current": true,
+        "published_before_sha256": "0cfc903b048f41b55b723597c57f4460f1af7debe4e8d054bf76b758a61654ef"
+      },
+      {
+        "repo": "malaiwah/Qwen3.8-27B-K4",
+        "card": "MODEL_CARD-K4.md",
+        "bytes": 93169,
+        "sha256": "cb084a71d06aad7a7b69c3c2a8bad8c5288cd61bfbc4e39e3956c5b2edd7ef25",
+        "byte_identical": true,
+        "docs_sha256sums_readme_current": true,
+        "published_before_sha256": "1eff9a165780c127ce3cb5122239f8b383f2f54031bffefd0b96f82918f42844"
+      },
+      {
+        "repo": "malaiwah/Qwen3.8-27B-EXL3-EDA-research",
+        "card": "MODEL_CARD-EDA-research.md",
+        "bytes": 22021,
+        "sha256": "41b830ae18c005d3c2ad1f0ddb2b835f9e57e334c751352d6623a23d8fb28eb7",
+        "byte_identical": true,
+        "docs_sha256sums_readme_current": true,
+        "published_before_sha256": "ae50bde17143e731510a0ddce31350f893e00e897dadfc4c97ea946820080023"
+      },
+      {
+        "repo": "malaiwah/qwen38-27b-fidelity-suite-v5",
+        "card": "DATASET_CARD-v5.md",
+        "bytes": 19286,
+        "sha256": "8eb3821a6c110517bf04444e9a9613a270475186ff762a504e5e44ab2045b9bf",
+        "byte_identical": true,
+        "docs_sha256sums_readme_current": null,
+        "published_before_sha256": "ddcb826115cf1adf4eabd6d903e8a70cb01a0bf193eb58fb63cefcfce7560c59"
+      }
+    ]
+  },
+  "independent_refetch": {
+    "method": "a second round after the push, in a throwaway HF_HOME created for this check alone, each README.md re-downloaded and compared byte for byte against the local card",
+    "rounds": 2,
+    "per_repo": {
+      "malaiwah/Qwen3.8-27B-EXL3-K5K6-context": {
+        "card": "MODEL_CARD-K5K6-context.md",
+        "bytes": 101909,
+        "sha256": "15b3a4c7fa1ecc4ac9b2b9ae798f4666a68486458e48f2b0f384193526eac71e",
+        "identical_to_local": true
+      },
+      "malaiwah/Qwen3.8-27B-EXL3-K5K6": {
+        "card": "MODEL_CARD-K5K6.md",
+        "bytes": 97730,
+        "sha256": "82e84d809ce7b09d2e6471bdf543e596dfeeb33030a4001ec3fa96a5cece0bdc",
+        "identical_to_local": true
+      },
+      "malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated": {
+        "card": "MODEL_CARD-K5K6-hydrated.md",
+        "bytes": 88039,
+        "sha256": "7d1c824ae755bc65eef3ec3872b88730d5b66be2b7fd0a9340f50b257da12c0e",
+        "identical_to_local": true
+      },
+      "malaiwah/Qwen3.8-27B-K4": {
+        "card": "MODEL_CARD-K4.md",
+        "bytes": 93169,
+        "sha256": "cb084a71d06aad7a7b69c3c2a8bad8c5288cd61bfbc4e39e3956c5b2edd7ef25",
+        "identical_to_local": true
+      },
+      "malaiwah/Qwen3.8-27B-EXL3-EDA-research": {
+        "card": "MODEL_CARD-EDA-research.md",
+        "bytes": 22021,
+        "sha256": "41b830ae18c005d3c2ad1f0ddb2b835f9e57e334c751352d6623a23d8fb28eb7",
+        "identical_to_local": true
+      },
+      "malaiwah/qwen38-27b-fidelity-suite-v5": {
+        "card": "DATASET_CARD-v5.md",
+        "bytes": 19286,
+        "sha256": "8eb3821a6c110517bf04444e9a9613a270475186ff762a504e5e44ab2045b9bf",
+        "identical_to_local": true
+      }
+    },
+    "all_byte_identical": true
+  },
+  "git": {
+    "commit": "566dda9bbe5ca60fab39e91f400656fc64d3dff1",
+    "parent": "6dbdcb1755d86a80c62deaa0630583b40d159277",
+    "pushed": [
+      "origin (gitea)",
+      "github"
+    ],
+    "files": [
+      "MODEL_CARD-K5K6-hydrated.md",
+      "MODEL_CARD-K5K6.md",
+      "MODEL_CARD-K5K6-context.md",
+      "MODEL_CARD-K4.md",
+      "MODEL_CARD-EDA-research.md",
+      "DATASET_CARD-v5.md"
+    ]
+  },
+  "not_touched": {
+    "docs/29-plan-and-loose-ends.md": "Main's. Its rank-8 block is the other half of this finding and was not edited here.",
+    "receipts/converter-determinism.json and receipts/converter-honesty-pass.json": "historical records of what was true when they were written; a receipt that said the question was open stays saying it, and receipts/sibling-rebuild-fidelity.json is what supersedes it.",
+    "everything else on the six cards": "five card passes had already settled it; only the untested-expectation wording moved, plus the one missing tree line on the dataset card."
+  },
+  "content_sha256": "1dcd06729e3e2fcc3a52391830d97c2a3214264761fd2d4d16c9ebee5e570290",
+  "content_sha256_excludes": [
+    "content_sha256",
+    "content_sha256_excludes"
+  ]
+}
