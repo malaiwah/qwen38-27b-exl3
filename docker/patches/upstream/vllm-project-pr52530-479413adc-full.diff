@@ -1,0 +1,586 @@
+diff --git a/tests/v1/core/test_async_scheduler.py b/tests/v1/core/test_async_scheduler.py
+index 967f0857a174..f9ea6610a601 100644
+--- a/tests/v1/core/test_async_scheduler.py
++++ b/tests/v1/core/test_async_scheduler.py
+@@ -288,6 +288,7 @@ def test_abort_request_when_structured_output_fsm_cannot_advance():
+     scheduler.finished_req_ids = set()
+     scheduler.finished_req_ids_dict = None
+     scheduler.grammar_compile_error_reqs = set()
++    scheduler.unservable_reqs = set()
+     scheduler.vllm_config = Mock()
+     scheduler.vllm_config.model_config.enable_return_routed_experts = False
+     scheduler.enable_return_routed_experts = False
+@@ -296,6 +297,8 @@ def test_abort_request_when_structured_output_fsm_cannot_advance():
+     scheduler.defer_block_free = False
+     scheduler.make_stats = Mock(return_value=None)
+     scheduler.max_model_len = 128
++    # Equal to max_model_len whenever the pool covers the whole window.
++    scheduler.max_servable_num_tokens = scheduler.max_model_len
+ 
+     def free_request(req, delay_free_blocks=False):
+         scheduler.finished_req_ids.add(req.request_id)
+diff --git a/tests/v1/core/test_kv_pool_unservable_requests.py b/tests/v1/core/test_kv_pool_unservable_requests.py
+new file mode 100644
+index 000000000000..b5ced7f5dd52
+--- /dev/null
++++ b/tests/v1/core/test_kv_pool_unservable_requests.py
+@@ -0,0 +1,327 @@
++# SPDX-License-Identifier: Apache-2.0
++# SPDX-FileCopyrightText: Copyright contributors to the vLLM project
++"""Requests the KV cache pool can never hold (#52520).
++
++`_check_enough_kv_cache_memory` sizes the pool from each spec's
++`max_memory_usage_bytes`, but `BlockPool` permanently reserves one block as the
++null block, so a pool built at exactly that minimum is one block short of one
++`max_model_len` request. Runtime admission used its own incremental estimate and
++admitted such a request anyway: it prefilled to ~99 % of the pool, was
++descheduled with that work discarded, and was never scheduled again -- a stall
++whose only signal is a `waiting` gauge.
++
++`Scheduler.max_servable_num_tokens` now derives that limit from the same
++`kv_cache_utils` helper the startup check uses. It bounds a request from both
++ends: a prompt already past it is failed at admission instead of being retried,
++and a generate request that would grow past it stops there as a length cap
++instead of being preempted at that token into a queue it can no longer leave.
++"""
++
++import pytest
++import torch
++
++from vllm.config import (
++    CacheConfig,
++    ModelConfig,
++    SchedulerConfig,
++    SpeculativeConfig,
++    VllmConfig,
++)
++from vllm.utils.math_utils import cdiv
++from vllm.v1.core.sched.scheduler import Scheduler
++from vllm.v1.core.single_type_kv_cache_manager import register_all_kvcache_specs
++from vllm.v1.kv_cache_interface import (
++    FullAttentionSpec,
++    KVCacheConfig,
++    KVCacheGroupSpec,
++    MambaSpec,
++)
++from vllm.v1.outputs import ModelRunnerOutput
++from vllm.v1.request import RequestStatus
++from vllm.v1.structured_output import StructuredOutputManager
++
++from .utils import create_requests
++
++pytestmark = pytest.mark.cpu_test
++
++# Shape of the deployment the stall was reported on (hybrid GDN + full attention,
++# MTP depth 3, `--mamba-cache-mode align`), scaled down to unit-test sizes.
++BLOCK_SIZE = 16
++MAX_MODEL_LEN = 64 * BLOCK_SIZE  # 1024
++NUM_SPEC_BLOCKS = 3
++MAX_NUM_BATCHED_TOKENS = 16 * BLOCK_SIZE  # 256; forces a chunked prefill
++
++# Blocks the startup check demands: `cdiv(max_model_len, block_size)` for the
++# full-attention group plus `2 + num_speculative_blocks` for the mamba group in
++# align mode (`MambaSpec.max_memory_usage_bytes`).
++MAMBA_BLOCKS = 2 + NUM_SPEC_BLOCKS
++STARTUP_MIN_BLOCKS = cdiv(MAX_MODEL_LEN, BLOCK_SIZE) + MAMBA_BLOCKS  # 69
++
++# One of those blocks is the null block, so a request can use at most
++# `STARTUP_MIN_BLOCKS - 1 - MAMBA_BLOCKS` blocks of attention KV.
++SERVABLE_LEN = (STARTUP_MIN_BLOCKS - 1 - MAMBA_BLOCKS) * BLOCK_SIZE  # 1008
++
++
++def _full_attention_spec() -> FullAttentionSpec:
++    return FullAttentionSpec(
++        block_size=BLOCK_SIZE, num_kv_heads=1, head_size=1, dtype=torch.float32
++    )
++
++
++def _mamba_spec() -> MambaSpec:
++    return MambaSpec(
++        block_size=BLOCK_SIZE,
++        shapes=((1, 1),),
++        dtypes=(torch.float32,),
++        mamba_cache_mode="align",
++        num_speculative_blocks=NUM_SPEC_BLOCKS,
++        # Hybrid pools pad every group's page up to a common size; the bound
++        # helpers require that uniformity.
++        page_size_padded=_full_attention_spec().page_size_bytes,
++    )
++
++
++def _make_scheduler(num_blocks: int) -> Scheduler:
++    model_config = ModelConfig(
++        model="facebook/opt-125m",
++        trust_remote_code=True,
++        dtype="float16",
++        seed=42,
++        skip_tokenizer_init=True,
++        max_model_len=MAX_MODEL_LEN,
++    )
++    vllm_config = VllmConfig(
++        scheduler_config=SchedulerConfig(
++            max_num_seqs=1,
++            max_num_batched_tokens=MAX_NUM_BATCHED_TOKENS,
++            max_model_len=MAX_MODEL_LEN,
++            enable_chunked_prefill=True,
++            is_encoder_decoder=False,
++            watermark=0.0,
++        ),
++        model_config=model_config,
++        cache_config=CacheConfig(
++            block_size=BLOCK_SIZE,
++            enable_prefix_caching=True,
++            mamba_cache_mode="align",
++        ),
++        speculative_config=SpeculativeConfig(
++            model="ngram",
++            method="ngram",
++            num_speculative_tokens=NUM_SPEC_BLOCKS,
++            prompt_lookup_max=NUM_SPEC_BLOCKS,
++            prompt_lookup_min=1,
++        ),
++    )
++    vllm_config.cache_config.num_gpu_blocks = num_blocks
++    kv_cache_config = KVCacheConfig(
++        num_blocks=num_blocks,
++        kv_cache_tensors=[],
++        kv_cache_groups=[
++            KVCacheGroupSpec(["full_attn"], _full_attention_spec()),
++            KVCacheGroupSpec(["mamba"], _mamba_spec()),
++        ],
++    )
++    register_all_kvcache_specs(vllm_config)
++    return Scheduler(
++        vllm_config=vllm_config,
++        kv_cache_config=kv_cache_config,
++        structured_output_manager=StructuredOutputManager(vllm_config),
++        block_size=BLOCK_SIZE,
++        hash_block_size=BLOCK_SIZE,
++        log_stats=True,
++    )
++
++
++def _model_output(scheduler_output, sample: bool) -> ModelRunnerOutput:
++    req_ids = list(scheduler_output.num_scheduled_tokens)
++    return ModelRunnerOutput(
++        req_ids=req_ids,
++        req_id_to_index={req_id: i for i, req_id in enumerate(req_ids)},
++        sampled_token_ids=[[1000] if sample else [] for _ in req_ids],
++        logprobs=None,
++        prompt_logprobs_dict={},
++        pooler_output=[],
++    )
++
++
++def _run(scheduler: Scheduler, request, max_steps: int = 64) -> int:
++    """Step until the request finishes; return the peak computed token count."""
++    peak = 0
++    for _ in range(max_steps):
++        scheduler_output = scheduler.schedule()
++        peak = max(peak, request.num_computed_tokens)
++        scheduler.update_from_output(
++            scheduler_output,
++            _model_output(
++                scheduler_output,
++                request.num_computed_tokens >= request.num_prompt_tokens,
++            ),
++        )
++        if request.is_finished():
++            break
++    return peak
++
++
++def test_max_servable_num_tokens_reserves_the_null_block():
++    """The bound must exclude the null block and the mamba group's own blocks."""
++    scheduler = _make_scheduler(STARTUP_MIN_BLOCKS)
++    assert scheduler.max_servable_num_tokens == SERVABLE_LEN
++    # A pool built at the startup minimum cannot serve the whole window: that
++    # asymmetry is what admission has to see.
++    assert scheduler.max_servable_num_tokens < MAX_MODEL_LEN
++    # One more block covers it, and then the bound must not bite at all.
++    assert _make_scheduler(STARTUP_MIN_BLOCKS + 1).max_servable_num_tokens >= (
++        MAX_MODEL_LEN
++    )
++
++
++def test_unservable_request_is_failed_not_prefilled_and_retried():
++    """A request past the bound must never be scheduled, and must not linger.
++
++    Before the fix it was admitted, chunk-prefilled to `SERVABLE_LEN` tokens,
++    descheduled when the last chunk could not be allocated, and then refused by
++    the same gate on every later step -- zero output tokens, forever.
++    """
++    scheduler = _make_scheduler(STARTUP_MIN_BLOCKS)
++    [request] = create_requests(
++        num_requests=1,
++        num_tokens=MAX_MODEL_LEN - 1,
++        max_tokens=1,
++        block_size=BLOCK_SIZE,
++    )
++    scheduler.add_request(request)
++
++    scheduler_output = scheduler.schedule()
++    assert not scheduler_output.num_scheduled_tokens
++    assert request.num_computed_tokens == 0
++
++    scheduler.update_from_output(
++        scheduler_output, _model_output(scheduler_output, False)
++    )
++    assert request.status == RequestStatus.FINISHED_IGNORED
++    assert request.num_preemptions == 0
++    assert not scheduler.has_unfinished_requests()
++
++
++def test_request_at_the_bound_is_failed_because_it_needs_an_output_slot():
++    """`max_servable_num_tokens` is a sequence length, not a prompt length."""
++    scheduler = _make_scheduler(STARTUP_MIN_BLOCKS)
++    [request] = create_requests(
++        num_requests=1,
++        num_tokens=SERVABLE_LEN,
++        max_tokens=1,
++        block_size=BLOCK_SIZE,
++    )
++    scheduler.add_request(request)
++
++    scheduler_output = scheduler.schedule()
++    assert not scheduler_output.num_scheduled_tokens
++    scheduler.update_from_output(
++        scheduler_output, _model_output(scheduler_output, False)
++    )
++    assert request.status == RequestStatus.FINISHED_IGNORED
++
++
++def test_servable_request_at_the_same_pool_still_runs():
++    """The bound must not reject a request the pool can actually hold."""
++    scheduler = _make_scheduler(STARTUP_MIN_BLOCKS)
++    [request] = create_requests(
++        num_requests=1,
++        num_tokens=SERVABLE_LEN - 1,
++        max_tokens=1,
++        block_size=BLOCK_SIZE,
++    )
++    scheduler.add_request(request)
++
++    peak = _run(scheduler, request)
++    assert peak == SERVABLE_LEN - 1
++    assert request.num_preemptions == 0
++    assert request.num_output_tokens == 1
++    assert request.status == RequestStatus.FINISHED_LENGTH_CAPPED
++
++
++def test_pool_with_headroom_serves_the_whole_window():
++    """One block of headroom restores the pre-fix behaviour exactly."""
++    scheduler = _make_scheduler(STARTUP_MIN_BLOCKS + 1)
++    [request] = create_requests(
++        num_requests=1,
++        num_tokens=MAX_MODEL_LEN - 1,
++        max_tokens=1,
++        block_size=BLOCK_SIZE,
++    )
++    scheduler.add_request(request)
++
++    peak = _run(scheduler, request)
++    assert peak == MAX_MODEL_LEN - 1
++    assert request.num_preemptions == 0
++    assert request.num_output_tokens == 1
++    assert request.status == RequestStatus.FINISHED_LENGTH_CAPPED
++
++
++# The decode case. A prompt this long clears the frontend's
++# `prompt + max_tokens <= max_model_len` check and admission's
++# `prompt + 1 <= max_servable_num_tokens` check, and then generation walks the
++# sequence past the ceiling: there are only `SERVABLE_LEN - DECODE_PROMPT_LEN`
++# output slots under it, out of `DECODE_MAX_TOKENS` asked for.
++DECODE_PROMPT_LEN = SERVABLE_LEN - 8  # 1000
++DECODE_MAX_TOKENS = MAX_MODEL_LEN - DECODE_PROMPT_LEN  # 24
++
++
++def test_generation_stops_at_the_bound_instead_of_stalling_mid_decode():
++    """A generate request must not be preempted into a queue it cannot leave.
++
++    Both length checks pass, so the request runs. At output token 9 the
++    sequence would need a block the pool does not have. Unfixed, it is
++    preempted there -- and is then longer than the pool can re-prefill, so it
++    is never scheduled again: output frozen mid-answer, one preemption, and
++    `waiting` non-empty forever. The pool's ceiling is a length cap, so the
++    request must stop on it with the tokens it produced.
++    """
++    scheduler = _make_scheduler(STARTUP_MIN_BLOCKS)
++    [request] = create_requests(
++        num_requests=1,
++        num_tokens=DECODE_PROMPT_LEN,
++        max_tokens=DECODE_MAX_TOKENS,
++        ignore_eos=True,
++        block_size=BLOCK_SIZE,
++    )
++    # Precisely the case the admission gate lets through.
++    assert request.num_tokens + 1 <= scheduler.max_servable_num_tokens
++    assert request.num_tokens + DECODE_MAX_TOKENS > scheduler.max_servable_num_tokens
++    scheduler.add_request(request)
++
++    peak = _run(scheduler, request)
++
++    assert request.status == RequestStatus.FINISHED_LENGTH_CAPPED
++    assert request.num_tokens == SERVABLE_LEN
++    assert request.num_output_tokens == SERVABLE_LEN - DECODE_PROMPT_LEN
++    assert request.num_preemptions == 0
++    assert peak <= SERVABLE_LEN
++    assert not scheduler.has_unfinished_requests()
++
++
++def test_generation_is_not_capped_when_the_pool_covers_the_window():
++    """The cap must not shorten an answer the pool can actually hold.
++
++    Same request, one block of headroom: it must produce every token it asked
++    for, so the bound cannot be silently truncating generation in the normal
++    case.
++    """
++    scheduler = _make_scheduler(STARTUP_MIN_BLOCKS + 1)
++    assert scheduler.max_servable_num_tokens >= MAX_MODEL_LEN
++    [request] = create_requests(
++        num_requests=1,
++        num_tokens=DECODE_PROMPT_LEN,
++        max_tokens=DECODE_MAX_TOKENS,
++        ignore_eos=True,
++        block_size=BLOCK_SIZE,
++    )
++    scheduler.add_request(request)
++
++    _run(scheduler, request)
++
++    assert request.status == RequestStatus.FINISHED_LENGTH_CAPPED
++    assert request.num_output_tokens == DECODE_MAX_TOKENS
++    assert request.num_tokens == MAX_MODEL_LEN
++    assert request.num_preemptions == 0
+diff --git a/tests/v1/core/test_scheduler.py b/tests/v1/core/test_scheduler.py
+index c0932d975c18..bed84197f8c7 100644
+--- a/tests/v1/core/test_scheduler.py
++++ b/tests/v1/core/test_scheduler.py
+@@ -3278,6 +3278,7 @@ def test_abort_request_when_structured_output_fsm_cannot_advance():
+     scheduler.finished_req_ids = set()
+     scheduler.finished_req_ids_dict = None
+     scheduler.grammar_compile_error_reqs = set()
++    scheduler.unservable_reqs = set()
+     scheduler.vllm_config = Mock()
+     scheduler.vllm_config.model_config.enable_return_routed_experts = False
+     scheduler.enable_return_routed_experts = False
+@@ -3286,6 +3287,8 @@ def test_abort_request_when_structured_output_fsm_cannot_advance():
+     scheduler.defer_block_free = False
+     scheduler.make_stats = Mock(return_value=None)
+     scheduler.max_model_len = 128
++    # Equal to max_model_len whenever the pool covers the whole window.
++    scheduler.max_servable_num_tokens = scheduler.max_model_len
+ 
+     def free_request(req: Request, delay_free_blocks: bool = False):
+         scheduler.finished_req_ids.add(req.request_id)
+diff --git a/vllm/v1/core/kv_cache_utils.py b/vllm/v1/core/kv_cache_utils.py
+index ad51e4b2b397..276de27ae3ef 100644
+--- a/vllm/v1/core/kv_cache_utils.py
++++ b/vllm/v1/core/kv_cache_utils.py
+@@ -1973,6 +1973,44 @@ def fits(model_len: int) -> bool:
+         vllm_config.model_config.max_model_len = original_max
+ 
+ 
++def max_servable_num_tokens(
++    vllm_config: VllmConfig,
++    kv_cache_groups: list[KVCacheGroupSpec],
++    num_blocks: int,
++) -> int | None:
++    """
++    The longest sequence a pool of `num_blocks` blocks can hold for one request.
++
++    `BlockPool` permanently reserves one block as the null block, so only
++    `num_blocks - 1` blocks are ever available to a request.
++
++    This is the same bound `_check_enough_kv_cache_memory` reports as "the
++    estimated maximum model length", evaluated against the block count the pool
++    was actually built with. Sharing one function between the startup pool sizer
++    and the runtime admission gate is what keeps them from drifting; when they
++    drift, the engine admits requests that no future pool state can hold
++    (#52520). #40946 did the same for SWA / chunked-local attention.
++
++    Returns `None` when the groups cannot be priced per block, i.e. exactly when
++    the pool itself was not sized per block, so this never invents a bound the
++    startup check did not apply.
++    """
++    if not kv_cache_groups:
++        return None
++    if (
++        len(kv_cache_groups) > 1
++        and len({g.kv_cache_spec.page_size_bytes for g in kv_cache_groups}) > 1
++        and not _use_packed_kv_cache_config(vllm_config, kv_cache_groups)
++    ):
++        return None
++    usable_blocks = max(num_blocks - 1, 0)
++    return _estimate_max_model_len_from_groups(
++        vllm_config,
++        kv_cache_groups,
++        usable_blocks * _pool_bytes_per_block(vllm_config, kv_cache_groups),
++    )
++
++
+ def _auto_fit_max_model_len(
+     vllm_config: VllmConfig,
+     projected_groups_per_worker: list[list[KVCacheGroupSpec]],
+diff --git a/vllm/v1/core/sched/scheduler.py b/vllm/v1/core/sched/scheduler.py
+index e4a21328660a..6c05bbbc8d39 100644
+--- a/vllm/v1/core/sched/scheduler.py
++++ b/vllm/v1/core/sched/scheduler.py
+@@ -37,7 +37,7 @@
+ )
+ from vllm.v1.core.kv_cache_manager import KVCacheBlocks, KVCacheManager
+ from vllm.v1.core.kv_cache_metrics import KVCacheMetricsCollector
+-from vllm.v1.core.kv_cache_utils import KVCacheBlock
++from vllm.v1.core.kv_cache_utils import KVCacheBlock, max_servable_num_tokens
+ from vllm.v1.core.sched.interface import PauseState, SchedulerInterface
+ from vllm.v1.core.sched.output import (
+     CachedRequestData,
+@@ -211,6 +211,10 @@ def __init__(
+         # update_from_output.
+         self.grammar_compile_error_reqs: set[str] = set()
+ 
++        # Requests longer than `max_servable_num_tokens` (below), finished as
++        # per-request length errors in update_from_output.
++        self.unservable_reqs: set[str] = set()
++
+         # Encoder-related.
+         # Calculate encoder cache size if applicable
+         supports_mm_inputs = mm_registry.supports_multimodal_inputs(
+@@ -295,6 +299,39 @@ def __init__(
+         if self.connector is not None:
+             self.connector.bind_gpu_block_pool(self.kv_cache_manager.block_pool)
+ 
++        # Longest sequence this pool can hold for one request, from the same
++        # per-spec bounds the startup check uses. Normally >= max_model_len,
++        # because that check refuses to size a pool that cannot serve one
++        # max_model_len request. When it is smaller, a sequence beyond it can
++        # never be scheduled at any future time, however much drains, so it
++        # bounds a request from both ends rather than being retried forever
++        # (#52520): a prompt already past it is failed at admission (see
++        # `add_request`), and a generate request that would grow past it stops
++        # there as a length cap (see `_update_request_with_output`). Falsy
++        # means there is no per-block bound to enforce -- `None` for layouts
++        # the startup check cannot price either, `0` for a pool with no usable
++        # blocks -- and the frontend's `max_model_len` check stands alone,
++        # exactly as before.
++        self.max_servable_num_tokens: int = (
++            max_servable_num_tokens(
++                vllm_config, kv_cache_config.kv_cache_groups, kv_cache_config.num_blocks
++            )
++            or self.max_model_len
++        )
++        if self.max_servable_num_tokens < self.max_model_len:
++            logger.error(
++                "The KV cache pool (%d blocks) can hold at most %d tokens for a "
++                "single request, which is less than max_model_len (%d). Requests "
++                "longer than %d tokens will be rejected, and generation stops at "
++                "%d tokens. Increase `gpu_memory_utilization` or decrease "
++                "`max_model_len`.",
++                kv_cache_config.num_blocks,
++                self.max_servable_num_tokens,
++                self.max_model_len,
++                self.max_servable_num_tokens,
++                self.max_servable_num_tokens,
++            )
++
+         self.use_pp = self.parallel_config.pipeline_parallel_size > 1
+         self.use_v2_model_runner = vllm_config.use_v2_model_runner
+         # Scheduler iteration counter. Drives the V2+PP+async decode-throttle
+@@ -2055,6 +2092,25 @@ def update_from_output(
+                     )
+                 )
+ 
++        if self.unservable_reqs:
++            # Requests the pool can never hold. FINISHED_IGNORED is upstream's
++            # status for "prompt longer than the model's length cap"; the
++            # actionable maximum servable length is logged in `add_request`.
++            ignored_reqs = self.finish_requests(
++                self.unservable_reqs, RequestStatus.FINISHED_IGNORED
++            )
++            self.unservable_reqs.clear()
++            for request in ignored_reqs:
++                outputs[request.client_index].append(
++                    EngineCoreOutput(
++                        request_id=request.request_id,
++                        new_token_ids=[],
++                        finish_reason=request.get_finished_reason(),
++                        events=request.take_events(),
++                        trace_headers=request.trace_headers,
++                    )
++                )
++
+         # KV Connector: update state for finished KV Transfers.
+         if kv_connector_output:
+             self._update_from_kv_xfer_finished(kv_connector_output)
+@@ -2192,7 +2248,16 @@ def _update_request_with_output(
+ 
+             # Check for stop and update request state.
+             # This must be called before we make the EngineCoreOutput.
+-            stopped = check_stop(request, self.max_model_len)
++            # The length cap is `max_servable_num_tokens`, not `max_model_len`:
++            # they are equal unless the pool cannot cover the whole window, and
++            # when they differ, growing past the pool's ceiling costs the
++            # request a block that no future pool state has. It would be
++            # preempted at that token and then be too long to re-prefill --
++            # #52520 again, reached through decode instead of prefill. Stopping
++            # here returns the tokens already streamed with `finish_reason:
++            # length`, exactly as if `max_model_len` had been set to what the
++            # pool can serve.
++            stopped = check_stop(request, self.max_servable_num_tokens)
+             if stopped:
+                 del new_token_ids[num_new:]  # Trim new tokens if needed.
+                 break
+@@ -2298,6 +2363,22 @@ def get_kv_cache_usage(self) -> float:
+         """Returns the fraction of the KV cache currently in use (0.0-1.0)."""
+         return self.kv_cache_manager.usage
+ 
++    def _is_unservable(self, request: Request) -> bool:
++        """Whether no future pool state can ever hold this request.
++
++        Mirrors the frontend's `max_model_len` validation: a generate request
++        also needs a slot for the token it will produce, so a prompt exactly at
++        the bound is already too long.
++        """
++        if self.max_servable_num_tokens >= self.max_model_len:
++            # The common case: the pool covers the whole window, so the
++            # frontend's `max_model_len` check is the only bound that bites.
++            return False
++        num_tokens = request.num_tokens
++        if request.pooling_params is None:
++            num_tokens += 1
++        return num_tokens > self.max_servable_num_tokens
++
+     def add_request(self, request: Request) -> None:
+         existing = self.requests.get(request.request_id)
+         if existing is not None:
+@@ -2313,6 +2394,19 @@ def add_request(self, request: Request) -> None:
+                 # Streaming-input session finished.
+                 self.finish_requests(request.request_id, RequestStatus.FINISHED_ABORTED)
+         else:
++            if self._is_unservable(request):
++                logger.error(
++                    "Request %s (%d tokens) needs more KV cache blocks than the "
++                    "whole pool holds; no future pool state can schedule it. The "
++                    "maximum servable length is %d tokens. Failing the request "
++                    "instead of retrying it.",
++                    request.request_id,
++                    request.num_tokens,
++                    self.max_servable_num_tokens,
++                )
++                self.requests[request.request_id] = request
++                self.unservable_reqs.add(request.request_id)
++                return
+             if request.resumable:
+                 request.streaming_queue = deque()
+             self._enqueue_waiting_request(request)
+@@ -2477,7 +2571,9 @@ def get_num_unfinished_requests(self) -> int:
+             + len(self.skipped_waiting)
+             - self.num_waiting_for_streaming_input
+         )
+-        return num_waiting + len(self.running)
++        # `unservable_reqs` are in no queue: they are finished by the next
++        # `update_from_output`, which must still be reached.
++        return num_waiting + len(self.running) + len(self.unservable_reqs)
+ 
+     def has_finished_requests(self) -> bool:
+         if self.finished_req_ids:

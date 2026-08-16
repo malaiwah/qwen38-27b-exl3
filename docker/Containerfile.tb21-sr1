@@ -1,0 +1,173 @@
+# TB2.1 speed-run campaign image, revision sr1 (docs/46).
+#
+# Base: the promoted four-module release unit localhost/vllm:gg-r34-patched-apc
+#   podman manifest digest sha256:16a936b877b90fc080181e842f47dbafc5cb8e62688799596836e34ba0b79218
+#   config digest (image ID, stable across podman save / docker load)
+#                          sha256:5ce31638c0a5c5c5ee4b5cafb7cd29170b9f2f7a5dcf6e2caa6f3b41bc6f8adc
+# The manifest digest is a registry/podman-side identity and does not survive
+# `podman save | docker load`; the config digest does, so the build is pinned by
+# building FROM the config digest (BASE_REF is the image ID) and, belt and
+# braces, by Layer 0 below, which fails the build unless every load-bearing
+# module in the base is byte-identical to the promoted image.
+#
+# Build (docker >= 24, base already docker-loaded):
+#   docker build -f docker/Containerfile.tb21-sr1 \
+#     --build-arg BASE_REF=5ce31638c0a5c5c5ee4b5cafb7cd29170b9f2f7a5dcf6e2caa6f3b41bc6f8adc \
+#     -t vllm:gg-r34-tb21-sr1 .
+# (context = repo root; receipts/tb21-image-sr1.json is the build receipt)
+#
+# Patch layers, each audited (sha256 of the patch file asserted before it is
+# applied, patch applied with --fuzz=0 so any drift fails the build, post-patch
+# file sha asserted, a sentinel symbol grepped, and the file re-compiled with
+# the image's own python):
+#   A. PR #397  scratch-arena exl3.py overlay (whole-file, tools/ copy;
+#      +6.7 % KV pool measured, receipts/scratch-arena.json)
+#   B. PR #398  FlashInfer persistent-decode-wrapper shape keying
+#      (malaiwah/vllm-voipmonitor commit 5723e072e, vllm/ hunk only;
+#      required by the V2 runner arm, receipts/v2-fault-fix.json)
+#   C. port of vllm-project/vllm#52530 (branch
+#      fix/kv-pool-unservable-request-admission @ 479413adc): fail requests no
+#      future KV-pool state can hold instead of retrying them forever, and cap
+#      generation length at the pool bound. Ported by hand onto the fork's
+#      scheduler (see docker/patches/vllm-52530-port-*.patch headers for the
+#      one behavioural adaptation: Request objects are captured before
+#      finish_requests, which in this fork returns (id, client_index) tuples
+#      and frees self.requests).
+#
+# LMCache: UNTOUCHED and DISABLED by default. The pinned wheel
+# 0.5.2+glm52dcp.4 stays byte-identical to the base (Layer D asserts that);
+# nothing in this image enables it (it only activates via an explicit
+# --kv-transfer-config / wrapper env). Silent-corruption receipts:
+# receipts/lmcache-reuse-test.json, upstream LMCache#4247 / #4492. A fixed
+# wheel enters only as a NEW layer after LMCacheFix's patchset passes the CPU
+# gates, and enters the campaign default config only after the 4-arm GPU
+# ladder passes on the 2x lab.
+
+ARG BASE_REF=vllm:gg-r34-patched-apc
+FROM ${BASE_REF}
+
+# ---------------------------------------------------------------------------
+# Layer 0: base identity gate. Fails closed on a wrong or drifted base: the
+# four promoted modules plus the two files layers B/C are about to patch must
+# be byte-identical to the promoted apc image.
+RUN set -eu; \
+    V=/opt/venv/lib/python3.12/site-packages/vllm; \
+    printf '%s  %s\n' \
+      2df9d0799fd323798cead1edb773cab556c94798eec263ee03ded35408c6e4ee \
+      "$V/model_executor/layers/quantization/exl3.py" \
+      04d2bd587b37142f4f55a8d00b9f8c907309490168cb7fcdfde450531df2c9e7 \
+      "$V/model_executor/models/qwen3_5.py" \
+      0090dc131f0eaf439b24d50baf4def9f10b052864c76e695053d64f66b274bab \
+      "$V/model_executor/models/qwen3_5_mtp.py" \
+      b431c1066dfee3ed56bfa7e71cc8606f9afadc300f22d7fc542c43835d1b22bf \
+      "$V/v1/core/sched/scheduler.py" \
+      df16d41ef834a551ef948ad22a371eb9411574cb999bb4343b8627a34d44963d \
+      "$V/v1/attention/backends/flashinfer.py" \
+      b71b7819066a912c3b9743219447a8147a3d60656418801f6189a142fe5f41e8 \
+      "$V/v1/core/kv_cache_utils.py" \
+      | sha256sum -c -; \
+    /opt/venv/bin/python -c 'import vllm; v=vllm.__version__; assert v == "0.11.2.dev280+gilded.gnosis.v20.vllm4d006a4.b12xcd3ce19.fi1ac6942.cu132.20260810.r34", v'
+
+# ---------------------------------------------------------------------------
+# Layer A: PR #397 scratch-arena exl3.py overlay (whole-file replacement, the
+# same file receipts/scratch-arena.json qualified as a mount).
+COPY tools/vllm-exl3-scratch-arena.py \
+     /opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py
+RUN set -eu; \
+    V=/opt/venv/lib/python3.12/site-packages/vllm; \
+    printf '%s  %s\n' \
+      9aba06ebf60ca7665c0513752387c349240ab85e1ebc44d6ce8137ef157b6c15 \
+      "$V/model_executor/layers/quantization/exl3.py" \
+      | sha256sum -c -; \
+    grep -q '_EXL3_RECONSTRUCT_ARENA' "$V/model_executor/layers/quantization/exl3.py"; \
+    chmod 0644 "$V/model_executor/layers/quantization/exl3.py"; \
+    rm -f "$V/model_executor/layers/quantization/__pycache__/exl3."*.pyc; \
+    /opt/venv/bin/python -m py_compile "$V/model_executor/layers/quantization/exl3.py"
+
+# ---------------------------------------------------------------------------
+# Layers B + C: unified-diff patches, kept in-image under /opt/tb21-patches
+# for audit. Each patch file's sha256 is asserted before use; patch(1) runs
+# with --fuzz=0 -N and any hunk failure fails the build.
+COPY docker/patches/vllm-398-fi-decode-shapes.patch \
+     docker/patches/vllm-52530-port-kv-utils.patch \
+     docker/patches/vllm-52530-port-scheduler.patch \
+     /opt/tb21-patches/
+
+# Layer B: PR #398 FlashInfer decode-shape fix.
+RUN set -eu; \
+    V=/opt/venv/lib/python3.12/site-packages/vllm; \
+    printf '%s  %s\n' \
+      b77be87e966d522bc0a891159fef700fa7e4189304578288683bf50717c14fae \
+      /opt/tb21-patches/vllm-398-fi-decode-shapes.patch \
+      | sha256sum -c -; \
+    cd /opt/venv/lib/python3.12/site-packages; \
+    patch -p1 --fuzz=0 -N < /opt/tb21-patches/vllm-398-fi-decode-shapes.patch; \
+    printf '%s  %s\n' \
+      86e435ddd694ecd8a3d32a073a279a941a87b148794398e47a6a45df829c9cd1 \
+      "$V/v1/attention/backends/flashinfer.py" \
+      | sha256sum -c -; \
+    grep -q '_planning_for_cudagraph_capture' "$V/v1/attention/backends/flashinfer.py"; \
+    grep -q 'planned_decode_shapes' "$V/v1/attention/backends/flashinfer.py"; \
+    rm -f "$V/v1/attention/backends/__pycache__/flashinfer."*.pyc; \
+    /opt/venv/bin/python -m py_compile "$V/v1/attention/backends/flashinfer.py"
+
+# Layer C: #52530 admission-livelock port (kv_cache_utils helper + scheduler
+# two-call-site bound: admission gate in add_request, length cap in
+# _update_request_with_output's check_stop).
+RUN set -eu; \
+    V=/opt/venv/lib/python3.12/site-packages/vllm; \
+    printf '%s  %s\n' \
+      7a90ff1f35159e092bab43fd921681c288dd9747c085f3cccd063d664a668ca7 \
+      /opt/tb21-patches/vllm-52530-port-kv-utils.patch \
+      7c5cbede7188fac5b15924764472deb11f1a7ed0796b7233b097df017fa0c2f1 \
+      /opt/tb21-patches/vllm-52530-port-scheduler.patch \
+      | sha256sum -c -; \
+    cd /opt/venv/lib/python3.12/site-packages; \
+    patch -p1 --fuzz=0 -N < /opt/tb21-patches/vllm-52530-port-kv-utils.patch; \
+    patch -p1 --fuzz=0 -N < /opt/tb21-patches/vllm-52530-port-scheduler.patch; \
+    printf '%s  %s\n' \
+      f354270a0ce7971fd9317bd10a5921b1319165df80748df60fe4ab8648ffcbc6 \
+      "$V/v1/core/kv_cache_utils.py" \
+      e98b7227e0b66eea137ed6ccbc9ee99bd43485892c11c648284c30cde206ed05 \
+      "$V/v1/core/sched/scheduler.py" \
+      | sha256sum -c -; \
+    grep -q 'def max_servable_num_tokens' "$V/v1/core/kv_cache_utils.py"; \
+    grep -q 'check_stop(request, self.max_servable_num_tokens)' "$V/v1/core/sched/scheduler.py"; \
+    grep -q 'def _is_unservable' "$V/v1/core/sched/scheduler.py"; \
+    rm -f "$V/v1/core/__pycache__/kv_cache_utils."*.pyc \
+          "$V/v1/core/sched/__pycache__/scheduler."*.pyc; \
+    /opt/venv/bin/python -m py_compile "$V/v1/core/kv_cache_utils.py" "$V/v1/core/sched/scheduler.py"; \
+    /opt/venv/bin/python -c 'import vllm.v1.core.kv_cache_utils as k, vllm.v1.core.sched.scheduler as s; assert callable(k.max_servable_num_tokens); assert hasattr(s.Scheduler, "_is_unservable")'
+
+# ---------------------------------------------------------------------------
+# Layer D: LMCache untouched-assertion. No LMCache file is modified by this
+# image; this layer only proves the pinned wheel is still byte-level intact
+# (verifies every hash in the wheel RECORD) and that the version is the
+# pinned one. LMCache remains DISABLED by default.
+RUN /opt/venv/bin/python -c "\
+import base64, csv, hashlib, importlib.metadata, sys; \
+v = importlib.metadata.version('lmcache'); \
+assert v == '0.5.2+glm52dcp.4', v; \
+sp = '/opt/venv/lib/python3.12/site-packages/'; \
+rec = sp + 'lmcache-0.5.2+glm52dcp.4.dist-info/RECORD'; \
+rows = [r for r in csv.reader(open(rec)) if r and r[1]]; \
+bad = [p for p, d, _ in rows \
+       if hashlib.new(d.partition('=')[0], open(sp + p, 'rb').read()).digest() \
+          != base64.urlsafe_b64decode(d.partition('=')[2] + '=' * (-len(d.partition('=')[2]) % 4))]; \
+sys.exit('LMCache wheel drifted: ' + ', '.join(bad)) if bad else \
+print('LMCache wheel 0.5.2+glm52dcp.4 intact:', len(rows), 'hashed records verified')"
+
+LABEL org.opencontainers.image.title="Gilded Gnosis vLLM r34 apc + TB2.1 speed-run patches (sr1)" \
+      org.opencontainers.image.description="localhost/vllm:gg-r34-patched-apc plus PR #397 scratch arena, PR #398 FlashInfer decode-shape keying, and a port of vllm-project/vllm#52530. LMCache untouched and disabled by default." \
+      io.malaiwah.image.role="TB2.1 multi-GPU speed-run campaign image (docs/46); requires its own fidelity gate before scored passes" \
+      io.malaiwah.image.qualified="false" \
+      io.malaiwah.base.tag="localhost/vllm:gg-r34-patched-apc" \
+      io.malaiwah.base.manifest_digest="sha256:16a936b877b90fc080181e842f47dbafc5cb8e62688799596836e34ba0b79218" \
+      io.malaiwah.base.config_digest="sha256:5ce31638c0a5c5c5ee4b5cafb7cd29170b9f2f7a5dcf6e2caa6f3b41bc6f8adc" \
+      io.malaiwah.patch.exl3_arena.pr="local-inference-lab/vllm#397" \
+      io.malaiwah.patch.exl3_arena.sha256="9aba06ebf60ca7665c0513752387c349240ab85e1ebc44d6ce8137ef157b6c15" \
+      io.malaiwah.patch.fi_decode_shapes.pr="local-inference-lab/vllm#398" \
+      io.malaiwah.patch.fi_decode_shapes.commit="5723e072e02062d504f2f7172da64804ec97ab36" \
+      io.malaiwah.patch.kv_admission.upstream_pr="vllm-project/vllm#52530" \
+      io.malaiwah.patch.kv_admission.upstream_head="479413adc" \
+      io.malaiwah.lmcache="untouched wheel 0.5.2+glm52dcp.4; DISABLED by default; PROHIBITED for scored passes (receipts/lmcache-reuse-test.json)"
