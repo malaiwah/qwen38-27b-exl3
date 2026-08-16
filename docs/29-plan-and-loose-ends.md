@@ -948,6 +948,20 @@ venue. The failure *family* is publicly known and cited rather than claimed as n
 that `plan()` cannot be captured by CUDA graph, and `flashinfer-ai/flashinfer#1832` documents non-uniform
 `q_len` in speculative decode - but no existing report matches this gate.
 
+**TB2.1 speed-run plan written 2026-08-16, execution owned by a future session.** The owner asked for
+the ultimate API-hosted setup for the flagship quant on a 4x/8x RTX PRO 6000 Jarvis host with a separate
+load-driver VM, to produce a card-referenceable ladder - quick 1x / 2x / 4x and a full three-pass speed run
+- for **both** the original BF16 weights and the flagship hydrated build, native 262,144 window first and
+YaRN-1M exercised after, proving out TP and DP (EP inapplicable: dense hybrid, no experts). The complete
+executor brief is [docs/46](46-tb21-speedrun-plan.md): serving recipes with the three measured levers (graph
+decode +~2x over the eager TB pins, DP-with-task-sharding to preserve the measured 51.7 % prefix-cache hit
+rate, optional V2 depth-schedule arm), the load-driver VM spec and shard-by-timeout-budget partitioning, the
+gates (EXL3-under-TP is the load-bearing unknown; native-DP on the fork unverified; YaRN unvalidated for
+quality), the synthetic-ladder-then-TB matrix that keeps the tier count small, the three-way attribution and
+2.0x diagnostic arm, the receipt schema, and the pre-registered card table shape with every cell [tbm]. The
+timeout mechanism measured in this session (65 % of unresolved trials out of clock at ~42 tok/s eager) is
+the argument that serving speed converts directly into both wall clock and resolved count.
+
 **Body parity does not need a new build - the comparator already exists 2026-08-16.** The K6-parity
 result invites the obvious objection that it only reached *file* parity with `Q6_K` while still carrying
 2.31 GiB less transformer body, so a body-parity variant was registered as a named follow-up. It turns
