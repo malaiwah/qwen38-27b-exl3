@@ -11,7 +11,16 @@
     "commit": "5723e072e",
     "closing_keyword": "Closes #396",
     "dco": "Signed-off-by: Michel Belleau <michel.belleau@malaiwah.com>",
-    "body": "upstream/v2-fix/pr-body.md"
+    "body": "upstream/v2-fix/pr-body.md",
+    "body_updated_utc": "2026-08-16T15:26:00Z",
+    "body_contains": [
+      "root cause with file:line",
+      "instrumented before/after with addresses",
+      "pinned-buffer causality control",
+      "measured decode table vs matched MRV1 baseline",
+      "not-upstream analysis",
+      "the 0.97 OOM shipping constraint"
+    ]
   },
   "measured_on": {
     "host": "aiboss",
@@ -605,5 +614,11 @@
       "tools/v2fix_run3.py": "df443dfd3022cb7f791b67e3f504afd7523804e38c528a8afecdbb928f711223"
     },
     "count": 73
+  },
+  "card_docs_text_handed_to_main": {
+    "note": "Main places card text; this agent does not edit cards or docs/38-45.",
+    "card_paragraph": "**V2 model runner + MTP-3 depth schedule (measured, PR'd).** The V2 model runner would not start with MTP-3 on this checkpoint: the speculator's captured draft-decode CUDA graph replayed against freed FlashInfer plan buffers (cudaErrorIllegalAddress), because persistent decode wrappers were admitted only for q_len == 1 + num_speculative_tokens while draft steps run q_len == 1. Keying those wrappers by the shape capture actually planned fixes it (local-inference-lab/vllm#398, closes #396). With the fix, one server running the per-batch-size depth schedule (depth 3 at batch 1-2, depth 1 at batch 3-8) measures 87.4 tok/s at C1 and 416.3 tok/s at C8 on a single RTX 5090 - +38.0 % aggregate decode at C8 against an MRV1 baseline measured in the same window (301.6 tok/s), i.e. depth-1 throughput at batch 8 without giving up depth-3 latency at batch 1. Constraint: at --gpu-memory-utilization 0.97 the V2 runner has no headroom and the EXL3 prefill reconstruct OOMs on the first 2,048-token prefill (both arms, schedule off and on), so today the win needs a context/KV concession - measured at 131,072 max context and 0.95 utilisation, giving 234,256 KV tokens against 272,570 on the published profile (-14.1 %). Greedy outputs repeat identically within an engine process; cross-restart bit-exactness is not claimable on this stack (exl3_gemm autotune per process, same caveat as the scratch-arena note).",
+    "docs_41_W1_sentence": "W1 is no longer closed-as-unavailable: the blocker was a fork-local FlashInfer gate that captured and replayed the V2 speculator's draft-decode graph on the dynamic decode wrapper (fixed in local-inference-lab/vllm#398, closes #396, root cause proven with an instrumented capture-vs-replay address log plus a pinned-buffer causality control). Both W1 arms now serve and complete the full probe; the depth schedule measures +38.0 % aggregate decode at C8 (416.29 vs 301.63 tok/s matched in-window baseline) with C1 held at 87.35 tok/s, confirming and exceeding the inherited +30.67 % estimate - but only at 131,072/0.95, because at the published 262,144/0.97 profile the V2 runner OOMs in the EXL3 prefill reconstruct on the first 2,048-token prefill.",
+    "one_sentence_if_only_one_fits": "The V2 runner's MTP-3 crash was a FlashInfer persistent-decode-wrapper gate that admitted only q_len == 1 + num_speculative_tokens, so the draft-decode graph (q_len == 1) was captured and replayed on the dynamic wrapper whose plan buffers move; keying wrappers by the captured shape (local-inference-lab/vllm#398) unblocks the per-batch-size depth schedule, measured at 87.4 tok/s C1 and 416.3 tok/s C8 in one server (+38.0 % at C8), at the cost of 14.1 % KV tokens because 0.97 utilisation OOMs the EXL3 prefill reconstruct under V2."
   }
 }
