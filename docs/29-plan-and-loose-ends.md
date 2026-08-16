@@ -207,20 +207,65 @@ the comparator no longer exists only on the KLD axis. At 70 items every candidat
 overlaps every other, so the run separates nothing; the bar it missed, and why more items are the
 fix, is in the rank-4 section below.
 
-### F3 — VRAM-class SKUs: 24 GB, then 16 GB
+### F3 — VRAM-class SKUs: decided. 24 GB go, 16 GB design study
 
-Every profile we ship targets a 32 GB card. Two smaller classes are asked for and one of
-them is explicitly framed as the hard one:
+**Decided, with arithmetic, in [`receipts/vram-class-verdict.json`](../receipts/vram-class-verdict.json)**;
+the design it rests on is [34](34-vram-class-profiles.md), whose new Verdict section summarises
+both classes. The reader asks that opened this item — a 24 GB mid-point and "make a version for
+the 16GB of RAM or VRAM and you'll be a god" — are answered as follows.
 
-- **24 GB** (mid-point; the RTX PRO 4500/SFF-class 24 GB boards are not Blackwell-only, so
-  the supported-hardware tuple has to be stated, not assumed);
-- **16 GB** ("make a version for the 16GB of RAM or VRAM and you'll be a god"), which must be
-  published with an honest KV budget: at 16 GB the usable context is a fraction of 262,144,
-  and the card must say so in the same table as the fidelity number.
+**24 GB: go, and no new checkpoint is required.** The published `-context` edition's resident
+weights are *measured* at 18.41 GiB (`receipts/native-mtp-8mp-amendment.json`, as run; the
+physical 5090 logged 18.19 GiB for the same configuration, and the verdict uses the larger).
+On the constants the physical qualification measured — 31.4 GiB usable of a 32 GB board,
+`--gpu-memory-utilization` 0.955, 1.78 + 0.27 + 0.45 = 2.50 GiB of non-KV overheads
+(`receipts/qualification-5090-context.json`) — a 24 GB board leaves
+`24 × 0.98125 × 0.955 − 2.50 − 18.41 = 1.58 GiB` of KV **[P]**. At the per-token cost derived from
+that receipt's own measured pool — its 9.28 GiB holding 265,122 tokens, so
+`(9.28 − 0.20) GiB ÷ 265,122 = 36,773.9 B/token` — that is 40,293 tokens
+**[P]**, published at **32,768** with MTP-3 and fp8 KV, or **45,056** with MTP off, under the
+≥15 % headroom rule. Fidelity is the already-measured **0.003409** on shard 0
+(`receipts/kld5-1M-tail-ctx.json`) and 0.003509 over 10,480,640 positions
+(`receipts/kld5-10M-ctx.json`), carried unchanged because it is the same weights: the class adds
+**no new fidelity risk**. So this is a serving profile over an existing artifact plus one
+qualification —
+not a conversion project. `--max-model-len 40960`, which [34](34-vram-class-profiles.md) §5.3
+predicted at utilisation 0.97, is retired: at 0.955 it needs 1.603 GiB against 1.580 available.
 
-Bound already known from the external ladder: stock 3.50bpw is a 14.28 GiB tensor payload
-with a 2.37 GiB BF16 embedding, so a 16 GB build needs either an int8/int4 input overlay or
-CPU-resident embeddings, and its KV budget must be measured, not modelled.
+**16 GB: no-go as a SKU; published as a design study.** The byte law puts the cheapest
+multimodal build that keeps the MLP stack at 4 bits at 13.58 GiB resident **[P]** against a 12.70
+GiB budget — **0.88 GiB over before a single KV byte**, and 1.09 GiB over at the measured 0.955
+utilisation. Every remaining path is sub-4-bit, and **no width below 4 bits has ever been measured
+for KLD in this family**. The S16-V candidate is all prediction: 11.94 GiB resident **[P]**,
+16,384 tokens MTP-off **[P]** at [34](34-vram-class-profiles.md) §3's constants and 12,288 **[P]**
+re-derived at 0.955, with fidelity unknown — the nearest measured neighbour is K4 at 0.010604
+(`receipts/kld5-10M-k4.json`) with p99.9 0.5555 (`receipts/kld5-1M-tail-k4.json`), already the
+worst published candidate, and S16-V is below it on every role. Two
+reader reports run the same way and are not ours: a ~12 GB `IQ3_XXS` on a 16 GB RTX 5070 Ti gives
+"less than 5 tok/s" at 64K-128K (megathread `1voojjz`, `p3ui0np`), and `UD-Q4_K_XL` on a 24 GB
+4090 "only leaves me with about 18.4k context" (`p3vfwqh`). A build we cannot measure, on hardware
+we do not have, at a width nobody has scored, is a design study — not a SKU. No 16 GB artifact, no
+16 GB card row, no 16 GB context length as a capability, and no fidelity number for any 16 GB
+profile.
+
+**Genuinely open, and all that is open:**
+
+- **Measure one sub-4-bit width's KLD before committing to a 16 GB SKU.** One conversion plus
+  shard 0 of the v5 suite (512 contexts, 1,048,064 positions, the shared BF16 head), with the tail
+  row and exceedance counts. **No 16 GB card is needed for this**, it is the condition that flips
+  the no-go, and it replaces [34](34-vram-class-profiles.md) §6.4's "0.03-0.10" — a range with a
+  shape, not an estimate — with a number.
+- **Obtain or emulate a 24 GB card for a real qualification, not an engine-budget proof.** The
+  24 GB go is a go to *qualify*: "predicted 40,293 KV tokens" and "allocated 40,293 KV tokens" are
+  different sentences. Today's 5090 result showed exactly why an engine-budget proof on a larger
+  card can mislead — the rental proof at 30.24 GiB inside a 95.6 GiB board said utilisation 0.97
+  was fine, and the physical card then refused the combined 236,824-token plus 7 MP request at that
+  utilisation, because vLLM spends every freed byte on KV and left the vision tower without the
+  ~62 MiB of transient it needed, while lowering `max_pixels` made it strictly worse. A budget
+  carved out of a larger card keeps real headroom behind it and cannot see that failure mode, so an
+  emulated 24 GB qualification inherits the caveat verbatim and the physical run stays P0. The
+  supported-hardware tuple still has to be stated rather than assumed: everything measured here is
+  SM120, TP1, driver 595.58.03, and the 24 GB class spans more than one architecture.
 
 ### F4 — collection presentation
 

@@ -1,6 +1,7 @@
 # VRAM-class profiles: a 24 GB mid-profile and a 16 GB profile, by arithmetic
 
-This closes the *design* half of [29](29-plan-and-loose-ends.md) F3. It does not close F3.
+This is the *design* half of [29](29-plan-and-loose-ends.md) F3; the **Verdict** section below
+carries the decision it now supports, and F3 itself is down to two open items.
 Nothing here is a claim that a profile fits a card: every profile below ends in an acceptance
 test that must pass on the actual board class before the profile may be published, and every
 number is either traced to a receipt or labelled **[P]** for prediction with its formula shown.
@@ -8,6 +9,77 @@ number is either traced to a receipt or labelled **[P]** for prediction with its
 Terminology is the F4 convention: **serialized bytes** are what a checkpoint occupies on disk,
 **resident weight bytes** are what the loader keeps on the device, **activation**, **CUDA-graph**
 and **KV** are separate quantities, and none of them is called VRAM.
+
+## Verdict
+
+Both classes now have a decision, and it is published with its arithmetic in
+[`receipts/vram-class-verdict.json`](../receipts/vram-class-verdict.json). That receipt re-derives
+the card model of §3 on the constants the **physical** RTX 5090 qualification measured
+(`receipts/qualification-5090-context.json`: all seven gates pass at
+`--gpu-memory-utilization` **0.955**, engine budget 29.98 GiB of 31.4 GiB usable, 18.19 weight +
+1.78 activation + 0.27 non-torch + 0.45 CUDAGraph = 20.69 GiB, KV **9.28 GiB → 265,122 tokens**),
+not on the 0.97 utilisation §3 was written against. Several lengths below are re-derived and
+§5.3's 40,960 is retired outright; each is flagged where it appears and listed in the receipt's
+`supersedes` block.
+
+| class | decision | artifact | context | fidelity |
+|---|---|---|---|---|
+| **24 GB** | **GO** | the published `-context` edition, **no conversion** | **32,768 [P]** MTP-3 + fp8 KV; **45,056 [P]** MTP off | **0.003409, measured**, carried unchanged (`receipts/kld5-1M-tail-ctx.json`) |
+| **16 GB** | **NO-GO as a SKU — publish §6 as a design study** | none exists; every reachable point needs a sub-4-bit width | 12,288 [P] MTP off; 8,192 [P] MTP-3 | **none, and none obtainable from anything published** |
+
+**24 GB: go, because no new checkpoint is required.** The context edition's resident weights are
+*measured* at **18.41 GiB** (`receipts/native-mtp-8mp-amendment.json`, as run; the physical 5090
+logged 18.19 GiB for the same configuration and the verdict deliberately uses the larger figure).
+The card model gives `24 × 0.98125 = 23.55` free at startup, `× 0.955 = 22.49` engine budget and
+`− 2.50 = 19.99 GiB` for weights plus KV, so **KV available is 19.99 − 18.41 = 1.58 GiB [P]**. At
+the per-token cost derived from the measured pool — `(9.28 − 0.20) GiB ÷ 265,122 = 36,773.9
+B/token` — that is `T_max = (1.58 − 0.20)·2^30 ÷ 36,773.9 =` **40,293 tokens [P]**, published at
+**32,768** under §5.3's ≥15 % headroom rule (requirement 1.322 GiB against 1.580, 19.5 %). With
+MTP off, resident drops by the 0.252 GiB of draft weights and the rate falls to 32,927.6 B/token
+(§4 prints 32,929.0; recomputed from the 8.18 GiB and 266,743 tokens it cites it is 32,927.6, a
+0.004 % difference that changes no length): `T_max` **53,218 [P]**, published at **45,056**
+(15.8 %). Fidelity is the already-published
+0.003409 on shard 0 / 0.003509 over 10,480,640 positions, unchanged, because it is the same
+weights — the 24 GB class carries **no new fidelity risk at all**, which is the finding that makes
+it a go. What "go" licenses: publishing a 24 GB serving profile of an existing artifact with its
+length labelled a prediction, and running the qualification. It does **not** license a fit claim;
+"predicted 40,293 KV tokens" and "allocated 40,293 KV tokens" are still different sentences.
+
+**§5.3's 40,960 is retired.** At the qualified 0.955 utilisation, 40,960 tokens needs
+`0.20 + 40,960 × 36,773.9 ÷ 2^30 = 1.603 GiB` against 1.580 GiB available: it does not lose its
+margin, it does not fit. That is the sharpest lesson of the physical qualification, and it lands
+on the class arithmetic rather than on the shipped 32 GB profile.
+
+**16 GB: no-go as a SKU.** The byte law says the cheapest multimodal build that keeps the MLP at
+4 bits is **13.58 GiB resident [P]** (payload 13.235 + 0.35 loader allowance) against a **12.70
+GiB** budget — **0.88 GiB over before a single KV byte**, and 1.09 GiB over once the measured
+0.955 utilisation and 2.50 GiB overheads are used instead (`13.58 − 12.49`), so today's result
+*hardens* the conclusion. Every remaining path is therefore sub-4-bit, and **no width below 4 bits
+has ever been measured for KLD in this family, at any role, on any suite.** The S16-V candidate is
+entirely predicted: **11.94 GiB resident [P]** (= 11.586 payload + 0.35), 16,384 tokens MTP-off
+[P] at §6.2's constants, **12,288 [P]** when re-derived at 0.955 (16,384 leaves only 6.5 %
+headroom there, below the rule §5.3 applies everywhere else), and 8,192 [P] with MTP-3 — and that
+8,192 itself clears the rule by only 14.4-15.1 %, i.e. it sits on the boundary. Its
+fidelity is **unknown**: the nearest measured neighbour below the published set is K4 at 0.010604
+with a p99.9 of 0.5555, already the worst of the five candidates, and S16-V is one bit below it on
+each MLP projection, three on the linear-attention stack, two on full attention and two on the
+head. §6.4's 0.03-0.10 is a range with a shape, not an estimate. Two reader reports point the same
+way and are not ours: a ~12 GB `IQ3_XXS` on a 16 GB RTX 5070 Ti gives "less than 5 tok/s" at 64K
+or 128K (megathread `1voojjz`, `p3ui0np`), and `UD-Q4_K_XL` on a 24 GB 4090 "only leaves me with
+about 18.4k context" (`p3vfwqh`) — self-reported configurations, no KV dtype or engine version,
+never mixed into the arithmetic, but the only external evidence this model has at these classes
+and both negative. So §6 stays published as a **design study**: budgets, bit allocation, the
+error-driven allocator route and the acceptance gates are all useful to whoever attempts it. What
+may not happen is a released 16 GB artifact, a 16 GB row in a model card, a 16 GB context length
+quoted as a capability, or any fidelity number attached to a 16 GB profile.
+
+**What flips 16 GB to go**, in order: (1) a measured KLD for one sub-4-bit width in this family on
+shard 0 of the v5 suite with its tail row — one conversion and one shard, **no 16 GB card
+needed**, and it is the blocking item; (2) a startup on a physical 16 GB board, since the
+activation, non-torch and CUDAGraph figures here are carried from a 32 GB profile; (3) needle
+retrieval and a combined text-plus-image request at the 4.2 MP cap on a K3 body; (4) the
+non-termination check, weighted, because S16-V sits below the Q4 builds two readers describe
+looping to context exhaustion.
 
 ## 1. What this design is built on
 
@@ -85,6 +157,13 @@ published and 18.41 as run. The model is therefore accurate to ±0.05 GiB on the
 all four combinations are measured, and conservative.
 
 ## 3. Card arithmetic
+
+> **Superseded by the Verdict above.** This table is the derivation at utilisation **0.97** and
+> 2.52 GiB of overheads. The physical qualification measured 0.955 and 2.50, which gives 19.99
+> GiB for weights plus KV at 24 GiB and 12.49 at 16 GiB
+> ([`receipts/vram-class-verdict.json`](../receipts/vram-class-verdict.json) →
+> `card_budget_model`). It is kept here because the two-step model itself is unchanged and its
+> free-at-startup fraction is now measured (31.4/32 = 0.98125) rather than quoted.
 
 Only one board has ever been budget-proved here, and it was emulated: 30.24 GiB inside a 95.6
 GiB RTX PRO 6000, chosen to sit under an RTX 5090's 0.97 × 31.39 = 30.45 GiB. The same two
@@ -233,6 +312,10 @@ load by `VLLM_EXL3_EMBED_BITS=8` ([docs/32](32-native-context-embedding-overlay.
 
 ### 5.3 KV budget and context
 
+> **Superseded by the Verdict above.** These lengths are derived at utilisation 0.97. At the
+> qualified 0.955 the M24 row becomes 32,768 with MTP-3 and 45,056 with MTP off, and **40,960
+> does not fit at all** (1.603 GiB required against 1.580 available).
+
 `KV_avail = 22.84 − resident − 2.52`, then `T_max = (KV_avail·2^30 − H) / c_tok`. A profile is
 published at the largest multiple of 4,096 whose requirement `H + T·c_tok` leaves **≥15 %
 headroom** against `KV_avail`. The shipped 32 GB profile only needed 262,144 < 266,612, 1.7 %,
@@ -352,6 +435,11 @@ Read that table as the profile's real shape. **S16-V publishes 16,384 tokens wit
 where the requirement is 0.70 GiB against 0.96 GiB available — 37 % headroom, the most
 comfortable margin of any row here. With MTP-3 on, 16,384 needs 0.760 GiB against 0.764
 available: a 0.5 % slack that the §3 constants can erase, so S16-V publishes 12,288 there.
+
+> **Re-derived in the Verdict above.** At the measured 0.955 utilisation, S16-V's MTP-off row
+> falls to **12,288** — 16,384 keeps only 6.5 % headroom there — and its MTP-3 row to 8,192;
+> S16-V-long's become 12,288 with MTP-3 and 20,480 without, so the one-bit trade below buys MTP-3
+> at 12k rather than at 16k. All still predictions, and now for a design study, not a SKU.
 
 **One `full_attention` bit is what buys MTP-3 at 16k.** S16-V-long spends 0.195 GiB by taking
 `full_attention` from K4 to K3 and reaches 16,384 with MTP-3 at 27 % headroom, and 24,576
