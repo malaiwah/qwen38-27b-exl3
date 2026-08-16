@@ -895,6 +895,30 @@ and build differences are explicitly reduced to a measured numerical equivalence
 independent operator signs the receipt or publishes it from a separate account. A copy of this
 workstation is not an independent reproduction.
 
+**Terminal-Bench 2.1: harness complete and proven, three scored passes still owed 2026-08-16.** The
+owner's three-pass protocol - full pass on `malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated`, a healing pass
+retrying every pass-1 failure, then every twice-failed task re-run on BF16 `Qwen/Qwen3.8-27B` on the same
+card with the same agent - is fully staged and **nothing about it is speculative except the numbers**.
+Established without spending a second of GPU: the rental cannot run the containers at all (seccomp denies
+`clone(CLONE_NEWUSER|CLONE_NEWNS)`), so containers run on AIBoss against the model served on the rental over
+an SSH reverse tunnel, which is the owner's own instruction; that tunnel costs **581 ms per request** as a
+TTFB, decomposed to geography (rental->jump 266 ms, AIBoss->jump 12 ms, no direct route) and *not* connection
+setup, so throughput is read from vLLM `/metrics` on the rental loopback and the cost is common-mode across
+arms; the agent path is validated end to end against an OpenAI-compatible test double before any weights
+load, which found a real defect (LiteLLM's missing cache-cost fields); and **resume is proven rather than
+asserted** - a finished job resumes in 3.5 s at 4/4 with every `result.json` byte-identical, and a SIGKILLed
+job keeps its complete trials, deletes and re-runs the in-flight ones and finishes 6/6. Everything is pinned
+in [`terminal-bench-2.1-pins.json`](../receipts/terminal-bench-2.1-pins.json) (~40 KB) and
+[`-task-inventory.json`](../receipts/terminal-bench-2.1-task-inventory.json) (89 tasks with per-task
+resources and timeouts), the method is [docs/45](45-terminal-bench.md), and the card section is drafted with
+its results tables **commented out** so no unmeasured number can be placed by accident. Two rules fixed
+before the window: `-n` is chosen from measured headroom (cap at `max_num_seqs`, require per-request >=50 %
+of single-stream, then maximise aggregate), and the image set is warmed to a bounded subset with a 30 GB
+floor rather than all 89 (~42 GB projected). **Why it is not done: the rental never reached it.** It is
+deliberately second in the GPU queue behind the three pre-registered conversions, because TB2.1 is the only
+GPU consumer here whose work survives a kill and a conversion killed at minute 40 of 50 loses everything.
+Card text and the three pass receipts are the remaining deliverables.
+
 **V2-runner replay fault: root-caused, fixed and filed 2026-08-16.** The `cudaErrorIllegalAddress` that
 made docs/41's rank-1 lever (`VLLM_USE_V2_MODEL_RUNNER=1` plus a per-batch-size speculative depth
 schedule) unavailable is a one-line gate bug in FlashInfer's decode-wrapper selection: persistent
