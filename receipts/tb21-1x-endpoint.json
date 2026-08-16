@@ -1,0 +1,35 @@
+{
+  "schema": "qwen38-tb21-campaign-vm/1",
+  "role": "1x GPU inference endpoint (campaign tier 1x)",
+  "generated_utc": "2026-08-16T22:05:30Z",
+  "provisioned_by": "owner, Jarvis AI, 2026-08-16; ubuntu@151.185.34.17",
+  "identity": {
+    "hostname": "jl-vm-473319",
+    "public_ip": "151.185.34.17",
+    "vpc_ip": "10.0.0.3/16 (enp2s0)"
+  },
+  "hardware": {
+    "gpu": "1x NVIDIA RTX PRO 6000 Blackwell Server Edition, 97,887 MiB, compute cap 12.0",
+    "gpu_driver": "595.58.03 - IDENTICAL to the old rental's qualification driver, so per-card figures are comparable",
+    "vcpu": 28,
+    "ram_gb": 157,
+    "disk": "484 GB (/dev/vda1), 469 GB free at prep"
+  },
+  "os": {
+    "distro": "Ubuntu 24.04.4 LTS",
+    "kernel": "6.8.0-137-generic",
+    "upgrade": "apt full-upgrade 2026-08-16: 0 upgraded (image already current), no reboot required"
+  },
+  "stack": {
+    "docker": "29.7.2 (build a7dcaa6), nvidia container runtime present (nvidia-ctk + nvidia-container-runtime, runtimes list shows nvidia); docker group active for ubuntu",
+    "weights": {
+      "hydrated": "malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated -> ~/models/qwen38-hyd, 21 GB in 53 s via hf_transfer (unauthenticated, public repo); SHA256SUMS verification recorded in bg_3 follow-up",
+      "bf16": "Qwen/Qwen3.8-27B -> ~/models/qwen38-bf16 (in flight at receipt time)"
+    },
+    "image": "awaiting vllm:gg-r34-tb21-sr1 from ImageForge (base sourced from AIBoss podman storage; delivery over VPC); serving does not start on an unreceipted image"
+  },
+  "network_measured": {
+    "vpc_to_driver": "0.17-0.83 ms ping, same 10.0.0.0/16 - the TB api_base will be plain http over VPC, no tunnel, no public exposure"
+  },
+  "planned_first_use": "docs/46 tier 1x: fidelity gate (frozen prompts + 262k needle) on sr1, synthetic concurrency ladder, then TB quick pass per model driven from 10.0.0.2"
+}

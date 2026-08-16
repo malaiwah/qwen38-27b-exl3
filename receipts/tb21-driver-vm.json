@@ -1,0 +1,40 @@
+{
+  "schema": "qwen38-tb21-campaign-vm/1",
+  "role": "load driver (harness host)",
+  "generated_utc": "2026-08-16T22:05:30Z",
+  "provisioned_by": "owner, Jarvis AI, 2026-08-16; ubuntu@151.185.34.98",
+  "identity": {
+    "hostname": "jl-vm-473296",
+    "public_ip": "151.185.34.98",
+    "vpc_ip": "10.0.0.2/16 (enp2s0)"
+  },
+  "hardware": {
+    "vcpu": 32,
+    "ram_gb": 125,
+    "disk": "968 GB NVMe (/dev/vda1), 966 GB free at prep"
+  },
+  "os": {
+    "distro": "Ubuntu 24.04.4 LTS",
+    "kernel_after_upgrade": "6.8.0-137-generic",
+    "upgrade": "apt full-upgrade + autoremove 2026-08-16, rebooted onto new kernel, no reboot-required flag after"
+  },
+  "stack": {
+    "docker": "29.6.0 (build fb59821), compose v5.2.0 - NAMED DEVIATION from the pinned 27.5.1/2.39.1 on AIBoss; harbor drives the CLI and the API is compatible, recorded rather than hidden",
+    "harbor": "0.21.0 via uv tool (same install channel as AIBoss)",
+    "task_tree": "~/tb21/tasks copied from AIBoss and sha-verified BYTE-IDENTICAL: c13961acb68d296b5b12ce158b9e9b89fbe7d561b06b1d748f5cda59a48d0ec2 (89 tasks; method: find|sort|sha256sum|sha256sum, identical to the pins receipt)",
+    "docker_group": "ubuntu added; verified docker ps as user",
+    "ssh": "driver keypair ed25519 generated; pubkey authorized on jump (root@ns1) and AIBoss (mbelleau); ~/.ssh/config uses ControlMaster=no ControlPath=none per the ControlPersist lesson"
+  },
+  "network_measured": {
+    "driver_to_ns1_jump_tcp_connect": "0.22-0.29 s (geographic; ICMP filtered)",
+    "driver_to_aiboss_vllm_ttfb_via_tunnel": "0.56-0.77 s (two geographic legs; smoke-only path)",
+    "driver_to_old_rental_tcp_connect": "0.28-0.34 ms (same IN1 DC)",
+    "driver_to_gpu_endpoint_vpc": "ping 0.17-0.83 ms avg, tcp connect 1.8 ms to 10.0.0.3:22 - G-NET gate PASSED for the campaign path"
+  },
+  "validation": {
+    "oracle_full_suite": "harbor run -a oracle over the full 89-task tree started 21:36Z (single-task filter -t was wrong flag; kept deliberately: validates every task environment on this box and warms the image set); 48/89 results present at receipt time, 52 alexgshaw images cached",
+    "terminus2_real_model_smoke": "harbor run -a terminus-2 -m hosted_vllm/Qwen3.8-27B via ssh tunnel to the owner's AIBoss service, max_turns=3, task regex-log: RESOLVED, reward 1.0, no exception - full agent path (LiteLLM naming, model_info, multi-turn, keystrokes, verifier) proven on this box with a real model",
+    "correct_single_task_flag": "-i/--include-task-name (glob), not -t"
+  },
+  "purpose": "harness host for every docs/46 campaign tier; TB task containers run here CPU-only; throughput is read from vLLM /metrics on the serving box, never from agent wall clock"
+}
