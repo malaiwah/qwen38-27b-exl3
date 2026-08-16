@@ -996,12 +996,29 @@ at temperature 0 becomes **−7.3 % at temperature 0.6**, so it is acceptance no
 throughput. `custom_ops:["all"]` is **2.2-5.2 % worse** on step time and is **not bit-exact**. Both
 dynamic speculative-decoding knobs are structurally unusable on this build: either one downgrades
 `cudagraph_mode` from `FULL_DECODE_ONLY` to `PIECEWISE`, which `Exl3Config` refuses, so the server
-does not start — and forced eager, the only form that runs, loses 48 % of decode. Dynamic
-speculative depth (including the per-batch-size schedule) remains unavailable even via
-`VLLM_USE_V2_MODEL_RUNNER=1`: the V2 runner accepts the schedule and keeps `FULL_DECODE_ONLY`, but
-replaying its speculator's captured draft-decode CUDA graph faults with `cudaErrorIllegalAddress`
-during warmup on this hybrid EXL3 model, so the server never starts — keep the static depths, 3
-single-stream and 1 at eight streams
+does not start — and forced eager, the only form that runs, loses 48 % of decode. **Dynamic speculative depth is no longer closed — it was a fixable bug, now fixed and
+measured (2026-08-16).** The `cudaErrorIllegalAddress` that made `VLLM_USE_V2_MODEL_RUNNER=1`
+unusable was a FlashInfer gate that admitted persistent (CUDA-graph) decode wrappers only for
+`q_len == 1 + num_speculative_tokens`, while the speculator's draft steps run `q_len == 1`; the
+draft-decode graph was therefore captured *and* replayed on the **dynamic** wrapper, whose plan
+buffers move on every call. Keying wrappers by the shape capture actually planned fixes it
+([local-inference-lab/vllm#398](https://github.com/local-inference-lab/vllm/pull/398), closes
+[#396](https://github.com/local-inference-lab/vllm/issues/396); root cause proven with an
+instrumented capture-versus-replay address log plus a control that changes nothing except pinning
+the capture-time buffers alive). With the fix, one server running the per-batch-size schedule
+(depth 3 at batch 1-2, depth 1 at batch 3-8) measures **87.4 tok/s at C1 and 416.3 tok/s at C8**,
+**+38.0 % aggregate decode at C8** against an MRV1 baseline measured in the same window
+(301.6 tok/s) with C1 held — depth-1 throughput at eight streams without giving up depth-3 latency
+at one. Greedy outputs repeat token-for-token within an engine process in all four arms, and
+acceptance does not drop, so the speed is not bought with looser verification. **The constraint
+that decides whether you want it:** at `--gpu-memory-utilization 0.97` the V2 runner leaves 58.56 MiB
+free and the EXL3 prefill reconstruct OOMs on the first 2,048-token prefill (both arms, schedule off
+and on), so the win was measured at **131,072 context and 0.95 utilisation — 234,256 KV tokens
+against 272,570 on this card's published profile, −14.1 %**. Serving the published 262,144/0.97
+profile under the V2 runner on a 32 GB card is **not demonstrated**. Cross-restart bit-exactness
+remains unclaimable on this stack (`exl3_gemm` autotune is per process). The static depths, 3
+single-stream and 1 at eight streams, remain the published recipe until that KV concession is
+either accepted or removed
 ([`receipts/v2-runner-depth-schedule.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/v2-runner-depth-schedule.json)).
 **Prefill did not move on any lever**
 (3,374.4 tok/s at 2,048 and 3,255.4 at 6,144 prompt tokens for the reference

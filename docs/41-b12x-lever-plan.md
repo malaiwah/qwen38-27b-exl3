@@ -1,10 +1,19 @@
 # 41. The b12x / SparkInfer lever surface: what exists, what is reachable, and what to build next
 
 **Decision: the next thing to implement is not a b12x knob. It is `VLLM_USE_V2_MODEL_RUNNER=1` plus a
-per-batch-size speculative depth schedule, which is configuration only and is worth a measured +31 %
-aggregate decode at concurrency 8. Everything b12x-shaped below it is either already on, structurally
+per-batch-size speculative depth schedule. Everything b12x-shaped below it is either already on, structurally
 unreachable, or worth less than its build risk — and the one FP8 prefill lever the brief hoped for is a
 measured negative that would cost 4.4× this artifact's entire quantization error.**
+
+**Status 2026-08-16 — that rank-1 item is now measured, and the brief was wrong about one thing: it was not
+configuration only.** The configuration could not start at all until a fork-local FlashInfer gate bug was
+fixed ([#398](https://github.com/local-inference-lab/vllm/pull/398), closing
+[#396](https://github.com/local-inference-lab/vllm/issues/396)). With the fix the schedule measures
+**+38.0 % aggregate decode at C8** (416.29 against a matched in-window 301.63 tok/s) with C1 held —
+better than the +31 % estimated below — **but only at 131,072 / 0.95, because at the published
+262,144 / 0.97 profile the V2 runner OOMs in the EXL3 prefill reconstruct on the first 2,048-token
+prefill.** So the lever is real, it costs 14.1 % of KV tokens today, and W1 below carries the full
+measurement.
 
 This is a build-plan document, not a benchmark. **Nothing in it was measured during this work**: the
 physical RTX 5090 was held by a sibling agent for the whole window, so every number here is either a
@@ -447,8 +456,47 @@ That is rank 1.
 Ordered by expected effect per unit of build risk. Full detail, including every `file:line`, in
 `receipts/b12x-lever-map.json` → `ranked_work_items`.
 
-### W1 — Per-batch-size speculative depth at `FULL_DECODE_ONLY` via the V2 model runner
-*Configuration only; no code.*
+### W1 — Per-batch-size speculative depth at `FULL_DECODE_ONLY` via the V2 model runner — **MEASURED 2026-08-16, and it required a code fix after all**
+*Was "configuration only"; the configuration could not start until a fork-local kernel-side bug was fixed.*
+
+**Result.** W1 is no longer closed-as-unavailable. The blocker was a FlashInfer gate admitting persistent
+(CUDA-graph) decode wrappers only for `q_len == 1 + num_speculative_tokens`, so the V2 speculator's
+draft-decode graph (`q_len == 1`) was captured *and* replayed on the **dynamic** wrapper, whose plan
+rebinds `_paged_kv_indptr_buf` / `_paged_kv_last_page_len_buf` and reallocates `_qo_indptr_buf` on every
+call - the captured graph replayed against freed plan buffers. Root cause proven with an instrumented
+capture-versus-replay address log plus a control that changes nothing except pinning the capture-time
+buffers alive (that alone makes the server ready). Fixed by keying wrappers on the shapes capture
+actually planned: [local-inference-lab/vllm#398](https://github.com/local-inference-lab/vllm/pull/398),
+closing [#396](https://github.com/local-inference-lab/vllm/issues/396). **Not upstream** - upstream's gate
+has no `q_len` term and flattens spec-decode batches into single-token rows, and the three symbols the bug
+lives in do not exist there, so there is nothing upstream to file.
+
+**Measured, one server, T=0, aggregate decode:** the schedule `[[1,2,3],[3,8,1]]` gives **87.35 / 251.74 /
+416.29 tok/s** at C1 / C4 / C8, i.e. **+38.01 % at C8 against an MRV1 baseline measured in the same window**
+(82.78 / 255.75 / 301.63) with C1 held at +5.5 % - so the estimate below was not only confirmed but
+exceeded, and it is +32.9 % even against the published 313.28 row. The mechanism is visible in the data:
+2.25 accepted tokens per step per request at C1 (depth 3, 25.5 ms steps) and 1.69 at C8 (depth 1, 31.3 ms
+steps), against the published `mtp1` C8 figure of 1.6754. The V2 runner *alone*, at static depth 3, is
+neutral-to-positive: −0.04 % C1, +6.89 % C4, +3.73 % C8. Fidelity guard discharged: greedy T=0 output over
+8 frozen prompts is token-for-token identical on two runs within each engine process in all four arms, and
+acceptance does not fall (2.11-2.14 against a 2.14-2.16 baseline); cross-restart bit-exactness is not
+claimable on this stack and is cited to `receipts/scratch-arena.json` rather than re-derived. Honesty
+control: MRV1 on the published profile measured 1.6-5.3 % *hotter* today than its own receipt, which is
+why every delta above is against the in-window matched baseline rather than the published numbers.
+
+**The cost, which is the part that decides whether to ship it.** At `--gpu-memory-utilization 0.97` the V2
+runner leaves 58.56 MiB free and the EXL3 prefill reconstruct OOMs on the first 2,048-row prefill
+(`torch.OutOfMemoryError` in `_reconstruct_hgemm_into -> torch.empty_like(x)`), with the schedule **off and
+on**, while 8x512-token prompts do not trigger it - which is why the engine looks healthy until a real
+prefill arrives. 0.95 alone is refused (262,144 no longer meets the KV minimum), so the measured arms ran
+**131,072 / 0.95 = 234,256 KV tokens against 272,570 published, −14.1 %**. Serving the published
+262,144 / 0.97 profile under the V2 runner on a 32 GB card is **not demonstrated**, and that is the
+shipping constraint recorded on the cards and in the PR body.
+**Receipts:** [`v2-fault-fix.json`](../receipts/v2-fault-fix.json),
+[`v2-runner-depth-schedule.json`](../receipts/v2-runner-depth-schedule.json).
+
+#### Original plan entry, kept for the record
+*Was: configuration only; no code.*
 
 **Build:** set `VLLM_USE_V2_MODEL_RUNNER=1` and `num_speculative_tokens_per_batch_size`
 (`config/speculative.py:181`) instead of a fixed `num_speculative_tokens=3`.
