@@ -115,6 +115,13 @@
       "evidence": "upstream/main @ fe1c31715 gates on `enable_cuda_graph and pure_decode and num_decode_tokens <= _decode_cudagraph_max_bs` (flashinfer.py:1678-1682) with no q_len term, calls fast_plan_decode without q_len_per_req (1697-1718) and keys _get_decode_wrapper by num_decode_tokens (1685): upstream flattens a spec batch into single-token rows, so row count == token count and capture/replay always resolve to the same persistent wrapper. persistent_decode_wrapper_eligible, decode_q_len_from_indptr and flashinfer_supports_uniform_multi_token_decode do not exist upstream (grep count 0)",
       "regression_origin": "the fork's uniform multi-token decode support (q_len_per_req plumbing + the scalar gate)",
       "public_context_cited_not_claimed": "FlashInfer documents that plan() cannot be captured by CUDA graph, and flashinfer-ai/flashinfer#1832 documents non-uniform q_len in speculative decode; neither is this gate"
+    },
+    "lint_status": {
+      "tool": "ruff 0.14.0 (the version pinned in the fork's .pre-commit-config.yaml), run inside the image against the fork's pyproject.toml",
+      "changed_flashinfer_py": "ruff format --check: already formatted; no new ruff check findings",
+      "changed_test_file": "ruff format --check would reformat it, and ruff check reports I001",
+      "pristine_control": "the SAME two findings fire on the pristine origin/dev/gilded-gnosis copies of both files (I001 x2, test file 'would reformat'), so they are pre-existing in this fork and not introduced by this change",
+      "conclusion": "style-neutral change; the test file's pre-existing formatting was deliberately left alone rather than restyled inside a bug-fix PR"
     }
   },
   "measurements": {
