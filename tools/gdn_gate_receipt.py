@@ -149,6 +149,18 @@ ANALYSIS = {
                         "pool, which makes the livelock impossible rather than merely unlikely. "
                         "The padding path depends on prefix-cache hits, not on window size."
                     ),
+                    "explicitly_NOT_the_cause_of_that_livelock": (
+                        "tempting and wrong, recorded so nobody assembles it later. This padding "
+                        "path inflates a re-admitted request's cost from one token to 1 + "
+                        "num_spec, which looks like it could explain an admission loop in a pool "
+                        "at its ceiling. It cannot explain the livelock above: in that "
+                        "instrumented run vllm:prefix_cache_queries_total was 261794 with "
+                        "vllm:prefix_cache_hits_total exactly 0.0, so num_new_tokens was never 1 "
+                        "and scheduler.py:868 never held. Each cycle there was a full cold "
+                        "re-prefill, not a re-admitted cache hit. Checked and refuted by "
+                        "ShipPrefixCaching against its own trace. The two findings share the "
+                        "admission decision and nothing else."
+                    ),
                 },
                 {
                     "mechanism": "token-budget clamping of a speculative decode down to exactly one token, which silently reclassifies it as non-speculative. This is the only mechanism found that needs no prefix caching, no async scheduling and no contrivance, so it is the one that could fire on ordinary mixed traffic.",
