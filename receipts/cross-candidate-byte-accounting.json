@@ -1,0 +1,645 @@
+{
+ "schema": "qwen38-cross-candidate-byte-accounting/1",
+ "question": "on which axis is each candidate's published byte figure measured, and what do the comparisons look like when a single axis is used throughout?",
+ "why": "the comparator's `serialized` column carries GGUF whole-FILE sizes for TEXT-ONLY artifacts beside our tensor PAYLOAD for MULTIMODAL ones that also ship an MTP draft, and the two families quantize the token embedding and the output head differently. Four separate differences, and every one of them flatters us.",
+ "rows": {
+  "GGUF Q8_0": {
+   "family": "GGUF (llama.cpp)",
+   "modality": "TEXT ONLY -- the vision encoder ships as a separate mmproj-*.gguf",
+   "has_mtp_draft": false,
+   "file_bytes": 29047086048,
+   "file_gib": 27.0522,
+   "tensor_bytes": 29036089344,
+   "tensor_gib": 27.042,
+   "metadata_and_padding_bytes": 10996704,
+   "embedding": {
+    "format": "Q8_0",
+    "bytes": 1350860800,
+    "gib": 1.2581
+   },
+   "head": {
+    "format": "Q8_0",
+    "bytes": 1350860800,
+    "gib": 1.2581
+   },
+   "vision": {
+    "format": "absent from this file",
+    "bytes": 0,
+    "gib": 0.0
+   },
+   "body_bytes": 26334367744,
+   "body_gib": 24.5258,
+   "body_definition": "tensor total minus token_embd and output; no vision, no MTP draft",
+   "body_types": {
+    "F32": 360,
+    "Q8_0": 504
+   },
+   "source": "https://huggingface.co/unsloth/Qwen3.8-27B-GGUF/resolve/f1bfb127c64f7072bdd2cad55f258b9c8b2910fe/Qwen3.8-27B-Q8_0.gguf",
+   "axis_of_the_published_serialized_column": "whole FILE bytes of a text-only artifact"
+  },
+  "GGUF Q6_K": {
+   "family": "GGUF (llama.cpp)",
+   "modality": "TEXT ONLY -- the vision encoder ships as a separate mmproj-*.gguf",
+   "has_mtp_draft": false,
+   "file_bytes": 22884408288,
+   "file_gib": 21.3128,
+   "tensor_bytes": 22873411584,
+   "tensor_gib": 21.3025,
+   "metadata_and_padding_bytes": 10996704,
+   "embedding": {
+    "format": "Q6_K",
+    "bytes": 1042944000,
+    "gib": 0.9713
+   },
+   "head": {
+    "format": "Q6_K",
+    "bytes": 1042944000,
+    "gib": 0.9713
+   },
+   "vision": {
+    "format": "absent from this file",
+    "bytes": 0,
+    "gib": 0.0
+   },
+   "body_bytes": 20787523584,
+   "body_gib": 19.3599,
+   "body_definition": "tensor total minus token_embd and output; no vision, no MTP draft",
+   "body_types": {
+    "F32": 456,
+    "Q6_K": 359,
+    "Q8_0": 49
+   },
+   "source": "https://huggingface.co/unsloth/Qwen3.8-27B-GGUF/resolve/f1bfb127c64f7072bdd2cad55f258b9c8b2910fe/Qwen3.8-27B-Q6_K.gguf",
+   "axis_of_the_published_serialized_column": "whole FILE bytes of a text-only artifact"
+  },
+  "GGUF UD-Q5_K_XL": {
+   "family": "GGUF (llama.cpp)",
+   "modality": "TEXT ONLY -- the vision encoder ships as a separate mmproj-*.gguf",
+   "has_mtp_draft": false,
+   "file_bytes": 20218178624,
+   "file_gib": 18.8296,
+   "tensor_bytes": 20207181824,
+   "tensor_gib": 18.8194,
+   "metadata_and_padding_bytes": 10996800,
+   "embedding": {
+    "format": "Q5_K",
+    "bytes": 874086400,
+    "gib": 0.8141
+   },
+   "head": {
+    "format": "Q6_K",
+    "bytes": 1042944000,
+    "gib": 0.9713
+   },
+   "vision": {
+    "format": "absent from this file",
+    "bytes": 0,
+    "gib": 0.0
+   },
+   "body_bytes": 18290151424,
+   "body_gib": 17.034,
+   "body_definition": "tensor total minus token_embd and output; no vision, no MTP draft",
+   "body_types": {
+    "F32": 360,
+    "Q5_K": 274,
+    "Q6_K": 164,
+    "Q4_K": 48,
+    "Q8_0": 18
+   },
+   "source": "https://huggingface.co/unsloth/Qwen3.8-27B-GGUF/resolve/f1bfb127c64f7072bdd2cad55f258b9c8b2910fe/Qwen3.8-27B-UD-Q5_K_XL.gguf",
+   "axis_of_the_published_serialized_column": "whole FILE bytes of a text-only artifact"
+  },
+  "GGUF mmproj-BF16 (vision half)": {
+   "family": "GGUF (llama.cpp)",
+   "modality": "VISION ENCODER ONLY -- required alongside a text GGUF for multimodal use",
+   "has_mtp_draft": false,
+   "file_bytes": 931146432,
+   "file_gib": 0.8672,
+   "tensor_bytes": 931126208,
+   "tensor_gib": 0.8672,
+   "metadata_and_padding_bytes": 20224,
+   "embedding": null,
+   "head": null,
+   "vision": {
+    "format": "BF16/F32 mix",
+    "bytes": 931126208,
+    "gib": 0.8672
+   },
+   "body_bytes": 0,
+   "body_gib": 0.0,
+   "body_definition": "not a transformer body",
+   "body_types": {
+    "F32": 224,
+    "BF16": 110
+   },
+   "source": "https://huggingface.co/unsloth/Qwen3.8-27B-GGUF/resolve/f1bfb127c64f7072bdd2cad55f258b9c8b2910fe/mmproj-BF16.gguf",
+   "axis_of_the_published_serialized_column": "not in the comparator at all, which is itself the problem"
+  },
+  "hydrated K5/K6": {
+   "family": "EXL3 (vLLM)",
+   "modality": "MULTIMODAL in one tree -- the vision tower is inside this payload",
+   "has_mtp_draft": true,
+   "file_bytes": 21610933884,
+   "file_gib": 20.1268,
+   "tensor_bytes": 21586964548,
+   "tensor_gib": 20.1044,
+   "metadata_and_padding_bytes": 23969336,
+   "embedding": {
+    "format": "BF16",
+    "bytes": 2542796800,
+    "gib": 2.3682
+   },
+   "head": {
+    "format": "exl3 K6 mcg",
+    "bytes": 954055684,
+    "gib": 0.8885
+   },
+   "vision": {
+    "format": "BF16",
+    "bytes": 921460192,
+    "gib": 0.8582
+   },
+   "body_bytes": 16885236288,
+   "body_gib": 15.7256,
+   "body_definition": "payload minus embedding, head, vision tower AND MTP draft, so it is the same set of weights a text-only GGUF's body covers",
+   "body_plus_draft_bytes": 17168651872,
+   "body_plus_draft_gib": 15.9896,
+   "mtp_draft": {
+    "bytes": 283415584,
+    "gib": 0.264
+   },
+   "body_types": {
+    "full_attention": {
+     "exl3_K6_mcg": 64,
+     "BF16": 32
+    },
+    "linear_attention": {
+     "exl3_K6_mcg": 144,
+     "F16": 96,
+     "BF16": 192
+    },
+    "mlp_down_proj": {
+     "exl3_K6_mcg": 64
+    },
+    "mlp_gate_proj": {
+     "exl3_K5_mcg": 64
+    },
+    "mlp_up_proj": {
+     "exl3_K5_mcg": 64
+    },
+    "norms_and_small": {
+     "BF16": 129
+    }
+   },
+   "source": "receipts/hydrated-quantization-manifest.json",
+   "evidence_label": "measured",
+   "axis_of_the_published_serialized_column": "tensor PAYLOAD of a multimodal artifact that also carries an MTP draft"
+  },
+  "context edition": {
+   "family": "EXL3 (vLLM)",
+   "modality": "MULTIMODAL in one tree -- the vision tower is inside this payload",
+   "has_mtp_draft": true,
+   "file_bytes": 20696053306,
+   "file_gib": 19.2747,
+   "tensor_bytes": 20672081988,
+   "tensor_gib": 19.2524,
+   "metadata_and_padding_bytes": 23971318,
+   "embedding": {
+    "format": "BF16",
+    "bytes": 2542796800,
+    "gib": 2.3682
+   },
+   "head": {
+    "format": "exl3 K6 mcg",
+    "bytes": 954055684,
+    "gib": 0.8885
+   },
+   "vision": {
+    "format": "BF16",
+    "bytes": 921460192,
+    "gib": 0.8582
+   },
+   "body_bytes": 15983460928,
+   "body_gib": 14.8858,
+   "body_definition": "payload minus embedding, head, vision tower AND MTP draft, so it is the same set of weights a text-only GGUF's body covers",
+   "body_plus_draft_bytes": 16253769312,
+   "body_plus_draft_gib": 15.1375,
+   "mtp_draft": {
+    "bytes": 270308384,
+    "gib": 0.2517
+   },
+   "body_types": {
+    "full_attention": {
+     "exl3_K5_mcg": 64,
+     "BF16": 32
+    },
+    "linear_attention": {
+     "exl3_K5_mcg": 144,
+     "F16": 96,
+     "BF16": 192
+    },
+    "mlp_down_proj": {
+     "exl3_K6_mcg": 64
+    },
+    "mlp_gate_proj": {
+     "exl3_K5_mcg": 64
+    },
+    "mlp_up_proj": {
+     "exl3_K5_mcg": 64
+    },
+    "norms_and_small": {
+     "BF16": 129
+    }
+   },
+   "source": "receipts/context-quantization-manifest.json",
+   "evidence_label": "measured",
+   "axis_of_the_published_serialized_column": "tensor PAYLOAD of a multimodal artifact that also carries an MTP draft"
+  },
+  "online K5/K6": {
+   "family": "EXL3 (vLLM)",
+   "modality": "MULTIMODAL in one tree -- the vision tower is inside this payload",
+   "has_mtp_draft": true,
+   "file_bytes": 30597223337,
+   "file_gib": 28.4959,
+   "tensor_bytes": 30573554948,
+   "tensor_gib": 28.4738,
+   "metadata_and_padding_bytes": 23668389,
+   "embedding": {
+    "format": "BF16",
+    "bytes": 2542796800,
+    "gib": 2.3682
+   },
+   "head": {
+    "format": "exl3 K6 mcg",
+    "bytes": 954055684,
+    "gib": 0.8885
+   },
+   "vision": {
+    "format": "BF16",
+    "bytes": 921460192,
+    "gib": 0.8582
+   },
+   "body_bytes": 25898041088,
+   "body_gib": 24.1194,
+   "body_definition": "payload minus embedding, head, vision tower AND MTP draft, so it is the same set of weights a text-only GGUF's body covers",
+   "body_plus_draft_bytes": 26155242272,
+   "body_plus_draft_gib": 24.359,
+   "mtp_draft": {
+    "bytes": 257201184,
+    "gib": 0.2395
+   },
+   "body_types": {
+    "full_attention": {
+     "BF16": 96
+    },
+    "linear_attention": {
+     "BF16": 336,
+     "F16": 96
+    },
+    "mlp_down_proj": {
+     "exl3_K6_mcg": 64
+    },
+    "mlp_gate_proj": {
+     "exl3_K5_mcg": 64
+    },
+    "mlp_up_proj": {
+     "exl3_K5_mcg": 64
+    },
+    "norms_and_small": {
+     "BF16": 129
+    }
+   },
+   "source": "receipts/k5k6-quantization-manifest.json",
+   "evidence_label": "measured",
+   "axis_of_the_published_serialized_column": "tensor PAYLOAD of a multimodal artifact that also carries an MTP draft"
+  },
+  "K4": {
+   "family": "EXL3 (vLLM)",
+   "modality": "MULTIMODAL in one tree -- the vision tower is inside this payload",
+   "has_mtp_draft": true,
+   "file_bytes": 28313841196,
+   "file_gib": 26.3693,
+   "tensor_bytes": 28313625828,
+   "tensor_gib": 26.3691,
+   "metadata_and_padding_bytes": 215368,
+   "embedding": {
+    "format": "BF16",
+    "bytes": 2542796800,
+    "gib": 2.3682
+   },
+   "head": {
+    "format": "exl3 K6 mcg",
+    "bytes": 954055684,
+    "gib": 0.8885
+   },
+   "vision": {
+    "format": "BF16",
+    "bytes": 921460192,
+    "gib": 0.8582
+   },
+   "body_bytes": 23045914368,
+   "body_gib": 21.4632,
+   "body_definition": "payload minus embedding, head, vision tower AND MTP draft, so it is the same set of weights a text-only GGUF's body covers",
+   "body_plus_draft_bytes": 23895313152,
+   "body_plus_draft_gib": 22.2542,
+   "mtp_draft": {
+    "bytes": 849398784,
+    "gib": 0.7911
+   },
+   "body_types": {
+    "full_attention": {
+     "BF16": 96
+    },
+    "linear_attention": {
+     "BF16": 336,
+     "F16": 96
+    },
+    "mlp_down_proj": {
+     "I32": 64,
+     "F16": 128,
+     "I16": 64
+    },
+    "mlp_gate_proj": {
+     "I32": 64,
+     "F16": 128,
+     "I16": 64
+    },
+    "mlp_up_proj": {
+     "I32": 64,
+     "F16": 128,
+     "I16": 64
+    },
+    "norms_and_small": {
+     "BF16": 129
+    }
+   },
+   "source": "malaiwah/Qwen3.8-27B-K4 safetensors headers",
+   "evidence_label": "measured",
+   "axis_of_the_published_serialized_column": "tensor PAYLOAD of a multimodal artifact that also carries an MTP draft"
+  },
+  "K6-parity [P]": {
+   "family": "EXL3 (vLLM)",
+   "modality": "MULTIMODAL in one tree -- the vision tower is inside this payload",
+   "has_mtp_draft": true,
+   "file_bytes": null,
+   "file_gib": null,
+   "tensor_bytes": 23035310148,
+   "tensor_gib": 21.4533,
+   "metadata_and_padding_bytes": null,
+   "embedding": {
+    "format": "BF16",
+    "bytes": 2542796800,
+    "gib": 2.3682
+   },
+   "head": {
+    "format": "exl3 K6 mcg",
+    "bytes": 954055684,
+    "gib": 0.8885
+   },
+   "vision": {
+    "format": "BF16",
+    "bytes": 921460192,
+    "gib": 0.8582
+   },
+   "body_bytes": 18311299648,
+   "body_gib": 17.0537,
+   "body_definition": "payload minus embedding, head, vision tower AND MTP draft, so it is the same set of weights a text-only GGUF's body covers",
+   "body_plus_draft_bytes": 18616997472,
+   "body_plus_draft_gib": 17.3384,
+   "mtp_draft": {
+    "bytes": 305697824,
+    "gib": 0.2847
+   },
+   "body_types": {
+    "note": "gate/up/down all exl3 K6, attention K6 serialized"
+   },
+   "source": "receipts/preregistration-kld9-window.json conditions[2].predicted_bytes",
+   "evidence_label": "prediction",
+   "axis_of_the_published_serialized_column": "tensor PAYLOAD of a multimodal artifact that also carries an MTP draft"
+  }
+ },
+ "comparisons": {
+  "axis_1_transformer_body_bytes": {
+   "what": "the weights both families actually quantize and multiply: no embedding, no output head, no vision encoder, no MTP draft. This is the axis that isolates format and allocation from packaging choices, and it is the honest reply to 'your win is just more bytes'.",
+   "ranking_gib": {
+    "GGUF Q8_0": 24.5258,
+    "online K5/K6": 24.1194,
+    "K4": 21.4632,
+    "GGUF Q6_K": 19.3599,
+    "K6-parity [P]": 17.0537,
+    "GGUF UD-Q5_K_XL": 17.034,
+    "hydrated K5/K6": 15.7256,
+    "context edition": 14.8858,
+    "GGUF mmproj-BF16 (vision half)": 0.0
+   }
+  },
+  "axis_2_whole_deployed_artifact": {
+   "what": "everything you must download to serve the model's advertised capability. For a GGUF that is the text file PLUS mmproj-BF16.gguf, because the text file has no vision tensors at all; for ours it is the whole tree.",
+   "multimodal_deployment_gib": {
+    "GGUF Q8_0": 27.9194,
+    "GGUF Q6_K": 22.18,
+    "GGUF UD-Q5_K_XL": 19.6968,
+    "hydrated K5/K6": 20.1268,
+    "context edition": 19.2747,
+    "online K5/K6": 28.4959,
+    "K4": 26.3693
+   },
+   "note": "a GGUF row here is text file + mmproj-BF16.gguf; ours is the whole tree, vision tower included, MTP draft included"
+  },
+  "axis_3_tensor_payload_as_shipped": {
+   "what": "tensor bytes in the file(s) as shipped, without normalising modality. This is the axis closest to the comparator's current column, and it compares a text-only artifact with a multimodal one.",
+   "ranking_gib": {
+    "online K5/K6": 28.4738,
+    "GGUF Q8_0": 27.042,
+    "K4": 26.3691,
+    "K6-parity [P]": 21.4533,
+    "GGUF Q6_K": 21.3025,
+    "hydrated K5/K6": 20.1044,
+    "context edition": 19.2524,
+    "GGUF UD-Q5_K_XL": 18.8194,
+    "GGUF mmproj-BF16 (vision half)": 0.8672
+   }
+  }
+ },
+ "published_claims_on_one_axis_at_a_time": {
+  "6-bit: Q6_K versus hydrated": {
+   "published_claim": "cards and receipts/cross-engine-comparator.json: Q6_K gets about 43 % lower divergence for 1.186 GiB more file",
+   "axis_the_published_claim_uses": "GGUF whole FILE bytes beside our tensor PAYLOAD",
+   "same_axis_tensor_bytes": {
+    "GGUF Q6_K": 21.3025,
+    "hydrated K5/K6": 20.1044,
+    "difference_gib_theirs_minus_ours": 1.1981
+   },
+   "transformer_body_bytes": {
+    "GGUF Q6_K": 19.3599,
+    "hydrated K5/K6": 15.7256,
+    "difference_gib_theirs_minus_ours": 3.6343,
+    "difference_pct_of_ours": 23.1
+   },
+   "whole_deployed_multimodal_bytes": {
+    "GGUF Q6_K": 22.18,
+    "hydrated K5/K6": 20.1268,
+    "difference_gib_theirs_minus_ours": 2.0532,
+    "note": "their column adds mmproj-BF16.gguf because their text file has no vision tensors; ours already contains the vision tower"
+   },
+   "embedding_and_head_asymmetry": {
+    "their_embedding": {
+     "format": "Q6_K",
+     "bytes": 1042944000,
+     "gib": 0.9713
+    },
+    "our_embedding": {
+     "format": "BF16",
+     "bytes": 2542796800,
+     "gib": 2.3682
+    },
+    "their_head": {
+     "format": "Q6_K",
+     "bytes": 1042944000,
+     "gib": 0.9713
+    },
+    "our_head": {
+     "format": "exl3 K6 mcg",
+     "bytes": 954055684,
+     "gib": 0.8885
+    }
+   }
+  },
+  "5-bit: UD-Q5_K_XL versus the context edition": {
+   "published_claim": "cards: the context edition is about 13 % better fidelity for 0.445 GiB more payload",
+   "axis_the_published_claim_uses": "GGUF whole FILE bytes beside our tensor PAYLOAD",
+   "same_axis_tensor_bytes": {
+    "GGUF UD-Q5_K_XL": 18.8194,
+    "context edition": 19.2524,
+    "difference_gib_theirs_minus_ours": -0.433
+   },
+   "transformer_body_bytes": {
+    "GGUF UD-Q5_K_XL": 17.034,
+    "context edition": 14.8858,
+    "difference_gib_theirs_minus_ours": 2.1482,
+    "difference_pct_of_ours": 14.4
+   },
+   "whole_deployed_multimodal_bytes": {
+    "GGUF UD-Q5_K_XL": 19.6968,
+    "context edition": 19.2747,
+    "difference_gib_theirs_minus_ours": 0.4221,
+    "note": "their column adds mmproj-BF16.gguf because their text file has no vision tensors; ours already contains the vision tower"
+   },
+   "embedding_and_head_asymmetry": {
+    "their_embedding": {
+     "format": "Q5_K",
+     "bytes": 874086400,
+     "gib": 0.8141
+    },
+    "our_embedding": {
+     "format": "BF16",
+     "bytes": 2542796800,
+     "gib": 2.3682
+    },
+    "their_head": {
+     "format": "Q6_K",
+     "bytes": 1042944000,
+     "gib": 0.9713
+    },
+    "our_head": {
+     "format": "exl3 K6 mcg",
+     "bytes": 954055684,
+     "gib": 0.8885
+    }
+   }
+  },
+  "8-bit: Q8_0 versus online K5/K6": {
+   "published_claim": "cards: Q8_0 leads everything at 27.05 GiB",
+   "axis_the_published_claim_uses": "GGUF whole FILE bytes beside our tensor PAYLOAD",
+   "same_axis_tensor_bytes": {
+    "GGUF Q8_0": 27.042,
+    "online K5/K6": 28.4738,
+    "difference_gib_theirs_minus_ours": -1.4318
+   },
+   "transformer_body_bytes": {
+    "GGUF Q8_0": 24.5258,
+    "online K5/K6": 24.1194,
+    "difference_gib_theirs_minus_ours": 0.4064,
+    "difference_pct_of_ours": 1.7
+   },
+   "whole_deployed_multimodal_bytes": {
+    "GGUF Q8_0": 27.9194,
+    "online K5/K6": 28.4959,
+    "difference_gib_theirs_minus_ours": -0.5765,
+    "note": "their column adds mmproj-BF16.gguf because their text file has no vision tensors; ours already contains the vision tower"
+   },
+   "embedding_and_head_asymmetry": {
+    "their_embedding": {
+     "format": "Q8_0",
+     "bytes": 1350860800,
+     "gib": 1.2581
+    },
+    "our_embedding": {
+     "format": "BF16",
+     "bytes": 2542796800,
+     "gib": 2.3682
+    },
+    "their_head": {
+     "format": "Q8_0",
+     "bytes": 1350860800,
+     "gib": 1.2581
+    },
+    "our_head": {
+     "format": "exl3 K6 mcg",
+     "bytes": 954055684,
+     "gib": 0.8885
+    }
+   }
+  },
+  "the parity test: Q6_K versus the K6-parity prediction": {
+   "published_claim": "receipts/preregistration-kld9-window.json: the parity build lands at byte parity with Q6_K, 21.45 GiB against 21.31 GiB",
+   "axis_the_published_claim_uses": "GGUF whole FILE bytes beside our tensor PAYLOAD",
+   "same_axis_tensor_bytes": {
+    "GGUF Q6_K": 21.3025,
+    "K6-parity [P]": 21.4533,
+    "difference_gib_theirs_minus_ours": -0.1508
+   },
+   "transformer_body_bytes": {
+    "GGUF Q6_K": 19.3599,
+    "K6-parity [P]": 17.0537,
+    "difference_gib_theirs_minus_ours": 2.3062,
+    "difference_pct_of_ours": 13.5
+   },
+   "whole_deployed_multimodal_bytes": {
+    "GGUF Q6_K": 22.18,
+    "K6-parity [P]": 21.4757,
+    "difference_gib_theirs_minus_ours": 0.7043,
+    "note": "their column adds mmproj-BF16.gguf because their text file has no vision tensors; ours already contains the vision tower"
+   },
+   "embedding_and_head_asymmetry": {
+    "their_embedding": {
+     "format": "Q6_K",
+     "bytes": 1042944000,
+     "gib": 0.9713
+    },
+    "our_embedding": {
+     "format": "BF16",
+     "bytes": 2542796800,
+     "gib": 2.3682
+    },
+    "their_head": {
+     "format": "Q6_K",
+     "bytes": 1042944000,
+     "gib": 0.9713
+    },
+    "our_head": {
+     "format": "exl3 K6 mcg",
+     "bytes": 954055684,
+     "gib": 0.8885
+    }
+   }
+  }
+ },
+ "reading_rules": [
+  "name the axis in the claim, not in a footnote: 'at equal file bytes' and 'at equal transformer-body bytes' are different claims",
+  "a GGUF text file is not a multimodal artifact; adding mmproj-BF16.gguf is what makes the capability comparable",
+  "the embedding and head widths are NOT uniform across the GGUF tiers, so the asymmetry must be taken per row and never assumed"
+ ],
+ "errors": [],
+ "content_sha256": "393e83b1bcc17f0df79e1d7ebf715f0b2de425d3a351a0139f7092197d36e798"
+}
