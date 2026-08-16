@@ -246,5 +246,46 @@
     "receipts/qualification-24gib-capped.json",
     "tools/publish_cards.py"
   ],
-  "content_sha256": "42f93c253b40dc5ec0fd189203f43e2d46f3d647a7f24de58fb1403cdca6bef9"
+  "post_push_independent_refetch": {
+    "when": "after the commit was pushed to both remotes",
+    "method": "hf download <repo> README.md into a fresh throwaway directory under HF_HOME=/var/tmp/hf-home-3, sha256 compared byte-for-byte against the local card",
+    "results": {
+      "malaiwah/Qwen3.8-27B-EXL3-K5K6-context": {
+        "bytes": 97683,
+        "sha256": "ecde7c8f9fc2a774b67b923a054dea5c2fa6bf34155a1edb0bae2523daa055d5",
+        "byte_identical": true
+      },
+      "malaiwah/Qwen3.8-27B-EXL3-K5K6": {
+        "bytes": 93937,
+        "sha256": "6a44ab36e169b5879a86993dcdad33aa00b18a15c3e300e01ad3351845c362d0",
+        "byte_identical": true
+      },
+      "malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated": {
+        "bytes": 82293,
+        "sha256": "34b3e3cf18046dc3806b3f6e437c7aeaac30b53c56d34a8b6c3733eaf75dcdd9",
+        "byte_identical": true
+      },
+      "malaiwah/Qwen3.8-27B-K4": {
+        "bytes": 89306,
+        "sha256": "92d97773f1e7c9f7cf227c49fb752d37595fc35ed53ff66bcd0ea805f908ac95",
+        "byte_identical": true
+      }
+    },
+    "all_byte_identical": true
+  },
+  "git": {
+    "commit": "78df010be834141e937720b56c5f6e450d97b7a8",
+    "pushed_to": [
+      "origin (gitea) main",
+      "github main"
+    ],
+    "confirmed_by": "git ls-remote on both remotes returns 78df010be834",
+    "committed_paths_only": [
+      "the four MODEL_CARD files",
+      "docs/34-vram-class-profiles.md",
+      "receipts/card-final-pass.json"
+    ],
+    "note": "other agents' uncommitted work in the tree (docker/smoke_client.py, docs/35, the qualification-24gib-capped raw artefacts) was deliberately left alone"
+  },
+  "content_sha256": "f65159283bafc7adeb6f69f208eb10fa08ba16804063d777f616b4285999a685"
 }
