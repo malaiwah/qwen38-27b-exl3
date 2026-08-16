@@ -1,0 +1,361 @@
+{
+ "schema": "qwen38-replay-live-floor-v5/1",
+ "what": "The replay-versus-live floor re-derived on the v5 ladder: the unquantized BF16 model served in-process on the rental RTX PRO 6000, its own full-vocabulary prompt logprobs scored against the same contexts replayed from the published shard-0 BF16 hidden-state capture. KL(live || replayed) is the floor under every absolute body-only number the cards publish.",
+ "why": "The published floor 6.54e-04 comes from SIX v3 contexts (receipts/v3-qualification-bf16.json), a number the cards' \"how closely these absolute numbers may be read\" paragraph and docs/17's P0.1 both lean on. This replaces that derivation with one measured on the same suite, the same reference capture and the same head the published v5 means use, over 32 contexts instead of six.",
+ "protocol_identity": {
+  "suite": {
+   "shard": "shard-0000 of the v5 ladder",
+   "suite_dir": "/work/kld5/shards/shard-0000/suite",
+   "shard_suite_token_sha256": "caef8a4628d6c07c162100895096f890cdf9cafc8e4c48b3d66035d737ee7cf7",
+   "suite_token_sha256_matches_shard_manifest": true,
+   "context_length": 2048,
+   "filter": "analysis",
+   "contexts_scored": 32,
+   "scored_positions_per_context": 2047,
+   "scored_positions": 65504,
+   "context_indices": [
+    0,
+    1,
+    2,
+    4,
+    5,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    17,
+    18,
+    20,
+    22,
+    23,
+    24,
+    26,
+    27,
+    28,
+    29,
+    30,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38
+   ]
+  },
+  "replayed_side": {
+   "capture": "/work/gguf/hidden-bf16",
+   "capture_manifest_sha256": "01a2f676edcf5d1f958f0e0ffb9dfa1dd8cf5671e3d8c69b822cb806e13200ec",
+   "head": "/work/kld2/lm_head.safetensors",
+   "head_sha256": "25a30fd5f826da0abc4efc4cc71def9f02bcb8085f7175eee284d221dee4cfff",
+   "note": "the identical capture and head the published shard-0 body-only means were replayed through, so this floor is under those numbers and not under a different protocol"
+  },
+  "live_side": {
+   "model": "/models/Qwen3.8-27B",
+   "candidate_identity_index_sha256": "77042094076611b69791a610065f28b7013b8c621795fa86ddccc8bac7d1b9df",
+   "candidate_identity_config_sha256": "191e0af232104ed8b65258cf3fb2b842e288008baca7633c11b82a1ac7203aab",
+   "identity_gate": "fidelity.py qualify refuses to run unless the live model's index/config/shard digests equal the hidden capture's, and unless the capture's recorded runtime equals the requested runtime",
+   "runtime": {
+    "quantization": "auto",
+    "quantization_config": null,
+    "trust_remote_code": false,
+    "kv_cache_dtype_requested": "auto",
+    "fp32": false
+   },
+   "prompt_logprobs": "-1 (full 248,320-token vocabulary), flat_logprobs, max_tokens 1"
+  },
+  "argv": "python /work/kld9/fidelity.py qualify --model /models/Qwen3.8-27B --suite /work/kld5/shards/shard-0000/suite --hidden /work/gguf/hidden-bf16 --head /work/kld2/lm_head.safetensors --contexts 32 --filter analysis --gpu-memory-utilization 0.85 --out /work/kld9/reports/qualify-bf16-v5-32ctx.json",
+  "driver": "/work/kld9/qualify-v5.sh",
+  "engine": {
+   "engine_version_banner": "v0.11.2.dev280+gilded.gnosis.v20.vllm4d006a4.b12xcd3ce19.fi1ac6942.cu132.20260810.r34",
+   "engine_config_line": "model='/models/Qwen3.8-27B', speculative_config=None, tokenizer='/models/Qwen3.8-27B', skip_tokenizer_init=False, tokenizer_mode=auto, revision=None, tokenizer_revision=None, trust_remote_code=False, dtype=torch.bfloat16, max_seq_len=2112, download_dir=None, load_format=safetensors, tensor_parallel_size=1, pipeline_parallel_size=1, data_parallel_size=1, decode_context_parallel_size=1, dcp_comm_backend=ag_rs, disable_custom_all_reduce=False, quantization=None, quantization_config=None, enforce_eager=True, enable_return_routed_experts=False, kv_cache_dtype=auto, device_config=cuda, structured_outputs_config=StructuredOutputsConfig(backend='auto', disable_any_whitespace=False, disable_additional_properties=False, reasoning_parser='', reasoning_parser_plugin='', enable_in_reasoning=False), observability_config=ObservabilityConfig(show_hidden_metrics_for_version=None, otlp_traces_endpoint=None, collect_detailed_traces=None, kv_cache_metrics=False, kv_cache_metrics_sample=0.01, cudagraph_metrics=False, enable_layerwise_nvtx_tracing=False, enable_mfu_metrics=False, enable_mm_processor_stats=False, enable_logging_iteration_details=False, jit_monitor_mode='warn', jit_monitor_verbose=False), seed=0, served_model_name=/models/Qwen3.8-27B, enable_prefix_caching=False, enable_chunked_prefill=True, pooler_config=None, compilation_config={'mode': <CompilationMode.NONE: 0>, 'debug_dump_path': None, 'cache_dir': '', 'compile_cache_save_format': 'binary', 'backend': 'inductor', 'custom_ops': ['all'], 'ir_enable_torch_wrap': False, 'splitting_ops': [], 'compile_mm_encoder': False, 'cudagraph_",
+   "model_weights_gib": null,
+   "kv_cache_tokens": 3520,
+   "torch_version": null,
+   "vllm_version": null
+  },
+  "gpu": "one NVIDIA RTX PRO 6000 Blackwell Server Edition, 97,887 MiB",
+  "harness_sha256": "8ce8fe861c977c856f3263f509878e588caa2eaab29fe310f8c40223941e1294",
+  "report_sha256": "d7248627a98914076b2bf8fe00e187fb619e5c0adf799bd4b6ecc0a69b2e8319"
+ },
+ "measured": {
+  "contexts": 32,
+  "mean_kld_live_vs_replayed": 0.000582813569073781,
+  "context_bootstrap_ci95": [
+   0.0005146716119510303,
+   0.0006641851792391911
+  ],
+  "bootstrap": {
+   "resample_unit": "context",
+   "samples": 10000,
+   "seed": 1
+  },
+  "median_context_mean": 0.0005671485576425918,
+  "min_context_mean": 0.00028571892911185187,
+  "max_context_mean": 0.0013705444920671132,
+  "max_kld_any_position": 0.2533652219141054,
+  "p999_kld": 0.0694098943312035,
+  "top1_agreement_live_vs_replayed": 0.990962383976551,
+  "per_context": [
+   {
+    "index": 0,
+    "mean_kld": 0.0005241076016718359,
+    "max_kld": 0.007519416301875026,
+    "p999_kld": 0.0071788256844779455,
+    "top1_agreement": 0.9892525647288715
+   },
+   {
+    "index": 1,
+    "mean_kld": 0.0006882772610255592,
+    "max_kld": 0.2533652219141054,
+    "p999_kld": 0.014325009295152392,
+    "top1_agreement": 0.9926722032242306
+   },
+   {
+    "index": 2,
+    "mean_kld": 0.0005692970185277239,
+    "max_kld": 0.006828455225331709,
+    "p999_kld": 0.004940066679967273,
+    "top1_agreement": 0.9892525647288715
+   },
+   {
+    "index": 4,
+    "mean_kld": 0.0005859897434936233,
+    "max_kld": 0.0066888171605508084,
+    "p999_kld": 0.006165775891058956,
+    "top1_agreement": 0.995114802149487
+   },
+   {
+    "index": 5,
+    "mean_kld": 0.0005650000967574595,
+    "max_kld": 0.00962240935982095,
+    "p999_kld": 0.006301382303464902,
+    "top1_agreement": 0.9887640449438202
+   },
+   {
+    "index": 7,
+    "mean_kld": 0.00046867176608655946,
+    "max_kld": 0.015842821783735417,
+    "p999_kld": 0.008891430279023534,
+    "top1_agreement": 0.9946262823644357
+   },
+   {
+    "index": 8,
+    "mean_kld": 0.000573767922624867,
+    "max_kld": 0.01450655806843315,
+    "p999_kld": 0.007868198415265187,
+    "top1_agreement": 0.986809965803615
+   },
+   {
+    "index": 9,
+    "mean_kld": 0.0005834048410879203,
+    "max_kld": 0.00543780809604133,
+    "p999_kld": 0.004764241692455229,
+    "top1_agreement": 0.9819247679531021
+   },
+   {
+    "index": 10,
+    "mean_kld": 0.0005628432994932494,
+    "max_kld": 0.005328342866278035,
+    "p999_kld": 0.00389459465873695,
+    "top1_agreement": 0.991695163654128
+   },
+   {
+    "index": 11,
+    "mean_kld": 0.00028571892911185187,
+    "max_kld": 0.07929605039464604,
+    "p999_kld": 0.012283811215266834,
+    "top1_agreement": 0.9970688812896922
+   },
+   {
+    "index": 12,
+    "mean_kld": 0.0004078710138766135,
+    "max_kld": 0.009476975372308516,
+    "p999_kld": 0.0051096394811635006,
+    "top1_agreement": 0.9882755251587689
+   },
+   {
+    "index": 13,
+    "mean_kld": 0.000369895059797688,
+    "max_kld": 0.01309953020120247,
+    "p999_kld": 0.00774247423218572,
+    "top1_agreement": 0.9970688812896922
+   },
+   {
+    "index": 14,
+    "mean_kld": 0.00039570362900423066,
+    "max_kld": 0.013101019777195688,
+    "p999_kld": 0.010427924532825197,
+    "top1_agreement": 0.9965803615046409
+   },
+   {
+    "index": 15,
+    "mean_kld": 0.0005479645668921541,
+    "max_kld": 0.007794392580763088,
+    "p999_kld": 0.005784654593943787,
+    "top1_agreement": 0.9912066438690766
+   },
+   {
+    "index": 17,
+    "mean_kld": 0.001166828289390941,
+    "max_kld": 0.04926657537725987,
+    "p999_kld": 0.03360294466579021,
+    "top1_agreement": 0.9965803615046409
+   },
+   {
+    "index": 18,
+    "mean_kld": 0.0005425068959737124,
+    "max_kld": 0.004625476236697068,
+    "p999_kld": 0.003706452323014094,
+    "top1_agreement": 0.9902296042989741
+   },
+   {
+    "index": 20,
+    "mean_kld": 0.0006168780031583614,
+    "max_kld": 0.007816014011137185,
+    "p999_kld": 0.006276124953659338,
+    "top1_agreement": 0.9902296042989741
+   },
+   {
+    "index": 22,
+    "mean_kld": 0.000635843816628191,
+    "max_kld": 0.010492123089687055,
+    "p999_kld": 0.008094018750486957,
+    "top1_agreement": 0.9872984855886663
+   },
+   {
+    "index": 23,
+    "mean_kld": 0.0004104037070701928,
+    "max_kld": 0.005253719110214661,
+    "p999_kld": 0.00429500655805075,
+    "top1_agreement": 0.9936492427943332
+   },
+   {
+    "index": 24,
+    "mean_kld": 0.0006035824521271973,
+    "max_kld": 0.011897439487142947,
+    "p999_kld": 0.005440208258493017,
+    "top1_agreement": 0.991695163654128
+   },
+   {
+    "index": 26,
+    "mean_kld": 0.0004219047282880272,
+    "max_kld": 0.017692031698061328,
+    "p999_kld": 0.008352134444082152,
+    "top1_agreement": 0.9897410845139228
+   },
+   {
+    "index": 27,
+    "mean_kld": 0.0005906302396701694,
+    "max_kld": 0.007750633004661722,
+    "p999_kld": 0.006419810218338105,
+    "top1_agreement": 0.9921836834391793
+   },
+   {
+    "index": 28,
+    "mean_kld": 0.0005947503236206801,
+    "max_kld": 0.01386174446921018,
+    "p999_kld": 0.008101584236262433,
+    "top1_agreement": 0.9863214460185638
+   },
+   {
+    "index": 29,
+    "mean_kld": 0.0008445849230791786,
+    "max_kld": 0.10478624700681394,
+    "p999_kld": 0.020182211788290223,
+    "top1_agreement": 0.9848558866634098
+   },
+   {
+    "index": 30,
+    "mean_kld": 0.0006351917472842336,
+    "max_kld": 0.008013306018256117,
+    "p999_kld": 0.006437093382998667,
+    "top1_agreement": 0.9902296042989741
+   },
+   {
+    "index": 32,
+    "mean_kld": 0.00044019034502837216,
+    "max_kld": 0.04985572339501232,
+    "p999_kld": 0.01239829912370833,
+    "top1_agreement": 0.9956033219345384
+   },
+   {
+    "index": 33,
+    "mean_kld": 0.0013705444920671132,
+    "max_kld": 0.08236832128358706,
+    "p999_kld": 0.0694098943312035,
+    "top1_agreement": 0.9902296042989741
+   },
+   {
+    "index": 34,
+    "mean_kld": 0.00030942052885312425,
+    "max_kld": 0.01682104318462052,
+    "p999_kld": 0.015154766620005615,
+    "top1_agreement": 0.9970688812896922
+   },
+   {
+    "index": 35,
+    "mean_kld": 0.0004970826544326943,
+    "max_kld": 0.007500735506002609,
+    "p999_kld": 0.004434536417154102,
+    "top1_agreement": 0.9887640449438202
+   },
+   {
+    "index": 36,
+    "mean_kld": 0.0008094600982396575,
+    "max_kld": 0.01663130182828354,
+    "p999_kld": 0.013686400183226304,
+    "top1_agreement": 0.9877870053737177
+   },
+   {
+    "index": 37,
+    "mean_kld": 0.000460254517618956,
+    "max_kld": 0.010998849647876341,
+    "p999_kld": 0.0052692225731300335,
+    "top1_agreement": 0.9877870053737177
+   },
+   {
+    "index": 38,
+    "mean_kld": 0.0005714636983788539,
+    "max_kld": 0.01361545325755742,
+    "p999_kld": 0.006649646223248677,
+    "top1_agreement": 0.9902296042989741
+   }
+  ]
+ },
+ "supersedes": {
+  "receipt": "receipts/v3-qualification-bf16.json",
+  "published_floor": 0.000654177503134738,
+  "published_contexts": 6,
+  "published_top1_agreement": 0.9899853444064485,
+  "published_suite": "v3, six contexts, no suite_token_sha256 or head digest recorded in that receipt",
+  "fp32_storage_variant": {
+   "receipt": "receipts/v3-qualification-fp32.json",
+   "floor": 0.0006249375925433911,
+   "note": "fp32 hidden-state storage moved the v3 floor by -4.5 %"
+  },
+  "v5_over_v3": 0.8909104429317887,
+  "moved_materially": false,
+  "materiality_test": "the 32-context bootstrap interval for the v5 floor contains the published 6.54e-04"
+ },
+ "card_correction": {
+  "applies_to": "the \"How closely these absolute numbers may be read\" paragraph in MODEL_CARD-K5K6.md, MODEL_CARD-K5K6-hydrated.md, MODEL_CARD-K5K6-context.md and MODEL_CARD-K4.md, plus the \"Weakest control\" lines",
+  "owner": "handed to Main; this receipt edits no card",
+  "number_moved_materially": false,
+  "recommended_anyway": true,
+  "why_recommended": "the level does not move materially - the 32-context interval contains the published 6.54e-04 - but the provenance does: the published number is six v3 contexts with no suite, head or capture digest recorded, while this one is 32 contexts of the very suite, reference capture and shared head the cards' means are replayed through. The cards should cite the v5 derivation even though the caveat it supports is unchanged.",
+  "one_line": "Replaying the unquantized model against its own live logits measures `KL(live \u2016 replayed)` = **5.83e-04** (32 v5 shard-0 contexts, 65,504 scored positions, context-bootstrap 95 % CI [5.15e-04, 6.64e-04], top-1 99.10 %), measured on the same suite, reference capture and shared BF16 head as the published means (`receipts/replay-live-floor-v5.json`) and superseding the six-context v3 derivation of 6.54e-04, which it contains.",
+  "what_it_licenses": "the standing rule is unchanged and now rests on 32 in-suite contexts instead of six out-of-suite ones: absolute body-only values carry an implementation offset of about 5.83e-04 plus the ~5 % BF16-storage systematic, both common-mode across candidates, so paired differences and orderings are the resolvable quantity and absolute differences below about 1e-3 are not.",
+  "what_it_does_not_license": "it is not a statement that candidate KLDs are 11 % smaller, and it does not license reading any single absolute mean more finely: the floor is a mean over 32 contexts whose own per-context means span 2.86e-04 to 1.37e-03, with a worst single position of 0.253. It also says nothing about the cross-engine floor (0.000507, gguf-report-engine-floor.json), which is a different control."
+ },
+ "content_sha256_excludes": [
+  "content_sha256"
+ ],
+ "generated_utc": "2026-08-16T15:28:04Z",
+ "content_sha256": "776b8e0bdc5c192f49ce6412257776deaf337d023544222213aec4a89d9c793b"
+}
