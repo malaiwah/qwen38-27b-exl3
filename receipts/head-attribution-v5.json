@@ -1,0 +1,566 @@
+{
+ "schema": "qwen38-head-attribution-v5/1",
+ "what": "Head attribution on the v5 ladder's shard 0: every candidate's shard-0 hidden-state capture replayed twice, once through the shared BF16 lm_head on both operands (the published body-only protocol) and once with the candidate operand going through THAT CHECKPOINT'S OWN serialized head, with the body captures byte-identical between the two arms.",
+ "why": "docs/35 attributes the 1.1-1.6x level gap between Unsloth's protocol and ours mostly to D5 - their measured path contains the candidate's own output head while both of our operands go through one shared BF16 head - and marks that decomposition [INFERENCE] because the only head measurement we had (docs/16) was on the v2 corpus, at K6, for one candidate. This runs it on the published v5 corpus for every candidate on the cards.",
+ "protocol_identity": {
+  "suite": {
+   "shard": "shard-0000 of the v5 ladder: contexts 0-511 in the parent's fixed order",
+   "suite_dir": "/work/kld5/shards/shard-0000/suite",
+   "shard_suite_token_sha256": "caef8a4628d6c07c162100895096f890cdf9cafc8e4c48b3d66035d737ee7cf7",
+   "contexts": 512,
+   "context_length": 2048,
+   "filter": "all",
+   "scored_positions_per_context": 2047,
+   "source_clusters": 330
+  },
+  "reference": {
+   "model": "/models/Qwen3.8-27B",
+   "capture": "/work/gguf/hidden-bf16",
+   "capture_manifest_sha256": "01a2f676edcf5d1f958f0e0ffb9dfa1dd8cf5671e3d8c69b822cb806e13200ec",
+   "note": "the published shard-0 BF16 teacher capture; the same reference the published shard-0 reports and the gittensor NVFP4 row used"
+  },
+  "shared_head": {
+   "path": "/work/kld2/lm_head.safetensors",
+   "sha256": "25a30fd5f826da0abc4efc4cc71def9f02bcb8085f7175eee284d221dee4cfff",
+   "tensor_sha256": "d922b751f014ee1139488cb94c0e164a1eb3da5c14048070ed1b784e00f92723",
+   "shape": [
+    248320,
+    5120
+   ],
+   "dtype": "torch.bfloat16",
+   "role": "reference operand in both arms; candidate operand in the body-only arm"
+  },
+  "interval": "source-cluster bootstrap, 10,000 resamples, seed 1",
+  "comparator": {
+   "harness": "/work/kld9/fidelity.py",
+   "harness_sha256": "8ce8fe861c977c856f3263f509878e588caa2eaab29fe310f8c40223941e1294",
+   "identical_to_repo_tools_fidelity_py": true,
+   "accumulation": "float64, two-pass, full 248,320-token vocabulary",
+   "candidate_head_flag": "--candidate-head, already in tools/fidelity.py: the reference and candidate operands take different heads, without which head error cancels by construction"
+  },
+  "capture_invocation": {
+   "script": "/work/kld9/cap-all.sh (mirrors the published shard-0 cap-*.sh verbatim)",
+   "gpu_memory_utilization": 0.85,
+   "exl3_candidates": "VLLM_EXL3_PREFILL_RECONSTRUCT_M=128, --quantization exl3, --quantization-config /work/kld4/qcfg.json; K4 adds VLLM_EXL3_ONLINE_TRELLIS_BITS=6",
+   "note": "the hydrated capture was resumed after a full /var/tmp killed the first attempt at context 472; fidelity.py capture verifies the sha256 and shape of every pre-existing capture file before resuming"
+  },
+  "replay_invocation": {
+   "body_only": "python fidelity.py replay --reference /work/gguf/hidden-bf16 --candidate /work/kld9/hidden/hidden-<c> --head /work/kld2/lm_head.safetensors --suite <shard-0 suite> --out report-<c>-body.json",
+   "head_inclusive": "... --candidate-head /work/kld9/heads/head-<c>.safetensors",
+   "paired": "python fidelity.py paired --a report-<c>-headinc.json --b report-<c>-body.json (so a_minus_b is head-inclusive minus body-only)",
+   "driver": "/work/kld9/replay-all.sh"
+  },
+  "gpu": "one NVIDIA RTX PRO 6000 Blackwell Server Edition, 97,887 MiB"
+ },
+ "per_candidate": {
+  "hyd": {
+   "label": "hydrated K5-K6 (published hydrated recipe)",
+   "checkpoint": "/work/qwen38-hyd",
+   "body_only": {
+    "report": "/work/kld9/reports/report-hyd-body.json",
+    "report_sha256": "a05d1ccf7e8401cd3179e2f5ee5b4c8471e100b795890fe66a66ce7bac3d82b5",
+    "contexts": 512,
+    "scored_positions": 1048064,
+    "context_macro_mean_kld": 0.002699883159684943,
+    "token_mean_kld": 0.002699883159684943,
+    "token_median_kld": 0.0010904027048752596,
+    "p999_kld": 0.13126287966486647,
+    "max_kld": 3.7348466556786946,
+    "top1_agreement": 0.9779689026624329,
+    "mean_jsd_bits": 0.0009602631900925122,
+    "context_bootstrap": {
+     "mean": 0.002699883159684943,
+     "ci95_low": 0.0025165341342532257,
+     "ci95_high": 0.0029118291286379205,
+     "clusters": 330,
+     "samples": 10000
+    },
+    "candidate_head": null,
+    "candidate_head_sha256": null
+   },
+   "own_head": {
+    "path": "/work/kld9/heads/head-hyd.safetensors",
+    "sha256": "da58a8df684a433814924d19bc58254cbf95ded0c3994857a3ac486b6d3bc529",
+    "bytes": 2542796888,
+    "materialised_by": "/work/kld9/dequant_head.py = tools/dequant_head.py: exllamav3 reconstruct_had_slice, original-basis weights with both Hadamards and the sign/scale vectors folded in (the docs/16 method, the matrix the serving path multiplies by)",
+    "serialized_tensors": "{'suh': ((5120,), 'torch.float16'), 'svh': ((248320,), 'torch.float16'), 'mcg': ((), 'torch.int32'), 'trellis': ((320, 15520, 96), 'torch.int16')}",
+    "in_features": 5120,
+    "out_features": 248320,
+    "trellis_bits_K": 6,
+    "mcg": true,
+    "mul1": false,
+    "reconstruction_dtype": "torch.bfloat16",
+    "finite": true,
+    "absmax": 0.3418,
+    "source_checkpoint": "/work/qwen38-hyd"
+   },
+   "published_shard0_control": {
+    "source": "/work/kld5/reports/shard-0000/report-hyd.json",
+    "published_context_macro_mean_kld": 0.002699883159684943,
+    "recaptured_context_macro_mean_kld": 0.002699883159684943,
+    "absolute_difference": 0.0,
+    "bitwise_identical": true,
+    "note": "the body-only arm here is the published protocol re-run on a recapture of the same checkpoint and suite; agreement is the control that the recapture is the same measurement"
+   },
+   "head_inclusive": {
+    "report": "/work/kld9/reports/report-hyd-headinc.json",
+    "report_sha256": "3ae325984170cd8b1825035f3a89762077729588f2582a83ace362398d196cfe",
+    "contexts": 512,
+    "scored_positions": 1048064,
+    "context_macro_mean_kld": 0.0028423935440291506,
+    "token_mean_kld": 0.0028423935440291506,
+    "token_median_kld": 0.0012249579928784726,
+    "p999_kld": 0.13217681325338027,
+    "max_kld": 3.734842217343978,
+    "top1_agreement": 0.9763993420249145,
+    "mean_jsd_bits": 0.0010116015302589025,
+    "context_bootstrap": {
+     "mean": 0.0028423935440291506,
+     "ci95_low": 0.00266028955236943,
+     "ci95_high": 0.003051919031817613,
+     "clusters": 330,
+     "samples": 10000
+    },
+    "candidate_head": "/work/kld9/heads/head-hyd.safetensors",
+    "candidate_head_sha256": "da58a8df684a433814924d19bc58254cbf95ded0c3994857a3ac486b6d3bc529"
+   },
+   "head_attributable_delta": {
+    "definition": "head-inclusive minus body-only, paired per context: the reference operand keeps the shared BF16 head, the candidate operand swaps in its own serialized head, and the body captures are byte-identical between the two arms",
+    "paired_report": "/work/kld9/reports/paired-hyd-head.json",
+    "paired_report_sha256": "d7a9f3686f55710a389a0ccda212dc1068a8ea1b63ac6a8635ddd7d8cb8572b9",
+    "contexts_paired": 512,
+    "mean_difference": 0.00014251038434420782,
+    "median_difference": 0.0001495989977683519,
+    "bootstrap_ci95": [
+     0.00013544030141889624,
+     0.00014964822026321376
+    ],
+    "bootstrap": {
+     "mean": 0.00014251038434420782,
+     "ci95_low": 0.00013544030141889624,
+     "ci95_high": 0.00014964822026321376,
+     "clusters": 330,
+     "samples": 10000
+    },
+    "contexts_worse_with_own_head": 501,
+    "contexts_better_with_own_head": 11,
+    "share_of_head_inclusive_divergence": 0.05013745708913919,
+    "head_inclusive_over_body_only": 1.0527839080120924,
+    "interval_excludes_zero": true
+   }
+  },
+  "ctx": {
+   "label": "context edition (published context recipe)",
+   "checkpoint": "/work/qwen38-ctx",
+   "body_only": {
+    "report": "/work/kld9/reports/report-ctx-body.json",
+    "report_sha256": "63cf7b585f8440a32a11cc6b51a6c05cd6f8e7e96a18143a1436fa7a999e2a0d",
+    "contexts": 512,
+    "scored_positions": 1048064,
+    "context_macro_mean_kld": 0.003409409957186559,
+    "token_mean_kld": 0.003409409957186559,
+    "token_median_kld": 0.0013518004213910473,
+    "p999_kld": 0.1631958112023867,
+    "max_kld": 3.7491887151263654,
+    "top1_agreement": 0.9754566515021983,
+    "mean_jsd_bits": 0.0012104720212027026,
+    "context_bootstrap": {
+     "mean": 0.003409409957186559,
+     "ci95_low": 0.0031704108176442074,
+     "ci95_high": 0.003686531427353988,
+     "clusters": 330,
+     "samples": 10000
+    },
+    "candidate_head": null,
+    "candidate_head_sha256": null
+   },
+   "own_head": {
+    "path": "/work/kld9/heads/head-ctx.safetensors",
+    "sha256": "3598017d172c96a3d1252ce5ce79d685aa79ffeaaad9749caa61494623eb5479",
+    "bytes": 2542796888,
+    "materialised_by": "/work/kld9/dequant_head.py = tools/dequant_head.py: exllamav3 reconstruct_had_slice, original-basis weights with both Hadamards and the sign/scale vectors folded in (the docs/16 method, the matrix the serving path multiplies by)",
+    "serialized_tensors": "{'suh': ((5120,), 'torch.float16'), 'svh': ((248320,), 'torch.float16'), 'mcg': ((), 'torch.int32'), 'trellis': ((320, 15520, 96), 'torch.int16')}",
+    "in_features": 5120,
+    "out_features": 248320,
+    "trellis_bits_K": 6,
+    "mcg": true,
+    "mul1": false,
+    "reconstruction_dtype": "torch.bfloat16",
+    "finite": true,
+    "absmax": 0.3418,
+    "source_checkpoint": "/work/qwen38-ctx"
+   },
+   "published_shard0_control": {
+    "source": "/work/kld5/reports/shard-0000/report-ctx.json",
+    "published_context_macro_mean_kld": 0.003409409957186559,
+    "recaptured_context_macro_mean_kld": 0.003409409957186559,
+    "absolute_difference": 0.0,
+    "bitwise_identical": true,
+    "note": "the body-only arm here is the published protocol re-run on a recapture of the same checkpoint and suite; agreement is the control that the recapture is the same measurement"
+   },
+   "head_inclusive": {
+    "report": "/work/kld9/reports/report-ctx-headinc.json",
+    "report_sha256": "453998253fa4967230de245f905ce7ec59e7a9ccb9b00edcd696e4eff3c460f7",
+    "contexts": 512,
+    "scored_positions": 1048064,
+    "context_macro_mean_kld": 0.003553843030694344,
+    "token_mean_kld": 0.003553843030694344,
+    "token_median_kld": 0.0014856724611718164,
+    "p999_kld": 0.1646598081484232,
+    "max_kld": 3.789958205074072,
+    "top1_agreement": 0.9741179927943332,
+    "mean_jsd_bits": 0.0012624969151922405,
+    "context_bootstrap": {
+     "mean": 0.003553843030694344,
+     "ci95_low": 0.0033156179784377083,
+     "ci95_high": 0.0038298433916175026,
+     "clusters": 330,
+     "samples": 10000
+    },
+    "candidate_head": "/work/kld9/heads/head-ctx.safetensors",
+    "candidate_head_sha256": "3598017d172c96a3d1252ce5ce79d685aa79ffeaaad9749caa61494623eb5479"
+   },
+   "head_attributable_delta": {
+    "definition": "head-inclusive minus body-only, paired per context: the reference operand keeps the shared BF16 head, the candidate operand swaps in its own serialized head, and the body captures are byte-identical between the two arms",
+    "paired_report": "/work/kld9/reports/paired-ctx-head.json",
+    "paired_report_sha256": "50d3e34b916df094dc12c3e393d182d6e461e6a979d1763ee58cc56dbb802018",
+    "contexts_paired": 512,
+    "mean_difference": 0.0001444330735077845,
+    "median_difference": 0.0001524743929341777,
+    "bootstrap_ci95": [
+     0.00013707637496335206,
+     0.000151445799957116
+    ],
+    "bootstrap": {
+     "mean": 0.0001444330735077845,
+     "ci95_low": 0.00013707637496335206,
+     "ci95_high": 0.000151445799957116,
+     "clusters": 330,
+     "samples": 10000
+    },
+    "contexts_worse_with_own_head": 505,
+    "contexts_better_with_own_head": 7,
+    "share_of_head_inclusive_divergence": 0.04064137674633463,
+    "head_inclusive_over_body_only": 1.0423630702442632,
+    "interval_excludes_zero": true
+   }
+  },
+  "k4": {
+   "label": "K4",
+   "checkpoint": "/work/Qwen3.8-27B-K4",
+   "body_only": {
+    "report": "/work/kld9/reports/report-k4-body.json",
+    "report_sha256": "241b6cc3c2df52b61756c3c7666ac1c9c31519469b66f6e7488abea0e06156ba",
+    "contexts": 512,
+    "scored_positions": 1048064,
+    "context_macro_mean_kld": 0.01034534853668276,
+    "token_mean_kld": 0.010345348536682758,
+    "token_median_kld": 0.0032060394484858534,
+    "p999_kld": 0.5576395587246648,
+    "max_kld": 7.564510417655803,
+    "top1_agreement": 0.9591322667318026,
+    "mean_jsd_bits": 0.0035793631882548456,
+    "context_bootstrap": {
+     "mean": 0.01034534853668276,
+     "ci95_low": 0.009562594149420877,
+     "ci95_high": 0.01124581917295876,
+     "clusters": 330,
+     "samples": 10000
+    },
+    "candidate_head": null,
+    "candidate_head_sha256": null
+   },
+   "own_head": {
+    "path": "/work/kld9/heads/head-k4.safetensors",
+    "sha256": "73a0e112c6074c48ff9ea0d67111422ff268033f8a9bd744026b04d7180dc76e",
+    "bytes": 2542796888,
+    "materialised_by": "/work/kld9/dequant_head.py = tools/dequant_head.py: exllamav3 reconstruct_had_slice, original-basis weights with both Hadamards and the sign/scale vectors folded in (the docs/16 method, the matrix the serving path multiplies by)",
+    "serialized_tensors": "{'mul1': ((), 'torch.int32'), 'suh': ((5120,), 'torch.float16'), 'svh': ((248320,), 'torch.float16'), 'trellis': ((320, 15520, 96), 'torch.int16')}",
+    "in_features": 5120,
+    "out_features": 248320,
+    "trellis_bits_K": 6,
+    "mcg": false,
+    "mul1": true,
+    "reconstruction_dtype": "torch.bfloat16",
+    "finite": true,
+    "absmax": 0.3418,
+    "source_checkpoint": "/work/Qwen3.8-27B-K4"
+   },
+   "published_shard0_control": {
+    "source": "/work/kld5/reports/shard-0000/report-k4.json",
+    "published_context_macro_mean_kld": 0.01034534853668276,
+    "recaptured_context_macro_mean_kld": 0.01034534853668276,
+    "absolute_difference": 0.0,
+    "bitwise_identical": true,
+    "note": "the body-only arm here is the published protocol re-run on a recapture of the same checkpoint and suite; agreement is the control that the recapture is the same measurement"
+   },
+   "head_inclusive": {
+    "report": "/work/kld9/reports/report-k4-headinc.json",
+    "report_sha256": "13a5f7a394aeb2a1106e53f978aab13b4f2d627261e2b75d2b299a809dc24944",
+    "contexts": 512,
+    "scored_positions": 1048064,
+    "context_macro_mean_kld": 0.010467807645853902,
+    "token_mean_kld": 0.0104678076458539,
+    "token_median_kld": 0.0033037788179512972,
+    "p999_kld": 0.5570290410513091,
+    "max_kld": 7.682876182286362,
+    "top1_agreement": 0.9584071201758672,
+    "mean_jsd_bits": 0.0036237609067779025,
+    "context_bootstrap": {
+     "mean": 0.010467807645853902,
+     "ci95_low": 0.009684102454715614,
+     "ci95_high": 0.01136828339673818,
+     "clusters": 330,
+     "samples": 10000
+    },
+    "candidate_head": "/work/kld9/heads/head-k4.safetensors",
+    "candidate_head_sha256": "73a0e112c6074c48ff9ea0d67111422ff268033f8a9bd744026b04d7180dc76e"
+   },
+   "head_attributable_delta": {
+    "definition": "head-inclusive minus body-only, paired per context: the reference operand keeps the shared BF16 head, the candidate operand swaps in its own serialized head, and the body captures are byte-identical between the two arms",
+    "paired_report": "/work/kld9/reports/paired-k4-head.json",
+    "paired_report_sha256": "2a8e7e1aba965831b7c8cde33ad8b3c48d8bcfe17ba631f3d933b5ab9d349a49",
+    "contexts_paired": 512,
+    "mean_difference": 0.00012245910917114332,
+    "median_difference": 0.00012501769583422515,
+    "bootstrap_ci95": [
+     0.00011490497049041618,
+     0.00012989208100451903
+    ],
+    "bootstrap": {
+     "mean": 0.00012245910917114332,
+     "ci95_low": 0.00011490497049041618,
+     "ci95_high": 0.00012989208100451903,
+     "clusters": 330,
+     "samples": 10000
+    },
+    "contexts_worse_with_own_head": 486,
+    "contexts_better_with_own_head": 26,
+    "share_of_head_inclusive_divergence": 0.01169863961148035,
+    "head_inclusive_over_body_only": 1.0118371177865033,
+    "interval_excludes_zero": true
+   }
+  },
+  "nvfp4": {
+   "label": "unsloth NVFP4 (compressed-tensors)",
+   "checkpoint": "/models/Qwen3.8-27B-NVFP4",
+   "body_only": {
+    "report": "/work/kld9/reports/report-nvfp4-body.json",
+    "report_sha256": "14b064275169a6777be76e78fc02e3d4650553410aeaaeb412b8b56b5afe4848",
+    "contexts": 512,
+    "scored_positions": 1048064,
+    "context_macro_mean_kld": 0.03011540756091421,
+    "token_mean_kld": 0.030115407560914208,
+    "token_median_kld": 0.0095837720025429,
+    "p999_kld": 1.622844287351794,
+    "max_kld": 10.62854133951995,
+    "top1_agreement": 0.9315795600268686,
+    "mean_jsd_bits": 0.010103668913600107,
+    "context_bootstrap": {
+     "mean": 0.03011540756091421,
+     "ci95_low": 0.027637156534345248,
+     "ci95_high": 0.03296468638390454,
+     "clusters": 330,
+     "samples": 10000
+    },
+    "candidate_head": null,
+    "candidate_head_sha256": null
+   },
+   "own_head": {
+    "path": "/work/kld9/heads/head-nvfp4.safetensors",
+    "sha256": "be3968f9e12e136b5fd869f8f6289e27a52367eb8245dad93f94e4624537d2d8",
+    "bytes": 2542796888,
+    "source": "/models/Qwen3.8-27B-NVFP4/model.safetensors:lm_head.weight (+weight_scale)",
+    "stored_dtype": "float8_e4m3fn",
+    "scale": "per-output-channel bf16 [248320,1]",
+    "reconstruction": "fp8_value * row_scale in fp32, cast bf16",
+    "shape": [
+     248320,
+     5120
+    ],
+    "dtype": "torch.bfloat16",
+    "finite": true,
+    "absmax": 0.341796875,
+    "tensor_sha256": "8544d8f9d37bc52b1750390ed924532aaf427cd382d1bb030f7fb074776884fa",
+    "materialised_by": "/work/kld9/make_heads_cpu.py (CPU, inside the pinned rootfs)"
+   },
+   "published_shard0_control": {
+    "source": "receipts/kld5-1M-nvfp4.json .shards[0]",
+    "published_context_macro_mean_kld": 0.03011540756091421,
+    "recaptured_context_macro_mean_kld": 0.03011540756091421,
+    "absolute_difference": 0.0,
+    "bitwise_identical": true,
+    "note": "the body-only arm here is the published protocol re-run on a recapture of the same checkpoint and suite; agreement is the control that the recapture is the same measurement"
+   },
+   "head_inclusive": {
+    "report": "/work/kld9/reports/report-nvfp4-headinc.json",
+    "report_sha256": "74b7d55226f3b9ae8e3c33cf16a48b0597bf1fc2ee78f330cf6dabf9e16e4aca",
+    "contexts": 512,
+    "scored_positions": 1048064,
+    "context_macro_mean_kld": 0.030931522476428604,
+    "token_mean_kld": 0.030931522476428604,
+    "token_median_kld": 0.01051887034890342,
+    "p999_kld": 1.615893879634007,
+    "max_kld": 10.685744398471414,
+    "top1_agreement": 0.92824293172936,
+    "mean_jsd_bits": 0.010401161342012528,
+    "context_bootstrap": {
+     "mean": 0.030931522476428604,
+     "ci95_low": 0.028462408760325554,
+     "ci95_high": 0.03375990126391527,
+     "clusters": 330,
+     "samples": 10000
+    },
+    "candidate_head": "/work/kld9/heads/head-nvfp4.safetensors",
+    "candidate_head_sha256": "be3968f9e12e136b5fd869f8f6289e27a52367eb8245dad93f94e4624537d2d8"
+   },
+   "head_attributable_delta": {
+    "definition": "head-inclusive minus body-only, paired per context: the reference operand keeps the shared BF16 head, the candidate operand swaps in its own serialized head, and the body captures are byte-identical between the two arms",
+    "paired_report": "/work/kld9/reports/paired-nvfp4-head.json",
+    "paired_report_sha256": "8191ffaa130ce479134ffe50644fb73bc7d1c1b77f50550b0e6162dad60cc2b1",
+    "contexts_paired": 512,
+    "mean_difference": 0.0008161149155143931,
+    "median_difference": 0.0008938781862427112,
+    "bootstrap_ci95": [
+     0.0007757719743077432,
+     0.0008545507456501666
+    ],
+    "bootstrap": {
+     "mean": 0.0008161149155143931,
+     "ci95_low": 0.0007757719743077432,
+     "ci95_high": 0.0008545507456501666,
+     "clusters": 330,
+     "samples": 10000
+    },
+    "contexts_worse_with_own_head": 504,
+    "contexts_better_with_own_head": 8,
+    "share_of_head_inclusive_divergence": 0.026384569855438387,
+    "head_inclusive_over_body_only": 1.027099580633722,
+    "interval_excludes_zero": true
+   }
+  },
+  "fp8": {
+   "label": "official Qwen3.8-27B-FP8",
+   "checkpoint": "/models/Qwen3.8-27B-FP8",
+   "body_only": {
+    "report": "/work/kld9/reports/report-fp8-body.json",
+    "report_sha256": "6e25786cbaaa261e8052ca88cb87e220c70e7d496df7345d605f01f195128921",
+    "contexts": 512,
+    "scored_positions": 1048064,
+    "context_macro_mean_kld": 0.0051970635503104596,
+    "token_mean_kld": 0.0051970635503104596,
+    "token_median_kld": 0.002023634613792069,
+    "p999_kld": 0.24396262721444806,
+    "max_kld": 5.295716603680546,
+    "top1_agreement": 0.9692137121397166,
+    "mean_jsd_bits": 0.0018389220904748377,
+    "context_bootstrap": {
+     "mean": 0.0051970635503104596,
+     "ci95_low": 0.004879906227191791,
+     "ci95_high": 0.005557464379117151,
+     "clusters": 330,
+     "samples": 10000
+    },
+    "candidate_head": null,
+    "candidate_head_sha256": null
+   },
+   "own_head": {
+    "path": "/work/kld9/heads/head-fp8.safetensors",
+    "sha256": "7b918bdcc05831f146c268889463287b74c8b9a3419c3bab081f0395da40e508",
+    "bytes": 2542796888,
+    "source": "/models/Qwen3.8-27B-FP8/outside.safetensors:lm_head.weight",
+    "shape": [
+     248320,
+     5120
+    ],
+    "dtype": "torch.bfloat16",
+    "tensor_sha256": "d922b751f014ee1139488cb94c0e164a1eb3da5c14048070ed1b784e00f92723",
+    "byte_identical_to_shared_head": true,
+    "materialised_by": "/work/kld9/make_heads_cpu.py (CPU, inside the pinned rootfs)"
+   },
+   "published_shard0_control": {
+    "source": "/work/kld5/reports/shard-0000/report-fp8.json",
+    "published_context_macro_mean_kld": 0.0051970635503104596,
+    "recaptured_context_macro_mean_kld": 0.0051970635503104596,
+    "absolute_difference": 0.0,
+    "bitwise_identical": true,
+    "note": "the body-only arm here is the published protocol re-run on a recapture of the same checkpoint and suite; agreement is the control that the recapture is the same measurement"
+   },
+   "head_inclusive": {
+    "measured": false,
+    "reason": "this checkpoint's lm_head.weight is byte-identical to the shared BF16 head, so the head-inclusive replay is the same computation as the body-only one",
+    "checkpoint_head_tensor_sha256": "d922b751f014ee1139488cb94c0e164a1eb3da5c14048070ed1b784e00f92723",
+    "shared_head_tensor_sha256": "d922b751f014ee1139488cb94c0e164a1eb3da5c14048070ed1b784e00f92723",
+    "byte_identical": true,
+    "context_macro_mean_kld": 0.0051970635503104596
+   },
+   "head_attributable_delta": {
+    "mean_difference": 0.0,
+    "exact_by_byte_identity": true,
+    "definition": "zero by construction: the FP8 export leaves lm_head in BF16 and its bytes are the shared head's bytes"
+   }
+  }
+ },
+ "result": {
+  "largest_head_attributable_delta": {
+   "candidate": "nvfp4",
+   "mean_difference": 0.0008161149155143931,
+   "share_of_head_inclusive_divergence": 0.026384569855438387
+  },
+  "ranking_by_head_delta": [
+   {
+    "candidate": "nvfp4",
+    "mean_difference": 0.0008161149155143931,
+    "share_of_head_inclusive_divergence": 0.026384569855438387
+   },
+   {
+    "candidate": "ctx",
+    "mean_difference": 0.0001444330735077845,
+    "share_of_head_inclusive_divergence": 0.04064137674633463
+   },
+   {
+    "candidate": "hyd",
+    "mean_difference": 0.00014251038434420782,
+    "share_of_head_inclusive_divergence": 0.05013745708913919
+   },
+   {
+    "candidate": "k4",
+    "mean_difference": 0.00012245910917114332,
+    "share_of_head_inclusive_divergence": 0.01169863961148035
+   },
+   {
+    "candidate": "fp8",
+    "mean_difference": 0.0,
+    "share_of_head_inclusive_divergence": null
+   }
+  ],
+  "head_inclusive_over_body_only": {
+   "hyd": 1.0527839080120924,
+   "ctx": 1.0423630702442632,
+   "k4": 1.0118371177865033,
+   "nvfp4": 1.027099580633722,
+   "fp8": 1.0
+  },
+  "versus_docs_16": {
+   "docs_16_measurement": "K4 body + K6 head against BF16 body + BF16 head on the v2 corpus, 74 contexts / 151,478 positions: paired head-attributable delta -6.78e-05 as reported there with the sign of body-minus-end-to-end, i.e. +6.78e-05 of KLD added by the K6 head, 0.26 % of end-to-end divergence",
+   "k4_here": {
+    "mean_difference": 0.00012245910917114332,
+    "share_of_head_inclusive_divergence": 0.01169863961148035,
+    "over_docs_16": 1.8061815511968042
+   },
+   "why_they_differ": "different corpus (v5's five strata, 512 contexts, 1,048,064 positions against v2's 74 contexts), a different body (this K4 checkpoint against the v2 one) and a different head tensor (this K4 head is mul1, the v2 one was the K6 mcg head); docs/16 also flagged its own 6.8e-05 as below the replay floor of its day, while every delta here is above the v5 floor measured in receipts/replay-live-floor-v5.json"
+  }
+ },
+ "resolves_docs_35_inference": {
+  "docs_35_marked_inference": "\"the residual is dominated by D5, the head. [INFERENCE] - the head-inclusive number is measured separately in 16-head-attribution.md, but not on this corpus, so the decomposition is reasoned rather than run.\"",
+  "now_measured_on_this_corpus": true,
+  "sentence": "Measured on the v5 corpus itself, on all 512 shard-0 contexts and 1,048,064 scored positions: putting each candidate's own output head inside the measured path raises its mean KLD by at most 5.28% (hyd, x1.0528), and the head accounts for between 1.17% and 5.01% of head-inclusive divergence across hydrated, context, K4 and unsloth NVFP4, and exactly 0% for the official FP8 export whose head is byte-identical to the shared BF16 head - so D5 is real, signed as docs/35 says, and quantified here, but it is far too small to be the dominant term in a 1.1-1.6x level gap; the residual there is not explained by head inclusion on our candidates' heads.",
+  "caveat": "the heads measured here are EXL3 K6 trellis heads (hydrated, context: mcg; K4: mul1), one NVFP4 per-row-scaled FP8 head and one BF16 FP8-export head. A GGUF quant's own head is a different tensor with a different error, so this bounds D5 for the candidates on our cards, not for llama.cpp builds.",
+  "docs_edit_owner": "docs/35 is not edited by this receipt; the sentence is handed to Main, who owns the doc"
+ },
+ "content_sha256_excludes": [
+  "content_sha256"
+ ],
+ "generated_utc": "2026-08-16T14:25:41Z",
+ "content_sha256": "262e8bd35528ec8ecb7cc9b2b0c09283c3f9548bef4f3f43a7cf8607890db727"
+}
