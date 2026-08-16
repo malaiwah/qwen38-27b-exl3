@@ -553,6 +553,28 @@ cost appears in the hydrated as-served comparison, +0.000125 [+0.000107, +0.0001
 | resident payload, int8 embed **[P]** | | 12,440,105,028 | | 11.586 |
 | **resident weights [P]** | | | | **11.94** |
 
+**Which recipe each row above prices, and one build-script trap.** Audited row by row against the
+published manifests, independently of this document's own arithmetic
+([`byte-law-recipe-audit.json`](../receipts/byte-law-recipe-audit.json),
+[`tools/byte_law_audit.py`](../tools/byte_law_audit.py)): **0 of 25 rows move**, and every one
+re-derives to the byte, including this table's 13,711,503,428 B total, S16-V-long's
+13,501,788,228, S16-T's 14,560,498,276 and the three resident payloads. Three clarifications the
+audit forced, none of them numeric:
+
+1. **§6.1's all-K4 MTP draft requires the MLP width override to be scoped to the language-model
+   body** — `^model\.language_model\.layers\.[0-9]+\.mlp\.(gate|up|down)_proj$`. The loose
+   `^.*mlp\.(gate|up|down)_proj$` form the published hydrated build used is applied with
+   `re.match` against *every* key in `f_targets`, which includes the draft's three MLP
+   projections, so it promotes them along with the body and lands **33,423,360 B below** this
+   table's total. The 212,636,704 B row is the all-K4 draft §6.1 specifies and it is correct as
+   published; what had to change to match it was the build script, not the number.
+2. **The published hydrated build's own draft is `self_attn` K6, `mlp` K5/K5/K6, `eh_proj` K4.**
+   "Quantized MTP" is accurate for it; "MTP all K4" would not be. No card prints a predicted byte
+   total — cards print measured serialized bytes — so no published card figure is affected.
+3. **§6.2's predicted-disk row uses the context build's measured whole-tree delta of 23,971,318 B,
+   while §2 states the rule as `payload + 24.0 MB`.** The two disagree by 28,682 B: immaterial to
+   every conclusion here, but not the same arithmetic, and the row is the measured one.
+
 | profile | serialized **[P]** | resident **[P]** | `T_max` MTP-3 | **published, MTP-3** | `T_max` MTP off | **published, MTP off** | `T_max` 4-bit KV, MTP-3 |
 |---|---:|---:|---:|---:|---:|---:|---:|
 | **S16-V** | 13.712 GB | 11.94 | 16,510 | **12,288** | 24,853 | **16,384** | 33,020 |
