@@ -1,0 +1,150 @@
+{
+  "schema": "qwen38-terminal-bench-2.1-pass/1",
+  "generated_utc": "2026-08-16T21:45:00Z",
+  "agent": "TerminalBench2",
+  "pass": "1 of 3 \u2014 all 89 tasks on malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated",
+  "pins": "receipts/terminal-bench-2.1-pins.json (harness, dataset sha256, agent, sampling, serving, timeouts) and -task-inventory.json (the 89 tasks). Nothing was changed mid-pass.",
+  "what_this_number_is": "A score for an AGENT + MODEL SYSTEM (terminus-2 2.0.0 driving vLLM), never a model-only capability number. Read the failure taxonomy below before reading the score: it is the more important result.",
+  "headline": {
+    "job": "tb21-pass1-hyd",
+    "tasks": 89,
+    "trials": 89,
+    "resolved": 31,
+    "unresolved": 58,
+    "score_resolved_over_tasks": 0.348315,
+    "agent": [
+      "terminus-2@2.0.0"
+    ],
+    "served_model": [
+      "qwen38"
+    ],
+    "n_concurrent_trials": 16,
+    "timeout_multiplier": 1.0,
+    "wall_clock": "started 2026-08-16T18:19Z, finished ~21:39Z, ~3.3 h \u2014 bounded at the end by the single 12,000 s task (build-pov-ray), which was the only one outstanding from 88/89"
+  },
+  "failure_taxonomy_read_this_first": {
+    "exception_types": {
+      "AgentTimeoutError": 54,
+      "RuntimeError": 2
+    },
+    "arithmetic": "89 trials = 31 resolved + 58 unresolved. Of the 58 unresolved, 54 are AgentTimeoutError and 2 are RuntimeError, leaving only 2 that completed cleanly and still got the answer wrong.",
+    "finding": "93 % of the failures (54/58) ran out of CLOCK, not out of ability. At stock 1.0 timeouts on this hardware, the binding constraint on this agent+model system is decode speed, not task difficulty.",
+    "mechanism": "Long reasoning bursts against a ~42.5 tok/s single-stream decode. The dry run's turn 1 alone spent 15,577 completion tokens \u2014 1.9x the max_output_tokens declared in LiteLLM model_info, which is metadata and clamps nothing \u2014 i.e. roughly six minutes of decode for one turn.",
+    "why_the_timeouts_were_not_raised": "A TB score is comparable to other TB runs only if the agent's configuration is stock. Capping output or inflating timeouts would have made this number better AND incomparable. The mechanism is therefore reported instead of engineered away (owner ruling).",
+    "consequence_for_attribution": "BF16 cannot separate a timeout from an inability: a task that times out on a reasoning burst will likely time out on BF16 too, which a two-way rule would silently file as 'capability' and thereby exonerate the quantisation on a task where neither arm ever produced an answer. Pass 3 therefore uses a THREE-way split (owner-approved), and the three counts are never summed into two."
+  },
+  "attribution_rule_for_pass_3": {
+    "quantization-suspect": "BF16 resolves the task \u2014 the quantisation is implicated for it.",
+    "capability": "BF16 runs to completion and still fails \u2014 the failure belongs to the agent+model system, and the quantisation is exonerated for that task.",
+    "inconclusive-timeout": "Neither arm completed inside the stock budget. The failure is the system's speed at these timeouts; this benchmark cannot say more, and it must not be folded into `capability`."
+  },
+  "parser_tolerance_caveat_belongs_beside_the_score": {
+    "warning": "terminus-2 logged `Extra text detected before JSON object`",
+    "trials_emitting_it": 52,
+    "of_89": true,
+    "resolved_within_that_subset": 19,
+    "resolution_rate_within_subset": 0.3654,
+    "resolution_rate_overall": 0.348315,
+    "plain_statement": "This model emits prose before its JSON object on 52 of 89 trials (58 %). terminus-2 tolerates it and dispatches the keystrokes anyway, so A STRICTER PARSER WOULD HAVE SCORED THIS MODEL LOWER. That is a caveat on the score itself, not a method footnote.",
+    "an_early_signal_that_did_NOT_hold": "At 25/89 the warned subset resolved 2/10 (20 %) against 8/25 (32 %) overall, which looked like the warning predicting failure. At the full 89 it is 19/52 (36.5 %) against 31/89 (34.8 %) \u2014 essentially no difference. The early signal was small-sample noise and is recorded as such rather than quietly dropped."
+  },
+  "throughput_and_mtp_as_deltas_never_absolutes": {
+    "why": "The server's counters are permanently contaminated by this agent's own calibration traffic (probe + headroom = 41 requests, all with max_tokens set, ~2k prompt tokens). Absolute totals are therefore meaningless; only differences across snapshots are valid.",
+    "snapshot_before": {
+      "file": "metrics/20260816T181919-pass1-baseline.json",
+      "prompt_tokens_total": 11368.0,
+      "generation_tokens_total": 31852.0,
+      "mtp_draft_tokens": 30453.0,
+      "mtp_accepted_tokens": 21687.0
+    },
+    "snapshot_after": {
+      "file": "metrics/20260816T214221-pass1-final.json",
+      "prompt_tokens_total": 26895027.0,
+      "generation_tokens_total": 3362558.0,
+      "mtp_draft_tokens": 3713811.0,
+      "mtp_accepted_tokens": 2123925.0
+    },
+    "delta_over_pass_1": {
+      "prompt_tokens": 26883659.0,
+      "generation_tokens": 3330706.0,
+      "mtp_draft_tokens": 3683358.0,
+      "mtp_accepted_tokens": 2102238.0,
+      "mtp_acceptance_rate": 0.57074
+    },
+    "agent_side_totals_for_comparison": {
+      "cache_read": 0,
+      "input": 12841447,
+      "output": 1679523
+    },
+    "note_on_the_two_token_counts": "Server prompt tokens (26.9 M delta) exceed agent-reported input tokens (12.8 M) because the server counts every scheduled prefill including speculative and retried work, while the agent counts what it believes it sent. Both are reported rather than reconciled into one number.",
+    "single_stream_decode": "42.50 tok/s measured on the loopback (attributed to TerminalBench3's measurement, adopted rather than re-measured)"
+  },
+  "concurrency_derivation": {
+    "chosen": 16,
+    "rule_fixed_in_advance": [
+      "never exceed the server's max_num_seqs (16), past which requests only queue",
+      "require per-request throughput >= 50 % of single-stream, capping per-task slowdown at 2x so the stock 1.0 multiplier absorbs it",
+      "among those, take the highest aggregate throughput \u2014 the one that finishes 89 tasks soonest"
+    ],
+    "measured_sweep": {
+      "aggregate_output_tok_per_s": {
+        "1": 40.77,
+        "2": 89.54,
+        "4": 207.79,
+        "8": 398.87,
+        "16": 516.22
+      },
+      "per_request_tok_per_s": {
+        "1": 40.77,
+        "2": 44.77,
+        "4": 51.95,
+        "8": 49.86,
+        "16": 32.26
+      },
+      "per_request_floor": 20.39
+    },
+    "why_not_32": "Beyond max_num_seqs=16 requests merely queue at the engine, so added concurrency buys no throughput while lengthening every turn \u2014 and a longer turn spends the AGENT's own timeout budget, manufacturing AgentTimeoutErrors that would read as capability failures. Given 54 timeouts at n=16, going higher would have actively corrupted the result.",
+    "observed_saturation": "card at 96-97 % utilisation and 90,107 MiB throughout, i.e. n=16 achieved what it was chosen for"
+  },
+  "endpoint_latency": {
+    "real_vllm_rtt_through_tunnel_s": 0.76,
+    "rental_loopback_s": 0.05,
+    "first_sample_warmup_s": 1.303,
+    "reconciles_with": "the 0.581 s path RTT measured pre-window plus vLLM's own ~0.050 s",
+    "timeout_multiplier_held_at": 1.0,
+    "common_mode_argument": "Both the hydrated arm and the BF16 arm cross the SAME tunnel and pay the SAME penalty, so latency cannot move a task between attribution buckets. Throughput is read from vLLM /metrics on the rental loopback, never from agent-side wall clock."
+  },
+  "prefix_caching_a_finding_not_a_fix": {
+    "vllm_counters": {
+      "prefix_cache_queries_total": 1172055,
+      "prefix_cache_hits_total": 606400,
+      "cumulative_hit_rate": 0.517
+    },
+    "external_prefix_cache": "0 queries / 0 hits, as expected with no external KV backend",
+    "why_the_agent_reported_zero": "This build returns `prompt_tokens_details: null` in the completion response, so the server never tells the client its cached-token count and LiteLLM/terminus-2 records 0.",
+    "sentence_for_readers": "Anyone reading `cached_tokens` from a client against this build will see zero regardless of what the cache actually does. Prefix caching IS working at ~51.7 %; the zero is a reporting gap, not a cache miss.",
+    "consequence": "The run is not paying full prefill on every turn, so the wall-clock and timeout risk are better than the agent-side metric implied. No serving flag was changed and the pass was not restarted."
+  },
+  "cpu_only_verified_for_this_pass": "no-gpu-assert: all four checks passed, and all 89 trials record config.environment.override_gpus as null/0.",
+  "alarm_escalation_retraction_chain_preserved_deliberately": {
+    "why_it_is_here": "Same discipline as publishing a missed pre-registered interval: the process is part of the evidence.",
+    "1_alarm": "TerminalBench3 reported request_success_total{finished_reason=\"length\"}=41 with {\"stop\"}=0 and ~50 prompt tokens/request, concluding that agent requests were malformed and the pass would score 0/89 for plumbing reasons.",
+    "2_escalation": "Main escalated it to a hard gate on the window. Main has recorded that the escalation was its own and was wrong.",
+    "3_refutation_by_arithmetic": "The 41 were this agent's own calibration: probe sends 5 remote + 5 local = 10, headroom sweeps 1+2+4+8+16 = 31, total exactly 41 \u2014 every one with max_tokens set, so finished_reason=\"length\" was guaranteed by construction and a stop token would have been the anomaly; their prompts are tiny, giving the ~50-token mean.",
+    "4_confirmation": "Once agent traffic landed, stop went 0 -> 2 while length stayed pinned at 41, and prompt_tokens_total went 2,033 -> 11,368 (~4,600 per agent request).",
+    "5_decisive_evidence": "The captured pane showed the model running the task's own test suite to `Results: 26 passed, 7 failed, 33 total` \u2014 a genuine partial solve, which no plumbing fault produces.",
+    "6_retraction": "TerminalBench3 retracted its own alarm independently."
+  },
+  "artifacts": {
+    "dataset": "https://huggingface.co/datasets/malaiwah/qwen38-27b-terminal-bench-2.1 (passes/pass1-hydrated \u2014 published at 25/89 and again at completion, verified public unauthenticated)",
+    "per_task_rows": "passes/pass1-hydrated/results.jsonl (one row per task: reward, resolved, exception_type, token counts, phase timings, override_gpus)",
+    "transcripts": "passes/pass1-hydrated/trials/<trial>/{agent/trajectory.json,agent/terminus_2.pane,agent/recording.cast,verifier/*}"
+  },
+  "status": "PASS 1 COMPLETE. Passes 2 and 3 OPEN. Owner ruling: pass 1 is the deliverable; a truthful partial with resume state beats a rushed full pass.",
+  "next_steps_exactly": [
+    "pass2 --n-concurrent-trials 16  (retries only the 58 pass-1 failures; derives its include list from this job)",
+    "serve bf16 (served as qwen38-bf16), then pass3 --n-concurrent-trials 16 on the twice-failed set",
+    "classify each twice-failed task three ways and report the counts separately",
+    "OPTIONAL diagnostic, owner-approved, only if the window allows: re-run the inconclusive-timeout subset alone at --timeout-multiplier 2.0, labelled NOT COMPARABLE to any other TB run and reported apart from the headline \u2014 if a task resolves at 2.0x the failure was our clock, if it still fails the model genuinely could not do it"
+  ]
+}
