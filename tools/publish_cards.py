@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
-"""Publish the four model cards to their Hugging Face repos and prove byte-identity.
+"""Publish this project's cards to their Hugging Face repos and prove byte-identity.
 
 Per repo: upload the local card as README.md, refresh that repo's DOCS-SHA256SUMS README
 line so the pinned digest is not left stale, then re-fetch both files from the hub with a
 throwaway cache and compare bytes. A repo that does not come back byte-identical is reported
 as such; it is never reported as published.
+
+Six repos: the four model cards, the error-driven research checkpoint, and the v5 fidelity
+dataset. The last two are here because editing them on the hub alone had already let the
+published dataset card drift ahead of its local source.
 
 Nothing here computes a card's content. It only moves bytes and checks them.
 """
@@ -20,11 +24,14 @@ import time
 REPO = pathlib.Path(__file__).resolve().parent.parent
 HF_HOME = "/var/tmp/hf-home-3"
 
+# repo -> (local card file, repo type)
 CARDS = {
-    "malaiwah/Qwen3.8-27B-EXL3-K5K6-context": "MODEL_CARD-K5K6-context.md",
-    "malaiwah/Qwen3.8-27B-EXL3-K5K6": "MODEL_CARD-K5K6.md",
-    "malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated": "MODEL_CARD-K5K6-hydrated.md",
-    "malaiwah/Qwen3.8-27B-K4": "MODEL_CARD-K4.md",
+    "malaiwah/Qwen3.8-27B-EXL3-K5K6-context": ("MODEL_CARD-K5K6-context.md", "model"),
+    "malaiwah/Qwen3.8-27B-EXL3-K5K6": ("MODEL_CARD-K5K6.md", "model"),
+    "malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated": ("MODEL_CARD-K5K6-hydrated.md", "model"),
+    "malaiwah/Qwen3.8-27B-K4": ("MODEL_CARD-K4.md", "model"),
+    "malaiwah/Qwen3.8-27B-EXL3-EDA-research": ("MODEL_CARD-EDA-research.md", "model"),
+    "malaiwah/qwen38-27b-fidelity-suite-v5": ("DATASET_CARD-v5.md", "dataset"),
 }
 
 
@@ -42,28 +49,28 @@ def sha256_bytes(data):
     return hashlib.sha256(data).hexdigest()
 
 
-def fetch(repo, filename, into):
-    hf("download", repo, filename, "--repo-type", "model", "--local-dir", str(into))
+def fetch(repo, filename, into, repo_type):
+    hf("download", repo, filename, "--repo-type", repo_type, "--local-dir", str(into))
     return (into / filename).read_bytes()
 
 
-def publish_one(repo, card, message, dry_run):
+def publish_one(repo, card, repo_type, message, dry_run):
     local = (REPO / card).read_bytes()
     row = {
-        "repo": repo, "local_card": card,
+        "repo": repo, "repo_type": repo_type, "local_card": card,
         "local_bytes": len(local), "local_sha256": sha256_bytes(local),
         "local_lines": local.decode().count("\n"),
     }
     scratch = pathlib.Path(tempfile.mkdtemp(prefix="cards-"))
     try:
-        before = fetch(repo, "README.md", scratch / "before")
+        before = fetch(repo, "README.md", scratch / "before", repo_type)
         row["published_before"] = {"bytes": len(before), "sha256": sha256_bytes(before)}
         if before == local:
             row["already_current"] = True
 
         sums_path = scratch / "before" / "DOCS-SHA256SUMS"
         try:
-            fetch(repo, "DOCS-SHA256SUMS", scratch / "before")
+            fetch(repo, "DOCS-SHA256SUMS", scratch / "before", repo_type)
             sums = sums_path.read_text()
         except SystemExit:
             sums = None
@@ -93,16 +100,16 @@ def publish_one(repo, card, message, dry_run):
         (staged / "README.md").write_bytes(local)
         if new_sums is not None:
             (staged / "DOCS-SHA256SUMS").write_text(new_sums)
-        hf("upload", repo, str(staged), ".", "--repo-type", "model",
+        hf("upload", repo, str(staged), ".", "--repo-type", repo_type,
            "--commit-message", message)
 
-        after = fetch(repo, "README.md", scratch / "after")
+        after = fetch(repo, "README.md", scratch / "after", repo_type)
         row["published_bytes"] = len(after)
         row["published_sha256"] = sha256_bytes(after)
         row["published_lines"] = after.decode().count("\n")
         row["byte_identical"] = after == local
         if new_sums is not None:
-            got = fetch(repo, "DOCS-SHA256SUMS", scratch / "after").decode()
+            got = fetch(repo, "DOCS-SHA256SUMS", scratch / "after", repo_type).decode()
             row["docs_sha256sums_readme_current"] = \
                 f"{row['local_sha256']} README.md" in got
             row["docs_sha256sums_byte_identical"] = got == new_sums
@@ -118,8 +125,8 @@ def main():
     ap.add_argument("--out", default=str(REPO / "receipts/apc-card-publication.json"))
     args = ap.parse_args()
 
-    rows = [publish_one(repo, card, args.message, args.dry_run)
-            for repo, card in CARDS.items()]
+    rows = [publish_one(repo, card, repo_type, args.message, args.dry_run)
+            for repo, (card, repo_type) in CARDS.items()]
     payload = {
         "schema": "qwen38-apc-card-publication/1",
         "generated_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),

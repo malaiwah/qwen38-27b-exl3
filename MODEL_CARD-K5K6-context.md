@@ -95,6 +95,31 @@ Built from [`Qwen/Qwen3.8-27B`](https://huggingface.co/Qwen/Qwen3.8-27B)
 EXL3 module yields exactly upstream's **1,199 logical tensor names with matching shapes**; the
 finalizer fails closed otherwise.
 
+**A rebuild of this recipe is a sibling, not this checkpoint.** The published bytes are the
+artifact: a recipe fixes composition, widths and byte budget exactly, and it does not fix the
+weights. That was measured on the hydrated sibling's recipe, which comes out of the same
+converter. A fresh conversion returned **13 of 16 pinned payload files identical** — every config,
+the tokenizer, the index and both quantization descriptors — with byte-identical shard headers,
+the same tensor names, dtypes, shapes and offsets, and the same per-role byte totals and assigned
+widths, while **399 of the 409 quantized modules (97.6 %) differed inside their `.trellis`
+payloads, at 41-92 % of the bytes each (mean 82 %)**. No scale, norm, embedding, vision or BF16
+companion tensor moved. The converter is nondeterministic and that was measured, not inferred:
+two runs of one conversion, minutes apart, agreed on every width and global scale and disagreed on
+the converter's own `proxy_err`
+([`receipts/converter-determinism.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/converter-determinism.json)).
+A rebuild is a different valid artifact of the same recipe, not a broken one, and every fidelity
+number on this card — all of which measure the published bytes a downloader receives — is
+unaffected. What no longer holds is "rebuild this and you get these numbers": that is now an
+untested expectation. Practically: check the digest of the published tree against `SHA256SUMS`
+rather than against your own conversion, and read a byte diff below this floor as the converter
+rather than as tampering, corruption or a changed recipe. The same run also showed the recorded
+build environment is incomplete — the pinned image has no `marisa_trie`, which the conversion
+imports on an unconditional path, so that image provably could not have finished the job; the
+conversion-capable image is `docker/Dockerfile.gg-r34-convert`. Keep the two senses of
+reconstruction apart: the 1,199-tensor check above is the converter-side one, names and shapes
+verified by the finalizer, while the runtime's `reconstruct_fp8_slice` / reconstruct+GEMM prefill
+path turns stored trellis bytes back into weights at load and is untouched by any of this.
+
 **The vision tower stays BF16 for a measured reason.** Quantizing it (`-vb 6`) saves 0.58 GB
 but the converter splits upstream's fused `visual.blocks.N.attn.qkv` into separate q/k/v
 projections, so the checkpoint stops matching the architecture's weight names — and the EXL3
@@ -1235,6 +1260,9 @@ candidate hidden states, for the scratch reason stated above — see
 [Reproduce this](#reproduce-this).
 
 ## Reproduce this
+
+This section is about **the numbers, not the bytes**: a fresh conversion of the recipe produces a
+sibling rather than this checkpoint, as recorded under [Recipe](#recipe).
 
 Everything the v5 numbers on this card were computed from is published as a dataset:
 [`malaiwah/qwen38-27b-fidelity-suite-v5`](https://huggingface.co/datasets/malaiwah/qwen38-27b-fidelity-suite-v5)

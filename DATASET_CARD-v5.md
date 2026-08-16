@@ -71,14 +71,32 @@ reports/kld5-win/shard-0000/       15 scored-window control reports: score_from 
 reports/gguf/report-*.json         4 cross-engine reports on shard 0: llama.cpp Q8_0, Q6_K,
                                      UD-Q5_K_XL, and the llama.cpp-vs-vLLM engine floor
                                      measured on the same unquantized BF16 weights.
+captures/shard-0000/hidden-nvfp4/  512 captures + manifest.  unsloth/Qwen3.8-27B-NVFP4 final
+                                     hidden states over the shard-0 contexts.
+captures/shard-0000/hidden-eda/    512 captures + manifest.  The error-driven allocation
+                                     research build (docs/37), the candidate that lost.
+captures/shard-0000/hidden-hyd-rematch/
+                                   512 captures + manifest.  The published hydrated
+                                     checkpoint re-captured against the surviving BF16
+                                     reference with the same harness, so the paired interval
+                                     between it and hidden-eda uses one reference and one
+                                     code version for both operands.
+captures/shard-0000/error-driven-ladder.json
+                                   the five-rung proxy-error ladder the error-driven build
+                                     was solved from: 409 modules x up to five widths, with
+                                     out_energy, numel, qmap and per-rung seconds.  Not a
+                                     capture, but the input the two captures above exist to
+                                     adjudicate.
 ```
 
-A `captures/` prefix is reserved for shard-0 *candidate* capture trees — an error-driven
-mixed-precision pair and an NVFP4 capture are expected — each arriving with its own
-`capture-manifest.json`, added by `tools/preserve_artifacts.sh`. A candidate capture paired
-with the BF16 reference above is the one case where preserving a capture buys a reader
+The `captures/` prefix holds shard-0 *candidate* capture trees, each with its own
+`capture-manifest.json`, added by `tools/preserve_artifacts.sh --deep`. A candidate capture
+paired with the BF16 reference above is the one case where preserving a capture buys a reader
 something they cannot cheaply recompute: the two together let anyone re-derive that
-candidate's headline number by `replay` alone, with no GPU capture at all.
+candidate's headline number by `replay` alone, with no GPU capture at all. The error-driven
+pair is the worked example — replaying `hidden-eda` and `hidden-hyd-rematch` against
+`reference/hidden-bf16` reproduces the paired **−0.00036630 [−0.00039779, −0.00033477]** that
+closed that experiment as a negative, on a laptop.
 
 ### Sibling artifacts: two archival mirrors
 
@@ -207,6 +225,17 @@ python qwen38-27b-exl3/tools/fidelity.py paired \
 `replay` is fail-closed: it rejects a candidate capture whose suite digest, context set,
 tensor shape, head digest or scored-position window differs from the reference. A report it
 accepts is comparable with the reports in this repo by construction.
+
+**If your candidate is a rebuild of one of our recipes, it is a sibling and not our checkpoint.**
+The EXL3 converter is nondeterministic: re-running the published hydrated recipe on the same box
+with the same flags returns identical configs, index, quantization descriptors, safetensors
+headers, per-role byte totals and widths, while 399 of the 409 quantized modules (97.6 %) differ
+inside their `.trellis` payloads at 41-92 % of the bytes
+([`receipts/converter-determinism.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/converter-determinism.json)).
+Every published number here was measured on the published bytes, which is what a downloader
+receives and what each repo's `SHA256SUMS` pins, so those numbers are unaffected — but a report
+from your own rebuild is that sibling's number, not a reproduction of ours, and whether a sibling
+lands inside our interval is an open experiment rather than a settled one.
 
 To weld per-shard reports into a cumulative number the way the published receipts do, run
 `tools/kld_aggregate.py` over `reports/kld5/shard-*/report-<name>.json`.

@@ -1,0 +1,361 @@
+{
+  "schema": "qwen38-converter-honesty-pass/1",
+  "generated_utc": "2026-08-16T08:27:59Z",
+  "agent": "ConverterHonesty",
+  "question": "does anything this project publishes still imply that rebuilding a recipe returns the published bytes, and is every reproduction claim now consistent with receipts/converter-determinism.json?",
+  "gpu_use": "none. No CUDA process, no nvidia-smi, no container started; both cards left free. Every number here was read out of receipts/converter-determinism.json.",
+  "source_receipt": {
+    "path": "receipts/converter-determinism.json",
+    "content_sha256": "b50c95ff30e5d4640d919910d9d4dfe75930bca0aa8cb195230b6a2ab1478545",
+    "file_sha256": "b763fa16186b742152164fbdb45b36d65b40a36bc66b67bada37efcdcf5e63cd",
+    "verdict": {
+      "byte_identical": false,
+      "files_compared": 16,
+      "files_identical": 13,
+      "files_differing": 3,
+      "differs_only_in_metadata": false,
+      "reaches_tensor_bytes": true
+    }
+  },
+  "numbers_used_and_where_they_come_from": {
+    "13 of 16 pinned payload files identical": "verdict.files_identical / verdict.files_compared",
+    "three safetensors shards differ, in tensor bytes not metadata": "verdict.differs_only_in_metadata false, kind 'tensor-bytes', header.identical true on all three shards",
+    "2,426 physical tensors, same names/dtypes/shapes/offsets": "differing_files.*.header (705+1024+697 = 2,426; offsets_changed_count 0)",
+    "same three-shard packing 8,351,643,585 / 8,442,742,474 / 4,792,879,451 B": "differing_files.*.published_bytes == rebuild_bytes",
+    "399 differing tensors, all .trellis, 399 of 409 = 97.6 %": "differing_files.*.tensors.tensors_differing 135+200+64 = 399; every entry's name ends .trellis (re-checked by enumerating differing_files.*.tensors.differing)",
+    "41-92 % of bytes inside each, mean 82 %": "differing_bytes/bytes over the 399 entries: min 41.4 %, max 91.7 %, mean 82.3 %",
+    "no scale, norm, embedding, vision or BF16 companion tensor moved": "answer.where_it_lands, and the same enumeration",
+    "recipe reproduced exactly: ten per-role byte totals, 21,586,964,548 B, 1,199 logical tensors, 715 tensor_storage entries, every width": "answer.recipe_reproduces_exactly",
+    "converter nondeterminism measured, not inferred": "converter_repeat_control: 212 modules compared, 0 width disagreements, 0 global-scale disagreements, 6 proxy_err disagreements (2.83 %)",
+    "environment gap": "toolchain.published_run.marisa_trie.present false with the measured note; answer.second_and_separate_finding",
+    "conversion-capable image": "docker/Dockerfile.gg-r34-convert, which installs the same marisa_trie 1.4.1 wheel the rebuild supplied (wheel_sha256 4d51bdd2...)"
+  },
+  "pre_edit_audit": {
+    "method": "grep over the four model cards, the two hub-only cards fetched fresh, README.md and docs/ for reproduc*, rebuild, byte-identical, deterministic, SHA256SUMS, provenance, reconstruct*, verify; then read every hit in place. Line numbers are pre-edit: git HEAD 212e512 for repository files, and the published README revisions named below for the two hub-only cards.",
+    "hits": [
+      {
+        "file": "MODEL_CARD-K5K6-hydrated.md",
+        "lines": "115-118",
+        "text": "`quantization_manifest.json` and `build-receipt.json` are authoritative for composition; `SHA256SUMS` covers the immutable payload.",
+        "why_it_misleads": "provenance framing with no statement of what a rebuild does or does not reproduce; the natural place a reader looks for the floor",
+        "resolution": "corrected: the rebuild subsection now sits in this section and names SHA256SUMS as the checkable claim"
+      },
+      {
+        "file": "MODEL_CARD-K5K6-hydrated.md",
+        "lines": "120-126",
+        "text": "Built from Qwen3.8-27B @1d4bf0f2 with exllamav3 @5f3c537, plus two allocator hooks ... both are in the companion repository.",
+        "why_it_misleads": "reads as a complete rebuild recipe, so a reader infers that following it returns this checkpoint",
+        "resolution": "corrected: followed immediately by 'What a rebuild of this recipe gives you'"
+      },
+      {
+        "file": "MODEL_CARD-K5K6-hydrated.md",
+        "lines": "128-130",
+        "text": "Verified after the build: reconstructing every EXL3 module yields exactly upstream's 1,199 logical tensor names.",
+        "why_it_misleads": "'reconstructing' here is the finalizer's structural check; the card also says 'reconstructed-prefill path' at line 756, so the two senses sit unlabelled on one card",
+        "resolution": "corrected: the new subsection names this as the converter-side sense and separates it from reconstruct_fp8_slice"
+      },
+      {
+        "file": "MODEL_CARD-K5K6-hydrated.md",
+        "lines": "984-992",
+        "text": "release-evidence-hydrated.json 'carries the whole chain in one file: ... the container digest ...'",
+        "why_it_misleads": "implies the recorded environment is sufficient to re-enter the build",
+        "resolution": "corrected: a paragraph states the container digest is not a complete environment record and names gg-r34-convert"
+      },
+      {
+        "file": "MODEL_CARD-K5K6-hydrated.md",
+        "lines": "999",
+        "text": "## Reproduce this",
+        "why_it_misleads": "heading is unscoped; on a model card it reads as 'reproduce this checkpoint' before the body says 'numbers'",
+        "resolution": "corrected: lead sentence scopes it to the numbers and links the rebuild subsection (heading text kept so existing #reproduce-this anchors still resolve)"
+      },
+      {
+        "file": "MODEL_CARD-K5K6.md",
+        "lines": "48-56",
+        "text": "`SHA256SUMS` covers the immutable payload only -- 17 files, 30,597,223,337 bytes ... a hash map that claims to describe a build must not move when prose does.",
+        "why_it_misleads": "SHA256SUMS framing with no rebuild floor",
+        "resolution": "corrected: sibling paragraph added directly below, ending on 'verify the published digest, not your own conversion'"
+      },
+      {
+        "file": "MODEL_CARD-K5K6.md",
+        "lines": "1103-1111",
+        "text": "'Verification performed, and not performed': structural audit (1,199 logical tensors reconstructed, matching upstream)",
+        "why_it_misleads": "converter-side reconstruction, on a card that also describes the runtime reconstruct+hgemm path at 793-798",
+        "resolution": "corrected: the new paragraph separates the two senses explicitly"
+      },
+      {
+        "file": "MODEL_CARD-K5K6.md",
+        "lines": "1138",
+        "text": "## Reproduce this",
+        "why_it_misleads": "unscoped heading",
+        "resolution": "corrected: lead sentence scopes it to the numbers"
+      },
+      {
+        "file": "MODEL_CARD-K5K6-context.md",
+        "lines": "93-96",
+        "text": "Built from Qwen3.8-27B @1d4bf0f2. Verified after the build: reconstructing every EXL3 module ... the finalizer fails closed otherwise.",
+        "why_it_misleads": "build provenance plus an unlabelled 'reconstructing'; nothing says a rebuild differs from the published bytes",
+        "resolution": "corrected: sibling paragraph added below, with the two senses separated"
+      },
+      {
+        "file": "MODEL_CARD-K5K6-context.md",
+        "lines": "1237",
+        "text": "## Reproduce this",
+        "why_it_misleads": "unscoped heading",
+        "resolution": "corrected: lead sentence scopes it to the numbers"
+      },
+      {
+        "file": "MODEL_CARD-K4.md",
+        "lines": "34-35",
+        "text": "the successor is `mcg` throughout and reproducible from its command.",
+        "why_it_misleads": "the strongest hit in the set: states outright that a command reproduces a published build",
+        "resolution": "corrected: now 'the successor's command produces mcg throughout. That is a claim about the recipe, not about the bytes', pointing at the rebuild paragraph"
+      },
+      {
+        "file": "MODEL_CARD-K4.md",
+        "lines": "1091-1105",
+        "text": "## Reproducing this quant, followed by the convert.py / splice / metadata command block",
+        "why_it_misleads": "a titled rebuild procedure with no statement of what it returns",
+        "resolution": "corrected: 'What that command reproduces, and what it does not' added under the block"
+      },
+      {
+        "file": "MODEL_CARD-K4.md",
+        "lines": "1110",
+        "text": "## Reproduce this",
+        "why_it_misleads": "unscoped heading, and it sits directly under 'Reproducing this quant', which makes the two easy to conflate",
+        "resolution": "corrected: lead sentence scopes it to the numbers and links the quant section"
+      },
+      {
+        "file": "MODEL_CARD-K4.md",
+        "lines": "935-937",
+        "text": "Replaying ... through the reconstructed K6 head (exllamav3's own `reconstruct_had_slice`, so it is the exact serving matrix)",
+        "why_it_misleads": "runtime-side reconstruction; the card had no converter-side counterpart to distinguish it from",
+        "resolution": "corrected: the new paragraph names reconstruct_had_slice / reconstruct_fp8_slice as the other sense and says this finding does not touch it"
+      },
+      {
+        "file": "MODEL_CARD-EDA-research.md (published README @86d8f5ca)",
+        "lines": "205-232",
+        "text": "## Reproduce this, with the full EXL3_BITS_FIXED / EXL3_BITS_OVERRIDE / convert.py rebuild command",
+        "why_it_misleads": "a complete rebuild procedure for a published checkpoint",
+        "resolution": "corrected: 'What step 2 reproduces is the recipe, not this checkpoint' added under the converter pin"
+      },
+      {
+        "file": "MODEL_CARD-EDA-research.md (published README @86d8f5ca)",
+        "lines": "234-237",
+        "text": "Converter: exllamav3 @5f3c537 (1.4.2) plus this repository's allocation patch. Hardware: 1x RTX PRO 6000 Blackwell.",
+        "why_it_misleads": "a pinned converter and pinned hardware imply a pinned output",
+        "resolution": "corrected: same paragraph, which states the pin fixes the recipe and not the weights"
+      },
+      {
+        "file": "MODEL_CARD-EDA-research.md (published README @86d8f5ca)",
+        "lines": "245-249",
+        "text": "`SHA256SUMS` -- the immutable payload (16 files) ... so a card edit cannot invalidate the build hashes",
+        "why_it_misleads": "SHA256SUMS framing with no rebuild floor",
+        "resolution": "corrected: the new paragraph names this repo's SHA256SUMS as the thing to verify against"
+      },
+      {
+        "file": "DATASET_CARD-v5.md (published README @1b2ae629)",
+        "lines": "191-227",
+        "text": "Replay: score your own checkpoint against the published BF16 reference",
+        "why_it_misleads": "invites a reader to score a checkpoint of their own without saying that a rebuild of one of our recipes is a sibling rather than our build",
+        "resolution": "corrected: sibling note added after the fail-closed paragraph"
+      },
+      {
+        "file": "DATASET_CARD-v5.md (published README @1b2ae629)",
+        "lines": "164-189",
+        "text": "## Verify what you downloaded",
+        "why_it_misleads": "the right anchor for byte checking, but it stated no floor for a checkpoint comparison",
+        "resolution": "corrected indirectly: the sibling note points at each repo's SHA256SUMS as what a checkpoint claim is checked against"
+      },
+      {
+        "file": "docs/37-error-driven-allocation.md",
+        "lines": "198-201",
+        "text": "tools/allocate_bits.py refuses to run unless it reproduces both published manifests byte-for-byte first ... A byte model that cannot reproduce the two shipped checkpoints has no business proposing a third.",
+        "why_it_misleads": "'reproduces the shipped checkpoints byte-for-byte' is true of the byte budget and false of the bytes; the sentence does not say which",
+        "resolution": "corrected: a paragraph distinguishing byte budget from bytes, citing the determinism receipt"
+      }
+    ],
+    "checked_and_left_alone": [
+      {
+        "file": "docs/37-error-driven-allocation.md",
+        "lines": "344-345",
+        "why": "'lost by 0.000366 ... at byte-identical size' -- a statement about size, which is exactly what a rebuild does reproduce. Accurate as written."
+      },
+      {
+        "file": "docs/37-error-driven-allocation.md",
+        "lines": "299-303",
+        "why": "the hydrated re-capture control came out 'bit-identical' -- that is the harness replaying one checkpoint's stored hidden states, not a rebuild. Accurate as written."
+      },
+      {
+        "file": "MODEL_CARD-K5K6-hydrated.md / -K5K6.md / -context.md / -K4.md",
+        "lines": "157-170 / 131-144 / 148-161 / 209-222",
+        "why": "'reproduce bit-for-bit across independent runs' and 'not a claim that vLLM is bitwise deterministic in general' -- capture/replay determinism of the measurement harness, already correctly scoped and unrelated to the converter."
+      },
+      {
+        "file": "all four model cards",
+        "lines": "various",
+        "why": "'perplexity does not reproduce the KLD ordering' -- a different use of the word entirely."
+      },
+      {
+        "file": "README.md",
+        "lines": "203-204",
+        "why": "the v5 suite 'is reproducible from the pinned corpus fetch log and suite manifest plus a GPU' -- about the evaluation suite, not a checkpoint. Accurate as written."
+      },
+      {
+        "file": "docs/29-plan-and-loose-ends.md",
+        "lines": "793-802",
+        "why": "the independent-reproduction protocol asks an external operator to 'rebuild one representative checkpoint' and accepts when 'build differences are either byte-identical or explicitly reduced to a measured numerical equivalence contract'. This is now wrong in its first branch and is the main reason docs/29 needs the handed prose. NOT EDITED: that file belongs to Main."
+      }
+    ]
+  },
+  "the_claim_now_published": {
+    "artifact": "the published bytes are the artifact; the recipe is not. It fixes composition, widths and byte budget exactly and does not fix the weights.",
+    "sibling": "a rebuild is a sibling of the published checkpoint -- same composition, same widths, same byte budget, different trellis payloads. A different valid artifact of the same recipe, not a broken one.",
+    "fidelity": "every published fidelity number measures the bytes a downloader receives, so none of them is affected. What no longer holds is 'rebuild this and you get our numbers', which is now an untested expectation.",
+    "floor": "a byte diff against a published tree is not evidence of tampering, corruption or a changed recipe until it exceeds this floor; the checkable claim is the digest of the published tree (SHA256SUMS), not the output of a rebuild.",
+    "environment": "the recorded build environment provably could not have completed this conversion -- the pinned image has no marisa_trie and the recipe imports it twice on unconditional paths -- so the published environment record is incomplete and the conversion-capable image is gg-r34-convert. No speculation about what supplied it.",
+    "two_reconstructions": "converter-side reconstruction (the finalizer's 1,199-tensor structural check) is kept distinct from the runtime's weight reconstruction (reconstruct_fp8_slice / reconstruct_had_slice, reconstructed prefill), which nothing here touches."
+  },
+  "files_written": {
+    "MODEL_CARD-K5K6-hydrated.md": "new '### What a rebuild of this recipe gives you' under Recipe (the recipe that was measured, so it carries the full statement); an environment-record correction under Machine-readable evidence; a scoping lead under Reproduce this",
+    "MODEL_CARD-K5K6.md": "one sibling paragraph under the composition block; scoping lead under Reproduce this",
+    "MODEL_CARD-K5K6-context.md": "one sibling paragraph under Recipe; scoping lead under Reproduce this",
+    "MODEL_CARD-K4.md": "correction to the superseded-note sentence at line 35; 'What that command reproduces, and what it does not' under Reproducing this quant; scoping lead under Reproduce this",
+    "MODEL_CARD-EDA-research.md": "NEW local file: the published EDA research card had no source in this repo, so it was fetched at 86d8f5ca... and is now tracked here, plus the rebuild paragraph under its Reproduce this",
+    "DATASET_CARD-v5.md": "re-synced from the published README (1b2ae629...), which had drifted ahead of the local file by the captures/ block, then a sibling note added to the Replay section",
+    "docs/37-error-driven-allocation.md": "byte budget vs bytes paragraph in section 4.2",
+    "tools/publish_cards.py": "extended from four model repos to six (adds the EDA research repo and the v5 dataset, with a repo type per card) so a hub-only card cannot drift again"
+  },
+  "not_touched": {
+    "docs/29-plan-and-loose-ends.md": "belongs to Main. Prose handed over instead, in docs29_prose_for_main below and at local://docs29-converter-honesty.md",
+    "PROGRESS.md": "append-only, and this pass adds no session record of its own",
+    "receipts/converter-determinism.json": "read only",
+    "the four cards' settled content": "no re-litigation of anything in card-consistency-audit-resolution.json, card-evidence-pass.json or card-final-pass.json"
+  },
+  "publication": {
+    "schema": "qwen38-apc-card-publication/1",
+    "generated_utc": "2026-08-16T08:26:19Z",
+    "tool": "hf upload, HF_HOME=/var/tmp/hf-home-3, user malaiwah",
+    "what_changed": "converter determinism: a rebuild is a sibling, not the published bytes",
+    "per_repo": [
+      {
+        "repo": "malaiwah/Qwen3.8-27B-EXL3-K5K6-context",
+        "repo_type": "model",
+        "local_card": "MODEL_CARD-K5K6-context.md",
+        "local_bytes": 100532,
+        "local_sha256": "fcec3d7fcd0e07cfd917b117995622ae42bb92d9e5d5afd650c91c47a6f3b302",
+        "local_lines": 1311,
+        "published_before": {
+          "bytes": 98107,
+          "sha256": "ce0cdd5de600f35c9ebc949a0e83403db71c60b1023421ac1f7a930ac4fe6710"
+        },
+        "docs_sha256sums_had_readme_line": true,
+        "published_bytes": 100532,
+        "published_sha256": "fcec3d7fcd0e07cfd917b117995622ae42bb92d9e5d5afd650c91c47a6f3b302",
+        "published_lines": 1311,
+        "byte_identical": true,
+        "docs_sha256sums_readme_current": true,
+        "docs_sha256sums_byte_identical": true
+      },
+      {
+        "repo": "malaiwah/Qwen3.8-27B-EXL3-K5K6",
+        "repo_type": "model",
+        "local_card": "MODEL_CARD-K5K6.md",
+        "local_bytes": 96353,
+        "local_sha256": "cd60c3c20ef5cfa886296f7daa4171932bc4a37ba7c28932a7475440935011fd",
+        "local_lines": 1236,
+        "published_before": {
+          "bytes": 93937,
+          "sha256": "6a44ab36e169b5879a86993dcdad33aa00b18a15c3e300e01ad3351845c362d0"
+        },
+        "docs_sha256sums_had_readme_line": true,
+        "published_bytes": 96353,
+        "published_sha256": "cd60c3c20ef5cfa886296f7daa4171932bc4a37ba7c28932a7475440935011fd",
+        "published_lines": 1236,
+        "byte_identical": true,
+        "docs_sha256sums_readme_current": true,
+        "docs_sha256sums_byte_identical": true
+      },
+      {
+        "repo": "malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated",
+        "repo_type": "model",
+        "local_card": "MODEL_CARD-K5K6-hydrated.md",
+        "local_bytes": 86283,
+        "local_sha256": "64da3eefdf608d91dd393dc2637ab0e48d21c6ebac56f0ee6c94b9452fe0a846",
+        "local_lines": 1095,
+        "published_before": {
+          "bytes": 82293,
+          "sha256": "34b3e3cf18046dc3806b3f6e437c7aeaac30b53c56d34a8b6c3733eaf75dcdd9"
+        },
+        "docs_sha256sums_had_readme_line": true,
+        "published_bytes": 86283,
+        "published_sha256": "64da3eefdf608d91dd393dc2637ab0e48d21c6ebac56f0ee6c94b9452fe0a846",
+        "published_lines": 1095,
+        "byte_identical": true,
+        "docs_sha256sums_readme_current": true,
+        "docs_sha256sums_byte_identical": true
+      },
+      {
+        "repo": "malaiwah/Qwen3.8-27B-K4",
+        "repo_type": "model",
+        "local_card": "MODEL_CARD-K4.md",
+        "local_bytes": 91777,
+        "local_sha256": "fcf4e2b22c69e5b52ba837f3ddf8ce5aafd6c572e44de2abdfd1b1249a5826b6",
+        "local_lines": 1208,
+        "published_before": {
+          "bytes": 89306,
+          "sha256": "92d97773f1e7c9f7cf227c49fb752d37595fc35ed53ff66bcd0ea805f908ac95"
+        },
+        "docs_sha256sums_had_readme_line": true,
+        "published_bytes": 91777,
+        "published_sha256": "fcf4e2b22c69e5b52ba837f3ddf8ce5aafd6c572e44de2abdfd1b1249a5826b6",
+        "published_lines": 1208,
+        "byte_identical": true,
+        "docs_sha256sums_readme_current": true,
+        "docs_sha256sums_byte_identical": true
+      },
+      {
+        "repo": "malaiwah/Qwen3.8-27B-EXL3-EDA-research",
+        "repo_type": "model",
+        "local_card": "MODEL_CARD-EDA-research.md",
+        "local_bytes": 20436,
+        "local_sha256": "34865c19184618bee2fdd06336e6f9e44c3c5bb3dbf35868b5c51830350ed63f",
+        "local_lines": 320,
+        "published_before": {
+          "bytes": 18452,
+          "sha256": "86d8f5ca37bee8f84e1475472e8394a3499e12ecf2eb5539afd8af400b85a855"
+        },
+        "docs_sha256sums_had_readme_line": true,
+        "published_bytes": 20436,
+        "published_sha256": "34865c19184618bee2fdd06336e6f9e44c3c5bb3dbf35868b5c51830350ed63f",
+        "published_lines": 320,
+        "byte_identical": true,
+        "docs_sha256sums_readme_current": true,
+        "docs_sha256sums_byte_identical": true
+      },
+      {
+        "repo": "malaiwah/qwen38-27b-fidelity-suite-v5",
+        "repo_type": "dataset",
+        "local_card": "DATASET_CARD-v5.md",
+        "local_bytes": 17332,
+        "local_sha256": "ddcb826115cf1adf4eabd6d903e8a70cb01a0bf193eb58fb63cefcfce7560c59",
+        "local_lines": 297,
+        "published_before": {
+          "bytes": 16393,
+          "sha256": "1b2ae6299282aa1caa665981a4de960c8d3b3ee44e05cd603ebec90f5dbd7012"
+        },
+        "docs_sha256sums_had_readme_line": null,
+        "published_bytes": 17332,
+        "published_sha256": "ddcb826115cf1adf4eabd6d903e8a70cb01a0bf193eb58fb63cefcfce7560c59",
+        "published_lines": 297,
+        "byte_identical": true
+      }
+    ],
+    "all_byte_identical": true
+  },
+  "docs29_prose_for_main": "## Converter determinism \u2014 measured, and it changes what \"reproduce\" can mean\n\nA fresh conversion of the published hydrated recipe, on the same box with the same flags and\nthe same source, does **not** return the published checkpoint. 13 of the 16 pinned payload\nfiles come back identical \u2014 every config, the tokenizer, the safetensors index,\n`quantization_config.json`, `quantization_manifest.json` \u2014 and the three safetensors shards do\nnot. The difference reaches tensor bytes and stops there: byte-identical headers, the same\n2,426 physical tensors with the same names, dtypes, shapes and offsets, the same three-shard\npacking to the byte. 399 tensors differ, every one a `.trellis` payload \u2014 399 of the 409\nquantized modules, 97.6 %, with 41-92 % of the bytes differing inside each, mean 82 %. No\nscale, norm, embedding, vision or BF16 companion tensor moved, and everything a recipe fixes\ncame out exact: all ten per-role byte totals, 21,586,964,548 B of payload, 1,199 logical\ntensors, 715 `tensor_storage` entries, every assigned width. The mechanism was measured, not\ninferred: a failed first attempt left one log holding the same conversion twice, minutes apart,\nwith identical widths and identical global scales but different `proxy_err` for 6 of the 212\nmodules the comparison reaches. Two identical float computations round identically, so the\nconverter is nondeterministic. `receipts/converter-determinism.json`.\n\n**Consequence 1 \u2014 the published bytes are the artifact, the recipe is not.** The recipe fixes\ncomposition, widths and byte budget exactly and does not fix the weights, so a rebuild is a\nsibling of the published checkpoint rather than the checkpoint: a different valid artifact of\nthe same recipe, not a broken one. Every published fidelity number measures the bytes a\ndownloader receives and is unaffected. What no longer holds is any \"rebuild this and you get\nour numbers\" reading \u2014 that is now an expectation to test, and it is untested.\n\n**Consequence 2 \u2014 there is a floor under byte comparisons.** A diff between a rebuild and a\npublished tree cannot be read as tampering, corruption or a changed recipe until it exceeds\nthis floor, and the checkable claim is the digest of the published tree \u2014 each repo's\n`SHA256SUMS` \u2014 rather than the output of anyone's conversion. This lands directly on\n**P0 / rank 3 \u2014 clean-room release reproduction**: rung 2 still stands as written, but its\nacceptance clause \"build differences are either byte-identical or explicitly reduced to a\nmeasured numerical equivalence contract\" now has a dead first branch. For a rebuilt checkpoint\nthe only reachable acceptance is the equivalence contract, and the contract needs a stated\ntolerance: identical composition, widths, per-role byte totals, tensor names, dtypes, shapes,\noffsets and shard sizes, with trellis payload differences permitted up to the measured floor.\nNothing else about that item changes.\n\nNone of this touches the runtime's weight-reconstruction path (`reconstruct_fp8_slice`, the\nreconstructed-prefill kernels), which turns stored trellis bytes back into weights at load. The\ntwo senses of \"reconstruction\" have to stay apart wherever both appear.\n\n**Loose end A \u2014 a complete environment record for future builds.** Separate finding from the\nsame run: the published build's environment is not reconstructible. This recipe reaches\n`import marisa_trie` twice on unconditional paths, and the pinned image\n`release-evidence-hydrated.json` records has no `marisa_trie`, so that image provably cannot run\nthe conversion to completion. Something in the published run supplied it and nothing recorded\nwhat. The published environment record is therefore incomplete; the conversion-capable image is\n`gg-r34-convert`, which installs the same verified wheel the rebuild used. What is owed is a\nbuild-time environment record that is sufficient on its own \u2014 image digest plus every\ndependency supplied beside it, captured at build time rather than reconstructed afterwards \u2014 so\nthe next build is re-enterable and not merely re-attemptable.\n\n**Loose end B \u2014 does a sibling rebuild land inside our interval?** Open experiment, never run.\nThe sibling built for this measurement was never scored: scoring it answers a different question\nthan the one that was asked, and it was released with the rest of the working tree. The test is\ncheap now that the shard-0 BF16 reference is published \u2014 one candidate capture plus one replay,\nabout 6 minutes of GPU on shard 0 \u2014 but it costs a full ~40-minute conversion first to have a\nsibling to score. Until someone runs it, the honest statement on the cards is the one now\npublished: a sibling should land within measurement resolution, and that has not been tested.\n",
+  "docs29_prose_note": "handed over, not applied. docs/29 belongs to Main. The block also flags that P0/rank 3's acceptance clause has a dead first branch.",
+  "content_sha256": "8b431e4ca62ce66973fe7766da82aebcd53d88004a53b879b0e6191071f2e606",
+  "content_sha256_excludes": [
+    "content_sha256"
+  ]
+}

@@ -32,7 +32,8 @@ tags:
 > (re-measured held-out numbers are below), and `reasoning_effort` accepts only
 > `xhigh`/`medium`/`low`. This checkpoint's `lm_head` also carries the `mul1` codebook
 > rather than the `mcg` implied by the documented `-cb mcg`, an artefact of that run's
-> crash-and-resume; the successor is `mcg` throughout and reproducible from its command.
+> crash-and-resume; the successor's command produces `mcg` throughout. That is a claim about
+> the recipe, not about the bytes — see [Reproducing this quant](#reproducing-this-quant).
 
 Dense EXL3 quant of [`Qwen/Qwen3.8-27B`](https://huggingface.co/Qwen/Qwen3.8-27B)
 built on one principle: **spend 4 bits only where the two independent NVFP4
@@ -1107,7 +1108,35 @@ python util/add_quant_config.py -m Qwen3.8-27B-K4
 `splice_bf16_attn.py`, the container-free runner used for all measurements here,
 and the KLD harness are in the companion repo listed below.
 
+**What that command reproduces, and what it does not.** It reproduces the recipe — composition,
+widths and byte budget — and not the checkpoint. The published bytes are the artifact. A fresh
+conversion of the hydrated sibling's recipe, run on the same hardware with the same flags and
+source, returned **13 of 16 pinned payload files identical** (every config, the tokenizer, the
+index and both quantization descriptors) with byte-identical shard headers, the same tensor names,
+dtypes, shapes and offsets, and the same per-role byte totals and assigned widths — while
+**399 of the 409 quantized modules (97.6 %) differed inside their `.trellis` payloads, at 41-92 %
+of the bytes each (mean 82 %)**. No scale, norm, embedding, vision or BF16 companion tensor moved.
+The converter is nondeterministic, measured rather than inferred: two runs of one conversion,
+minutes apart, agreed on every width and every global scale and disagreed on the converter's own
+`proxy_err`
+([`receipts/converter-determinism.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/converter-determinism.json)).
+So what you get from the commands above is a **sibling**: a different valid artifact of the same
+recipe, not a broken one. Every fidelity number on this card measures the published bytes a
+downloader receives and is unaffected; "rebuild this and you get these numbers" is now an untested
+expectation rather than an identity. Check the digest of the published tree against `SHA256SUMS`
+rather than against your own conversion, and read a byte diff below this floor as the converter
+rather than as tampering, corruption or a changed recipe. The same run also showed the recorded
+build environment is incomplete: the pinned image has no `marisa_trie`, which the conversion
+imports on an unconditional path, so that image provably could not have finished the job. The
+conversion-capable image is `docker/Dockerfile.gg-r34-convert`. This is the converter's sense of
+reconstruction only — the runtime's `reconstruct_had_slice` / `reconstruct_fp8_slice` path, which
+turns stored trellis bytes back into weights at load, is a different claim and is untouched here.
+
 ## Reproduce this
+
+This section is about **the numbers, not the bytes**: a fresh conversion of the recipe produces a
+sibling rather than this checkpoint, as recorded under
+[Reproducing this quant](#reproducing-this-quant).
 
 Everything the v5 numbers above were computed from is published as a dataset:
 [`malaiwah/qwen38-27b-fidelity-suite-v5`](https://huggingface.co/datasets/malaiwah/qwen38-27b-fidelity-suite-v5)

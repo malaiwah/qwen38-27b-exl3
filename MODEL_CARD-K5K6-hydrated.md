@@ -129,6 +129,43 @@ allocation). Both are in the
 **1,199 logical tensor names with matching shapes**. The finalizer fails closed on any
 missing, extra or mis-shaped tensor, so this is a check rather than a claim.
 
+### What a rebuild of this recipe gives you
+
+**The published bytes are the artifact; the recipe is not.** This exact recipe was re-converted
+on the same hardware with the same flags, the same source and exllamav3 `5f3c537`, and compared
+against the published tree. **13 of the 16 pinned payload files came back identical** — every
+config, the tokenizer, the safetensors index, `quantization_config.json` and
+`quantization_manifest.json` — and the three safetensors shards did not. The difference is in
+tensor bytes, not metadata: byte-identical headers, the same 2,426 physical tensors with the same
+names, dtypes, shapes and data offsets, and the same three-shard packing to the byte.
+**399 tensors differ and every one is a `.trellis` payload — 399 of the 409 quantized modules,
+97.6 %, with 41-92 % of the bytes differing inside each (mean 82 %)**. Not one scale, norm,
+embedding, vision or BF16 companion tensor moved, and everything a recipe is supposed to fix came
+out exactly right: all ten per-role byte totals, 21,586,964,548 B of payload, 1,199 logical
+tensors and every module's assigned width. The cause was measured rather than assumed — two runs
+of the identical conversion, minutes apart on one box, agreed on every width and every global
+scale but disagreed on the converter's own `proxy_err` for 6 of the 212 modules the comparison
+reached, so the converter is genuinely nondeterministic. A rebuild is therefore a **sibling** of
+this checkpoint: same composition, same widths, same byte budget, different trellis payloads. A
+different valid artifact of the same recipe, not a broken one
+([`receipts/converter-determinism.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/converter-determinism.json)).
+
+**What it changes, and what it does not.** Every fidelity number on this card measures the
+published bytes — the ones `SHA256SUMS` pins and a downloader actually receives — so none of them
+is affected. What no longer holds is the reading "rebuild this and you get these numbers": a
+sibling should land within measurement resolution, but that is now an expectation to test, and it
+has not been tested. The practical consequence is a floor: a byte diff against a published tree is
+**not** evidence of tampering, corruption or a changed recipe until it exceeds this floor, and the
+claim worth checking is the digest of the published tree — verify against `SHA256SUMS`, not
+against the output of your own conversion. One environment gap came with the same run: the pinned
+image the build record names has no `marisa_trie`, which this conversion imports twice on
+unconditional paths, so that environment provably could not have run the job to completion. The
+published environment record is therefore incomplete, and the conversion-capable image is
+`docker/Dockerfile.gg-r34-convert`. None of this touches the **runtime's** weight reconstruction
+(`reconstruct_fp8_slice`, the reconstructed-prefill path below), which turns stored trellis bytes
+back into weights at load; that is a different sense of the word and nothing here bears on it. The
+1,199-tensor check above is the converter-side sense: names and shapes, verified by the finalizer.
+
 ## Fidelity
 
 Headline evidence is the **v5 held-out suite: 5,120 contexts x 2,047 positions =
@@ -991,12 +1028,23 @@ partition, every fidelity number with its interval, the controls including the r
 and an explicit `not_verified` list. `SHA256SUMS` covers the immutable payload (16 files);
 `DOCS-SHA256SUMS` covers card files, so a card edit can no longer invalidate the build hashes.
 
+One correction to that chain: the container digest it records is **not** a complete environment
+record. The image behind that digest has no `marisa_trie`, which this conversion imports on two
+unconditional paths, so it could not have run the build to completion on its own; something in the
+published run supplied the dependency and nothing recorded what. The conversion-capable image is
+`docker/Dockerfile.gg-r34-convert`. The shard digests the file carries are unaffected — they
+describe the published bytes, which is the artifact.
+
 That file's fidelity chain is the v3/v4 evidence. The v5 headline numbers live in their own
 receipts: `receipts/kld5-suite-manifest.json`, `receipts/kld5-corpus-fetch-log.json`,
 `receipts/kld5-10M-{hyd,k5k6,ctx,fp8,k4}.json` and `receipts/kld5-10M-paired.json`, each
 carrying the suite token hash, the cluster partition and its own content digest.
 
 ## Reproduce this
+
+This section is about **the numbers, not the bytes**: it reproduces the measurements, and a fresh
+conversion of the recipe produces a sibling rather than this checkpoint (see
+[What a rebuild of this recipe gives you](#what-a-rebuild-of-this-recipe-gives-you)).
 
 Everything the v5 numbers on this card were computed from is published as a dataset:
 [`malaiwah/qwen38-27b-fidelity-suite-v5`](https://huggingface.co/datasets/malaiwah/qwen38-27b-fidelity-suite-v5)

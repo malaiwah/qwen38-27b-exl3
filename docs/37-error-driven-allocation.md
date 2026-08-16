@@ -200,6 +200,13 @@ The byte law is [34](34-vram-class-profiles.md) §2 applied per module,
 byte-for-byte first — all ten roles, hydrated 21,586,964,548 B and context 20,672,081,988 B. A byte
 model that cannot reproduce the two shipped checkpoints has no business proposing a third.
 
+That is byte *budget*, not bytes. A conversion reproduces the manifest exactly and the shard
+contents not at all: re-running the published hydrated recipe on the same box returns identical
+per-role totals, identical widths and identical safetensors headers while 399 of the 409 quantized
+modules differ inside their `.trellis` payloads, because the converter is nondeterministic
+([`receipts/converter-determinism.json`](../receipts/converter-determinism.json)). The byte model
+is validated against the composition a recipe fixes, which is exactly the part that reproduces.
+
 Every module's byte cost is an integer multiple of 655,360 B (the smallest module's `params/8`), so
 the budget is an exact grid of 25,664 points and the allocation is solved by **dynamic programming
 rather than greedily** — the optimum is provable. It runs in about a second.
