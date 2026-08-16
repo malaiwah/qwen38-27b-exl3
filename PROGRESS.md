@@ -848,3 +848,30 @@ withdrawn at every dtype); s4.1's a/2 guess is marked measured at 17,952 B/token
 "4-bit KV is not an escape" sentence carries a dated superseding note: an escape with two named
 prices, not a free one. Every restated number is mapped to its receipt field in
 receipts/kv-on-cards.json; publication byte-proof in receipts/kv-on-cards-publication.json.
+
+## 2026-08-16 — Scratch arena landed on the cards and docs (ArenaLanding2)
+
+The rank-1 lever from docs/43 is now published where readers act on it, and it is published as an
+opt-in overlay rather than as part of any qualified digest. Each of the four model cards gained a
+`### Reconstruct-scratch arena` subsection directly after its `### KV-cache dtype` subsection: the
+2-hunk `exl3.py` patch (overlay `tools/vllm-exl3-scratch-arena.py`, sha256 `9aba06eb...`, fork PR
+local-inference-lab/vllm#397) replaces 790 MiB of per-geometry persistent fp16 reconstruct scratch
+with one 170 MiB grow-to-max arena per device, and the physical-5090 A/B moved the engine-reported
+KV pool 265,122 -> 282,996 tokens (+17,874, +6.7 %, 9.28 -> 9.88 GiB), reproduced across two
+server starts per arm, with the 30-case deterministic vision suite byte-identical on both arms,
+the 258,925-token needle retrieved exactly and decode unregressed
+(receipts/scratch-arena.json). Two things are said on every card so the win cannot be over-read:
+it is an overlay deliberately not part of the qualified digest, in the same words the #51812 GDN
+overlay got, and the byte-identity claim covers the deterministic probe set only — the control
+shows two restarts of the *unpatched* baseline differ on 7 of 8 long greedy continuations, so this
+stack is not restart-deterministic on long greedy text with or without the patch. The static
+prediction (+620 MiB / +18.7k tokens) is quoted only as the prediction; the measured 95.7 % of it
+is the number. docs/43 s3 keeps its original [INFERENCE] row in place and adds the measurement
+beside it — the inference figure is now labelled as this path's calibration datum — s7 ranks R1
+built-measured-and-PR'd, and the document's "nothing here was run on a GPU" banner is amended
+rather than quietly falsified. docs/34 s10.2 carries the 24 GB-class effect as [P] arithmetic
+only: 24,576 + 17,874 = 42,450 raw headroom, 40,960 at the next 4,096 step (3.6 % headroom),
+36,864 as the step that would clear s5.3's >=15 % envelope, with s8's physical-board gate restated
+as open and no 24 GB board booted. Landing receipt receipts/arena-landing.json; publication
+byte-proof receipts/arena-card-publication.json (six repos, all byte-identical). CPU only: no GPU
+was taken and no service was touched.
