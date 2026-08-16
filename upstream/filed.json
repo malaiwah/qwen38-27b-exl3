@@ -1,0 +1,104 @@
+{
+  "schema": "qwen38-upstream-filing/1",
+  "generated_utc": "2026-08-16T00:00:00Z",
+  "target_repo": "local-inference-lab/vllm",
+  "target_branch": "dev/gilded-gnosis",
+  "target_branch_head_at_filing": "fa033bd4e1b16d9d729ad94be2d87da5a13210ce",
+  "access": {
+    "gh_cli": "not authenticated (`gh auth status`: not logged into any GitHub hosts)",
+    "github_token_env": "GITHUB_TOKEN and GH_TOKEN both unset",
+    "credential_used": "git credential.helper=store, ~/.git-credentials entry for github.com, user malaiwah, classic PAT (ghp_, repo scope) — the same credential the `github` remote in /home/mbelleau/research pushes with",
+    "permissions_on_target": "pull only (admin/push/maintain/triage all false); issues enabled",
+    "pr_route": "cross-fork, same as prior #314/#316/#318/#319 — head repo malaiwah/vllm-voipmonitor (push: true), base local-inference-lab/vllm"
+  },
+  "filed": {
+    "issue": {
+      "number": 392,
+      "url": "https://github.com/local-inference-lab/vllm/issues/392",
+      "title": "[Bugfix] Cherry-pick upstream #51113 (mamba align prefill split) and #51812 (Qwen GDN spec gates) into dev/gilded-gnosis",
+      "state": "open",
+      "body_source": "upstream/vllm-gg-cherry-pick-51113-51812.md"
+    },
+    "pull_request": {
+      "number": 393,
+      "url": "https://github.com/local-inference-lab/vllm/pull/393",
+      "title": "[Bugfix] Cherry-pick upstream #51113 and #51812 into dev/gilded-gnosis",
+      "state": "open",
+      "head": "malaiwah/vllm-voipmonitor:fix/cherry-pick-51113-51812",
+      "base": "local-inference-lab/vllm:dev/gilded-gnosis",
+      "commits": 2,
+      "changed_files": 3,
+      "additions": 264,
+      "deletions": 13,
+      "closes_issue": 392
+    }
+  },
+  "commits": [
+    {
+      "order": 1,
+      "sha": "c5e46a15e5993d536e72c51f0f96e5599a1447f3",
+      "cherry_picked_from": "c56f169d9ae46ca420617e2cf5f0c9135da0f651",
+      "upstream_pr": "https://github.com/vllm-project/vllm/pull/51113",
+      "upstream_merged_utc": "2026-08-06T17:21:00Z",
+      "conflicted": true,
+      "conflict_resolution": "One hunk conflicted: the fork lacks upstream's max_prefill_tokens / long_prefill_token_threshold relaxation inside the guarded branch and carries different comments. Kept the fork's stricter one-line body, applied only the behavioural change `if end < last_cache_position:` -> `if end < prefill_end:`. The other two hunks applied as upstream wrote them.",
+      "result_sha256": "b431c1066dfee3ed56bfa7e71cc8606f9afadc300f22d7fc542c43835d1b22bf",
+      "result_identical_to": "tools/vllm-mamba-align-scheduler.py (cmp equal)"
+    },
+    {
+      "order": 2,
+      "sha": "50248cdb926137e69bc7858393335e0c47c2aeeb",
+      "cherry_picked_from": "5af7c8dad798bf899813f8f3c6b9eaf08a748e17",
+      "upstream_pr": "https://github.com/vllm-project/vllm/pull/51812",
+      "upstream_merged_utc": "2026-08-11T15:35:30Z",
+      "conflicted": false,
+      "result_sha256": "7cd3f5fe763b621048af4817951a841d99c8b700d9a56ded27ccaca5a56ccbe0",
+      "result_identical_to": "tools/vllm-qwen-gdn-spec-gates.py (cmp equal)"
+    }
+  ],
+  "independent_verification_by_filer": {
+    "method": "Read the extracted r34 rootfs at /var/tmp/gg-rootfs directly, then fetched both files from local-inference-lab/vllm@dev/gilded-gnosis and compared.",
+    "scheduler": {
+      "rootfs_path": "/var/tmp/gg-rootfs/opt/vllm/vllm/v1/core/sched/scheduler.py",
+      "sha256": "1ea341f4cc28d282452597c25d97eea84be8b5f984d2e1a6b548356c8417fdce",
+      "quoted_lines": [
+        "400:        if end < last_cache_position:",
+        "401:            end = end // block_size * block_size",
+        "413:            next_block_boundary",
+        "414:            if start % block_size != 0 and next_block_boundary <= last_cache_position",
+        "415:            else 0,"
+      ],
+      "prefill_end_occurrences": 0,
+      "fork_branch_file_identical_to_rootfs_copy": true,
+      "fork_branch_diff_lines_vs_rootfs": 0
+    },
+    "qwen_gdn": {
+      "rootfs_path": "/var/tmp/gg-rootfs/opt/vllm/vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py",
+      "sha256": "663dacd324b6b8224a4cb312b3e9c0bad4322c515e982a85f13c3450ffdb7d61",
+      "quoted_lines": [
+        "1298:                mixed_qkv_spec = mixed_qkv.index_select(0, spec_token_indx)",
+        "1423:                    a=a,",
+        "1424:                    b=b,"
+      ],
+      "a_spec_occurrences": 0,
+      "b_spec_occurrences": 0,
+      "fork_branch_file_identical_to_rootfs_copy": true
+    },
+    "conclusion": "Neither fix has landed on dev/gilded-gnosis. Both target files on the branch are byte-identical to the copies vendored in the r34 image, so the ask is unchanged.",
+    "regression_test_rerun": {
+      "test_file": "tests/v1/core/test_mamba_align_chunk_split.py",
+      "test_file_sha256": "6b57360273223dbd208c7712b440a3fa267a61a039a8ec47c4fa476cf23e0b81",
+      "test_file_modified": false,
+      "gpu_used": false,
+      "harness": "/var/tmp/work/mamba-align (image python 3.12.3 via rootfs loader, CUDA_VISIBLE_DEVICES empty)",
+      "against_fork_branch_head": "14 failed, 6 passed",
+      "against_pr_tree": "20 passed",
+      "py_compile_both_changed_files": "OK under python 3.12.3"
+    }
+  },
+  "notes": {
+    "apc_poison_repro": "receipts/apc-poison-repro.json did not exist at filing time; the issue cites the physical-RTX-5090 reproduction as in flight. ApcPoisonRepro confirmed pending (harness done, GPU window held by PerfSweep5090).",
+    "no_gpu_work": "No GPU was used by this filing; both cards remained occupied by other jobs.",
+    "rootfs_not_written": "/var/tmp/gg-rootfs was read only; the PR tree was cloned separately to /var/tmp/gg-vllm-pr."
+  }
+}

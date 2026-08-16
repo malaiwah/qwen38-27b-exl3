@@ -567,6 +567,17 @@ Build one immutable image from the pinned r34 digest plus reviewed versions of:
 - #314: EXL3 graph-decode autotune priming;
 - #316 and #318: prefill reconstruction dispatch and B12X row-count routing;
 - #319: pass the existing quant config to both Qwen3.5 input-embedding constructors.
+- #392 / #393: cherry-picks of upstream vLLM #51113 (mamba `align` prefill-chunk splitting —
+  wrong tokens, HTTP 200, no crash) and #51812 (Qwen GDN speculative gate ordering — logit
+  drift), **requested upstream 2026-08-16**: issue
+  <https://github.com/local-inference-lab/vllm/issues/392>, PR
+  <https://github.com/local-inference-lab/vllm/pull/393>. Both were re-verified absent at
+  `dev/gilded-gnosis` head `fa033bd4e` — the two target files there are byte-identical to the
+  r34 vendored copies. Upstream's own CPU-only regression file gives 14 failed / 6 passed
+  against that head and 20 passed against the PR tree, whose outputs are `cmp`-equal to
+  `tools/vllm-mamba-align-scheduler.py` and `tools/vllm-qwen-gdn-spec-gates.py`. Artefacts in
+  `upstream/`. Until #51113 lands, `--enable-prefix-caching` stays unsafe for this model; it is
+  default-off for hybrids, which is why every published measurement is unaffected.
 
 Acceptance:
 
