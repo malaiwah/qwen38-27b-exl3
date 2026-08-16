@@ -1,0 +1,81 @@
+{
+  "schema": "qwen38-tb21-campaign-tools-mockproof/1",
+  "generated_utc": "2026-08-16T22:55:00Z",
+  "agent": "CampaignRunner",
+  "purpose": "Prove the two driver-local campaign tools for the TB2.1 multi-GPU speed run (docs/46) end-to-end against mocks, with zero GPU use: tools/tb21_shard.py (timeout-budget bin-packer) and tools/tb21_campaign.sh (pass runner). Every number below names the command that produced it; every run happened on the IN1 driver VM (jl-vm-473296, ubuntu@151.185.34.98) or this repo checkout.",
+  "tools_delivered": {
+    "tools/tb21_shard.py": "greedy-makespan bin-packer: 89 tasks -> K shards by declared agent_timeout_sec from receipts/terminal-bench-2.1-task-inventory.json; emits shard-<i>.txt lists + manifest.json with per-shard budget sums and max/min balance ratio; deterministic (sort ties by name, load ties by shard index); --only for subsets",
+    "tools/tb21_campaign.sh": "driver-local VPC/docker pass runner: gate/ladder wrappers (LadderGate's tb21_gate.py/tb21_ladder.py, --base-url injected), shard, pass1 (K parallel harbor jobs pinned shard->replica), resume, merge (one pass receipt via tools/tb_rows.py), metrics-snap (immutable verbatim snapshots), disk-guard (15G floor, alexgshaw-only removal, orphan sweep). tools/run_terminal_bench.sh (AIBoss/tunnel/podman variant) untouched, as required by the in-flight owner-protocol passes."
+  },
+  "harbor_subsetting_verified": {
+    "where": "ubuntu@151.185.34.98 (driver), read-only",
+    "command": "ssh ubuntu@151.185.34.98 'export PATH=$HOME/.local/bin:$PATH; harbor --version && harbor run --help'",
+    "harbor_version": "0.21.0",
+    "mechanism": "-i / --include-task-name <str>: 'Task name to include from dataset (supports glob patterns)', repeatable -- pass1 passes one -i per task from the shard file. Task-dir subsetting is unnecessary.",
+    "resume_shape": "harbor job resume -p <job-dir> [-f <error-type> ...] -y (verified via harbor job resume --help on the driver)",
+    "other_flags_confirmed_in_help": ["-p/--path", "-a/--agent", "-m/--model", "--ak/--agent-kwarg", "--ae/--agent-env", "--timeout-multiplier", "-r/--max-retries", "--retry-include", "-o/--jobs-dir", "--job-name", "-n/--n-concurrent", "-y/--yes"]
+  },
+  "shard_packing_measured": {
+    "command": "python3 tools/tb21_shard.py --inventory receipts/terminal-bench-2.1-task-inventory.json --shards <K> --outdir /tmp/shards/K<K>",
+    "K2": {"shards": [{"n": 44, "budget_sec": 74760}, {"n": 45, "budget_sec": 74400}], "max_min_ratio": 1.0048},
+    "K4": {"budgets_sec": [37560, 37200, 37200, 37200], "max_min_ratio": 1.0097},
+    "K8": {"budgets_sec": [18600, 18660, 18300, 18300, 18900, 18900, 18900, 18600], "max_min_ratio": 1.0328},
+    "total_budget_sec": 149160,
+    "skew_bound_note": "build-pov-ray alone declares 12000s; no packing can split a task, so K8's 1.0328 is close to the floor.",
+    "determinism": "second K4 run to a different outdir: all four shard-<i>.txt byte-identical (cmp), manifests identical modulo generated_utc/argv (python dict equality). Required because harbor refuses to resume a job whose config (the baked -i set) changed."
+  },
+  "mock_proof": {
+    "where": "driver VM (CPU-only; no GPU exists there -- the no-GPU constraint holds by construction)",
+    "endpoint_double": "tools/tb_mock_endpoint.py, two independent instances (shard affinity preserved end to end)",
+    "clean_pass": {
+      "command": "TB21_TIER=mock TB21_N=1 TB21_SHARD_DIR=$HOME/tb21/shards/mock2 tools/tb21_campaign.sh pass1 hyd 2 http://127.0.0.1:18091 http://127.0.0.1:18092",
+      "shards": "packed by the real tool: tb21_shard.py --shards 2 --only {adaptive-rejection-sampler, regex-log, sparql-university, openssl-selfsigned-cert, dna-assembly} -> shard-0 {dna-assembly, regex-log} 2700s, shard-1 {adaptive-rejection-sampler, openssl-selfsigned-cert, sparql-university} 2700s, ratio 1.0000",
+      "result": "shard-0 ran exactly its 2 tasks against :18091 (2/2 trials, 1m14s), shard-1 exactly its 3 against :18092 (3/3, 1m44s); both harbor jobs exited 0; -i subsetting confirmed live, not just in --help"
+    },
+    "kill_and_resume": {
+      "setup": "fresh tier mockr; shard-0's mock set to --turns 100000 so its first trial never completes; shard-1's to --turns 6",
+      "kill": "kill -9 -- -369804 (SIGKILL of shard-0's whole setsid process group) while its agent was mid-transcript (mock log: 'call #35: 69 messages, 23804 prompt chars')",
+      "observed": [
+        "sibling shard-1 finished all 3 trials and exited 0, unaffected",
+        "parent pass1 reported: '[tb21c-mockr-hyd-p1-s0] exited 137 -- resume with: tools/tb21_campaign.sh resume tb21c-mockr-hyd-p1-s0'",
+        "the killed trial's task container leaked exactly as the pins document (dna-assembly__x99swga__env-main-1 Up 9 minutes) while shard-1's container was live beside it -- which is why resume never runs the orphan sweep"
+      ],
+      "resume": "tools/tb21_campaign.sh resume tb21c-mockr-hyd-p1-s0 (with the shard-0 mock restarted at --turns 2 on the SAME port, since the job config bakes api_base) -> harbor deleted the in-flight trial dir and re-ran; job completed 2/2 trials in 3m37s",
+      "idempotent_resume_of_finished_job": {
+        "method": "sha256 over 'find . -type f | LC_ALL=C sort | xargs sha256sum | sha256sum' on tb21c-mockr-hyd-p1-s1 before and after resuming the already-finished job (3.85s, kept 3 trials)",
+        "before": "515cd97005726f5b4d841e17f428fc97bf5ae59052c3d3873816f67d95c84acd",
+        "after": "453b2e61c07fe42406631159e635c6519b2aede60de7d9f151c4f4a01a0828cc",
+        "delta_isolated": "per-file diff across a second resume: ONLY job-root config.json, lock.json, result.json change (timestamps/lock ids regenerate on every resume); every TRIAL directory is byte-identical. Refines the pins' 'finished job 4/4 byte-identical' claim: the scored evidence is byte-stable, the job-root metadata is not."
+      }
+    },
+    "merge": {
+      "command": "tools/tb21_campaign.sh merge ~/tb21/tb21c-mockr-hyd-p1-merged.json ~/tb21/jobs/tb21c-mockr-hyd-p1-s0 ~/tb21/jobs/tb21c-mockr-hyd-p1-s1",
+      "output": "[merge] 0/5 resolved, wall 546.5s, timeouts 0, exceptions {}",
+      "receipt_shape_verified": "per_shard rows (n_trials/resolved/started/finished/wall_s per job), aggregate (n_tasks 5, headline '0/5 resolved', wall_clock_s = min started_at -> max finished_at across shards, exception histogram, agent_timeout_errors), rows via tools/tb_rows.py (5 rows, task set exact), attribution stub one entry per unresolved task with classification/bf16_rerun_resolved/bf16_rerun_job/notes ALL null for pass 3 to fill",
+      "expected_zero_note": "0/5 is correct: the mock returns valid Terminus-2 turns but does not solve tasks; the verifier scoring 0 everywhere is the proof the whole verify path ran"
+    },
+    "disk_guard": {
+      "report": "[disk] 842G free on driver $HOME",
+      "orphan_sweep": "[orphans] reclaimed 1 container(s), 1 compose network(s) left by an interrupted pass -- the SIGKILL leak from the resume test, gone; sweep is skipped whenever a harbor process is live, and resume never invokes the guard at all",
+      "floor_policy": "below 15G: docker.io/alexgshaw/* images only, images with a running container skipped, never a global prune (pins disk_hazard policy, verbatim)"
+    },
+    "metrics_snap": {
+      "success": "[metrics] ~/tb21/metrics/mock-pre.prom: 2 lines, sha256 fa6d8041f95b727a12b3e706724c2a9a0659058852f864c40d49f320e4b0925e (verbatim body confirmed by cat)",
+      "immutability": "second snap with the same tag refused: 'snapshots are immutable (delta discipline) -- pick a new tag'"
+    },
+    "gate_ladder_wrappers": "missing-file path errors cleanly ('tb21_gate.py not staged next to this script'); with LadderGate's tools staged, 'gate <url> --help' and 'ladder <url> --help' reach both argparse surfaces through the injected --base-url (LadderGate's canonical contract: flags only, --base-url + --out)"
+  },
+  "staged_on_driver": {
+    "path": "ubuntu@151.185.34.98:~/tb21/{tools,receipts,shards,metrics}",
+    "files_sha_verified_against_repo": ["tb21_campaign.sh", "tb21_shard.py", "tb_rows.py", "tb_mock_endpoint.py", "tb21_gate.py", "tb21_ladder.py"],
+    "inventory_receipt": "~/tb21/receipts/terminal-bench-2.1-task-inventory.json",
+    "leftovers_kept_as_evidence": "~/tb21/jobs/tb21c-mock*-hyd-p1-s{0,1} + logs + ~/tb21/tb21c-mockr-hyd-p1-merged.json; all mock endpoints stopped"
+  },
+  "named_deviations_and_notes": [
+    "model_info.max_input_tokens defaults to TB21_MAXLEN=262144 (docs/46 native-window recipe), a named deviation from the pins' 32768 which was correct for the 32k-window owner-protocol run; override with TB21_MAXLEN when serving a different window",
+    "retry classes and 15G disk policy are verbatim from receipts/terminal-bench-2.1-pins.json (transport-only; AgentTimeoutError deliberately excluded)",
+    "job names are tb21c-<tier>-<model>-p1-s<i> (one harbor job per shard); the docs/46 name tb21c-<tier>-<model>-<pass> maps to the MERGED receipt, since a K-shard pass is K harbor jobs by design",
+    "docs/46 patch suggestion (text only, Main applies or ignores): §5 point 3 could add 'job-root config.json/lock.json/result.json regenerate timestamps on every resume; byte-identity holds for trial directories' so future receipt hashers hash trial dirs, not job roots"
+  ],
+  "no_gpu_attestation": "Every command ran on the driver VM (no GPU present) or this workstation; the 1x endpoint at 10.0.0.3 was never contacted."
+}
