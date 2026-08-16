@@ -912,10 +912,17 @@ rather than hidden:** at `--gpu-memory-utilization 0.97` the V2 runner leaves no
 prefill reconstruct OOMs inside `_reconstruct_hgemm_into` on the first 2,048-token prefill, in **both**
 arms, so it is not the depth schedule - V2 costs ~780-820 MiB more than MRV1 on the same profile, of
 which the fix's own extra persistent wrappers are ~64 MiB. No throughput number is published until a
-probe completes rc=0; the inherited +30.67 % aggregate-decode claim at C8 remains unconfirmed. Whether
-the same gate exists in upstream `vllm-project/vllm` - which would make this a latent upstream bug for
-any capture whose decode `q_len` differs from `1 + num_spec_tokens` - is being checked now, to be filed
-upstream if it does.
+probe completes rc=0; the inherited +30.67 % aggregate-decode claim at C8 remains unconfirmed. **Checked, and it is fork-local: there is nothing to file upstream.** Upstream
+`vllm-project/vllm` @ `fe1c31715` gates persistent wrappers on `enable_cuda_graph and pure_decode and
+num_decode_tokens <= _decode_cudagraph_max_bs` with **no `q_len` term at all** (`flashinfer.py:1678-1682`),
+calls `fast_plan_decode` without `q_len_per_req`, and keys the wrapper by token count because it flattens a
+spec-decode batch into single-token rows - so capture and replay of any pure-decode shape resolve to the
+same persistent wrapper. The three symbols the bug lives in (`persistent_decode_wrapper_eligible`,
+`decode_q_len_from_indptr`, `flashinfer_supports_uniform_multi_token_decode`) do not exist upstream. The
+regression arrived with the fork's uniform multi-token decode feature, so PR #398 is the only correct
+venue. The failure *family* is publicly known and cited rather than claimed as novel - FlashInfer documents
+that `plan()` cannot be captured by CUDA graph, and `flashinfer-ai/flashinfer#1832` documents non-uniform
+`q_len` in speculative decode - but no existing report matches this gate.
 
 **LMCache corruption landed upstream 2026-08-16 - as corroboration, not a new issue.** Owner granted standing
 approval to post on the LMCache project (and any other upstream project) on his behalf. A duplicate search
