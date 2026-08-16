@@ -52,6 +52,21 @@ context. The chart generator now carries those coefficients and per-card *usable
 generic NVFP4 KV requires SM100 trtllm-gen and is rejected on SM120, while GLM-5.2's
 `nvfp4_ds_mla` is MLA-specific and Qwen3.8 is not MLA.
 
+> **Superseded, 2026-08-16, by measurement.** The 4-bit-KV sentence above was written from the
+> flag surface before any 4-bit arm had run; the KV-dtype sweep
+> ([docs/38](38-kv-dtype-sweep.md), `receipts/kv-dtype-sweep-5090.json`) has now run them on the
+> physical 5090. **4-bit KV exists on this fork** — `--kv-cache-dtype int4_per_token_head` starts,
+> serves the native window, and moves the class windows substantially: 502,667 KV tokens against
+> fp8's 265,122 on the same 32 GB board, 1.92× concurrency, with the predicted (not started)
+> 24 GB MTP-3 window going 24,576 → 53,248. But it is an escape with two named prices, not a free
+> one: **3.6× fp8's distributional error** against a bfloat16-KV reference (0.005948 vs
+> 0.001655 nats mean truncated top-20 KL at a 98,304-token context — a KV-probe number, not a v5
+> KLD, never to be differenced against one) and **2.78× fp8's prefill** (501.0 s against 180.4 s
+> on the same 261,795-token prompt). The nvfp4 half of the sentence stands in its conclusion,
+> though the measured mechanism is simpler than the reasons named: both nvfp4 forms still refuse
+> at startup because no attention backend on this fork advertises nvfp4 for a non-MLA decoder —
+> all five candidates answer `kv_cache_dtype not supported`.
+
 **Word discipline adopted:** "starts" or "allocated" for an engine that reserved a cache and
 completed startup; "run" only for a context actually generated; "retrieval passed" only where
 an exactness check ran. The earlier card said "verified" for what was an allocation test.

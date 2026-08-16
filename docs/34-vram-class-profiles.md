@@ -276,7 +276,10 @@ the short one. A fixed per-*pool* reserve cannot express that. A fixed per-**req
 inadmissible — 36,765 B/token implied, above the 34,816 B/token the engine's own padding line
 allows — and its fixed term was simultaneously three times too small for MTP-3 and 0.06 GiB too
 large for MTP off. The 4-bit-KV rule `c_tok(fp8) × 16,384/32,768` survives only as `a/2` with `M`
-held, and it is still **[P]**, never measured.
+held — and it is no longer [P]: the KV-dtype sweep measured the real 4-bit arm
+(`int4_per_token_head`) at **17,952 B/token** under MTP-3, 51.6 % of fp8 rather than a/2's 50 %,
+because dynamic per-token-head scales add 32 B per token per layer, with `M` essentially held
+(§10.2, [docs/38](38-kv-dtype-sweep.md)).
 
 ### 4.2 What MTP-3 costs, as its own line item
 
@@ -841,6 +844,45 @@ All points `max_num_seqs` 1, fp8 KV, same image and revision as the qualificatio
 5.75 % on every token, on top of 0.25 GiB of draft weights **and** 0.45 GiB of CUDA-graph pool that
 vanishes entirely when MTP is off — which no arithmetic here had charged to MTP. That fixed term
 alone is 35 % of the 1.79 GiB pool a 24 GiB board has.
+
+**The law generalises per KV dtype, and the fp8 line above is now a control.** The KV-dtype sweep
+on the physical 5090 ([docs/38](38-kv-dtype-sweep.md),
+[`receipts/kv-dtype-sweep-5090.json`](../receipts/kv-dtype-sweep-5090.json)) re-derived `a` and
+`M` from an independent set of startup refusals for five dtypes, on a different image four months
+of receipts later — and its fp8 control reproduces the two lines above **digit for digit**
+(a = 34,816 B/token, M = 0.63 GiB under MTP-3), which is what licenses reading the other four
+dtypes off the same procedure. In the exact block-quantised form
+(`needed(L) = ceil(L/B)·B·a + M`), the MTP-3 coefficients per dtype:
+
+| KV dtype | a (B/token, MTP-3, exact form) | M (GiB) |
+|---|---:|---:|
+| bfloat16 | 69,632 | 0.6234 |
+| **fp8 (published baseline)** | **34,816** | **0.6217** |
+| int8_per_token_head | 35,360 | 0.6308 |
+| fp8_per_token_head | 35,360 | 0.6308 |
+| int4_per_token_head | 17,952 | 0.6188 |
+
+`M` is essentially dtype-independent — 0.6188 to 0.6308 GiB under MTP-3 across a 3.9× range of
+per-token cost — consistent with it being dominated by GDN recurrent state and draft bookkeeping
+rather than attention KV. int4 is 51.6 % of fp8, not half: the last dimension halves and then the
+dynamic per-token-head scales add 32 B per token per layer back. (The receipt also *offers* an
+MTP-off sharpening — the exact form makes that `a` exactly 32,768 B/token against the published
+32,932 — and deliberately does not apply it; the published MTP-off line stands unchanged here.)
+
+**Class consequences — predictions, none started.** Feeding the published fp8 law into the same
+memory-form rule (`a·L + M ≤ pool/1.15`, L a multiple of 4096) reproduces the published 24,576 at
+25.4 % headroom and 28,672 at 27.3 % exactly, so the arithmetic is controlled. Varying only
+(`a`, `M`) per dtype with the fp8-derived pools held, exactly one dtype moves the published
+figures: **int4_per_token_head** takes the 24 GB MTP-3 row **24,576 → 53,248** (1.5556 GiB
+required, 15.1 % headroom — on the edge of the rule) and the 16 GB MTP-off row
+**28,672 → 57,344** (1.0912 GiB, 18.9 %). int8 and fp8 per-token-head change neither figure —
+same windows, slightly thinner headroom (24.1 % and 20.9 %) because they cost marginally more per
+token than fp8 — and bfloat16 halves both to 12,288. The withdrawn 16 GB MTP-3 row **stays
+withdrawn for every dtype**: its pool is 0.553 GiB, the rule allows 0.4809 GiB, and the smallest
+fixed term any dtype achieves is 0.6188 GiB, so even a free KV cache would not start it — the
+blocking term is not KV. All of these are predictions **[P]**: no 24 GB or 16 GB proxy ran in the
+sweep, and the KV pool itself moved with dtype on the 5090 (9.28 GiB for fp8 against 9.67 GiB for
+every other arm), so these windows inherit an fp8-shaped pool.
 
 ### 10.3 What a capped budget does not change, and the one thing it does
 

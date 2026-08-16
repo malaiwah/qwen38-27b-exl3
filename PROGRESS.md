@@ -832,3 +832,19 @@ The owner's `qwen38-27b` was restored and proven before hand-over — systemd ac
 and all fifteen snapshot-enumerated `podman inspect` fields identical to
 `receipts/aiboss-live-service-snapshot.json`. It was then stopped at 13:04:44Z by `V2RunnerDepth`
 taking the next 5090 window, confirmed directly; the final restore belongs to `LMCacheTest`.
+
+## 2026-08-16 — KV-dtype sweep landed on the cards and docs (KvOnCards)
+
+The kv-dtype-sweep-5090 verdicts are now where readers act on them. Each of the four model cards
+gained a `### KV-cache dtype` subsection in its serving area — fp8 as the measured default, the
+per-token-head family with its 3.0x TRITON_ATTN prefill price, int4_per_token_head as the
+capacity lever with its two named prices, the nvfp4 refusal, the bf16-KV-probe (not-v5-KLD)
+framing, and 44/44 retrieval — plus, per Main's scope addition, the V2-runner dynamic-depth
+unavailability sentence beside each static-depth recommendation
+(receipts/v2-runner-depth-schedule.json). docs/34 s10.2 carries the per-dtype exact-form MTP-3
+coefficients with fp8 named as the digit-for-digit control and the [P]-labelled class
+consequences (int4_pth alone moves 24,576 -> 53,248 and 28,672 -> 57,344; 16 GB MTP-3 stays
+withdrawn at every dtype); s4.1's a/2 guess is marked measured at 17,952 B/token. docs/28's
+"4-bit KV is not an escape" sentence carries a dated superseding note: an escape with two named
+prices, not a free one. Every restated number is mapped to its receipt field in
+receipts/kv-on-cards.json; publication byte-proof in receipts/kv-on-cards-publication.json.

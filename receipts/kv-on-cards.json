@@ -1,0 +1,76 @@
+{
+  "schema": "qwen38-kv-on-cards/1",
+  "generated_utc": "2026-08-16T13:28:20Z",
+  "title": "Landing receipts/kv-dtype-sweep-5090.json on the four model cards, docs/34 and docs/28",
+  "source_receipt": "receipts/kv-dtype-sweep-5090.json",
+  "source_receipt_content_sha256": "1496ac1d6d43f293c9d9eaa488b9d65169711cbf30f91907276a1beb4bf68ec7",
+  "source_doc": "docs/38-kv-dtype-sweep.md",
+  "rule_applied": "every number restated below was read from the source receipt before writing; the fidelity numbers keep the receipt's not-v5-KLD framing wherever they appear; every class window is labelled a prediction",
+  "edits": [
+    {
+      "files": [
+        "MODEL_CARD-K5K6-context.md",
+        "MODEL_CARD-K5K6.md",
+        "MODEL_CARD-K5K6-hydrated.md",
+        "MODEL_CARD-K4.md"
+      ],
+      "what": "new '### KV-cache dtype' subsection in each card's Serving area: one paragraph plus one compact five-row table, linking docs/38 and the sweep receipt",
+      "claims": {
+        "fp8 confirmed default, no arm beats it on native-or-beyond context on 32 GB with retrieval intact": "verdict.headline, verdict.does_any_arm_beat_fp8_on_the_frontier",
+        "KV tokens 265,122 / 272,453 / 272,453 / 502,667 / 138,519 (window capped 131,072)": "measured_arms.<arm>.gpu_kv_cache_tokens (lines 7064, 7461, 7832, 8203, 8599) and bfloat16 maximum_concurrency window 131,072",
+        "prefill 180.4 / 544.3 / 545.9 / 501.0 s on the same 261,795-token prompt": "prefill_throughput.<arm>.longest_fitting.median_wall_sec (180.378, 544.289, 545.927, 500.975), prompt_tokens 261795",
+        "3.0x and 2.78x prefill ratios": "verdict.does_any_arm_beat_fp8_on_the_frontier (3.0x), verdict.what_the_alternatives_are_good_for (2.78x); ratios recompute from prefill_throughput medians",
+        "TRITON_ATTN is the only backend accepting per-token-head scales; backend derived from KV dtype": "one_variable_caveat, attention_backend_probe (probe_caveat in nvfp4_specifically)",
+        "capacity edge is CUDA-graph pool 0.06 vs 0.45 GiB, not cheaper bytes (35,360 vs 34,816 B/token)": "verdict.confounder_stated_plainly; exact-form a in kv_law_per_dtype.*_per_token_head.mtp_3.exact_form.a_bytes_per_token = 35,360",
+        "top-1 / truncated KL vs bf16-KV: fp8 95.60 % / 0.001655, int8_pth 97.25 % / 0.000914, fp8_pth 98.84 % / 0.001284, int4_pth 94.29 % / 0.005948": "fidelity.vs_bfloat16.{fp8,int8_per_token_head,fp8_per_token_head,int4_per_token_head}.top1_agreement and .mean_truncated_kl_nats (0.956044/0.00165465, 0.972477/0.00091392, 0.988439/0.00128385, 0.942857/0.00594847)",
+        "int4_pth = 3.6x fp8's distributional error, 1.92x concurrency, 502,667 tokens": "verdict.what_the_alternatives_are_good_for; measured_arms.int4_per_token_head.maximum_concurrency_for_window 1.92",
+        "fidelity framing: bf16-KV-reference probe at a 98,304-token context, truncated top-20 KL over 70-173 paired greedy positions, lower bound, NOT v5 KLD, never differenced against any published KLD": "what_this_measurement_is_not.not_the_v5_kld_protocol; resolution_of_the_fidelity_measurement.protocol/.pairing_rule/.truncated_kl",
+        "retrieval 44/44 exact across five arms, 4-bit included; retrieval is not fidelity": "measured_arms.*.needles_longest_fitting + needles_common_length, retrieved_exact true in all 44 rows (counted); verdict.answer_to_the_readers_question",
+        "nvfp4/nvfp4_ds_mla refuse: no backend on this fork advertises nvfp4 for a non-MLA decoder, all five candidates answer 'kv_cache_dtype not supported', incl. use_mla=True at head_size 576; GLM-5.2 precedent is the owner's unverified claim": "nvfp4_specifically.result/.what_the_engine_names_as_missing/.does_the_mla_path_rescue_it/.why_it_is_here"
+      }
+    },
+    {
+      "files": ["docs/34-vram-class-profiles.md"],
+      "what": "s10.2: per-dtype MTP-3 exact-form coefficient table beside the published law, fp8 named as the digit-for-digit control; class-consequence predictions appended with [P] labels. s4.1: the a/2 4-bit rule marked measured (17,952 B/token, 51.6 % of fp8).",
+      "claims": {
+        "fp8 control reproduces a=34,816 B/token, M=0.63 GiB digit for digit, independent refusals, different image four months later": "structural_findings_about_the_kv_law.this_reproduces_the_published_fp8_law_exactly",
+        "exact-form MTP-3 a: bfloat16 69,632 / fp8 34,816 / int8_pth 35,360 / fp8_pth 35,360 / int4_pth 17,952; M 0.6234 / 0.6217 / 0.6308 / 0.6308 / 0.6188": "kv_law_per_dtype.<dtype>.mtp_3.exact_form.{a_bytes_per_token,M_gib}",
+        "M essentially dtype-independent, 0.6188-0.6308 under MTP-3, GDN-state/draft-bookkeeping reading": "structural_findings_about_the_kv_law.M_is_essentially_dtype_independent",
+        "int4 is 51.6 % of fp8, not half; +32 B per token per layer of per-token-head scales": "structural_findings_about_the_kv_law.four_bit_is_not_half",
+        "MTP-off sharpening (exact a=32,768 vs published 32,932) offered, deliberately not applied": "structural_findings_about_the_kv_law.one_correction_offered_not_taken",
+        "arithmetic control reproduces 24,576 at 25.4 % and 28,672 at 27.3 % exactly": "class_consequence_summary.arithmetic_is_controlled",
+        "int4_pth alone moves the figures: 24,576 -> 53,248 (1.5556 GiB, 15.1 % headroom) and 28,672 -> 57,344 (1.0912 GiB, 18.9 %); int8/fp8_pth same windows at 24.1 %/20.9 %; bfloat16 halves both to 12,288": "class_consequence_summary.which_arms_would_change_the_published_figures; class_consequence.class_24_gib.mtp_3.per_dtype.int4_per_token_head.published_form; class_consequence.class_16_gib.mtp_off.per_dtype.int4_per_token_head.published_form",
+        "16 GB MTP-3 stays withdrawn at every dtype: pool 0.553 GiB, rule allows 0.4809 GiB, smallest fixed term 0.6188 GiB": "class_consequence_summary.the_16_gb_mtp_3_row_stays_withdrawn_for_every_dtype",
+        "predictions [P], none started; pool moved with dtype on the 5090 (9.28 GiB fp8 vs 9.67 others)": "class_consequence_summary.these_are_predictions_not_starts and .pools_are_held_not_remeasured"
+      }
+    },
+    {
+      "files": ["docs/28-external-validation-and-corrections.md"],
+      "what": "dated superseding blockquote under the '4-bit KV is not an escape' sentence: 4-bit exists, moves the windows, costs 3.6x distributional error plus 2.78x prefill; nvfp4 conclusion stands with the measured mechanism",
+      "claims": {
+        "int4_per_token_head starts and serves the native window: 502,667 vs 265,122 tokens, 1.92x concurrency": "measured_arms.int4_per_token_head, verdict.what_the_alternatives_are_good_for",
+        "24 GB MTP-3 prediction 24,576 -> 53,248, labelled predicted (not started)": "class_consequence_summary.which_arms_would_change_the_published_figures, .these_are_predictions_not_starts",
+        "3.6x error: 0.005948 vs 0.001655 nats, KV-probe framing preserved": "fidelity.vs_bfloat16.{int4_per_token_head,fp8}.mean_truncated_kl_nats; what_this_measurement_is_not.not_the_v5_kld_protocol",
+        "2.78x prefill: 501.0 vs 180.4 s at 261,795 tokens": "prefill_throughput.{int4_per_token_head,fp8}.longest_fitting",
+        "nvfp4 refusal mechanism: all five backends answer 'kv_cache_dtype not supported' for a non-MLA decoder": "nvfp4_specifically.what_the_engine_names_as_missing"
+      }
+    },
+    {
+      "files": [
+        "MODEL_CARD-K5K6-context.md",
+        "MODEL_CARD-K5K6.md",
+        "MODEL_CARD-K5K6-hydrated.md",
+        "MODEL_CARD-K4.md"
+      ],
+      "what": "scope addition from Main: V2-runner dynamic-depth unavailability sentence placed beside each card's static-depth recommendation in the concurrent-serving subsection",
+      "claims": {
+        "dynamic speculative depth (incl. per-batch-size schedule) unavailable even via VLLM_USE_V2_MODEL_RUNNER=1; V2 runner keeps FULL_DECODE_ONLY but draft-decode CUDA-graph replay faults with cudaErrorIllegalAddress during warmup; keep static depths 3/1": "receipts/v2-runner-depth-schedule.json (V2RunnerDepth, commit 4d3cade), sentence supplied verbatim by Main"
+      }
+    }
+  ],
+  "publication": {
+    "tool": "tools/publish_cards.py --message",
+    "repos": 6,
+    "byte_verified": "receipts/kv-on-cards-publication.json (all_byte_identical)"
+  }
+}

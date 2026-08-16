@@ -889,6 +889,42 @@ YaRN (nested `rope_parameters` with `rope_type: yarn`, `factor: 4.0`,
 `--max-model-len 1000000`), not a bare `max_position_embeddings` bump, and Qwen warns it
 costs short-context quality. Untested on this runtime.
 
+### KV-cache dtype: fp8 is the family's measured default
+
+The recipe above leaves the KV cache at the engine default, as the Tradeoffs section notes; the
+family's qualified long-context profiles pin **fp8**, and that default is now measured rather than
+assumed. A five-arm sweep on the physical RTX 5090 served the **context edition** — same engine,
+same flag surface — at its native-window profile with the KV dtype the only deliberate flag
+change: **no arm beat fp8 on native-or-beyond context on 32 GB with retrieval intact**
+([`receipts/kv-dtype-sweep-5090.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/kv-dtype-sweep-5090.json),
+decision record
+[`docs/38-kv-dtype-sweep.md`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/docs/38-kv-dtype-sweep.md)).
+The engine derives the attention backend from the KV dtype, so each arm is measured as it actually
+serves:
+
+| `--kv-cache-dtype` | backend (engine-chosen) | KV tokens at 262,144 | prefill, same 261,795-token prompt | top-1 / trunc. KL vs bf16-KV |
+|---|---|---:|---:|---|
+| **fp8** (family default) | FLASHINFER | 265,122 | **180.4 s** | 95.60 % / 0.001655 |
+| int8_per_token_head | TRITON_ATTN | 272,453 | 544.3 s | 97.25 % / 0.000914 |
+| fp8_per_token_head | TRITON_ATTN | 272,453 | 545.9 s | 98.84 % / 0.001284 |
+| int4_per_token_head | TRITON_ATTN | **502,667** | 501.0 s | 94.29 % / 0.005948 |
+| bfloat16 | FLASH_ATTN | 138,519, window capped at 131,072 | — | reference |
+
+The per-token-head family is measured, not assumed: int8 and fp8 per-token-head each dominate fp8
+on **both** capacity and closeness to the bfloat16-KV reference, but each pays **3.0× prefill**
+because TRITON_ATTN is the only backend on this fork that accepts per-token-head scales — and the
+capacity edge is TRITON_ATTN's smaller CUDA-graph pool (0.06 against 0.45 GiB), not cheaper bytes:
+those arms cost *more* per token than fp8 (35,360 against 34,816 B/token). `int4_per_token_head`
+is the real capacity lever — 502,667 tokens, 1.92× concurrency — at two named prices: **3.6× fp8's
+distributional error** and **2.78× its prefill**. `nvfp4` and `nvfp4_ds_mla` do not start: no
+attention backend on this fork advertises nvfp4 for a non-MLA decoder — all five candidates answer
+`kv_cache_dtype not supported` — and the GLM-5.2-serves-nvfp4 precedent is the owner's claim about
+a different model, unverified here. The fidelity column is a **bfloat16-KV-reference probe at a
+98,304-token context** — truncated top-20 KL over 70–173 paired greedy positions, a lower bound;
+it is **not the v5 KLD** and must never be differenced against any published KLD figure. Retrieval
+was **44/44 exact** across the five arms, 4-bit included — retrieval is not fidelity, which is
+exactly why the KL column exists.
+
 ### Chat template
 
 This repo ships `chat_template.jinja` byte-identical to `Qwen/Qwen3.8-27B` (sha256
@@ -1146,7 +1182,13 @@ is acceptance noise rather than throughput. `custom_ops:["all"]` is **2.2-5.2 % 
 and is **not bit-exact**. Both dynamic speculative-decoding knobs are structurally unusable here:
 either one downgrades `cudagraph_mode` from `FULL_DECODE_ONLY` to `PIECEWISE`, which `Exl3Config`
 refuses, so the server does not start — and forced eager, the only form that runs, loses 48 % of
-decode. **Prefill did not move on any lever** (3,374.4 tok/s at 2,048 and 3,255.4 at 6,144 prompt
+decode. Dynamic speculative depth (including the per-batch-size schedule) remains unavailable even
+via `VLLM_USE_V2_MODEL_RUNNER=1`: the V2 runner accepts the schedule and keeps `FULL_DECODE_ONLY`,
+but replaying its speculator's captured draft-decode CUDA graph faults with
+`cudaErrorIllegalAddress` during warmup on this hybrid EXL3 model, so the server never starts —
+keep the static depths, 3 single-stream and 1 at eight streams
+([`receipts/v2-runner-depth-schedule.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/v2-runner-depth-schedule.json)).
+**Prefill did not move on any lever** (3,374.4 tok/s at 2,048 and 3,255.4 at 6,144 prompt
 tokens for the reference row, no graph-decode arm more than 4.0 % away), so the prefill deficit is
 structural rather than untuned.
 
