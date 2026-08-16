@@ -948,6 +948,22 @@ venue. The failure *family* is publicly known and cited rather than claimed as n
 that `plan()` cannot be captured by CUDA graph, and `flashinfer-ai/flashinfer#1832` documents non-uniform
 `q_len` in speculative decode - but no existing report matches this gate.
 
+**Body parity does not need a new build - the comparator already exists 2026-08-16.** The K6-parity
+result invites the obvious objection that it only reached *file* parity with `Q6_K` while still carrying
+2.31 GiB less transformer body, so a body-parity variant was registered as a named follow-up. It turns
+out not to need converting: `turboderp`'s uniform **6.00 bpw** EXL3 rung has a transformer body of
+**17.0537 GiB - byte-identical to the K6-parity build's** - and within 0.02 GiB of `UD-Q5_K_XL`'s
+17.034 ([`shortlist-shard0.json`](../receipts/shortlist-shard0.json)). So scoring that rung on shard 0,
+which is already queued as docs/29 F2's uniform-bitrate control, answers the body-parity question at the
+same time and against a *third-party* artifact rather than one of ours. Two further facts from the same
+accounting, both to be stated with their axis when the numbers land: the 5.00 bpw rung carries **0.664
+GiB less body** than the context edition, so that pairing favours the control on the body axis before
+any KLD exists; and the two rungs differ **only** in body bytes (embedding, head, vision and MTP are
+byte-identical between them), which makes them a clean per-bit control. The two community NVFP4/AWQ
+candidates in the same shortlist spend ~2.37 GiB on a **BF16 head** and 0.79 GiB on a BF16 MTP where
+every EXL3 and GGUF comparator quantizes the head - which is a packaging difference to name, not a
+fidelity claim.
+
 **The upstream reviewer was right, and #52530 grew 2026-08-16.** `brianosaurus` reviewed
 [#52530](https://github.com/vllm-project/vllm/pull/52530), confirmed the null-block diagnosis,
 independently verified that the deferred cleanup cannot hang (unservable requests are counted by
