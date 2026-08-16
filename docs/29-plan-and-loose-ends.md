@@ -224,7 +224,10 @@ On the constants the physical qualification measured — 31.4 GiB usable of a 32
 that receipt's own measured pool — its 9.28 GiB holding 265,122 tokens, so
 `(9.28 − 0.20) GiB ÷ 265,122 = 36,773.9 B/token` — that is 40,293 tokens
 **[P]**, published at **32,768** with MTP-3 and fp8 KV, or **45,056** with MTP off, under the
-≥15 % headroom rule. Fidelity is the already-measured **0.003409** on shard 0
+≥15 % headroom rule — but see the third open item below: that rate is fitted at one window, and a
+preliminary datapoint at a 32,768 window disagrees by 1.51×, which would take the number to
+24,576. The class decision does not depend on it; the printed window does.
+Fidelity is the already-measured **0.003409** on shard 0
 (`receipts/kld5-1M-tail-ctx.json`) and 0.003509 over 10,480,640 positions
 (`receipts/kld5-10M-ctx.json`), carried unchanged because it is the same weights: the class adds
 **no new fidelity risk**. So this is a serving profile over an existing artifact plus one
@@ -264,8 +267,23 @@ profile.
   ~62 MiB of transient it needed, while lowering `max_pixels` made it strictly worse. A budget
   carved out of a larger card keeps real headroom behind it and cannot see that failure mode, so an
   emulated 24 GB qualification inherits the caveat verbatim and the physical run stays P0. The
-  supported-hardware tuple still has to be stated rather than assumed: everything measured here is
-  SM120, TP1, driver 595.58.03, and the 24 GB class spans more than one architecture.
+  supported-hardware tuple still has to be stated rather than assumed, and it is not one tuple: the
+  physical 5090 qualification ran **driver 610.57.04, CUDA UMD 13.3** on `aiboss`
+  (`receipts/qualification-5090-context.json` → `identity.host`), while the rental RTX PRO 6000
+  measurements are **595.58.03**. Both are SM120, TP1, and the 24 GB class spans more than one
+  architecture.
+- **Settle whether the KV pool's per-token cost depends on the window before printing 32,768.**
+  The rate above is fitted at one window, 262,144. A preliminary capped-budget proxy datapoint at a
+  32,768 window allocated 62,557 tokens from a 3.30 GiB pool — 56,642 B/token, **1.51× the
+  37,584 B/token** the qualification implies at native length. If that holds, 32,768 tokens needs
+  about 1.73 GiB against the 1.58 GiB a 24 GB board has at 0.955, so it **would not fit**, and the
+  recommendation drops to **24,576**. It is not adopted yet because a two-point fit puts the
+  per-token term at 31,698 B/token, *below* the 32,768 B fp8 tensor floor, which is impossible for
+  pure KV tensors — so the two configurations differ in page geometry, not in a fixed cost, and the
+  engine's own `attention block size 1600` / `Add 3 padding layers` / `Padding mamba page size`
+  lines are where to look. A single startup at a 22.49 GiB budget settles it outright
+  (`receipts/vram-class-verdict.json` → `open_risks_to_this_verdict`); until it reports, the
+  24 GB **class** decision stands and only the **window** is open.
 
 ### F4 — collection presentation
 
@@ -459,7 +477,9 @@ All local work lands in this repository: tools under `tools/`, immutable JSON/lo
 under `receipts/`, and narrative in this file and `PROGRESS.md`; then run
 `git push github main` (and mirror with `git push origin main` when the private Gitea remote
 is reachable). Upload card-only changes to `malaiwah/Qwen3.8-27B-EXL3-K5K6-context`;
-dataset captures and reports go to `malaiwah/qwen38-27b-fidelity-suite-v3`. Never compare
+v5 dataset captures and reports go to `malaiwah/qwen38-27b-fidelity-suite-v5` via
+`tools/preserve_artifacts.sh` (see “Preservation: preserve before delete”); the v3 dataset stays
+frozen as the v3/v4 record. Never compare
 throughput across the two GPUs;
 cross-machine pairing is allowed only for deterministic capability outputs whose prompt,
 scorer, runtime and BF16 receipt hashes match.
@@ -481,6 +501,67 @@ derived only from those reports, and a SHA-256 inventory. Failed and rejected ro
 the record. Any post-hoc correction gets a new amendment that names the superseded receipt;
 old evidence is never rewritten. A result closes a row only when a fresh checkout can run the
 documented verifier without private paths, mutable branches or unrecorded model state.
+
+### Preservation: preserve before delete
+
+The v5 ladder captured six models per 512-context shard, verified the reports, then deleted
+that shard's hidden states to make room for the next shard — ten times. The reports survived;
+roughly 190 GB of reusable capture did not, and the later cross-engine run had to re-download
+tens of GB of GGUF and re-capture hidden states that had existed and been thrown away.
+Recompute is slower than download and needs a GPU that is usually busy with something else.
+Publishing an input also doubles as transparency. So preservation is now the default, on a
+three-tier test rather than a blanket rule.
+
+**Tier 1 — mirror.** Any *third-party* artifact that a published number of ours cites gets
+mirrored to our own archival repo, unconditionally. Measured cost: **2.34 GB of wire transfer
+for 149.3 GB of content across two mirrors, about 1.6 %**, because Hub storage is
+content-addressed and the bytes already exist there. At that price there is nothing to weigh.
+What a mirror durably preserves is the **citation** — a resolvable repo id, revision and digest
+table that survive an upstream squash or delete. This is not hypothetical: the
+`unsloth/Qwen3.8-27B-NVFP4` revision our published v3 comparison was measured against,
+`9c73e2daee1d…`, stopped resolving when that repo super-squashed its history on 2026-08-15.
+Pinning a revision hash is not durable provenance; only a mirror is.
+
+A mirror is **not a backup** and gives us **no byte-level redundancy** — our copy and
+upstream's plausibly reference the same underlying chunks. Never write that it does, and never
+assume later that we hold physical copies we do not hold. Independent redundancy is a separate
+decision with a real bandwidth bill and needs its own justification.
+
+Existing mirrors: `malaiwah/Qwen3.8-27B-NVFP4-archival-9c73e2da` (a genuine **recovery** — the
+upstream revision is gone) and `malaiwah/Qwen3.8-27B-GGUF-archival-f1bfb127`
+(**precautionary** — that revision still resolves and is current HEAD). Keep that distinction
+in the prose; describing insurance as a rescue is the same small overstatement we keep
+catching in other people's claims.
+
+**Tier 2 — preserve.** A *locally produced* artifact is published before anything deletes it
+when at least one holds: (a) recompute costs GPU-hours; (b) an input has ceased to exist, so it
+cannot be regenerated at all; (c) it is a shared reference that many future runs replay
+against. Do **not** preserve when re-downloading would cost more wall-clock than re-capturing.
+
+Repo names: locally produced evaluation inputs, reference captures and per-shard reports go to
+`malaiwah/qwen38-27b-fidelity-suite-v5` (the v3 dataset stays frozen as the v3/v4 record);
+third-party mirrors go to `malaiwah/<upstream-name>-archival-<short-revision>`; a converted
+checkpoint goes to its own model repo, never into a dataset.
+
+The tool is **`tools/preserve_artifacts.sh <local-dir> <dataset-path>`**. It uploads, re-verifies
+every file against the remote copy at the revision the upload produced, refuses non-zero if any
+file is absent remotely or differs in size or digest, and on success **prints** the delete
+command. It never deletes anything itself, because a tool that both publishes and deletes will
+eventually delete after a publish that only looked successful. Pass `--deep` for anything you
+are about to remove: it re-downloads the bytes and re-hashes them instead of trusting digests
+the Hub computed.
+
+**Tier 3 — state the recompute cost.** Everything else is deleted freely, but **a receipt that
+names a deleted artifact must state what recomputing it costs.** The worked example is the
+ten-shard NVFP4 capture set: 19 captures × 10.7 GiB is about 200 GB of upload to avoid roughly
+6 minutes of GPU each, so uploading is the wrong call and the receipt states the per-artifact
+cost instead. Report the strength of a verification precisely — say which files were
+re-downloaded and re-hashed and which were checked against a remote digest — rather than
+implying bytes were hashed that were never seen.
+
+`receipts/preserved-artifacts.json` is the standing record: what is published with byte counts
+and digests, what is deliberately not and why, and every artifact we already destroyed with its
+recompute cost. That list is the cost of the old habit and the reason for this policy.
 
 ## P0 / rank 1 — physical RTX 5090 qualification — CLOSED 2026-08-16
 

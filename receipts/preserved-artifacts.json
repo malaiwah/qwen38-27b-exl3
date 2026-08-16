@@ -1,0 +1,356 @@
+{
+ "already_destroyed_and_what_it_costs_to_remake": {
+  "bf16_reference_shards_1_to_9": {
+   "count": 9,
+   "each": {
+    "bytes": 10732224512,
+    "files": 512,
+    "gib": 10.0
+   },
+   "not_preserved_because": "tier 3. Nothing replays against shards 1-9 until someone runs the full ten-shard ladder again, and at that point they are re-captured as part of that run. Preserving them would cost about 94 GB of upload to save about 54 minutes of GPU.",
+   "recompute_cost_each": "about 6 minutes of GPU on vLLM (the surviving shard-0 capture of the same shape took 170 s; 6 minutes is the conservative figure the ladder budgeted per model per shard)",
+   "recompute_cost_total": "about 54 minutes of GPU to rebuild all nine",
+   "total_bytes": 96590020608,
+   "what_survives": "shard 0 (published here, tier 2 case (c)) and all 50 per-shard reports.",
+   "why_they_were_deleted": "tools/kld_ladder.sh deletes a shard's hidden states after its reports verify, because one shard of six models is about 64 GB."
+  },
+  "gguf_hidden_state_captures": {
+   "artifacts": {
+    "BF16 (2-part set)": {
+     "capture_dir": "/work/gguf/hidden-gguf-bf16",
+     "gguf_bytes_first_file": 49986159616,
+     "gguf_path": "/work/gguf/unsloth/BF16/Qwen3.8-27B-BF16-00001-of-00002.gguf",
+     "gguf_revision": "f1bfb127c64f7072bdd2cad55f258b9c8b2910fe",
+     "gguf_sha256": "b9966e82b7a4d87028b5eae061d578ee826305ebf8baea5bfc6e09bad0ba191f",
+     "report": "receipts/gguf-report-engine-floor.json",
+     "token_mean_kld": 0.0005073550588083691
+    },
+    "Q6_K": {
+     "capture_dir": "/work/gguf/hidden-q6_k",
+     "gguf_bytes_first_file": 22884408288,
+     "gguf_path": "/work/gguf/unsloth/Qwen3.8-27B-Q6_K.gguf",
+     "gguf_revision": "f1bfb127c64f7072bdd2cad55f258b9c8b2910fe",
+     "gguf_sha256": "562fbf760503008f118e5df38de5b3e97992d1f693f475815631198547486727",
+     "report": "receipts/gguf-report-q6_k.json",
+     "token_mean_kld": 0.002035222177682657
+    },
+    "Q8_0": {
+     "capture_dir": "/work/gguf/hidden-q8_0",
+     "gguf_bytes_first_file": 29047086048,
+     "gguf_path": "/work/gguf/unsloth/Qwen3.8-27B-Q8_0.gguf",
+     "gguf_revision": "f1bfb127c64f7072bdd2cad55f258b9c8b2910fe",
+     "gguf_sha256": "a680f44a06920e5d689774823782006aa3acc8db95750323373b24139b67e348",
+     "report": "receipts/gguf-report-q8_0.json",
+     "token_mean_kld": 0.0010868053790075265
+    },
+    "UD-Q5_K_XL": {
+     "capture_dir": "/work/gguf/hidden-q5_k_xl",
+     "gguf_bytes_first_file": 20218178624,
+     "gguf_path": "/work/gguf/unsloth/Qwen3.8-27B-UD-Q5_K_XL.gguf",
+     "gguf_revision": "f1bfb127c64f7072bdd2cad55f258b9c8b2910fe",
+     "gguf_sha256": "176a6a3f034e9cdc447c10cd00329fc9b31002e6589b9295f2ad4f1eefe0f6ab",
+     "report": "receipts/gguf-report-q5_k_xl.json",
+     "token_mean_kld": 0.004443525854630678
+    }
+   },
+   "count": 4,
+   "each": {
+    "bytes": 10732224512,
+    "files": 512,
+    "gib": 10.0
+   },
+   "recompute_cost_each": "about 7 minutes of GPU on llama.cpp, PLUS re-downloading the GGUF it reads (20-29 GB for the quants, and a two-part BF16 set whose first file alone is 46.55 GiB). The download now costs only the wire time against the tier-1 mirror rather than a fresh upstream fetch.",
+   "total_bytes": 42928898048,
+   "what_survives": "the four reports (reports/gguf/ here, receipts/gguf-report-*.json in the research repo) and the BF16 reference capture, which was kept.",
+   "why_they_were_deleted": "each capture is 10.0 GiB and the GGUF files themselves are 18.8-46.6 GiB; /var/tmp holds about 135 GB, so nothing else fit alongside them."
+  },
+  "hardware_the_estimates_assume": "1x RTX PRO 6000 Blackwell Server Edition, the rental box these captures ran on. The measured BF16 shard-0 capture that survives took 170.08 s of wall clock for 512 contexts (capture-manifest.json elapsed_sec), which is the anchor for the per-shard estimates below.",
+  "ladder_candidate_captures_shards_0_to_9": {
+   "count": 50,
+   "description": "five candidates (hydrated, online K5/K6, context, official FP8, K4) x ten shards",
+   "each": {
+    "bytes": 10732224512,
+    "files": 512,
+    "gib": 10.0
+   },
+   "not_preserved_because": "tier 3. About 537 GB of upload to avoid about 5 hours of GPU, and a candidate capture is only useful to someone re-checking that specific candidate, who can instead replay their own capture against the published shard-0 BF16 reference.",
+   "recompute_cost_each": "about 6 minutes of GPU",
+   "recompute_cost_total": "about 5 hours of GPU to rebuild all fifty",
+   "total_bytes": 536611225600
+  },
+  "note": "These artifacts existed on this box and were deleted before this policy existed. Nothing here is recoverable by download; every row is a GPU bill. This list is the cost of the old habit."
+ },
+ "content_sha256": "214a497593761ead187b539d17d55be6c1e8a8db5747181996fe3f3923a80fd3",
+ "not_preserved_and_why": [
+  {
+   "artifact": "the v5 corpus text itself",
+   "bytes": 69000000,
+   "tier": 3,
+   "why": "refetchable from corpus/corpus_fetch_log.json, which pins every file's sha256; and suite/tokens/ is the authoritative evaluation input regardless, because retokenising the source text does not reproduce the suite."
+  },
+  {
+   "artifact": "the shared BF16 LM head",
+   "bytes": 2542796896,
+   "sha256": "25a30fd5f826da0abc4efc4cc71def9f02bcb8085f7175eee284d221dee4cfff",
+   "tier": 2,
+   "why": "already preserved once. Published in malaiwah/qwen38-27b-fidelity-suite-v3 as lm-head/weight.safetensors; its remote LFS sha256 was checked during this work and equals this suite's ladder-pin.json head_sha256, so it is the same head every report here used. Publishing it a second time buys nothing."
+  },
+  {
+   "artifact": "the GGUF weight files (Q8_0, Q6_K, UD-Q5_K_XL, BF16 2-part)",
+   "tier": 1,
+   "why": "third-party artifacts, so they belong in tier 1 and are mirrored rather than redistributed here: malaiwah/Qwen3.8-27B-GGUF-archival-f1bfb127. reports/gguf/*.json pins each one's sha256 and serialized byte size."
+  },
+  {
+   "artifact": "candidate hidden states for the five ladder candidates, all ten shards",
+   "tier": 3,
+   "why": "see already_destroyed_and_what_it_costs_to_remake.ladder_candidate_captures_shards_0_to_9"
+  },
+  {
+   "artifact": "BF16 reference shards 1-9",
+   "tier": 3,
+   "why": "see already_destroyed_and_what_it_costs_to_remake.bf16_reference_shards_1_to_9"
+  }
+ ],
+ "policy": {
+  "documented_in": "docs/29-plan-and-loose-ends.md, subsection 'Preservation: preserve before delete'",
+  "summary": "Three tiers, not one rule.",
+  "tiers": [
+   {
+    "applies_to": "any third-party artifact that a published number of ours cites",
+    "measured_cost": "2.34 GB of wire transfer for 149.3 GB of content across two mirrors, about 1.6 %, because Hub storage is content-addressed and the bytes already exist there",
+    "name": "mirror",
+    "rule": "unconditional",
+    "tier": 1,
+    "what_it_does_not_preserve": "independent byte-level redundancy. A mirror is NOT a backup: our copy and upstream's plausibly reference the same underlying chunks. Nobody may later assume we hold physical copies we do not hold. Real redundancy is a separate decision with a real bandwidth bill and needs its own justification.",
+    "what_it_preserves": "the CITATION: a resolvable repo id, revision and digest table that survive an upstream squash or delete"
+   },
+   {
+    "applies_to": "locally-produced artifacts",
+    "counter_rule": "do NOT preserve when re-downloading would cost more wall-clock than re-capturing",
+    "name": "preserve",
+    "rule": "preserve when (a) recompute costs GPU-hours, or (b) an input has ceased to exist so it cannot be regenerated at all, or (c) it is a shared reference that many future runs replay against",
+    "tier": 2,
+    "tool": "tools/preserve_artifacts.sh"
+   },
+   {
+    "applies_to": "everything else",
+    "name": "state the recompute cost",
+    "rule": "delete it freely, but any receipt that names a deleted artifact must state what recomputing it costs",
+    "tier": 3,
+    "worked_example": "the ten-shard NVFP4 capture set: 19 captures x 10.7 GiB is about 200 GB of upload to avoid roughly 6 minutes of GPU each, so uploading is the wrong call and receipts/nvfp4-v5-measurement.json states the per-artifact cost instead"
+   }
+  ]
+ },
+ "preserved": {
+  "commits": [
+   {
+    "content": "v5 suite, token ids, corpus fetch log and all 79 per-shard reports",
+    "revision": "08c2749bb5c42eb7036748fbe2292c090a64d0f0"
+   },
+   {
+    "content": "shard-0 unquantized BF16 hidden-state reference, 512 captures + manifest",
+    "revision": "c313cdf2bac07e7e0cdf6acf817ed40dbf750c36"
+   },
+   {
+    "content": "shard 1-9 suite views, uploaded by tools/preserve_artifacts.sh --deep",
+    "revision": "0a45aeae31d38ad0742703ac4505d24ebd26fe01"
+   },
+   {
+    "content": "README: three-tier policy, archival mirror cross-links, shard views",
+    "revision": "08bde6ccb78799462733f52199b9a50272f9b87f"
+   }
+  ],
+  "excluded_from_the_count": [
+   ".gitattributes and README.md are repo furniture, authored for the repo rather than preserved from local artifacts, and are not counted in total_bytes"
+  ],
+  "private": false,
+  "repo": "malaiwah/qwen38-27b-fidelity-suite-v5",
+  "repo_type": "dataset",
+  "revision_verified": "08bde6ccb78799462733f52199b9a50272f9b87f",
+  "total_bytes": 10826796868,
+  "total_files": 5835,
+  "total_gib": 10.083,
+  "trees": [
+   {
+    "bytes": 59959329,
+    "files": 5120,
+    "path_in_repo": "suite/tokens",
+    "paths_glob": "suite/tokens/*",
+    "verification": {
+     "served_sha256_readback": 5120
+    },
+    "what_it_is": "5,120 token-id files: the authoritative evaluation input. Retokenising the source text does not reproduce it."
+   },
+   {
+    "bytes": 2679249,
+    "files": 1,
+    "path_in_repo": "suite/suite-manifest.json",
+    "paths_glob": "suite/suite-manifest.json",
+    "verification": {
+     "served_sha256_readback": 1
+    },
+    "what_it_is": "v5 parent suite manifest, 5,120 contexts x 2,047 scored positions = 10,480,640 positions over 842 source clusters; sha256 equals the manifest_sha256 pinned in ladder-pin.json."
+   },
+   {
+    "bytes": 1201,
+    "files": 1,
+    "path_in_repo": "suite/ladder-pin.json",
+    "paths_glob": "suite/ladder-pin.json",
+    "verification": {
+     "served_sha256_readback": 1
+    },
+    "what_it_is": "the configuration the whole ladder was pinned to: harness, shared head, quantization config, shard size, runtime image."
+   },
+   {
+    "bytes": 5764480,
+    "files": 120,
+    "path_in_repo": "suite/shard-00{00..09}",
+    "paths_glob": "suite/shard-[0-9][0-9][0-9][0-9]/*",
+    "verification": {
+     "served_sha256_readback": 120
+    },
+    "what_it_is": "the ten 512-context shard views plus the ladder's own capture and replay command lines. Each view carries the suite_token_sha256 that the matching per-shard reports cite, which is what makes those reports checkable against the parent suite."
+   },
+   {
+    "bytes": 301331,
+    "files": 1,
+    "path_in_repo": "corpus",
+    "paths_glob": "corpus/*",
+    "verification": {
+     "served_sha256_readback": 1
+    },
+    "what_it_is": "corpus fetch log: stratum, stem, URL, bytes, chars and sha256 for every source document, plus every skip and every failure."
+   },
+   {
+    "bytes": 10732326844,
+    "files": 513,
+    "path_in_repo": "reference/hidden-bf16",
+    "paths_glob": "reference/hidden-bf16/*",
+    "verification": {
+     "remote_sha256_lfs_oid": 509,
+     "served_sha256_readback": 1,
+     "served_sha256_readback_lfs_spot": 3
+    },
+    "what_it_is": "shard-0 unquantized BF16 Qwen/Qwen3.8-27B final hidden states, 512 x [2047, 5120] bf16 plus capture-manifest.json. The single most reusable artifact in the project: every future candidate on shard 0 replays against this instead of re-capturing BF16."
+   },
+   {
+    "bytes": 15882337,
+    "files": 50,
+    "path_in_repo": "reports/kld5",
+    "paths_glob": "reports/kld5/shard-[0-9][0-9][0-9][0-9]/*",
+    "verification": {
+     "served_sha256_readback": 50
+    },
+    "what_it_is": "50 per-shard ladder reports: ten shards x five candidates."
+   },
+   {
+    "bytes": 3400199,
+    "files": 10,
+    "path_in_repo": "reports/kld5-tail",
+    "paths_glob": "reports/kld5-tail/shard-[0-9][0-9][0-9][0-9]/*",
+    "verification": {
+     "served_sha256_readback": 10
+    },
+    "what_it_is": "10 per-shard tail reports over 2,096,128 positions."
+   },
+   {
+    "bytes": 5114752,
+    "files": 15,
+    "path_in_repo": "reports/kld5-win",
+    "paths_glob": "reports/kld5-win/shard-[0-9][0-9][0-9][0-9]/*",
+    "verification": {
+     "served_sha256_readback": 15
+    },
+    "what_it_is": "15 scored-window control reports: score_from 0 / 256 / 1024."
+   },
+   {
+    "bytes": 1367146,
+    "files": 4,
+    "path_in_repo": "reports/gguf",
+    "paths_glob": "reports/gguf/*",
+    "verification": {
+     "served_sha256_readback": 4
+    },
+    "what_it_is": "4 cross-engine shard-0 reports: llama.cpp Q8_0, Q6_K, UD-Q5_K_XL and the llama.cpp-vs-vLLM engine floor on the same unquantized BF16 weights."
+   }
+  ],
+  "url": "https://huggingface.co/datasets/malaiwah/qwen38-27b-fidelity-suite-v5"
+ },
+ "question": "Which expensive artifacts are published, which are deliberately not, and what does it cost to recompute the ones we already destroyed?",
+ "schema": "qwen38-preserved-artifacts/1",
+ "sibling_mirrors": [
+  {
+   "kind": "recovery",
+   "mirrors": "unsloth/Qwen3.8-27B-NVFP4",
+   "owner": "NvfpOnV5",
+   "repo": "malaiwah/Qwen3.8-27B-NVFP4-archival-9c73e2da",
+   "repo_type": "model",
+   "revision": "7a66267ebd34a01ba9a13e56aa2cea0b27bdacd4",
+   "upstream_revision": "9c73e2daee1d0fd494ffbd1d8753f2174a953796",
+   "upstream_revision_resolves": false,
+   "why": "the revision our published v3 NVFP4 comparison was measured against. The upstream repo super-squashed its history on 2026-08-15 and the Hub now answers 'Invalid rev id' for it. The weights are byte-identical to current upstream HEAD, but tokenizer.json and one metadata field did change, so the comparison can only be cited through the mirror."
+  },
+  {
+   "kind": "precautionary",
+   "mirrors": "unsloth/Qwen3.8-27B-GGUF",
+   "owner": "NvfpOnV5",
+   "repo": "malaiwah/Qwen3.8-27B-GGUF-archival-f1bfb127",
+   "repo_type": "model",
+   "revision": "06992e2f16022347149d8545b1df04c68d46e6e7",
+   "upstream_revision": "f1bfb127c64f7072bdd2cad55f258b9c8b2910fe",
+   "upstream_revision_resolves": true,
+   "why": "the five files our cross-engine table cites, at a revision that still resolves and is current HEAD. Nothing is lost yet; this is so nothing can be. Recorded as precautionary and not as a rescue."
+  }
+ ],
+ "tool": {
+  "contract": [
+   "uploads the directory in one hf invocation",
+   "re-verifies every file against the remote copy at the revision the upload produced",
+   "refuses, non-zero, if any file is absent remotely, differs in size, or differs in digest",
+   "prints the delete command on success and NEVER deletes anything itself"
+  ],
+  "path": "tools/preserve_artifacts.sh",
+  "tested": {
+   "refuses_on_digest_mismatch": "a same-length one-byte local edit was caught by digest comparison (git blob id), exit 1, no delete command printed",
+   "refuses_on_missing_remote_file": "an extra local file absent from the repo was caught, exit 1",
+   "refuses_on_size_mismatch": "a 43-byte local append was caught by size comparison, exit 1",
+   "refuses_preflight": "missing arguments, absolute or '..' dataset path, non-existent directory, unset HF_HOME, unauthenticated HF_HOME",
+   "success_path": "ran for real on the shard 1-9 suite views: 108 files, 5,188,488 B, all 108 re-downloaded and sha256-matched under --deep, delete command printed, local directory still present afterwards (revision 0a45aeae31d38ad0742703ac4505d24ebd26fe01)"
+  },
+  "usage": "tools/preserve_artifacts.sh <local-dir> <dataset-path> [--deep] [--receipt PATH]",
+  "why_it_does_not_delete": "a tool that both publishes and deletes will eventually delete after a publish that only looked successful. The delete stays a separate, human-run step."
+ },
+ "verification": {
+  "digest_mismatches": 0,
+  "files_missing_remotely": 0,
+  "honest_statement_of_strength": "5326 of 5835 files (157,456,484 B) were re-downloaded and re-hashed end to end. The remaining 509 files (10,669,340,384 B, the 10 GB hidden-state tree) were verified by comparing the Hub's own LFS sha256 and byte size against the local values; re-downloading all 10 GB to re-hash it was judged impractical, so three of those 512 files were additionally pulled from the CDN and re-hashed as a spot check, and all 512 were separately confirmed against the digests the capture tool itself recorded in capture-manifest.json.",
+  "independent_cross_check": "All 512 hidden_NNNN.safetensors local digests were compared with the per-file sha256 the capture tool recorded in capture-manifest.json at capture time: 512/512 match, and the manifest's complete flag is true. The tree published is therefore the tree that was captured, not merely a self-consistent copy of whatever was on disk.",
+  "kinds": {
+   "remote_sha256_lfs_oid": "the Hub stores this file in LFS and reports its sha256 as the LFS oid; that remote sha256 was compared with the local sha256, and the remote size with the local size. This is an end-to-end content check over the full bytes, but the digest is one the Hub computed - these bytes were NOT re-downloaded and re-hashed here.",
+   "served_sha256_readback": "the file was re-downloaded from the Hub and its sha256 recomputed from the received bytes, then compared with the local sha256. Strongest available check: it proves what the CDN actually serves.",
+   "served_sha256_readback_lfs_spot": "same check, applied to a sample of the LFS tree spread across its start, middle and end rather than a prefix."
+  },
+  "principle": "Every uploaded file was re-verified against the remote copy after upload, the way the model-card uploads are: compare a digest the Hub computed over the bytes it stored against the same digest computed over the local bytes. Strength is reported per file rather than averaged, so no check is implied that was not performed.",
+  "spot_checked_files": {
+   "reference/hidden-bf16/hidden_0000.safetensors": "ea96a13c38089bb67e24599ffdb54aeb4abf2cc0566003d52ffdb939b905c3fc",
+   "reference/hidden-bf16/hidden_0255.safetensors": "d38b4703cb1146d5133559a5420516e93e6f9b85984c4cef926c4b2ec9b39a45",
+   "reference/hidden-bf16/hidden_0511.safetensors": "06e3e2013805f8241da68eb64f8ba6ac948dadfd13f5678bb4e5e16d35874665"
+  },
+  "tally": {
+   "remote_sha256_lfs_oid": {
+    "bytes": 10669340384,
+    "files": 509
+   },
+   "served_sha256_readback": {
+    "bytes": 94572356,
+    "files": 5323
+   },
+   "served_sha256_readback_lfs_spot": {
+    "bytes": 62884128,
+    "files": 3
+   }
+  }
+ },
+ "why_this_receipt_exists": "The v5 KLD ladder captured six models per 512-context shard, verified the reports, then deleted that shard's hidden states to make room for the next shard - ten times. The reports survived; roughly 190 GB of reusable capture did not, and a later cross-engine run had to re-download tens of GB of GGUF and re-capture hidden states that had existed and been thrown away. Recompute is slower than download and needs a GPU that is usually busy. Publishing the inputs also doubles as transparency. This receipt is the honest cost of the old habit and the justification for the new policy.",
+ "written_at": "2026-08-16T03:14:00Z"
+}
