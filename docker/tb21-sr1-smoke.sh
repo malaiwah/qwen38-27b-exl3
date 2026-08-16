@@ -3,11 +3,14 @@
 # docker run; asserts every patched file's sha256, every sentinel, a full
 # `import vllm`, and `vllm --help`. Exit 0 = image carries every sr1 fix.
 #
-#   ./docker/tb21-sr1-smoke.sh vllm:gg-r34-tb21-sr1
+#   ./docker/tb21-sr1-smoke.sh vllm:gg-r34-tb21-sr1 [extra docker-run flags...]
+# On a GPU host pass `--gpus all` (the CLI check needs a visible device);
+# on a GPU-less host set REQUIRE_CLI=0 (check is skipped, stated in output).
 set -euo pipefail
-IMAGE="${1:?usage: tb21-sr1-smoke.sh <image-ref>}"
+IMAGE="${1:?usage: tb21-sr1-smoke.sh <image-ref> [docker-run flags...]}"
+shift
 
-docker run --rm --entrypoint /bin/bash "$IMAGE" -euo pipefail -c '
+docker run --rm -e REQUIRE_CLI="${REQUIRE_CLI:-1}" "$@" --entrypoint /bin/bash "$IMAGE" -euo pipefail -c '
 V=/opt/venv/lib/python3.12/site-packages/vllm
 echo "== patched-file sha256 =="
 printf "%s  %s\n" \
@@ -49,6 +52,18 @@ PYEOF
 echo "== import vllm =="
 CUDA_VISIBLE_DEVICES="" /opt/venv/bin/python -c "import vllm; print(\"vllm\", vllm.__version__)"
 echo "== vllm --help =="
-CUDA_VISIBLE_DEVICES="" /opt/venv/bin/vllm --help > /dev/null && echo "vllm --help: OK"
+# REQUIRE_CLI=0 skips this check: the CUDA-only build cannot infer a device on
+# a GPU-less host, so `vllm --help` exits 1 there by base-image construction
+# (arg parser builds VllmConfig defaults, which infer the device). It MUST
+# pass on any host that will serve. Explicit if/else: a bare `A && echo ok`
+# is exempt from errexit and would fail open.
+if [ "${REQUIRE_CLI:-1}" = "0" ]; then
+  echo "vllm --help: SKIPPED (GPU-less host; device inference fails by base-image construction)"
+elif /opt/venv/bin/vllm --help > /dev/null 2>&1; then
+  echo "vllm --help: OK"
+else
+  echo "vllm --help: FAILED" >&2
+  exit 1
+fi
 echo "SMOKE PASS"
 '

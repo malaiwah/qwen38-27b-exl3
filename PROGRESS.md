@@ -1092,3 +1092,21 @@ tokens, and 0 as soon as the pool has one spare block — measured over 14 confi
 tokens at `block_size=256`. The speculative reserve is **not** a contributor: it is priced identically on
 both sides, which retracts what our acknowledgement comment claimed. Reply posted at
 `#issuecomment-5309046330`; receipt `receipts/upstream-pr-52520-decode-case.json`. No GPU at any point.
+
+## 2026-08-16 late: the TB2.1 campaign image exists — vllm:gg-r34-tb21-sr1 (ImageForge)
+
+Built on the driver VM from the promoted apc base (podman manifest `16a936b8…`, sourced by
+`podman save | zstd` off AIBoss, 10.78 GB landing byte-exact at ~6.4 MB/s over the jump) with three
+audited, fail-closed patch layers: PR #397 scratch-arena overlay, PR #398 FlashInfer decode-shape
+keying, and a hand-port of upstream #52530 (admission gate + pool-bound length cap; one adaptation —
+Request objects captured before the fork's tuple-returning, dict-freeing `finish_requests`). Every
+layer asserts patch sha, post-patch sha, a sentinel symbol, and recompiles with the image's own
+python; a wrong base or drifted file cannot build. LMCache: untouched, disabled by default, wheel
+RECORD verified intact (LMCacheFix: not ready). Cross-runtime base identity proven by the diff_id
+chain (identical on AIBoss/driver/endpoint, `886dbafc…`); the built image's manifest-list digest
+`237a5025…` is identical on driver and endpoint after save/load. CPU smokes pass on the driver
+(vllm --help SKIPPED there: CUDA-only build cannot infer a device GPU-less — base property) and
+fully on the 1x endpoint under `--gpus all`. Canonical tar
+`ubuntu@151.185.34.98:~/images/gg-r34-tb21-sr1.tar.zst` sha `1e5711f4…`; interim unpatched base also
+loaded on the endpoint for gate rehearsal. Receipt `receipts/tb21-image-sr1.json`. No GPU used;
+TB pass 2 untouched. Registry push (ghcr vs docker.io) awaits an owner token — Main's question.

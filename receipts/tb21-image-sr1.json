@@ -1,0 +1,134 @@
+{
+  "receipt": "tb21-image-sr1",
+  "date_utc": "2026-08-16T22:44:00Z",
+  "agent": "ImageForge",
+  "purpose": "Reproducible TB2.1 speed-run campaign image (docs/46): the promoted apc release unit plus every fix we know, as separate audited patch layers, buildable byte-comparably by a stranger from this receipt.",
+  "image": {
+    "tag": "vllm:gg-r34-tb21-sr1",
+    "built_manifest_digest": "sha256:ab53d0d39b76630d7a10947494a0568feb165eed8a076bde2896a73320d0e24e",
+    "built_config_digest": "sha256:d7f81ad2b544f09a95715f98e68622e3f72265b319a350818546d57acab8dfd9",
+    "built_manifest_list_digest": "sha256:237a50250eb8bcaf4f9a88d688a26753db4d2a73d902a4ef48e4ad23d958df3e",
+    "identity_note": "Both docker 29 hosts run the containerd image store, whose `docker images` ID is the OCI manifest-list digest. That digest, sha256:237a5025..., is IDENTICAL on the build host and on the endpoint after docker save | docker load, so it is the cross-host identity for this artifact. 49 layers (base 42 + 7 sr1), Size 25078076630.",
+    "endpoint_loaded_digest": "sha256:237a50250eb8bcaf4f9a88d688a26753db4d2a73d902a4ef48e4ad23d958df3e",
+    "sr1_diffids_chain_sha256": "f9562c08790fdf6b72a4afd9ddd767bd9ceed3e93462d6a6176ab6088593ffbd"
+  },
+  "base": {
+    "tag": "localhost/vllm:gg-r34-patched-apc",
+    "podman_manifest_digest_aiboss": "sha256:16a936b877b90fc080181e842f47dbafc5cb8e62688799596836e34ba0b79218",
+    "podman_config_digest_aiboss": "sha256:5ce31638c0a5c5c5ee4b5cafb7cd29170b9f2f7a5dcf6e2caa6f3b41bc6f8adc",
+    "owner_service_digest": "sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b (docker.io/voipmonitor/vllm r34 tag pinned by the AIBoss unit; the apc superset is one COPY+RUN above it, docker/Dockerfile.gg-r34-patched-apc)",
+    "sourced_from": "AIBoss podman storage (this rental box holds only the extracted proot rootfs /var/tmp/gg-rootfs, no container runtime)",
+    "transfer": "podman save | zstd -T0 -12 streamed AIBoss -> (jump ns1) -> rental -> driver, 10779120146 bytes in ~26 min (~6.4 MB/s sustained); mid-stream sha256 computed on the rental EQUALS the sha256 of the landed file",
+    "base_tar": {
+      "path": "ubuntu@151.185.34.98:~/images/gg-r34-base.tar.zst (+.sha256 beside it)",
+      "sha256": "c5f35f4725363f7c48b34e28e5b01ccd210851ba02b1e8abfdb59f0adb48fc70"
+    },
+    "identity_across_runtimes": {
+      "problem": "podman's manifest digest (16a936b8...) does not survive podman save | docker load; docker's containerd store re-derives a local manifest digest (driver e6807a61..., endpoint 7141198a... for the SAME tar bytes).",
+      "proof_used_instead": "the RootFS diff_id chain (uncompressed layer digests) is runtime-invariant: 42 diff_ids, sha256(JSON list) = 886dbafce1ec07d743e34b9f2150f8fe8f9f9760f5aa857107ae027e1767abc3, IDENTICAL on AIBoss podman, driver docker, endpoint docker. Belt and braces, Containerfile Layer 0 fails the build unless six load-bearing in-image files are byte-identical to the promoted image (shas below).",
+      "from_by_digest_caveat": "BuildKit's resolver treats digest refs as registry references (FROM localhost/vllm@sha256:... dials a registry at localhost:443), so the build FROMs the locally loaded name:tag and pins content via the Layer 0 gate instead. Stated, not hidden."
+    },
+    "layer0_gate_shas": {
+      "vllm/model_executor/layers/quantization/exl3.py": "2df9d0799fd323798cead1edb773cab556c94798eec263ee03ded35408c6e4ee",
+      "vllm/model_executor/models/qwen3_5.py": "04d2bd587b37142f4f55a8d00b9f8c907309490168cb7fcdfde450531df2c9e7",
+      "vllm/model_executor/models/qwen3_5_mtp.py": "0090dc131f0eaf439b24d50baf4def9f10b052864c76e695053d64f66b274bab",
+      "vllm/v1/core/sched/scheduler.py": "b431c1066dfee3ed56bfa7e71cc8606f9afadc300f22d7fc542c43835d1b22bf",
+      "vllm/v1/attention/backends/flashinfer.py": "df16d41ef834a551ef948ad22a371eb9411574cb999bb4343b8627a34d44963d",
+      "vllm/v1/core/kv_cache_utils.py": "b71b7819066a912c3b9743219447a8147a3d60656418801f6189a142fe5f41e8",
+      "vllm_version_asserted": "0.11.2.dev280+gilded.gnosis.v20.vllm4d006a4.b12xcd3ce19.fi1ac6942.cu132.20260810.r34"
+    }
+  },
+  "patch_layers": [
+    {
+      "layer": "A",
+      "what": "PR #397 scratch-arena exl3.py overlay (whole-file replacement; +6.7% KV pool measured, byte-identical probe outputs)",
+      "source": "tools/vllm-exl3-scratch-arena.py (repo), the exact file receipts/scratch-arena.json qualified as a read-only mount on the RTX 5090",
+      "overlay_sha256": "9aba06ebf60ca7665c0513752387c349240ab85e1ebc44d6ce8137ef157b6c15",
+      "replaces_base_sha256": "2df9d0799fd323798cead1edb773cab556c94798eec263ee03ded35408c6e4ee",
+      "sentinel": "_EXL3_RECONSTRUCT_ARENA (0 hits in base file, 6 in overlay)"
+    },
+    {
+      "layer": "B",
+      "what": "PR #398 FlashInfer persistent-decode-wrapper shape keying (V2 runner decode-shape fault fix, receipts/v2-fault-fix.json)",
+      "source": "malaiwah/vllm-voipmonitor commit 5723e072e02062d504f2f7172da64804ec97ab36, branch fix/fi-persistent-decode-plan-buffers; full commit patch archived at docker/patches/upstream/vllm-voipmonitor-5723e072e-full.patch sha256 cccb6f65b522e76258cf15e44b1bad97122f16b5dc2dcb7f4c135edc0b754dcb",
+      "applied_patch": "docker/patches/vllm-398-fi-decode-shapes.patch (the commit's vllm/ hunk only; the tests/ hunk targets a file not shipped in site-packages)",
+      "applied_patch_sha256": "b77be87e966d522bc0a891159fef700fa7e4189304578288683bf50717c14fae",
+      "post_patch_sha256": {"vllm/v1/attention/backends/flashinfer.py": "86e435ddd694ecd8a3d32a073a279a941a87b148794398e47a6a45df829c9cd1"},
+      "sentinels": ["_planning_for_cudagraph_capture", "planned_decode_shapes"]
+    },
+    {
+      "layer": "C",
+      "what": "Port of vllm-project/vllm#52530 (branch fix/kv-pool-unservable-request-admission @ 479413adc): admission gate in add_request + length cap via check_stop(request, max_servable_num_tokens), so a request no future KV-pool state can hold is failed once instead of retried forever (#52520 livelock)",
+      "source": "upstream diff archived at docker/patches/upstream/vllm-project-pr52530-479413adc-full.diff sha256 6ae4132acc9022aefc65f6474957c675de85cd93676bb074d32547387103cafa",
+      "port_verdict": "PORTABLE - the fork's kv_cache_utils.py carries identical helper signatures (_estimate_max_model_len_from_groups, _pool_bytes_per_block, _use_packed_kv_cache_config) and the scheduler is structurally close. Hand-ported, not auto-applied: upstream's scheduler hunks anchor on code the fork lacks (grammar_compile_error_reqs) and on a finish_requests that returns Request objects.",
+      "adaptations": [
+        "THE one behavioural adaptation: the fork's finish_requests returns list[(request_id, client_index)] and frees self.requests entries via _free_request, so the unservable flush in update_from_output captures the Request objects BEFORE calling finish_requests (same order as the fork's own failed-KV-load flush directly above it). Upstream iterates the returned Request objects instead.",
+        "unservable_reqs set declared in the same __init__ block as max_servable_num_tokens (fork has no grammar_compile_error_reqs to anchor beside)",
+        "get_num_unfinished_requests adds len(self.unservable_reqs) on the fork's pause-state-aware variant"
+      ],
+      "safety_audit": "never-scheduled requests are safe through the fork's free path: Request.last_sched_seq defaults 0 <= processed_step_seq so _free_request_blocks frees immediately; both request-queue remove_requests implementations tolerate absent items (filter-based)",
+      "applied_patches": {
+        "docker/patches/vllm-52530-port-kv-utils.patch": "7a90ff1f35159e092bab43fd921681c288dd9747c085f3cccd063d664a668ca7",
+        "docker/patches/vllm-52530-port-scheduler.patch": "7c5cbede7188fac5b15924764472deb11f1a7ed0796b7233b097df017fa0c2f1"
+      },
+      "post_patch_sha256": {
+        "vllm/v1/core/kv_cache_utils.py": "f354270a0ce7971fd9317bd10a5921b1319165df80748df60fe4ab8648ffcbc6",
+        "vllm/v1/core/sched/scheduler.py": "e98b7227e0b66eea137ed6ccbc9ee99bd43485892c11c648284c30cde206ed05"
+      },
+      "sentinels": ["def max_servable_num_tokens (kv_cache_utils.py)", "check_stop(request, self.max_servable_num_tokens)", "def _is_unservable"]
+    },
+    {
+      "layer": "D",
+      "what": "LMCache untouched-assertion: NO LMCache file modified; the layer verifies all 698 hashed records of the pinned wheel RECORD and the version string",
+      "lmcache_state": "wheel 0.5.2+glm52dcp.4 (fork local-inference-lab/LMCache @ 9cebd405) byte-identical to the base; DISABLED by default (activates only via explicit --kv-transfer-config / wrapper env; nothing in this image enables it); PROHIBITED for scored passes per receipts/lmcache-reuse-test.json (restart-over-warm-L2 corruption 38/38, upstream LMCache#4247 #4492)",
+      "lmcachefix_gate": "LMCacheFix replied 2026-08-16 22:0xZ: patchset NOT ready (still in root-cause on the MP retrieve path), so no wheel swap. A fixed wheel enters as a NEW layer only after its CPU gates pass, and enters the campaign default config only after the 4-arm GPU corruption ladder passes on the 2x lab."
+    }
+  ],
+  "fail_closed_mechanics": "every patch file's sha256 asserted before use; patch(1) runs -p1 --fuzz=0 -N (any drift = build failure); post-patch file sha asserted; sentinel grep per fix; stale .pyc removed; each patched file re-compiled with the image's own python3.12; layer C additionally imports the patched modules and asserts the new symbols",
+  "cpu_prevalidation_on_rental": {
+    "round_trip": "all three patches applied to pristine copies of the exact in-image files reproduce the post-patch shas byte-exactly",
+    "py_compile": "clean under the image's python 3.12 via the gg-rootfs ld-loader shim",
+    "import_vllm_cpu": "vllm 0.11.2.dev280+...r34 imports CPU-only",
+    "sentinel_discrimination": "all four sentinels have 0 hits in the base files"
+  },
+  "build": {
+    "host": "driver VM ubuntu@151.185.34.98 (32 vCPU, 125 GB RAM, docker 29.6.0, containerd image store), context ~/tb21-sr1/ctx (git a560a57 subset, shas verified after staging)",
+    "command": "docker build -f docker/Containerfile.tb21-sr1 -t vllm:gg-r34-tb21-sr1 .  # base docker-loaded from the tar above and tagged vllm:gg-r34-patched-apc; FROM-by-digest caveat in base.identity_across_runtimes",
+    "build_log": "ubuntu@151.185.34.98:~/tb21-sr1/build.log sha256 b03e867785fc8bdcf99006c2b09a6af8274b601bf88cc805a7804d058353376f",
+    "no_gpu_used": "build and driver smoke are CPU-only; the rental 5090 and TB pass 2 in ~/tb21 were untouched"
+  },
+  "smoke": {
+    "driver_cpu": {
+      "log": "ubuntu@151.185.34.98:~/tb21-sr1/smoke-driver.log sha256 0b92f399700759f422c8c72414d7b104d5673cc06064f6a5b460ff590f374a5f",
+      "checks": "4 post-patch shas OK, 2 base-module shas OK, 5 sentinels PRESENT, lmcache 698 records intact, import vllm OK; vllm --help SKIPPED with stated reason (CUDA-only build cannot infer a device on a GPU-less host - base-image property, not an sr1 regression; verified base behaves identically)",
+      "smoke_script": "docker/tb21-sr1-smoke.sh (fail-closed: the initial version's `cmd && echo ok` was exempt from errexit and failed open on the CLI check; rewritten as explicit if/else and re-run)"
+    },
+    "endpoint_gpu": {
+      "host": "ubuntu@151.185.34.17 (RTX PRO 6000 Blackwell Server 96 GB, driver 595.58.03, docker 29.7.2, nvidia runtime, 469 GB free; VPC 10.0.0.3)",
+      "log": "ubuntu@151.185.34.17:~/tb21-sr1-smoke-endpoint.log sha256 eee7c8584182bdc7dc9df733422b59ad937123bd96ac1cea9affd56aa1b4d0cb",
+      "checks": "ALL driver checks plus vllm --help OK under --gpus all; exit 0",
+      "endpoint_loaded_digest": "sha256:237a50250eb8bcaf4f9a88d688a26753db4d2a73d902a4ef48e4ad23d958df3e (identical to the build host's)"
+    },
+    "interim_base_on_endpoint": "unpatched base localhost/vllm:gg-r34-patched-apc also loaded on the endpoint (local manifest digest 7141198a..., diff_id chain verified identical) so the 1x fidelity-gate plumbing could rehearse before sr1 landed, per Main 2026-08-16"
+  },
+  "canonical_artifact": {
+    "path": "ubuntu@151.185.34.98:~/images/gg-r34-tb21-sr1.tar.zst (+.sha256 beside it)",
+    "sha256": "1e5711f431b3f18fb63ece93460efea692e903bb7ac6187ce683a733a5dacda7",
+    "bytes": 10781103312,
+    "note": "docker save vllm:gg-r34-tb21-sr1 | zstd -T0 -12 on the driver; interim canonical copy until a registry push (needs an owner token; ghcr.io/malaiwah vs docker.io undecided - Main owns the question)"
+  },
+  "rebuild_command_for_a_stranger": [
+    "git clone <this repo> && cd <repo>   # commit a560a57 or later",
+    "docker load < gg-r34-base.tar.zst   # sha256 c5f35f47... ; or podman save localhost/vllm:gg-r34-patched-apc from any holder of manifest sha256:16a936b8...",
+    "docker tag localhost/vllm:gg-r34-patched-apc vllm:gg-r34-patched-apc",
+    "docker build -f docker/Containerfile.tb21-sr1 -t vllm:gg-r34-tb21-sr1 .",
+    "REQUIRE_CLI=0 ./docker/tb21-sr1-smoke.sh vllm:gg-r34-tb21-sr1   # GPU-less; on a GPU host: ./docker/tb21-sr1-smoke.sh vllm:gg-r34-tb21-sr1 --gpus all",
+    "every gate is in-build and fail-closed; a wrong base or drifted patch file cannot produce an image"
+  ],
+  "self_check": "wrong-base and drifted-patch failure modes exercised implicitly: every sha assertion in the build DID run against the freshly staged context (all listed OK in build.log) and any mismatch aborts via sha256sum -c / patch --fuzz=0 exit codes under set -eu",
+  "not_claimed": [
+    "No GPU qualification of sr1: io.malaiwah.image.qualified=false. The campaign's fidelity gate (docs/46 section 6) must pass on sr1 before any scored pass.",
+    "The #52530 port is code-audited and CPU-validated only; its runtime behaviour (admission rejection, length cap) is untested on GPU traffic until the fidelity gate.",
+    "vllm --help on GPU-less hosts fails by base-image construction; not fixed here, out of scope."
+  ]
+}
