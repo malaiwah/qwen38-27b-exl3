@@ -1,0 +1,270 @@
+{
+ "schema": "qwen38-k6-parity-publication/1",
+ "generated_utc": "2026-08-16T18:27:33Z",
+ "question": "is the K6-parity release candidate on the Hub, does every published byte match the digests receipts/k6-parity-kld.json recorded from the local tree before the upload, and was the local copy released only after that was proven?",
+ "policy": "docs/29 'Preservation: preserve before delete'. Upload first, re-verify the remote copy against the local bytes, and only then treat the local copy as expendable. tools/preserve_artifacts.sh never deletes: it prints the delete command and a human (here, this agent, after reading the verification output) runs it.",
+ "published": {
+  "model_repo": {
+   "repo": "malaiwah/Qwen3.8-27B-EXL3-K6-parity",
+   "repo_type": "model",
+   "url": "https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K6-parity",
+   "public": true,
+   "naming": "follows the existing convention for this family's EXL3 builds -- malaiwah/Qwen3.8-27B-EXL3-<recipe>, as in -EXL3-K5K6-hydrated, -EXL3-K5K6-context and -EXL3-EDA-research. The recipe name is the one the measurement receipt and docs use for it, K6-parity.",
+   "artifact_revision": "a34ebcea909e43b3eb5b66b43782d9a509bda14b",
+   "artifact_commit_message": "K6-parity release candidate: hydrated recipe with gate_proj/up_proj promoted K5 -> K6, measured 0.001634 mean KLD on v5 shard 0",
+   "head_revision_after_card_and_docs": "70c5041241127c3b93b664e07ecf156c30e8b14b",
+   "files": 22,
+   "bytes": 23059333816,
+   "uploaded_with": "tools/preserve_artifacts.sh /var/tmp/work/kld9/qwen38-k6parity . --repo malaiwah/Qwen3.8-27B-EXL3-K6-parity --repo-type model --deep --spot all",
+   "verification": {
+    "served-sha256-readback": 18,
+    "served-sha256-readback-lfs-spot": 4
+   },
+   "problems": [],
+   "digests_vs_build_receipt": {
+    "record": "receipts/k6-parity-kld.json -> build.tree",
+    "record_file_count": 22,
+    "record_total_bytes": 23059333816,
+    "uploaded_file_count": 22,
+    "uploaded_total_bytes": 23059333816,
+    "files_compared": 22,
+    "files_matching": 22,
+    "mismatches": [],
+    "note_on_the_file_count": "the handover prose said 21 files; the tree is 22 and always was. `ls` without -a hides .gitattributes, which build.tree does list. The byte total agrees exactly at 23,059,333,816 B, so nothing was adjusted in any receipt."
+   },
+   "why_preserved": "the release candidate of a measured MATCH: at equal FILE bytes it lands between GGUF Q6_K's net-of-floor 0.001528 and its measured 0.002035 while carrying 2.3062 GiB (13.5 %) less transformer body, and it is the artifact every number on its card is measured from. Its preservation was pre-registered as unconditional -- keep and upload in every branch of the decision rule -- before the conversion ran.",
+   "recompute_cost": "one conversion pass on the rental RTX PRO 6000 Blackwell: the successful run's step logs span 17:10:13Z to 17:56:43Z, about 46 minutes, plus ~6 min to capture 512 contexts and ~3 min to replay. A fresh conversion returns a SIBLING, not these bytes: the EXL3 converter is nondeterministic inside its .trellis payloads at identical widths (receipts/converter-determinism.json), which is why the published bytes are the artifact and SHA256SUMS is the reference.",
+   "file_digests": {
+    ".gitattributes": {
+     "bytes": 1570,
+     "sha256": "34448b82c17d60fec9b65b1f093c115ddbaadc04beb1b0140b6bfed2e012a930",
+     "verified_by": "served-sha256-readback",
+     "matches_build_tree": true
+    },
+    "DOCS-SHA256SUMS": {
+     "bytes": 233,
+     "sha256": "03875e02f772b06f82fd776d936585de76168abfa3036e9d7899dcee8557b8a2",
+     "verified_by": "served-sha256-readback",
+     "matches_build_tree": true
+    },
+    "LICENSE": {
+     "bytes": 11544,
+     "sha256": "bbedc3fda3305820b977265f01b8619d87570a6739de3a5582c3464840f1e57a",
+     "verified_by": "served-sha256-readback",
+     "matches_build_tree": true
+    },
+    "README.md": {
+     "bytes": 65012,
+     "sha256": "57e4bdb258ee1a7d2635c5174ebd4e56abe392505cdb5f8bbb356b0dc4293641",
+     "verified_by": "served-sha256-readback",
+     "matches_build_tree": true
+    },
+    "SHA256SUMS": {
+     "bytes": 1414,
+     "sha256": "e35d05fcd5a126b76719931a7aa8a482bb703565b2d7cf94a81c58279fdbe454",
+     "verified_by": "served-sha256-readback",
+     "matches_build_tree": true
+    },
+    "build-receipt.json": {
+     "bytes": 3554,
+     "sha256": "c891b2788182fbebe50f7ef8123aa423d5a7950a9227198ead8f8aa15772c80d",
+     "verified_by": "served-sha256-readback",
+     "matches_build_tree": true
+    },
+    "chat_template.jinja": {
+     "bytes": 8952,
+     "sha256": "c3cf9e34abf4f9e36c2d72165aa9c132d3e2a725b6c2586aaa3a8af9d7a81041",
+     "verified_by": "served-sha256-readback",
+     "matches_build_tree": true
+    },
+    "config.json": {
+     "bytes": 4620,
+     "sha256": "fbb105334da6554c10784ff1257fda5e3821d4d5426d64469cee2b2ad67ba2b3",
+     "verified_by": "served-sha256-readback",
+     "matches_build_tree": true
+    },
+    "crc32.txt": {
+     "bytes": 238,
+     "sha256": "b42dd291f5f98b05807e458f5b47849969a9b3326acbf0c97d28b05826740b83",
+     "verified_by": "served-sha256-readback",
+     "matches_build_tree": true
+    },
+    "generation_config.json": {
+     "bytes": 202,
+     "sha256": "e70c136c1b78ddc1fb0905bac8e733a4dc448d4f852a5dd75143fffc70be550e",
+     "verified_by": "served-sha256-readback",
+     "matches_build_tree": true
+    },
+    "merges.txt": {
+     "bytes": 3353259,
+     "sha256": "a9d356d7bdf1ef4949e3e748e95b8e10ad9d4e2e838eddc38a0a7b6b94d1db8d",
+     "verified_by": "served-sha256-readback",
+     "matches_build_tree": true
+    },
+    "model-00001-of-00003.safetensors": {
+     "bytes": 8553504253,
+     "sha256": "c314cf652097cbc8b0ea581520c849ed79900a6aef68c00139a36ffb4b4002ea",
+     "verified_by": "served-sha256-readback-lfs-spot",
+     "matches_build_tree": true
+    },
+    "model-00002-of-00003.safetensors": {
+     "bytes": 8587999586,
+     "sha256": "258ce8aa477132983e100f333ee30f48928c7d1dc7a3344c8ea4300dd39b46fe",
+     "verified_by": "served-sha256-readback-lfs-spot",
+     "matches_build_tree": true
+    },
+    "model-00003-of-00003.safetensors": {
+     "bytes": 5894107293,
+     "sha256": "b2c8a4697699a31dc636a9666c0cd7abd49707af1f2514a1be58d1e52b36ca20",
+     "verified_by": "served-sha256-readback-lfs-spot",
+     "matches_build_tree": true
+    },
+    "model.safetensors.index.json": {
+     "bytes": 238255,
+     "sha256": "a35eb2fe60f8465198efcf6b69d8939ce41f4f704e339bf5e5aececc52baf5fe",
+     "verified_by": "served-sha256-readback",
+     "matches_build_tree": true
+    },
+    "preprocessor_config.json": {
+     "bytes": 390,
+     "sha256": "27225450ac9c6529872ee1924fcb0962ff5634834f817040f444118116f4e516",
+     "verified_by": "served-sha256-readback",
+     "matches_build_tree": true
+    },
+    "quantization_config.json": {
+     "bytes": 480293,
+     "sha256": "f837288ffb2f4749f2b0044742f6abfb6c81d5d180c6a28fbdf853601cc640b3",
+     "verified_by": "served-sha256-readback",
+     "matches_build_tree": true
+    },
+    "quantization_manifest.json": {
+     "bytes": 2756,
+     "sha256": "e16eb8dddd7e0889352339a83ff02b3e0e15f204c401d6e44fc010487db2a8c8",
+     "verified_by": "served-sha256-readback",
+     "matches_build_tree": true
+    },
+    "tokenizer.json": {
+     "bytes": 12809320,
+     "sha256": "0997f410c57a1f4e53b09e4be8f4a172d90edd9564368fb0847030937229b9f3",
+     "verified_by": "served-sha256-readback-lfs-spot",
+     "matches_build_tree": true
+    },
+    "tokenizer_config.json": {
+     "bytes": 17928,
+     "sha256": "b11349aafa7cdc6a320767cf7ceb29ed82f7eda5d65e8e0819e76f0ce947bf27",
+     "verified_by": "served-sha256-readback",
+     "matches_build_tree": true
+    },
+    "video_preprocessor_config.json": {
+     "bytes": 385,
+     "sha256": "7768af27c1fafa9cc9011c1dc20067e03f8915e03b63504550e11d5066986d13",
+     "verified_by": "served-sha256-readback",
+     "matches_build_tree": true
+    },
+    "vocab.json": {
+     "bytes": 6722759,
+     "sha256": "ce99b4cb2983d118806ce0a8b777a35b093e2000a503ebde25853284c9dfa003",
+     "verified_by": "served-sha256-readback",
+     "matches_build_tree": true
+    }
+   },
+   "file_digests_definition": "every file of the artifact revision: local bytes and sha256 as hashed before upload, how the remote copy was verified, and whether the pair matches receipts/k6-parity-kld.json -> build.tree"
+  },
+  "card": {
+   "local_file": "MODEL_CARD-K6-parity.md",
+   "rendered_by": "tools/parity-card-body.md + tools/parity_card.py, both committed BEFORE the conversion ran; the MATCHES_Q6K branch text predates the number",
+   "published_as": "README.md",
+   "local_bytes": 13123,
+   "local_sha256": "13ab6ca920721c2feba0b684dd703f3ebafebfb6ce1950e762e24276fab61e93",
+   "published_bytes": 13123,
+   "published_sha256": "13ab6ca920721c2feba0b684dd703f3ebafebfb6ce1950e762e24276fab61e93",
+   "byte_identical": true,
+   "readback": "tools/publish_cards.py re-downloaded README.md with a throwaway cache and compared bytes; DOCS-SHA256SUMS's README row was refreshed and re-fetched byte-identical",
+   "verdict_in_the_first_paragraph": "yes -- the opening paragraph states the measured 0.001634 [0.001541, 0.001742], the MATCHES verdict against the pre-registered acceptance interval [0.001528, 0.002035], the registered-interval miss, and the 2.3 GiB body deficit",
+   "replaced": "the placeholder upstream Qwen README.md the build script copies into every checkpoint tree (65,012 B, 57e4bdb2...). That placeholder is what build.tree digests, so README.md and DOCS-SHA256SUMS are the two files at HEAD that intentionally differ from the build record; every other file is bit-for-bit the artifact revision's.",
+   "registered_in": "tools/publish_cards.py CARDS, so future card passes keep this repo's README from drifting"
+  },
+  "documentation_added": {
+   "revision": "70c5041241127c3b93b664e07ecf156c30e8b14b",
+   "why": "the card's provenance table names `parity/convert-k6parity.log` as a file in this repository, and that log existed only on the rental box being decommissioned. Uploading it makes the card true and preserves every module's realised bpw and proxy error.",
+   "files": {
+    "parity/convert-k6parity.log": {
+     "bytes": 90556,
+     "sha256": "d4c21dad498baf4d656d9fe5812ea794d2a5d0408da15e0856bd54c5d46aff2b",
+     "sha256_matches_measurement_receipt": true
+    },
+    "parity/build_k6parity.sh": {
+     "bytes": 2746,
+     "sha256": "249b20804f6a5fd07551b5a007c7b68ddfc0fbf4c59d18f1144fd4bde9187420",
+     "sha256_matches_measurement_receipt": true
+    }
+   },
+   "digests_source": "receipts/k6-parity-kld.json -> toolchain.convert_log.sha256 and toolchain.build_script.sha256",
+   "docs_sha256sums": {
+    "bytes": 418,
+    "sha256": "525947ccefe3ebc36e91394851af99c88506a9fad786ec0740c4feede8417ee9",
+    "rows": [
+     "34448b82c17d60fec9b65b1f093c115ddbaadc04beb1b0140b6bfed2e012a930  .gitattributes",
+     "13ab6ca920721c2feba0b684dd703f3ebafebfb6ce1950e762e24276fab61e93  README.md",
+     "b42dd291f5f98b05807e458f5b47849969a9b3326acbf0c97d28b05826740b83  crc32.txt",
+     "249b20804f6a5fd07551b5a007c7b68ddfc0fbf4c59d18f1144fd4bde9187420  parity/build_k6parity.sh",
+     "d4c21dad498baf4d656d9fe5812ea794d2a5d0408da15e0856bd54c5d46aff2b  parity/convert-k6parity.log"
+    ]
+   },
+   "readback": {
+    "parity/convert-k6parity.log": {
+     "sha256": "d4c21dad498baf4d656d9fe5812ea794d2a5d0408da15e0856bd54c5d46aff2b",
+     "matches": true
+    },
+    "parity/build_k6parity.sh": {
+     "sha256": "249b20804f6a5fd07551b5a007c7b68ddfc0fbf4c59d18f1144fd4bde9187420",
+     "matches": true
+    },
+    "DOCS-SHA256SUMS": {
+     "sha256": "525947ccefe3ebc36e91394851af99c88506a9fad786ec0740c4feede8417ee9",
+     "matches": true
+    }
+   },
+   "sha256sum_c": "the two parity/ rows verify OK under `sha256sum -c` against the re-downloaded copies"
+  }
+ },
+ "released_after_verification": {
+  "what": [
+   {
+    "path": "/var/tmp/work/kld9/qwen38-k6parity",
+    "tree_bytes": 23059333816,
+    "bytes_on_disk_including_directory_entries": 23059337912,
+    "files": 22,
+    "now_at": "malaiwah/Qwen3.8-27B-EXL3-K6-parity@a34ebcea909e43b3eb5b66b43782d9a509bda14b",
+    "deleted_utc": "2026-08-16T18:27:33Z",
+    "deleted_after": "all 22 files re-downloaded and re-hashed (--deep --spot all), every digest compared against build.tree, and the card published and read back byte-identical"
+   }
+  ],
+  "not_released": {
+   "/var/tmp/work/kld9/convert-k6parity.log": "kept on the box and now also published at parity/convert-k6parity.log; the box is being decommissioned, so the Hub copy is the surviving one",
+   "/var/tmp/work/kld9/build_k6parity.sh": "same, published at parity/build_k6parity.sh",
+   "the 512-context hidden-state capture": "already released by the measurement chain after replay, before this handover; ~6 min of GPU to recapture while a checkpoint exists"
+  },
+  "disk": {
+   "filesystem": "/ (overlay), shared with other agents on this box",
+   "avail_bytes_before_both_deletions": 101564399616,
+   "avail_bytes_after_both_deletions": 138359382016,
+   "avail_delta_bytes": 36794982400,
+   "the_two_trees_accounted_for_bytes": 36794869036,
+   "note": "the two deletions ran back to back, so the df delta covers both trees; it exceeds their summed on-disk size by 113,364 B because other agents were writing to the same filesystem at the same time. The per-artifact figures above are the trees' own bytes, which is what this receipt claims.",
+   "this_artifact_bytes_on_disk": 23059337912
+  }
+ },
+ "what_verification_means_here": {
+  "remote-sha256-lfs-oid": "the Hub's own LFS object id is a sha256 over the stored content, compared against the local sha256. End-to-end on the full bytes without re-downloading them.",
+  "remote-git-blob-id": "sha1 over 'blob <len>\\0' + content, for files the Hub does not put in LFS.",
+  "served-sha256-readback": "the file was re-downloaded from the CDN and re-hashed: a claim about what the Hub actually serves, not only about metadata it computed.",
+  "served-sha256-readback-lfs-spot": "the same, for LFS files. Both uploads ran with --spot all, so this covers EVERY LFS file rather than a sample: 4 of 4 safetensors-class files for K6-parity and 3 of 3 for S16-V. Nothing in either tree was released on metadata alone.",
+  "digests_vs_build_receipt": "each verified digest was additionally compared against build.tree of the measurement receipt, which was written from the local tree before anything was uploaded. The upload is checked against the record, not against itself.",
+  "problems": "any missing file, size disagreement or digest disagreement exits non-zero and prints no delete command. Both uploads reported an empty problem list."
+ },
+ "gpu_used": "none. Publishing, verification, card rendering and deletion are CPU and network only; the rental card was handed to another agent's benchmark before this work started and was not touched.",
+ "hardware_of_the_artifact": "1x RTX PRO 6000 Blackwell Server Edition, SM120, driver 595.58.03, rental box. The recompute cost above is that card's time and is not comparable to any other card.",
+ "content_sha256_recipe": "sha256 over json.dumps(this document without content_sha256, sort_keys=True), the same recipe receipts/k6-parity-kld.json and receipts/error-driven-publication.json use",
+ "content_sha256": "b6d3a7cb72e6b6ec8c460033f07432776ebee6ed1205e6c9faa77c1a2e5ef2db"
+}
