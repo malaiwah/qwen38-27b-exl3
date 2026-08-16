@@ -299,7 +299,22 @@ nondeterministic (the sibling experiment: 97.6 % of modules differ, fidelity ind
 re-quant would sever every citation and buy nothing measurable. K6-parity exists as the 6-bit SKU.
 Pre-flight is config-only: graph decode ON, native window, the §4 recipe.
 
-**Campaign image `vllm:gg-r34-tb21-sr1` (build in progress, receipt `tb21-image-sr1.json`):** FROM the
+**Campaign image built and loaded 2026-08-16.** The image is `vllm:gg-r34-tb21-sr1` (manifest-list
+digest `sha256:237a5025…`, identical on the build host and the 1x endpoint after save/load; receipt
+`receipts/tb21-image-sr1.json`). It is the promoted apc release unit (base identity proven by the
+runtime-invariant diff_id chain `886dbafc…`, plus an in-build byte gate on six load-bearing modules) with
+three audited fail-closed patch layers: the PR #397 scratch-arena overlay (+6.7 % KV), the PR #398
+FlashInfer decode-shape keying the V2 arm requires, and a hand-port of
+[vllm-project/vllm#52530](https://github.com/vllm-project/vllm/pull/52530) (admission gate + pool-bound
+length cap; the port's one adaptation is stated in the receipt). Each layer asserts its patch sha, the
+post-patch file sha, a sentinel symbol, and recompiles under the image's own python, so a wrong base or
+drifted patch cannot produce an image. LMCache is untouched and disabled by default - the pinned wheel's
+698 RECORD hashes are verified intact in-build - and stays out until LMCacheFix's patchset passes CPU
+gates and the 4-arm GPU ladder. Canonical artifact:
+`ubuntu@151.185.34.98:~/images/gg-r34-tb21-sr1.tar.zst`, sha256 `1e5711f4…`; sr1 is already docker-loaded
+and sentinel-verified on the endpoint (`vllm --help` OK under `--gpus all`). **The image is NOT
+GPU-qualified: the §6 fidelity gate must pass on sr1 before any scored pass.** Registry (ghcr.io vs
+docker.io, needs an owner token) is open; until then the driver tar is canonical. FROM the
 promoted base **by digest**, plus audited patch layers, each sha-pinned with an in-image sentinel that
 fails the build if absent: scratch arena (PR #397), the V2 FlashInfer decode-shape fix (PR #398 @
 `5723e072e`), a port of the admission-livelock fix (vllm-project/vllm#52530 @ `479413adc`), and — **only
