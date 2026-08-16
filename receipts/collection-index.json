@@ -11,7 +11,9 @@
     },
     "shard_map_sha256": "sha256 of json.dumps({\"index_sha256\": <index digest>, \"shard_sha256\": <shard map>}, sort_keys=True, separators=(\",\", \":\")).encode()",
     "self_digest": "content_sha256 is canonical_sha256 of this document with generated_utc, generator, content_sha256 and content_sha256_excludes removed; canonical means json.dumps(..., sort_keys=True, separators=(\",\", \":\"))",
-    "row_digests": "canonical_sha256 of each row object, keyed by row id"
+    "row_digests": "canonical_sha256 of each row object, keyed by row id",
+    "qualifications_and_verdicts": "receipts that qualify hardware or decide a VRAM class rather than publish a checkpoint. They are kept out of `releases` because they name no artifact and carry no shard map or fidelity report, but they are held to the same sourcing rule, and two cross-receipt checks fail generation: the measured affine KV law must reproduce the per-request requirements its own receipt reports, and every context window the class verdict publishes must cost what that law says it costs",
+    "qualification_digests": "canonical_sha256 of each non-release row, keyed by id"
   },
   "releases": [
     {
@@ -507,7 +509,7 @@
         },
         "model_card": {
           "path": "MODEL_CARD-K4.md",
-          "sha256": "229f6716b495e07821910a4bdcdb1a492764978af8c1705f34c38509e1c40ef4"
+          "sha256": "c7a96a9230c111de5c0b58caeaeb1b71a44181352c052dfc8f37e1316ddb932c"
         }
       }
     },
@@ -1142,7 +1144,7 @@
         ],
         "model_card": {
           "path": "MODEL_CARD-K5K6.md",
-          "sha256": "59037b7583e9da7873539f7d736dd7344478166f494712834b8736f66e624ec0"
+          "sha256": "f002019f7e9ac088efcebff5b0425229c609fc2c4809942b7bca02f5357e5d7f"
         }
       }
     },
@@ -1864,7 +1866,7 @@
         ],
         "model_card": {
           "path": "MODEL_CARD-K5K6-hydrated.md",
-          "sha256": "264d838d7f2fef99be8e12c1166e80273f531f94419622efd940c438cd30fc5c"
+          "sha256": "d8717ac2b069fc75ebe040893f34d0c96d111c2170a99e09d5ff9f618fc9228a"
         }
       }
     },
@@ -2767,16 +2769,16 @@
         },
         "model_card": {
           "path": "MODEL_CARD-K5K6-context.md",
-          "sha256": "8d25801490ff0269f2936b16b1b786441901975fdcdfba29e4836803d74cbe14"
+          "sha256": "8ed2d3aa69fda74f89cb7fbd9c57e5e393cb953d3fb4dec5bdce5eebd97bb36b"
         }
       }
     }
   ],
   "row_digests": {
-    "k4": "4aff8cbf597a9181c2ca110cbd4ab5eda9a36d0f7d53ba3bd05e69451322eb1c",
-    "k5k6": "b7f5325f2d23ad398ab71030466bfb73883b28e1071773646fe429e15a7a9d59",
-    "hydrated": "3bebceefd8eb35b0f7964074140f9ffe50ef57123cde081d20b2c19356e4ecf1",
-    "context": "cb0c599ca0435d7a87e84abffbe70760f72a0c2b4c7db66073fcb67fbb43a088"
+    "k4": "c4739fb47ec9c0fedbbd650013d7329e134ee74381ec1cc8d4d983faa7dfa5ad",
+    "k5k6": "2adb7d7a1920551abda7893c900a4224f02df84a74af0bdb3f89845b8270deb0",
+    "hydrated": "602cc8fa079e80c6e4fd81af7b73fe6b251eda74b362e5bcbda84160e1366fb1",
+    "context": "307a32afa0c56a4a424f7dc48204789a1542f60c6180422ab705214bbbfe32ff"
   },
   "known_divergences": [
     {
@@ -2808,11 +2810,274 @@
       "note": "no row's fidelity numbers come from this suite; ladder results will be separate receipts"
     }
   ],
+  "qualifications_and_verdicts": [
+    {
+      "id": "qualification-5090-context",
+      "kind": "hardware qualification",
+      "label": "seven-gate qualification of the published -context edition on a physical RTX 5090, the measurement every VRAM-class arithmetic in docs/34 is re-derived on",
+      "receipt": {
+        "path": "receipts/qualification-5090-context.json",
+        "sha256": "113194d68e92d551dd3af4f8bfbb21d35c9248476eceb2a6016504b558080f49",
+        "schema": "qwen38-qualification-5090-context/1",
+        "schema_not_verified": null
+      },
+      "board": {
+        "model": "NVIDIA GeForce RTX 5090",
+        "uuid": "GPU-506a575d-01d7-b12e-9a0a-c1ab5f38ae0a",
+        "physical_card": true,
+        "memory_total_mib": 32607,
+        "usable_gib_reported_by_vllm": 31.4,
+        "source": {
+          "path": "receipts/qualification-5090-context.json",
+          "sha256": "113194d68e92d551dd3af4f8bfbb21d35c9248476eceb2a6016504b558080f49",
+          "pointers": {
+            "model": "/identity/gpu/model",
+            "uuid": "/identity/gpu/uuid",
+            "physical_card": "/identity/gpu/physical_card",
+            "memory_total_mib": "/identity/gpu/memory_total_mib",
+            "usable_gib_reported_by_vllm": "/identity/gpu/usable_gib_reported_by_vllm"
+          }
+        }
+      },
+      "outcome": {
+        "all_gates_pass": true,
+        "decisions": {
+          "gate1_startup_native_allocation": "PASS",
+          "gate2_long_needle_exact": "PASS",
+          "gate3_combined_long_text_and_7mp_image": "PASS",
+          "gate4_image_suite_24_of_30": "PASS",
+          "gate5_three_warmed_decode_runs": "PASS",
+          "gate6_second_long_request_after_release": "PASS",
+          "gate7_receipt_identity_complete": "PASS"
+        },
+        "qualified_at": "gpu_memory_utilization 0.955 with PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True",
+        "not_qualified_at": "the published card value gpu_memory_utilization 0.97, which starts and serves text but cannot serve the combined long-text plus 7 MP image request",
+        "source": {
+          "path": "receipts/qualification-5090-context.json",
+          "sha256": "113194d68e92d551dd3af4f8bfbb21d35c9248476eceb2a6016504b558080f49",
+          "pointers": {
+            "all_gates_pass": "/verdict/all_gates_pass",
+            "decisions": "/verdict/decisions",
+            "qualified_at": "/verdict/qualified_at",
+            "not_qualified_at": "/verdict/not_qualified_at"
+          }
+        }
+      },
+      "why_not_a_release_row": "it qualifies a serving configuration of an already-published checkpoint; the checkpoint's own row is in `releases`"
+    },
+    {
+      "id": "qualification-24gib-capped",
+      "kind": "proxy qualification",
+      "label": "the same seven gates at a capped 24 GiB-class engine budget, with a second arm whose card is ballasted down to a 24 GiB board's free memory; the source of the measured KV law",
+      "receipt": {
+        "path": "receipts/qualification-24gib-capped.json",
+        "sha256": "d336df53786f1b0aa7efa63a527871f19b7e80c10e0b6e3e2375ce78d38eb4c1",
+        "schema": "qwen38-qualification-24gib-capped/1",
+        "schema_not_verified": null
+      },
+      "physical_board_gate": {
+        "state": "open",
+        "claim_scope": "NO 24 GB BOARD WAS USED. This receipt caps what the engine may take on the physical RTX 5090 that receipts/qualification-5090-context.json qualified, and runs that qualification's own gates 1-7 at the capped budget. It is a proxy for a 24 GiB board and must never be cited as a qualification of one. The physical-board gate that docs/34 requires before any 24 GB fit claim REMAINS OPEN, and `physical_board_gate` in this receipt says so on purpose. Nothing here licenses a fit claim, a 24 GB row in a model card, or a 24 GB context length quoted as a capability.",
+        "what_this_does_not_say": "it does not say a 24 GB board serves 32,768 tokens. It says an RTX 5090 restricted to a 24 GiB-class budget and a 23.55 GiB-class card does. The CUDA context (0.496 GiB here) and driver framebuffer reserve (458 MiB here) are properties of the physical device, and at 68 MiB of measured margin on the vision gate either one moving by a tenth of a gigabyte flips the result.",
+        "source": {
+          "path": "receipts/qualification-24gib-capped.json",
+          "sha256": "d336df53786f1b0aa7efa63a527871f19b7e80c10e0b6e3e2375ce78d38eb4c1",
+          "pointers": {
+            "state": "/physical_board_gate",
+            "claim_scope": "/claim_scope",
+            "what_this_does_not_say": "/verdict/what_this_does_not_say"
+          }
+        }
+      },
+      "gates": {
+        "gates_1_to_7": {
+          "budget_arm_mtp3_32768": "7/7 PASS",
+          "budget_arm_mtpoff_45056": "7/7 PASS",
+          "board_arm_mtp3_32768": "7/7 PASS, on the edge (see kv_headroom and the vision peak)",
+          "board_arm_mtpoff_45056": "7/7 PASS with margin"
+        },
+        "source": {
+          "path": "receipts/qualification-24gib-capped.json",
+          "sha256": "d336df53786f1b0aa7efa63a527871f19b7e80c10e0b6e3e2375ce78d38eb4c1",
+          "pointers": {
+            "gates_1_to_7": "/verdict/gates_1_to_7"
+          }
+        }
+      },
+      "measured_kv_law": {
+        "a_mtp3_bytes_per_token": 34816.0,
+        "m_mtp3_gib": 0.63,
+        "a_mtpoff_bytes_per_token": 32931.8,
+        "m_mtpoff_gib": 0.14,
+        "source": {
+          "path": "receipts/qualification-24gib-capped.json",
+          "sha256": "d336df53786f1b0aa7efa63a527871f19b7e80c10e0b6e3e2375ce78d38eb4c1",
+          "pointers": {
+            "a_mtp3_bytes_per_token": "/kv_law_measured/law/mtp3/a_bytes_per_token",
+            "m_mtp3_gib": "/kv_law_measured/law/mtp3/M_gib",
+            "a_mtpoff_bytes_per_token": "/kv_law_measured/law/mtpoff/a_bytes_per_token",
+            "m_mtpoff_gib": "/kv_law_measured/law/mtpoff/M_gib"
+          }
+        }
+      },
+      "board_arm_mtp3": {
+        "pool_gib": 1.79,
+        "kv_tokens_allocated": 33760,
+        "kv_needed_for_one_request_gib": 1.6925,
+        "headroom_pct": 5.8,
+        "source": {
+          "path": "receipts/qualification-24gib-capped.json",
+          "sha256": "d336df53786f1b0aa7efa63a527871f19b7e80c10e0b6e3e2375ce78d38eb4c1",
+          "pointers": {
+            "pool_gib": "/published_prediction_outcomes/prediction_1/board_arm_measured/pool_gib",
+            "kv_tokens_allocated": "/published_prediction_outcomes/prediction_1/board_arm_measured/kv_tokens_allocated",
+            "kv_needed_for_one_request_gib": "/published_prediction_outcomes/prediction_1/board_arm_measured/kv_needed_for_one_request_gib",
+            "headroom_pct": "/published_prediction_outcomes/prediction_1/board_arm_measured/headroom_pct"
+          }
+        }
+      },
+      "board_arm_mtp_off": {
+        "pool_gib": 2.6,
+        "kv_tokens_allocated": 76032,
+        "kv_needed_for_one_request_gib": 1.5219,
+        "headroom_pct": 70.8,
+        "source": {
+          "path": "receipts/qualification-24gib-capped.json",
+          "sha256": "d336df53786f1b0aa7efa63a527871f19b7e80c10e0b6e3e2375ce78d38eb4c1",
+          "pointers": {
+            "pool_gib": "/published_prediction_outcomes/prediction_2/board_arm_measured/pool_gib",
+            "kv_tokens_allocated": "/published_prediction_outcomes/prediction_2/board_arm_measured/kv_tokens_allocated",
+            "kv_needed_for_one_request_gib": "/published_prediction_outcomes/prediction_2/board_arm_measured/kv_needed_for_one_request_gib",
+            "headroom_pct": "/published_prediction_outcomes/prediction_2/board_arm_measured/headroom_pct"
+          }
+        }
+      },
+      "law_reproduces_its_own_reported_requirements": true,
+      "why_not_a_release_row": "no artifact, no shard map and no fidelity report: it measures how much context an existing checkpoint can be served with, on emulated hardware"
+    },
+    {
+      "id": "vram-class-verdict",
+      "kind": "class decision",
+      "label": "go/no-go for the 24 GB and 16 GB classes, with the arithmetic and the flip conditions",
+      "receipt": {
+        "path": "receipts/vram-class-verdict.json",
+        "sha256": "b360f4830254b83f911b1fa49f042da1ae3f48cd2b19e50466f7bb739f815005",
+        "schema": "qwen38-vram-class-verdict/1",
+        "schema_not_verified": null
+      },
+      "decisions": {
+        "class_24_gib": "GO",
+        "class_16_gib": "NO-GO as a SKU. Publish as a design study.",
+        "source": {
+          "path": "receipts/vram-class-verdict.json",
+          "sha256": "b360f4830254b83f911b1fa49f042da1ae3f48cd2b19e50466f7bb739f815005",
+          "pointers": {
+            "class_24_gib": "/class_24_gib/verdict",
+            "class_16_gib": "/class_16_gib/verdict"
+          }
+        }
+      },
+      "published_24_gib_windows": {
+        "mtp_3_fp8": 24576,
+        "mtp_3_requirement_gib": 1.4269,
+        "mtp_off_fp8": 45056,
+        "mtp_off_requirement_gib": 1.522,
+        "source": {
+          "path": "receipts/vram-class-verdict.json",
+          "sha256": "b360f4830254b83f911b1fa49f042da1ae3f48cd2b19e50466f7bb739f815005",
+          "pointers": {
+            "mtp_3_fp8": "/class_24_gib/context/mtp_3_fp8/published_recommendation",
+            "mtp_3_requirement_gib": "/class_24_gib/context/mtp_3_fp8/requirement_gib",
+            "mtp_off_fp8": "/class_24_gib/context/mtp_off_fp8/published_recommendation",
+            "mtp_off_requirement_gib": "/class_24_gib/context/mtp_off_fp8/requirement_gib"
+          }
+        }
+      },
+      "self_digest": {
+        "content_sha256": "ed5283aa2eb0648f57b8c78fa30743dbfa52236247bedf7fae9c9ab48de3900a",
+        "recomputes": true,
+        "source": {
+          "path": "receipts/vram-class-verdict.json",
+          "sha256": "b360f4830254b83f911b1fa49f042da1ae3f48cd2b19e50466f7bb739f815005",
+          "pointers": {
+            "content_sha256": "/content_sha256",
+            "content_sha256_excludes": "/content_sha256_excludes"
+          }
+        }
+      },
+      "amendments": {
+        "count": [
+          {
+            "id": "A1",
+            "applied_utc": "2026-08-16T10:12:00Z",
+            "by": "TwentyFourGigPublish",
+            "amends_content_sha256": "911df9ab6b7ffb5c9b43d1b7f51607ea7eff395067f726a69048547beebe969c",
+            "nature": "additive: no pre-existing key or value in this file was altered, removed or renumbered by this amendment. It records why the 24 GB-class figures now in the body are what they are, so the decision is auditable separately from the values.",
+            "change_1_the_published_24_gb_mtp3_window": {
+              "from": 32768,
+              "to": 24576,
+              "intermediate_values_that_were_also_published": [
+                20480,
+                28672,
+                32768
+              ],
+              "reason": "at 32,768 the board-faithful proxy arm allocated 33,760 KV tokens for a 32,768 window - 1.03x concurrency and 5.8 % headroom against this project's own >= 15 % rule, which every other published length in docs/34 obeys. Worse, the figure fits or fails depending on which of our two resident-weight measurements applies: at 18.19 GiB resident the pool is 1.79-1.80 GiB and the engine supports ~35,774 tokens, but at the 18.41 GiB this receipt deliberately prefers the pool is 1.58 GiB and 32,768 does not fit at all. A published window may not sit between two of our own measurements of the same quantity.",
+              "why_24576": "it needs 1.4269 GiB. At the measured 1.79 GiB pool that is 25.4 % headroom and it is the largest 4,096-multiple clearing the 15 % rule there; at the conservative 1.58 GiB pool it still fits, at 10.7 %. It is the only 4,096-multiple robust across BOTH measured resident figures - 28,672 collapses to 1.3 % at the conservative pool and 32,768 fails outright.",
+              "honest_limit": "24,576 clears the 15 % rule at the measured pool, not at the conservative one, where the rule alone would give 20,480. A board loading at 18.41 GiB should serve 20,480 if it wants the full margin. This is stated in docs/34 5.3.1 rather than buried.",
+              "recomputed_from": "receipts/qualification-24gib-capped.json kv_law_measured.law, not copied from any summary"
+            },
+            "change_2_the_24_gb_mtp_off_window": {
+              "value": 45056,
+              "status": "unchanged, and deliberately not raised",
+              "reason": "the same recomputation does not contradict it. 45,056 needs 1.5219 GiB against the measured 2.60 GiB pool, 70.8 % headroom, and it survives the conservative resident figure at 56.5 %. It is also the window the proxy actually started and passed 7/7 gates at, allocating 76,032 tokens at 1.69x concurrency. The >= 15 % envelope reaches 65,536 and the engine ceiling is 80,208; both are named in the body as predictions and neither has been booted."
+            },
+            "change_3_the_mtp_off_overhead_disagreement_and_how_it_was_settled": {
+              "disagreement": "SixteenGigVerdict derived the MTP-off rows from non-KV overheads of 2.05 GiB, which yields a published window of 57,344. TwentyFourGigPublish derived them from 1.95 GiB.",
+              "resolution": "1.95 GiB is correct. The disputed 0.10 GiB is the draft model's activation: receipts/qualification-24gib-capped.json memory_component_comparison.table gives MTP-off peak_activation 1.68 against MTP-3's 1.78, with non_torch 0.27 and a CUDA-graph pool of 0.00, so 1.68 + 0.27 + 0.00 = 1.95.",
+              "the_arithmetic_that_settled_it": "22.49 - 1.95 - 17.94 (measured MTP-off resident) = 2.6002 GiB, which reproduces the board arm's independently measured 2.60 GiB MTP-off pool to the hundredth. The 2.05 figure gives 2.50 GiB and misses it by 0.10. A component estimate that cannot reproduce a measured pool is falsified by that pool.",
+              "accepted_by": "SixteenGigVerdict, who verified it independently; and Main, who ruled that a started window is published in preference to a larger derived one, with the envelope and ceiling named beside it."
+            },
+            "change_4_the_15_percent_rule_is_on_memory_not_tokens": {
+              "what_was_wrong": "an earlier revision applied the rule as L <= L_max/1.15, the token form. docs/34 5.3 defines it on memory: a*L + M <= pool/1.15, i.e. L <= (pool/1.15 - M)/a.",
+              "why_it_matters_now": "the two forms are equivalent only when M = 0, which is precisely the assumption the refusal measurements retired. With M > 0 the token form over-publishes.",
+              "worked_case": "at the measured 2.6002 GiB MTP-off pool the token form gives 69,632, which needs 2.2756 GiB against a 2.2610 GiB cap and FAILS the rule; the memory form gives 65,536, needing 2.1500 GiB for 20.9 %. At the conservative 2.382 GiB pool both forms give 61,440, which is why the error was invisible there.",
+              "blast_radius": "also corrected the 16 GB S16-V MTP-off row, 32,768 -> 28,672 (32,768 needs 1.1450 GiB against a 1.1313 GiB cap, 13.4 %). S16-V-long's 36,864 is unaffected; both forms agree there."
+            },
+            "what_this_amendment_does_not_do": "it does not close the physical-board gate, which remains open, and it does not turn any prediction into a measurement. The 24 GB-class windows are validated on a capped-budget, ballasted proxy on an RTX 5090. No 24 GB board has been started.",
+            "evidence": {
+              "receipts/qualification-24gib-capped.json": "d336df53786f1b0aa7efa63a527871f19b7e80c10e0b6e3e2375ce78d38eb4c1",
+              "physical_board_gate": "open",
+              "published_as": "docs/34 Verdict, 4.1, 4.2, 5.3, 5.3.1, 10 and the 11 card block"
+            }
+          }
+        ],
+        "latest_id": "A1",
+        "latest_amends": "911df9ab6b7ffb5c9b43d1b7f51607ea7eff395067f726a69048547beebe969c",
+        "latest_by": "TwentyFourGigPublish",
+        "source": {
+          "path": "receipts/vram-class-verdict.json",
+          "sha256": "b360f4830254b83f911b1fa49f042da1ae3f48cd2b19e50466f7bb739f815005",
+          "pointers": {
+            "count": "/amendments",
+            "latest_id": "/amendments/0/id",
+            "latest_amends": "/amendments/0/amends_content_sha256",
+            "latest_by": "/amendments/0/by"
+          }
+        }
+      },
+      "why_not_a_release_row": "it decides classes, it does not publish a checkpoint; the 24 GB class is served by an artifact that already has a `releases` row"
+    }
+  ],
+  "qualification_digests": {
+    "qualification-5090-context": "d96d9a5c5431ef75403298e696b2573d317d588cf408c79a35b0c479331499be",
+    "qualification-24gib-capped": "0c80bfcf79eb4b7da11c760cca428c6ccb77b34a3031887d9d782f6f96f9f9af",
+    "vram-class-verdict": "37647ab01cca2dc3687da81eb3c1840d4c61d0f2dc5dccbe40aaf964a827dddf"
+  },
   "receipt_digests": {
-    "MODEL_CARD-K4.md": "229f6716b495e07821910a4bdcdb1a492764978af8c1705f34c38509e1c40ef4",
-    "MODEL_CARD-K5K6-context.md": "8d25801490ff0269f2936b16b1b786441901975fdcdfba29e4836803d74cbe14",
-    "MODEL_CARD-K5K6-hydrated.md": "264d838d7f2fef99be8e12c1166e80273f531f94419622efd940c438cd30fc5c",
-    "MODEL_CARD-K5K6.md": "59037b7583e9da7873539f7d736dd7344478166f494712834b8736f66e624ec0",
+    "MODEL_CARD-K4.md": "c7a96a9230c111de5c0b58caeaeb1b71a44181352c052dfc8f37e1316ddb932c",
+    "MODEL_CARD-K5K6-context.md": "8ed2d3aa69fda74f89cb7fbd9c57e5e393cb953d3fb4dec5bdce5eebd97bb36b",
+    "MODEL_CARD-K5K6-hydrated.md": "d8717ac2b069fc75ebe040893f34d0c96d111c2170a99e09d5ff9f618fc9228a",
+    "MODEL_CARD-K5K6.md": "f002019f7e9ac088efcebff5b0425229c609fc2c4809942b7bca02f5357e5d7f",
     "receipts/analysis-v3-contamination-corrected.json": "026fc453787eccef15879f29266489ba9ec04bbff59ab7e35827e92394480417",
     "receipts/context-build-receipt.json": "0bab1c3549760adc65899bb6f7f59ae79bb000d51f9c8cd52b8e2da8b64c1d09",
     "receipts/context-quantization-manifest.json": "eb1dd3acfdb98059974addb61c05d7a25c5cf09b76ffde473a6d4ef5e798dc9d",
@@ -2824,6 +3089,8 @@
     "receipts/kld5-suite-manifest.json": "c79dfad3767ca5b3015129077f20dbb9282a2e51ca8bca9ed09be8c7a9c73019",
     "receipts/native-mtp-8mp-amendment.json": "b7570d9fb7c5d6cd497b6de2b32a7a57c91694f84e6b778fee7fb19e015c5537",
     "receipts/native-mtp-8mp-combined-server.log": "cb1aa32a7e694328962b494a626ec6122533426688a1cb7350f479d9fadd83fb",
+    "receipts/qualification-24gib-capped.json": "d336df53786f1b0aa7efa63a527871f19b7e80c10e0b6e3e2375ce78d38eb4c1",
+    "receipts/qualification-5090-context.json": "113194d68e92d551dd3af4f8bfbb21d35c9248476eceb2a6016504b558080f49",
     "receipts/qualification-v4-contamination-corrected.json": "17148ed02713f426dcb4b7b69c8072a5eb8a9abd49bcbfcea585ca8e5c2f5ab3",
     "receipts/release-evidence-context.json": "6d68e11761b9376c90db5fb1f0f89075cf255af63a9daa6833a5e9da299ff35f",
     "receipts/release-evidence-hydrated.json": "0602ce8b2ba9e95b84adc5933ab1138faec605a6c0b12af935bbcd91d94d6aff",
@@ -2842,18 +3109,19 @@
     "receipts/v3-report-k4-analysis.json": "6355512fa76e75d659b044f581f9cf67c48210f034877ed56025791703f2c7bc",
     "receipts/v3-report-v2-analysis.json": "0b010c62a12e44e146cf6c2b836002f0da65ef00846929172b5ec43fe8e46ed6",
     "receipts/v4-suite-manifest.json": "f0d045930b7e7fd063f9525483d030ad4525623f7bb854815f47489fd7a96e5a",
+    "receipts/vram-class-verdict.json": "b360f4830254b83f911b1fa49f042da1ae3f48cd2b19e50466f7bb739f815005",
     "tools/vllm-exl3-prefill-dispatch.py": "2df9d0799fd323798cead1edb773cab556c94798eec263ee03ded35408c6e4ee",
     "tools/vllm-qwen3_5-embed-quant-config.py": "04d2bd587b37142f4f55a8d00b9f8c907309490168cb7fcdfde450531df2c9e7",
     "tools/vllm-qwen3_5_mtp-embed-quant-config.py": "0090dc131f0eaf439b24d50baf4def9f10b052864c76e695053d64f66b274bab"
   },
-  "generated_utc": "2026-08-15T17:10:54Z",
+  "generated_utc": "2026-08-16T05:34:16Z",
   "generator": {
     "tool": "tools/collection_index.py",
-    "tool_sha256": "e847d9c4769c55800185482ddd250a04bbdf7a9ecf325b259e26a2840bd77a9c",
-    "repo_commit": "d79ed870fc583ce7caeef921eda157a0c9e8f4d2",
+    "tool_sha256": "9ef07813bf547737ac8a16b35755180f798cbc5a57a256a1e3d74d746a7ab3de",
+    "repo_commit": "a9d805e3530eb6ded8e044954119796a7a7fd1db",
     "worktree_dirty": true
   },
-  "content_sha256": "330d6f6a14320838da56b27bc5f346001a1511ca9c275b0de082eac1eed0d335",
+  "content_sha256": "c3298afc2a91d6ab06472a3c0ceb5d4e636ca0e1643299bb9fa2bc882283a92b",
   "content_sha256_excludes": [
     "generated_utc",
     "generator",

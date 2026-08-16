@@ -1,7 +1,7 @@
 # VRAM-class profiles: a 24 GB mid-profile and a 16 GB profile, by arithmetic
 
 This is the *design* half of [29](29-plan-and-loose-ends.md) F3; the **Verdict** section below
-carries the decision it now supports, and F3 itself is down to two open items.
+carries the decision it now supports, and F3 itself is down to three open items.
 Nothing here is a claim that a profile fits a card: every profile below ends in an acceptance
 test that must pass on the actual board class before the profile may be published, and every
 number is either traced to a receipt or labelled **[P]** for prediction with its formula shown.
@@ -18,37 +18,71 @@ the card model of §3 on the constants the **physical** RTX 5090 qualification m
 (`receipts/qualification-5090-context.json`: all seven gates pass at
 `--gpu-memory-utilization` **0.955**, engine budget 29.98 GiB of 31.4 GiB usable, 18.19 weight +
 1.78 activation + 0.27 non-torch + 0.45 CUDAGraph = 20.69 GiB, KV **9.28 GiB → 265,122 tokens**),
-not on the 0.97 utilisation §3 was written against. Several lengths below are re-derived and
-§5.3's 40,960 is retired outright; each is flagged where it appears and listed in the receipt's
-`supersedes` block.
+not on the 0.97 utilisation §3 was written against. §10 then *measured* the KV law at a capped
+24 GiB-class budget, which turns every bounded window below into a point value. Several lengths
+are re-derived and §5.3's 40,960 is retired outright; each is flagged where it appears and listed
+in the receipt's `supersedes` block.
 
 | class | decision | artifact | context | fidelity |
 |---|---|---|---|---|
-| **24 GB** | **GO** | the published `-context` edition, **no conversion** | **32,768 [P]** MTP-3 + fp8 KV; **45,056 [P]** MTP off | **0.003409, measured**, carried unchanged (`receipts/kld5-1M-tail-ctx.json`) |
-| **16 GB** | **NO-GO as a SKU — publish §6 as a design study** | none exists; every reachable point needs a sub-4-bit width | 12,288 [P] MTP off; 8,192 [P] MTP-3 | **none, and none obtainable from anything published** |
+| **24 GB** | **GO** | the published `-context` edition, **no conversion** | **24,576 [P]** MTP-3 + fp8 KV; **45,056 [P]** MTP off — predictions validated by the §10 capped-budget proxy, physical-board gate still **open** | **0.003409, measured**, carried unchanged (`receipts/kld5-1M-tail-ctx.json`) |
+| **16 GB** | **NO-GO as a SKU — publish §6 as a design study** | none exists; every reachable point needs a sub-4-bit width | **28,672 [P]** MTP off; **MTP-3 impossible at any window** | **none, and none obtainable from anything published** |
 
 **24 GB: go, because no new checkpoint is required.** The context edition's resident weights are
 *measured* at **18.41 GiB** (`receipts/native-mtp-8mp-amendment.json`, as run; the physical 5090
 logged 18.19 GiB for the same configuration and the verdict deliberately uses the larger figure).
 The card model gives `24 × 0.98125 = 23.55` free at startup, `× 0.955 = 22.49` engine budget and
-`− 2.50 = 19.99 GiB` for weights plus KV, so **KV available is 19.99 − 18.41 = 1.58 GiB [P]**. At
-the per-token cost derived from the measured pool — `(9.28 − 0.20) GiB ÷ 265,122 = 36,773.9
-B/token` — that is `T_max = (1.58 − 0.20)·2^30 ÷ 36,773.9 =` **40,293 tokens [P]**, published at
-**32,768** under §5.3's ≥15 % headroom rule (requirement 1.322 GiB against 1.580, 19.5 %). With
-MTP off, resident drops by the 0.252 GiB of draft weights and the rate falls to 32,927.6 B/token
-(§4 prints 32,929.0; recomputed from the 8.18 GiB and 266,743 tokens it cites it is 32,927.6, a
-0.004 % difference that changes no length): `T_max` **53,218 [P]**, published at **45,056**
-(15.8 %). Fidelity is the already-published
-0.003409 on shard 0 / 0.003509 over 10,480,640 positions, unchanged, because it is the same
-weights — the 24 GB class carries **no new fidelity risk at all**, which is the finding that makes
-it a go. What "go" licenses: publishing a 24 GB serving profile of an existing artifact with its
-length labelled a prediction, and running the qualification. It does **not** license a fit claim;
-"predicted 40,293 KV tokens" and "allocated 40,293 KV tokens" are still different sentences.
+`− 2.50 = 19.99 GiB` for weights plus KV, so **KV available is 19.99 − 18.41 = 1.58 GiB [P]**.
+§10's board arm then *measured* that pool at **1.79 GiB**, on a card ballasted down to a 24 GiB
+board's free memory, and pinned both terms of the KV law — so the window is a point value now, not
+a range: **24,576 [P]** with MTP-3. With MTP off the CUDA-graph pool vanishes along with the draft
+weights, so overheads drop to `1.68 + 0.27 + 0.00 = 1.95 GiB` and resident to 18.158, giving
+`22.49 − 1.95 − 18.158 = 2.38 GiB [P]` of KV and a published window of **45,056 [P]** — the length
+§10 actually started and passed.
+Fidelity is the already-published 0.003409 on shard 0 / 0.003509 over 10,480,640 positions,
+unchanged, because it is the same weights — the 24 GB class carries **no new fidelity risk at
+all**, which is the finding that makes it a go. What "go" licenses: publishing a 24 GB serving
+profile of an existing artifact with its window labelled a bounded prediction, and running the
+qualification. It does **not** license a fit claim; "predicted" and "allocated" are still
+different sentences.
 
-**§5.3's 40,960 is retired.** At the qualified 0.955 utilisation, 40,960 tokens needs
-`0.20 + 40,960 × 36,773.9 ÷ 2^30 = 1.603 GiB` against 1.580 GiB available: it does not lose its
-margin, it does not fit. That is the sharpest lesson of the physical qualification, and it lands
-on the class arithmetic rather than on the shipped 32 GB profile.
+**§4's per-token KV model is retired, and two of the four lengths it produced move.** Reading the
+pinned engine's own sizing code (`vllm/v1/core/kv_cache_utils.py`) shows that
+`GPU KV cache size: N tokens` is `int(max_concurrency × max_model_len)` with
+`max_concurrency = num_blocks / cdiv(max_memory_usage_per_request, memory_per_block)` — a
+per-request quantity scaled by the window, **not** pool ÷ per-token cost. So the pool one request
+needs is affine in the window, and §10.2 pins both of its terms from four startup refusals rather
+than bounding them:
+
+```
+kv_needed(L) = a·L + M            reported tokens = int(L · pool / kv_needed(L))
+MTP-3 :  a = 34,816 B/token (= 32,768 × 17/16 exactly)   M = 0.63 GiB    [measured]
+MTP off: a = 32,932 B/token (= 1.005 × the fp8 floor)    M = 0.14 GiB    [measured]
+```
+
+This is no longer the one-parameter family an earlier revision of this section carried: two
+windows per configuration determine `a` and `M` with no slack left, and inverting the law
+reproduces the engine's own printed "estimated maximum model length" (§10.2). The lengths below
+stay **[P]** anyway, because the *law* is measured but the *pool* is still predicted from §3's
+card model — and the two resident-weight figures this project has measured put that pool anywhere
+between 1.58 and 1.80 GiB.
+
+| row | was | now | why |
+|---|---|---|---|
+| 24 GB, MTP-3 | 32,768 | **24,576** | 32,768 needs 1.6925 GiB. At the measured 1.79 GiB pool that clears 5.8 %, against the **≥15 %** rule every other published length here obeys; at the conservative 18.41 GiB resident the pool is 1.58 GiB and it does not fit at all. 24,576 needs 1.4269 GiB — 25.4 % headroom at the measured pool, and it still fits at the conservative one |
+| 24 GB, MTP off | 45,056 | **45,056**, kept | the board arm ran this window and allocated 76,032 tokens, 1.69× concurrency, 70.8 % headroom. The engine supports 80,208 at that pool and the 15 % rule would allow 65,536, so 45,056 is deliberately conservative — but it is a length we have *started*, and a raise would be a prediction |
+| 16 GB, MTP-3 | 8,192 | **withdrawn** | the measured fixed MTP-3 term, 0.63 GiB, exceeds the whole 0.55 GiB pool on its own, before a single token and before the 0.45 GiB of CUDA-graph pool MTP also costs |
+| 16 GB, MTP off | 12,288 | **28,672** | the retired 0.20 GiB over-charge is replaced by a measured 0.14 GiB fixed term, and MTP off also frees the 0.45 GiB CUDA-graph pool and 0.10 GiB of draft activation. On the 16 GB owner's pool, `14.99 − 1.95 − 11.742 = 1.298 GiB`, `L_max` is 37,756 and the ≥15 % rule gives **28,672**, needing 1.0194 GiB for 27.3 % headroom. 32,768 needs 1.1450 GiB and clears only 13.4 %, so it misses the rule by one 4,096 step — the rule is on memory (`a·L + M ≤ pool/1.15`), not on tokens (`L ≤ L_max/1.15`), and the two diverge now that `M ≠ 0`. More than twice §6.2's figure, and entirely unstarted |
+
+**§5.3's 40,960 is retired twice over.** At the qualified 0.955 utilisation it does not fit under
+the old model (1.603 GiB against 1.580), and under the measured law it needs **1.9581 GiB** against
+a pool of at most 1.80. The credit for spotting the window dependence — and for the observation
+that neither reported token count is a multiple of the 1,600-token attention block, which is what
+ruled out `num_blocks × block_size` — belongs to the 24 GiB proxy work, which then closed the open
+parameter exactly the way `receipts/vram-class-verdict.json` → `open_risks_to_this_verdict` said it
+would: any startup logging a second window pins `a` and `M`, and §10.2 logged four. Weights fit a
+24 GB board throughout, so the **class** verdict never depended on any of this — only the
+**window** did.
 
 **16 GB: no-go as a SKU.** The byte law says the cheapest multimodal build that keeps the MLP at
 4 bits is **13.58 GiB resident [P]** (payload 13.235 + 0.35 loader allowance) against a **12.70
@@ -56,10 +90,12 @@ GiB** budget — **0.88 GiB over before a single KV byte**, and 1.09 GiB over on
 0.955 utilisation and 2.50 GiB overheads are used instead (`13.58 − 12.49`), so today's result
 *hardens* the conclusion. Every remaining path is therefore sub-4-bit, and **no width below 4 bits
 has ever been measured for KLD in this family, at any role, on any suite.** The S16-V candidate is
-entirely predicted: **11.94 GiB resident [P]** (= 11.586 payload + 0.35), 16,384 tokens MTP-off
-[P] at §6.2's constants, **12,288 [P]** when re-derived at 0.955 (16,384 leaves only 6.5 %
-headroom there, below the rule §5.3 applies everywhere else), and 8,192 [P] with MTP-3 — and that
-8,192 itself clears the rule by only 14.4-15.1 %, i.e. it sits on the boundary. Its
+entirely predicted: **11.94 GiB resident [P]** (= 11.586 payload + 0.35) and **28,672 tokens [P]
+with MTP off** — more than twice §6.2's original figure, because the measured law charges MTP-off
+only a 0.14 GiB fixed term and turning MTP off also frees the CUDA-graph pool. Its MTP-3 row is not
+short, it is **gone**: the measured fixed per-request KV term is 0.63 GiB against a total pool of
+0.553 GiB, short by 0.077 GiB, so speculative decode does not fit at this class at any window, and
+S16-V-long's extra bit reaches only 764 tokens of it rather than rescuing it. Its
 fidelity is **unknown**: the nearest measured neighbour below the published set is K4 at 0.010604
 with a p99.9 of 0.5555, already the worst of the five candidates, and S16-V is one bit below it on
 each MLP projection, three on the linear-attention stack, two on full attention and two on the
@@ -205,55 +241,89 @@ per_token_floor = 2 (K and V) * 4 kv heads * 256 head_dim * 1 byte * 16 full_att
                 = 32,768 B/token = 32.0 KiB/token
 ```
 
-The measured datapoint is 9.31 GiB ÷ 266,612 tokens = **37,494.7 B/token**, which is 1.1442×
-the floor; the gap is 9.31 GiB − 266,612 × 32,768 B = **1.1736 GiB** of the pool that is not
-attention tensor bytes.
+### 4.1 What a pool actually costs: the measured affine law
 
-**Does that figure include the hybrid linear-attention state?** It includes whatever the engine
-placed in that pool, because the receipt reports one `available_kv_gib` and one
-`gpu_kv_cache_tokens` and itemizes neither. The evidence says the GDN state is *not* the
-residual:
-
-- the only sizing available for the GDN pool is external — 48 GDN layers × 48 heads × 128 × 128
-  at `mamba_ssm_dtype` plus a bf16 conv state, "153.9 MB at fp32, 78.4 MB at bf16" per slot,
-  quoted from SGLang in [docs/07](07-serving-recommendations.md) §5.6 — which at `max_num_seqs` 1
-  is ≤0.15 GiB, at most 13 % of the 1.1736 GiB residual;
-- the MTP-off run in `receipts/context-capacity-5090-budget.json` allocated 266,743 tokens from
-  8.18 GiB = 32,929 B/token, only **1.0049×** the floor. A 0.15 GiB GDN pool would be 1.8 % of
-  that 8.18 GiB and would have shown up. It did not, so vLLM is accounting the recurrent state
-  somewhere other than `available_kv_cache`.
-
-So the residual is dominated by MTP-3 — draft KV plus whatever hybrid page padding the
-speculative path forces — and the GDN state is unaccounted in our receipts. Handling: carry it
-as an **explicit 0.20 GiB reserve `H` outside the per-token rate**, and re-derive the per-token
-rate net of that reserve so the model still reproduces the measured allocation exactly at
-266,612 tokens. That makes the model conservative at every shorter context, which is precisely
-where both new profiles live — folding a fixed cost into a per-token multiplier would
-*under*-charge short contexts, the failure mode to avoid.
+The engine does not divide a pool by a per-token cost. `GPU KV cache size: N tokens` is
+`int(max_concurrency × max_model_len)` with
+`max_concurrency = num_blocks / cdiv(max_memory_usage_per_request, memory_per_block)`
+(`vllm/v1/core/kv_cache_utils.py` in the pinned r34 image), so the quantity that scales is the pool
+one **request** needs at the configured window — and that is affine in the window, not linear
+through the origin. §10.2 measured both of its terms by provoking four startup refusals, which
+print the requirement directly; two windows per configuration determine the pair with no slack:
 
 ```
-KV_bytes(T) = H + c_tok * T          H = 0.20 GiB
-c_tok(MTP-3, fp8) = (9.31 GiB - H) / 266,612 = 36,689.2 B/token          [derived from the measured pool]
-c_tok(no MTP, fp8) =  8.18 GiB      / 266,743 = 32,929.0 B/token          [derived, 1.0049x the floor]
-c_tok(4-bit KV)    = c_tok(fp8) * 16,384 / 32,768                          [P] pure halving, never measured
+kv_needed(L) = a·L + M          reported tokens = int(L · pool / kv_needed(L))
+                                capacity        L_max = (pool − M) / a
+
+            a (B/token)   as x the 32,768 B/token fp8 floor   M (GiB)
+MTP-3       34,816        1.0625 = 17/16, exactly             0.63
+MTP off     32,932        1.005                               0.14
 ```
 
-The two rates treat `H` asymmetrically on purpose. The MTP-3 rate is derived net of the reserve,
-because that pool has 1.1736 GiB of slack above the tensor floor to take it from. The MTP-off
-rate is taken gross, because subtracting 0.20 GiB from 8.18 GiB over 266,743 tokens would put it
-at 32,122 B/token — *below* the 32,768 floor, i.e. that run had no room for a separate reserve at
-all. Planning still adds `H` on top in both cases, so the MTP-off predictions carry 0.20 GiB of
-deliberate double-count.
+`a` for MTP-3 lands exactly on the engine's own "Add 3 padding layers, may waste at most 6.25 % KV
+cache memory" line. `a` for MTP off is 1.005× the tensor floor — the attention tensors and almost
+nothing else, which independently confirms this section's original argument that the residual over
+the floor is MTP-driven. Both are measured; both are `max_num_seqs` 1, fp8 KV, one engine version,
+one hybrid allocator, one `block_size`, and neither is a physics constant.
 
-MTP-3 therefore costs 11.4 % on top of every KV token in addition to its draft weights. Neither
-per-token figure is a physics constant: both are one engine version, one hybrid allocator, one
-`max_num_seqs`, one `block_size`.
+Worked example, and the exact reason the old model failed: under MTP-3 one request at a 262,144
+window needs `34,816 × 262,144 + 0.63 GiB = 9.13 GiB`, but at a 32,768 window it needs only
+**1.6925 GiB** — so the *same* 3.27 GiB pool buys 265,122 tokens at the long window and 62,557 at
+the short one. A fixed per-*pool* reserve cannot express that. A fixed per-**request** term can.
+
+**Retired here:** `KV_bytes(T) = H + c_tok·T` with `H = 0.20 GiB`,
+`c_tok(MTP-3) = 36,689.2 B/token` and `c_tok(no MTP) = 32,929.0 B/token`. Its per-token rate was
+inadmissible — 36,765 B/token implied, above the 34,816 B/token the engine's own padding line
+allows — and its fixed term was simultaneously three times too small for MTP-3 and 0.06 GiB too
+large for MTP off. The 4-bit-KV rule `c_tok(fp8) × 16,384/32,768` survives only as `a/2` with `M`
+held, and it is still **[P]**, never measured.
+
+### 4.2 What MTP-3 costs, as its own line item
+
+Budgeting a small board, this is the number that surprises people. Turning MTP-3 on costs
+**1.19 GiB before a single KV token is stored**, in three separate places. All three are measured
+in §10.3, by differencing the same configuration with and without the draft model:
+
+| component | MTP-3 | MTP off | what MTP-3 costs |
+|---|---:|---:|---:|
+| draft weights, resident | 18.19 | 17.94 | **0.25 GiB** |
+| CUDA-graph pool | 0.45 | **0.00** | **0.45 GiB** |
+| fixed per-request KV, `M` | 0.63 | 0.14 | **0.49 GiB** |
+| **total, before any token** | | | **1.19 GiB** |
+| peak activation (the draft model's share) | 1.78 | 1.68 | 0.10 GiB |
+
+…and then **5.7 %** on top of every KV token as well (34,816 against 32,932 B/token — equivalently
+5.75 % of the fp8 floor). The CUDA-graph row is the one no arithmetic in this document had ever
+charged to MTP: with MTP off this configuration captures no decode graph at all and that pool goes
+to **zero**, so overheads are 1.95 GiB without MTP against 2.50 GiB with it.
+
+On a 32 GB board 1.19 GiB is 13 % of a 9.28 GiB KV pool and nobody notices. On a 24 GiB board the
+fixed KV term **alone** is 35 % of the measured 1.79 GiB pool, and the whole 1.19 GiB is two thirds
+of it. That is the entire reason the same card serves **24,576** tokens with MTP-3 and **45,056**
+without.
+
+### 4.3 Where the hybrid state went
+
+The question this section was written to answer: does the pool include the hybrid
+linear-attention state? It includes whatever the engine put there, because the receipts report one
+`available_kv_gib` and one `gpu_kv_cache_tokens` and itemize neither. The measured law now settles
+it. The MTP-off fixed term is **0.14 GiB** — the same order as the ≤0.15 GiB the only external
+sizing gives for the GDN pool at `max_num_seqs` 1 (48 GDN layers × 48 heads × 128 × 128 at
+`mamba_ssm_dtype` plus a bf16 conv state, "153.9 MB at fp32, 78.4 MB at bf16" per slot, quoted from
+SGLang in [docs/07](07-serving-recommendations.md) §5.6) — while the MTP-3 fixed term is
+**0.63 GiB**. The 0.49 GiB difference is MTP-3's draft KV and page padding, and the remainder is
+consistent with the recurrent state finally being visible in the pool once it is measured as a
+per-request cost instead of inferred from a per-pool residual. What is *not* supportable any more
+is the old reading of the 1.1736 GiB gap between 9.31 GiB and the tensor floor at 266,612 tokens as
+a single mysterious residual: most of that gap is `a`'s 6.25 % padding, applied per token.
 
 ## 5. Profile M24 — the 24 GB mid-profile
 
 The finding that shapes this profile: **at 24 GB no new checkpoint is required.** The published
 `-context` edition, served with the int8 input overlay and MTP-3, has a *measured* resident
-weight figure of 18.41 GiB, which leaves 20.32 − 18.41 = 1.91 GiB for KV on a 24 GiB board. So
+weight figure of 18.41 GiB, which leaves `22.49 − 2.50 − 18.41 = 1.58 GiB` for KV on a 24 GiB board
+at the qualified 0.955 utilisation — and §10's board arm measured **1.79 GiB** on a card ballasted
+to that class. So
 M24 is a serving profile over an existing artifact, and its fidelity number is the already
 published 0.003509 at 10,480,640 scored positions — no new conversion, no new fidelity risk.
 M24-Q and M24-L are the two dials on either side of it.
@@ -312,34 +382,85 @@ load by `VLLM_EXL3_EMBED_BITS=8` ([docs/32](32-native-context-embedding-overlay.
 
 ### 5.3 KV budget and context
 
-> **Superseded by the Verdict above.** These lengths are derived at utilisation 0.97. At the
-> qualified 0.955 the M24 row becomes 32,768 with MTP-3 and 45,056 with MTP off, and **40,960
-> does not fit at all** (1.603 GiB required against 1.580 available).
+> **Re-derived, twice over.** These lengths were computed at utilisation 0.97 with the
+> `H + c_tok·T` model this document no longer uses. Both are gone: the budget below is the
+> qualified **0.955**, and the requirement is the measured `a·L + M` of §4.1, whose fixed
+> per-request term is **0.63 GiB** under MTP-3 and **0.14 GiB** without, against the 0.20 GiB `H`
+> charged here. The M24 row becomes **24,576** with MTP-3 and **45,056** with MTP off, both
+> started and gated on a ballasted 24 GiB-class proxy (§10); **40,960 is retired**, needing
+> 1.9581 GiB against a pool of at most 1.80.
 
-`KV_avail = 22.84 − resident − 2.52`, then `T_max = (KV_avail·2^30 − H) / c_tok`. A profile is
-published at the largest multiple of 4,096 whose requirement `H + T·c_tok` leaves **≥15 %
-headroom** against `KV_avail`. The shipped 32 GB profile only needed 262,144 < 266,612, 1.7 %,
-because 266,612 was *allocated by the engine and read out of the log*; a prediction needs more,
-and the 15 % absorbs the two soft constants in §3 plus the ±0.05 GiB resident model. Once a
-profile has started, its published length may be raised to whatever the log actually allocated.
-All lengths **[P]**:
+The publishing rule is unchanged — the largest multiple of 4,096 whose requirement leaves
+**≥15 % headroom** against the pool — but the requirement is now `kv_needed(L) = a·L + M` from
+§4.1 and the budget is the qualified `24 × 0.98125 × 0.955 = 22.49 GiB`. Note the rule is on
+**memory**: `a·L + M ≤ pool/1.15`. A token-form rule (`L ≤ L_max/1.15`) is *not* equivalent and
+over-publishes; the two coincide only when `M = 0`, which is exactly the assumption the
+measurement retired. Overheads are the measured ones and differ by configuration: **2.50 GiB**
+with MTP-3 (1.78 activation + 0.27 non-torch + 0.45 CUDA-graph) and **1.95 GiB** without
+(1.68 + 0.27 + **0.00**); MTP-off rows also drop the draft weights (0.252 GiB for M24, 0.264 for
+M24-Q, 0.198 for M24-L). The 15 % absorbs §3's two soft constants plus the ±0.05 GiB resident
+model. All lengths **[P]** — the law is measured, these pools are not:
 
-| profile | resident | KV avail **[P]** | `T_max` fp8 + MTP-3 | **published, MTP-3** | `T_max` fp8, MTP off | **published, MTP off** | `T_max` 4-bit KV + MTP-3 |
-|---|---:|---:|---:|---:|---:|---:|---:|
-| M24-Q (hydrated body) | 19.27 | 1.05 | 24,765 | **20,480** | 36,203 | **28,672** | 49,531 |
-| **M24 (context body)** | **18.41** | **1.91** | 49,934 | **40,960** | 63,856 | **53,248** | 99,868 |
-| M24-L | 17.55 | 2.77 | 75,102 | **61,440** | 90,139 | **73,728** | 150,205 |
+| profile | resident | KV avail **[P]** | `L_max` MTP-3 | **published, MTP-3** | resident, MTP off | KV avail **[P]** | `L_max` MTP off | **published, MTP off** | `L_max` 4-bit KV |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| M24-Q (hydrated body) | 19.27 | 0.72 | 2,783 | **none — see below** | 19.006 | 1.53 | 45,459 | **36,864** | 5,566 |
+| **M24 (context body)** | **18.41** | **1.58** | **29,306** | **24,576** † | **18.158** | **2.38** | **73,108** | **45,056** † | 58,612 |
+| M24-L | 17.55 | 2.44 | 55,828 | **45,056** | 17.352 | 3.19 | 99,388 | **81,920** | 111,657 |
 
-MTP-off rows drop the draft weights too (0.252 GiB for M24, 0.264 for M24-Q, 0.198 for M24-L)
-and use `c_tok` 32,929. The 4-bit-KV column is a raw maximum and is not publishable at all until
-that dtype has been measured (§7). Every published figure here is still a prediction: it becomes
-a claim only after §8.
+**†** M24's two published lengths are not derived from the predicted pools in this table. They are
+the lengths §10 *started*, on measured pools of 1.79 and 2.60 GiB. See §5.3.1.
+
+**M24-Q cannot run MTP-3 at this class at all.** Its 0.72 GiB pool is barely above the 0.63 GiB
+fixed per-request term, leaving **2,783** tokens. The row is withdrawn rather than shortened —
+the same failure mode §6 hits at 16 GB. The hydrated body at 24 GB is an MTP-off profile or
+nothing, and that is a new consequence of the measured law: the retired model showed it at 20,480.
+
+The 4-bit-KV column halves `a` and holds `M`. It is a raw maximum, not publishable at all until
+that dtype has been measured (§7). Every figure here becomes a claim only after §8.
+
+#### 5.3.1 M24, in three tiers
+
+M24 is the only profile here with a measurement behind it, so it is published as a tier rather
+than one number. All three tiers are computed from the **measured** board-arm pools of §10 —
+1.79 GiB with MTP-3, 2.60 GiB without — not from the predicted pools above.
+
+| | MTP-3 | MTP off | basis |
+|---|---:|---:|---|
+| **published — started and gated** | **24,576** | **45,056** | 7/7 gates on the ballasted 24 GiB-class proxy, `receipts/qualification-24gib-capped.json`. Physical-board gate still **open** |
+| requirement at that length | 1.4269 GiB | 1.5219 GiB | `a·L + M`, §4.1 |
+| headroom at the measured pool | 25.4 % | 70.8 % | against 1.79 / 2.60 GiB |
+| **≥15 % envelope [P] — never started** | **24,576** | **65,536** | largest 4,096-multiple with `a·L + M ≤ pool/1.15`; exact bounds 28,574 and 69,150 |
+| **engine ceiling [P] — never started** | **35,774** | **80,208** | `(pool − M)/a`: 1.00× concurrency, zero headroom |
+
+For **MTP-3 the published length is the envelope**: 24,576 is simultaneously what we started and
+the most our own headroom rule allows. That is why 32,768 had to go — it clears only 5.8 % — and
+28,672 misses too, at 14.8 %.
+
+**One caveat on 24,576, stated rather than buried.** That envelope is computed at the pool the
+proxy measured, 1.79 GiB, which corresponds to the **18.19 GiB** resident figure this card loads
+at. At the conservative **18.41 GiB** figure the pool is 1.58 GiB, the rule allows only 22,943, and
+24,576 *fits* — 10.8 % — without clearing the margin. So: **a board that loads at 18.41 GiB should
+serve 20,480 if it wants the full rule margin.** 24,576 is published because it is robust across
+both of our measured resident figures where 28,672 (1.3 % at the conservative pool) and 32,768
+(does not fit) are not, and because it is what the proxy started — not because every 24 GB board
+will clear 15 % at it.
+
+For **MTP off the published length sits well inside the envelope**: 49,152, 53,248, **57,344** and
+61,440 all satisfy the ≥15 % rule at the measured pool, 57,344 with 36.9 % to spare. Every one of
+them is arithmetically defensible and not one of them has been booted; 45,056 has. Raising the row
+is a one-startup job, not a new artifact, and this document would rather under-publish a started
+length than print an ungated one.
+
+One live risk to all three tiers: none of these numbers was measured with `--enable-prefix-caching`,
+and preliminary work on the physical 5090 indicates a pool merely *equal* to the window is not
+sufficient once prefix caching is on. Cite `receipts/qualification-5090-apc.json` when it lands
+rather than assuming these lengths transfer to that configuration.
 
 Serving flags for M24 are the amendment's, with the length changed:
 
 ```bash
 VLLM_EXL3_EMBED_BITS=8 VLLM_EXL3_GRAPH_DECODE=1 \
-vllm serve <ctx-checkpoint> --max-model-len 40960 --max-num-seqs 1 \
+vllm serve <ctx-checkpoint> --max-model-len 24576 --max-num-seqs 1 \
   --kv-cache-dtype fp8 --max-num-batched-tokens 2048 \
   --speculative-config '{"method":"mtp","num_speculative_tokens":3}' \
   --mm-processor-kwargs '{"truncation":false,"max_pixels":8388608}' \
@@ -362,8 +483,12 @@ finalizer's topology check ([docs/30](30-iteration-4-context-edition.md) L108-11
 
 ### 5.4 Supported-hardware tuple
 
-Everything measured in this repository is **SM120, TP1, driver 595.58.03**
-(`receipts/release-evidence-context.json` → `hardware`). The 24 GB class spans more than one
+Everything measured in this repository is **SM120, TP1** — but it is **not one driver tuple**, and
+§10's numbers come from the first of these two. The physical RTX 5090 that qualified the context
+edition and ran the 24 GiB proxy is on **driver 610.57.04, CUDA UMD 13.3**, host `aiboss`
+(`receipts/qualification-5090-context.json` → `identity.host`); the rental RTX PRO 6000
+measurements are on **595.58.03** (`receipts/release-evidence-context.json` → `hardware`).
+The 24 GB class spans more than one
 architecture — F3 makes that point specifically, that these boards "are not Blackwell-only, so
 the supported-hardware tuple has to be stated, not assumed"
 ([docs/29](29-plan-and-loose-ends.md) F3). The budget arithmetic in §3 is
@@ -436,10 +561,15 @@ where the requirement is 0.70 GiB against 0.96 GiB available — 37 % headroom, 
 comfortable margin of any row here. With MTP-3 on, 16,384 needs 0.760 GiB against 0.764
 available: a 0.5 % slack that the §3 constants can erase, so S16-V publishes 12,288 there.
 
-> **Re-derived in the Verdict above.** At the measured 0.955 utilisation, S16-V's MTP-off row
-> falls to **12,288** — 16,384 keeps only 6.5 % headroom there — and its MTP-3 row to 8,192;
-> S16-V-long's become 12,288 with MTP-3 and 20,480 without, so the one-bit trade below buys MTP-3
-> at 12k rather than at 16k. All still predictions, and now for a design study, not a SKU.
+> **Superseded by the Verdict above.** Under the measured KV law, S16-V publishes **28,672** with
+> MTP off — more than twice the figure below, because the measured MTP-off fixed term is only
+> 0.14 GiB and turning MTP off also frees the 0.45 GiB CUDA-graph pool and 0.10 GiB of draft
+> activation — and it **cannot run MTP-3 at all**, its 0.63 GiB fixed term exceeding the whole
+> 0.553 GiB pool by 0.077 GiB. S16-V-long publishes 36,864 without MTP and reaches only 764 tokens
+> with it, so the one-bit trade below is a context trade, not a speculative-decode trade. Both
+> lengths use the **memory** form of the ≥15 % rule (`a·L + M ≤ pool/1.15`); the token form
+> `L ≤ L_max/1.15` over-publishes S16-V by a full 4,096 step. All predictions, and for a design
+> study rather than a SKU.
 
 **One `full_attention` bit is what buys MTP-3 at 16k.** S16-V-long spends 0.195 GiB by taking
 `full_attention` from K4 to K3 and reaches 16,384 with MTP-3 at 27 % headroom, and 24,576
@@ -564,7 +694,7 @@ below the replay floor", not as a number.
 | resident weights, activation, non-torch, graph, KV pool and allocated tokens read out of the engine log | required; **must** land ≥ the published length | required | required |
 | KLD, §8.1 suite, paired vs context build | expected ≈ 0.003509, since it is the same checkpoint — a deviation is a harness bug | **must** be reported even if at the replay floor | **hard gate: no fidelity number may be quoted from any other build** |
 | tail row p50/p95/p99/p99.9 + exceedance above 0.1 and 1.0 | required | required | **required; a p99.9 above the K4 build's 0.5555 blocks publication of a general-use claim** |
-| needle retrieval, `tools/longctx.py`, depths 0.1 / 0.5 / 0.9 | at ≥0.98 × 40,960 with MTP-3 and ≥0.98 × 53,248 without, token-counted before submit | at 61,440 / 73,728 | at 16,384 with MTP off, and separately at 12,288 with MTP-3; run S16-V-long at 16,384 with MTP-3 to settle §6.2's one-bit trade |
+| needle retrieval, `tools/longctx.py`, depths 0.1 / 0.5 / 0.9 | at ≥0.98 × 24,576 with MTP-3 and ≥0.98 × 45,056 without, token-counted before submit | at 45,056 / 81,920 | at 28,672 with MTP off; **MTP-3 is withdrawn at this class** (Verdict, §5.3), so there is no MTP-3 needle run to make — run S16-V-long at its own published length instead, to settle §6.2's one-bit trade |
 | combined long-text + image, `tools/longmm.py` | one request ≥0.9 × published length carrying a ≥7 MP image, exact code **and** colours | same | at the 4.2 MP cap; if it fails, the cap or the multimodal claim goes |
 | vision suite, `tools/vision_eval.py`, 30 deterministic cases | ≥ the 24/30 measured at 8.4 MP | ≥24/30 | report; **do not** assume 24/30 transfers to a K3 body |
 | throughput, `tools/bench.py`, warmed, ≥3 timed runs | single-stream with MTP-3 and off; sampler, temperature and reasoning effort printed | same | same |
@@ -574,8 +704,9 @@ below the replay floor", not as a number.
 
 Rules that apply to all three, in the F4 spirit:
 
-1. **No fit claim without a startup.** "Predicted 49,934 KV tokens" and "allocated 49,934 KV
-   tokens" are different sentences; only the second may appear on a card.
+1. **No fit claim without a startup.** "Predicted 29,306 KV tokens" and "allocated 33,760 KV
+   tokens" are different sentences — §10 produced exactly that pair — and only the second may
+   appear on a card.
 2. **The budget caveat travels.** The 32 GB result is an engine-budget proof on a 95.6 GiB card,
    not a physical hard-limit proof (`receipts/native-mtp-8mp-amendment.json` →
    `claim_scope`). A 24 GB or 16 GB profile emulated the same way inherits exactly the same
@@ -588,14 +719,257 @@ Rules that apply to all three, in the F4 spirit:
 
 ## 9. What this document does not establish
 
-- No 24 GB or 16 GB board has been started. Every context length here is arithmetic.
+- No 24 GB or 16 GB board has been started. Every context length here is arithmetic — except the
+  two 24 GB-class lengths, which §10 now measures on a **proxy**, not on a board.
 - The two card constants — 0.98094 free-at-startup and 0.97 utilisation — are transferred from
-  one board's note and are the likeliest source of error in §3.
-- The GDN conv/SSM state is still unaccounted in our own receipts; §4 reserves 0.20 GiB for it on
-  external sizing and reasoning, not on a measurement of ours.
+  one board's note and are the likeliest source of error in §3. §10 replaces the first with a
+  measured mechanism: the engine multiplies utilisation by `cudaMemGetInfo` total, which is
+  nvidia-smi's FB Total **minus** its FB Reserved, and never by the free figure.
+- The GDN conv/SSM state is no longer carried as a modelling assumption: §4.1 *measures* the fixed
+  per-request term at **0.63 GiB** with MTP-3 and **0.14 GiB** with MTP off, retiring the 0.20 GiB
+  reserve this document used to charge. What is still unestablished is the **itemisation** — the
+  engine reports one pool, so the split of `M` between recurrent state, draft KV and page padding
+  is inferred rather than measured, and only the MTP-3-minus-MTP-off difference (0.49 GiB) is
+  attributable with confidence.
 - No sub-4-bit width of this architecture has ever been measured for fidelity, which makes S16 a
   design and not a product.
 - The 4-bit KV dtypes are unmeasured, and the current fidelity protocol resolves the KV cache to
   bfloat16, so it cannot measure them even for the profiles that already ship fp8 KV.
 - Activation, non-torch and CUDA-graph figures are carried unchanged from a 32 GB profile; a
   16 GB profile with a lower image cap and fewer batched tokens should measure its own.
+
+## 10. Proxy qualification at a capped 24 GiB-class budget
+
+> **This is a proxy, not a qualification, and it does not close §8's physical-board gate.** No
+> 24 GB board was used. The receipt is
+> [`receipts/qualification-24gib-capped.json`](../receipts/qualification-24gib-capped.json), whose
+> `physical_board_gate` field says **open** on purpose. Nothing here licenses "fits on 24 GB" on a
+> card, in a table, or in a sentence.
+
+A real 24 GiB board is unavailable, so cap what the engine may take on the physical RTX 5090 the
+Verdict's constants come from, and run that qualification's own gates 1-7 at the capped budget.
+Two arms, because they answer different questions, and the difference between them turned out to be
+the most useful number here.
+
+**How the budget is set.** Read out of the pinned image rather than assumed
+(`vllm/v1/worker/utils.py` `request_memory`): `requested = ceil(cudaMemGetInfo_total × utilisation)`,
+and startup refuses if free < requested. On this card `cudaMemGetInfo` total is nvidia-smi's FB
+Total 32,607 MiB minus its FB Reserved 458 MiB = **32,149 MiB = 31.3955 GiB**, confirmed to the
+byte from the engine's own two `--kv-cache-memory-bytes` hints. The KV pool is
+`requested − non_KV − CUDAGraph`, with **no** free-memory term — so utilisation sets the budget and
+only a ballast can shrink the *card*.
+
+| arm | utilisation | budget the engine printed | card | what it emulates |
+|---|---:|---:|---|---|
+| **budget** | 0.7635 | **23.97 GiB** | untouched 32 GiB | a 24 GiB board's budget only — 6.93 GiB of card stays free |
+| **board** | 0.7164 | **22.49 GiB** | ballasted to 23.553 GiB free | a 24 GiB board's budget **and** card, at the qualified 0.955 |
+
+The board arm's 22.49 GiB is exactly what
+[`receipts/vram-class-verdict.json`](../receipts/vram-class-verdict.json) → `card_budget_model`
+derives for a 24 GiB board at 0.955, and its engine reported **23.06 GiB** free at its own init —
+that board's 23.5527 GiB CUDA total less the engine's measured 0.496 GiB context. Utilisation
+0.7643 was tried first and rejected: it prints "24.0 GiB", which is 23.995 rounded to the engine's
+two decimals and therefore evidence of nothing.
+
+### 10.1 Both published lengths pass, and one of them passes on the edge
+
+All seven gates pass in all four configurations — startup, needle at the profile's own length,
+combined long-text-plus-7 MP image, the 30-case image suite, three warmed decode runs, a second
+long request in the same process after release, and receipt completeness.
+
+| profile | arm | KV pool | tokens allocated | concurrency | KV needed per request | KV headroom | decode |
+|---|---|---:|---:|---:|---:|---:|---:|
+| 32,768 MTP-3 | budget | 3.27 GiB | 62,557 | 1.91x | 1.6925 GiB | 93.2 % | 108.9 tok/s |
+| 32,768 MTP-3 | **board** | **1.79 GiB** | **33,760** | **1.03x** | 1.6925 GiB | **5.8 %** | 98.96 tok/s |
+| 45,056 MTP off | budget | 4.08 GiB | 119,680 | 2.66x | 1.5219 GiB | 168.1 % | 47.47 tok/s |
+| 45,056 MTP off | **board** | **2.60 GiB** | **76,032** | **1.69x** | 1.5219 GiB | **70.8 %** | 47.76 tok/s |
+
+**45,056 with MTP off is safe**, and the published length is conservative: 70.8 % headroom, the
+engine supports 80,208 tokens at that pool, and it survives the conservative resident-weight figure
+too (73,155 supported at 18.41 GiB resident). 65,536 is the largest 4,096-multiple that would still
+clear §5.3's ≥15 % rule.
+
+**32,768 with MTP-3 is a pass nobody should ship.** Three margins are thin:
+
+1. **5.8 % KV headroom**, against the **≥15 %** rule §5.3 applies to every other published length.
+   The largest 4,096-multiple clearing that rule at the measured pool is **24,576**.
+2. It **fails outright under this project's other resident-weight figure.** At the 18.19 GiB this
+   card measures, the pool is 1.802 GiB and the engine supports 36,135 tokens; at the **18.41 GiB**
+   `receipts/native-mtp-8mp-amendment.json` measured as-run — the figure the Verdict deliberately
+   preferred because it is larger — the pool is 1.582 GiB and the engine supports **29,350**, so
+   32,768 does not fit. The published length sits *between* our own two measurements.
+3. The combined text-plus-image gate passed with **68 MiB** of a 24 GiB board's 24,118 MiB unused.
+
+**Superseding note, not a rewrite of history:** publish **24,576** with MTP-3 for this class rather
+than 32,768; §5.3.1 carries the full tiering. 24,576 needs **1.4269 GiB**. Against the measured
+1.79 GiB pool that is **25.4 %** headroom, which clears the 15 % rule and makes 24,576 the largest
+4,096-multiple that does. Against the conservative 1.58 GiB pool it still fits outright, with
+**10.8 %** headroom measured in memory — or 19.3 % if counted in tokens against the 29,306 the
+engine supports there; the two conventions differ once `M ≠ 0` and this document uses the memory
+one. 32,768 was correctly derived from the model available when it was written; §10.2 is why that
+model was wrong, and the Verdict's own live-risk paragraph had already flagged it.
+
+### 10.2 The KV law, measured instead of bounded
+
+§4's `H + c_tok·T` is retired. The engine sizes capacity as
+`int(max_concurrency × max_model_len)` with
+`max_concurrency = num_blocks / cdiv(max_memory_usage_per_request, memory_per_block)`
+(`vllm/v1/core/kv_cache_utils.py`), so the quantity that scales is the per-**request** cost at the
+configured window. Four startup refusals print that cost directly, and two windows per
+configuration pin it with no regression at all:
+
+```
+kv_needed(L) = a·L + M                 reported tokens = int(L · pool / kv_needed(L))
+MTP-3 :  a = 34,816 B/token = 32,768 × 17/16 exactly,   M = 0.63 GiB
+MTP off: a = 32,932 B/token = 1.005 × the fp8 floor,    M = 0.14 GiB
+```
+
+`a` for MTP-3 lands exactly on the engine's own "may waste at most 6.25 % KV cache memory" padding
+line; `a` for MTP off matches §4's independently derived 32,929 B/token to 0.009 %. Inverting the
+law reproduces the engine's own "estimated maximum model length" to within its printed precision
+(81,600 tokens needs 3.2759 GiB against a pool printed as 3.27; 128,576 needs 4.0834 against 4.08).
+All points `max_num_seqs` 1, fp8 KV, same image and revision as the qualification:
+
+| config | window | KV needed per request | pool on hand | engine's own max length for that pool |
+|---|---:|---:|---:|---:|
+| MTP-3 | 131,072 | 4.88 GiB | 3.27 GiB | 81,600 |
+| MTP-3 | 262,144 | 9.13 GiB | 3.27 GiB | 81,600 |
+| MTP off | 131,072 | 4.16 GiB | 4.08 GiB | 128,576 |
+| MTP off | 262,144 | 8.18 GiB | 4.08 GiB | 128,576 |
+
+**MTP-3 is the whole difficulty at this class.** It costs 0.49 GiB of *fixed* KV per request plus
+5.75 % on every token, on top of 0.25 GiB of draft weights **and** 0.45 GiB of CUDA-graph pool that
+vanishes entirely when MTP is off — which no arithmetic here had charged to MTP. That fixed term
+alone is 35 % of the 1.79 GiB pool a 24 GiB board has.
+
+### 10.3 What a capped budget does not change, and the one thing it does
+
+The four memory components are **invariant to the budget**, which is the direct test of whether
+this proxy distorts them:
+
+| budget | weight | activation | non-torch | CUDAGraph | sum | KV pool |
+|---|---:|---:|---:|---:|---:|---:|
+| 29.98 GiB — physical qualification, MTP-3 | 18.19 | 1.78 | **0.27** | **0.45** | 20.69 | 9.28 |
+| 23.97 GiB — budget arm, MTP-3 | 18.19 | 1.78 | **0.27** | **0.45** | 20.69 | 3.27 |
+| 22.49 GiB — board arm, MTP-3 | 18.19 | 1.78 | **0.27** | **0.45** | 20.69 | 1.79 |
+| 23.97 / 22.49 GiB — both arms, MTP off | 17.94 | 1.68 | 0.27 | 0.00 | 19.89 | 4.08 / 2.60 |
+
+Non-torch and CUDA-graph memory are identical to the full-budget qualification's 0.27 and 0.45 GiB
+at every budget: **every byte the cap removes comes out of the KV pool and nothing else.**
+
+What the cap *does* change is decode, indirectly and only with MTP: 98.96 tok/s in the board arm
+against 108.9 in the budget arm, a 9.1 % loss, while MTP draft acceptance falls from 0.5556 to
+0.4822 and mean accepted length from 2.6667 to 2.4465. Those ratios agree to a fifth of a percent
+(0.9087 throughput, 0.9174 accepted length), so **the decode loss is the acceptance loss**, not a
+bandwidth effect — and acceptance is monotone in pool size across three independent pools (0.5648
+at 9.28 GiB, 0.5556 at 3.27, 0.4822 at 1.79). With MTP off the two arms decode at 47.47 and 47.76
+tok/s, the smaller budget marginally faster, i.e. noise. Capping a budget costs nothing by itself;
+shrinking the KV pool appears to cost speculative acceptance, and that deserves its own experiment.
+
+### 10.4 Why the budget-only arm is not a proxy for a board, with a number
+
+A combined text-plus-image request peaks **above** the engine's budget, because the vision tower's
+transient is not part of the profiled budget — by 0.89 to 1.02 GiB in all four runs. That is what
+makes the outside-budget slack decisive, and it is why F3-open-2 in `vram-class-verdict.json` was
+right to say a budget carved out of a larger card cannot see this failure mode:
+
+| arm | engine peak during the image gates | a 24 GiB board's CUDA total | margin |
+|---|---:|---:|---:|
+| budget | 25,614 MiB | 24,118 MiB | **−1,496 MiB** |
+| board | 24,050 MiB | 24,118 MiB | **+68 MiB** |
+
+**The budget arm passed the image gates on 1,496 MiB no 24 GiB board owns**, so a budget-only cap is
+not a proxy for a board at all — now a measurement rather than an argument. The board arm passed by
+68 MiB, 0.3 % of the board.
+
+### 10.5 Residual risk, stated plainly
+
+A physical 24 GiB board differs from this capped 32 GiB board in exactly two device properties,
+both measured here and neither emulable: the driver's framebuffer reserve (**458 MiB** on this card)
+and the CUDA context (**0.496 GiB**). Non-torch memory, the component most likely to move with them,
+is 0.27 GiB here and 0.27 GiB in the full-budget qualification.
+
+- A board reserving 68 MiB more than this one, or with a context 68 MiB larger, **fails** the
+  combined text-plus-image gate at 32,768 with MTP-3 — a 0.3 % perturbation, and the most fragile
+  number in the receipt.
+- A 0.10 GiB rise in any non-KV component, or the 0.22 GiB gap between our own two resident-weight
+  figures, takes 32,768 below 1.0x concurrency and the engine refuses to start.
+- 45,056 with MTP off is fragile on neither count for KV (70.8 %) and carries the same order of
+  vision margin (120 MiB), since the vision transient depends on `max_pixels`, not the window.
+
+One methodological caveat: the board arm needs two CUDA contexts on one device — ballast plus engine
+— and this card runs `Exclusive_Process`, so the first attempt died at ~25 s with
+`cudaErrorDevicesUnavailable`. Compute mode was set to `DEFAULT` for that arm and back to
+`EXCLUSIVE_PROCESS` afterwards. It gates context creation, not allocation or kernel behaviour, and
+the two arms' weight, activation, non-torch and CUDA-graph figures are identical to the hundredth of
+a GiB across the change.
+
+**§8's physical-board gate remains open.** This section removes the arithmetic risk from two
+published lengths and replaces it with a measured allocation, and it answers the "budget carved out
+of a bigger card" objection by ballasting the card down as well. It cannot manufacture another
+board's reserve or context, and at 68 MiB of margin that is not a rounding detail.
+
+## 11. Card text for the 24 GB class — ready to lift
+
+The four model cards are being landed centrally and this document does **not** edit them. The
+block below is the 24 GB-class paragraph for the **context edition's** card, written to be copied
+verbatim. It is short on purpose, labelled on purpose, and it never uses the word "fits". It
+satisfies §8.2 rule 3: the window never appears without its KV dtype, its MTP setting, its image
+cap and its `max_num_seqs`.
+
+<!-- ===== BEGIN CARD BLOCK — 24 GB class, context edition — lift verbatim ===== -->
+
+### 24 GB class
+
+This checkpoint has a 24 GB-class serving profile. **No new conversion is required** — it is the
+same weights, so every fidelity number above carries over unchanged.
+
+| profile | context window | KV dtype | MTP | `max_num_seqs` | image cap | KV pool required |
+|---|---:|---|---|---:|---:|---:|
+| speculative | **24,576** | fp8 | 3 draft tokens | 1 | 8.4 MP | 1.43 GiB |
+| non-speculative | **45,056** | fp8 | off | 1 | 8.4 MP | 1.52 GiB |
+
+Both windows are **predictions**, not measurements on a 24 GB board. They were validated on a
+**capped-budget proxy**: an RTX 5090 whose engine budget was restricted to 22.49 GiB *and* whose
+card was ballasted down to 23.55 GiB free — a 24 GiB board's budget and its card together. All
+seven qualification gates passed at both windows: startup, needle retrieval at the profile's own
+length, a combined long-text plus 7 MP image request, the 30-case vision suite, warmed throughput,
+a second long request in the same process, and receipt completeness. **The physical-board gate
+remains open.** No 24 GB board has been started, and until one is, "predicted" and "allocated"
+are different words.
+
+**A budget cap on a big card is not a substitute for a small board.** The control arm, which
+capped the engine's budget but left the card whole, peaked 1,496 MiB *above* the total memory a
+24 GB board has — it passed the image gates on memory no such board owns, which is precisely why
+the ballasted arm exists and why this profile is labelled a proxy.
+
+Serving flags — the qualified 32 GB configuration with the window changed and nothing else:
+
+```bash
+VLLM_EXL3_EMBED_BITS=8 VLLM_EXL3_GRAPH_DECODE=1 \
+PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
+vllm serve <ctx-checkpoint> --gpu-memory-utilization 0.955 \
+  --max-model-len 24576 --max-num-seqs 1 --kv-cache-dtype fp8 \
+  --max-num-batched-tokens 2048 \
+  --speculative-config '{"method":"mtp","num_speculative_tokens":3}' \
+  --mm-processor-kwargs '{"truncation":false,"max_pixels":8388608}' \
+  --compilation-config '{"cudagraph_mode":"FULL_DECODE_ONLY","cudagraph_capture_sizes":[4]}'
+```
+
+For the non-speculative profile, drop `--speculative-config` and set `--max-model-len 45056`.
+
+Evidence: `receipts/qualification-24gib-capped.json` (proxy qualification, `physical_board_gate:
+open`) and `receipts/vram-class-verdict.json` (class decision and arithmetic).
+
+<!-- ===== END CARD BLOCK ===== -->
+
+Three notes for whoever lands it, **not** part of the block:
+
+1. **Do not raise 45,056 on this evidence.** It is the window that was started. The ≥15 % envelope
+   reaches 65,536 and the engine ceiling is 80,208 (§5.3.1), but neither has been booted.
+2. **Do not add a 24 GB row to the hydrated edition's card.** Under the measured law that body has
+   a 0.72 GiB pool against a 0.63 GiB fixed MTP-3 term — 2,783 tokens — so its MTP-3 row is
+   withdrawn, not shortened (§5.3).
+3. **If the card names a board, it must name the one that was measured**, which is an RTX 5090 at
+   SM120 / TP1 / driver 610.57.04 with CUDA UMD 13.3, capped — not any 24 GB product, and not
+   the 595.58.03 the rental measurements used. §5.4 is the rule.

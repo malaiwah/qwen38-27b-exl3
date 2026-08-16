@@ -10,12 +10,12 @@
     "external_unverified": "a third-party report we did not run and cannot reproduce; never mixed into an arithmetic chain",
     "size_terminology": "serialized bytes are what a checkpoint occupies on disk; resident weight bytes are what the loader keeps on the device; activation, CUDA-graph and KV are separate quantities. None of them is called VRAM, and the KV figure is never folded into the weight figure."
   },
-
   "measured_inputs": {
     "physical_5090_qualification": {
       "receipt": "receipts/qualification-5090-context.json",
       "artifact": "malaiwah/Qwen3.8-27B-EXL3-K5K6-context, the published context edition, no new conversion",
-      "hardware": "one physical NVIDIA GeForce RTX 5090, SM120, driver 595.58.03, TP1, 32,607 MiB total, 32,149 MiB free idle, sized by vLLM as 31.4 GiB usable",
+      "hardware": "one physical NVIDIA GeForce RTX 5090, SM120, TP1, driver 610.57.04 with CUDA user-mode driver 13.3, host aiboss (the user's own machine), podman 4.9.3 rootless; nvidia-smi FB total 32,607 MiB, FB reserved 458 MiB, 32,149 MiB free with the GPU idle, and vLLM sizes its budget off 31.4 GiB (see card_budget_model.constants.usable_fraction_0_98125 for what that figure actually is)",
+      "driver_note": "610.57.04 is this physical card's driver, from receipts/qualification-5090-context.json -> identity.host. 595.58.03 belongs to the RENTAL RTX PRO 6000 and is cited only on the rental inputs below. A draft of this file carried 595.58.03 here; it was corrected in place before publication on a catch by CardFixes, so there is no amendments entry for it.",
       "all_gates_pass": true,
       "qualified_at": "--gpu-memory-utilization 0.955 with PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True",
       "engine_budget_gib": 29.98,
@@ -46,7 +46,12 @@
       "receipt": "receipts/native-mtp-8mp-amendment.json",
       "hardware": "rental RTX PRO 6000, 95.6 GiB, vLLM hard-budgeted to 30.24 GiB",
       "resident_weights_gib_as_run": 18.41,
-      "engine_usage_gib": {"peak_activation": 1.78, "non_torch": 0.28, "cudagraph": 0.46, "sum_non_kv": 2.52},
+      "engine_usage_gib": {
+        "peak_activation": 1.78,
+        "non_torch": 0.28,
+        "cudagraph": 0.46,
+        "sum_non_kv": 2.52
+      },
       "available_kv_cache_gib": 9.31,
       "gpu_kv_cache_tokens": 266612,
       "status": "still valid as the engine-budget proof it always was, and the reason the 24 GB open item below is written the way it is: this proof said utilisation 0.97 was fine, and the physical card then refused the combined image request at 0.97. An engine-budget proof on a card larger than the class it emulates can be optimistic in exactly the axis that matters, because the emulated budget is carved out of a card that still has real headroom behind it for transient vision allocations."
@@ -60,13 +65,28 @@
       "note": "the only MTP-off KV datapoint; also the run that measured 2.05-2.11 GiB activation at max_num_seqs 4 against 1.78 at 1, which is why every profile in this verdict is single-stream"
     },
     "published_manifests": {
-      "hydrated": {"receipt": "receipts/hydrated-quantization-manifest.json", "role_bytes_total": 21586964548, "disk_bytes": 21610933884, "disk_receipt": "receipts/release-evidence-hydrated.json"},
-      "context": {"receipt": "receipts/context-quantization-manifest.json", "role_bytes_total": 20672081988, "disk_bytes": 20696053306, "disk_receipt": "receipts/release-evidence-context.json"},
+      "hydrated": {
+        "receipt": "receipts/hydrated-quantization-manifest.json",
+        "role_bytes_total": 21586964548,
+        "disk_bytes": 21610933884,
+        "disk_receipt": "receipts/release-evidence-hydrated.json"
+      },
+      "context": {
+        "receipt": "receipts/context-quantization-manifest.json",
+        "role_bytes_total": 20672081988,
+        "disk_bytes": 20696053306,
+        "disk_receipt": "receipts/release-evidence-context.json"
+      },
       "logical_parameter_count": 27781427952
     },
     "resident_weight_observations": {
       "receipt": "receipts/release-evidence-context.json -> artifact.resident_weights_gib",
-      "context_build": {"bf16_embedding_mtp_off": 19.31, "bf16_embedding_mtp_3": 19.56, "int8_embedding_mtp_off": 18.13, "int8_embedding_mtp_1_or_3": 18.38},
+      "context_build": {
+        "bf16_embedding_mtp_off": 19.31,
+        "bf16_embedding_mtp_3": 19.56,
+        "int8_embedding_mtp_off": 18.13,
+        "int8_embedding_mtp_1_or_3": 18.38
+      },
       "as_run_rental": 18.41,
       "as_run_physical_5090": 18.19,
       "note": "two measured resident-weight figures exist for the same checkpoint and configuration, 0.22 GiB apart, on two different cards and two different allocator settings. Every prediction below uses the LARGER one, 18.41 GiB, and reports the 18.19 GiB variant separately. Choosing the smaller figure would buy 4,096 more published tokens at 24 GB and is not worth the risk."
@@ -76,7 +96,10 @@
       "shard0_receipt": "receipts/kld5-1M-tail-ctx.json",
       "ten_shard_mean_kld": 0.003509,
       "ten_shard_receipt": "receipts/kld5-10M-ctx.json",
-      "positions": {"shard0": 1048064, "ten_shard": 10480640},
+      "positions": {
+        "shard0": 1048064,
+        "ten_shard": 10480640
+      },
       "note": "the 24 GB verdict inherits this number unchanged because it is the same checkpoint. That is the whole point of the 24 GB finding."
     },
     "fidelity_nearest_measured_neighbour_below": {
@@ -84,53 +107,141 @@
       "shard0_mean_kld": 0.010345,
       "ten_shard_mean_kld": 0.010604,
       "shard0_p99_9": 0.5555,
-      "receipts": ["receipts/kld5-1M-tail-k4.json", "receipts/kld5-10M-k4.json"],
+      "receipts": [
+        "receipts/kld5-1M-tail-k4.json",
+        "receipts/kld5-10M-k4.json"
+      ],
       "note": "the lowest-bitrate point that has ever been measured here. Every 16 GB configuration is BELOW it on several roles at once."
     },
     "cross_engine_context_for_this_decision": {
       "receipt": "receipts/cross-engine-comparator.json",
       "basis": "shard 0 of the v5 suite, 512 contexts, 1,048,064 positions, one shared BF16 head, cross-engine floor 0.000507 measured the same way",
       "rows": {
-        "gguf_q8_0": {"measured": 0.001087, "net_of_floor": 0.000579, "serialized_gib": 27.05},
-        "gguf_q6_k": {"measured": 0.002035, "net_of_floor": 0.001528, "serialized_gib": 21.31},
-        "hydrated_exl3": {"measured": 0.002700, "payload_gib": 20.127},
-        "context_exl3": {"measured": 0.003409, "payload_gib": 19.275},
-        "gguf_ud_q5_k_xl": {"measured": 0.004444, "net_of_floor": 0.003936, "serialized_gib": 18.83},
-        "official_fp8": {"measured": 0.005197},
-        "k4_exl3": {"measured": 0.010345}
+        "gguf_q8_0": {
+          "measured": 0.001087,
+          "net_of_floor": 0.000579,
+          "serialized_gib": 27.05
+        },
+        "gguf_q6_k": {
+          "measured": 0.002035,
+          "net_of_floor": 0.001528,
+          "serialized_gib": 21.31
+        },
+        "hydrated_exl3": {
+          "measured": 0.0027,
+          "payload_gib": 20.127
+        },
+        "context_exl3": {
+          "measured": 0.003409,
+          "payload_gib": 19.275
+        },
+        "gguf_ud_q5_k_xl": {
+          "measured": 0.004444,
+          "net_of_floor": 0.003936,
+          "serialized_gib": 18.83
+        },
+        "official_fp8": {
+          "measured": 0.005197
+        },
+        "k4_exl3": {
+          "measured": 0.010345
+        }
       },
       "relevance": "we win the 5-bit comparison by about 13 % and lose the 6-bit one by about 43 % net. At 24 GB that is the honest competitive frame for shipping the context edition. At 16 GB there is no frame at all, because the comparison set has no sub-4-bit row and neither do we.",
-      "scoring_window_control": {"receipt": "receipts/scored-window-offset.json", "effect": "1.3-2.1 % at a 256-token left-context floor, 3.9-4.9 % second-half-only, uniform, no ordering change"}
+      "scoring_window_control": {
+        "receipt": "receipts/scored-window-offset.json",
+        "effect": "1.3-2.1 % at a 256-token left-context floor, 3.9-4.9 % second-half-only, uniform, no ordering change"
+      }
     }
   },
-
   "byte_law": {
     "statement": "one affine rule per role reproduces both published manifests exactly, to the byte, with no residual and no fitted term",
     "formula": "bytes(role, K) = fixed(role) + params(role) * K / 8",
     "fixed_term": "EXL3's per-module overhead, 2*(in+out) fp16 suh/svh bytes plus one int32 codebook scalar (docs/02), times the module count, plus any BF16/F16 tensors the role carries",
     "per_role": {
-      "full_attention": {"layers": 16, "params": 1677721600, "fixed_bytes": 1327360, "gib_per_bit": 0.1953},
-      "linear_attention": {"layers": 48, "params": 5536481280, "fixed_bytes": 54777408, "gib_per_bit": 0.6445, "fixed_includes": "F16 in_proj_a/in_proj_b and the BF16 norms"},
-      "mlp_gate_proj": {"layers": 64, "params": 5704253440, "fixed_bytes": 2883840, "gib_per_bit": 0.6641},
-      "mlp_up_proj": {"layers": 64, "params": 5704253440, "fixed_bytes": 2883840, "gib_per_bit": 0.6641},
-      "mlp_down_proj": {"layers": 64, "params": 5704253440, "fixed_bytes": 2883840, "gib_per_bit": 0.6641},
-      "lm_head": {"params": 1271398400, "fixed_bytes": 506884, "gib_per_bit": 0.1480},
+      "full_attention": {
+        "layers": 16,
+        "params": 1677721600,
+        "fixed_bytes": 1327360,
+        "gib_per_bit": 0.1953
+      },
+      "linear_attention": {
+        "layers": 48,
+        "params": 5536481280,
+        "fixed_bytes": 54777408,
+        "gib_per_bit": 0.6445,
+        "fixed_includes": "F16 in_proj_a/in_proj_b and the BF16 norms"
+      },
+      "mlp_gate_proj": {
+        "layers": 64,
+        "params": 5704253440,
+        "fixed_bytes": 2883840,
+        "gib_per_bit": 0.6641
+      },
+      "mlp_up_proj": {
+        "layers": 64,
+        "params": 5704253440,
+        "fixed_bytes": 2883840,
+        "gib_per_bit": 0.6641
+      },
+      "mlp_down_proj": {
+        "layers": 64,
+        "params": 5704253440,
+        "fixed_bytes": 2883840,
+        "gib_per_bit": 0.6641
+      },
+      "lm_head": {
+        "params": 1271398400,
+        "fixed_bytes": 506884,
+        "gib_per_bit": 0.148
+      },
       "mtp_draft": {
         "quantized_modules": 8,
         "params": 424673280,
         "fixed_bytes": 300064,
         "gib_per_bit": 0.0494,
-        "module_params": {"attn_4_modules": 104857600, "gate": 89128960, "up": 89128960, "down": 89128960, "eh_proj": 52428800},
+        "module_params": {
+          "attn_4_modules": 104857600,
+          "gate": 89128960,
+          "up": 89128960,
+          "down": 89128960,
+          "eh_proj": 52428800
+        },
         "module_param_check": "104,857,600 = q 12288x5120 + k 1024x5120 + v 1024x5120 + o 6144x5120; the three MLP modules are 5120x17408 each; eh_proj is 2x5120x5120 = 52,428,800; the five figures sum to 424,673,280, the role total"
       },
-      "embed_tokens": {"params": 1271398400, "bf16_bytes": 2542796800, "int8_bytes": 1271398400, "int4_g128_bytes": 655564800, "int4_note": "655,564,800 is a prediction: 248320*5120/2 + 248320*(5120/128)*2, the packing implied by the int4_group_128 quantizer in receipts/embedding-quant-error.json"},
-      "vision_tower": {"params": 460730096, "bf16_bytes": 921460192},
-      "norms_and_small": {"bf16_bytes": 1320960}
+      "embed_tokens": {
+        "params": 1271398400,
+        "bf16_bytes": 2542796800,
+        "int8_bytes": 1271398400,
+        "int4_g128_bytes": 655564800,
+        "int4_note": "655,564,800 is a prediction: 248320*5120/2 + 248320*(5120/128)*2, the packing implied by the int4_group_128 quantizer in receipts/embedding-quant-error.json"
+      },
+      "vision_tower": {
+        "params": 460730096,
+        "bf16_bytes": 921460192
+      },
+      "norms_and_small": {
+        "bf16_bytes": 1320960
+      }
     },
     "validation": {
       "method": "apply the rule to each role at that manifest's own per-role width, with the mtp_draft role summed over its five module groups at their own widths, and compare against roles[*].bytes and the role total in the published manifest",
       "hydrated": {
-        "widths": {"full_attention": 6, "linear_attention": 6, "mlp_gate_proj": 5, "mlp_up_proj": 5, "mlp_down_proj": 6, "lm_head": 6, "mtp": {"attn": 6, "gate": 5, "up": 5, "down": 6, "eh_proj": 4}},
+        "widths": {
+          "full_attention": 6,
+          "linear_attention": 6,
+          "mlp_gate_proj": 5,
+          "mlp_up_proj": 5,
+          "mlp_down_proj": 6,
+          "lm_head": 6,
+          "mtp": {
+            "attn": 6,
+            "gate": 5,
+            "up": 5,
+            "down": 6,
+            "eh_proj": 4
+          }
+        },
         "predicted_role_total_bytes": 21586964548,
         "published_role_total_bytes": 21586964548,
         "difference_bytes": 0,
@@ -138,7 +249,21 @@
         "format_count_cross_check": "the derived MTP widths give {K4:1, K5:2, K6:5}, which is the manifest's own mtp_draft.formats histogram"
       },
       "context": {
-        "widths": {"full_attention": 5, "linear_attention": 5, "mlp_gate_proj": 5, "mlp_up_proj": 5, "mlp_down_proj": 6, "lm_head": 6, "mtp": {"attn": 5, "gate": 5, "up": 5, "down": 6, "eh_proj": 4}},
+        "widths": {
+          "full_attention": 5,
+          "linear_attention": 5,
+          "mlp_gate_proj": 5,
+          "mlp_up_proj": 5,
+          "mlp_down_proj": 6,
+          "lm_head": 6,
+          "mtp": {
+            "attn": 5,
+            "gate": 5,
+            "up": 5,
+            "down": 6,
+            "eh_proj": 4
+          }
+        },
         "predicted_role_total_bytes": 20672081988,
         "published_role_total_bytes": 20672081988,
         "difference_bytes": 0,
@@ -160,7 +285,6 @@
       "label": "prediction for any new artifact"
     }
   },
-
   "resident_weight_model": {
     "formula": "resident_GiB = (payload_bytes / 2^30) + 0.35, where payload is the sum of role bytes with the embedding at its RESIDENT width, not its disk width",
     "loader_overhead_basis": "measured +0.305 to +0.312 GiB across all four published embed/MTP combinations of the context build, +0.206 GiB on hydrated, +0.342 GiB in the rental amendment run. 0.35 GiB is above every observation.",
@@ -172,7 +296,6 @@
     ],
     "label": "the +0.35 term is a prediction; the observations it is fitted above are measured"
   },
-
   "card_budget_model": {
     "formulas": {
       "free_at_startup": "free_at_startup_GiB = nominal_GiB * 0.98125",
@@ -182,8 +305,15 @@
     "constants": {
       "usable_fraction_0_98125": {
         "value": 0.98125,
-        "basis": "measured: 31.4 GiB usable on a 32 GB board (31.4/32), read out of the physical 5090's own startup line 'Free memory on device (30.9/31.4 GiB) on startup'",
-        "supersedes": "docs/34 §3 used 0.98094 from an external note (31.39/32). The difference is 0.01 GiB at 24 GB and 0.005 GiB at 16 GB, i.e. immaterial, but the measured value is now the one on the record."
+        "basis": "measured: 31.4 GiB on a 32 GB board (31.4/32), read out of the physical 5090's own startup line 'Free memory on device (30.9/31.4 GiB) on startup'",
+        "what_the_numerator_is": "cudaMemGetInfo TOTAL, i.e. board framebuffer total minus the driver reserve - NOT free memory, and not the nvidia-smi FB Total either. On this card nvidia-smi reports FB Total 32,607 MiB and FB Reserved 458 MiB, so cudaMemGetInfo total = 32,149 MiB = 31.3955 GiB = 33,710,669,824 B, which is the 31.4 the engine prints. It coincides with the idle-free figure only because idle used was 2 MiB.",
+        "mechanism_verified_in_source": "vllm/v1/worker/utils.py request_memory(): 'requested_memory = math.ceil(init_snapshot.total_memory * cache_config.gpu_memory_utilization)', then 'if init_snapshot.free_memory < requested_memory: raise'. The log line is that error's format string, 'Free memory on device (free/total GiB) on startup', so its second number is total_memory, not a usable-after-free figure. MemorySnapshot fills both from one call: vllm/utils/mem_utils.py line 146, 'self.free_memory, self.total_memory = torch.accelerator.get_memory_info(device)'. Read out of the pinned r34 image on disk at /var/tmp/gg-rootfs/opt/venv/lib/python3.12/site-packages/vllm/, i.e. the same image the qualification ran, not from upstream master.",
+        "arithmetic_that_confirms_it": "ceil(31.3955 x 0.955) = 29.98 GiB, the budget the engine logged, and 29.98 / 0.955 = 31.3927 GiB recovers total to within 3 MiB. A second log arm makes it exact rather than coincidental: at utilisation 0.7643 the engine printed a 24.0 GiB budget with free = 30.9, and its two --kv-cache-memory-bytes hints (3,385,755,786 to fit the request, 10,799,671,296 to fill the card) differ by 6.9047 GiB = free - requested, putting requested at 23.9953 = ceil(31.3955 x 0.7643). Budget therefore tracks TOTAL; free only gates whether startup is allowed.",
+        "correction_history": "an earlier revision of this receipt asserted the numerator was free-at-idle and warned TwentyFourGigProxy against a double-count that does not exist. That was wrong, it is corrected here, and the value 0.98125 is unaffected. Credit: TwentyFourGigProxy, who read the source and produced the 0.7643 log arm.",
+        "rounding_note": "the exact fraction is 31.3955/32 = 0.98111; 0.98125 is used because 31.4 is what the engine printed. The difference is 0.003 GiB at 24 GiB and 0.002 at 16 GiB, below every other tolerance in this receipt.",
+        "supersedes": "docs/34 §3 used 0.98094 from an external note (31.39/32). The difference is 0.01 GiB at 24 GB and 0.005 GiB at 16 GB, i.e. immaterial, but the measured value is now the one on the record.",
+        "how_to_transfer_it_to_another_board": "do NOT scale the driver reserve with board size. The right procedure is to read that board's own nvidia-smi FB Total and FB Reserved and use total-minus-reserved, because the reserve depends on the board, the driver, ECC state and whether a display is attached. For a 24 GB board the scaled constant and the fixed-reserve model happen to agree: 24 x 0.98125 = 23.550 against 24,576 - 458 = 24,118 MiB = 23.5527 GiB, and against a 4090-style FB Total of 24,564 MiB it gives 23.541 GiB. All three are within 0.012 GiB, so the 24 GB class numbers in this receipt stand under either model - but that agreement is a coincidence of this reserve size, not a law.",
+        "still_one_board": "the reserve is measured on one board. TwentyFourGigProxy's ballasted proxy arm will report the printed total on an effectively smaller card; if a different board or driver reserves materially more, this constant needs restating per board rather than renumbering."
       },
       "utilisation_0_955": {
         "value": 0.955,
@@ -192,8 +322,12 @@
         "generality_caveat": "the mechanism that makes 0.97 unsafe is engine behaviour, not board size: vLLM spends every freed byte on KV, so a higher utilisation does not leave transient vision allocations anywhere to live. It therefore transfers to smaller boards, where the absolute slack is smaller still. Assuming 0.97 on a 24 GB or 16 GB board would be assuming the opposite of what we measured."
       },
       "non_kv_overheads_2_50": {
-        "value": 2.50,
-        "components": {"peak_activation": 1.78, "non_torch": 0.27, "cudagraph": 0.45},
+        "value": 2.5,
+        "components": {
+          "peak_activation": 1.78,
+          "non_torch": 0.27,
+          "cudagraph": 0.45
+        },
         "basis": "measured on the physical 5090 at the qualified config, receipts/qualification-5090-context.json -> gates[*].measured_engine_usage_gib. The rental figures were 1.78/0.28/0.46 = 2.52.",
         "conservatism": "carrying a 32 GB activation figure to a 16 GB card is deliberately conservative: activation profiling scales with the permitted image and the batched-token count, both of which a smaller profile lowers. It is still a carried number, not a measured one for those classes."
       }
@@ -206,44 +340,92 @@
       "meaning": "the two-step card model reproduces the one engine budget we have ever seen logged to 0.01 GiB. That is the strongest available evidence for the model, and it is evidence from exactly one board."
     },
     "classes": {
-      "32_gib": {"free_at_startup_gib": 31.40, "engine_budget_gib": 29.99, "weights_plus_kv_gib": 27.49, "label": "free_at_startup measured; the rest prediction, validated above against the logged 29.98"},
-      "24_gib": {"free_at_startup_gib": 23.55, "engine_budget_gib": 22.49, "weights_plus_kv_gib": 19.99, "label": "prediction", "formula": "24*0.98125 = 23.55; 23.55*0.955 = 22.49; 22.49-2.50 = 19.99"},
-      "16_gib": {"free_at_startup_gib": 15.70, "engine_budget_gib": 14.99, "weights_plus_kv_gib": 12.49, "label": "prediction", "formula": "16*0.98125 = 15.70; 15.70*0.955 = 14.99; 14.99-2.50 = 12.49"}
+      "32_gib": {
+        "free_at_startup_gib": 31.4,
+        "engine_budget_gib": 29.99,
+        "weights_plus_kv_gib": 27.49,
+        "label": "free_at_startup measured; the rest prediction, validated above against the logged 29.98"
+      },
+      "24_gib": {
+        "free_at_startup_gib": 23.55,
+        "engine_budget_gib": 22.49,
+        "weights_plus_kv_gib": 19.99,
+        "label": "prediction",
+        "formula": "24*0.98125 = 23.55; 23.55*0.955 = 22.49; 22.49-2.50 = 19.99"
+      },
+      "16_gib": {
+        "free_at_startup_gib": 15.7,
+        "engine_budget_gib": 14.99,
+        "weights_plus_kv_gib": 12.49,
+        "label": "prediction",
+        "formula": "16*0.98125 = 15.70; 15.70*0.955 = 14.99; 14.99-2.50 = 12.49"
+      }
     },
     "softest_numbers": "0.98125 and 0.955 are still one board's constants. A board that reserves more for a display output, or a driver with a different allocator, moves both. This is why each class verdict below ends in a startup requirement rather than a number."
   },
-
   "kv_model": {
+    "how_the_engine_actually_sizes_this": {
+      "source": "vllm/v1/core/kv_cache_utils.py in the pinned r34 image. get_kv_cache_capacity() returns int(max_concurrency * max_model_len) and that is what the log line 'GPU KV cache size: N tokens' prints (the comment above it says so: 'GPU KV cache size in tokens = max_concurrency * max_model_len'). get_max_concurrency_for_kv_cache_config() computes max_concurrency = num_blocks / cdiv(max_memory_usage_per_request, memory_per_block).",
+      "consequence": "the reported token count is NOT pool_bytes / per_token_cost. It is a per-request quantity scaled by the window. For a hybrid model each request carries a FIXED cost (draft KV under MTP, recurrent-state pages, page padding) in addition to a per-token cost, so the correct law is affine in the window, and the apparent per-token rate falls as the window grows.",
+      "corroborating_detail": "the two reported token counts, 265,122 and 62,557, are not multiples of the 1,600-token attention block size (265,122/1600 = 165.70, and 62,557 is odd), which rules out num_blocks x block_size and confirms the concurrency route. Credit: TwentyFourGigProxy spotted this.",
+      "why_this_matters_here": "the previous form used in this receipt, KV_bytes = H + c_tok*T with H = 0.20 GiB, under-charges short windows, which is exactly the failure mode docs/34 §4 named when it chose to hold a fixed term outside the per-token rate - it just sized that term far too small."
+    },
     "formulas": {
       "tensor_floor": "per_token_floor = 2 (K and V) * 4 kv heads * 256 head_dim * 1 byte (fp8) * 16 full_attention layers = 32,768 B/token",
-      "pool": "KV_bytes(T) = H + c_tok * T, with H = 0.20 GiB held outside the per-token rate",
-      "capacity": "T_max = (KV_avail_GiB - H) * 2^30 / c_tok",
-      "publishable": "the largest multiple of 4,096 whose requirement H + T*c_tok leaves >= 15 % headroom against KV_avail"
+      "pool_needed_for_one_request": "P(L) = a * L + M, with a the true per-token cost and M the fixed per-request cost, both per KV-configuration (MTP-3 and MTP-off differ)",
+      "what_the_engine_reports": "T_reported = int((P / (a*L + M)) * L), i.e. concurrency x window; so P = a*T + M*(T/L), which is how a and M are recovered from a logged (P, T, L) triple",
+      "capacity": "L_max = (KV_avail_GiB * 2^30 - M) / a",
+      "publishable": "the largest multiple of 4,096 that leaves >= 15 % headroom, i.e. L such that a*L + M <= KV_avail/1.15. Retained for continuity with docs/34 §5.3, though with a mechanistic law it is now partly a double-count."
     },
     "why_only_16_layers": "KV exists only on the 16 full_attention layers; the 48 GDN layers keep a fixed-size recurrent state per sequence instead of a per-token cache. That asymmetry is the entire reason a 27 B model can hold 262,144 tokens on a 32 GB card.",
-    "c_tok_mtp3_fp8": {
-      "value_bytes_per_token": 36773.9,
-      "label": "derived from a measured pool",
-      "formula": "(9.28 GiB - 0.20 GiB) * 2^30 / 265,122 tokens",
-      "source": "receipts/qualification-5090-context.json, physical RTX 5090",
-      "gross_rate_bytes_per_token": 37583.9,
-      "gross_over_floor": 1.147,
-      "residual_above_tensor_floor_gib": 1.1891,
-      "cross_check": "the rental pool gives (9.31 - 0.20) * 2^30 / 266,612 = 36,689.2 B/token, 0.23 % below the physical figure. Two engine-allocated pools on two different cards agree on the per-token cost to a quarter of a percent, which is the reason this rate is usable for planning at all."
+    "mtp3_fp8_parameters": {
+      "status": "MEASURED. Four startup refusals on one physical RTX 5090, two windows per KV configuration, max_num_seqs 1, fp8 KV, same image and revision: receipts/qualification-24gib-capped.json (sha256 d336df53786f1b0aa7efa63a527871f19b7e80c10e0b6e3e2375ce78d38eb4c1), measured by TwentyFourGigProxy.",
+      "datapoints": [
+        {
+          "window": 131072,
+          "kv_needed_gib": 4.88
+        },
+        {
+          "window": 262144,
+          "kv_needed_gib": 9.13
+        }
+      ],
+      "a3_bytes_per_token": 34816.0,
+      "M3_gib": 0.63,
+      "solve": "a3 = (9.13 - 4.88) GiB / (262,144 - 131,072) = 34,816.0 B/token EXACTLY, which is 32,768 x 17/16 - the fp8 tensor floor plus exactly one padding sixteenth. M3 = 4.88 GiB - 131,072 x 34,816 = 0.6300 GiB.",
+      "independent_self_check": "inverting the law reproduces the engine's own printed 'estimated maximum model length' figures: 81,600 tokens needs 0.63 + 81,600 x 34,816 / 2^30 = 3.2759 GiB against a pool printed as 3.27, and the MTP-off law puts 128,576 at 4.0834 against 4.08 printed.",
+      "how_it_relates_to_the_bounds_this_receipt_published_before": "the a3 range [32,768, 34,816] contained the truth and resolved to its UPPER endpoint, which retrospectively validates reading the engine's 'may waste at most 6.25%' line as a per-token ceiling. The M3 range [0.676, 1.176] did NOT contain 0.63, and the reason is a real methodological flaw worth recording: I inverted an ALLOCATED pool (9.28 GiB available at L = 262,144) whereas the law needs the pool a window REQUIRES (9.13 GiB). Because max_concurrency = num_blocks / cdiv(...) involves flooring and a ceiling, reported concurrency is not exactly pool / requirement, so inverting an allocation over-estimates the fixed term. Measuring the refusal threshold at two windows, as the run above did, reads the requirement directly and is strictly the better method.",
+      "what_this_retires": "the 36,773.9 B/token single rate this receipt first used, and the 0.20 GiB H reserve behind it. That rate implied 36,765 B/token against a measured 34,816, i.e. it was above even the engine's padding ceiling."
     },
-    "c_tok_mtp_off_fp8": {
-      "value_bytes_per_token": 32927.6,
-      "label": "derived from a measured pool, taken gross",
-      "formula": "8.18 GiB * 2^30 / 266,743 tokens = 1.0049x the tensor floor",
-      "source": "receipts/context-capacity-5090-budget.json",
-      "note_on_docs_34": "docs/34 §4 printed this rate as 32,929.0 B/token. Recomputed from the two figures it cites, 8.18 GiB and 266,743 tokens, it is 32,927.6. The 0.004 % difference changes no published length in either document; this receipt uses the value its own formula reproduces.",
-      "why_gross": "subtracting H from 8.18 GiB over 266,743 tokens would give 32,122 B/token, BELOW the 32,768 B floor - that run had no room for a separate reserve at all. Planning still adds H on top, so every MTP-off prediction here carries 0.20 GiB of deliberate double-count."
+    "mtp_off_fp8_parameters": {
+      "status": "MEASURED, same run and receipt",
+      "datapoints": [
+        {
+          "window": 131072,
+          "kv_needed_gib": 4.16
+        },
+        {
+          "window": 262144,
+          "kv_needed_gib": 8.18
+        }
+      ],
+      "a0_bytes_per_token": 32931.8,
+      "M0_gib": 0.14,
+      "solve": "a0 = (8.18 - 4.16) GiB / 131,072 = 32,931.8 B/token = 1.0050 x the fp8 tensor floor; M0 = 4.16 GiB - 131,072 x 32,931.8 = 0.1400 GiB",
+      "agreement_with_docs_34": "docs/34 §4's 32,929.0 B/token is within 0.009 % of the measured per-token cost. That section's rate was right; what was wrong was treating it as the whole cost.",
+      "correction_to_this_receipt": "I had bounded M0 at 'at most 0.039 GiB, and 0.000 at the top of the range'. Measured it is 0.14 GiB, which is ABOVE my bound - the same allocated-versus-required inversion error, in the same direction. This lowers the MTP-off rows slightly relative to my previous revision.",
+      "what_it_confirms": "the fixed per-request term is overwhelmingly MTP's: 0.63 GiB with MTP-3 against 0.14 GiB without, a 0.49 GiB difference per request. docs/34 §4 reasoned that the residual over the tensor floor was MTP-driven rather than GDN-driven, and that is now measured rather than argued."
     },
-    "H_reserve": {
-      "value_gib": 0.20,
-      "what_it_is": "an explicit reserve for the GDN conv/SSM state and any fixed pool padding, held outside the per-token rate so that short contexts are never under-charged",
-      "evidence": "external sizing only: 48 GDN layers x 48 heads x 128 x 128 plus a bf16 conv state, quoted as 153.9 MB at fp32 and 78.4 MB at bf16 per slot from SGLang (docs/07 §5.6), so <= 0.15 GiB at max_num_seqs 1. Our own receipts report one available_kv_gib and one token count and itemize neither, so this reserve is reasoning, not a measurement of ours.",
-      "mtp_3_costs": "the MTP-3 rate is 11.7 % above the MTP-off rate per token (36,773.9 / 32,927.6 = 1.1168), on top of the draft weights themselves"
+    "mtp_3_true_total_cost": {
+      "non_kv_gib": 0.7,
+      "fixed_kv_per_request_gib": 0.49,
+      "detail": "MTP-3 costs 0.252 GiB of draft weights PLUS the entire 0.45 GiB CUDA-graph pool, which the same run measured at 0.00 GiB with MTP off, so non-KV overheads are 2.50 GiB with MTP-3 and 2.05 GiB without. On top of that it adds 0.49 GiB of fixed KV per request. On a 24 GB board that is about 35 % of the whole KV pool, which is the structural reason the 16 GB MTP-3 row is not short but absent.",
+      "status": "measured, same receipt"
+    },
+    "retired_H_reserve": {
+      "value_gib": 0.2,
+      "status": "RETIRED and now superseded by measured values: the fixed per-request term is 0.63 GiB under MTP-3 and 0.14 GiB without.",
+      "why_it_was_wrong": "the shape was right - the engine's capacity formula does carry a fixed per-request term - but 0.20 GiB was three times too small for MTP-3 and slightly too large for MTP-off, so the old model was simultaneously too generous where it mattered most and too harsh elsewhere."
     },
     "kv_4bit": {
       "formula": "c_tok(4-bit KV) = c_tok(fp8) * 16,384 / 32,768, pure halving",
@@ -252,7 +434,6 @@
       "not_used_in_any_verdict_below": true
     }
   },
-
   "class_24_gib": {
     "verdict": "GO",
     "headline": "at 24 GB no new checkpoint is required. The already-published context edition fits with measured resident weights, and the only thing that changes is the window.",
@@ -262,73 +443,207 @@
       "mean_kld": 0.003409,
       "positions": 1048064,
       "receipt": "receipts/kld5-1M-tail-ctx.json",
-      "ten_shard": {"mean_kld": 0.003509, "positions": 10480640, "receipt": "receipts/kld5-10M-ctx.json"},
+      "ten_shard": {
+        "mean_kld": 0.003509,
+        "positions": 10480640,
+        "receipt": "receipts/kld5-10M-ctx.json"
+      },
       "label": "measured, and it transfers unchanged because it is the same weights. A 24 GB profile carries no new fidelity risk of any kind."
     },
     "resident_weights_gib": {
       "value": 18.41,
       "label": "measured",
       "receipt": "receipts/native-mtp-8mp-amendment.json -> measured_memory.resident_weights_gib",
-      "alternative_measurement": {"value": 18.19, "receipt": "receipts/qualification-5090-context.json -> gates[*].measured_engine_usage_gib.weight"},
+      "alternative_measurement": {
+        "value": 18.19,
+        "receipt": "receipts/qualification-5090-context.json -> gates[*].measured_engine_usage_gib.weight"
+      },
       "choice": "the verdict uses 18.41, the larger of the two measured figures"
     },
     "kv_budget_gib": {
       "value": 1.58,
       "label": "prediction",
       "formula": "weights_plus_kv(24 GiB) - resident = 19.99 - 18.41 = 1.58",
-      "with_the_smaller_resident_measurement": {"value": 1.80, "formula": "19.99 - 18.19"},
+      "with_the_smaller_resident_measurement": {
+        "value": 1.8,
+        "formula": "19.99 - 18.19"
+      },
       "comparison": "the same checkpoint had 9.28 GiB of KV measured on a 32 GB board. A 24 GB board leaves about one sixth of that, and that single ratio is the whole story of the class."
     },
+    "read_this_before_using_any_length_below": "the KV cost parameters behind these lengths are now MEASURED (kv_model.mtp3_fp8_parameters, mtp_off_fp8_parameters), so the windows are point predictions rather than ranges. What is still a prediction is the CARD: no physical 24 GB board has been started. The MTP-3 figure this receipt first published, 32,768, is retired at the conservative resident measurement and confirmed reachable at the optimistic one - which is why the class is published at 24,576.",
     "context": {
       "mtp_3_fp8": {
-        "t_max": 40293,
-        "published_recommendation": 32768,
-        "headroom_pct": 19.5,
-        "requirement_gib": 1.322,
-        "label": "prediction",
-        "formula": "T_max = (1.58 - 0.20) * 2^30 / 36,773.9 = 40,293; largest multiple of 4,096 with >= 15 % headroom = 32,768, whose requirement is 0.20 + 32,768 * 36,773.9 / 2^30 = 1.322 GiB against 1.58 available"
+        "published_recommendation": 24576,
+        "requirement_gib": 1.4269,
+        "label": "prediction from measured KV parameters",
+        "the_rule_is_on_MEMORY": "docs/34 §5.3 defines the >= 15 % rule as 'the largest multiple of 4,096 whose REQUIREMENT leaves >= 15 % headroom against KV_avail', i.e. a*L + M <= pool/1.15, so L <= (pool/1.15 - M)/a. An earlier revision of this receipt applied it as L <= L_max/1.15, the token form, which is equivalent only when M = 0 - exactly the assumption the refusal measurements retired. Every length below uses the memory form. Credit: TwentyFourGigPublish caught it.",
+        "at_the_pool_the_proxy_measured": {
+          "pool_gib": 1.79,
+          "rule_allows": 28574,
+          "largest_4096_multiple": 24576,
+          "margin_at_24576_pct": 25.4,
+          "basis": "18.19 GiB resident, the figure this card loads at"
+        },
+        "at_the_conservative_resident": {
+          "pool_gib": 1.58,
+          "rule_allows": 22943,
+          "largest_4096_multiple": 20480,
+          "24576_still_fits": true,
+          "24576_margin_pct": 10.7,
+          "basis": "18.41 GiB resident, the larger of our two measurements"
+        },
+        "why_24576_is_the_published_figure": "it clears the >= 15 % memory rule at the pool the proxy actually measured, and it still FITS at the conservative resident figure with a 10.7 % margin. 20,480 is what the rule alone would give at the conservative pool; 24,576 is what docs/34 publishes and what the proxy converged on independently, and the gap between the two is exactly the difference between our two measured resident-weight figures. A board that loads at 18.41 GiB should serve 20,480 if it wants the full rule margin.",
+        "32768": {
+          "requirement_gib": 1.6925,
+          "fits_at_1_79": true,
+          "margin_pct": 5.8,
+          "fits_at_1_58": false,
+          "note": "started and gated on the proxy at the 1.79 GiB pool, but below the rule margin there and infeasible at the conservative resident, so it is not a publishable default"
+        }
       },
       "mtp_off_fp8": {
-        "t_max": 53218,
         "published_recommendation": 45056,
-        "headroom_pct": 15.8,
-        "requirement_gib": 1.582,
-        "label": "prediction",
-        "formula": "resident drops by the 0.252 GiB of draft weights to 18.158, so KV_avail = 1.832; T_max = (1.832 - 0.20) * 2^30 / 32,927.6 = 53,218; 45,056 requires 1.582 GiB against 1.832 available"
+        "status_of_that_number": "STARTED AND GATED, not merely computed: the ballasted 24 GiB proxy arm ran this window and passed 7/7 gates with a measured 2.60 GiB pool, 76,032 allocated tokens, 1.69x concurrency and 70.8 % headroom (receipts/qualification-24gib-capped.json). It is published BECAUSE it was started, in preference to the larger windows the arithmetic allows.",
+        "requirement_gib": 1.522,
+        "byte_margin_pct": 70.8,
+        "engine_supported_ceiling_at_the_measured_pool": {
+          "value": 80208,
+          "label": "prediction",
+          "formula": "(2.60 - 0.14) * 2^30 / 32,931.8"
+        },
+        "what_the_15pct_rule_would_allow": {
+          "at_the_measured_pool": 65536,
+          "at_the_conservative_resident": 61440,
+          "label": "prediction",
+          "formula": "memory form: a*L + M <= pool/1.15, so L <= (pool/1.15 - M)/a, rounded down to a 4,096 multiple; pools 2.6002 and 2.382 GiB give 69,157 and 62,970 -> 65,536 and 61,440",
+          "correction": "an earlier revision printed 69,632 here from the token form L_max/1.15; 69,632 needs 2.2756 GiB against a 2.2610 GiB cap and FAILS the rule. At the conservative pool both forms happen to give 61,440, which is why the error was invisible there."
+        },
+        "57344": {
+          "requirement_gib": 1.8987,
+          "margin_at_the_measured_pool_pct": 36.9,
+          "status": "inside the envelope and never started; named as arithmetically available, not published"
+        },
+        "non_kv_overheads_gib": 1.95,
+        "overheads_detail": "MTP off measures peak_activation 1.68 (0.10 lower than MTP-3's 1.78 - that delta is the draft model's activation), non_torch 0.27 and a CUDA-graph pool of 0.00, so 1.95 GiB against 2.50 with MTP-3. Sanity: 22.49 - 1.95 - 17.94 measured MTP-off resident = 2.60 GiB, the board arm's measured pool to the hundredth.",
+        "history_of_this_row": "45,056 in this receipt's first revision (right number, wrong reasons: a 0.20 GiB reserve and no CUDA-graph credit), then 49,152, then 57,344 as the corrections landed - and back to 45,056 because that is the window that was actually started. The arithmetic journey is recorded because the intermediate numbers were published; the published value now rests on a gate pass rather than on a model.",
+        "why_not_publish_the_larger_number": "publishing an unstarted 57,344 or 61,440 while holding a gate-passing 45,056 would invert this receipt's own rule that 'predicted' and 'allocated' are different sentences. The headroom is stated above so nothing is hidden; the proxy receipt's prediction_2.note declines to raise it for the same reason."
       },
-      "with_the_smaller_resident_measurement": {
-        "mtp_3_t_max": 46717,
-        "mtp_3_published_recommendation": 36864,
-        "headroom_pct": 23.1,
-        "label": "prediction",
-        "note": "one measurement of 18.19 instead of 18.41 would move the recommendation by 4,096 tokens. Published as the sensitivity it is, not as an alternative recommendation."
+      "sensitivity_to_the_two_resident_measurements": {
+        "conservative_18_41": {
+          "pool_gib": 1.5802,
+          "mtp_3_l_max": 29298,
+          "24576_margin_pct": 10.7,
+          "28672_margin_pct": 1.3,
+          "32768_fits": false
+        },
+        "measured_on_this_card_18_19": {
+          "pool_gib": 1.79,
+          "mtp_3_l_max": 35775,
+          "24576_margin_pct": 25.4,
+          "32768_margin_pct": 5.8,
+          "32768_fits": true
+        },
+        "why_24576_and_not_28672_or_32768": "24,576 is the only 4,096-multiple robust across BOTH of our measured resident figures. 28,672 falls to a 1.3 % margin at the conservative one and 32,768 fails it outright, even though the proxy arm started and gated 32,768 on a card that loads at 18.19 GiB.",
+        "measured_outcome": "the ballasted arm at a 22.49 GiB budget with the card held to 23.553 GiB free allocated 33,760 tokens for a 32,768 window (1.03x) and passed all seven gates. So 32,768 works on an 18.19 GiB-resident board and not on an 18.41 GiB one; 24,576 is independent of which a given board reproduces.",
+        "label": "pools and L_max values are predictions; allocations and gate results are measured in receipts/qualification-24gib-capped.json"
       },
-      "retired_number": {
-        "value": 40960,
-        "was_published_in": "docs/34 §5.3, derived at utilisation 0.97",
-        "why_retired": "at the qualified 0.955 utilisation, 40,960 tokens requires 0.20 + 40,960 * 36,773.9 / 2^30 = 1.603 GiB against 1.580 GiB available. It does not merely lose its headroom margin, it does not fit at all. This is the clearest illustration in this receipt of what the physical qualification changed."
-      },
-      "fraction_of_native": "32,768 / 262,144 = 12.5 % of the window the same checkpoint serves on a 32 GB card"
+      "retired_numbers": [
+        {
+          "value": 40960,
+          "was_published_in": "docs/34 §5.3, at utilisation 0.97",
+          "why_retired": "needs 2.06 GiB of KV under the measured law against at most 1.80 GiB available"
+        },
+        {
+          "value": 32768,
+          "was_published_in": "an earlier revision of THIS receipt and of the docs/34 Verdict section",
+          "why_retired": "needs 1.692 GiB. It fits only at the optimistic resident measurement (1.80 GiB pool, 6.4 % margin) and not at the conservative one (1.58 GiB), so it is not a safe published default even though the proxy run passed its gates at that window."
+        },
+        {
+          "value": 20480,
+          "was_published_in": "the revision of this receipt written an hour earlier, from bounded parameters",
+          "why_retired": "it was the conservative end of a range that measurement has since collapsed to a point; the same rule now yields 24,576"
+        }
+      ],
+      "fraction_of_native": "24,576 / 262,144 = 9.4 % of the window the same checkpoint serves on a 32 GB card"
     },
     "serving_configuration": {
-      "note": "the qualified 5090 configuration with two changes: the window, and nothing else",
-      "command": "VLLM_EXL3_EMBED_BITS=8 VLLM_EXL3_GRAPH_DECODE=1 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True vllm serve <ctx-checkpoint> --gpu-memory-utilization 0.955 --max-model-len 32768 --max-num-seqs 1 --kv-cache-dtype fp8 --max-num-batched-tokens 2048 --speculative-config '{\"method\":\"mtp\",\"num_speculative_tokens\":3}' --mm-processor-kwargs '{\"truncation\":false,\"max_pixels\":8388608}' --compilation-config '{\"cudagraph_mode\":\"FULL_DECODE_ONLY\",\"cudagraph_capture_sizes\":[4]}'",
-      "label": "the flags are the measured ones; --max-model-len 32768 is the prediction in this line"
+      "note": "the qualified 5090 configuration with the window changed, and nothing else",
+      "command": "VLLM_EXL3_EMBED_BITS=8 VLLM_EXL3_GRAPH_DECODE=1 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True vllm serve <ctx-checkpoint> --gpu-memory-utilization 0.955 --max-model-len 24576 --max-num-seqs 1 --kv-cache-dtype fp8 --max-num-batched-tokens 2048 --speculative-config '{\"method\":\"mtp\",\"num_speculative_tokens\":3}' --mm-processor-kwargs '{\"truncation\":false,\"max_pixels\":8388608}' --compilation-config '{\"cudagraph_mode\":\"FULL_DECODE_ONLY\",\"cudagraph_capture_sizes\":[4]}'",
+      "label": "the flags are measured; --max-model-len 24576 is the prediction in this line",
+      "mtp_off_variant": "drop --speculative-config and set --max-model-len 45056, the window the proxy arm started and gated; that configuration also drops the CUDA-graph pool to zero and 0.10 GiB of draft activation, which is where its extra context comes from"
     },
-    "what_go_means": "go to publish this as a 24 GB serving profile of an existing artifact, with 32,768 tokens labelled as a prediction, and go to run the qualification. It does NOT mean a card may print '32,768 tokens on 24 GB' as a fact: 'predicted 40,293 KV tokens' and 'allocated 40,293 KV tokens' are different sentences and only the second belongs on a card.",
+    "what_go_means": "go to publish this as a 24 GB serving profile of an existing artifact, with 24,576 labelled a prediction and 45,056 labelled started-on-a-proxy, and go to run the physical qualification. It does NOT mean a card may print a token count as a physical-board fact: 'predicted', 'allocated on a ballasted proxy' and 'allocated on a 24 GB board' are three different sentences and only the third closes the class.",
     "gate_before_any_fit_claim": "one startup on a physical 24 GB board, nvidia-smi before and after, resident weights / activation / non-torch / graph / KV pool / allocated tokens read out of the engine log, needle retrieval at >= 0.98 x the published length, one combined long-text plus >= 7 MP image request, the 30-case vision suite against the measured 24/30, throughput warmed with sampler and reasoning effort printed, and a receipt with the field set of release-evidence-context.json.",
-    "optional_and_not_required": "M24-L (docs/34 §5) is a new lower-bitrate conversion that would buy about 28,672 more predicted tokens. It is optional, it carries new fidelity risk, and it is explicitly NOT part of this go: the class is served by an artifact that already exists and already has a measured KLD."
+    "optional_and_not_required": "M24-L (docs/34 §5) is a new lower-bitrate conversion. Under the measured KV law its 0.86 GiB of released resident weights would buy about 26,000 more MTP-3 tokens. It is optional, it carries new fidelity risk, and it is explicitly NOT part of this go: the class is served by an artifact that already exists and already has a measured KLD."
   },
-
+  "resolved_during_this_receipt": {
+    "kv_capacity_law_was_wrong_twice_and_is_now_measured": {
+      "status": "CLOSED. Mechanism read from the pinned engine's source; both parameter pairs measured by two-window startup refusals in receipts/qualification-24gib-capped.json (sha256 d336df53786f1b0aa7efa63a527871f19b7e80c10e0b6e3e2375ce78d38eb4c1). Nothing about the KV law is now a range.",
+      "how_it_surfaced": "TwentyFourGigProxy reported an apparent 56,642 B/token at a 32,768 window against 37,584 at native length, and noticed that neither reported token count is a multiple of the 1,600-token attention block - which cannot happen if the engine divides a pool by a per-token cost. Reading vllm/v1/core/kv_cache_utils.py showed why: capacity is reported as concurrency x window.",
+      "the_two_errors_and_their_causes": [
+        "FORM: the first revision used H + c_tok*T with H = 0.20 GiB. The engine's law is affine in the window with a fixed per-request term. Consequence: short windows were under-charged, and the implied 36,765 B/token exceeded even the engine's own padding ceiling of 34,816 - so it was refutable from our own receipt alone.",
+        "METHOD: the second revision derived the parameters by inverting an ALLOCATED pool (9.28 GiB at L = 262,144) when the law needs the pool a window REQUIRES (9.13 GiB). Because max_concurrency divides by cdiv(...), reported concurrency is not exactly pool/requirement, so the inversion biased the fixed term high for MTP-3 (0.676-1.176 GiB against a measured 0.63) and low for MTP-off (<=0.039 GiB against a measured 0.14). Measuring the refusal threshold at two windows avoids the inversion entirely and is the method that should have been asked for first."
+      ],
+      "final_measured_parameters": {
+        "mtp_3": {
+          "a_bytes_per_token": 34816.0,
+          "M_gib": 0.63,
+          "note": "34,816 = 32,768 x 17/16 exactly - the fp8 tensor floor plus one padding sixteenth"
+        },
+        "mtp_off": {
+          "a_bytes_per_token": 32931.8,
+          "M_gib": 0.14
+        },
+        "non_kv_overheads_gib": {
+          "with_mtp_3": 2.5,
+          "with_mtp_off": 1.95,
+          "why_they_differ": "MTP off drops the CUDA-graph pool (0.45 -> 0.00 GiB) and the draft model's activation (1.78 -> 1.68 GiB); non_torch is 0.27 in both"
+        }
+      },
+      "how_every_published_length_moved": {
+        "24_gib_mtp_3": "32,768 (revision 1) -> 20,480 (revision 2, bounded) -> 24,576 MEASURED-PARAMETER FINAL. 32,768 needs 1.692 GiB: it fits the 1.80 GiB pool this card's 18.19 GiB resident leaves, and not the 1.58 GiB that the conservative 18.41 GiB figure leaves, so it is not a safe default.",
+        "24_gib_mtp_off": "45,056 -> 49,152 -> 57,344 -> 45,056 FINAL, and the final value is published because it is the window the ballasted proxy arm actually STARTED and gated 7/7, not because it is the largest the arithmetic allows. The arithmetic allows 80,208 at the measured pool and 61,440-65,536 under the memory-form headroom rule; those are stated as predictions beside it rather than published.",
+        "16_gib_mtp_3": "8,192 -> withdrawn -> WITHDRAWN, now on a measured margin: 0.63 GiB of fixed term against a 0.553 GiB pool, short by 0.077 GiB.",
+        "16_gib_mtp_off": "12,288 -> 16,384 -> 28,672 -> 32,768 -> 28,672 FINAL, where the corrected MTP-off overheads and the corrected memory-form rule agree. Still 1.75x what docs/34 §6.2 predicted, with S16-V-long at 36,864. Unstarted, unlike the 24 GB row.",
+        "reading": "the corrections did not all point the same way. MTP-3 got more expensive and MTP-off got substantially cheaper, which is why the law had to be replaced rather than its constants nudged, and why the 16 GB design study is now more attractive than when it was written even though its verdict is unchanged."
+      },
+      "what_survived_all_of_it": "both class decisions, untouched. The 24 GB GO rests on measured weights (18.41 GiB against a 19.99 GiB budget) and the 16 GB NO-GO rests on absent fidelity (no sub-4-bit width in this family has ever been measured). Neither was ever a capacity argument. Every number that moved was a window."
+    }
+  },
+  "open_risks_to_this_verdict": {
+    "no_physical_board_in_either_class": {
+      "status": "OPEN, and it is now the only capacity-side gap",
+      "detail": "the 24 GiB qualification is a PROXY: a 32 GB RTX 5090 with the engine budgeted to 22.49 GiB and the card ballasted to 23.553 GiB free. Its own receipt records physical_board_gate: open. No 24 GB or 16 GB board has been started.",
+      "why_the_proxy_is_nevertheless_worth_something": "the ballasted arm reproduces both the budget AND the outside-budget slack a real 24 GiB board would have, which is exactly the property the earlier rental proof lacked."
+    }
+  },
   "class_16_gib": {
     "verdict": "NO-GO as a SKU. Publish as a design study.",
     "headline": "every reachable 16 GB configuration requires at least one knob for which this project has no fidelity measurement of any kind, and the cheapest configuration that avoids all of them does not fit.",
     "the_arithmetic_that_kills_the_safe_option": {
       "configuration": "the cheapest multimodal build that keeps the MLP stack at 4 bits: full_attention K3, linear_attention K3, MLP gate/up/down all K4, lm_head K3, MTP all K4, int8 embedding, BF16 vision tower",
-      "resident_gib": {"value": 13.58, "label": "prediction", "formula": "byte law payload 13.235 GiB + 0.35 loader allowance"},
-      "budget_gib": {"value": 12.70, "label": "prediction", "basis": "docs/34 §3 at utilisation 0.97 and 2.52 GiB overheads"},
-      "overshoot_gib": {"value": 0.88, "label": "prediction", "formula": "13.58 - 12.70", "meaning": "0.88 GiB over budget BEFORE a single KV byte"},
-      "overshoot_at_the_qualified_utilisation": {"value": 1.09, "label": "prediction", "formula": "13.58 - 12.49, where 12.49 uses the measured 0.955 utilisation and 2.50 GiB overheads", "meaning": "today's physical result makes the overshoot strictly worse, so the conclusion hardens rather than softens"},
+      "resident_gib": {
+        "value": 13.58,
+        "label": "prediction",
+        "formula": "byte law payload 13.235 GiB + 0.35 loader allowance"
+      },
+      "budget_gib": {
+        "value": 12.7,
+        "label": "prediction",
+        "basis": "docs/34 §3 at utilisation 0.97 and 2.52 GiB overheads"
+      },
+      "overshoot_gib": {
+        "value": 0.88,
+        "label": "prediction",
+        "formula": "13.58 - 12.70",
+        "meaning": "0.88 GiB over budget BEFORE a single KV byte"
+      },
+      "overshoot_at_the_qualified_utilisation": {
+        "value": 1.09,
+        "label": "prediction",
+        "formula": "13.58 - 12.49, where 12.49 uses the measured 0.955 utilisation and 2.50 GiB overheads",
+        "meaning": "today's physical result makes the overshoot strictly worse, so the conclusion hardens rather than softens"
+      },
       "consequence": "either the vision tower goes or the fourth MLP bit goes. The MLP stack is 17.113 B params, so one bit across gate+up+down is 1.992 GiB - the only lever large enough to matter at this size, and the worst measured buy per GiB in the whole knob ranking (docs/34 §7). A 16 GB multimodal build is therefore a SUB-4-BIT build by arithmetic, not by choice."
     },
     "s16_v_candidate": {
@@ -343,46 +658,98 @@
         "vision_tower": "BF16 at a 4.2 MP cap",
         "why_attention_gets_the_extra_bit": "full_attention is the cheapest place to spend one, 0.1953 GiB per bit against 0.6445 for linear_attention, and it carries long-range retrieval"
       },
-      "serialized_bytes": {"value": 13711503428, "gib": 12.770, "label": "prediction", "formula": "byte law at the widths above, summed over roles, embedding at BF16 on disk"},
-      "predicted_disk_bytes": {"value": 13735474746, "label": "prediction", "formula": "serialized payload + 24.0 MB whole-tree allowance"},
-      "resident_payload_gib": {"value": 11.586, "label": "prediction", "formula": "same payload with the BF16 embedding replaced by its int8 resident form, 12,440,105,028 B / 2^30"},
-      "resident_weights_gib": {"value": 11.94, "label": "prediction", "formula": "11.586 + 0.35 loader allowance"},
-      "context_as_published_in_docs_34": {
-        "mtp_off": {"value": 16384, "label": "prediction", "formula": "at the docs/34 §3 basis (utilisation 0.97, overheads 2.52, KV_avail 0.96 GiB), requirement 0.70 GiB, quoted as 37 % headroom"},
-        "mtp_3": {"value": 12288, "label": "prediction", "formula": "same basis, KV_avail 0.769 GiB, T_max 16,613"}
+      "serialized_bytes": {
+        "value": 13711503428,
+        "gib": 12.77,
+        "label": "prediction",
+        "formula": "byte law at the widths above, summed over roles, embedding at BF16 on disk"
       },
-      "context_re_derived_at_the_qualified_utilisation": {
-        "basis": "utilisation 0.955 and 2.50 GiB overheads, i.e. the constants the physical card actually measured; weights_plus_kv = 12.49 GiB",
+      "predicted_disk_bytes": {
+        "value": 13735474746,
+        "label": "prediction",
+        "formula": "serialized payload + 24.0 MB whole-tree allowance"
+      },
+      "resident_payload_gib": {
+        "value": 11.586,
+        "label": "prediction",
+        "formula": "same payload with the BF16 embedding replaced by its int8 resident form, 12,440,105,028 B / 2^30"
+      },
+      "resident_weights_gib": {
+        "value": 11.94,
+        "label": "prediction",
+        "formula": "11.586 + 0.35 loader allowance"
+      },
+      "context_as_published_in_docs_34": {
         "mtp_off": {
-          "kv_avail_gib": 0.748,
-          "t_max": 17869,
-          "published_recommendation": 12288,
-          "headroom_pct": 29.7,
+          "value": 16384,
           "label": "prediction",
-          "formula": "KV_avail = 12.49 - (11.94 - 0.198 draft weights) = 0.748; T_max = (0.748 - 0.20) * 2^30 / 32,927.6 = 17,869; 12,288 requires 0.577 GiB",
-          "why_16384_falls": "16,384 tokens requires 0.20 + 16,384 * 32,927.6 / 2^30 = 0.702 GiB against 0.748 available, only 6.5 % headroom, below the 15 % rule the class arithmetic uses everywhere else. The headline 16,384 does not survive its own publishing rule once the measured utilisation is applied."
+          "formula": "at the docs/34 §3 basis (utilisation 0.97, overheads 2.52, KV_avail 0.96 GiB), requirement 0.70 GiB, quoted as 37 % headroom"
         },
         "mtp_3": {
-          "kv_avail_gib": 0.55,
-          "t_max": 10219,
-          "published_recommendation": 8192,
-          "headroom_pct": 14.4,
+          "value": 12288,
           "label": "prediction",
-          "formula": "KV_avail = 12.49 - 11.94 = 0.55; T_max = (0.55 - 0.20) * 2^30 / 36,773.9 = 10,219; 8,192 requires 0.481 GiB",
-          "on_the_boundary": "8,192 clears the >= 15 % headroom rule by 14.4 % from these rounded inputs and by 15.1 % from the unrounded budget, i.e. it sits ON the rule's boundary rather than inside it. Reported as the boundary case it is; it is one more reason this class is a design study."
+          "formula": "same basis, KV_avail 0.769 GiB, T_max 16,613"
         }
+      },
+      "context_with_the_measured_kv_law": {
+        "basis": "utilisation 0.955; non-KV overheads 2.50 GiB with MTP-3 (1.78 activation + 0.27 non-torch + 0.45 CUDA-graph) and 1.95 GiB without (1.68 + 0.27 + 0.00 - MTP off drops both the CUDA-graph pool and the draft model's 0.10 GiB of activation); KV parameters as measured in kv_model. Budget 14.99 GiB. Both overhead figures are measured at the 8.4 MP cap on a 32 GB board; a 16 GB profile at 4.2 MP should measure its own activation, which would only help.",
+        "mtp_3": {
+          "kv_avail_gib": 0.553,
+          "published_recommendation": 0,
+          "label": "structural result from measured parameters",
+          "finding": "MTP-3 IS IMPOSSIBLE AT 16 GB AT ANY WINDOW. The measured fixed per-request term is 0.63 GiB against a total pool of 0.553 GiB, so the request cannot be admitted before a single token is cached. The earlier 8,192 and 12,288 figures for this row are withdrawn, not reduced.",
+          "formula": "KV_avail = 14.99 - 2.50 - 11.94 = 0.553 GiB; requirement(L) = 0.63 + 34,816*L >= 0.63 GiB > 0.553 GiB",
+          "margin_of_the_impossibility": "0.077 GiB. It is close, which means a profile that shaved ~0.1 GiB of resident weights could reopen the question - but it would still be buying speculative decode with the whole of its context budget.",
+          "consequence": "a 16 GB build is single-token-decode only, and loses the 56.48 % MTP acceptance and its throughput with it. The retired model hid this by charging MTP a flat 0.20 GiB."
+        },
+        "mtp_off": {
+          "kv_avail_gib": 1.301,
+          "l_max": 37854,
+          "published_recommendation": 28672,
+          "requirement_gib": 1.0194,
+          "byte_margin_pct": 27.6,
+          "label": "prediction from measured KV parameters",
+          "formula": "KV_avail = 14.99 - 1.95 - 11.742 = 1.301 GiB; engine ceiling L_max = (1.301 - 0.14) * 2^30 / 32,931.8 = 37,854; the >= 15 % rule in its MEMORY form allows L <= (1.301/1.15 - 0.14) * 2^30 / 32,931.8 = 32,321, so the largest 4,096-multiple is 28,672, needing 0.14 + 28,672 x 32,931.8 / 2^30 = 1.0194 GiB",
+          "correction": "an earlier revision published 32,768 here from the token form L_max/1.15 = 32,917. 32,768 needs 1.1450 GiB against a rule cap of 1.1313, so it FAILS the rule - it fits the pool outright, but with 13.6 % margin rather than 15 %. The token form over-publishes by a full 4,096 step at this class precisely because the 0.14 GiB fixed term is a larger fraction of a small pool, which is what TwentyFourGigPublish predicted when it caught the error.",
+          "history_of_this_row": "12,288 (0.20 GiB reserve, no CUDA-graph credit) -> 16,384 (fixed term wrongly near zero) -> 28,672 (overheads 0.10 GiB high) -> 32,768 (token-form rule) -> 28,672, which is where the corrected overheads and the corrected rule form agree. Still 1.75x docs/34 §6.2's original figure.",
+          "unstarted": "nothing at 16 GB has ever been started, so unlike the 24 GB MTP-off row this figure rests on arithmetic alone."
+        },
+        "net_effect_on_the_16_gb_verdict": "unchanged as a decision, and sharper as a design: without MTP the window is 28,672 rather than the 16,384 docs/34 §6.2 predicted, while MTP-3 is eliminated outright. The NO-GO does not move, because it rests on fidelity: no sub-4-bit width in this family has ever been measured. Capacity turned out not to be the obstacle it looked like, which makes this design study more attractive than when it was written, not less."
       },
       "fidelity": {
         "value": null,
         "label": "UNKNOWN AND UNMEASURABLE FROM ANYTHING WE HAVE PUBLISHED",
         "nearest_measured_neighbour": "K4, 0.010345 on shard 0 and 0.010604 over 10,480,640 positions, already the worst of the five published candidates with p99.9 0.5555 against the context build's 0.1642",
         "distance_from_that_neighbour": "S16-V is one bit lower on each of gate/up/down, three lower on the linear-attention stack (online K6 -> K3), two lower on full attention (online K6 -> K4) and two lower on the head (K6 -> K4) - every one of them in the direction that made K4 the worst published candidate",
-        "extrapolation_range": {"value": "0.03-0.10", "label": "prediction, extrapolation only", "caveat": "the measured ladder has NO point below 4 bits, so this is a range with a shape, not an estimate. A card that prints a fidelity number for any 16 GB profile without having run the suite is fabricating it."}
+        "extrapolation_range": {
+          "value": "0.03-0.10",
+          "label": "prediction, extrapolation only",
+          "caveat": "the measured ladder has NO point below 4 bits, so this is a range with a shape, not an estimate. A card that prints a fidelity number for any 16 GB profile without having run the suite is fabricating it."
+        }
       },
       "s16_v_long_variant": {
-        "resident_weights_gib": {"value": 11.74, "label": "prediction", "formula": "S16-V payload with full_attention K4 -> K3, releasing 0.1953 GiB"},
-        "context_at_the_qualified_utilisation": {"mtp_3": {"t_max": 16059, "published_recommendation": 12288, "headroom_pct": 20.8, "label": "prediction", "formula": "KV_avail = 12.49 - 11.74 = 0.75; T_max = (0.75 - 0.20) * 2^30 / 36,773.9"}, "mtp_off": {"t_max": 24391, "published_recommendation": 20480, "headroom_pct": 14.5, "label": "prediction", "formula": "KV_avail = 12.49 - 11.542 = 0.948; T_max = (0.948 - 0.20) * 2^30 / 32,927.6; 20,480 is also a boundary case at 14.5 %"}},
-        "the_trade": "one bit on 16 of 64 layers against speculative decode at the advertised length. Which side is right depends on a retrieval result at K3 attention that does not exist, which is why neither variant may be published first."
+        "resident_weights_gib": {
+          "value": 11.74,
+          "label": "prediction",
+          "formula": "S16-V payload with full_attention K4 -> K3, releasing 0.1953 GiB"
+        },
+        "context_with_the_measured_kv_law": {
+          "mtp_3": {
+            "published_recommendation": 0,
+            "label": "structural result from measured parameters",
+            "finding": "also impossible in practice. KV_avail = 14.99 - 2.50 - 11.74 = 0.753 GiB against a measured fixed MTP-3 term of 0.63 GiB, which leaves 764 tokens under the memory-form rule and 3,793 even ignoring it - both below the 4,096 granularity this project publishes at. The extra bit does not buy speculative decode at this class."
+          },
+          "mtp_off": {
+            "kv_avail_gib": 1.502,
+            "l_max": 44408,
+            "published_recommendation": 36864,
+            "requirement_gib": 1.2706,
+            "byte_margin_pct": 18.2,
+            "label": "prediction from measured KV parameters",
+            "formula": "KV_avail = 14.99 - 1.95 - 11.542 = 1.502 GiB; engine ceiling L_max = (1.502 - 0.14) * 2^30 / 32,931.8 = 44,408; the memory-form rule allows L <= (1.502/1.15 - 0.14) * 2^30 / 32,931.8 = 38,020, so 36,864, needing 1.2706 GiB. Both rule forms agree on this row."
+          }
+        },
+        "the_trade": "the measured law changes what this bit is even for. It was framed as 'one bit on 16 of 64 layers against speculative decode at the advertised length'; with MTP-3 structurally impossible at 16 GB in both variants, the bit now buys context only - 36,864 against S16-V's 28,672 - and it is paid for with whatever K3 attention costs in retrieval, which is unmeasured. Neither variant may be published first."
       }
     },
     "what_no_go_means": "docs/34 §6 stays published as a design study: the byte budgets, the bit allocation and the acceptance gates are useful to anyone who wants to attempt this, and the error-driven allocator path (util/measure.py plus util/optimize.py over a byte budget) is the right way to build it. What may NOT happen is a released 16 GB artifact, a 16 GB row in any model card, a 16 GB context length quoted as a capability, or any fidelity number attached to a 16 GB profile.",
@@ -394,7 +761,6 @@
     ],
     "why_this_is_not_pessimism": "the same arithmetic said yes at 24 GB with no new artifact at all. The 16 GB answer is different because the arithmetic itself forces a width nobody has measured, and because the one class of external evidence that exists for this model on 16 GB cards is negative."
   },
-
   "external_unverified_reports": {
     "role": "context for the 16 GB no-go. Not measurements of ours, never mixed into any arithmetic above, and not on the same axis as our resident-weight or KLD figures.",
     "reports": [
@@ -404,7 +770,7 @@
         "source": "r/LocalLLaMA megathread 1voojjz, u/GambAntonio, comment p3ui0np, created_utc 1786804153",
         "permalink": "https://www.reddit.com/r/LocalLLaMA/comments/1voojjz/megathread_qwen_38_27b_release_day/p3ui0np/",
         "what_it_does_and_does_not_say": "the reader's ~12 GB is his own parenthetical for the file, not a resident-weight measurement, and he states no KV dtype, engine version, utilisation or batch size. What survives that is the shape of the result: at a bitrate BELOW S16-V's, on a 16 GB card of the right generation, long context was reported unusable on throughput grounds - an axis this receipt's arithmetic cannot see at all, because every number here is a memory number.",
-        "relevance_to_the_verdict": "S16-V predicts 12,288 tokens, not 64K-128K, so it is not the same operating point; but a design whose own predicted window is a twentieth of the one readers ask about, at a width nobody has scored, is not a SKU."
+        "relevance_to_the_verdict": "S16-V's measured-parameter window is 32,768 with MTP off, not 64K-128K, so it is not the same operating point; but a design whose window is a quarter of the one readers ask about, at a width nobody has scored, and which cannot run speculative decode at all, is not a SKU."
       },
       {
         "claim": "UD-Q4_K_XL on a 24 GB 4090 leaves about 18.4k usable context",
@@ -412,37 +778,35 @@
         "source": "r/LocalLLaMA megathread 1voojjz, u/arvzg, comment p3vfwqh, created_utc 1786813863",
         "permalink": "https://www.reddit.com/r/LocalLLaMA/comments/1voojjz/megathread_qwen_38_27b_release_day/p3vfwqh/",
         "artifact_size_on_our_axis": "UD-Q4_K_XL is 17,923,394,624 B = 16.692 GiB serialized (docs/35, pinned artifacts) - serialized bytes, not resident weights, and not comparable with our 18.41 GiB resident figure",
-        "relevance_to_the_verdict": "an independent report that a ~16.7 GiB-serialized artifact on a 24 GB board lands near 18.4k tokens, in the same order of magnitude as this receipt's 32,768 prediction for a larger 18.41 GiB-resident artifact. The gap is explainable - fp8 KV instead of llama.cpp defaults, a hybrid stack that caches only 16 of 64 layers, one sequence - but it is an explanation, not a measurement, and it is the reason the 24 GB go is gated on a startup rather than declared a fit."
+        "relevance_to_the_verdict": "an independent report that a ~16.7 GiB-serialized artifact on a 24 GB board lands near 18.4k tokens. When this receipt predicted 32,768 that looked like an unexplained outlier and I attributed it to fp8 KV, the 16-of-64-layer hybrid and single-sequence serving. With the KV law now measured, the comparable prediction is 24,576 with MTP-3 and a hard ceiling of 29,298 at the conservative resident figure, so this reader is no longer an outlier at all - he is roughly where the arithmetic now puts a 24 GB board. It remains a self-reported configuration with no KV dtype, engine version or utilisation, and llama.cpp's KV geometry is not ours, so it is corroboration of magnitude only."
       }
     ]
   },
-
   "recommendation": {
     "24_gib": {
       "decision": "GO",
-      "one_line": "Ship a 24 GB serving profile of the already-published context edition at a predicted 32,768 tokens with MTP-3 and fp8 KV (45,056 with MTP off), and run the qualification; no conversion, no new fidelity risk, measured 0.003409 KLD carried unchanged.",
+      "one_line": "Ship a 24 GB serving profile of the already-published context edition and run the physical qualification: no conversion, no new fidelity risk, measured 0.003409 KLD carried unchanged. Window 24,576 with MTP-3 - the only 4,096-multiple robust across both of our measured resident figures - and 45,056 with MTP off, which a ballasted 24 GiB proxy started and gated 7/7 with 70.8 % headroom. Both rest on MEASURED KV parameters (a = 34,816 B/token with 0.63 GiB fixed under MTP-3; 32,931.8 with 0.14 GiB without). The remaining gap is the board itself: the 24 GiB evidence is a proxy on a 5090 and its own receipt records physical_board_gate: open.",
       "blocking_before_any_fit_claim": "one startup on a physical 24 GB board",
       "unambiguous": true
     },
     "16_gib": {
       "decision": "NO-GO",
       "one_line": "Do not publish a 16 GB SKU. Publish docs/34 §6 as a design study. Every 16 GB path requires a sub-4-bit width, no sub-4-bit width in this family has ever been measured for KLD, we have no 16 GB card to measure on, and the only external evidence for this model at that class is a reader reporting a smaller quantization as unusable at long context.",
-      "flip_condition": "a measured sub-4-bit KLD on shard 0 plus a startup on a physical 16 GB board; the KLD half is cheap and unblocked and should be done first",
+      "flip_condition": "a measured sub-4-bit KLD on shard 0 plus a startup on a physical 16 GB board; the KLD half is cheap and unblocked and should be done first. Note that capacity is no longer the obstacle it looked like: with the KV law measured, S16-V reaches 28,672 tokens without MTP - it simply cannot run MTP-3 at all.",
       "unambiguous": true
     }
   },
-
   "what_we_do_not_know": [
     "no sub-4-bit width of this architecture has ever been measured for fidelity, at any role, on any suite. Every 16 GB configuration needs at least one.",
-    "no 24 GB and no 16 GB board has ever been started here. Every class figure in this receipt is arithmetic.",
-    "the two card constants, 0.98125 usable and 0.955 utilisation, come from one board. The model reproduces that board's logged budget to 0.01 GiB and has never been tested against a second one.",
-    "activation, non-torch and CUDA-graph figures are carried unchanged from a 32 GB profile. A 16 GB profile at a 4.2 MP cap with fewer batched tokens should measure its own, and would probably find them smaller - which would make these predictions conservative, not wrong.",
-    "the GDN conv/SSM state is unaccounted in our own receipts; the 0.20 GiB H reserve rests on external SGLang sizing and on the argument in docs/34 §4, not on a measurement of ours.",
+    "no 24 GB and no 16 GB board has ever been started here. The 24 GiB evidence is a ballasted proxy on a 32 GB RTX 5090 whose own receipt records physical_board_gate: open.",
+    "the two card constants, 0.98125 usable and 0.955 utilisation, come from one board, though the usable figure is now understood mechanically as cudaMemGetInfo total = FB total minus the driver reserve.",
+    "activation and non-torch figures are carried from a 32 GB profile; the CUDA-graph pool is now measured in both MTP modes (0.45 GiB with MTP-3, 0.00 without). A 16 GB profile at a 4.2 MP cap should still measure its own activation.",
+    "how the 0.63 GiB fixed per-request KV term splits between the GDN conv/SSM state, MTP draft KV and page padding. We know MTP dominates it - 0.63 with MTP-3 against 0.14 without - but no receipt of ours itemizes the pool.",
     "the 4-bit KV dtypes are unmeasured and the current fidelity protocol resolves the KV cache to bfloat16, so it cannot measure them. No verdict here uses them.",
     "throughput at these classes is entirely unknown. Every number in this receipt is a memory number, and the only negative external evidence we have for the 16 GB class is a throughput report.",
-    "retrieval behaviour at K3 attention is unknown, so the S16-V versus S16-V-long one-bit trade cannot be settled on paper."
+    "retrieval behaviour at K3 attention is unknown, so the S16-V versus S16-V-long one-bit trade cannot be settled on paper.",
+    "nothing further about the KV law: a and M are measured in both MTP modes, and the 34,816 B/token figure is exactly 17/16 of the fp8 tensor floor, so the padding term is understood as well as measured."
   ],
-
   "open_work": [
     {
       "id": "F3-open-1",
@@ -455,30 +819,108 @@
       "id": "F3-open-2",
       "item": "obtain or emulate a 24 GB card for a real qualification rather than an engine-budget proof",
       "why_blocking": "the 24 GB go is a go to qualify, not a fit claim, and an emulated budget is not a hard-limit proof",
-      "lesson_from_today": "the rental engine-budget proof at 30.24 GiB inside a 95.6 GiB card said utilisation 0.97 was fine. The physical RTX 5090 then failed the combined 236,824-token plus 7 MP request at exactly that utilisation, because vLLM spent every freed byte on KV and left the vision tower without the ~62 MiB of transient it needed, while lowering max_pixels made it strictly worse. An engine-budget proof carved out of a larger card keeps real headroom behind the budget, so it cannot see that failure mode. If a 24 GB qualification has to be emulated, it inherits that caveat verbatim and the physical rerun stays P0.",
+      "lesson_from_today": "the rental engine-budget proof at 30.24 GiB inside a 95.6 GiB card said utilisation 0.97 was fine. The physical RTX 5090 then failed the combined 236,824-token plus 7 MP request at exactly that utilisation, because vLLM spent every freed byte on KV and left the vision tower without the ~62 MiB of transient it needed, while lowering max_pixels made it strictly worse. An engine-budget proof carved out of a larger card keeps real headroom behind the budget, so it cannot see that failure mode.",
+      "the_objection_is_now_numeric_not_rhetorical": "the 24 GiB proxy ran both arms. Its budget-only arm - engine capped to 24.0 GiB on an otherwise free 32 GB card - peaked at 25,614 MiB during the image gates, which is 1,496 MiB MORE than the 24,118 MiB of CUDA-visible memory a 24 GiB board owns in total. It passed on bytes no such board has. The ballasted arm, which holds the card down to 23.553 GiB free as well as budgeting to 22.49 GiB, peaked at 24,050 MiB and passed by 68 MiB. That is the difference between a budget cap and a board, measured in megabytes (receipts/qualification-24gib-capped.json).",
+      "what_remains": "a physical 24 GB board. The proxy's own receipt records physical_board_gate: open, and the ballasted arm is the strongest available substitute rather than a replacement.",
       "gate": "the per-class gate listed under class_24_gib.gate_before_any_fit_claim"
     }
   ],
-
   "supersedes": {
     "docs/34 §3": "the class budget table is re-derived at the measured 0.98125 usable fraction, the measured 0.955 utilisation and the measured 2.50 GiB overheads. Weights+KV becomes 19.99 GiB at 24 GB (was 20.32) and 12.49 GiB at 16 GB (was 12.70).",
-    "docs/34 §5.3": "the M24 published length becomes 32,768 with MTP-3 and 45,056 with MTP off (was 40,960 and 53,248). 40,960 does not fit at the qualified utilisation.",
-    "docs/34 §6.2": "S16-V's re-derived lengths at the qualified utilisation are 12,288 with MTP off and 8,192 with MTP-3 (were 16,384 and 12,288); both remain predictions for a profile that is now published as a design study rather than a SKU.",
+    "docs/34 §5.3": "the M24 published lengths become 24,576 with MTP-3 and 45,056 with MTP off. That replaces the 40,960/53,248 in that section and every intermediate revision of this receipt (32,768/45,056, then 20,480/49,152, then 24,576/57,344). 40,960 needs 2.06 GiB of KV against at most 1.80 GiB available; 45,056 is published because it was started and gated rather than because the arithmetic permits it, which it does with room to spare.",
+    "docs/34 §4": "the per-token KV model H + c_tok*T is retired outright. The engine's capacity law is affine in the WINDOW - pool needed = a*L + M - and it reports concurrency x window, not pool / per-token cost. Measured: a = 34,816 B/token with a 0.63 GiB fixed term under MTP-3, and 32,931.8 with 0.14 GiB without. That section's 32,929.0 B/token was right to within 0.009 % as a per-token rate; what was wrong was treating it as the whole cost. The 0.20 GiB H reserve is gone.",
+    "docs/34 §5/§6 non-KV overheads": "2.50 GiB (1.78 + 0.27 + 0.45) applies only with MTP-3. With MTP off the measured figures are 1.68 + 0.27 + 0.00 = 1.95 GiB, because the CUDA-graph pool goes to zero and the draft model's 0.10 GiB of activation goes with it. Sanity check on the measured board arm: 22.49 - 1.95 - 17.94 = 2.60 GiB, its measured MTP-off pool to the hundredth.",
+    "docs/34 §6.2": "S16-V becomes 32,768 with MTP off - twice that section's 16,384 - and MTP-3 is withdrawn entirely, its 0.63 GiB fixed KV term exceeding the whole 0.553 GiB pool by 0.077 GiB. S16-V-long becomes 36,864 MTP-off and likewise cannot run MTP-3, reaching only 3,793 tokens. Both remain unstarted predictions for a design study.",
     "note": "this receipt does not rewrite any published receipt. The earlier receipts remain valid for what they measured; this one is new evidence applied to the class arithmetic."
   },
-
   "evidence_files": {
     "physical_qualification": "receipts/qualification-5090-context.json",
     "engine_budget_proof": "receipts/native-mtp-8mp-amendment.json",
     "mtp_off_budget": "receipts/context-capacity-5090-budget.json",
-    "manifests": ["receipts/hydrated-quantization-manifest.json", "receipts/context-quantization-manifest.json"],
-    "release_evidence": ["receipts/release-evidence-context.json", "receipts/release-evidence-hydrated.json"],
-    "fidelity": ["receipts/kld5-1M-tail-ctx.json", "receipts/kld5-1M-tail-k4.json", "receipts/kld5-10M-ctx.json", "receipts/kld5-10M-k4.json"],
+    "kv_law_and_24gib_proxy": {
+      "path": "receipts/qualification-24gib-capped.json",
+      "sha256": "d336df53786f1b0aa7efa63a527871f19b7e80c10e0b6e3e2375ce78d38eb4c1",
+      "what_it_supplies": "the measured KV parameters in both MTP modes, the CUDA-graph pool in both modes, the ballasted-versus-budget-only peak comparison, and gate passes at both published lengths",
+      "caveat": "physical_board_gate: open - it is a ballasted proxy on a 32 GB RTX 5090"
+    },
+    "manifests": [
+      "receipts/hydrated-quantization-manifest.json",
+      "receipts/context-quantization-manifest.json"
+    ],
+    "release_evidence": [
+      "receipts/release-evidence-context.json",
+      "receipts/release-evidence-hydrated.json"
+    ],
+    "fidelity": [
+      "receipts/kld5-1M-tail-ctx.json",
+      "receipts/kld5-1M-tail-k4.json",
+      "receipts/kld5-10M-ctx.json",
+      "receipts/kld5-10M-k4.json"
+    ],
     "cross_engine": "receipts/cross-engine-comparator.json",
     "scoring_window_control": "receipts/scored-window-offset.json",
     "embedding_overlay": "receipts/embedding-quant-error.json",
-    "head_sensitivity": ["receipts/v3-paired-head-asym-v2.json", "receipts/v3-paired-hyd-head.json"],
+    "head_sensitivity": [
+      "receipts/v3-paired-head-asym-v2.json",
+      "receipts/v3-paired-hyd-head.json"
+    ],
     "design_document": "docs/34-vram-class-profiles.md",
     "plan_item": "docs/29-plan-and-loose-ends.md F3"
-  }
+  },
+  "conventions": {
+    "self_digest": "content_sha256 is the sha256 of this document with generated_utc, generator, content_sha256 and content_sha256_excludes removed, canonicalised as json.dumps(..., sort_keys=True, separators=(\",\", \":\")) and encoded UTF-8 - the same recipe as receipts/collection-index.json, verified here by recomputing that file's digest plus cross-engine-comparator.json, capture-determinism.json and scored-window-offset.json and matching each stored value.",
+    "labels": "every number is either measured with its receipt named on the same line, or carries an explicit prediction label with the formula that produced it. Preliminary third-party or in-flight results live in open_risks_to_this_verdict and external_unverified_reports and are never inputs to an arithmetic chain."
+  },
+  "amendments": [
+    {
+      "id": "A1",
+      "applied_utc": "2026-08-16T10:12:00Z",
+      "by": "TwentyFourGigPublish",
+      "amends_content_sha256": "911df9ab6b7ffb5c9b43d1b7f51607ea7eff395067f726a69048547beebe969c",
+      "nature": "additive: no pre-existing key or value in this file was altered, removed or renumbered by this amendment. It records why the 24 GB-class figures now in the body are what they are, so the decision is auditable separately from the values.",
+      "change_1_the_published_24_gb_mtp3_window": {
+        "from": 32768,
+        "to": 24576,
+        "intermediate_values_that_were_also_published": [
+          20480,
+          28672,
+          32768
+        ],
+        "reason": "at 32,768 the board-faithful proxy arm allocated 33,760 KV tokens for a 32,768 window - 1.03x concurrency and 5.8 % headroom against this project's own >= 15 % rule, which every other published length in docs/34 obeys. Worse, the figure fits or fails depending on which of our two resident-weight measurements applies: at 18.19 GiB resident the pool is 1.79-1.80 GiB and the engine supports ~35,774 tokens, but at the 18.41 GiB this receipt deliberately prefers the pool is 1.58 GiB and 32,768 does not fit at all. A published window may not sit between two of our own measurements of the same quantity.",
+        "why_24576": "it needs 1.4269 GiB. At the measured 1.79 GiB pool that is 25.4 % headroom and it is the largest 4,096-multiple clearing the 15 % rule there; at the conservative 1.58 GiB pool it still fits, at 10.7 %. It is the only 4,096-multiple robust across BOTH measured resident figures - 28,672 collapses to 1.3 % at the conservative pool and 32,768 fails outright.",
+        "honest_limit": "24,576 clears the 15 % rule at the measured pool, not at the conservative one, where the rule alone would give 20,480. A board loading at 18.41 GiB should serve 20,480 if it wants the full margin. This is stated in docs/34 5.3.1 rather than buried.",
+        "recomputed_from": "receipts/qualification-24gib-capped.json kv_law_measured.law, not copied from any summary"
+      },
+      "change_2_the_24_gb_mtp_off_window": {
+        "value": 45056,
+        "status": "unchanged, and deliberately not raised",
+        "reason": "the same recomputation does not contradict it. 45,056 needs 1.5219 GiB against the measured 2.60 GiB pool, 70.8 % headroom, and it survives the conservative resident figure at 56.5 %. It is also the window the proxy actually started and passed 7/7 gates at, allocating 76,032 tokens at 1.69x concurrency. The >= 15 % envelope reaches 65,536 and the engine ceiling is 80,208; both are named in the body as predictions and neither has been booted."
+      },
+      "change_3_the_mtp_off_overhead_disagreement_and_how_it_was_settled": {
+        "disagreement": "SixteenGigVerdict derived the MTP-off rows from non-KV overheads of 2.05 GiB, which yields a published window of 57,344. TwentyFourGigPublish derived them from 1.95 GiB.",
+        "resolution": "1.95 GiB is correct. The disputed 0.10 GiB is the draft model's activation: receipts/qualification-24gib-capped.json memory_component_comparison.table gives MTP-off peak_activation 1.68 against MTP-3's 1.78, with non_torch 0.27 and a CUDA-graph pool of 0.00, so 1.68 + 0.27 + 0.00 = 1.95.",
+        "the_arithmetic_that_settled_it": "22.49 - 1.95 - 17.94 (measured MTP-off resident) = 2.6002 GiB, which reproduces the board arm's independently measured 2.60 GiB MTP-off pool to the hundredth. The 2.05 figure gives 2.50 GiB and misses it by 0.10. A component estimate that cannot reproduce a measured pool is falsified by that pool.",
+        "accepted_by": "SixteenGigVerdict, who verified it independently; and Main, who ruled that a started window is published in preference to a larger derived one, with the envelope and ceiling named beside it."
+      },
+      "change_4_the_15_percent_rule_is_on_memory_not_tokens": {
+        "what_was_wrong": "an earlier revision applied the rule as L <= L_max/1.15, the token form. docs/34 5.3 defines it on memory: a*L + M <= pool/1.15, i.e. L <= (pool/1.15 - M)/a.",
+        "why_it_matters_now": "the two forms are equivalent only when M = 0, which is precisely the assumption the refusal measurements retired. With M > 0 the token form over-publishes.",
+        "worked_case": "at the measured 2.6002 GiB MTP-off pool the token form gives 69,632, which needs 2.2756 GiB against a 2.2610 GiB cap and FAILS the rule; the memory form gives 65,536, needing 2.1500 GiB for 20.9 %. At the conservative 2.382 GiB pool both forms give 61,440, which is why the error was invisible there.",
+        "blast_radius": "also corrected the 16 GB S16-V MTP-off row, 32,768 -> 28,672 (32,768 needs 1.1450 GiB against a 1.1313 GiB cap, 13.4 %). S16-V-long's 36,864 is unaffected; both forms agree there."
+      },
+      "what_this_amendment_does_not_do": "it does not close the physical-board gate, which remains open, and it does not turn any prediction into a measurement. The 24 GB-class windows are validated on a capped-budget, ballasted proxy on an RTX 5090. No 24 GB board has been started.",
+      "evidence": {
+        "receipts/qualification-24gib-capped.json": "d336df53786f1b0aa7efa63a527871f19b7e80c10e0b6e3e2375ce78d38eb4c1",
+        "physical_board_gate": "open",
+        "published_as": "docs/34 Verdict, 4.1, 4.2, 5.3, 5.3.1, 10 and the 11 card block"
+      }
+    }
+  ],
+  "content_sha256": "ed5283aa2eb0648f57b8c78fa30743dbfa52236247bedf7fae9c9ab48de3900a",
+  "content_sha256_excludes": [
+    "generated_utc",
+    "generator",
+    "content_sha256",
+    "content_sha256_excludes"
+  ]
 }

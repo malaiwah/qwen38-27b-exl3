@@ -1261,6 +1261,202 @@ def unused_suites(ev: Evidence) -> list[dict]:
     }]
 
 
+# ---------------------------------------------------------------------------
+# non-release rows: the receipts that qualify or decide
+# ---------------------------------------------------------------------------
+
+QUALIFICATION_CONTEXT = "receipts/qualification-5090-context.json"
+QUALIFICATION_24GIB = "receipts/qualification-24gib-capped.json"
+VRAM_CLASS_VERDICT = "receipts/vram-class-verdict.json"
+
+QUALIFICATION_CONTEXT_SCHEMA = "qwen38-qualification-5090-context/1"
+QUALIFICATION_24GIB_SCHEMA = "qwen38-qualification-24gib-capped/1"
+VRAM_CLASS_VERDICT_SCHEMA = "qwen38-vram-class-verdict/1"
+
+
+def receipt_stamp(ev: Evidence, rel: str, schema: str) -> dict:
+    """Path, digest and declared schema for a receipt indexed whole."""
+    doc = ev.load(rel, schema=schema)
+    return {"path": rel, "sha256": ev.sha(rel),
+            "schema": doc.get("schema") if isinstance(doc, dict) else None,
+            "schema_not_verified": None if isinstance(doc, dict) else
+                                   f"{rel} did not load as an object"}
+
+
+def self_digest_holds(ev: Evidence, rel: str) -> bool:
+    """Recompute a receipt's own content_sha256 under the recipe it declares."""
+    doc = ev.load(rel)
+    if not isinstance(doc, dict) or "content_sha256" not in doc:
+        return False
+    excludes = set(doc.get("content_sha256_excludes") or ())
+    got = canonical_sha256({k: v for k, v in doc.items() if k not in excludes})
+    return ev.expect_equal(got, doc["content_sha256"],
+                           f"{rel}: stored content_sha256 vs recomputed")
+
+
+def affine_kv_needed(a_bytes: float, m_gib: float, window: int) -> float:
+    """kv_needed(L) = a*L + M, the law receipts/qualification-24gib-capped.json measures."""
+    return round((a_bytes * window + m_gib * GIB) / GIB, 4)
+
+
+def qualifications_and_verdicts(ev: Evidence) -> list[dict]:
+    """Receipts that qualify hardware or decide a class, rather than publish a checkpoint.
+
+    These are deliberately not `releases` rows: they name no artifact, carry no
+    shard map, and have no fidelity report, so `build_rows`' pointer set does not
+    apply to them and a RELEASES entry would fail closed on the first missing
+    field.  They are indexed anyway, because a reader asking "what has this
+    project actually started, and what did it decide" should not have to already
+    know the filenames.  Every number below is pulled through a JSON pointer and
+    stamped with its file's digest, exactly as a release row is.
+    """
+    rows: list[dict] = []
+
+    # -- the physical RTX 5090 context qualification ------------------------
+    rel = QUALIFICATION_CONTEXT
+    rows.append({
+        "id": "qualification-5090-context",
+        "kind": "hardware qualification",
+        "label": ("seven-gate qualification of the published -context edition on a "
+                  "physical RTX 5090, the measurement every VRAM-class arithmetic "
+                  "in docs/34 is re-derived on"),
+        "receipt": receipt_stamp(ev, rel, QUALIFICATION_CONTEXT_SCHEMA),
+        "board": ev.block(rel, {
+            "model": "/identity/gpu/model",
+            "uuid": "/identity/gpu/uuid",
+            "physical_card": "/identity/gpu/physical_card",
+            "memory_total_mib": "/identity/gpu/memory_total_mib",
+            "usable_gib_reported_by_vllm": "/identity/gpu/usable_gib_reported_by_vllm",
+        }),
+        "outcome": ev.block(rel, {
+            "all_gates_pass": "/verdict/all_gates_pass",
+            "decisions": "/verdict/decisions",
+            "qualified_at": "/verdict/qualified_at",
+            "not_qualified_at": "/verdict/not_qualified_at",
+        }),
+        "why_not_a_release_row": ("it qualifies a serving configuration of an "
+                                  "already-published checkpoint; the checkpoint's own "
+                                  "row is in `releases`"),
+    })
+
+    # -- the 24 GiB-class proxy qualification -------------------------------
+    rel = QUALIFICATION_24GIB
+    law = ev.block(rel, {
+        "a_mtp3_bytes_per_token": "/kv_law_measured/law/mtp3/a_bytes_per_token",
+        "m_mtp3_gib": "/kv_law_measured/law/mtp3/M_gib",
+        "a_mtpoff_bytes_per_token": "/kv_law_measured/law/mtpoff/a_bytes_per_token",
+        "m_mtpoff_gib": "/kv_law_measured/law/mtpoff/M_gib",
+    })
+    board_mtp3 = ev.block(rel, {
+        "window": "/pre_registered_predictions/predictions/board~1mtp3_32768/window",
+        "pool_gib": "/published_prediction_outcomes/prediction_1/board_arm_measured/pool_gib",
+        "kv_tokens_allocated":
+            "/published_prediction_outcomes/prediction_1/board_arm_measured/kv_tokens_allocated",
+        "kv_needed_for_one_request_gib":
+            "/published_prediction_outcomes/prediction_1/board_arm_measured/kv_needed_for_one_request_gib",
+        "headroom_pct":
+            "/published_prediction_outcomes/prediction_1/board_arm_measured/headroom_pct",
+    }, optional=("window",))
+    board_mtpoff = ev.block(rel, {
+        "pool_gib": "/published_prediction_outcomes/prediction_2/board_arm_measured/pool_gib",
+        "kv_tokens_allocated":
+            "/published_prediction_outcomes/prediction_2/board_arm_measured/kv_tokens_allocated",
+        "kv_needed_for_one_request_gib":
+            "/published_prediction_outcomes/prediction_2/board_arm_measured/kv_needed_for_one_request_gib",
+        "headroom_pct":
+            "/published_prediction_outcomes/prediction_2/board_arm_measured/headroom_pct",
+    })
+    # fail closed if the receipt's own law stops reproducing its own requirements
+    law_holds = (
+        ev.expect_equal(
+            affine_kv_needed(law["a_mtp3_bytes_per_token"], law["m_mtp3_gib"], 32768),
+            board_mtp3["kv_needed_for_one_request_gib"],
+            f"{rel}: a*32768 + M vs the MTP-3 requirement it reports")
+        and ev.expect_equal(
+            affine_kv_needed(law["a_mtpoff_bytes_per_token"], law["m_mtpoff_gib"], 45056),
+            board_mtpoff["kv_needed_for_one_request_gib"],
+            f"{rel}: a*45056 + M vs the MTP-off requirement it reports")
+    )
+    rows.append({
+        "id": "qualification-24gib-capped",
+        "kind": "proxy qualification",
+        "label": ("the same seven gates at a capped 24 GiB-class engine budget, with a "
+                  "second arm whose card is ballasted down to a 24 GiB board's free "
+                  "memory; the source of the measured KV law"),
+        "receipt": receipt_stamp(ev, rel, QUALIFICATION_24GIB_SCHEMA),
+        "physical_board_gate": ev.block(rel, {
+            "state": "/physical_board_gate",
+            "claim_scope": "/claim_scope",
+            "what_this_does_not_say": "/verdict/what_this_does_not_say",
+        }),
+        "gates": ev.block(rel, {"gates_1_to_7": "/verdict/gates_1_to_7"}),
+        "measured_kv_law": law,
+        "board_arm_mtp3": board_mtp3,
+        "board_arm_mtp_off": board_mtpoff,
+        "law_reproduces_its_own_reported_requirements": law_holds,
+        "why_not_a_release_row": ("no artifact, no shard map and no fidelity report: it "
+                                  "measures how much context an existing checkpoint can "
+                                  "be served with, on emulated hardware"),
+    })
+
+    # -- the VRAM-class verdict --------------------------------------------
+    rel = VRAM_CLASS_VERDICT
+    rows.append({
+        "id": "vram-class-verdict",
+        "kind": "class decision",
+        "label": ("go/no-go for the 24 GB and 16 GB classes, with the arithmetic and "
+                  "the flip conditions"),
+        "receipt": receipt_stamp(ev, rel, VRAM_CLASS_VERDICT_SCHEMA),
+        "decisions": ev.block(rel, {
+            "class_24_gib": "/class_24_gib/verdict",
+            "class_16_gib": "/class_16_gib/verdict",
+        }),
+        "published_24_gib_windows": ev.block(rel, {
+            "mtp_3_fp8": "/class_24_gib/context/mtp_3_fp8/published_recommendation",
+            "mtp_3_requirement_gib": "/class_24_gib/context/mtp_3_fp8/requirement_gib",
+            "mtp_off_fp8": "/class_24_gib/context/mtp_off_fp8/published_recommendation",
+            "mtp_off_requirement_gib": "/class_24_gib/context/mtp_off_fp8/requirement_gib",
+        }),
+        "self_digest": {
+            "content_sha256": ev.pointer(rel, "/content_sha256"),
+            "recomputes": self_digest_holds(ev, rel),
+            "source": {"path": rel, "sha256": ev.sha(rel),
+                       "pointers": {"content_sha256": "/content_sha256",
+                                    "content_sha256_excludes": "/content_sha256_excludes"}},
+        },
+        "amendments": ev.block(rel, {
+            "count": "/amendments",
+            "latest_id": "/amendments/0/id",
+            "latest_amends": "/amendments/0/amends_content_sha256",
+            "latest_by": "/amendments/0/by",
+        }, optional=("count",)),
+        "why_not_a_release_row": ("it decides classes, it does not publish a checkpoint; "
+                                  "the 24 GB class is served by an artifact that already "
+                                  "has a `releases` row"),
+    })
+
+    # Cross-receipt: the windows the verdict publishes must cost what the measured
+    # law says they cost.  If either receipt moves without the other, this fails.
+    v = ev.load(VRAM_CLASS_VERDICT)
+    if isinstance(v, dict) and law_holds:
+        ctx = v.get("class_24_gib", {}).get("context", {})
+        for key, a_key, m_key in (("mtp_3_fp8", "a_mtp3_bytes_per_token", "m_mtp3_gib"),
+                                  ("mtp_off_fp8", "a_mtpoff_bytes_per_token", "m_mtpoff_gib")):
+            row = ctx.get(key, {})
+            window = row.get("published_recommendation")
+            claimed = row.get("requirement_gib")
+            if not isinstance(window, int) or not isinstance(claimed, (int, float)):
+                ev.errors.append(f"{VRAM_CLASS_VERDICT}: {key} has no published window "
+                                 "and requirement to cross-check")
+                continue
+            derived = affine_kv_needed(law[a_key], law[m_key], window)
+            ev.expect(abs(derived - claimed) <= 0.001,
+                      f"{VRAM_CLASS_VERDICT}: {key} publishes {window} at "
+                      f"{claimed} GiB, but the law measured in {QUALIFICATION_24GIB} "
+                      f"makes that window cost {derived} GiB")
+    return rows
+
+
 def conventions() -> dict:
     return {
         "row_sources": ("every number in a row carries the receipt path, that file's "
@@ -1286,6 +1482,18 @@ def conventions() -> dict:
                         "content_sha256_excludes removed; canonical means "
                         "json.dumps(..., sort_keys=True, separators=(\",\", \":\"))"),
         "row_digests": "canonical_sha256 of each row object, keyed by row id",
+        "qualifications_and_verdicts": ("receipts that qualify hardware or decide a "
+                                        "VRAM class rather than publish a checkpoint. "
+                                        "They are kept out of `releases` because they "
+                                        "name no artifact and carry no shard map or "
+                                        "fidelity report, but they are held to the same "
+                                        "sourcing rule, and two cross-receipt checks "
+                                        "fail generation: the measured affine KV law "
+                                        "must reproduce the per-request requirements "
+                                        "its own receipt reports, and every context "
+                                        "window the class verdict publishes must cost "
+                                        "what that law says it costs"),
+        "qualification_digests": "canonical_sha256 of each non-release row, keyed by id",
     }
 
 
@@ -1364,6 +1572,12 @@ def assemble(ev: Evidence) -> dict:
         audit_row(row, "/" + row["id"], False, False, ev.errors)
     if ev.errors:
         raise Rejected(ev.errors)
+    non_release = qualifications_and_verdicts(ev)
+    for row in non_release:
+        audit_row(row, "/qualifications_and_verdicts/" + row["id"], False, False,
+                  ev.errors)
+    if ev.errors:
+        raise Rejected(ev.errors)
     payload = {
         "schema": SCHEMA,
         "title": ("Qwen3.8-27B EXL3 collection: one immutable row per published "
@@ -1373,6 +1587,9 @@ def assemble(ev: Evidence) -> dict:
         "row_digests": {row["id"]: canonical_sha256(row) for row in rows},
         "known_divergences": known_divergences(ev),
         "suites_not_used_by_any_row": unused_suites(ev),
+        "qualifications_and_verdicts": non_release,
+        "qualification_digests": {row["id"]: canonical_sha256(row)
+                                  for row in non_release},
         "receipt_digests": dict(sorted(ev.touched.items())),
     }
     if ev.errors:
@@ -1452,6 +1669,7 @@ def cmd_check(args: argparse.Namespace) -> int:
             errors.append(f"row {rid}: row_digests entry "
                           f"{stored.get('row_digests', {}).get(rid)} != {a}")
     for field in ("conventions", "known_divergences", "suites_not_used_by_any_row",
+                  "qualifications_and_verdicts", "qualification_digests",
                   "receipt_digests"):
         if stored.get(field) != fresh.get(field):
             errors.append(f"{field}: differs from what the receipts now produce")
