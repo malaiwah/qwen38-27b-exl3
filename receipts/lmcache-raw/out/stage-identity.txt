@@ -1,0 +1,388 @@
+/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py: OK
+/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5.py: OK
+/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5_mtp.py: OK
+/opt/venv/lib/python3.12/site-packages/vllm/v1/core/sched/scheduler.py: OK
+5abf02609290d0ea7f1ed2a5cb9e67c08b331a362dd981b983d8ccfb71ae9eff  /usr/local/bin/glm52-lmcache-wrapper.sh
+Name: lmcache
+Version: 0.5.2+glm52dcp.4
+{"lmcache_version": "0.5.2+glm52dcp.4", "direct_url": {"archive_info": {"hash": "sha256=83207aace71604d936ef874f38ff9ef269dc8460a97927e01c3b710349659e65", "hashes": {"sha256": "83207aace71604d936ef874f38ff9ef269dc8460a97927e01c3b710349659e65"}}, "url": "file:///tmp/lmcache-wheels/lmcache-0.5.2%2Bglm52dcp.4-cp312-cp312-linux_x86_64.whl"}}
+/opt/venv/lib/python3.12/site-packages/torch/cuda/__init__.py:63: FutureWarning: The pynvml package is deprecated. Please install nvidia-ml-py instead. If you did not install pynvml directly, please report this to the maintainers of the package that installed pynvml for you.
+  import pynvml  # type: ignore[import]
+[32;20m[2026-08-16 13:19:53,612] LMCache INFO:[0m torch_dev=<module 'torch.cuda' from '/opt/venv/lib/python3.12/site-packages/torch/cuda/__init__.py'>, torch_device_type=cuda [3m(__init__.py:249:lmcache.v1.platform)[0m
+[32;20m[2026-08-16 13:19:53,702] LMCache INFO:[0m Using backend: lmcache.c_ops [3m(__init__.py:239:lmcache.v1.platform)[0m
+
+ _     __  __    ____           _          
+| |   |  \/  |  / ___|__ _  ___| |__   ___      LMCache v0.5.2+glm52dcp.4
+| |   | |\/| | | |   / _` |/ __| '_ \ / _ \     Website:  https://lmcache.ai/
+| |___| |  | | | |__| (_| | (__| | | |  __/     Recipes:  https://docs.lmcache.ai/recipes
+|_____|_|  |_|  \____\__,_|\___|_| |_|\___|     LinkedIn: https://www.linkedin.com/company/lmcache-lab
+Set LMCACHE_DISABLE_BANNER=1 to hide this banner.
+
+[32;20m[2026-08-16 13:19:54,571] LMCache INFO:[0m multi_layer_block_kv_transfer mode: ptr [3m(base.py:94:lmcache.v1.multiprocess.transfer_context.base)[0m
+usage: lmcache server [-h] [--instance-id INSTANCE_ID] [--host HOST]
+                      [--port PORT] [--chunk-size CHUNK_SIZE]
+                      [--max-workers MAX_WORKERS]
+                      [--max-gpu-workers MAX_GPU_WORKERS]
+                      [--max-cpu-workers MAX_CPU_WORKERS]
+                      [--hash-algorithm HASH_ALGORITHM]
+                      [--engine-type {default,blend,blend_legacy}]
+                      [--supported-transfer-mode {lmcache_driven,engine_driven,auto}]
+                      [--runtime-plugin-locations [RUNTIME_PLUGIN_LOCATIONS ...]]
+                      [--runtime-plugin-config RUNTIME_PLUGIN_CONFIG]
+                      [--shm-name SHM_NAME]
+                      [--script-allowed-imports [SCRIPT_ALLOWED_IMPORTS ...]]
+                      [--separate-object-groups | --no-separate-object-groups]
+                      [--worker-reap-timeout-seconds WORKER_REAP_TIMEOUT_SECONDS]
+                      [--worker-registration-grace-seconds WORKER_REGISTRATION_GRACE_SECONDS]
+                      [--enable-segmented-prefix]
+                      [--p2p-advertise-url P2P_ADVERTISE_URL]
+                      [--p2p-listen-url P2P_LISTEN_URL]
+                      [--p2p-lookup-timeout P2P_LOOKUP_TIMEOUT]
+                      [--p2p-load-timeout P2P_LOAD_TIMEOUT]
+                      [--p2p-transfer-engine P2P_TRANSFER_ENGINE] --l1-size-gb
+                      L1_SIZE_GB [--l1-use-lazy | --no-l1-use-lazy]
+                      [--l1-init-size-gb L1_INIT_SIZE_GB]
+                      [--l1-align-bytes L1_ALIGN_BYTES]
+                      [--l1-devdax-path L1_DEVDAX_PATH]
+                      [--gds-l1-path GDS_L1_PATH]
+                      [--gds-l1-use-direct-io | --no-gds-l1-use-direct-io]
+                      [--l1-write-ttl-seconds L1_WRITE_TTL_SECONDS]
+                      [--l1-read-ttl-seconds L1_READ_TTL_SECONDS]
+                      --eviction-policy {LRU,IsolatedLRU,noop}
+                      [--eviction-trigger-watermark EVICTION_TRIGGER_WATERMARK]
+                      [--eviction-ratio EVICTION_RATIO]
+                      [--write-back-on-evict]
+                      [--periodic-flush-interval PERIODIC_FLUSH_INTERVAL]
+                      [--emergency-evict-for-prefetch]
+                      [--l2-store-policy {default,skip_l1}]
+                      [--l2-prefetch-policy {default,retain}]
+                      [--l2-prefetch-max-in-flight L2_PREFETCH_MAX_IN_FLIGHT]
+                      [--periodic-notifier-interval-ms PERIODIC_NOTIFIER_INTERVAL_MS]
+                      [--l2-adapter JSON] [--http-host HTTP_HOST]
+                      [--http-port HTTP_PORT] [--disable-observability]
+                      [--disable-metrics] [--disable-logging]
+                      [--enable-tracing] [--otlp-endpoint OTLP_ENDPOINT]
+                      [--event-bus-queue-size EVENT_BUS_QUEUE_SIZE]
+                      [--prometheus-port PROMETHEUS_PORT]
+                      [--metrics-sample-rate METRICS_SAMPLE_RATE]
+                      [--lookup-hash-log-dir LOOKUP_HASH_LOG_DIR]
+                      [--lookup-hash-log-rotation-interval LOOKUP_HASH_LOG_ROTATION_INTERVAL]
+                      [--lookup-hash-log-rotation-max-size LOOKUP_HASH_LOG_ROTATION_MAX_SIZE]
+                      [--lookup-hash-log-max-files LOOKUP_HASH_LOG_MAX_FILES]
+                      [--enable-extra-logging]
+                      [--extra-logging-interval EXTRA_LOGGING_INTERVAL]
+                      [--trace-level {storage}] [--trace-output TRACE_OUTPUT]
+                      [--coordinator-url COORDINATOR_URL]
+                      [--coordinator-advertise-ip COORDINATOR_ADVERTISE_IP]
+                      [--coordinator-heartbeat-interval COORDINATOR_HEARTBEAT_INTERVAL]
+                      [--coordinator-l2-event-reporting]
+                      [--coordinator-l2-event-flush-interval COORDINATOR_L2_EVENT_FLUSH_INTERVAL]
+                      [--format FORMAT] [--output PATH] [-q]
+
+options:
+  -h, --help            show this help message and exit
+  --format FORMAT       Stdout output format (default: terminal). Available:
+                        terminal, json.
+  --output PATH         Save metrics to a file at PATH (format chosen by
+                        --format).
+  -q, --quiet           Suppress stdout output. Exit code only.
+
+MP Server:
+  Configuration for the ZMQ multiprocess cache server
+
+  --instance-id INSTANCE_ID
+                        Stable identity of this MP server. Used as the
+                        coordinator membership key and as the OTel
+                        'service.instance.id' resource attribute on every
+                        metric and span. Defaults to a random UUID v4 minted
+                        at startup.
+  --host HOST           Host to bind the ZMQ server. Default is localhost.
+  --port PORT           Port to bind the ZMQ server. Default is 5555.
+  --chunk-size CHUNK_SIZE
+                        Chunk size for KV cache operations. Default is 256.
+  --max-workers MAX_WORKERS
+                        Base number of worker threads for both GPU and CPU
+                        pools. Default is 1. Can be overridden per-pool with
+                        --max-gpu-workers and --max-cpu-workers.
+  --max-gpu-workers MAX_GPU_WORKERS
+                        Worker threads for the GPU affinity pool
+                        (STORE/RETRIEVE). Defaults to --max-workers if not
+                        specified.
+  --max-cpu-workers MAX_CPU_WORKERS
+                        Worker threads for the normal CPU pool (LOOKUP, etc.).
+                        Defaults to --max-workers if not specified.
+  --hash-algorithm HASH_ALGORITHM
+                        Hash algorithm for token-based operations (builtin,
+                        sha256_cbor, blake3). Default is blake3.
+  --engine-type {default,blend,blend_legacy}
+                        Cache engine backend type. 'default' uses standard
+                        prefix caching; 'blend' selects CacheBlend V3 (the
+                        current implementation); 'blend_legacy' selects the
+                        original CacheBlend. Default is 'default'.
+  --supported-transfer-mode {lmcache_driven,engine_driven,auto}
+                        Supported transfer mode: 'lmcache_driven' for server-
+                        driven transfer (STORE/RETRIEVE, supports CUDA IPC and
+                        CPU SHM), 'engine_driven' for engine-driven transfer
+                        (PREPARE/COMMIT), or 'auto' to enable both transfer
+                        paths. Default is 'auto'.
+  --runtime-plugin-locations [RUNTIME_PLUGIN_LOCATIONS ...]
+                        Paths to runtime plugin scripts or directories to
+                        launch alongside the server.
+  --runtime-plugin-config RUNTIME_PLUGIN_CONFIG
+                        JSON string of extra key-value config forwarded to
+                        runtime plugins via
+                        LMCACHE_RUNTIME_PLUGIN_EXTRA_CONFIG. Example:
+                        '{"plugin.frontend.heartbeat_url":
+                        "http://localhost:5000/heartbeat"}'
+  --shm-name SHM_NAME   SHM segment name for engine-driven KV transfer.
+                        Default (not specified): auto-allocate. Set to "" to
+                        force pickle path (disable SHM). Set to a name to use
+                        that specific SHM segment.
+  --script-allowed-imports [SCRIPT_ALLOWED_IMPORTS ...]
+                        Python modules that the /run_script endpoint is
+                        allowed to import. Example: --script-allowed-imports
+                        numpy pandas
+  --separate-object-groups, --no-separate-object-groups
+                        Split kernel groups into one object group per sliding-
+                        window size at KV-cache registration (for hybrid
+                        models). (Default is True)
+  --worker-reap-timeout-seconds WORKER_REAP_TIMEOUT_SECONDS
+                        Silence budget (s) before a ping-proven worker's KV
+                        cache registration is reaped. 0 disables reaping. Must
+                        be >= 3 x the engine adapter's heartbeat interval.
+                        Default is 120.
+  --worker-registration-grace-seconds WORKER_REGISTRATION_GRACE_SECONDS
+                        Silence budget (s) for a worker that registered but
+                        never pinged (model warmup or early death). Must be >=
+                        the worker reap timeout. Default is 3600.
+  --enable-segmented-prefix
+                        CacheBlend (--engine-type blend) only: on a mid-prefix
+                        L2 retrieve failure, retain the gapped prefix so post-
+                        gap chunks stay L1-resident instead of truncating at
+                        the gap. No effect otherwise.
+
+P2P:
+  Configuration for peer-to-peer KV transfer
+
+  --p2p-advertise-url P2P_ADVERTISE_URL
+                        Transfer-channel server host:port this instance
+                        advertises to peers. Setting it enables P2P (also
+                        requires --coordinator-url).
+  --p2p-listen-url P2P_LISTEN_URL
+                        Transfer-channel server host:port to bind. Defaults to
+                        --p2p-advertise-url.
+  --p2p-lookup-timeout P2P_LOOKUP_TIMEOUT
+                        Seconds before a peer lookup result counts as a miss.
+                        Default is 30.
+  --p2p-load-timeout P2P_LOAD_TIMEOUT
+                        Seconds before a peer load counts as a failure.
+                        Default is 30.
+  --p2p-transfer-engine P2P_TRANSFER_ENGINE
+                        Transfer-channel implementation to use. Default is
+                        nixl.
+
+L1 Memory Manager:
+  Configuration for L1 memory manager
+
+  --l1-size-gb L1_SIZE_GB
+                        The size of L1 memory in GB.
+  --l1-use-lazy, --no-l1-use-lazy
+                        Whether to use lazy loading for L1 memory. (Default is
+                        True)
+  --l1-init-size-gb L1_INIT_SIZE_GB
+                        The initial size (GB) when using lazy allocation.
+                        Default is 20.
+  --l1-align-bytes L1_ALIGN_BYTES
+                        The alignment size in bytes. Default is 4KB (4096
+                        bytes).
+  --l1-devdax-path L1_DEVDAX_PATH
+                        Optional /dev/dax device or mmap-able file to use as
+                        the L1 backing arena. When set, L1 lazy allocation and
+                        SHM transfer advertising must be disabled because the
+                        L1 bytes live in the DAX map. Set --no-l1-use-lazy and
+                        --shm-name "". If a DAX L2 adapter with the same
+                        device_path is registered, that adapter's
+                        max_dax_size_gb is used as L1 overflow size.
+
+GDS L1 tier:
+  Configuration for the GDS slab-file L1 tier. Setting --gds-l1-path makes
+  the L1 medium an NVMe slab accessed via GPUDirect Storage DMA (cuFile on
+  NVIDIA, hipFile on AMD ROCm) instead of pinned DRAM; --l1-size-gb then
+  sizes the slab. Disable byte-array L2 adapters when this is on.
+
+  --gds-l1-path GDS_L1_PATH
+                        NVMe directory path for the GDS L1 slab. Setting this
+                        enables GDS L1.
+  --gds-l1-use-direct-io, --no-gds-l1-use-direct-io
+                        Open the slab file with O_DIRECT (required for the GDS
+                        DMA fast path on ext4). Default True.
+
+L1 Manager TTL:
+  TTL configuration for L1 manager locks
+
+  --l1-write-ttl-seconds L1_WRITE_TTL_SECONDS
+                        Time to live for each object's write lock. Default is
+                        600s.
+  --l1-read-ttl-seconds L1_READ_TTL_SECONDS
+                        Time to live for each object's read lock. Default is
+                        300s.
+
+Eviction Policy:
+  Configuration for eviction policies
+
+  --eviction-policy {LRU,IsolatedLRU,noop}
+                        The eviction policy to use ('LRU', 'IsolatedLRU', or
+                        'noop'). 'IsolatedLRU' maintains one LRU list per
+                        cache_salt and requires quotas keyed by cache_salt to
+                        be configured via the HTTP API.
+  --eviction-trigger-watermark EVICTION_TRIGGER_WATERMARK
+                        The memory usage watermark to trigger eviction (0.0 to
+                        1.0). Default is 0.8.
+  --eviction-ratio EVICTION_RATIO
+                        The fraction of memory to evict when triggered (0.0 to
+                        1.0). Default is 0.2.
+  --write-back-on-evict
+                        Flush evicted L1 objects to L2 synchronously and
+                        delete them from L1 only once every key in the batch
+                        is durable. Requires an L2 adapter with a synchronous
+                        store path.
+  --periodic-flush-interval PERIODIC_FLUSH_INTERVAL
+                        Seconds between periodic L1-to-L2 backup flush scans
+                        while below the eviction watermark (0 disables). The
+                        backup keeps the L1 copy; only L2 gains a copy.
+  --emergency-evict-for-prefetch
+                        Allow the prefetch controller to synchronously evict
+                        LRU L1 keys to make room for large L2-to-L1 restores.
+                        Effective only together with --write-back-on-evict.
+
+L2 Policies:
+  Store and prefetch policy selection for L2 adapters
+
+  --l2-store-policy {default,skip_l1}
+                        L2 store policy. Determines which adapters receive
+                        each key and whether keys are deleted from L1 after L2
+                        store. Default is 'default' (store all keys to all
+                        adapters, keep L1).
+  --l2-prefetch-policy {default,retain}
+                        L2 prefetch policy. Determines which adapter loads
+                        each key when multiple adapters have it. Default is
+                        'default' (pick the first adapter by index).
+  --l2-prefetch-max-in-flight L2_PREFETCH_MAX_IN_FLIGHT
+                        Maximum number of concurrent prefetch requests.
+                        Default is 8.
+  --periodic-notifier-interval-ms PERIODIC_NOTIFIER_INTERVAL_MS
+                        Interval in ms for the periodic event notifier
+                        heartbeat. Default is 5.
+
+L2 Adapters:
+  L2 adapter instances. Each --l2-adapter is a JSON object with 'type' and
+  type-specific keys. Repeat for multiple adapters.
+
+  --l2-adapter JSON     Adapter spec as JSON with a "type" field and adapter-
+                        specific configs, e.g.
+                        '{"type":"disk","path":"/data"}'.Repeat for multiple
+                        adapters.Supported adapters are: [aerospike, dax,
+                        fault_inject, fs, fs_native, hfbucket, mock,
+                        mooncake_store, native_plugin, p2p, plugin, raw_block,
+                        resp, sagemaker-hyperpod, valkey].
+
+HTTP Frontend:
+  Configuration for the HTTP frontend server
+
+  --http-host HTTP_HOST
+                        Host to bind the HTTP server. Default is 0.0.0.0.
+  --http-port HTTP_PORT
+                        Port to bind the HTTP server. Default is 8080.
+
+Observability:
+  Configuration for metrics, logging, and tracing
+
+  --disable-observability
+                        Disable the observability EventBus entirely.
+  --disable-metrics     Disable metrics subscribers (OTel counters).
+  --disable-logging     Disable logging subscribers.
+  --enable-tracing      Enable span subscribers (OTel traces). Disabled by
+                        default.
+  --otlp-endpoint OTLP_ENDPOINT
+                        OTLP gRPC endpoint (e.g. http://localhost:4317). When
+                        set, metrics/traces are pushed to an OTel collector.
+                        When unset, falls back to Prometheus pull mode.
+  --event-bus-queue-size EVENT_BUS_QUEUE_SIZE
+                        Maximum number of events in the EventBus queue before
+                        tail-drop. Default is 10000.
+  --prometheus-port PROMETHEUS_PORT
+                        Port for the Prometheus /metrics endpoint. Only used
+                        when --otlp-endpoint is not set. Default is 9090.
+  --metrics-sample-rate METRICS_SAMPLE_RATE
+                        Fraction of chunks/blocks to track for lifecycle
+                        histograms (0, 1.0]. Counters always count all events.
+                        Default is 0.01 (1%).
+
+Lookup Hash Logging:
+  Configuration for lookup hash file logging (offline analysis)
+
+  --lookup-hash-log-dir LOOKUP_HASH_LOG_DIR
+                        Directory to write lookup hash JSONL files for offline
+                        analysis. Empty string (default) disables logging.
+  --lookup-hash-log-rotation-interval LOOKUP_HASH_LOG_ROTATION_INTERVAL
+                        Time interval in seconds before rotating to a new log
+                        file. Default is 21600 (6 hours).
+  --lookup-hash-log-rotation-max-size LOOKUP_HASH_LOG_ROTATION_MAX_SIZE
+                        Max file size in bytes before rotating even if the
+                        time interval has not elapsed. Default is 100MB
+                        (104857600).
+  --lookup-hash-log-max-files LOOKUP_HASH_LOG_MAX_FILES
+                        Max number of lookup hash log files to keep. Oldest
+                        files are deleted when this limit is exceeded. Default
+                        is 100.
+
+Extra Logging:
+  Periodic INFO-level L0<->L1 throughput/token stats per GPU and L1 memory
+  usage
+
+  --enable-extra-logging
+                        Periodically log L0<->L1 store/retrieve throughput and
+                        token counts per GPU, and L1 memory usage. Disabled by
+                        default.
+  --extra-logging-interval EXTRA_LOGGING_INTERVAL
+                        Seconds between extra-logging emissions. Default is
+                        10.0. Values below 1.0 are limited by the 1 Hz
+                        internal heartbeat.
+
+Trace Recording:
+  Capture LMCache operations to a binary trace file for replay (see `lmcache
+  trace`).
+
+  --trace-level {storage}
+                        Enable trace recording at the given level. Currently
+                        only 'storage' is supported (records StorageManager
+                        public-API calls).
+  --trace-output TRACE_OUTPUT
+                        Path to write the trace file. Defaults to a
+                        timestamped file under $TMPDIR when --trace-level is
+                        set without an explicit output path.
+
+Coordinator:
+  Configuration for joining an MP coordinator
+
+  --coordinator-url COORDINATOR_URL
+                        Coordinator base URL (e.g. http://coordinator:9300).
+                        When set, this server registers, heartbeats, and
+                        deregisters on shutdown. Defaults to
+                        LMCACHE_COORDINATOR_URL; unset disables registration.
+  --coordinator-advertise-ip COORDINATOR_ADVERTISE_IP
+                        IP the coordinator should reach this server at.
+                        Defaults to LMCACHE_COORDINATOR_ADVERTISE_IP, then the
+                        server's outbound IP.
+  --coordinator-heartbeat-interval COORDINATOR_HEARTBEAT_INTERVAL
+                        Seconds between heartbeats (must be > 0). Defaults to
+                        LMCACHE_COORDINATOR_HEARTBEAT_INTERVAL, then 5.0.
+  --coordinator-l2-event-reporting
+                        Report L2 store/lookup events to the coordinator for
+                        fleet-wide usage tracking and eviction. Defaults to
+                        LMCACHE_COORDINATOR_L2_EVENT_REPORTING; unset
+                        disables.
+  --coordinator-l2-event-flush-interval COORDINATOR_L2_EVENT_FLUSH_INTERVAL
+                        Seconds between L2 event flush attempts (must be > 0).
+                        Defaults to
+                        LMCACHE_COORDINATOR_L2_EVENT_FLUSH_INTERVAL, then 1.0.

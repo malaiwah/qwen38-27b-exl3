@@ -1,0 +1,67 @@
+files: 16
+bytes: 2552233984
+[14:02:30] launching arm L3restart
+[14:04:58] server ready after 139s
+(APIServer pid=144) [32;20m[2026-08-16 14:02:46,246] LMCache INFO:[0m multi_layer_block_kv_transfer mode: ptr [3m(base.py:94:lmcache.v1.multiprocess.transfer_context.base)[0m
+(APIServer pid=144) [32;20m[2026-08-16 14:02:46,250] LMCache INFO:[0m Using external LMCacheMPConnector from lmcache.integration.vllm.lmcache_mp_connector [3m(lmcache_mp_connector.py:1212:vllm.distributed.kv_transfer.kv_connector.v1.lmcache_mp_connector)[0m
+(APIServer pid=144) INFO 08-16 14:02:45 [api_utils.py:273] non-default args: {'model_tag': '/models/ctx-repo/snapshots/c45c273b0d6ef2859cb2d85b36dd52253c80d878', 'host': '127.0.0.1', 'port': 8241, 'model': '/models/ctx-repo/snapshots/c45c273b0d6ef2859cb2d85b36dd52253c80d878', 'max_model_len': 196608, 'quantization': 'exl3', 'quantization_config': QuantizationConfigArgs(linear=QuantSpec(weight=QuantKey(dtype=torch.float8_e4m3fn, scale=ScaleDesc(dtype=torch.uint8, static=False, group_shape=GroupShape(row=1, col=32)), scale2=None, symmetric=True), activation=None), moe=None, shared_experts=None, ignore=['re:.*visual\\..*', 're:.*in_proj_a$', 're:.*in_proj_b$', 're:.*in_proj_ba$', 're:.*mtp\\..*', 'lm_head']), 'served_model_name': ['m'], 'kv_cache_dtype': 'fp8', 'enable_prefix_caching': True, 'mamba_cache_mode': 'align', 'mm_processor_kwargs': {'truncation': False, 'max_pixels': 8388608}, 'max_num_batched_tokens': 2048, 'max_num_seqs': 1, 'speculative_config': {'method': 'mtp', 'num_speculative_tokens': 3}, 'kv_transfer_config': KVTransferConfig(kv_connector='LMCacheMPConnector', engine_id='4f37f1ad-d290-4707-9d7d-bc458c4341e7', kv_buffer_device='cuda', kv_buffer_size=1000000000.0, kv_role='kv_both', kv_rank=None, kv_parallel_size=1, kv_ip='127.0.0.1', kv_port=14579, kv_connector_extra_config={'lmcache.mp.host': 'tcp://127.0.0.1', 'lmcache.mp.port': 5796, 'lmcache.mp.mq_timeout': 60, 'lmcache.mp.heartbeat_interval': 5}, kv_connector_module_path=None, enable_permute_local_kv=False, kv_load_failure_policy='fail'), 'compilation_config': {'mode': None, 'debug_dump_path': None, 'cache_dir': '', 'compile_cache_save_format': 'binary', 'backend': 'inductor', 'custom_ops': [], 'ir_enable_torch_wrap': None, 'splitting_ops': None, 'compile_mm_encoder': False, 'cudagraph_mm_encoder': False, 'encoder_cudagraph_token_budgets': [], 'encoder_cudagraph_max_vision_items_per_batch': 0, 'encoder_cudagraph_max_frames_per_batch': None, 'compile_sizes': None, 'compile_ranges_endpoints': None, 'inductor_compile_config': {'enable_auto_functionalized_v2': False, 'combo_kernels': True, 'benchmark_combo_kernel': True}, 'inductor_passes': {}, 'cudagraph_mode': <CUDAGraphMode.FULL_DECODE_ONLY: (2, 0)>, 'cudagraph_num_of_warmups': 0, 'cudagraph_capture_sizes': [4], 'cudagraph_copy_inputs': False, 'cudagraph_specialize_lora': True, 'use_inductor_graph_partition': None, 'pass_config': {}, 'max_cudagraph_capture_size': None, 'dynamic_shapes_config': {'type': <DynamicShapesType.BACKED: 'backed'>, 'evaluate_guards': False, 'assume_32_bit_indexing': False}, 'local_cache_dir': None, 'fast_moe_cold_start': None, 'static_all_moe_layers': []}}
+Available KV cache memory: 7.96 GiB
+'enable_prefix_caching': True
+(EngineCore pid=294) [32;20m[2026-08-16 14:04:34,696] LMCache INFO:[0m multi_layer_block_kv_transfer mode: ptr [3m(base.py:94:lmcache.v1.multiprocess.transfer_context.base)[0m
+(EngineCore pid=294) [32;20m[2026-08-16 14:04:34,700] LMCache INFO:[0m Using external LMCacheMPConnector from lmcache.integration.vllm.lmcache_mp_connector [3m(lmcache_mp_connector.py:1212:vllm.distributed.kv_transfer.kv_connector.v1.lmcache_mp_connector)[0m
+(EngineCore pid=294) INFO 08-16 14:04:48 [factory.py:62] Creating v1 connector with name: LMCacheMPConnector and engine_id: 4f37f1ad-d290-4707-9d7d-bc458c4341e7
+(EngineCore pid=294) INFO 08-16 14:04:49 [factory.py:62] Creating v1 connector with name: LMCacheMPConnector and engine_id: 4f37f1ad-d290-4707-9d7d-bc458c4341e7
+(EngineCore pid=294) WARNING 08-16 14:04:48 [base.py:190] Initializing KVConnectorBase_V1. This API is experimental and subject to change in the future as we iterate the design.
+GPU KV cache size: 217,978 tokens
+LMCache ready: mode=disk L1=12GB chunk=1600 L2=/l2/data
+'mamba_cache_mode': 'align'
+Maximum concurrency for 196,608 tokens per request: 1.11x
+'max_num_seqs': 1
+Model loading took 18.41 GiB memory and 91.181136 seconds
+num_spec_tokens=3
+Prefix caching in Mamba cache 'align' mode is currently enabled.
+Setting attention block size to 1600 tokens to ensure that attention page size is >= mamba page size.
+Using FLASHINFER attention backend out of potential backends: ['FLASHINFER', 'TRITON_ATTN']
+{"request_id": "p1s1", "prompt_tokens": 3170, "scored_correct": false, "arithmetic": true, "corrupted": true, "cache_hit_rate": 0.0, "acceptance": 0.681818, "wall_s": 1.815}
+{"request_id": "p1s2", "prompt_tokens": 5470, "scored_correct": false, "arithmetic": false, "corrupted": true, "cache_hit_rate": 0.292505, "acceptance": 0.0, "wall_s": 5.6275}
+{"request_id": "p1s3", "prompt_tokens": 4270, "scored_correct": false, "arithmetic": false, "corrupted": true, "cache_hit_rate": 0.374707, "acceptance": 0.0, "wall_s": 5.7105}
+{"request_id": "p1s4", "prompt_tokens": 7870, "scored_correct": false, "arithmetic": false, "corrupted": true, "cache_hit_rate": 0.609911, "acceptance": 0.0, "wall_s": 5.9064}
+{"request_id": "p1s5", "prompt_tokens": 6670, "scored_correct": false, "arithmetic": false, "corrupted": true, "cache_hit_rate": 0.95952, "acceptance": 0.0, "wall_s": 5.5365}
+{"request_id": "p1s6", "prompt_tokens": 10070, "scored_correct": false, "arithmetic": false, "corrupted": true, "cache_hit_rate": 0.635551, "acceptance": 0.0, "wall_s": 5.6525}
+{"request_id": "p1s7", "prompt_tokens": 8370, "scored_correct": false, "arithmetic": false, "corrupted": true, "cache_hit_rate": 0.764636, "acceptance": 0.0, "wall_s": 5.6018}
+{"request_id": "p1s8", "prompt_tokens": 12470, "scored_correct": false, "arithmetic": false, "corrupted": true, "cache_hit_rate": 0.769848, "acceptance": 0.0, "wall_s": 5.9228}
+{"request_id": "p1s9", "prompt_tokens": 11170, "scored_correct": false, "arithmetic": false, "corrupted": true, "cache_hit_rate": 0.859445, "acceptance": 0.0, "wall_s": 6.0297}
+{"request_id": "p1s10", "prompt_tokens": 15570, "scored_correct": false, "arithmetic": false, "corrupted": true, "cache_hit_rate": 0.719332, "acceptance": 0.0, "wall_s": 5.9588}
+{"request_id": "p2s1", "prompt_tokens": 3170, "scored_correct": false, "arithmetic": true, "corrupted": true, "cache_hit_rate": 0.504732, "acceptance": 0.565041, "wall_s": 2.5745}
+{"request_id": "p2s2", "prompt_tokens": 5470, "scored_correct": false, "arithmetic": false, "corrupted": true, "cache_hit_rate": 0.877514, "acceptance": 0.0, "wall_s": 5.6865}
+{"request_id": "p2s3", "prompt_tokens": 4270, "scored_correct": false, "arithmetic": true, "corrupted": true, "cache_hit_rate": 0.749415, "acceptance": 0.591667, "wall_s": 2.3445}
+{"request_id": "p2s4", "prompt_tokens": 7870, "scored_correct": false, "arithmetic": false, "corrupted": true, "cache_hit_rate": 0.813215, "acceptance": 0.0, "wall_s": 5.9593}
+{"request_id": "p2s5", "prompt_tokens": 6670, "scored_correct": false, "arithmetic": false, "corrupted": true, "cache_hit_rate": 0.95952, "acceptance": 0.0, "wall_s": 5.5916}
+{"request_id": "p2s6", "prompt_tokens": 10070, "scored_correct": false, "arithmetic": false, "corrupted": true, "cache_hit_rate": 0.953327, "acceptance": 0.0, "wall_s": 5.6839}
+{"request_id": "p2s7", "prompt_tokens": 8370, "scored_correct": false, "arithmetic": false, "corrupted": true, "cache_hit_rate": 0.955795, "acceptance": 0.0, "wall_s": 5.6333}
+{"request_id": "p2s8", "prompt_tokens": 12470, "scored_correct": false, "arithmetic": false, "corrupted": true, "cache_hit_rate": 0.898156, "acceptance": 0.0, "wall_s": 5.9644}
+{"request_id": "p2s9", "prompt_tokens": 11170, "scored_correct": false, "arithmetic": false, "corrupted": true, "cache_hit_rate": 0.859445, "acceptance": 0.0, "wall_s": 6.0826}
+{"request_id": "p2s10", "prompt_tokens": 15570, "scored_correct": false, "arithmetic": false, "corrupted": true, "cache_hit_rate": 0.924855, "acceptance": 0.0, "wall_s": 5.9796}
+{"request_id": "p3s1", "prompt_tokens": 3170, "scored_correct": false, "arithmetic": true, "corrupted": true, "cache_hit_rate": 0.504732, "acceptance": 0.666667, "wall_s": 2.3681}
+{"request_id": "p3s2", "prompt_tokens": 4270, "scored_correct": false, "arithmetic": true, "corrupted": true, "cache_hit_rate": 0.749415, "acceptance": 0.761194, "wall_s": 2.062}
+{"request_id": "p3s3", "prompt_tokens": 5470, "scored_correct": false, "arithmetic": false, "corrupted": true, "cache_hit_rate": 0.877514, "acceptance": 0.0, "wall_s": 5.7244}
+{"request_id": "p3s4", "prompt_tokens": 6670, "scored_correct": false, "arithmetic": false, "corrupted": true, "cache_hit_rate": 0.95952, "acceptance": 0.0, "wall_s": 5.6233}
+{"request_id": "p3s5", "prompt_tokens": 7870, "scored_correct": false, "arithmetic": false, "corrupted": true, "cache_hit_rate": 0.813215, "acceptance": 0.0, "wall_s": 5.9922}
+{"request_id": "p3s6", "prompt_tokens": 8370, "scored_correct": false, "arithmetic": false, "corrupted": true, "cache_hit_rate": 0.955795, "acceptance": 0.0, "wall_s": 5.6488}
+{"request_id": "p3s7", "prompt_tokens": 10070, "scored_correct": false, "arithmetic": false, "corrupted": true, "cache_hit_rate": 0.953327, "acceptance": 0.0, "wall_s": 5.7179}
+{"request_id": "p3s8", "prompt_tokens": 11170, "scored_correct": false, "arithmetic": false, "corrupted": true, "cache_hit_rate": 0.859445, "acceptance": 0.0, "wall_s": 6.0958}
+{"request_id": "p3s9", "prompt_tokens": 12470, "scored_correct": false, "arithmetic": false, "corrupted": true, "cache_hit_rate": 0.898156, "acceptance": 0.0, "wall_s": 5.9809}
+{"request_id": "p3s10", "prompt_tokens": 15570, "scored_correct": false, "arithmetic": false, "corrupted": true, "cache_hit_rate": 0.924855, "acceptance": 0.0, "wall_s": 5.9988}
+{"request_id": "p4s1", "prompt_tokens": 3035, "scored_correct": false, "arithmetic": true, "corrupted": true, "cache_hit_rate": 0.527183, "acceptance": 0.5875, "wall_s": 2.4993}
+{"request_id": "p4s2", "prompt_tokens": 3635, "scored_correct": false, "arithmetic": true, "corrupted": true, "cache_hit_rate": 0.88033, "acceptance": 0.627193, "wall_s": 2.1037}
+{"request_id": "p4s3", "prompt_tokens": 4635, "scored_correct": false, "arithmetic": true, "corrupted": true, "cache_hit_rate": 0.690399, "acceptance": 0.8, "wall_s": 2.1359}
+{"request_id": "p4s4", "prompt_tokens": 5235, "scored_correct": false, "arithmetic": false, "corrupted": true, "cache_hit_rate": 0.916905, "acceptance": 0.0, "wall_s": 5.6498}
+{"request_id": "p4s5", "prompt_tokens": 6235, "scored_correct": false, "arithmetic": false, "corrupted": true, "cache_hit_rate": 0.769848, "acceptance": 0.0, "wall_s": 5.9874}
+{"request_id": "p4s6", "prompt_tokens": 6835, "scored_correct": false, "arithmetic": false, "corrupted": true, "cache_hit_rate": 0.936357, "acceptance": 0.0, "wall_s": 5.6741}
+{"request_id": "p4s7", "prompt_tokens": 7835, "scored_correct": false, "arithmetic": false, "corrupted": true, "cache_hit_rate": 0.816847, "acceptance": 0.0, "wall_s": 6.0094}
+{"request_id": "p4s8", "prompt_tokens": 8435, "scored_correct": false, "arithmetic": false, "corrupted": true, "cache_hit_rate": 0.948429, "acceptance": 0.0, "wall_s": 5.6962}
+{"wrote": "/home/mbelleau/lmcachetest/out/arm-L3restart.json", "requests": 38, "failed_requests": 38, "corrupted_requests": 38, "scored_answer_wrong_requests": 38, "arithmetic_correct_diagnostic_only": 8}
+files: 26
+bytes: 4147380224
+{"wrote": "/home/mbelleau/lmcachetest/out/windows-L3restart.json", "engine_windows": 19, "spec_windows_with_traffic": 19, "acceptance_min_pct": 0.0, "prefix_cache_hit_rate_pct_final": 67.0}
+[14:08:12] restart pass complete
