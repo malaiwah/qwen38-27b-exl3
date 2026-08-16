@@ -1,0 +1,368 @@
+{
+  "threshold_used": 4,
+  "cases": [
+    {
+      "case": "recipe: 8 speculative decodes + 1 chunked prefill, prefill first before reorder",
+      "note": "long_extend (utils.py:701), so the reorder must move it behind the decodes",
+      "batch_before": [
+        "chunkprefill",
+        "s0",
+        "s1",
+        "s2",
+        "s3",
+        "s4",
+        "s5",
+        "s6",
+        "s7"
+      ],
+      "batch_after": [
+        "s7",
+        "s0",
+        "s1",
+        "s2",
+        "s3",
+        "s4",
+        "s5",
+        "s6",
+        "chunkprefill"
+      ],
+      "reorder_moved_requests": true,
+      "branch": "mixed branch (gdn_attn.py:277): gather happens",
+      "spec_tokens": 32,
+      "spec_token_indx_head": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "spec_token_indx_is_identity": true,
+      "vendored_miscomputes": false
+    },
+    {
+      "case": "recipe: 8 speculative decodes + 1 first-chunk prefill, prefill first before reorder",
+      "note": "pure prefill (utils.py:700), the case a short brand-new prompt also falls into",
+      "batch_before": [
+        "newprefill",
+        "s0",
+        "s1",
+        "s2",
+        "s3",
+        "s4",
+        "s5",
+        "s6",
+        "s7"
+      ],
+      "batch_after": [
+        "s7",
+        "s0",
+        "s1",
+        "s2",
+        "s3",
+        "s4",
+        "s5",
+        "s6",
+        "newprefill"
+      ],
+      "reorder_moved_requests": true,
+      "branch": "mixed branch (gdn_attn.py:277): gather happens",
+      "spec_tokens": 32,
+      "spec_token_indx_head": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "spec_token_indx_is_identity": true,
+      "vendored_miscomputes": false
+    },
+    {
+      "case": "8 speculative decodes + 1 brand-new 4-token prompt",
+      "note": "num_computed == 0 so has_context is false: region 3, back of the batch",
+      "batch_before": [
+        "tiny",
+        "s0",
+        "s1",
+        "s2",
+        "s3",
+        "s4",
+        "s5",
+        "s6",
+        "s7"
+      ],
+      "batch_after": [
+        "s7",
+        "s0",
+        "s1",
+        "s2",
+        "s3",
+        "s4",
+        "s5",
+        "s6",
+        "tiny"
+      ],
+      "reorder_moved_requests": true,
+      "branch": "mixed branch (gdn_attn.py:277): gather happens",
+      "spec_tokens": 32,
+      "spec_token_indx_head": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "spec_token_indx_is_identity": true,
+      "vendored_miscomputes": false
+    },
+    {
+      "case": "8 speculative decodes + 1 non-speculative plain decode (drafts dropped)",
+      "note": "has_context, below threshold, done prefilling: region 0 alongside the speculative decodes, and nothing orders it behind them",
+      "batch_before": [
+        "nodraft",
+        "s0",
+        "s1",
+        "s2",
+        "s3",
+        "s4",
+        "s5",
+        "s6",
+        "s7"
+      ],
+      "batch_after": [
+        "nodraft",
+        "s0",
+        "s1",
+        "s2",
+        "s3",
+        "s4",
+        "s5",
+        "s6",
+        "s7"
+      ],
+      "reorder_moved_requests": false,
+      "branch": "mixed branch (gdn_attn.py:277): gather happens",
+      "spec_tokens": 32,
+      "spec_token_indx_head": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "spec_token_indx_is_identity": false,
+      "vendored_miscomputes": true
+    },
+    {
+      "case": "8 speculative decodes + 1 non-speculative plain decode, decode last",
+      "note": "same regions, different slot order: shows the defect depends on slot order inside region 0",
+      "batch_before": [
+        "s0",
+        "s1",
+        "s2",
+        "s3",
+        "s4",
+        "s5",
+        "s6",
+        "s7",
+        "nodraft"
+      ],
+      "batch_after": [
+        "s0",
+        "s1",
+        "s2",
+        "s3",
+        "s4",
+        "s5",
+        "s6",
+        "s7",
+        "nodraft"
+      ],
+      "reorder_moved_requests": false,
+      "branch": "mixed branch (gdn_attn.py:277): gather happens",
+      "spec_tokens": 32,
+      "spec_token_indx_head": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "spec_token_indx_is_identity": true,
+      "vendored_miscomputes": false
+    },
+    {
+      "case": "8 speculative decodes + padded cache-hit pseudo-speculative + non-speculative tiny final chunk",
+      "note": "both land in region 1 (has_context, below threshold, not done prefilling); if the non-speculative one sorts first, speculative tokens are no longer leading",
+      "batch_before": [
+        "s0",
+        "s1",
+        "s2",
+        "s3",
+        "s4",
+        "s5",
+        "s6",
+        "s7",
+        "tinychunk",
+        "padded"
+      ],
+      "batch_after": [
+        "s0",
+        "s1",
+        "s2",
+        "s3",
+        "s4",
+        "s5",
+        "s6",
+        "s7",
+        "tinychunk",
+        "padded"
+      ],
+      "reorder_moved_requests": false,
+      "branch": "mixed branch (gdn_attn.py:277): gather happens",
+      "spec_tokens": 36,
+      "spec_token_indx_head": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "spec_token_indx_is_identity": false,
+      "vendored_miscomputes": true
+    },
+    {
+      "case": "8 speculative decodes + padded cache-hit pseudo-speculative ahead of the tiny final chunk",
+      "note": "the same two requests in the other slot order",
+      "batch_before": [
+        "s0",
+        "s1",
+        "s2",
+        "s3",
+        "s4",
+        "s5",
+        "s6",
+        "s7",
+        "padded",
+        "tinychunk"
+      ],
+      "batch_after": [
+        "s0",
+        "s1",
+        "s2",
+        "s3",
+        "s4",
+        "s5",
+        "s6",
+        "s7",
+        "padded",
+        "tinychunk"
+      ],
+      "reorder_moved_requests": false,
+      "branch": "mixed branch (gdn_attn.py:277): gather happens",
+      "spec_tokens": 36,
+      "spec_token_indx_head": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "spec_token_indx_is_identity": true,
+      "vendored_miscomputes": false
+    },
+    {
+      "case": "budget-clamped decode: 4 speculative decodes, a clamped non-speculative decode at a middle slot, 3 more speculative decodes, plus the prefill that ate the budget",
+      "note": "the clamped request is region 0 like the speculative decodes, so the reorder leaves it where it is, in the middle of the leading tokens",
+      "batch_before": [
+        "s0",
+        "s1",
+        "s2",
+        "s3",
+        "clamped",
+        "s4",
+        "s5",
+        "s6",
+        "chunkprefill"
+      ],
+      "batch_after": [
+        "s0",
+        "s1",
+        "s2",
+        "s3",
+        "clamped",
+        "s4",
+        "s5",
+        "s6",
+        "chunkprefill"
+      ],
+      "reorder_moved_requests": false,
+      "branch": "mixed branch (gdn_attn.py:277): gather happens",
+      "spec_tokens": 28,
+      "spec_token_indx_head": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "spec_token_indx_is_identity": false,
+      "vendored_miscomputes": true
+    },
+    {
+      "case": "budget-clamped decode holding the highest region-0 slot",
+      "note": "identical regions, but the clamped request sorts last inside region 0, so the speculative tokens stay leading",
+      "batch_before": [
+        "s0",
+        "s1",
+        "s2",
+        "s3",
+        "s4",
+        "s5",
+        "s6",
+        "clamped",
+        "chunkprefill"
+      ],
+      "batch_after": [
+        "s0",
+        "s1",
+        "s2",
+        "s3",
+        "s4",
+        "s5",
+        "s6",
+        "clamped",
+        "chunkprefill"
+      ],
+      "reorder_moved_requests": false,
+      "branch": "mixed branch (gdn_attn.py:277): gather happens",
+      "spec_tokens": 28,
+      "spec_token_indx_head": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "spec_token_indx_is_identity": true,
+      "vendored_miscomputes": false
+    }
+  ]
+}
+{
+  "cases_evaluated": 9,
+  "cases_where_vendored_miscomputes": [
+    "8 speculative decodes + 1 non-speculative plain decode (drafts dropped)",
+    "8 speculative decodes + padded cache-hit pseudo-speculative + non-speculative tiny final chunk",
+    "budget-clamped decode: 4 speculative decodes, a clamped non-speculative decode at a middle slot, 3 more speculative decodes, plus the prefill that ate the budget"
+  ]
+}

@@ -123,13 +123,25 @@ def adversarial(args: argparse.Namespace) -> int:
     ):
         raise SystemExit("prompt file digest mismatch")
     specs = prompts["correctness_requests"]
-    # The long streams: the longest frozen prompts, so they chunk-prefill for many
+    # Arms that run inside a shipped short window cannot use the whole frozen set: the
+    # longest prompt is 15400 tokens and the shipped prefix-caching recipes are 8192.
+    # Filtering the frozen set is not the same as refreezing it - every prompt used is
+    # still the same token ids from the same file and the same digest.
+    if args.max_prompt_tokens:
+        eligible = [s for s in specs if s["prompt_tokens"] <= args.max_prompt_tokens]
+        if not eligible:
+            raise SystemExit(
+                f"no frozen prompt fits under {args.max_prompt_tokens} tokens"
+            )
+    else:
+        eligible = specs
+    # The long streams: the longest prompts that fit, so they chunk-prefill for many
     # steps and then decode for many more, guaranteeing a long window in which the
     # engine is in steady speculative decode with room for injections.
-    long_specs = sorted(specs, key=lambda s: -s["prompt_tokens"])[: args.streams]
+    long_specs = sorted(eligible, key=lambda s: -s["prompt_tokens"])[: args.streams]
     # Short prompts are prefixes of a frozen prompt, so they are still frozen token
     # ids from the same tokenizer and need no tokenizer at load time.
-    donor = specs[0]["prompt_ids"]
+    donor = eligible[0]["prompt_ids"]
 
     rng = random.Random(args.seed)
     rows: list[dict] = []
@@ -229,6 +241,9 @@ def adversarial(args: argparse.Namespace) -> int:
             "repeat_sends": REPEAT_SENDS,
             "chunk_tokens": args.chunk_tokens,
             "long_stream_prompt_tokens": [s["prompt_tokens"] for s in long_specs],
+            "max_prompt_tokens_filter": args.max_prompt_tokens or None,
+            "frozen_prompts_eligible": len(eligible),
+            "frozen_prompts_total": len(specs),
         },
         "summary": {
             "requests": len(rows),
@@ -388,6 +403,12 @@ def main() -> int:
     a.add_argument("--inject-max-tokens", type=int, default=24)
     a.add_argument("--chunk-tokens", type=int, default=2048)
     a.add_argument("--seed", type=int, default=20260816)
+    a.add_argument(
+        "--max-prompt-tokens",
+        type=int,
+        default=0,
+        help="only use frozen prompts at or below this length; 0 uses all of them",
+    )
     a.add_argument("--out", required=True)
     a.set_defaults(func=adversarial)
 

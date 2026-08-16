@@ -169,6 +169,10 @@ def main() -> int:
     ap.add_argument("--out", required=True, type=Path)
     ap.add_argument("--toolchain", type=Path,
                     help="JSON describing both runs' toolchain; merged verbatim")
+    ap.add_argument("--repeat-control", type=Path,
+                    help="JSON comparing two runs of the SAME conversion, which is what "
+                         "separates converter nondeterminism from a toolchain difference; "
+                         "merged verbatim")
     args = ap.parse_args()
 
     pinned = read_sums(args.sums)
@@ -263,6 +267,8 @@ def main() -> int:
     }
     if args.toolchain:
         payload["toolchain"] = json.loads(args.toolchain.read_text())
+    if args.repeat_control:
+        payload["converter_repeat_control"] = json.loads(args.repeat_control.read_text())
 
     body = json.dumps({k: v for k, v in payload.items() if k != "content_sha256"},
                       sort_keys=True).encode()

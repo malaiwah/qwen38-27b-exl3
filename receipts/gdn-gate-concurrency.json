@@ -1,5 +1,7 @@
 {
   "schema": "qwen38-gdn-gate-concurrency/1",
+  "generated_utc": "2026-08-16T06:56:56Z",
+  "status": "measured; the defective path was NOT entered under either published-recipe arm and WAS entered in a shipped prefix-caching regime",
   "purpose": "decide whether upstream vLLM PR #51812 (Qwen GDN speculative gate alignment) changes anything on the promoted image at eight concurrent streams, and say what the model cards should do about it",
   "image": {
     "tag": "localhost/vllm:gg-r34-patched-apc",
@@ -188,7 +190,5094 @@
     }
   },
   "measured": {
-    "status": "not run"
+    "status": "run",
+    "stage": {
+      "schema": "qwen38-gdn-gate-stage/1",
+      "host": "aiboss",
+      "gpu": "NVIDIA GeForce RTX 5090, GPU-506a575d-01d7-b12e-9a0a-c1ab5f38ae0a, 32607 MiB, 610.57.04, Exclusive_Process",
+      "compute_capability": "12.0",
+      "podman_version": "podman version 4.9.3",
+      "image": {
+        "tag": "localhost/vllm:gg-r34-patched-apc",
+        "manifest_digest": "sha256:16a936b877b90fc080181e842f47dbafc5cb8e62688799596836e34ba0b79218",
+        "config_id": "5ce31638c0a5c5c5ee4b5cafb7cd29170b9f2f7a5dcf6e2caa6f3b41bc6f8adc"
+      },
+      "harness_sha256": {
+        "apc_poison_probe.py": "a96168f9b0c32387fe0cd2b180cb23ff67061b6dbe8f46c1423041c904e7aeb6",
+        "gdn_gate_concurrency.py": "9fef63a238a4a6c8c24572907afe58dd3bba1d95395e671c1e4a2243acbc1e6b",
+        "gdn_gate_receipt.py": "fd59d946bf6e5214614784f6830271eb94fa8ff0c0a922bdfde3253f21df8302",
+        "gdn_reorder_sim.py": "d718cc89cd80151dfecc585605a5986ce5f2296683d7c59b98968e6b28d19d6e",
+        "vllm-gdn-reach-instrument.py": "eb61b24b2ab876bb24c433b2dbfd0ad2e6587014765e16d0928239f3c0c5889b",
+        "vllm-qwen-gdn-spec-gates.py": "7cd3f5fe763b621048af4817951a841d99c8b700d9a56ded27ccaca5a56ccbe0"
+      },
+      "prompts_sha256": "9978404b0ce2d032ebf762e17335d7b5a37dbc424f57f61db66ecf3f946f39df",
+      "prompt_tokens": [
+        3170,
+        5470,
+        4270,
+        7870,
+        6670,
+        10070,
+        8370,
+        12470,
+        11170,
+        15570,
+        3170,
+        5470,
+        4270,
+        7870,
+        6670,
+        10070,
+        8370,
+        12470,
+        11170,
+        15570,
+        3170,
+        4270,
+        5470,
+        6670,
+        7870,
+        8370,
+        10070,
+        11170,
+        12470,
+        15570,
+        3035,
+        3635,
+        4635,
+        5235,
+        6235,
+        6835,
+        7835,
+        8435
+      ]
+    },
+    "instrument_additivity_check": {
+      "vendored_sha256": "5cb3f14fbc3461256e985ea80f6329d75ebd721e67cb28155527389a3e726d45",
+      "instrument_sha256": "eb61b24b2ab876bb24c433b2dbfd0ad2e6587014765e16d0928239f3c0c5889b",
+      "opcodes_other_than_equal": [
+        [
+          "insert",
+          24,
+          24,
+          24,
+          137
+        ],
+        [
+          "insert",
+          223,
+          223,
+          336,
+          337
+        ],
+        [
+          "insert",
+          276,
+          276,
+          390,
+          393
+        ],
+        [
+          "insert",
+          286,
+          286,
+          403,
+          411
+        ]
+      ],
+      "purely_additive": true,
+      "lines_inserted": 125,
+      "vendored_bytes_recovered_by_deleting_insertions": "5cb3f14fbc3461256e985ea80f6329d75ebd721e67cb28155527389a3e726d45",
+      "reversible": true,
+      "py_compile_ok": true
+    },
+    "reorder_simulation": {
+      "threshold_used": 4,
+      "cases": [
+        {
+          "case": "recipe: 8 speculative decodes + 1 chunked prefill, prefill first before reorder",
+          "note": "long_extend (utils.py:701), so the reorder must move it behind the decodes",
+          "batch_before": [
+            "chunkprefill",
+            "s0",
+            "s1",
+            "s2",
+            "s3",
+            "s4",
+            "s5",
+            "s6",
+            "s7"
+          ],
+          "batch_after": [
+            "s7",
+            "s0",
+            "s1",
+            "s2",
+            "s3",
+            "s4",
+            "s5",
+            "s6",
+            "chunkprefill"
+          ],
+          "reorder_moved_requests": true,
+          "branch": "mixed branch (gdn_attn.py:277): gather happens",
+          "spec_tokens": 32,
+          "spec_token_indx_head": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "spec_token_indx_is_identity": true,
+          "vendored_miscomputes": false
+        },
+        {
+          "case": "recipe: 8 speculative decodes + 1 first-chunk prefill, prefill first before reorder",
+          "note": "pure prefill (utils.py:700), the case a short brand-new prompt also falls into",
+          "batch_before": [
+            "newprefill",
+            "s0",
+            "s1",
+            "s2",
+            "s3",
+            "s4",
+            "s5",
+            "s6",
+            "s7"
+          ],
+          "batch_after": [
+            "s7",
+            "s0",
+            "s1",
+            "s2",
+            "s3",
+            "s4",
+            "s5",
+            "s6",
+            "newprefill"
+          ],
+          "reorder_moved_requests": true,
+          "branch": "mixed branch (gdn_attn.py:277): gather happens",
+          "spec_tokens": 32,
+          "spec_token_indx_head": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "spec_token_indx_is_identity": true,
+          "vendored_miscomputes": false
+        },
+        {
+          "case": "8 speculative decodes + 1 brand-new 4-token prompt",
+          "note": "num_computed == 0 so has_context is false: region 3, back of the batch",
+          "batch_before": [
+            "tiny",
+            "s0",
+            "s1",
+            "s2",
+            "s3",
+            "s4",
+            "s5",
+            "s6",
+            "s7"
+          ],
+          "batch_after": [
+            "s7",
+            "s0",
+            "s1",
+            "s2",
+            "s3",
+            "s4",
+            "s5",
+            "s6",
+            "tiny"
+          ],
+          "reorder_moved_requests": true,
+          "branch": "mixed branch (gdn_attn.py:277): gather happens",
+          "spec_tokens": 32,
+          "spec_token_indx_head": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "spec_token_indx_is_identity": true,
+          "vendored_miscomputes": false
+        },
+        {
+          "case": "8 speculative decodes + 1 non-speculative plain decode (drafts dropped)",
+          "note": "has_context, below threshold, done prefilling: region 0 alongside the speculative decodes, and nothing orders it behind them",
+          "batch_before": [
+            "nodraft",
+            "s0",
+            "s1",
+            "s2",
+            "s3",
+            "s4",
+            "s5",
+            "s6",
+            "s7"
+          ],
+          "batch_after": [
+            "nodraft",
+            "s0",
+            "s1",
+            "s2",
+            "s3",
+            "s4",
+            "s5",
+            "s6",
+            "s7"
+          ],
+          "reorder_moved_requests": false,
+          "branch": "mixed branch (gdn_attn.py:277): gather happens",
+          "spec_tokens": 32,
+          "spec_token_indx_head": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "spec_token_indx_is_identity": false,
+          "vendored_miscomputes": true
+        },
+        {
+          "case": "8 speculative decodes + 1 non-speculative plain decode, decode last",
+          "note": "same regions, different slot order: shows the defect depends on slot order inside region 0",
+          "batch_before": [
+            "s0",
+            "s1",
+            "s2",
+            "s3",
+            "s4",
+            "s5",
+            "s6",
+            "s7",
+            "nodraft"
+          ],
+          "batch_after": [
+            "s0",
+            "s1",
+            "s2",
+            "s3",
+            "s4",
+            "s5",
+            "s6",
+            "s7",
+            "nodraft"
+          ],
+          "reorder_moved_requests": false,
+          "branch": "mixed branch (gdn_attn.py:277): gather happens",
+          "spec_tokens": 32,
+          "spec_token_indx_head": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "spec_token_indx_is_identity": true,
+          "vendored_miscomputes": false
+        },
+        {
+          "case": "8 speculative decodes + padded cache-hit pseudo-speculative + non-speculative tiny final chunk",
+          "note": "both land in region 1 (has_context, below threshold, not done prefilling); if the non-speculative one sorts first, speculative tokens are no longer leading",
+          "batch_before": [
+            "s0",
+            "s1",
+            "s2",
+            "s3",
+            "s4",
+            "s5",
+            "s6",
+            "s7",
+            "tinychunk",
+            "padded"
+          ],
+          "batch_after": [
+            "s0",
+            "s1",
+            "s2",
+            "s3",
+            "s4",
+            "s5",
+            "s6",
+            "s7",
+            "tinychunk",
+            "padded"
+          ],
+          "reorder_moved_requests": false,
+          "branch": "mixed branch (gdn_attn.py:277): gather happens",
+          "spec_tokens": 36,
+          "spec_token_indx_head": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "spec_token_indx_is_identity": false,
+          "vendored_miscomputes": true
+        },
+        {
+          "case": "8 speculative decodes + padded cache-hit pseudo-speculative ahead of the tiny final chunk",
+          "note": "the same two requests in the other slot order",
+          "batch_before": [
+            "s0",
+            "s1",
+            "s2",
+            "s3",
+            "s4",
+            "s5",
+            "s6",
+            "s7",
+            "padded",
+            "tinychunk"
+          ],
+          "batch_after": [
+            "s0",
+            "s1",
+            "s2",
+            "s3",
+            "s4",
+            "s5",
+            "s6",
+            "s7",
+            "padded",
+            "tinychunk"
+          ],
+          "reorder_moved_requests": false,
+          "branch": "mixed branch (gdn_attn.py:277): gather happens",
+          "spec_tokens": 36,
+          "spec_token_indx_head": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "spec_token_indx_is_identity": true,
+          "vendored_miscomputes": false
+        },
+        {
+          "case": "budget-clamped decode: 4 speculative decodes, a clamped non-speculative decode at a middle slot, 3 more speculative decodes, plus the prefill that ate the budget",
+          "note": "the clamped request is region 0 like the speculative decodes, so the reorder leaves it where it is, in the middle of the leading tokens",
+          "batch_before": [
+            "s0",
+            "s1",
+            "s2",
+            "s3",
+            "clamped",
+            "s4",
+            "s5",
+            "s6",
+            "chunkprefill"
+          ],
+          "batch_after": [
+            "s0",
+            "s1",
+            "s2",
+            "s3",
+            "clamped",
+            "s4",
+            "s5",
+            "s6",
+            "chunkprefill"
+          ],
+          "reorder_moved_requests": false,
+          "branch": "mixed branch (gdn_attn.py:277): gather happens",
+          "spec_tokens": 28,
+          "spec_token_indx_head": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "spec_token_indx_is_identity": false,
+          "vendored_miscomputes": true
+        },
+        {
+          "case": "budget-clamped decode holding the highest region-0 slot",
+          "note": "identical regions, but the clamped request sorts last inside region 0, so the speculative tokens stay leading",
+          "batch_before": [
+            "s0",
+            "s1",
+            "s2",
+            "s3",
+            "s4",
+            "s5",
+            "s6",
+            "clamped",
+            "chunkprefill"
+          ],
+          "batch_after": [
+            "s0",
+            "s1",
+            "s2",
+            "s3",
+            "s4",
+            "s5",
+            "s6",
+            "clamped",
+            "chunkprefill"
+          ],
+          "reorder_moved_requests": false,
+          "branch": "mixed branch (gdn_attn.py:277): gather happens",
+          "spec_tokens": 28,
+          "spec_token_indx_head": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "spec_token_indx_is_identity": true,
+          "vendored_miscomputes": false
+        }
+      ]
+    },
+    "module_verify_in_image": "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py: OK\n/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5.py: OK\n/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5_mtp.py: OK\n/opt/venv/lib/python3.12/site-packages/vllm/v1/core/sched/scheduler.py: OK\n/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py: OK\n/opt/venv/lib/python3.12/site-packages/vllm/v1/attention/backends/gdn_attn.py: OK\n",
+    "arms": {
+      "R1": {
+        "description": "our published 8-stream concurrency recipe, gdn_attn.py instrumented: does the defective gather composition ever occur?",
+        "image_manifest_digest": "sha256:16a936b877b90fc080181e842f47dbafc5cb8e62688799596836e34ba0b79218",
+        "podman_argv": [
+          "podman",
+          "run",
+          "--rm",
+          "--name",
+          "gdngate-R1",
+          "--device",
+          "nvidia.com/gpu=all",
+          "--ipc=host",
+          "--network",
+          "host",
+          "-v",
+          "/mnt/vault/llm/huggingface/hub/models--malaiwah--Qwen3.8-27B-EXL3-K5K6-context:/models/ctx-repo:ro",
+          "-v",
+          "/home/mbelleau/qual5090/cache/jit:/cache/jit:rw",
+          "-v",
+          "/home/mbelleau/qual5090/cache/exl3-online:/cache/exl3-online:rw",
+          "-v",
+          "/home/mbelleau/gdngate/reach/R1:/reach:rw",
+          "-v",
+          "/home/mbelleau/gdngate/tools/vllm-gdn-reach-instrument.py:/opt/venv/lib/python3.12/site-packages/vllm/v1/attention/backends/gdn_attn.py:ro",
+          "-e",
+          "HF_HUB_OFFLINE=1",
+          "-e",
+          "TRANSFORMERS_OFFLINE=1",
+          "-e",
+          "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True",
+          "-e",
+          "VLLM_EXL3_EMBED_BITS=8",
+          "-e",
+          "VLLM_EXL3_GRAPH_DECODE=1",
+          "-e",
+          "VLLM_EXL3_PREFILL_RECONSTRUCT_M=128",
+          "-e",
+          "VLLM_GDN_REACH_OUT=/reach/reach",
+          "--entrypoint",
+          "/opt/venv/bin/vllm",
+          "localhost/vllm:gg-r34-patched-apc"
+        ],
+        "vllm_argv": [
+          "serve",
+          "/models/ctx-repo/snapshots/c45c273b0d6ef2859cb2d85b36dd52253c80d878",
+          "--served-model-name",
+          "m",
+          "--quantization",
+          "exl3",
+          "--quantization-config",
+          "{\"linear\":{\"weight\":\"mxfp8\"},\"ignore\":[\"re:.*visual\\\\..*\",\"re:.*in_proj_a$\",\"re:.*in_proj_b$\",\"re:.*in_proj_ba$\",\"re:.*mtp\\\\..*\",\"lm_head\"]}",
+          "--max-model-len",
+          "262144",
+          "--gpu-memory-utilization",
+          "0.97",
+          "--max-num-seqs",
+          "8",
+          "--kv-cache-dtype",
+          "fp8",
+          "--max-num-batched-tokens",
+          "2048",
+          "--no-enable-prefix-caching",
+          "--speculative-config",
+          "{\"method\":\"mtp\",\"num_speculative_tokens\":3}",
+          "--mm-processor-kwargs",
+          "{\"truncation\":false,\"max_pixels\":8388608}",
+          "--compilation-config",
+          "{\"cudagraph_mode\":\"FULL_DECODE_ONLY\",\"cudagraph_capture_sizes\":[32]}",
+          "--host",
+          "127.0.0.1",
+          "--port",
+          "8251"
+        ],
+        "startup_facts": [
+          "Available KV cache memory: 9.54 GiB",
+          "cudagraph_mode=FULL_DECODE_ONLY",
+          "'enable_prefix_caching': False",
+          "GPU KV cache size: 272,570 tokens",
+          "init engine (profile, create kv cache, warmup model) took 14.58 s (compilation: 1.92 s)",
+          "Maximum concurrency for 262,144 tokens per request: 1.04x",
+          "'max_num_seqs': 8",
+          "Model loading took 18.19 GiB memory and 76.080665 seconds",
+          "num_spec_tokens=3",
+          "Using FLASHINFER attention backend out of potential backends: ['FLASHINFER', 'TRITON_ATTN']"
+        ],
+        "module_digests_inside_the_running_container": "663dacd324b6b8224a4cb312b3e9c0bad4322c515e982a85f13c3450ffdb7d61  /opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py\neb61b24b2ab876bb24c433b2dbfd0ad2e6587014765e16d0928239f3c0c5889b  /opt/venv/lib/python3.12/site-packages/vllm/v1/attention/backends/gdn_attn.py\nb431c1066dfee3ed56bfa7e71cc8606f9afadc300f22d7fc542c43835d1b22bf  /opt/venv/lib/python3.12/site-packages/vllm/v1/core/sched/scheduler.py\n{\n  \"vllm.model_executor.layers.mamba.gdn.qwen_gdn_linear_attn\": {\n    \"origin\": \"/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py\",\n    \"sha256\": \"663dacd324b6b8224a4cb312b3e9c0bad4322c515e982a85f13c3450ffdb7d61\"\n  },\n  \"vllm.v1.attention.backends.gdn_attn\": {\n    \"origin\": \"/opt/venv/lib/python3.12/site-packages/vllm/v1/attention/backends/gdn_attn.py\",\n    \"sha256\": \"eb61b24b2ab876bb24c433b2dbfd0ad2e6587014765e16d0928239f3c0c5889b\"\n  }\n}\n",
+        "reachability": {
+          "schema": "qwen38-gdn-gate-reach/1",
+          "arm": "R1",
+          "description": "our published 8-stream concurrency recipe, gdn_attn.py instrumented: does the defective gather composition ever occur?",
+          "instrument_sha256": "eb61b24b2ab876bb24c433b2dbfd0ad2e6587014765e16d0928239f3c0c5889b",
+          "dump_files": [
+            "reach.1.json",
+            "reach.199.json"
+          ],
+          "worker_pids": [
+            1,
+            199
+          ],
+          "counts": {
+            "builds_total": 3329,
+            "no_spec_branch": 114,
+            "pure_spec_branch": 1103,
+            "mixed_branch": 2112,
+            "mixed_identity": 2112,
+            "mixed_misordered": 0
+          },
+          "defective_path_entered": false,
+          "fraction_of_builds_miscomputed": 0.0,
+          "fraction_of_mixed_branch_miscomputed": 0.0,
+          "misordered_per_thousand_builds": 0.0,
+          "misordered_per_thousand_mixed_builds": 0.0,
+          "resolution_one_event_per_thousand_builds": 0.300391,
+          "zero_arm_95pct_upper_bound_per_thousand_builds": 0.901172,
+          "zero_arm_95pct_upper_bound_per_thousand_mixed_builds": 1.420455,
+          "how_to_state_this_arm": "below 0.9012 miscomputed metadata builds per thousand (95 % upper bound, rule of three, N = 3329 builds observed, 2112 of them on the gather branch, zero events)",
+          "max_displaced_spec_tokens": 0,
+          "first_misordered_token_index_min": null,
+          "compositions_seen": {
+            "0s/1p/0d": 69,
+            "0s/2p/0d": 21,
+            "0s/3p/0d": 3,
+            "0s/4p/0d": 3,
+            "0s/5p/0d": 3,
+            "0s/6p/0d": 3,
+            "0s/7p/0d": 6,
+            "0s/8p/0d": 6,
+            "1s/0p/0d": 131,
+            "1s/1p/0d": 72,
+            "1s/2p/0d": 18,
+            "2s/0p/0d": 96,
+            "2s/1p/0d": 60,
+            "2s/2p/0d": 18,
+            "3s/0p/0d": 114,
+            "3s/1p/0d": 84,
+            "3s/2p/0d": 21,
+            "4s/0p/0d": 90,
+            "4s/1p/0d": 183,
+            "4s/2p/0d": 42,
+            "4s/3p/0d": 9,
+            "4s/4p/0d": 9,
+            "5s/0p/0d": 60,
+            "5s/1p/0d": 411,
+            "5s/2p/0d": 87,
+            "5s/3p/0d": 48,
+            "6s/0p/0d": 147,
+            "6s/1p/0d": 609,
+            "6s/2p/0d": 102,
+            "7s/0p/0d": 93,
+            "7s/1p/0d": 339,
+            "8s/0p/0d": 372
+          },
+          "misordered_compositions": {},
+          "composition_key": "<num_spec_decodes>s/<num_prefills>p/<num_decodes>d"
+        },
+        "server_windows": {
+          "schema": "qwen38-apc-log-windows/1",
+          "arm": "R1",
+          "log": "/home/mbelleau/gdngate/logs/server-R1.log",
+          "engine_windows": [
+            {
+              "log_time": "08-16 06:11:56",
+              "prompt_throughput_tok_s": 114.0,
+              "generation_throughput_tok_s": 0.0,
+              "running": 2,
+              "waiting": 6,
+              "gpu_kv_cache_usage_pct": 14.8,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:12:06",
+              "prompt_throughput_tok_s": 3259.1,
+              "generation_throughput_tok_s": 16.8,
+              "running": 6,
+              "waiting": 2,
+              "gpu_kv_cache_usage_pct": 53.8,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:12:16",
+              "prompt_throughput_tok_s": 2371.9,
+              "generation_throughput_tok_s": 86.4,
+              "running": 0,
+              "waiting": 0,
+              "gpu_kv_cache_usage_pct": 0.0,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:12:26",
+              "prompt_throughput_tok_s": 3067.8,
+              "generation_throughput_tok_s": 3.9,
+              "running": 4,
+              "waiting": 4,
+              "gpu_kv_cache_usage_pct": 38.5,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:12:36",
+              "prompt_throughput_tok_s": 3358.0,
+              "generation_throughput_tok_s": 38.1,
+              "running": 8,
+              "waiting": 0,
+              "gpu_kv_cache_usage_pct": 77.5,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:12:46",
+              "prompt_throughput_tok_s": 2250.0,
+              "generation_throughput_tok_s": 71.8,
+              "running": 3,
+              "waiting": 5,
+              "gpu_kv_cache_usage_pct": 29.1,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:12:56",
+              "prompt_throughput_tok_s": 3054.7,
+              "generation_throughput_tok_s": 14.4,
+              "running": 6,
+              "waiting": 2,
+              "gpu_kv_cache_usage_pct": 59.9,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:13:06",
+              "prompt_throughput_tok_s": 2434.7,
+              "generation_throughput_tok_s": 93.0,
+              "running": 2,
+              "waiting": 6,
+              "gpu_kv_cache_usage_pct": 17.6,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:13:16",
+              "prompt_throughput_tok_s": 3059.1,
+              "generation_throughput_tok_s": 12.1,
+              "running": 5,
+              "waiting": 3,
+              "gpu_kv_cache_usage_pct": 48.4,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:13:26",
+              "prompt_throughput_tok_s": 3136.0,
+              "generation_throughput_tok_s": 59.1,
+              "running": 7,
+              "waiting": 0,
+              "gpu_kv_cache_usage_pct": 70.3,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:13:36",
+              "prompt_throughput_tok_s": 2449.3,
+              "generation_throughput_tok_s": 42.1,
+              "running": 5,
+              "waiting": 1,
+              "gpu_kv_cache_usage_pct": 42.9,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:13:46",
+              "prompt_throughput_tok_s": 2495.3,
+              "generation_throughput_tok_s": 78.6,
+              "running": 1,
+              "waiting": 7,
+              "gpu_kv_cache_usage_pct": 11.0,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:13:56",
+              "prompt_throughput_tok_s": 2861.3,
+              "generation_throughput_tok_s": 5.2,
+              "running": 3,
+              "waiting": 5,
+              "gpu_kv_cache_usage_pct": 34.6,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:14:06",
+              "prompt_throughput_tok_s": 3053.6,
+              "generation_throughput_tok_s": 14.6,
+              "running": 6,
+              "waiting": 2,
+              "gpu_kv_cache_usage_pct": 64.8,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:14:16",
+              "prompt_throughput_tok_s": 3041.0,
+              "generation_throughput_tok_s": 23.4,
+              "running": 7,
+              "waiting": 1,
+              "gpu_kv_cache_usage_pct": 76.9,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:14:26",
+              "prompt_throughput_tok_s": 3035.9,
+              "generation_throughput_tok_s": 25.7,
+              "running": 7,
+              "waiting": 1,
+              "gpu_kv_cache_usage_pct": 78.6,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:14:36",
+              "prompt_throughput_tok_s": 2852.6,
+              "generation_throughput_tok_s": 32.9,
+              "running": 7,
+              "waiting": 4,
+              "gpu_kv_cache_usage_pct": 78.6,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:14:46",
+              "prompt_throughput_tok_s": 2676.5,
+              "generation_throughput_tok_s": 33.2,
+              "running": 7,
+              "waiting": 4,
+              "gpu_kv_cache_usage_pct": 79.1,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:14:56",
+              "prompt_throughput_tok_s": 3102.0,
+              "generation_throughput_tok_s": 23.6,
+              "running": 6,
+              "waiting": 5,
+              "gpu_kv_cache_usage_pct": 64.3,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:15:06",
+              "prompt_throughput_tok_s": 2972.1,
+              "generation_throughput_tok_s": 25.4,
+              "running": 7,
+              "waiting": 2,
+              "gpu_kv_cache_usage_pct": 75.8,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:15:16",
+              "prompt_throughput_tok_s": 2832.7,
+              "generation_throughput_tok_s": 25.3,
+              "running": 8,
+              "waiting": 3,
+              "gpu_kv_cache_usage_pct": 87.4,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:15:26",
+              "prompt_throughput_tok_s": 2951.9,
+              "generation_throughput_tok_s": 36.5,
+              "running": 8,
+              "waiting": 2,
+              "gpu_kv_cache_usage_pct": 78.6,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:15:36",
+              "prompt_throughput_tok_s": 2837.4,
+              "generation_throughput_tok_s": 19.3,
+              "running": 6,
+              "waiting": 5,
+              "gpu_kv_cache_usage_pct": 64.8,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:15:46",
+              "prompt_throughput_tok_s": 3013.1,
+              "generation_throughput_tok_s": 26.8,
+              "running": 6,
+              "waiting": 5,
+              "gpu_kv_cache_usage_pct": 65.9,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:15:56",
+              "prompt_throughput_tok_s": 2963.2,
+              "generation_throughput_tok_s": 29.0,
+              "running": 7,
+              "waiting": 4,
+              "gpu_kv_cache_usage_pct": 76.9,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:16:06",
+              "prompt_throughput_tok_s": 2858.2,
+              "generation_throughput_tok_s": 26.3,
+              "running": 6,
+              "waiting": 5,
+              "gpu_kv_cache_usage_pct": 67.0,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:16:16",
+              "prompt_throughput_tok_s": 3006.0,
+              "generation_throughput_tok_s": 30.8,
+              "running": 6,
+              "waiting": 5,
+              "gpu_kv_cache_usage_pct": 67.6,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:16:26",
+              "prompt_throughput_tok_s": 2773.5,
+              "generation_throughput_tok_s": 25.6,
+              "running": 7,
+              "waiting": 4,
+              "gpu_kv_cache_usage_pct": 72.5,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:16:36",
+              "prompt_throughput_tok_s": 3038.1,
+              "generation_throughput_tok_s": 22.8,
+              "running": 6,
+              "waiting": 3,
+              "gpu_kv_cache_usage_pct": 67.0,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:16:46",
+              "prompt_throughput_tok_s": 2833.5,
+              "generation_throughput_tok_s": 24.0,
+              "running": 7,
+              "waiting": 3,
+              "gpu_kv_cache_usage_pct": 79.1,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:16:56",
+              "prompt_throughput_tok_s": 2881.1,
+              "generation_throughput_tok_s": 41.9,
+              "running": 7,
+              "waiting": 3,
+              "gpu_kv_cache_usage_pct": 75.3,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:17:06",
+              "prompt_throughput_tok_s": 3000.7,
+              "generation_throughput_tok_s": 26.1,
+              "running": 6,
+              "waiting": 4,
+              "gpu_kv_cache_usage_pct": 64.3,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:17:16",
+              "prompt_throughput_tok_s": 2936.5,
+              "generation_throughput_tok_s": 23.3,
+              "running": 7,
+              "waiting": 4,
+              "gpu_kv_cache_usage_pct": 76.4,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:17:26",
+              "prompt_throughput_tok_s": 3044.7,
+              "generation_throughput_tok_s": 38.9,
+              "running": 7,
+              "waiting": 3,
+              "gpu_kv_cache_usage_pct": 67.6,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:17:36",
+              "prompt_throughput_tok_s": 2637.5,
+              "generation_throughput_tok_s": 18.8,
+              "running": 5,
+              "waiting": 5,
+              "gpu_kv_cache_usage_pct": 53.8,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:17:46",
+              "prompt_throughput_tok_s": 3029.1,
+              "generation_throughput_tok_s": 19.8,
+              "running": 6,
+              "waiting": 5,
+              "gpu_kv_cache_usage_pct": 65.4,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:17:56",
+              "prompt_throughput_tok_s": 3037.1,
+              "generation_throughput_tok_s": 25.0,
+              "running": 7,
+              "waiting": 4,
+              "gpu_kv_cache_usage_pct": 78.6,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:18:06",
+              "prompt_throughput_tok_s": 2607.9,
+              "generation_throughput_tok_s": 37.4,
+              "running": 6,
+              "waiting": 4,
+              "gpu_kv_cache_usage_pct": 67.0,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:18:16",
+              "prompt_throughput_tok_s": 3101.0,
+              "generation_throughput_tok_s": 25.0,
+              "running": 6,
+              "waiting": 5,
+              "gpu_kv_cache_usage_pct": 69.2,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:18:26",
+              "prompt_throughput_tok_s": 2839.8,
+              "generation_throughput_tok_s": 18.0,
+              "running": 6,
+              "waiting": 5,
+              "gpu_kv_cache_usage_pct": 62.6,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:18:36",
+              "prompt_throughput_tok_s": 3039.2,
+              "generation_throughput_tok_s": 24.9,
+              "running": 7,
+              "waiting": 4,
+              "gpu_kv_cache_usage_pct": 79.7,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:18:46",
+              "prompt_throughput_tok_s": 2912.5,
+              "generation_throughput_tok_s": 37.8,
+              "running": 7,
+              "waiting": 3,
+              "gpu_kv_cache_usage_pct": 75.8,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:18:56",
+              "prompt_throughput_tok_s": 2948.0,
+              "generation_throughput_tok_s": 25.7,
+              "running": 6,
+              "waiting": 3,
+              "gpu_kv_cache_usage_pct": 64.8,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:19:06",
+              "prompt_throughput_tok_s": 2836.2,
+              "generation_throughput_tok_s": 21.7,
+              "running": 6,
+              "waiting": 4,
+              "gpu_kv_cache_usage_pct": 65.4,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:19:16",
+              "prompt_throughput_tok_s": 2926.0,
+              "generation_throughput_tok_s": 25.0,
+              "running": 7,
+              "waiting": 4,
+              "gpu_kv_cache_usage_pct": 78.6,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:19:26",
+              "prompt_throughput_tok_s": 2892.3,
+              "generation_throughput_tok_s": 40.1,
+              "running": 7,
+              "waiting": 4,
+              "gpu_kv_cache_usage_pct": 78.6,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:19:36",
+              "prompt_throughput_tok_s": 2813.6,
+              "generation_throughput_tok_s": 26.1,
+              "running": 6,
+              "waiting": 5,
+              "gpu_kv_cache_usage_pct": 66.5,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:19:46",
+              "prompt_throughput_tok_s": 2984.5,
+              "generation_throughput_tok_s": 20.2,
+              "running": 5,
+              "waiting": 6,
+              "gpu_kv_cache_usage_pct": 55.5,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:19:56",
+              "prompt_throughput_tok_s": 2998.3,
+              "generation_throughput_tok_s": 24.8,
+              "running": 6,
+              "waiting": 1,
+              "gpu_kv_cache_usage_pct": 67.0,
+              "prefix_cache_hit_rate_pct": 0.0
+            }
+          ],
+          "spec_windows": [
+            {
+              "log_time": "08-16 06:12:06",
+              "mean_acceptance_length": 3.7,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 4.25,
+              "drafted_throughput_tok_s": 4.72,
+              "accepted_tokens": 119,
+              "drafted_tokens": 132,
+              "per_position_acceptance_rate": [
+                0.977,
+                0.909,
+                0.818
+              ],
+              "draft_acceptance_rate_pct": 90.2
+            },
+            {
+              "log_time": "08-16 06:12:16",
+              "mean_acceptance_length": 2.78,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 55.9,
+              "drafted_throughput_tok_s": 94.2,
+              "accepted_tokens": 559,
+              "drafted_tokens": 942,
+              "per_position_acceptance_rate": [
+                0.796,
+                0.576,
+                0.408
+              ],
+              "draft_acceptance_rate_pct": 59.3
+            },
+            {
+              "log_time": "08-16 06:12:26",
+              "mean_acceptance_length": 3.6,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 2.6,
+              "drafted_throughput_tok_s": 3.0,
+              "accepted_tokens": 26,
+              "drafted_tokens": 30,
+              "per_position_acceptance_rate": [
+                0.9,
+                0.9,
+                0.8
+              ],
+              "draft_acceptance_rate_pct": 86.7
+            },
+            {
+              "log_time": "08-16 06:12:36",
+              "mean_acceptance_length": 3.42,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 26.6,
+              "drafted_throughput_tok_s": 33.0,
+              "accepted_tokens": 266,
+              "drafted_tokens": 330,
+              "per_position_acceptance_rate": [
+                0.964,
+                0.791,
+                0.664
+              ],
+              "draft_acceptance_rate_pct": 80.6
+            },
+            {
+              "log_time": "08-16 06:12:46",
+              "mean_acceptance_length": 2.71,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 46.0,
+              "drafted_throughput_tok_s": 80.7,
+              "accepted_tokens": 460,
+              "drafted_tokens": 807,
+              "per_position_acceptance_rate": [
+                0.766,
+                0.543,
+                0.401
+              ],
+              "draft_acceptance_rate_pct": 57.0
+            },
+            {
+              "log_time": "08-16 06:12:56",
+              "mean_acceptance_length": 3.28,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 9.8,
+              "drafted_throughput_tok_s": 12.9,
+              "accepted_tokens": 98,
+              "drafted_tokens": 129,
+              "per_position_acceptance_rate": [
+                0.907,
+                0.791,
+                0.581
+              ],
+              "draft_acceptance_rate_pct": 76.0
+            },
+            {
+              "log_time": "08-16 06:13:06",
+              "mean_acceptance_length": 2.82,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 60.7,
+              "drafted_throughput_tok_s": 99.89,
+              "accepted_tokens": 607,
+              "drafted_tokens": 999,
+              "per_position_acceptance_rate": [
+                0.814,
+                0.595,
+                0.414
+              ],
+              "draft_acceptance_rate_pct": 60.8
+            },
+            {
+              "log_time": "08-16 06:13:16",
+              "mean_acceptance_length": 3.69,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 8.6,
+              "drafted_throughput_tok_s": 9.6,
+              "accepted_tokens": 86,
+              "drafted_tokens": 96,
+              "per_position_acceptance_rate": [
+                0.969,
+                0.938,
+                0.781
+              ],
+              "draft_acceptance_rate_pct": 89.6
+            },
+            {
+              "log_time": "08-16 06:13:26",
+              "mean_acceptance_length": 2.94,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 38.8,
+              "drafted_throughput_tok_s": 60.0,
+              "accepted_tokens": 388,
+              "drafted_tokens": 600,
+              "per_position_acceptance_rate": [
+                0.85,
+                0.63,
+                0.46
+              ],
+              "draft_acceptance_rate_pct": 64.7
+            },
+            {
+              "log_time": "08-16 06:13:36",
+              "mean_acceptance_length": 2.65,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 26.9,
+              "drafted_throughput_tok_s": 48.89,
+              "accepted_tokens": 269,
+              "drafted_tokens": 489,
+              "per_position_acceptance_rate": [
+                0.748,
+                0.528,
+                0.374
+              ],
+              "draft_acceptance_rate_pct": 55.0
+            },
+            {
+              "log_time": "08-16 06:13:46",
+              "mean_acceptance_length": 2.92,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 52.2,
+              "drafted_throughput_tok_s": 81.59,
+              "accepted_tokens": 522,
+              "drafted_tokens": 816,
+              "per_position_acceptance_rate": [
+                0.842,
+                0.629,
+                0.449
+              ],
+              "draft_acceptance_rate_pct": 64.0
+            },
+            {
+              "log_time": "08-16 06:13:56",
+              "mean_acceptance_length": 3.57,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 3.6,
+              "drafted_throughput_tok_s": 4.2,
+              "accepted_tokens": 36,
+              "drafted_tokens": 42,
+              "per_position_acceptance_rate": [
+                0.929,
+                0.857,
+                0.786
+              ],
+              "draft_acceptance_rate_pct": 85.7
+            },
+            {
+              "log_time": "08-16 06:14:06",
+              "mean_acceptance_length": 3.13,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 9.8,
+              "drafted_throughput_tok_s": 13.8,
+              "accepted_tokens": 98,
+              "drafted_tokens": 138,
+              "per_position_acceptance_rate": [
+                0.891,
+                0.696,
+                0.543
+              ],
+              "draft_acceptance_rate_pct": 71.0
+            },
+            {
+              "log_time": "08-16 06:14:16",
+              "mean_acceptance_length": 3.07,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 15.7,
+              "drafted_throughput_tok_s": 22.8,
+              "accepted_tokens": 157,
+              "drafted_tokens": 228,
+              "per_position_acceptance_rate": [
+                0.895,
+                0.658,
+                0.513
+              ],
+              "draft_acceptance_rate_pct": 68.9
+            },
+            {
+              "log_time": "08-16 06:14:26",
+              "mean_acceptance_length": 2.92,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 16.9,
+              "drafted_throughput_tok_s": 26.4,
+              "accepted_tokens": 169,
+              "drafted_tokens": 264,
+              "per_position_acceptance_rate": [
+                0.841,
+                0.636,
+                0.443
+              ],
+              "draft_acceptance_rate_pct": 64.0
+            },
+            {
+              "log_time": "08-16 06:14:36",
+              "mean_acceptance_length": 2.92,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 21.5,
+              "drafted_throughput_tok_s": 33.6,
+              "accepted_tokens": 215,
+              "drafted_tokens": 336,
+              "per_position_acceptance_rate": [
+                0.848,
+                0.616,
+                0.455
+              ],
+              "draft_acceptance_rate_pct": 64.0
+            },
+            {
+              "log_time": "08-16 06:14:46",
+              "mean_acceptance_length": 2.79,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 21.1,
+              "drafted_throughput_tok_s": 35.4,
+              "accepted_tokens": 211,
+              "drafted_tokens": 354,
+              "per_position_acceptance_rate": [
+                0.797,
+                0.559,
+                0.432
+              ],
+              "draft_acceptance_rate_pct": 59.6
+            },
+            {
+              "log_time": "08-16 06:14:56",
+              "mean_acceptance_length": 3.13,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 16.2,
+              "drafted_throughput_tok_s": 22.8,
+              "accepted_tokens": 162,
+              "drafted_tokens": 228,
+              "per_position_acceptance_rate": [
+                0.855,
+                0.724,
+                0.553
+              ],
+              "draft_acceptance_rate_pct": 71.1
+            },
+            {
+              "log_time": "08-16 06:15:06",
+              "mean_acceptance_length": 2.89,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 16.4,
+              "drafted_throughput_tok_s": 26.1,
+              "accepted_tokens": 164,
+              "drafted_tokens": 261,
+              "per_position_acceptance_rate": [
+                0.805,
+                0.609,
+                0.471
+              ],
+              "draft_acceptance_rate_pct": 62.8
+            },
+            {
+              "log_time": "08-16 06:15:16",
+              "mean_acceptance_length": 3.05,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 17.0,
+              "drafted_throughput_tok_s": 24.9,
+              "accepted_tokens": 170,
+              "drafted_tokens": 249,
+              "per_position_acceptance_rate": [
+                0.88,
+                0.663,
+                0.506
+              ],
+              "draft_acceptance_rate_pct": 68.3
+            },
+            {
+              "log_time": "08-16 06:15:26",
+              "mean_acceptance_length": 2.74,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 23.1,
+              "drafted_throughput_tok_s": 39.9,
+              "accepted_tokens": 231,
+              "drafted_tokens": 399,
+              "per_position_acceptance_rate": [
+                0.789,
+                0.571,
+                0.376
+              ],
+              "draft_acceptance_rate_pct": 57.9
+            },
+            {
+              "log_time": "08-16 06:15:36",
+              "mean_acceptance_length": 2.84,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 12.7,
+              "drafted_throughput_tok_s": 20.7,
+              "accepted_tokens": 127,
+              "drafted_tokens": 207,
+              "per_position_acceptance_rate": [
+                0.826,
+                0.58,
+                0.435
+              ],
+              "draft_acceptance_rate_pct": 61.4
+            },
+            {
+              "log_time": "08-16 06:15:46",
+              "mean_acceptance_length": 2.89,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 17.4,
+              "drafted_throughput_tok_s": 27.6,
+              "accepted_tokens": 174,
+              "drafted_tokens": 276,
+              "per_position_acceptance_rate": [
+                0.859,
+                0.62,
+                0.413
+              ],
+              "draft_acceptance_rate_pct": 63.0
+            },
+            {
+              "log_time": "08-16 06:15:56",
+              "mean_acceptance_length": 2.92,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 18.8,
+              "drafted_throughput_tok_s": 29.4,
+              "accepted_tokens": 188,
+              "drafted_tokens": 294,
+              "per_position_acceptance_rate": [
+                0.847,
+                0.602,
+                0.469
+              ],
+              "draft_acceptance_rate_pct": 63.9
+            },
+            {
+              "log_time": "08-16 06:16:06",
+              "mean_acceptance_length": 2.86,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 17.1,
+              "drafted_throughput_tok_s": 27.6,
+              "accepted_tokens": 171,
+              "drafted_tokens": 276,
+              "per_position_acceptance_rate": [
+                0.815,
+                0.598,
+                0.446
+              ],
+              "draft_acceptance_rate_pct": 62.0
+            },
+            {
+              "log_time": "08-16 06:16:16",
+              "mean_acceptance_length": 2.98,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 20.4,
+              "drafted_throughput_tok_s": 30.9,
+              "accepted_tokens": 204,
+              "drafted_tokens": 309,
+              "per_position_acceptance_rate": [
+                0.864,
+                0.641,
+                0.476
+              ],
+              "draft_acceptance_rate_pct": 66.0
+            },
+            {
+              "log_time": "08-16 06:16:26",
+              "mean_acceptance_length": 2.89,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 16.6,
+              "drafted_throughput_tok_s": 26.4,
+              "accepted_tokens": 166,
+              "drafted_tokens": 264,
+              "per_position_acceptance_rate": [
+                0.875,
+                0.58,
+                0.432
+              ],
+              "draft_acceptance_rate_pct": 62.9
+            },
+            {
+              "log_time": "08-16 06:16:36",
+              "mean_acceptance_length": 2.83,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 14.8,
+              "drafted_throughput_tok_s": 24.3,
+              "accepted_tokens": 148,
+              "drafted_tokens": 243,
+              "per_position_acceptance_rate": [
+                0.827,
+                0.593,
+                0.407
+              ],
+              "draft_acceptance_rate_pct": 60.9
+            },
+            {
+              "log_time": "08-16 06:16:46",
+              "mean_acceptance_length": 2.9,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 15.6,
+              "drafted_throughput_tok_s": 24.6,
+              "accepted_tokens": 156,
+              "drafted_tokens": 246,
+              "per_position_acceptance_rate": [
+                0.817,
+                0.622,
+                0.463
+              ],
+              "draft_acceptance_rate_pct": 63.4
+            },
+            {
+              "log_time": "08-16 06:16:56",
+              "mean_acceptance_length": 2.86,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 26.9,
+              "drafted_throughput_tok_s": 43.5,
+              "accepted_tokens": 269,
+              "drafted_tokens": 435,
+              "per_position_acceptance_rate": [
+                0.814,
+                0.579,
+                0.462
+              ],
+              "draft_acceptance_rate_pct": 61.8
+            },
+            {
+              "log_time": "08-16 06:17:06",
+              "mean_acceptance_length": 2.97,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 17.3,
+              "drafted_throughput_tok_s": 26.4,
+              "accepted_tokens": 173,
+              "drafted_tokens": 264,
+              "per_position_acceptance_rate": [
+                0.886,
+                0.636,
+                0.443
+              ],
+              "draft_acceptance_rate_pct": 65.5
+            },
+            {
+              "log_time": "08-16 06:17:16",
+              "mean_acceptance_length": 2.91,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 15.1,
+              "drafted_throughput_tok_s": 23.7,
+              "accepted_tokens": 151,
+              "drafted_tokens": 237,
+              "per_position_acceptance_rate": [
+                0.886,
+                0.608,
+                0.418
+              ],
+              "draft_acceptance_rate_pct": 63.7
+            },
+            {
+              "log_time": "08-16 06:17:26",
+              "mean_acceptance_length": 2.61,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 23.9,
+              "drafted_throughput_tok_s": 44.4,
+              "accepted_tokens": 239,
+              "drafted_tokens": 444,
+              "per_position_acceptance_rate": [
+                0.736,
+                0.507,
+                0.372
+              ],
+              "draft_acceptance_rate_pct": 53.8
+            },
+            {
+              "log_time": "08-16 06:17:36",
+              "mean_acceptance_length": 3.02,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 13.1,
+              "drafted_throughput_tok_s": 19.5,
+              "accepted_tokens": 131,
+              "drafted_tokens": 195,
+              "per_position_acceptance_rate": [
+                0.846,
+                0.677,
+                0.492
+              ],
+              "draft_acceptance_rate_pct": 67.2
+            },
+            {
+              "log_time": "08-16 06:17:46",
+              "mean_acceptance_length": 2.88,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 12.6,
+              "drafted_throughput_tok_s": 20.1,
+              "accepted_tokens": 126,
+              "drafted_tokens": 201,
+              "per_position_acceptance_rate": [
+                0.806,
+                0.627,
+                0.448
+              ],
+              "draft_acceptance_rate_pct": 62.7
+            },
+            {
+              "log_time": "08-16 06:17:56",
+              "mean_acceptance_length": 2.91,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 16.4,
+              "drafted_throughput_tok_s": 25.8,
+              "accepted_tokens": 164,
+              "drafted_tokens": 258,
+              "per_position_acceptance_rate": [
+                0.849,
+                0.616,
+                0.442
+              ],
+              "draft_acceptance_rate_pct": 63.6
+            },
+            {
+              "log_time": "08-16 06:18:06",
+              "mean_acceptance_length": 2.8,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 24.0,
+              "drafted_throughput_tok_s": 39.9,
+              "accepted_tokens": 240,
+              "drafted_tokens": 399,
+              "per_position_acceptance_rate": [
+                0.782,
+                0.571,
+                0.451
+              ],
+              "draft_acceptance_rate_pct": 60.2
+            },
+            {
+              "log_time": "08-16 06:18:16",
+              "mean_acceptance_length": 2.86,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 16.2,
+              "drafted_throughput_tok_s": 26.1,
+              "accepted_tokens": 162,
+              "drafted_tokens": 261,
+              "per_position_acceptance_rate": [
+                0.816,
+                0.598,
+                0.448
+              ],
+              "draft_acceptance_rate_pct": 62.1
+            },
+            {
+              "log_time": "08-16 06:18:26",
+              "mean_acceptance_length": 2.92,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 11.9,
+              "drafted_throughput_tok_s": 18.6,
+              "accepted_tokens": 119,
+              "drafted_tokens": 186,
+              "per_position_acceptance_rate": [
+                0.839,
+                0.613,
+                0.468
+              ],
+              "draft_acceptance_rate_pct": 64.0
+            },
+            {
+              "log_time": "08-16 06:18:36",
+              "mean_acceptance_length": 3.08,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 16.6,
+              "drafted_throughput_tok_s": 24.0,
+              "accepted_tokens": 166,
+              "drafted_tokens": 240,
+              "per_position_acceptance_rate": [
+                0.85,
+                0.688,
+                0.537
+              ],
+              "draft_acceptance_rate_pct": 69.2
+            },
+            {
+              "log_time": "08-16 06:18:46",
+              "mean_acceptance_length": 2.86,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 24.8,
+              "drafted_throughput_tok_s": 39.9,
+              "accepted_tokens": 248,
+              "drafted_tokens": 399,
+              "per_position_acceptance_rate": [
+                0.827,
+                0.617,
+                0.421
+              ],
+              "draft_acceptance_rate_pct": 62.2
+            },
+            {
+              "log_time": "08-16 06:18:56",
+              "mean_acceptance_length": 3.04,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 17.1,
+              "drafted_throughput_tok_s": 25.2,
+              "accepted_tokens": 171,
+              "drafted_tokens": 252,
+              "per_position_acceptance_rate": [
+                0.857,
+                0.655,
+                0.524
+              ],
+              "draft_acceptance_rate_pct": 67.9
+            },
+            {
+              "log_time": "08-16 06:19:06",
+              "mean_acceptance_length": 2.93,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 14.5,
+              "drafted_throughput_tok_s": 22.5,
+              "accepted_tokens": 145,
+              "drafted_tokens": 225,
+              "per_position_acceptance_rate": [
+                0.827,
+                0.627,
+                0.48
+              ],
+              "draft_acceptance_rate_pct": 64.4
+            },
+            {
+              "log_time": "08-16 06:19:16",
+              "mean_acceptance_length": 2.98,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 16.4,
+              "drafted_throughput_tok_s": 24.9,
+              "accepted_tokens": 164,
+              "drafted_tokens": 249,
+              "per_position_acceptance_rate": [
+                0.831,
+                0.651,
+                0.494
+              ],
+              "draft_acceptance_rate_pct": 65.9
+            },
+            {
+              "log_time": "08-16 06:19:26",
+              "mean_acceptance_length": 2.91,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 26.3,
+              "drafted_throughput_tok_s": 41.4,
+              "accepted_tokens": 263,
+              "drafted_tokens": 414,
+              "per_position_acceptance_rate": [
+                0.826,
+                0.616,
+                0.464
+              ],
+              "draft_acceptance_rate_pct": 63.5
+            },
+            {
+              "log_time": "08-16 06:19:36",
+              "mean_acceptance_length": 2.85,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 17.0,
+              "drafted_throughput_tok_s": 27.6,
+              "accepted_tokens": 170,
+              "drafted_tokens": 276,
+              "per_position_acceptance_rate": [
+                0.815,
+                0.62,
+                0.413
+              ],
+              "draft_acceptance_rate_pct": 61.6
+            },
+            {
+              "log_time": "08-16 06:19:46",
+              "mean_acceptance_length": 2.9,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 13.3,
+              "drafted_throughput_tok_s": 21.0,
+              "accepted_tokens": 133,
+              "drafted_tokens": 210,
+              "per_position_acceptance_rate": [
+                0.886,
+                0.586,
+                0.429
+              ],
+              "draft_acceptance_rate_pct": 63.3
+            },
+            {
+              "log_time": "08-16 06:19:56",
+              "mean_acceptance_length": 2.8,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 16.0,
+              "drafted_throughput_tok_s": 26.7,
+              "accepted_tokens": 160,
+              "drafted_tokens": 267,
+              "per_position_acceptance_rate": [
+                0.831,
+                0.539,
+                0.427
+              ],
+              "draft_acceptance_rate_pct": 59.9
+            }
+          ],
+          "spec_windows_with_traffic": 48,
+          "acceptance_walk_pct": [
+            90.2,
+            59.3,
+            86.7,
+            80.6,
+            57.0,
+            76.0,
+            60.8,
+            89.6,
+            64.7,
+            55.0,
+            64.0,
+            85.7,
+            71.0,
+            68.9,
+            64.0,
+            64.0,
+            59.6,
+            71.1,
+            62.8,
+            68.3,
+            57.9,
+            61.4,
+            63.0,
+            63.9,
+            62.0,
+            66.0,
+            62.9,
+            60.9,
+            63.4,
+            61.8,
+            65.5,
+            63.7,
+            53.8,
+            67.2,
+            62.7,
+            63.6,
+            60.2,
+            62.1,
+            64.0,
+            69.2,
+            62.2,
+            67.9,
+            64.4,
+            65.9,
+            63.5,
+            61.6,
+            63.3,
+            59.9
+          ],
+          "acceptance_min_pct": 53.8,
+          "acceptance_max_pct": 90.2,
+          "acceptance_zero_windows": 0,
+          "prefix_cache_hit_rate_pct_walk": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "prefix_cache_hit_rate_pct_final": 0.0
+        },
+        "raw_server_log": "receipts/gdn-gate-raw/out/server-R1.log.gz",
+        "reachability_phase1_only": {
+          "schema": "qwen38-gdn-gate-reach/1",
+          "arm": "R1-phase1",
+          "description": "our published 8-stream concurrency recipe, gdn_attn.py instrumented: does the defective gather composition ever occur? (phase 1 only: the published 8-wide wave schedule)",
+          "instrument_sha256": "eb61b24b2ab876bb24c433b2dbfd0ad2e6587014765e16d0928239f3c0c5889b",
+          "dump_files": [
+            "reach.199.json"
+          ],
+          "worker_pids": [
+            199
+          ],
+          "counts": {
+            "builds_total": 1281,
+            "no_spec_branch": 90,
+            "pure_spec_branch": 801,
+            "mixed_branch": 390,
+            "mixed_identity": 390,
+            "mixed_misordered": 0
+          },
+          "defective_path_entered": false,
+          "fraction_of_builds_miscomputed": 0.0,
+          "fraction_of_mixed_branch_miscomputed": 0.0,
+          "misordered_per_thousand_builds": 0.0,
+          "misordered_per_thousand_mixed_builds": 0.0,
+          "resolution_one_event_per_thousand_builds": 0.78064,
+          "zero_arm_95pct_upper_bound_per_thousand_builds": 2.34192,
+          "zero_arm_95pct_upper_bound_per_thousand_mixed_builds": 7.692308,
+          "how_to_state_this_arm": "below 2.3419 miscomputed metadata builds per thousand (95 % upper bound, rule of three, N = 1281 builds observed, 390 of them on the gather branch, zero events)",
+          "max_displaced_spec_tokens": 0,
+          "first_misordered_token_index_min": null,
+          "compositions_seen": {
+            "0s/1p/0d": 48,
+            "0s/2p/0d": 18,
+            "0s/3p/0d": 3,
+            "0s/4p/0d": 3,
+            "0s/5p/0d": 3,
+            "0s/6p/0d": 3,
+            "0s/7p/0d": 6,
+            "0s/8p/0d": 6,
+            "1s/0p/0d": 99,
+            "1s/1p/0d": 51,
+            "1s/2p/0d": 15,
+            "2s/0p/0d": 60,
+            "2s/1p/0d": 42,
+            "2s/2p/0d": 15,
+            "3s/0p/0d": 63,
+            "3s/1p/0d": 60,
+            "3s/2p/0d": 15,
+            "4s/0p/0d": 84,
+            "4s/1p/0d": 45,
+            "4s/2p/0d": 15,
+            "5s/0p/0d": 57,
+            "5s/1p/0d": 30,
+            "5s/2p/0d": 12,
+            "6s/0p/0d": 144,
+            "6s/1p/0d": 33,
+            "6s/2p/0d": 12,
+            "7s/0p/0d": 72,
+            "7s/1p/0d": 45,
+            "8s/0p/0d": 222
+          },
+          "misordered_compositions": {},
+          "composition_key": "<num_spec_decodes>s/<num_prefills>p/<num_decodes>d"
+        },
+        "load": {
+          "arm": "R1",
+          "requests": 38,
+          "failed_requests": 0,
+          "corrupted_requests": 0,
+          "scored_answer_wrong_requests": 0,
+          "per_field_correct": {
+            "A1": 38,
+            "A2": 38,
+            "A3": 38,
+            "A4": 38
+          },
+          "arithmetic_correct_diagnostic_only": 38,
+          "first_failure_request_id": null,
+          "detectors_fired_counts": {
+            "out_of_script_fraction": 0,
+            "replacement_char_count": 0,
+            "longest_repeated_block_chars": 0,
+            "ngram5_repetition_ratio": 0
+          },
+          "acceptance_rates_per_request": [
+            0.631285,
+            0.631285,
+            0.631285,
+            0.631285,
+            0.631285,
+            0.631285,
+            0.631285,
+            0.631285,
+            0.638743,
+            0.638743,
+            0.638743,
+            0.638743,
+            0.638743,
+            0.638743,
+            0.638743,
+            0.638743,
+            0.630017,
+            0.630017,
+            0.630017,
+            0.630017,
+            0.630017,
+            0.630017,
+            0.630017,
+            0.630017,
+            0.609929,
+            0.609929,
+            0.609929,
+            0.609929,
+            0.609929,
+            0.609929,
+            0.609929,
+            0.609929,
+            0.6621,
+            0.6621,
+            0.6621,
+            0.6621,
+            0.6621,
+            0.6621
+          ],
+          "acceptance_min": 0.609929,
+          "acceptance_median": 0.631285,
+          "cumulative_prefix_cache_hit_rate": null,
+          "wall_s_total": 107.7,
+          "cumulative_metrics": {
+            "drafts": 1790.0,
+            "draft_tokens": 5370.0,
+            "accepted": 3400.0,
+            "prefix_cache_queries": 0.0,
+            "prefix_cache_hits": 0.0,
+            "preemptions": 0.0
+          }
+        },
+        "load_phase2": {
+          "requests": 170,
+          "by_kind": {
+            "long_stream": 80,
+            "cache_hit_repeat": 60,
+            "tiny_final_chunk": 15,
+            "short_prompt": 15
+          },
+          "errors": 0,
+          "first_error": null,
+          "wall_s": 380.39,
+          "metric_delta": {
+            "prefix_cache_queries": 0.0,
+            "prefix_cache_hits": 0.0,
+            "drafts": 3537.0,
+            "draft_tokens": 10611.0,
+            "accepted": 6708.0,
+            "preemptions": 0.0
+          }
+        },
+        "load_phase2_shape": {
+          "streams": 8,
+          "injectors": 3,
+          "duration_s": 360.0,
+          "warmup_s": 45.0,
+          "max_tokens_long": 192,
+          "max_tokens_injected": 24,
+          "short_prompt_lengths": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            8,
+            12
+          ],
+          "repeat_sends": 4,
+          "chunk_tokens": 2048,
+          "long_stream_prompt_tokens": [
+            15570,
+            15570,
+            15570,
+            12470,
+            12470,
+            12470,
+            11170,
+            11170
+          ]
+        }
+      },
+      "R3": {
+        "description": "our recipe with --max-num-batched-tokens 512 instead of 2048, gdn_attn.py instrumented: a deliberate amplifier for the token-budget clamp mechanism, and a test of the predicted 1/max_num_batched_tokens scaling. NOT a configuration we ship.",
+        "image_manifest_digest": "sha256:16a936b877b90fc080181e842f47dbafc5cb8e62688799596836e34ba0b79218",
+        "podman_argv": [
+          "podman",
+          "run",
+          "--rm",
+          "--name",
+          "gdngate-R3",
+          "--device",
+          "nvidia.com/gpu=all",
+          "--ipc=host",
+          "--network",
+          "host",
+          "-v",
+          "/mnt/vault/llm/huggingface/hub/models--malaiwah--Qwen3.8-27B-EXL3-K5K6-context:/models/ctx-repo:ro",
+          "-v",
+          "/home/mbelleau/qual5090/cache/jit:/cache/jit:rw",
+          "-v",
+          "/home/mbelleau/qual5090/cache/exl3-online:/cache/exl3-online:rw",
+          "-v",
+          "/home/mbelleau/gdngate/reach/R3:/reach:rw",
+          "-v",
+          "/home/mbelleau/gdngate/tools/vllm-gdn-reach-instrument.py:/opt/venv/lib/python3.12/site-packages/vllm/v1/attention/backends/gdn_attn.py:ro",
+          "-e",
+          "HF_HUB_OFFLINE=1",
+          "-e",
+          "TRANSFORMERS_OFFLINE=1",
+          "-e",
+          "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True",
+          "-e",
+          "VLLM_EXL3_EMBED_BITS=8",
+          "-e",
+          "VLLM_EXL3_GRAPH_DECODE=1",
+          "-e",
+          "VLLM_EXL3_PREFILL_RECONSTRUCT_M=128",
+          "-e",
+          "VLLM_GDN_REACH_OUT=/reach/reach",
+          "--entrypoint",
+          "/opt/venv/bin/vllm",
+          "localhost/vllm:gg-r34-patched-apc"
+        ],
+        "vllm_argv": [
+          "serve",
+          "/models/ctx-repo/snapshots/c45c273b0d6ef2859cb2d85b36dd52253c80d878",
+          "--served-model-name",
+          "m",
+          "--quantization",
+          "exl3",
+          "--quantization-config",
+          "{\"linear\":{\"weight\":\"mxfp8\"},\"ignore\":[\"re:.*visual\\\\..*\",\"re:.*in_proj_a$\",\"re:.*in_proj_b$\",\"re:.*in_proj_ba$\",\"re:.*mtp\\\\..*\",\"lm_head\"]}",
+          "--max-model-len",
+          "262144",
+          "--gpu-memory-utilization",
+          "0.97",
+          "--max-num-seqs",
+          "8",
+          "--kv-cache-dtype",
+          "fp8",
+          "--max-num-batched-tokens",
+          "512",
+          "--no-enable-prefix-caching",
+          "--speculative-config",
+          "{\"method\":\"mtp\",\"num_speculative_tokens\":3}",
+          "--mm-processor-kwargs",
+          "{\"truncation\":false,\"max_pixels\":8388608}",
+          "--compilation-config",
+          "{\"cudagraph_mode\":\"FULL_DECODE_ONLY\",\"cudagraph_capture_sizes\":[32]}",
+          "--host",
+          "127.0.0.1",
+          "--port",
+          "8251"
+        ],
+        "startup_facts": [
+          "Available KV cache memory: 9.54 GiB",
+          "cudagraph_mode=FULL_DECODE_ONLY",
+          "'enable_prefix_caching': False",
+          "GPU KV cache size: 272,570 tokens",
+          "init engine (profile, create kv cache, warmup model) took 63.06 s (compilation: 50.13 s)",
+          "Maximum concurrency for 262,144 tokens per request: 1.04x",
+          "'max_num_seqs': 8",
+          "Model loading took 18.19 GiB memory and 76.735060 seconds",
+          "num_spec_tokens=3",
+          "Using FLASHINFER attention backend out of potential backends: ['FLASHINFER', 'TRITON_ATTN']"
+        ],
+        "module_digests_inside_the_running_container": "663dacd324b6b8224a4cb312b3e9c0bad4322c515e982a85f13c3450ffdb7d61  /opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py\neb61b24b2ab876bb24c433b2dbfd0ad2e6587014765e16d0928239f3c0c5889b  /opt/venv/lib/python3.12/site-packages/vllm/v1/attention/backends/gdn_attn.py\nb431c1066dfee3ed56bfa7e71cc8606f9afadc300f22d7fc542c43835d1b22bf  /opt/venv/lib/python3.12/site-packages/vllm/v1/core/sched/scheduler.py\n{\n  \"vllm.model_executor.layers.mamba.gdn.qwen_gdn_linear_attn\": {\n    \"origin\": \"/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py\",\n    \"sha256\": \"663dacd324b6b8224a4cb312b3e9c0bad4322c515e982a85f13c3450ffdb7d61\"\n  },\n  \"vllm.v1.attention.backends.gdn_attn\": {\n    \"origin\": \"/opt/venv/lib/python3.12/site-packages/vllm/v1/attention/backends/gdn_attn.py\",\n    \"sha256\": \"eb61b24b2ab876bb24c433b2dbfd0ad2e6587014765e16d0928239f3c0c5889b\"\n  }\n}\n",
+        "reachability": {
+          "schema": "qwen38-gdn-gate-reach/1",
+          "arm": "R3",
+          "description": "our recipe with --max-num-batched-tokens 512 instead of 2048, gdn_attn.py instrumented: a deliberate amplifier for the token-budget clamp mechanism, and a test of the predicted 1/max_num_batched_tokens scaling. NOT a configuration we ship.",
+          "instrument_sha256": "eb61b24b2ab876bb24c433b2dbfd0ad2e6587014765e16d0928239f3c0c5889b",
+          "dump_files": [
+            "reach.1.json",
+            "reach.198.json"
+          ],
+          "worker_pids": [
+            1,
+            198
+          ],
+          "counts": {
+            "builds_total": 8065,
+            "no_spec_branch": 366,
+            "pure_spec_branch": 784,
+            "mixed_branch": 6915,
+            "mixed_identity": 6915,
+            "mixed_misordered": 0
+          },
+          "defective_path_entered": false,
+          "fraction_of_builds_miscomputed": 0.0,
+          "fraction_of_mixed_branch_miscomputed": 0.0,
+          "misordered_per_thousand_builds": 0.0,
+          "misordered_per_thousand_mixed_builds": 0.0,
+          "resolution_one_event_per_thousand_builds": 0.123993,
+          "zero_arm_95pct_upper_bound_per_thousand_builds": 0.371978,
+          "zero_arm_95pct_upper_bound_per_thousand_mixed_builds": 0.433839,
+          "how_to_state_this_arm": "below 0.372 miscomputed metadata builds per thousand (95 % upper bound, rule of three, N = 8065 builds observed, 6915 of them on the gather branch, zero events)",
+          "max_displaced_spec_tokens": 0,
+          "first_misordered_token_index_min": null,
+          "compositions_seen": {
+            "0s/1p/0d": 321,
+            "0s/2p/0d": 21,
+            "0s/3p/0d": 3,
+            "0s/4p/0d": 3,
+            "0s/5p/0d": 3,
+            "0s/6p/0d": 3,
+            "0s/7p/0d": 6,
+            "0s/8p/0d": 6,
+            "1s/0p/0d": 279,
+            "1s/1p/0d": 1887,
+            "1s/2p/0d": 141,
+            "1s/3p/0d": 12,
+            "1s/4p/0d": 6,
+            "1s/5p/0d": 3,
+            "2s/0p/0d": 313,
+            "2s/1p/0d": 3612,
+            "2s/2p/0d": 84,
+            "2s/4p/0d": 3,
+            "3s/0p/0d": 126,
+            "3s/1p/0d": 636,
+            "3s/2p/0d": 36,
+            "3s/3p/0d": 12,
+            "3s/4p/0d": 3,
+            "4s/0p/0d": 30,
+            "4s/1p/0d": 438,
+            "4s/2p/0d": 15,
+            "5s/0p/0d": 21,
+            "5s/1p/0d": 24,
+            "6s/0p/0d": 3,
+            "6s/1p/0d": 3,
+            "7s/0p/0d": 6,
+            "8s/0p/0d": 6
+          },
+          "misordered_compositions": {},
+          "composition_key": "<num_spec_decodes>s/<num_prefills>p/<num_decodes>d"
+        },
+        "server_windows": {
+          "schema": "qwen38-apc-log-windows/1",
+          "arm": "R3",
+          "log": "/home/mbelleau/gdngate/logs/server-R3.log",
+          "engine_windows": [
+            {
+              "log_time": "08-16 06:28:14",
+              "prompt_throughput_tok_s": 225.4,
+              "generation_throughput_tok_s": 0.2,
+              "running": 2,
+              "waiting": 6,
+              "gpu_kv_cache_usage_pct": 14.8,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:28:24",
+              "prompt_throughput_tok_s": 2406.7,
+              "generation_throughput_tok_s": 38.5,
+              "running": 5,
+              "waiting": 2,
+              "gpu_kv_cache_usage_pct": 42.9,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:28:34",
+              "prompt_throughput_tok_s": 2440.4,
+              "generation_throughput_tok_s": 47.0,
+              "running": 3,
+              "waiting": 0,
+              "gpu_kv_cache_usage_pct": 29.7,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:28:44",
+              "prompt_throughput_tok_s": 2214.0,
+              "generation_throughput_tok_s": 25.6,
+              "running": 2,
+              "waiting": 6,
+              "gpu_kv_cache_usage_pct": 19.8,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:28:54",
+              "prompt_throughput_tok_s": 2419.3,
+              "generation_throughput_tok_s": 29.0,
+              "running": 5,
+              "waiting": 2,
+              "gpu_kv_cache_usage_pct": 44.5,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:29:04",
+              "prompt_throughput_tok_s": 2372.3,
+              "generation_throughput_tok_s": 59.7,
+              "running": 3,
+              "waiting": 0,
+              "gpu_kv_cache_usage_pct": 29.7,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:29:14",
+              "prompt_throughput_tok_s": 2042.0,
+              "generation_throughput_tok_s": 22.2,
+              "running": 3,
+              "waiting": 5,
+              "gpu_kv_cache_usage_pct": 28.0,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:29:24",
+              "prompt_throughput_tok_s": 2369.9,
+              "generation_throughput_tok_s": 25.6,
+              "running": 2,
+              "waiting": 4,
+              "gpu_kv_cache_usage_pct": 22.0,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:29:34",
+              "prompt_throughput_tok_s": 2303.9,
+              "generation_throughput_tok_s": 64.3,
+              "running": 3,
+              "waiting": 0,
+              "gpu_kv_cache_usage_pct": 26.4,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:29:44",
+              "prompt_throughput_tok_s": 2237.0,
+              "generation_throughput_tok_s": 23.8,
+              "running": 3,
+              "waiting": 5,
+              "gpu_kv_cache_usage_pct": 28.6,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:29:54",
+              "prompt_throughput_tok_s": 2358.8,
+              "generation_throughput_tok_s": 34.8,
+              "running": 5,
+              "waiting": 1,
+              "gpu_kv_cache_usage_pct": 45.1,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:30:04",
+              "prompt_throughput_tok_s": 2345.9,
+              "generation_throughput_tok_s": 38.1,
+              "running": 3,
+              "waiting": 0,
+              "gpu_kv_cache_usage_pct": 30.2,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:30:14",
+              "prompt_throughput_tok_s": 2151.7,
+              "generation_throughput_tok_s": 36.2,
+              "running": 4,
+              "waiting": 2,
+              "gpu_kv_cache_usage_pct": 33.5,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:30:24",
+              "prompt_throughput_tok_s": 2046.0,
+              "generation_throughput_tok_s": 70.2,
+              "running": 0,
+              "waiting": 0,
+              "gpu_kv_cache_usage_pct": 0.0,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:30:34",
+              "prompt_throughput_tok_s": 2349.0,
+              "generation_throughput_tok_s": 5.1,
+              "running": 2,
+              "waiting": 6,
+              "gpu_kv_cache_usage_pct": 22.0,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:30:44",
+              "prompt_throughput_tok_s": 2330.8,
+              "generation_throughput_tok_s": 17.5,
+              "running": 3,
+              "waiting": 5,
+              "gpu_kv_cache_usage_pct": 31.3,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:30:54",
+              "prompt_throughput_tok_s": 2372.6,
+              "generation_throughput_tok_s": 23.8,
+              "running": 2,
+              "waiting": 6,
+              "gpu_kv_cache_usage_pct": 22.0,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:31:04",
+              "prompt_throughput_tok_s": 2377.1,
+              "generation_throughput_tok_s": 22.1,
+              "running": 2,
+              "waiting": 5,
+              "gpu_kv_cache_usage_pct": 21.4,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:31:14",
+              "prompt_throughput_tok_s": 2365.4,
+              "generation_throughput_tok_s": 27.4,
+              "running": 3,
+              "waiting": 8,
+              "gpu_kv_cache_usage_pct": 33.0,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:31:24",
+              "prompt_throughput_tok_s": 2320.8,
+              "generation_throughput_tok_s": 24.7,
+              "running": 3,
+              "waiting": 8,
+              "gpu_kv_cache_usage_pct": 32.4,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:31:34",
+              "prompt_throughput_tok_s": 2330.7,
+              "generation_throughput_tok_s": 15.8,
+              "running": 2,
+              "waiting": 9,
+              "gpu_kv_cache_usage_pct": 23.1,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:31:44",
+              "prompt_throughput_tok_s": 2375.5,
+              "generation_throughput_tok_s": 21.6,
+              "running": 2,
+              "waiting": 9,
+              "gpu_kv_cache_usage_pct": 21.4,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:31:54",
+              "prompt_throughput_tok_s": 2370.0,
+              "generation_throughput_tok_s": 27.4,
+              "running": 3,
+              "waiting": 8,
+              "gpu_kv_cache_usage_pct": 32.4,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:32:04",
+              "prompt_throughput_tok_s": 2316.7,
+              "generation_throughput_tok_s": 27.2,
+              "running": 3,
+              "waiting": 8,
+              "gpu_kv_cache_usage_pct": 32.4,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:32:14",
+              "prompt_throughput_tok_s": 2327.5,
+              "generation_throughput_tok_s": 18.5,
+              "running": 2,
+              "waiting": 9,
+              "gpu_kv_cache_usage_pct": 23.6,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:32:24",
+              "prompt_throughput_tok_s": 2376.3,
+              "generation_throughput_tok_s": 20.9,
+              "running": 3,
+              "waiting": 8,
+              "gpu_kv_cache_usage_pct": 33.0,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:32:34",
+              "prompt_throughput_tok_s": 2322.9,
+              "generation_throughput_tok_s": 23.0,
+              "running": 3,
+              "waiting": 8,
+              "gpu_kv_cache_usage_pct": 31.3,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:32:44",
+              "prompt_throughput_tok_s": 2366.1,
+              "generation_throughput_tok_s": 29.0,
+              "running": 3,
+              "waiting": 8,
+              "gpu_kv_cache_usage_pct": 31.9,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:32:54",
+              "prompt_throughput_tok_s": 2319.6,
+              "generation_throughput_tok_s": 22.2,
+              "running": 3,
+              "waiting": 8,
+              "gpu_kv_cache_usage_pct": 31.3,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:33:04",
+              "prompt_throughput_tok_s": 2333.0,
+              "generation_throughput_tok_s": 15.6,
+              "running": 2,
+              "waiting": 9,
+              "gpu_kv_cache_usage_pct": 22.0,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:33:14",
+              "prompt_throughput_tok_s": 2375.1,
+              "generation_throughput_tok_s": 22.9,
+              "running": 2,
+              "waiting": 9,
+              "gpu_kv_cache_usage_pct": 20.3,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:33:24",
+              "prompt_throughput_tok_s": 2372.3,
+              "generation_throughput_tok_s": 24.4,
+              "running": 3,
+              "waiting": 8,
+              "gpu_kv_cache_usage_pct": 31.3,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:33:34",
+              "prompt_throughput_tok_s": 2319.2,
+              "generation_throughput_tok_s": 25.1,
+              "running": 3,
+              "waiting": 8,
+              "gpu_kv_cache_usage_pct": 30.8,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:33:44",
+              "prompt_throughput_tok_s": 2323.1,
+              "generation_throughput_tok_s": 22.8,
+              "running": 2,
+              "waiting": 9,
+              "gpu_kv_cache_usage_pct": 22.5,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:33:54",
+              "prompt_throughput_tok_s": 2376.6,
+              "generation_throughput_tok_s": 22.9,
+              "running": 3,
+              "waiting": 8,
+              "gpu_kv_cache_usage_pct": 32.4,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:34:04",
+              "prompt_throughput_tok_s": 2326.0,
+              "generation_throughput_tok_s": 20.0,
+              "running": 3,
+              "waiting": 8,
+              "gpu_kv_cache_usage_pct": 30.2,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:34:14",
+              "prompt_throughput_tok_s": 2365.8,
+              "generation_throughput_tok_s": 30.0,
+              "running": 3,
+              "waiting": 8,
+              "gpu_kv_cache_usage_pct": 30.2,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:34:24",
+              "prompt_throughput_tok_s": 2326.3,
+              "generation_throughput_tok_s": 19.4,
+              "running": 2,
+              "waiting": 9,
+              "gpu_kv_cache_usage_pct": 23.1,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:34:34",
+              "prompt_throughput_tok_s": 2321.6,
+              "generation_throughput_tok_s": 24.5,
+              "running": 4,
+              "waiting": 7,
+              "gpu_kv_cache_usage_pct": 39.6,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:34:44",
+              "prompt_throughput_tok_s": 2321.4,
+              "generation_throughput_tok_s": 23.0,
+              "running": 3,
+              "waiting": 8,
+              "gpu_kv_cache_usage_pct": 29.7,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:34:54",
+              "prompt_throughput_tok_s": 2373.4,
+              "generation_throughput_tok_s": 23.6,
+              "running": 3,
+              "waiting": 8,
+              "gpu_kv_cache_usage_pct": 29.1,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:35:04",
+              "prompt_throughput_tok_s": 2316.4,
+              "generation_throughput_tok_s": 26.5,
+              "running": 2,
+              "waiting": 8,
+              "gpu_kv_cache_usage_pct": 23.1,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:35:14",
+              "prompt_throughput_tok_s": 2372.0,
+              "generation_throughput_tok_s": 24.6,
+              "running": 3,
+              "waiting": 8,
+              "gpu_kv_cache_usage_pct": 33.5,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:35:24",
+              "prompt_throughput_tok_s": 2332.3,
+              "generation_throughput_tok_s": 15.5,
+              "running": 3,
+              "waiting": 8,
+              "gpu_kv_cache_usage_pct": 30.8,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:35:34",
+              "prompt_throughput_tok_s": 2326.2,
+              "generation_throughput_tok_s": 20.9,
+              "running": 3,
+              "waiting": 8,
+              "gpu_kv_cache_usage_pct": 29.1,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:35:44",
+              "prompt_throughput_tok_s": 2366.6,
+              "generation_throughput_tok_s": 29.6,
+              "running": 4,
+              "waiting": 7,
+              "gpu_kv_cache_usage_pct": 39.6,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:35:54",
+              "prompt_throughput_tok_s": 2314.8,
+              "generation_throughput_tok_s": 26.9,
+              "running": 3,
+              "waiting": 8,
+              "gpu_kv_cache_usage_pct": 33.0,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:36:04",
+              "prompt_throughput_tok_s": 2328.7,
+              "generation_throughput_tok_s": 18.5,
+              "running": 3,
+              "waiting": 8,
+              "gpu_kv_cache_usage_pct": 31.3,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:36:14",
+              "prompt_throughput_tok_s": 2322.4,
+              "generation_throughput_tok_s": 22.9,
+              "running": 2,
+              "waiting": 8,
+              "gpu_kv_cache_usage_pct": 22.0,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:36:24",
+              "prompt_throughput_tok_s": 2376.4,
+              "generation_throughput_tok_s": 22.0,
+              "running": 3,
+              "waiting": 8,
+              "gpu_kv_cache_usage_pct": 32.4,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:36:34",
+              "prompt_throughput_tok_s": 2363.9,
+              "generation_throughput_tok_s": 29.5,
+              "running": 3,
+              "waiting": 6,
+              "gpu_kv_cache_usage_pct": 33.0,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:36:44",
+              "prompt_throughput_tok_s": 2323.2,
+              "generation_throughput_tok_s": 22.2,
+              "running": 3,
+              "waiting": 4,
+              "gpu_kv_cache_usage_pct": 32.4,
+              "prefix_cache_hit_rate_pct": 0.0
+            },
+            {
+              "log_time": "08-16 06:36:54",
+              "prompt_throughput_tok_s": 2328.7,
+              "generation_throughput_tok_s": 16.9,
+              "running": 2,
+              "waiting": 0,
+              "gpu_kv_cache_usage_pct": 22.5,
+              "prefix_cache_hit_rate_pct": 0.0
+            }
+          ],
+          "spec_windows": [
+            {
+              "log_time": "08-16 06:28:14",
+              "mean_acceptance_length": 3.0,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 0.11,
+              "drafted_throughput_tok_s": 0.17,
+              "accepted_tokens": 2,
+              "drafted_tokens": 3,
+              "per_position_acceptance_rate": [
+                1.0,
+                1.0,
+                0.0
+              ],
+              "draft_acceptance_rate_pct": 66.7
+            },
+            {
+              "log_time": "08-16 06:28:24",
+              "mean_acceptance_length": 3.05,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 25.8,
+              "drafted_throughput_tok_s": 37.8,
+              "accepted_tokens": 258,
+              "drafted_tokens": 378,
+              "per_position_acceptance_rate": [
+                0.857,
+                0.698,
+                0.492
+              ],
+              "draft_acceptance_rate_pct": 68.3
+            },
+            {
+              "log_time": "08-16 06:28:34",
+              "mean_acceptance_length": 2.84,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 30.8,
+              "drafted_throughput_tok_s": 50.1,
+              "accepted_tokens": 308,
+              "drafted_tokens": 501,
+              "per_position_acceptance_rate": [
+                0.778,
+                0.605,
+                0.461
+              ],
+              "draft_acceptance_rate_pct": 61.5
+            },
+            {
+              "log_time": "08-16 06:28:44",
+              "mean_acceptance_length": 2.75,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 16.6,
+              "drafted_throughput_tok_s": 28.5,
+              "accepted_tokens": 166,
+              "drafted_tokens": 285,
+              "per_position_acceptance_rate": [
+                0.779,
+                0.568,
+                0.4
+              ],
+              "draft_acceptance_rate_pct": 58.2
+            },
+            {
+              "log_time": "08-16 06:28:54",
+              "mean_acceptance_length": 3.03,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 19.3,
+              "drafted_throughput_tok_s": 28.5,
+              "accepted_tokens": 193,
+              "drafted_tokens": 285,
+              "per_position_acceptance_rate": [
+                0.863,
+                0.674,
+                0.495
+              ],
+              "draft_acceptance_rate_pct": 67.7
+            },
+            {
+              "log_time": "08-16 06:29:04",
+              "mean_acceptance_length": 2.95,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 39.7,
+              "drafted_throughput_tok_s": 61.2,
+              "accepted_tokens": 397,
+              "drafted_tokens": 612,
+              "per_position_acceptance_rate": [
+                0.833,
+                0.632,
+                0.48
+              ],
+              "draft_acceptance_rate_pct": 64.9
+            },
+            {
+              "log_time": "08-16 06:29:14",
+              "mean_acceptance_length": 2.69,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 14.2,
+              "drafted_throughput_tok_s": 25.2,
+              "accepted_tokens": 142,
+              "drafted_tokens": 252,
+              "per_position_acceptance_rate": [
+                0.798,
+                0.512,
+                0.381
+              ],
+              "draft_acceptance_rate_pct": 56.3
+            },
+            {
+              "log_time": "08-16 06:29:24",
+              "mean_acceptance_length": 2.89,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 16.8,
+              "drafted_throughput_tok_s": 26.7,
+              "accepted_tokens": 168,
+              "drafted_tokens": 267,
+              "per_position_acceptance_rate": [
+                0.843,
+                0.607,
+                0.438
+              ],
+              "draft_acceptance_rate_pct": 62.9
+            },
+            {
+              "log_time": "08-16 06:29:34",
+              "mean_acceptance_length": 2.96,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 42.5,
+              "drafted_throughput_tok_s": 65.1,
+              "accepted_tokens": 425,
+              "drafted_tokens": 651,
+              "per_position_acceptance_rate": [
+                0.866,
+                0.654,
+                0.438
+              ],
+              "draft_acceptance_rate_pct": 65.3
+            },
+            {
+              "log_time": "08-16 06:29:44",
+              "mean_acceptance_length": 2.99,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 16.1,
+              "drafted_throughput_tok_s": 24.3,
+              "accepted_tokens": 161,
+              "drafted_tokens": 243,
+              "per_position_acceptance_rate": [
+                0.864,
+                0.63,
+                0.494
+              ],
+              "draft_acceptance_rate_pct": 66.3
+            },
+            {
+              "log_time": "08-16 06:29:54",
+              "mean_acceptance_length": 2.97,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 23.0,
+              "drafted_throughput_tok_s": 35.1,
+              "accepted_tokens": 230,
+              "drafted_tokens": 351,
+              "per_position_acceptance_rate": [
+                0.855,
+                0.641,
+                0.47
+              ],
+              "draft_acceptance_rate_pct": 65.5
+            },
+            {
+              "log_time": "08-16 06:30:04",
+              "mean_acceptance_length": 2.6,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 23.7,
+              "drafted_throughput_tok_s": 44.4,
+              "accepted_tokens": 237,
+              "drafted_tokens": 444,
+              "per_position_acceptance_rate": [
+                0.75,
+                0.486,
+                0.365
+              ],
+              "draft_acceptance_rate_pct": 53.4
+            },
+            {
+              "log_time": "08-16 06:30:14",
+              "mean_acceptance_length": 3.04,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 24.5,
+              "drafted_throughput_tok_s": 36.0,
+              "accepted_tokens": 245,
+              "drafted_tokens": 360,
+              "per_position_acceptance_rate": [
+                0.833,
+                0.683,
+                0.525
+              ],
+              "draft_acceptance_rate_pct": 68.1
+            },
+            {
+              "log_time": "08-16 06:30:24",
+              "mean_acceptance_length": 2.91,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 46.5,
+              "drafted_throughput_tok_s": 73.19,
+              "accepted_tokens": 465,
+              "drafted_tokens": 732,
+              "per_position_acceptance_rate": [
+                0.857,
+                0.615,
+                0.434
+              ],
+              "draft_acceptance_rate_pct": 63.5
+            },
+            {
+              "log_time": "08-16 06:30:34",
+              "mean_acceptance_length": 3.33,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 3.5,
+              "drafted_throughput_tok_s": 4.5,
+              "accepted_tokens": 35,
+              "drafted_tokens": 45,
+              "per_position_acceptance_rate": [
+                0.933,
+                0.733,
+                0.667
+              ],
+              "draft_acceptance_rate_pct": 77.8
+            },
+            {
+              "log_time": "08-16 06:30:44",
+              "mean_acceptance_length": 2.92,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 11.5,
+              "drafted_throughput_tok_s": 18.0,
+              "accepted_tokens": 115,
+              "drafted_tokens": 180,
+              "per_position_acceptance_rate": [
+                0.817,
+                0.633,
+                0.467
+              ],
+              "draft_acceptance_rate_pct": 63.9
+            },
+            {
+              "log_time": "08-16 06:30:54",
+              "mean_acceptance_length": 2.94,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 15.9,
+              "drafted_throughput_tok_s": 24.6,
+              "accepted_tokens": 159,
+              "drafted_tokens": 246,
+              "per_position_acceptance_rate": [
+                0.793,
+                0.646,
+                0.5
+              ],
+              "draft_acceptance_rate_pct": 64.6
+            },
+            {
+              "log_time": "08-16 06:31:04",
+              "mean_acceptance_length": 3.11,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 15.2,
+              "drafted_throughput_tok_s": 21.6,
+              "accepted_tokens": 152,
+              "drafted_tokens": 216,
+              "per_position_acceptance_rate": [
+                0.861,
+                0.736,
+                0.514
+              ],
+              "draft_acceptance_rate_pct": 70.4
+            },
+            {
+              "log_time": "08-16 06:31:14",
+              "mean_acceptance_length": 2.75,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 17.5,
+              "drafted_throughput_tok_s": 30.0,
+              "accepted_tokens": 175,
+              "drafted_tokens": 300,
+              "per_position_acceptance_rate": [
+                0.78,
+                0.56,
+                0.41
+              ],
+              "draft_acceptance_rate_pct": 58.3
+            },
+            {
+              "log_time": "08-16 06:31:24",
+              "mean_acceptance_length": 2.95,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 16.4,
+              "drafted_throughput_tok_s": 25.2,
+              "accepted_tokens": 164,
+              "drafted_tokens": 252,
+              "per_position_acceptance_rate": [
+                0.833,
+                0.631,
+                0.488
+              ],
+              "draft_acceptance_rate_pct": 65.1
+            },
+            {
+              "log_time": "08-16 06:31:34",
+              "mean_acceptance_length": 2.71,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 10.1,
+              "drafted_throughput_tok_s": 17.7,
+              "accepted_tokens": 101,
+              "drafted_tokens": 177,
+              "per_position_acceptance_rate": [
+                0.814,
+                0.542,
+                0.356
+              ],
+              "draft_acceptance_rate_pct": 57.1
+            },
+            {
+              "log_time": "08-16 06:31:44",
+              "mean_acceptance_length": 3.0,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 14.4,
+              "drafted_throughput_tok_s": 21.6,
+              "accepted_tokens": 144,
+              "drafted_tokens": 216,
+              "per_position_acceptance_rate": [
+                0.792,
+                0.667,
+                0.542
+              ],
+              "draft_acceptance_rate_pct": 66.7
+            },
+            {
+              "log_time": "08-16 06:31:54",
+              "mean_acceptance_length": 3.04,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 18.4,
+              "drafted_throughput_tok_s": 27.0,
+              "accepted_tokens": 184,
+              "drafted_tokens": 270,
+              "per_position_acceptance_rate": [
+                0.878,
+                0.644,
+                0.522
+              ],
+              "draft_acceptance_rate_pct": 68.1
+            },
+            {
+              "log_time": "08-16 06:32:04",
+              "mean_acceptance_length": 2.9,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 17.9,
+              "drafted_throughput_tok_s": 28.2,
+              "accepted_tokens": 179,
+              "drafted_tokens": 282,
+              "per_position_acceptance_rate": [
+                0.84,
+                0.617,
+                0.447
+              ],
+              "draft_acceptance_rate_pct": 63.5
+            },
+            {
+              "log_time": "08-16 06:32:14",
+              "mean_acceptance_length": 2.79,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 12.0,
+              "drafted_throughput_tok_s": 20.1,
+              "accepted_tokens": 120,
+              "drafted_tokens": 201,
+              "per_position_acceptance_rate": [
+                0.836,
+                0.567,
+                0.388
+              ],
+              "draft_acceptance_rate_pct": 59.7
+            },
+            {
+              "log_time": "08-16 06:32:24",
+              "mean_acceptance_length": 2.89,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 13.4,
+              "drafted_throughput_tok_s": 21.3,
+              "accepted_tokens": 134,
+              "drafted_tokens": 213,
+              "per_position_acceptance_rate": [
+                0.873,
+                0.577,
+                0.437
+              ],
+              "draft_acceptance_rate_pct": 62.9
+            },
+            {
+              "log_time": "08-16 06:32:34",
+              "mean_acceptance_length": 2.94,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 15.3,
+              "drafted_throughput_tok_s": 23.7,
+              "accepted_tokens": 153,
+              "drafted_tokens": 237,
+              "per_position_acceptance_rate": [
+                0.861,
+                0.608,
+                0.468
+              ],
+              "draft_acceptance_rate_pct": 64.6
+            },
+            {
+              "log_time": "08-16 06:32:44",
+              "mean_acceptance_length": 2.95,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 19.3,
+              "drafted_throughput_tok_s": 29.7,
+              "accepted_tokens": 193,
+              "drafted_tokens": 297,
+              "per_position_acceptance_rate": [
+                0.838,
+                0.646,
+                0.465
+              ],
+              "draft_acceptance_rate_pct": 65.0
+            },
+            {
+              "log_time": "08-16 06:32:54",
+              "mean_acceptance_length": 2.61,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 13.5,
+              "drafted_throughput_tok_s": 25.2,
+              "accepted_tokens": 135,
+              "drafted_tokens": 252,
+              "per_position_acceptance_rate": [
+                0.738,
+                0.512,
+                0.357
+              ],
+              "draft_acceptance_rate_pct": 53.6
+            },
+            {
+              "log_time": "08-16 06:33:04",
+              "mean_acceptance_length": 2.98,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 10.5,
+              "drafted_throughput_tok_s": 15.9,
+              "accepted_tokens": 105,
+              "drafted_tokens": 159,
+              "per_position_acceptance_rate": [
+                0.887,
+                0.623,
+                0.472
+              ],
+              "draft_acceptance_rate_pct": 66.0
+            },
+            {
+              "log_time": "08-16 06:33:14",
+              "mean_acceptance_length": 3.04,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 15.5,
+              "drafted_throughput_tok_s": 22.8,
+              "accepted_tokens": 155,
+              "drafted_tokens": 228,
+              "per_position_acceptance_rate": [
+                0.868,
+                0.645,
+                0.526
+              ],
+              "draft_acceptance_rate_pct": 68.0
+            },
+            {
+              "log_time": "08-16 06:33:24",
+              "mean_acceptance_length": 2.98,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 16.0,
+              "drafted_throughput_tok_s": 24.3,
+              "accepted_tokens": 160,
+              "drafted_tokens": 243,
+              "per_position_acceptance_rate": [
+                0.815,
+                0.642,
+                0.519
+              ],
+              "draft_acceptance_rate_pct": 65.8
+            },
+            {
+              "log_time": "08-16 06:33:34",
+              "mean_acceptance_length": 2.86,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 16.4,
+              "drafted_throughput_tok_s": 26.4,
+              "accepted_tokens": 164,
+              "drafted_tokens": 264,
+              "per_position_acceptance_rate": [
+                0.852,
+                0.591,
+                0.42
+              ],
+              "draft_acceptance_rate_pct": 62.1
+            },
+            {
+              "log_time": "08-16 06:33:44",
+              "mean_acceptance_length": 2.95,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 15.2,
+              "drafted_throughput_tok_s": 23.4,
+              "accepted_tokens": 152,
+              "drafted_tokens": 234,
+              "per_position_acceptance_rate": [
+                0.795,
+                0.641,
+                0.513
+              ],
+              "draft_acceptance_rate_pct": 65.0
+            },
+            {
+              "log_time": "08-16 06:33:54",
+              "mean_acceptance_length": 3.14,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 15.6,
+              "drafted_throughput_tok_s": 21.9,
+              "accepted_tokens": 156,
+              "drafted_tokens": 219,
+              "per_position_acceptance_rate": [
+                0.863,
+                0.685,
+                0.589
+              ],
+              "draft_acceptance_rate_pct": 71.2
+            },
+            {
+              "log_time": "08-16 06:34:04",
+              "mean_acceptance_length": 2.91,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 13.0,
+              "drafted_throughput_tok_s": 20.4,
+              "accepted_tokens": 130,
+              "drafted_tokens": 204,
+              "per_position_acceptance_rate": [
+                0.882,
+                0.632,
+                0.397
+              ],
+              "draft_acceptance_rate_pct": 63.7
+            },
+            {
+              "log_time": "08-16 06:34:14",
+              "mean_acceptance_length": 3.05,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 20.3,
+              "drafted_throughput_tok_s": 29.7,
+              "accepted_tokens": 203,
+              "drafted_tokens": 297,
+              "per_position_acceptance_rate": [
+                0.869,
+                0.677,
+                0.505
+              ],
+              "draft_acceptance_rate_pct": 68.4
+            },
+            {
+              "log_time": "08-16 06:34:24",
+              "mean_acceptance_length": 2.79,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 12.5,
+              "drafted_throughput_tok_s": 21.0,
+              "accepted_tokens": 125,
+              "drafted_tokens": 210,
+              "per_position_acceptance_rate": [
+                0.814,
+                0.571,
+                0.4
+              ],
+              "draft_acceptance_rate_pct": 59.5
+            },
+            {
+              "log_time": "08-16 06:34:34",
+              "mean_acceptance_length": 3.01,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 16.3,
+              "drafted_throughput_tok_s": 24.3,
+              "accepted_tokens": 163,
+              "drafted_tokens": 243,
+              "per_position_acceptance_rate": [
+                0.815,
+                0.667,
+                0.531
+              ],
+              "draft_acceptance_rate_pct": 67.1
+            },
+            {
+              "log_time": "08-16 06:34:44",
+              "mean_acceptance_length": 2.86,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 15.1,
+              "drafted_throughput_tok_s": 24.3,
+              "accepted_tokens": 151,
+              "drafted_tokens": 243,
+              "per_position_acceptance_rate": [
+                0.827,
+                0.605,
+                0.432
+              ],
+              "draft_acceptance_rate_pct": 62.1
+            },
+            {
+              "log_time": "08-16 06:34:54",
+              "mean_acceptance_length": 2.96,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 15.7,
+              "drafted_throughput_tok_s": 24.0,
+              "accepted_tokens": 157,
+              "drafted_tokens": 240,
+              "per_position_acceptance_rate": [
+                0.825,
+                0.65,
+                0.487
+              ],
+              "draft_acceptance_rate_pct": 65.4
+            },
+            {
+              "log_time": "08-16 06:35:04",
+              "mean_acceptance_length": 2.83,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 17.4,
+              "drafted_throughput_tok_s": 28.5,
+              "accepted_tokens": 174,
+              "drafted_tokens": 285,
+              "per_position_acceptance_rate": [
+                0.832,
+                0.579,
+                0.421
+              ],
+              "draft_acceptance_rate_pct": 61.1
+            },
+            {
+              "log_time": "08-16 06:35:14",
+              "mean_acceptance_length": 2.95,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 16.0,
+              "drafted_throughput_tok_s": 24.6,
+              "accepted_tokens": 160,
+              "drafted_tokens": 246,
+              "per_position_acceptance_rate": [
+                0.817,
+                0.634,
+                0.5
+              ],
+              "draft_acceptance_rate_pct": 65.0
+            },
+            {
+              "log_time": "08-16 06:35:24",
+              "mean_acceptance_length": 2.84,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 10.1,
+              "drafted_throughput_tok_s": 16.5,
+              "accepted_tokens": 101,
+              "drafted_tokens": 165,
+              "per_position_acceptance_rate": [
+                0.855,
+                0.582,
+                0.4
+              ],
+              "draft_acceptance_rate_pct": 61.2
+            },
+            {
+              "log_time": "08-16 06:35:34",
+              "mean_acceptance_length": 3.01,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 14.1,
+              "drafted_throughput_tok_s": 21.0,
+              "accepted_tokens": 141,
+              "drafted_tokens": 210,
+              "per_position_acceptance_rate": [
+                0.871,
+                0.629,
+                0.514
+              ],
+              "draft_acceptance_rate_pct": 67.1
+            },
+            {
+              "log_time": "08-16 06:35:44",
+              "mean_acceptance_length": 3.07,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 19.7,
+              "drafted_throughput_tok_s": 28.5,
+              "accepted_tokens": 197,
+              "drafted_tokens": 285,
+              "per_position_acceptance_rate": [
+                0.874,
+                0.716,
+                0.484
+              ],
+              "draft_acceptance_rate_pct": 69.1
+            },
+            {
+              "log_time": "08-16 06:35:54",
+              "mean_acceptance_length": 2.75,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 17.3,
+              "drafted_throughput_tok_s": 29.7,
+              "accepted_tokens": 173,
+              "drafted_tokens": 297,
+              "per_position_acceptance_rate": [
+                0.778,
+                0.566,
+                0.404
+              ],
+              "draft_acceptance_rate_pct": 58.2
+            },
+            {
+              "log_time": "08-16 06:36:04",
+              "mean_acceptance_length": 2.92,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 12.3,
+              "drafted_throughput_tok_s": 19.2,
+              "accepted_tokens": 123,
+              "drafted_tokens": 192,
+              "per_position_acceptance_rate": [
+                0.828,
+                0.625,
+                0.469
+              ],
+              "draft_acceptance_rate_pct": 64.1
+            },
+            {
+              "log_time": "08-16 06:36:14",
+              "mean_acceptance_length": 2.89,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 15.1,
+              "drafted_throughput_tok_s": 24.0,
+              "accepted_tokens": 151,
+              "drafted_tokens": 240,
+              "per_position_acceptance_rate": [
+                0.812,
+                0.613,
+                0.463
+              ],
+              "draft_acceptance_rate_pct": 62.9
+            },
+            {
+              "log_time": "08-16 06:36:24",
+              "mean_acceptance_length": 3.07,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 14.7,
+              "drafted_throughput_tok_s": 21.3,
+              "accepted_tokens": 147,
+              "drafted_tokens": 213,
+              "per_position_acceptance_rate": [
+                0.859,
+                0.718,
+                0.493
+              ],
+              "draft_acceptance_rate_pct": 69.0
+            },
+            {
+              "log_time": "08-16 06:36:34",
+              "mean_acceptance_length": 2.85,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 19.2,
+              "drafted_throughput_tok_s": 31.2,
+              "accepted_tokens": 192,
+              "drafted_tokens": 312,
+              "per_position_acceptance_rate": [
+                0.817,
+                0.615,
+                0.413
+              ],
+              "draft_acceptance_rate_pct": 61.5
+            },
+            {
+              "log_time": "08-16 06:36:44",
+              "mean_acceptance_length": 2.88,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 14.7,
+              "drafted_throughput_tok_s": 23.4,
+              "accepted_tokens": 147,
+              "drafted_tokens": 234,
+              "per_position_acceptance_rate": [
+                0.821,
+                0.59,
+                0.474
+              ],
+              "draft_acceptance_rate_pct": 62.8
+            },
+            {
+              "log_time": "08-16 06:36:54",
+              "mean_acceptance_length": 2.75,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 10.7,
+              "drafted_throughput_tok_s": 18.3,
+              "accepted_tokens": 107,
+              "drafted_tokens": 183,
+              "per_position_acceptance_rate": [
+                0.787,
+                0.574,
+                0.393
+              ],
+              "draft_acceptance_rate_pct": 58.5
+            }
+          ],
+          "spec_windows_with_traffic": 53,
+          "acceptance_walk_pct": [
+            66.7,
+            68.3,
+            61.5,
+            58.2,
+            67.7,
+            64.9,
+            56.3,
+            62.9,
+            65.3,
+            66.3,
+            65.5,
+            53.4,
+            68.1,
+            63.5,
+            77.8,
+            63.9,
+            64.6,
+            70.4,
+            58.3,
+            65.1,
+            57.1,
+            66.7,
+            68.1,
+            63.5,
+            59.7,
+            62.9,
+            64.6,
+            65.0,
+            53.6,
+            66.0,
+            68.0,
+            65.8,
+            62.1,
+            65.0,
+            71.2,
+            63.7,
+            68.4,
+            59.5,
+            67.1,
+            62.1,
+            65.4,
+            61.1,
+            65.0,
+            61.2,
+            67.1,
+            69.1,
+            58.2,
+            64.1,
+            62.9,
+            69.0,
+            61.5,
+            62.8,
+            58.5
+          ],
+          "acceptance_min_pct": 53.4,
+          "acceptance_max_pct": 77.8,
+          "acceptance_zero_windows": 0,
+          "prefix_cache_hit_rate_pct_walk": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "prefix_cache_hit_rate_pct_final": 0.0
+        },
+        "raw_server_log": "receipts/gdn-gate-raw/out/server-R3.log.gz",
+        "reachability_phase1_only": {
+          "schema": "qwen38-gdn-gate-reach/1",
+          "arm": "R3-phase1",
+          "description": "our recipe with --max-num-batched-tokens 512 instead of 2048, gdn_attn.py instrumented: a deliberate amplifier for the token-budget clamp mechanism, and a test of the predicted 1/max_num_batched_tokens scaling. NOT a configuration we ship. (phase 1 only: the published 8-wide wave schedule)",
+          "instrument_sha256": "eb61b24b2ab876bb24c433b2dbfd0ad2e6587014765e16d0928239f3c0c5889b",
+          "dump_files": [
+            "reach.198.json"
+          ],
+          "worker_pids": [
+            198
+          ],
+          "counts": {
+            "builds_total": 2561,
+            "no_spec_branch": 273,
+            "pure_spec_branch": 725,
+            "mixed_branch": 1563,
+            "mixed_identity": 1563,
+            "mixed_misordered": 0
+          },
+          "defective_path_entered": false,
+          "fraction_of_builds_miscomputed": 0.0,
+          "fraction_of_mixed_branch_miscomputed": 0.0,
+          "misordered_per_thousand_builds": 0.0,
+          "misordered_per_thousand_mixed_builds": 0.0,
+          "resolution_one_event_per_thousand_builds": 0.390472,
+          "zero_arm_95pct_upper_bound_per_thousand_builds": 1.171417,
+          "zero_arm_95pct_upper_bound_per_thousand_mixed_builds": 1.919386,
+          "how_to_state_this_arm": "below 1.1714 miscomputed metadata builds per thousand (95 % upper bound, rule of three, N = 2561 builds observed, 1563 of them on the gather branch, zero events)",
+          "max_displaced_spec_tokens": 0,
+          "first_misordered_token_index_min": null,
+          "compositions_seen": {
+            "0s/1p/0d": 231,
+            "0s/2p/0d": 18,
+            "0s/3p/0d": 3,
+            "0s/4p/0d": 3,
+            "0s/5p/0d": 3,
+            "0s/6p/0d": 3,
+            "0s/7p/0d": 6,
+            "0s/8p/0d": 6,
+            "1s/0p/0d": 275,
+            "1s/1p/0d": 258,
+            "1s/2p/0d": 21,
+            "2s/0p/0d": 258,
+            "2s/1p/0d": 408,
+            "2s/2p/0d": 27,
+            "3s/0p/0d": 126,
+            "3s/1p/0d": 402,
+            "3s/2p/0d": 30,
+            "4s/0p/0d": 30,
+            "4s/1p/0d": 399,
+            "4s/2p/0d": 6,
+            "5s/0p/0d": 21,
+            "5s/1p/0d": 12,
+            "6s/0p/0d": 3,
+            "7s/0p/0d": 6,
+            "8s/0p/0d": 6
+          },
+          "misordered_compositions": {},
+          "composition_key": "<num_spec_decodes>s/<num_prefills>p/<num_decodes>d"
+        },
+        "load": {
+          "arm": "R3",
+          "requests": 38,
+          "failed_requests": 0,
+          "corrupted_requests": 0,
+          "scored_answer_wrong_requests": 0,
+          "per_field_correct": {
+            "A1": 38,
+            "A2": 38,
+            "A3": 38,
+            "A4": 38
+          },
+          "arithmetic_correct_diagnostic_only": 38,
+          "first_failure_request_id": null,
+          "detectors_fired_counts": {
+            "out_of_script_fraction": 0,
+            "replacement_char_count": 0,
+            "longest_repeated_block_chars": 0,
+            "ngram5_repetition_ratio": 0
+          },
+          "acceptance_rates_per_request": [
+            0.62445,
+            0.62445,
+            0.62445,
+            0.62445,
+            0.62445,
+            0.62445,
+            0.62445,
+            0.62445,
+            0.635802,
+            0.635802,
+            0.635802,
+            0.635802,
+            0.635802,
+            0.635802,
+            0.635802,
+            0.635802,
+            0.636364,
+            0.636364,
+            0.636364,
+            0.636364,
+            0.636364,
+            0.636364,
+            0.636364,
+            0.636364,
+            0.623111,
+            0.623111,
+            0.623111,
+            0.623111,
+            0.623111,
+            0.623111,
+            0.623111,
+            0.623111,
+            0.650739,
+            0.650739,
+            0.650739,
+            0.650739,
+            0.650739,
+            0.650739
+          ],
+          "acceptance_min": 0.623111,
+          "acceptance_median": 0.635802,
+          "cumulative_prefix_cache_hit_rate": null,
+          "wall_s_total": 131.82,
+          "cumulative_metrics": {
+            "drafts": 1788.0,
+            "draft_tokens": 5364.0,
+            "accepted": 3397.0,
+            "prefix_cache_queries": 0.0,
+            "prefix_cache_hits": 0.0,
+            "preemptions": 0.0
+          }
+        },
+        "load_phase2": {
+          "requests": 98,
+          "by_kind": {
+            "long_stream": 68,
+            "cache_hit_repeat": 24,
+            "tiny_final_chunk": 3,
+            "short_prompt": 3
+          },
+          "errors": 0,
+          "first_error": null,
+          "wall_s": 391.73,
+          "metric_delta": {
+            "prefix_cache_queries": 0.0,
+            "prefix_cache_hits": 0.0,
+            "drafts": 3067.0,
+            "draft_tokens": 9201.0,
+            "accepted": 5886.0,
+            "preemptions": 0.0
+          }
+        },
+        "load_phase2_shape": {
+          "streams": 8,
+          "injectors": 3,
+          "duration_s": 360.0,
+          "warmup_s": 45.0,
+          "max_tokens_long": 192,
+          "max_tokens_injected": 24,
+          "short_prompt_lengths": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            8,
+            12
+          ],
+          "repeat_sends": 4,
+          "chunk_tokens": 512,
+          "long_stream_prompt_tokens": [
+            15570,
+            15570,
+            15570,
+            12470,
+            12470,
+            12470,
+            11170,
+            11170
+          ]
+        }
+      },
+      "R2": {
+        "description": "a SHIPPED prefix-caching regime: the published 8192-token recipe flags (--enable-prefix-caching --mamba-cache-mode align, --max-model-len 8192, --gpu-memory-utilization 0.85) taken from MODEL_CARD-K4.md, run at --max-num-seqs 8 with adversarial mixed traffic (eight speculative streams plus injected short prompts and full-prefix-cache-hit repeats) to open the scheduler spec-padding path, gdn_attn.py instrumented",
+        "image_manifest_digest": "sha256:16a936b877b90fc080181e842f47dbafc5cb8e62688799596836e34ba0b79218",
+        "podman_argv": [
+          "podman",
+          "run",
+          "--rm",
+          "--name",
+          "gdngate-R2",
+          "--device",
+          "nvidia.com/gpu=all",
+          "--ipc=host",
+          "--network",
+          "host",
+          "-v",
+          "/mnt/vault/llm/huggingface/hub/models--malaiwah--Qwen3.8-27B-EXL3-K5K6-context:/models/ctx-repo:ro",
+          "-v",
+          "/home/mbelleau/qual5090/cache/jit:/cache/jit:rw",
+          "-v",
+          "/home/mbelleau/qual5090/cache/exl3-online:/cache/exl3-online:rw",
+          "-v",
+          "/home/mbelleau/gdngate/reach/R2:/reach:rw",
+          "-v",
+          "/home/mbelleau/gdngate/tools/vllm-gdn-reach-instrument.py:/opt/venv/lib/python3.12/site-packages/vllm/v1/attention/backends/gdn_attn.py:ro",
+          "-e",
+          "HF_HUB_OFFLINE=1",
+          "-e",
+          "TRANSFORMERS_OFFLINE=1",
+          "-e",
+          "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True",
+          "-e",
+          "VLLM_EXL3_EMBED_BITS=8",
+          "-e",
+          "VLLM_EXL3_GRAPH_DECODE=1",
+          "-e",
+          "VLLM_EXL3_PREFILL_RECONSTRUCT_M=128",
+          "-e",
+          "VLLM_GDN_REACH_OUT=/reach/reach",
+          "--entrypoint",
+          "/opt/venv/bin/vllm",
+          "localhost/vllm:gg-r34-patched-apc"
+        ],
+        "vllm_argv": [
+          "serve",
+          "/models/ctx-repo/snapshots/c45c273b0d6ef2859cb2d85b36dd52253c80d878",
+          "--served-model-name",
+          "m",
+          "--quantization",
+          "exl3",
+          "--quantization-config",
+          "{\"linear\":{\"weight\":\"mxfp8\"},\"ignore\":[\"re:.*visual\\\\..*\",\"re:.*in_proj_a$\",\"re:.*in_proj_b$\",\"re:.*in_proj_ba$\",\"re:.*mtp\\\\..*\",\"lm_head\"]}",
+          "--max-model-len",
+          "8192",
+          "--gpu-memory-utilization",
+          "0.85",
+          "--max-num-seqs",
+          "8",
+          "--kv-cache-dtype",
+          "fp8",
+          "--max-num-batched-tokens",
+          "2048",
+          "--enable-prefix-caching",
+          "--mamba-cache-mode",
+          "align",
+          "--speculative-config",
+          "{\"method\":\"mtp\",\"num_speculative_tokens\":3}",
+          "--mm-processor-kwargs",
+          "{\"truncation\":false,\"max_pixels\":8388608}",
+          "--compilation-config",
+          "{\"cudagraph_mode\":\"FULL_DECODE_ONLY\",\"cudagraph_capture_sizes\":[32]}",
+          "--host",
+          "127.0.0.1",
+          "--port",
+          "8251"
+        ],
+        "startup_facts": [
+          "Available KV cache memory: 5.77 GiB",
+          "cudagraph_mode=FULL_DECODE_ONLY",
+          "'enable_prefix_caching': True",
+          "GPU KV cache size: 43,300 tokens",
+          "init engine (profile, create kv cache, warmup model) took 66.49 s (compilation: 51.91 s)",
+          "'mamba_cache_mode': 'align'",
+          "Maximum concurrency for 8,192 tokens per request: 5.29x",
+          "'max_num_seqs': 8",
+          "Model loading took 18.19 GiB memory and 77.817845 seconds",
+          "num_spec_tokens=3",
+          "Using FLASHINFER attention backend out of potential backends: ['FLASHINFER', 'TRITON_ATTN']"
+        ],
+        "module_digests_inside_the_running_container": "663dacd324b6b8224a4cb312b3e9c0bad4322c515e982a85f13c3450ffdb7d61  /opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py\neb61b24b2ab876bb24c433b2dbfd0ad2e6587014765e16d0928239f3c0c5889b  /opt/venv/lib/python3.12/site-packages/vllm/v1/attention/backends/gdn_attn.py\nb431c1066dfee3ed56bfa7e71cc8606f9afadc300f22d7fc542c43835d1b22bf  /opt/venv/lib/python3.12/site-packages/vllm/v1/core/sched/scheduler.py\n{\n  \"vllm.model_executor.layers.mamba.gdn.qwen_gdn_linear_attn\": {\n    \"origin\": \"/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py\",\n    \"sha256\": \"663dacd324b6b8224a4cb312b3e9c0bad4322c515e982a85f13c3450ffdb7d61\"\n  },\n  \"vllm.v1.attention.backends.gdn_attn\": {\n    \"origin\": \"/opt/venv/lib/python3.12/site-packages/vllm/v1/attention/backends/gdn_attn.py\",\n    \"sha256\": \"eb61b24b2ab876bb24c433b2dbfd0ad2e6587014765e16d0928239f3c0c5889b\"\n  }\n}\n",
+        "reachability": {
+          "schema": "qwen38-gdn-gate-reach/1",
+          "arm": "R2",
+          "description": "a SHIPPED prefix-caching regime: the published 8192-token recipe flags (--enable-prefix-caching --mamba-cache-mode align, --max-model-len 8192, --gpu-memory-utilization 0.85) taken from MODEL_CARD-K4.md, run at --max-num-seqs 8 with adversarial mixed traffic (eight speculative streams plus injected short prompts and full-prefix-cache-hit repeats) to open the scheduler spec-padding path, gdn_attn.py instrumented",
+          "instrument_sha256": "eb61b24b2ab876bb24c433b2dbfd0ad2e6587014765e16d0928239f3c0c5889b",
+          "dump_files": [
+            "reach.1.json",
+            "reach.198.json"
+          ],
+          "worker_pids": [
+            1,
+            198
+          ],
+          "counts": {
+            "builds_total": 5825,
+            "no_spec_branch": 42,
+            "pure_spec_branch": 3572,
+            "mixed_branch": 2211,
+            "mixed_identity": 2208,
+            "mixed_misordered": 3
+          },
+          "defective_path_entered": true,
+          "fraction_of_builds_miscomputed": 0.00051502,
+          "fraction_of_mixed_branch_miscomputed": 0.00135685,
+          "misordered_per_thousand_builds": 0.515021,
+          "misordered_per_thousand_mixed_builds": 1.356852,
+          "resolution_one_event_per_thousand_builds": 0.171674,
+          "zero_arm_95pct_upper_bound_per_thousand_builds": null,
+          "zero_arm_95pct_upper_bound_per_thousand_mixed_builds": null,
+          "how_to_state_this_arm": "0.515 miscomputed metadata builds per thousand (3 events over N = 5825 builds)",
+          "max_displaced_spec_tokens": 4,
+          "first_misordered_token_index_min": 20,
+          "compositions_seen": {
+            "0s/1p/0d": 15,
+            "0s/2p/0d": 3,
+            "0s/3p/0d": 3,
+            "0s/4p/0d": 3,
+            "0s/5p/0d": 3,
+            "0s/6p/0d": 3,
+            "0s/7p/0d": 6,
+            "0s/8p/0d": 6,
+            "1s/0p/0d": 3,
+            "1s/1p/0d": 3,
+            "2s/0p/0d": 53,
+            "2s/1p/0d": 6,
+            "3s/0p/0d": 15,
+            "3s/1p/0d": 12,
+            "4s/0p/0d": 18,
+            "4s/1p/0d": 42,
+            "4s/2p/0d": 6,
+            "4s/3p/0d": 3,
+            "5s/0p/0d": 18,
+            "5s/1p/0d": 330,
+            "5s/2p/0d": 147,
+            "6s/0p/0d": 222,
+            "6s/1p/0d": 1662,
+            "7s/0p/0d": 3237,
+            "8s/0p/0d": 6
+          },
+          "misordered_compositions": {
+            "6s/1p/0d": 3
+          },
+          "composition_key": "<num_spec_decodes>s/<num_prefills>p/<num_decodes>d"
+        },
+        "server_windows": {
+          "schema": "qwen38-apc-log-windows/1",
+          "arm": "R2",
+          "log": "/home/mbelleau/gdngate/logs/server-R2.log",
+          "engine_windows": [
+            {
+              "log_time": "08-16 06:44:09",
+              "prompt_throughput_tok_s": 264.0,
+              "generation_throughput_tok_s": 0.0,
+              "running": 1,
+              "waiting": 7,
+              "gpu_kv_cache_usage_pct": 20.9,
+              "prefix_cache_hit_rate_pct": 35.8
+            },
+            {
+              "log_time": "08-16 06:44:19",
+              "prompt_throughput_tok_s": 2310.1,
+              "generation_throughput_tok_s": 107.7,
+              "running": 6,
+              "waiting": 0,
+              "gpu_kv_cache_usage_pct": 81.8,
+              "prefix_cache_hit_rate_pct": 60.4
+            },
+            {
+              "log_time": "08-16 06:44:29",
+              "prompt_throughput_tok_s": 2272.4,
+              "generation_throughput_tok_s": 113.0,
+              "running": 7,
+              "waiting": 0,
+              "gpu_kv_cache_usage_pct": 94.5,
+              "prefix_cache_hit_rate_pct": 59.9
+            },
+            {
+              "log_time": "08-16 06:44:39",
+              "prompt_throughput_tok_s": 2228.9,
+              "generation_throughput_tok_s": 143.1,
+              "running": 6,
+              "waiting": 1,
+              "gpu_kv_cache_usage_pct": 81.8,
+              "prefix_cache_hit_rate_pct": 54.6
+            },
+            {
+              "log_time": "08-16 06:44:49",
+              "prompt_throughput_tok_s": 2388.8,
+              "generation_throughput_tok_s": 107.4,
+              "running": 5,
+              "waiting": 2,
+              "gpu_kv_cache_usage_pct": 73.6,
+              "prefix_cache_hit_rate_pct": 57.8
+            },
+            {
+              "log_time": "08-16 06:44:59",
+              "prompt_throughput_tok_s": 2235.0,
+              "generation_throughput_tok_s": 111.0,
+              "running": 6,
+              "waiting": 5,
+              "gpu_kv_cache_usage_pct": 85.5,
+              "prefix_cache_hit_rate_pct": 58.1
+            },
+            {
+              "log_time": "08-16 06:45:09",
+              "prompt_throughput_tok_s": 2209.1,
+              "generation_throughput_tok_s": 98.6,
+              "running": 6,
+              "waiting": 4,
+              "gpu_kv_cache_usage_pct": 83.6,
+              "prefix_cache_hit_rate_pct": 57.2
+            },
+            {
+              "log_time": "08-16 06:45:19",
+              "prompt_throughput_tok_s": 2386.1,
+              "generation_throughput_tok_s": 139.8,
+              "running": 6,
+              "waiting": 4,
+              "gpu_kv_cache_usage_pct": 79.1,
+              "prefix_cache_hit_rate_pct": 57.5
+            },
+            {
+              "log_time": "08-16 06:45:29",
+              "prompt_throughput_tok_s": 2536.5,
+              "generation_throughput_tok_s": 59.0,
+              "running": 6,
+              "waiting": 4,
+              "gpu_kv_cache_usage_pct": 82.7,
+              "prefix_cache_hit_rate_pct": 56.2
+            },
+            {
+              "log_time": "08-16 06:45:39",
+              "prompt_throughput_tok_s": 2515.8,
+              "generation_throughput_tok_s": 56.1,
+              "running": 6,
+              "waiting": 3,
+              "gpu_kv_cache_usage_pct": 82.7,
+              "prefix_cache_hit_rate_pct": 55.4
+            },
+            {
+              "log_time": "08-16 06:45:49",
+              "prompt_throughput_tok_s": 2133.2,
+              "generation_throughput_tok_s": 118.2,
+              "running": 6,
+              "waiting": 5,
+              "gpu_kv_cache_usage_pct": 81.8,
+              "prefix_cache_hit_rate_pct": 55.4
+            },
+            {
+              "log_time": "08-16 06:45:59",
+              "prompt_throughput_tok_s": 2504.7,
+              "generation_throughput_tok_s": 75.8,
+              "running": 6,
+              "waiting": 4,
+              "gpu_kv_cache_usage_pct": 82.7,
+              "prefix_cache_hit_rate_pct": 54.5
+            },
+            {
+              "log_time": "08-16 06:46:09",
+              "prompt_throughput_tok_s": 2344.2,
+              "generation_throughput_tok_s": 97.4,
+              "running": 6,
+              "waiting": 4,
+              "gpu_kv_cache_usage_pct": 79.1,
+              "prefix_cache_hit_rate_pct": 54.0
+            },
+            {
+              "log_time": "08-16 06:46:19",
+              "prompt_throughput_tok_s": 2425.0,
+              "generation_throughput_tok_s": 97.9,
+              "running": 7,
+              "waiting": 4,
+              "gpu_kv_cache_usage_pct": 93.6,
+              "prefix_cache_hit_rate_pct": 54.5
+            },
+            {
+              "log_time": "08-16 06:46:29",
+              "prompt_throughput_tok_s": 2154.9,
+              "generation_throughput_tok_s": 86.8,
+              "running": 7,
+              "waiting": 4,
+              "gpu_kv_cache_usage_pct": 94.5,
+              "prefix_cache_hit_rate_pct": 54.5
+            },
+            {
+              "log_time": "08-16 06:46:39",
+              "prompt_throughput_tok_s": 2307.0,
+              "generation_throughput_tok_s": 104.6,
+              "running": 7,
+              "waiting": 2,
+              "gpu_kv_cache_usage_pct": 93.6,
+              "prefix_cache_hit_rate_pct": 54.4
+            },
+            {
+              "log_time": "08-16 06:46:49",
+              "prompt_throughput_tok_s": 2396.3,
+              "generation_throughput_tok_s": 87.1,
+              "running": 7,
+              "waiting": 3,
+              "gpu_kv_cache_usage_pct": 95.5,
+              "prefix_cache_hit_rate_pct": 53.1
+            },
+            {
+              "log_time": "08-16 06:46:59",
+              "prompt_throughput_tok_s": 2360.3,
+              "generation_throughput_tok_s": 124.4,
+              "running": 7,
+              "waiting": 4,
+              "gpu_kv_cache_usage_pct": 91.8,
+              "prefix_cache_hit_rate_pct": 52.7
+            },
+            {
+              "log_time": "08-16 06:47:09",
+              "prompt_throughput_tok_s": 2354.5,
+              "generation_throughput_tok_s": 96.0,
+              "running": 7,
+              "waiting": 4,
+              "gpu_kv_cache_usage_pct": 92.7,
+              "prefix_cache_hit_rate_pct": 53.1
+            },
+            {
+              "log_time": "08-16 06:47:19",
+              "prompt_throughput_tok_s": 2000.4,
+              "generation_throughput_tok_s": 122.6,
+              "running": 6,
+              "waiting": 4,
+              "gpu_kv_cache_usage_pct": 80.9,
+              "prefix_cache_hit_rate_pct": 51.9
+            },
+            {
+              "log_time": "08-16 06:47:29",
+              "prompt_throughput_tok_s": 2349.4,
+              "generation_throughput_tok_s": 101.5,
+              "running": 6,
+              "waiting": 4,
+              "gpu_kv_cache_usage_pct": 80.9,
+              "prefix_cache_hit_rate_pct": 51.6
+            },
+            {
+              "log_time": "08-16 06:47:39",
+              "prompt_throughput_tok_s": 2530.3,
+              "generation_throughput_tok_s": 80.6,
+              "running": 6,
+              "waiting": 5,
+              "gpu_kv_cache_usage_pct": 82.7,
+              "prefix_cache_hit_rate_pct": 50.5
+            },
+            {
+              "log_time": "08-16 06:47:49",
+              "prompt_throughput_tok_s": 2423.3,
+              "generation_throughput_tok_s": 53.8,
+              "running": 5,
+              "waiting": 3,
+              "gpu_kv_cache_usage_pct": 68.2,
+              "prefix_cache_hit_rate_pct": 50.5
+            },
+            {
+              "log_time": "08-16 06:47:59",
+              "prompt_throughput_tok_s": 2414.1,
+              "generation_throughput_tok_s": 95.6,
+              "running": 6,
+              "waiting": 4,
+              "gpu_kv_cache_usage_pct": 80.9,
+              "prefix_cache_hit_rate_pct": 50.3
+            },
+            {
+              "log_time": "08-16 06:48:09",
+              "prompt_throughput_tok_s": 2288.6,
+              "generation_throughput_tok_s": 84.0,
+              "running": 7,
+              "waiting": 4,
+              "gpu_kv_cache_usage_pct": 99.1,
+              "prefix_cache_hit_rate_pct": 50.9
+            },
+            {
+              "log_time": "08-16 06:48:19",
+              "prompt_throughput_tok_s": 2631.3,
+              "generation_throughput_tok_s": 66.8,
+              "running": 7,
+              "waiting": 4,
+              "gpu_kv_cache_usage_pct": 98.2,
+              "prefix_cache_hit_rate_pct": 50.9
+            },
+            {
+              "log_time": "08-16 06:48:29",
+              "prompt_throughput_tok_s": 2452.2,
+              "generation_throughput_tok_s": 71.4,
+              "running": 7,
+              "waiting": 4,
+              "gpu_kv_cache_usage_pct": 98.2,
+              "prefix_cache_hit_rate_pct": 51.1
+            },
+            {
+              "log_time": "08-16 06:48:39",
+              "prompt_throughput_tok_s": 2485.7,
+              "generation_throughput_tok_s": 74.9,
+              "running": 7,
+              "waiting": 4,
+              "gpu_kv_cache_usage_pct": 100.0,
+              "prefix_cache_hit_rate_pct": 51.4
+            },
+            {
+              "log_time": "08-16 06:48:49",
+              "prompt_throughput_tok_s": 2493.8,
+              "generation_throughput_tok_s": 100.3,
+              "running": 7,
+              "waiting": 4,
+              "gpu_kv_cache_usage_pct": 98.2,
+              "prefix_cache_hit_rate_pct": 52.0
+            },
+            {
+              "log_time": "08-16 06:48:59",
+              "prompt_throughput_tok_s": 2402.2,
+              "generation_throughput_tok_s": 64.1,
+              "running": 7,
+              "waiting": 4,
+              "gpu_kv_cache_usage_pct": 96.4,
+              "prefix_cache_hit_rate_pct": 51.1
+            },
+            {
+              "log_time": "08-16 06:49:09",
+              "prompt_throughput_tok_s": 2485.6,
+              "generation_throughput_tok_s": 102.0,
+              "running": 5,
+              "waiting": 4,
+              "gpu_kv_cache_usage_pct": 68.2,
+              "prefix_cache_hit_rate_pct": 51.1
+            },
+            {
+              "log_time": "08-16 06:49:19",
+              "prompt_throughput_tok_s": 2126.6,
+              "generation_throughput_tok_s": 95.8,
+              "running": 6,
+              "waiting": 5,
+              "gpu_kv_cache_usage_pct": 86.4,
+              "prefix_cache_hit_rate_pct": 51.2
+            },
+            {
+              "log_time": "08-16 06:49:29",
+              "prompt_throughput_tok_s": 2664.9,
+              "generation_throughput_tok_s": 67.2,
+              "running": 6,
+              "waiting": 4,
+              "gpu_kv_cache_usage_pct": 82.7,
+              "prefix_cache_hit_rate_pct": 50.6
+            },
+            {
+              "log_time": "08-16 06:49:39",
+              "prompt_throughput_tok_s": 2428.9,
+              "generation_throughput_tok_s": 99.1,
+              "running": 7,
+              "waiting": 4,
+              "gpu_kv_cache_usage_pct": 93.6,
+              "prefix_cache_hit_rate_pct": 50.8
+            },
+            {
+              "log_time": "08-16 06:49:49",
+              "prompt_throughput_tok_s": 2044.6,
+              "generation_throughput_tok_s": 111.8,
+              "running": 7,
+              "waiting": 3,
+              "gpu_kv_cache_usage_pct": 94.5,
+              "prefix_cache_hit_rate_pct": 50.3
+            },
+            {
+              "log_time": "08-16 06:49:59",
+              "prompt_throughput_tok_s": 2562.5,
+              "generation_throughput_tok_s": 84.8,
+              "running": 6,
+              "waiting": 4,
+              "gpu_kv_cache_usage_pct": 80.9,
+              "prefix_cache_hit_rate_pct": 50.3
+            },
+            {
+              "log_time": "08-16 06:50:09",
+              "prompt_throughput_tok_s": 2303.5,
+              "generation_throughput_tok_s": 94.2,
+              "running": 5,
+              "waiting": 0,
+              "gpu_kv_cache_usage_pct": 70.0,
+              "prefix_cache_hit_rate_pct": 50.1
+            }
+          ],
+          "spec_windows": [
+            {
+              "log_time": "08-16 06:44:19",
+              "mean_acceptance_length": 3.03,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 25.62,
+              "drafted_throughput_tok_s": 37.79,
+              "accepted_tokens": 722,
+              "drafted_tokens": 1065,
+              "per_position_acceptance_rate": [
+                0.851,
+                0.662,
+                0.521
+              ],
+              "draft_acceptance_rate_pct": 67.8
+            },
+            {
+              "log_time": "08-16 06:44:29",
+              "mean_acceptance_length": 2.95,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 75.2,
+              "drafted_throughput_tok_s": 115.8,
+              "accepted_tokens": 752,
+              "drafted_tokens": 1158,
+              "per_position_acceptance_rate": [
+                0.852,
+                0.64,
+                0.456
+              ],
+              "draft_acceptance_rate_pct": 64.9
+            },
+            {
+              "log_time": "08-16 06:44:39",
+              "mean_acceptance_length": 2.92,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 94.6,
+              "drafted_throughput_tok_s": 147.9,
+              "accepted_tokens": 946,
+              "drafted_tokens": 1479,
+              "per_position_acceptance_rate": [
+                0.832,
+                0.617,
+                0.471
+              ],
+              "draft_acceptance_rate_pct": 64.0
+            },
+            {
+              "log_time": "08-16 06:44:49",
+              "mean_acceptance_length": 2.85,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 70.4,
+              "drafted_throughput_tok_s": 114.29,
+              "accepted_tokens": 704,
+              "drafted_tokens": 1143,
+              "per_position_acceptance_rate": [
+                0.806,
+                0.596,
+                0.446
+              ],
+              "draft_acceptance_rate_pct": 61.6
+            },
+            {
+              "log_time": "08-16 06:44:59",
+              "mean_acceptance_length": 2.9,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 72.59,
+              "drafted_throughput_tok_s": 114.58,
+              "accepted_tokens": 726,
+              "drafted_tokens": 1146,
+              "per_position_acceptance_rate": [
+                0.825,
+                0.602,
+                0.474
+              ],
+              "draft_acceptance_rate_pct": 63.4
+            },
+            {
+              "log_time": "08-16 06:45:09",
+              "mean_acceptance_length": 2.91,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 64.7,
+              "drafted_throughput_tok_s": 101.4,
+              "accepted_tokens": 647,
+              "drafted_tokens": 1014,
+              "per_position_acceptance_rate": [
+                0.825,
+                0.624,
+                0.464
+              ],
+              "draft_acceptance_rate_pct": 63.8
+            },
+            {
+              "log_time": "08-16 06:45:19",
+              "mean_acceptance_length": 2.99,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 93.09,
+              "drafted_throughput_tok_s": 140.09,
+              "accepted_tokens": 931,
+              "drafted_tokens": 1401,
+              "per_position_acceptance_rate": [
+                0.848,
+                0.657,
+                0.488
+              ],
+              "draft_acceptance_rate_pct": 66.5
+            },
+            {
+              "log_time": "08-16 06:45:29",
+              "mean_acceptance_length": 2.82,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 37.9,
+              "drafted_throughput_tok_s": 62.39,
+              "accepted_tokens": 379,
+              "drafted_tokens": 624,
+              "per_position_acceptance_rate": [
+                0.788,
+                0.606,
+                0.428
+              ],
+              "draft_acceptance_rate_pct": 60.7
+            },
+            {
+              "log_time": "08-16 06:45:39",
+              "mean_acceptance_length": 2.88,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 36.8,
+              "drafted_throughput_tok_s": 58.79,
+              "accepted_tokens": 368,
+              "drafted_tokens": 588,
+              "per_position_acceptance_rate": [
+                0.837,
+                0.602,
+                0.439
+              ],
+              "draft_acceptance_rate_pct": 62.6
+            },
+            {
+              "log_time": "08-16 06:45:49",
+              "mean_acceptance_length": 2.92,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 77.6,
+              "drafted_throughput_tok_s": 121.49,
+              "accepted_tokens": 776,
+              "drafted_tokens": 1215,
+              "per_position_acceptance_rate": [
+                0.822,
+                0.622,
+                0.472
+              ],
+              "draft_acceptance_rate_pct": 63.9
+            },
+            {
+              "log_time": "08-16 06:45:59",
+              "mean_acceptance_length": 2.94,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 49.6,
+              "drafted_throughput_tok_s": 76.79,
+              "accepted_tokens": 496,
+              "drafted_tokens": 768,
+              "per_position_acceptance_rate": [
+                0.855,
+                0.613,
+                0.469
+              ],
+              "draft_acceptance_rate_pct": 64.6
+            },
+            {
+              "log_time": "08-16 06:46:09",
+              "mean_acceptance_length": 2.79,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 62.49,
+              "drafted_throughput_tok_s": 104.99,
+              "accepted_tokens": 625,
+              "drafted_tokens": 1050,
+              "per_position_acceptance_rate": [
+                0.774,
+                0.577,
+                0.434
+              ],
+              "draft_acceptance_rate_pct": 59.5
+            },
+            {
+              "log_time": "08-16 06:46:19",
+              "mean_acceptance_length": 2.92,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 64.09,
+              "drafted_throughput_tok_s": 99.89,
+              "accepted_tokens": 641,
+              "drafted_tokens": 999,
+              "per_position_acceptance_rate": [
+                0.826,
+                0.628,
+                0.471
+              ],
+              "draft_acceptance_rate_pct": 64.2
+            },
+            {
+              "log_time": "08-16 06:46:29",
+              "mean_acceptance_length": 2.77,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 55.5,
+              "drafted_throughput_tok_s": 94.19,
+              "accepted_tokens": 555,
+              "drafted_tokens": 942,
+              "per_position_acceptance_rate": [
+                0.783,
+                0.554,
+                0.43
+              ],
+              "draft_acceptance_rate_pct": 58.9
+            },
+            {
+              "log_time": "08-16 06:46:39",
+              "mean_acceptance_length": 2.94,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 68.7,
+              "drafted_throughput_tok_s": 106.5,
+              "accepted_tokens": 687,
+              "drafted_tokens": 1065,
+              "per_position_acceptance_rate": [
+                0.803,
+                0.631,
+                0.501
+              ],
+              "draft_acceptance_rate_pct": 64.5
+            },
+            {
+              "log_time": "08-16 06:46:49",
+              "mean_acceptance_length": 2.9,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 57.0,
+              "drafted_throughput_tok_s": 90.0,
+              "accepted_tokens": 570,
+              "drafted_tokens": 900,
+              "per_position_acceptance_rate": [
+                0.83,
+                0.613,
+                0.457
+              ],
+              "draft_acceptance_rate_pct": 63.3
+            },
+            {
+              "log_time": "08-16 06:46:59",
+              "mean_acceptance_length": 2.88,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 80.8,
+              "drafted_throughput_tok_s": 129.0,
+              "accepted_tokens": 808,
+              "drafted_tokens": 1290,
+              "per_position_acceptance_rate": [
+                0.814,
+                0.605,
+                0.46
+              ],
+              "draft_acceptance_rate_pct": 62.6
+            },
+            {
+              "log_time": "08-16 06:47:09",
+              "mean_acceptance_length": 2.98,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 63.9,
+              "drafted_throughput_tok_s": 96.6,
+              "accepted_tokens": 639,
+              "drafted_tokens": 966,
+              "per_position_acceptance_rate": [
+                0.835,
+                0.661,
+                0.488
+              ],
+              "draft_acceptance_rate_pct": 66.1
+            },
+            {
+              "log_time": "08-16 06:47:19",
+              "mean_acceptance_length": 2.74,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 77.7,
+              "drafted_throughput_tok_s": 134.09,
+              "accepted_tokens": 777,
+              "drafted_tokens": 1341,
+              "per_position_acceptance_rate": [
+                0.783,
+                0.553,
+                0.403
+              ],
+              "draft_acceptance_rate_pct": 57.9
+            },
+            {
+              "log_time": "08-16 06:47:29",
+              "mean_acceptance_length": 2.95,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 67.2,
+              "drafted_throughput_tok_s": 103.2,
+              "accepted_tokens": 672,
+              "drafted_tokens": 1032,
+              "per_position_acceptance_rate": [
+                0.828,
+                0.64,
+                0.485
+              ],
+              "draft_acceptance_rate_pct": 65.1
+            },
+            {
+              "log_time": "08-16 06:47:39",
+              "mean_acceptance_length": 2.78,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 51.89,
+              "drafted_throughput_tok_s": 87.59,
+              "accepted_tokens": 519,
+              "drafted_tokens": 876,
+              "per_position_acceptance_rate": [
+                0.743,
+                0.582,
+                0.452
+              ],
+              "draft_acceptance_rate_pct": 59.2
+            },
+            {
+              "log_time": "08-16 06:47:49",
+              "mean_acceptance_length": 2.76,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 34.4,
+              "drafted_throughput_tok_s": 58.79,
+              "accepted_tokens": 344,
+              "drafted_tokens": 588,
+              "per_position_acceptance_rate": [
+                0.827,
+                0.546,
+                0.383
+              ],
+              "draft_acceptance_rate_pct": 58.5
+            },
+            {
+              "log_time": "08-16 06:47:59",
+              "mean_acceptance_length": 2.97,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 63.1,
+              "drafted_throughput_tok_s": 96.0,
+              "accepted_tokens": 631,
+              "drafted_tokens": 960,
+              "per_position_acceptance_rate": [
+                0.853,
+                0.647,
+                0.472
+              ],
+              "draft_acceptance_rate_pct": 65.7
+            },
+            {
+              "log_time": "08-16 06:48:09",
+              "mean_acceptance_length": 2.84,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 54.6,
+              "drafted_throughput_tok_s": 89.1,
+              "accepted_tokens": 546,
+              "drafted_tokens": 891,
+              "per_position_acceptance_rate": [
+                0.815,
+                0.589,
+                0.434
+              ],
+              "draft_acceptance_rate_pct": 61.3
+            },
+            {
+              "log_time": "08-16 06:48:19",
+              "mean_acceptance_length": 2.83,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 42.9,
+              "drafted_throughput_tok_s": 70.5,
+              "accepted_tokens": 429,
+              "drafted_tokens": 705,
+              "per_position_acceptance_rate": [
+                0.783,
+                0.579,
+                0.464
+              ],
+              "draft_acceptance_rate_pct": 60.9
+            },
+            {
+              "log_time": "08-16 06:48:29",
+              "mean_acceptance_length": 2.88,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 46.5,
+              "drafted_throughput_tok_s": 74.1,
+              "accepted_tokens": 465,
+              "drafted_tokens": 741,
+              "per_position_acceptance_rate": [
+                0.834,
+                0.611,
+                0.437
+              ],
+              "draft_acceptance_rate_pct": 62.8
+            },
+            {
+              "log_time": "08-16 06:48:39",
+              "mean_acceptance_length": 2.94,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 49.4,
+              "drafted_throughput_tok_s": 76.5,
+              "accepted_tokens": 494,
+              "drafted_tokens": 765,
+              "per_position_acceptance_rate": [
+                0.871,
+                0.62,
+                0.447
+              ],
+              "draft_acceptance_rate_pct": 64.6
+            },
+            {
+              "log_time": "08-16 06:48:49",
+              "mean_acceptance_length": 2.89,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 65.4,
+              "drafted_throughput_tok_s": 103.79,
+              "accepted_tokens": 654,
+              "drafted_tokens": 1038,
+              "per_position_acceptance_rate": [
+                0.801,
+                0.61,
+                0.48
+              ],
+              "draft_acceptance_rate_pct": 63.0
+            },
+            {
+              "log_time": "08-16 06:48:59",
+              "mean_acceptance_length": 2.92,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 42.2,
+              "drafted_throughput_tok_s": 66.0,
+              "accepted_tokens": 422,
+              "drafted_tokens": 660,
+              "per_position_acceptance_rate": [
+                0.845,
+                0.636,
+                0.436
+              ],
+              "draft_acceptance_rate_pct": 63.9
+            },
+            {
+              "log_time": "08-16 06:49:09",
+              "mean_acceptance_length": 2.98,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 68.1,
+              "drafted_throughput_tok_s": 103.19,
+              "accepted_tokens": 681,
+              "drafted_tokens": 1032,
+              "per_position_acceptance_rate": [
+                0.837,
+                0.654,
+                0.488
+              ],
+              "draft_acceptance_rate_pct": 66.0
+            },
+            {
+              "log_time": "08-16 06:49:19",
+              "mean_acceptance_length": 2.95,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 62.99,
+              "drafted_throughput_tok_s": 96.89,
+              "accepted_tokens": 630,
+              "drafted_tokens": 969,
+              "per_position_acceptance_rate": [
+                0.836,
+                0.638,
+                0.477
+              ],
+              "draft_acceptance_rate_pct": 65.0
+            },
+            {
+              "log_time": "08-16 06:49:29",
+              "mean_acceptance_length": 2.93,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 44.1,
+              "drafted_throughput_tok_s": 68.39,
+              "accepted_tokens": 441,
+              "drafted_tokens": 684,
+              "per_position_acceptance_rate": [
+                0.846,
+                0.632,
+                0.456
+              ],
+              "draft_acceptance_rate_pct": 64.5
+            },
+            {
+              "log_time": "08-16 06:49:39",
+              "mean_acceptance_length": 2.86,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 64.3,
+              "drafted_throughput_tok_s": 103.49,
+              "accepted_tokens": 643,
+              "drafted_tokens": 1035,
+              "per_position_acceptance_rate": [
+                0.812,
+                0.594,
+                0.458
+              ],
+              "draft_acceptance_rate_pct": 62.1
+            },
+            {
+              "log_time": "08-16 06:49:49",
+              "mean_acceptance_length": 2.83,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 72.1,
+              "drafted_throughput_tok_s": 117.9,
+              "accepted_tokens": 721,
+              "drafted_tokens": 1179,
+              "per_position_acceptance_rate": [
+                0.827,
+                0.601,
+                0.407
+              ],
+              "draft_acceptance_rate_pct": 61.2
+            },
+            {
+              "log_time": "08-16 06:49:59",
+              "mean_acceptance_length": 2.94,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 55.8,
+              "drafted_throughput_tok_s": 86.1,
+              "accepted_tokens": 558,
+              "drafted_tokens": 861,
+              "per_position_acceptance_rate": [
+                0.836,
+                0.624,
+                0.484
+              ],
+              "draft_acceptance_rate_pct": 64.8
+            },
+            {
+              "log_time": "08-16 06:50:09",
+              "mean_acceptance_length": 2.86,
+              "speculative_depth": 3,
+              "accepted_throughput_tok_s": 61.2,
+              "drafted_throughput_tok_s": 98.69,
+              "accepted_tokens": 612,
+              "drafted_tokens": 987,
+              "per_position_acceptance_rate": [
+                0.836,
+                0.602,
+                0.422
+              ],
+              "draft_acceptance_rate_pct": 62.0
+            }
+          ],
+          "spec_windows_with_traffic": 36,
+          "acceptance_walk_pct": [
+            67.8,
+            64.9,
+            64.0,
+            61.6,
+            63.4,
+            63.8,
+            66.5,
+            60.7,
+            62.6,
+            63.9,
+            64.6,
+            59.5,
+            64.2,
+            58.9,
+            64.5,
+            63.3,
+            62.6,
+            66.1,
+            57.9,
+            65.1,
+            59.2,
+            58.5,
+            65.7,
+            61.3,
+            60.9,
+            62.8,
+            64.6,
+            63.0,
+            63.9,
+            66.0,
+            65.0,
+            64.5,
+            62.1,
+            61.2,
+            64.8,
+            62.0
+          ],
+          "acceptance_min_pct": 57.9,
+          "acceptance_max_pct": 67.8,
+          "acceptance_zero_windows": 0,
+          "prefix_cache_hit_rate_pct_walk": [
+            35.8,
+            60.4,
+            59.9,
+            54.6,
+            57.8,
+            58.1,
+            57.2,
+            57.5,
+            56.2,
+            55.4,
+            55.4,
+            54.5,
+            54.0,
+            54.5,
+            54.5,
+            54.4,
+            53.1,
+            52.7,
+            53.1,
+            51.9,
+            51.6,
+            50.5,
+            50.5,
+            50.3,
+            50.9,
+            50.9,
+            51.1,
+            51.4,
+            52.0,
+            51.1,
+            51.1,
+            51.2,
+            50.6,
+            50.8,
+            50.3,
+            50.3,
+            50.1
+          ],
+          "prefix_cache_hit_rate_pct_final": 50.1
+        },
+        "raw_server_log": "receipts/gdn-gate-raw/out/server-R2.log.gz",
+        "load": {
+          "requests": 468,
+          "by_kind": {
+            "long_stream": 240,
+            "cache_hit_repeat": 156,
+            "tiny_final_chunk": 36,
+            "short_prompt": 36
+          },
+          "errors": 0,
+          "first_error": null,
+          "wall_s": 363.85,
+          "metric_delta": {
+            "prefix_cache_queries": 7538573.0,
+            "prefix_cache_hits": 3958400.0,
+            "drafts": 11827.0,
+            "draft_tokens": 35481.0,
+            "accepted": 22380.0,
+            "preemptions": 60.0
+          }
+        },
+        "load_shape": {
+          "streams": 8,
+          "injectors": 3,
+          "duration_s": 360.0,
+          "warmup_s": 45.0,
+          "max_tokens_long": 192,
+          "max_tokens_injected": 24,
+          "short_prompt_lengths": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            8,
+            12
+          ],
+          "repeat_sends": 4,
+          "chunk_tokens": 2048,
+          "long_stream_prompt_tokens": [
+            6835,
+            6670,
+            6670,
+            6670,
+            6235,
+            5470,
+            5470,
+            5470
+          ],
+          "max_prompt_tokens_filter": 7600,
+          "frozen_prompts_eligible": 18,
+          "frozen_prompts_total": 38
+        }
+      }
+    },
+    "comparison_arms_A_An_B": {
+      "run": false,
+      "why_not": "the pre-registered trigger was R1 nonzero and R1 was zero. Running them anyway would have manufactured a false negative: upstream's own per-event effect is 0.002755 mean absolute chosen-logprob error, our run-to-run floor on this build is 0.08231278, and the measured event rate is 3 miscomputed metadata builds in 5825. Three events cannot move a mean-absolute statistic whose noise floor is already thirty times the per-event effect, so a null result would have carried no information while looking like evidence of no effect.",
+      "floor_that_would_have_applied": 0.08231278
+    },
+    "raw_artifact_digests": {
+      "out/arm-R1-sustained.json": "9985ef2056768b9255dbc9cb3813fd1d583cc58382e30378f6c2394a0e6afbe8",
+      "out/arm-R1.json": "15b62a113a2e78665c0dd1f946553e9cbd1e7843a04349923f064cb026d4be44",
+      "out/arm-R2.json": "fe408732e008f437c9ca1221d81879128c4a23ea3dc3968ad9ff7312028caab1",
+      "out/arm-R3-sustained.json": "8de0fc67843eb19e6f29f4b92a24416cf362e5b39e53da247d71293a96f682d4",
+      "out/arm-R3.json": "9c087122c956e95b5caa2f5b32dc153caf64dbc0ed52755f1ea78563880fba0b",
+      "out/command-R1.json": "4c705ab67e3b7c0fbe065d54879ec3a543d4b8a35b6bc81409328d8c15f01ed0",
+      "out/command-R2.json": "7830c28645b8a81b6c67d5430b77d3bbc6729bdd4e747cffb3e1d296c2cec311",
+      "out/command-R3.json": "5246eac5644d3d6266d3526cca3fe8df3ca268c85b7c6be3f6656214d8bc6dca",
+      "out/in-container-verify-R1.txt": "26eba265c6b7b00ecf561dd92327d950f941a19c5406d15ba05f4231802f5bfa",
+      "out/in-container-verify-R2.txt": "26eba265c6b7b00ecf561dd92327d950f941a19c5406d15ba05f4231802f5bfa",
+      "out/in-container-verify-R3.txt": "26eba265c6b7b00ecf561dd92327d950f941a19c5406d15ba05f4231802f5bfa",
+      "out/instrument-additive.json": "43fabf1e17d20428b1ce737050acd625d8a17a50d1c6f6c75fc28812a1af0f41",
+      "out/module-verify-image.txt": "e907948460334f7a85ef9c3064c318a8b6243e0063edee0db3f72875e70222f0",
+      "out/reach-R1-phase1.json": "b9dcb4b4395e5440d938dfc6640153ad2575bf8d862863b6aacb6ce98ebe6efc",
+      "out/reach-R1.json": "426f821e3cd4f2fd0020ec2613180f8eacc8c3fb1cab04450192779f1f2b52fb",
+      "out/reach-R2.json": "6ba37b820b08b23406a559f7148a4671b6bee456c2460db6939e07337570d411",
+      "out/reach-R3-phase1.json": "240afbcee2b71c61c1516cbdedb738847ac10fa9fefabbbee8a4d4d61c88a5fe",
+      "out/reach-R3.json": "173e9d704dccbae4a6ed025f6f3d1ddcfcd45ef9f24bad81064c135f356dacfc",
+      "out/reorder-sim.json": "0e6812f58c0d2812f93413b092658fddf3736d78ba01767e30423091be2bbda6",
+      "out/server-R1.log.gz": "bb337f5910d5ce20725eb9c2cd3979a67dca81f1353e4ad3300ff6c85c416bba",
+      "out/server-R2.log.gz": "50c898e71e5806644b331e902d0c3cf81784f39aa42d095513b0dd14f77994e4",
+      "out/server-R3.log.gz": "9c4a0dc95d7fd4d701f06e0152cb0156ef4fa11f1600d4eae932a3171343bfe2",
+      "out/stage.json": "12d765875f4d25c583e7e74af15f4be4caa99ae48a666f9066ed467c5ad31d3d",
+      "out/startup-facts-R1.txt": "dfe3242b492b87c5c95dec4b947f3e928dc22741bbf079558f17b329622a75cb",
+      "out/startup-facts-R2.txt": "1fd126b37b9f6945536c466ed05828ec1fdee645341d162ea96a63a8ebdb85f4",
+      "out/startup-facts-R3.txt": "6be2cfdfd503911030d24e1e8bd931caef536f265591b3ed77912788187a3bf1",
+      "out/windows-R1.json": "eb77f101515010a7f877ed2f6cdd288fc568e9eec460f00c269c622d14911238",
+      "out/windows-R2.json": "f7781b6a1f4f7ef42ccff6e9ca3bb110d1f3af8cd65aa7fc1d9038a8dc353328",
+      "out/windows-R3.json": "e648016f8f8dd5a67305bf1895b9011600926c189c3c0e28603d14f5f70c49c6",
+      "reach/R1/reach.1.json": "040572c8803b8fcf48660e466b7d22231292e69f7273541d4a3e800ebb1ed590",
+      "reach/R1/reach.199.json": "bf2fbb9de9ab921855e0e9e414bdcb1f45896bda39be252c671ae3ae77eddb27",
+      "reach/R1-phase1/reach.199.json": "27539230a3cea6d926abdfa95a190f368c0c9a0d2e8d1935558bca01a8ae3866",
+      "reach/R2/reach.1.json": "040572c8803b8fcf48660e466b7d22231292e69f7273541d4a3e800ebb1ed590",
+      "reach/R2/reach.198.json": "aeb0135cb82995fc04de48c1bc06358a09ebd409656f36c0c953b95cc712a243",
+      "reach/R3/reach.1.json": "040572c8803b8fcf48660e466b7d22231292e69f7273541d4a3e800ebb1ed590",
+      "reach/R3/reach.198.json": "bdfa61b123890897ce7de720611059b87e9613aa4b3642a166dd920ba8429914",
+      "reach/R3-phase1/reach.198.json": "7214b4d33e1ef35e3349fd5055efb98847112a690c3d6282eed7f020be5ca7dd"
+    }
   },
-  "content_sha256": "187043fe4cf0bc91632e9b9d023966c36ec37beb24c6a855d48315b9f230198e"
+  "verdict": {
+    "headline": "The module changes nothing measurable under either published-recipe arm, and it does change the computation in a shipped prefix-caching regime. Reachability, not answer quality, is what this receipt resolves.",
+    "R1_our_published_eight_stream_recipe": {
+      "result": "zero events",
+      "exposure": "3329 metadata builds, 2112 of them on the gather branch (63 %)",
+      "statement": "below 0.9012 miscomputed metadata builds per thousand (95 % upper bound, rule of three, N = 3329 builds observed, 2112 of them on the gather branch, zero events)",
+      "phase1_only_the_published_wave_schedule": "below 2.3419 miscomputed metadata builds per thousand (95 % upper bound, rule of three, N = 1281 builds observed, 390 of them on the gather branch, zero events)",
+      "reading": "this is not a missed rare window. The suspect gather branch executed 2112 times and the speculative tokens were the leading tokens of the batch every single time, which is exactly what the batch reorder guarantees."
+    },
+    "R3_the_budget_amplifier": {
+      "result": "zero events",
+      "exposure": "8065 metadata builds, 6915 of them on the gather branch (86 %)",
+      "statement": "below 0.372 miscomputed metadata builds per thousand (95 % upper bound, rule of three, N = 8065 builds observed, 6915 of them on the gather branch, zero events)",
+      "did_the_amplifier_amplify": "yes, on exposure: shrinking --max-num-batched-tokens from 2048 to 512 raised gather-branch builds from 2112 to 6915, a 3.3x increase, because prefills chunk into more steps and so more steps carry a co-scheduled prefill. The gather-branch FRACTION rose from 0.634 to 0.857, so the two arms differ in more than the one knob and the 4x prediction is stated against gather-branch builds rather than against all builds.",
+      "what_it_settles": "the derived clamp-to-one mechanism was given 3.3x the exposure at a quarter of the token budget and still produced nothing. Combined with R1 that is 9027 gather-branch builds with zero events, a 95 % upper bound of 0.332 per thousand gather-branch builds."
+    },
+    "R2_a_shipped_prefix_caching_regime": {
+      "result": "THREE events: the defective path was entered",
+      "exposure": "5825 metadata builds, 2211 of them on the gather branch",
+      "statement": "0.515 miscomputed metadata builds per thousand (3 events over N = 5825 builds)",
+      "rate_per_thousand_builds": 0.515021,
+      "rate_per_thousand_gather_branch_builds": 1.356852,
+      "the_composition_that_fired": {
+        "key": "6s/1p/0d, i.e. six speculative decodes and one non-speculative request, three times",
+        "max_displaced_spec_tokens": 4,
+        "first_misordered_token_index": 20,
+        "what_that_means": "tokens 0-19 were speculative (five decodes of four tokens), token 20 began a four-token NON-speculative request, and the sixth speculative decode's four tokens sat behind it. So exactly one speculative decode was displaced and its four gate rows were read from the wrong tokens.",
+        "it_is_the_composition_predicted_offline": "this is case 6 of tools/gdn_reorder_sim.py, the region-1 collision: a non-speculative short_extend ordered ahead of a padded cache-hit pseudo-speculative request. The simulation predicted that shape from the image's own reorder before any server was started, and the measurement produced it."
+      },
+      "why_this_regime_is_not_hypothetical": "prefix caching ships in the three published 8192-token recipes (k4, k5k6, hydrated) with --enable-prefix-caching --mamba-cache-mode align, per MODEL_CARD-K4.md. This arm ran those exact flags at --max-model-len 8192 and utilisation 0.85. The only deliberate deviation is --max-num-seqs 8, which is the point of the measurement. Prefix cache hit rate reached 50.1 %, so the path was genuinely exercised."
+    },
+    "what_was_resolved": [
+      "Under our published eight-stream concurrency recipe the module is a no-op below 0.90 miscomputed metadata builds per thousand (95 % upper bound, N = 3329), and below 1.42 per thousand gather-branch builds.",
+      "The gather branch itself is not rare: it runs on 63 % of metadata builds at eight streams. Mixed batches are the normal steady state and are harmless because the reorder puts speculative tokens first.",
+      "The defect is reachable, measured, in a configuration we ship: prefix caching at the 8192-token window, 0.515 events per thousand metadata builds.",
+      "The composition that fires is the one derived from source and confirmed offline before the GPU window: a non-speculative request sharing a low reorder region ahead of a speculative one.",
+      "The token-budget clamp mechanism specifically was NOT observed, at 9027 gather-branch builds across two budgets, upper bound 0.332 per thousand."
+    ],
+    "what_was_NOT_resolved": [
+      "Whether those three miscomputed forward passes changed any emitted token. They cannot be detected by our divergence instrument: upstream's per-event effect is 0.002755 mean absolute chosen-logprob error against our 0.08231278 run-to-run floor, so three events in 5825 builds are far below resolution. The comparison arms were therefore not run, and this receipt makes no claim about answer quality either way.",
+      "The absolute event rate under real production traffic. Ours is adversarial-by-design traffic chosen to open the path, so 0.515 per thousand is an upper bound on a shipped regime rather than a forecast for a given workload.",
+      "Whether the clamp-to-one mechanism is unreachable or merely rarer than our exposure. Two arms and 9027 gather-branch builds bound it below 0.332 per thousand; they do not prove it impossible."
+    ],
+    "recommendation_for_the_cards": {
+      "decision": "keep it as an optional overlay, and recommend mounting it on the three recipes that ship prefix caching",
+      "per_the_pre_registered_rule": "nonzero at any rate means the cards recommend the overlay. The rate is nonzero in a shipped regime, so the recommendation follows without a fresh cost-benefit argument: the module is free, py_compile-clean under the image's Python 3.12.3, diff-identical to upstream's eight changed lines, and a nonzero rate means some forward passes are silently miscomputed with no signal to the operator.",
+      "do_not_promote_into_the_image_yet": "the promoted digest sha256:16a936b8... is qualified and this receipt gives no performance or correctness evidence that would survive a re-qualification. Mount it read-only over the vendored file, exactly as arm B would have.",
+      "not_needed_for_the_context_edition's_native_window_recipe": "R1 bounds it below 0.90 per thousand there, and prefix caching is declined at 262144 anyway, so the shipped path that fires does not exist in that recipe.",
+      "cards_were_not_edited_by_this_agent": true
+    },
+    "free_mitigation_for_operators_who_cannot_patch": "raise --max-num-batched-tokens. The clamp mechanism's rate scales as roughly max_num_seqs / max_num_batched_tokens per prefill completion, so a larger budget narrows the triggering window proportionally. NOT proposed as a change to our published 2048, which was measured for prefill throughput and memory; trading a measured setting against a mechanism we could not even observe would be backwards."
+  },
+  "content_sha256": "119a50947fed9706fdfdd225d1713707098885c111a41098438e81bb46596e98"
 }

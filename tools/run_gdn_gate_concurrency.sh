@@ -278,6 +278,8 @@ configure_arm() {
   # per-arm overrides, reset every call so an arm cannot inherit the previous one's profile
   ARM_MAXLEN=$MAXLEN
   ARM_BATCHED=$BATCHED
+  ARM_UTIL=$GPU_UTIL
+  ARM_MAX_PROMPT=0
   case $1 in
   # ---- reachability arms: instrument mounted, gate module NOT mounted. PR #51812 does
   # not touch gdn_attn.py, so batch composition is the same either way and one server
@@ -286,22 +288,23 @@ configure_arm() {
     ARM_DESC='our published 8-stream concurrency recipe, gdn_attn.py instrumented: does the defective gather composition ever occur?'
     ;;
   R2)
-    ARM_DESC='MECHANISM ONLY, not a configuration we ship: adversarial mixed traffic (eight speculative streams plus injected short prompts and full-prefix-cache-hit repeats) with prefix caching and align mode ON to open the scheduler spec-padding path, gdn_attn.py instrumented, at a 32768 window'
-    ARM_ARGS=(--enable-prefix-caching --mamba-cache-mode align)
-    # Two reasons this arm runs at a small window rather than the recipe's 262144.
+    ARM_DESC='a SHIPPED prefix-caching regime: the published 8192-token recipe flags (--enable-prefix-caching --mamba-cache-mode align, --max-model-len 8192, --gpu-memory-utilization 0.85) taken from MODEL_CARD-K4.md, run at --max-num-seqs 8 with adversarial mixed traffic (eight speculative streams plus injected short prompts and full-prefix-cache-hit repeats) to open the scheduler spec-padding path, gdn_attn.py instrumented'
+    # The three published 8192-token recipes (k4, k5k6, hydrated) ship prefix caching and
+    # align mode explicitly, at --max-model-len 8192 and utilisation 0.85. Prefix caching is
+    # declined only at the context edition's native 262144 window, where ShipPrefixCaching
+    # measured three separate failures: refusal to start at 0.955, deadlock at 0.9555, and a
+    # livelock at 0.9585 that prefills to 98.9 %, requeues and emits nothing for 656 s.
     #
-    # 1. ShipPrefixCaching measured that prefix caching is not shippable for this model at
-    #    the native window on this card: align rounds the request up to whole 1600-token
-    #    mamba blocks, and at 262144 the engine either refuses to start, deadlocks
-    #    mid-prefill with reason="capacity", or livelocks by re-prefilling on a 30 s period
-    #    while vllm:num_preemptions_total stays at 0. So there is no qualified utilisation
-    #    to borrow, and this arm is labelled mechanism-only throughout.
-    # 2. Nothing here needs a large window. The longest frozen prompt is 15400 tokens plus
-    #    220 of output, so a 32768 window (21 whole mamba blocks, 33600 tokens) clears every
-    #    request with room to spare and keeps the pool far larger than any single prefill,
-    #    which is what the livelock needs to be impossible rather than merely unlikely.
-    #    The padding path this arm probes depends on prefix-cache hits, not on window size.
-    ARM_MAXLEN=32768
+    # So this arm runs inside a regime we actually ship rather than near one. The single
+    # deliberate deviation is concurrency: the cards do not fix --max-num-seqs, and eight
+    # streams is the entire point of this measurement.
+    ARM_ARGS=(--enable-prefix-caching --mamba-cache-mode align)
+    ARM_MAXLEN=8192
+    ARM_UTIL=0.85
+    # The frozen set runs to 15400 tokens, which does not fit an 8192 window. The driver
+    # selects the subset at or below 7600 tokens, leaving room for 220 output tokens plus
+    # the chat head. Same file, same digest, same token ids: a filter, not a refreeze.
+    ARM_MAX_PROMPT=7600
     ;;
   # R3 is the mechanism amplifier, and it is what turns a zero in R1 from "we saw
   # nothing" into "we saw nothing where the derivation says the rate is lowest, and we
@@ -359,7 +362,7 @@ compose() {
     --served-model-name m
     --quantization exl3 --quantization-config "$QUANT_CFG"
     --max-model-len "$ARM_MAXLEN"
-    --gpu-memory-utilization "$GPU_UTIL"
+    --gpu-memory-utilization "$ARM_UTIL"
     --max-num-seqs "$SEQS"
     --kv-cache-dtype fp8
     --max-num-batched-tokens "$ARM_BATCHED"
@@ -482,7 +485,8 @@ phase_reach() {
       --base "http://127.0.0.1:$PORT" --model m --prompts "$W/prompts.json" \
       --arm "$arm" --description "$ARM_DESC" --expect-prompts-sha256 "$(prompts_sha)" \
       --streams "$SEQS" --injectors 3 --duration-s "$ADV_DURATION" \
-      --chunk-tokens "$ARM_BATCHED" --out "$OUT/arm-$arm.json" 2>&1 | tee "$LOGS/probe-$arm.out"
+      --chunk-tokens "$ARM_BATCHED" --max-prompt-tokens "$ARM_MAX_PROMPT" \
+      --out "$OUT/arm-$arm.json" 2>&1 | tee "$LOGS/probe-$arm.out"
     ;;
   esac
   # SIGTERM lets the workers' atexit hook flush; the periodic dump covers a hard kill.
