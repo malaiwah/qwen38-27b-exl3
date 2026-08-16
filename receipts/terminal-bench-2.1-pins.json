@@ -1,0 +1,235 @@
+{
+  "schema": "qwen38-terminal-bench-2.1-pins/1",
+  "generated_utc": "2026-08-16T14:30:00Z",
+  "agent": "TerminalBench2 (resumed the rate-limit-killed TerminalBench; the container-runtime solution and all pins below were established by the predecessor and re-verified here before use)",
+  "purpose": "Freeze every knob of the Terminal-Bench 2.1 three-pass protocol BEFORE the rental GPU window opens, so the three pass receipts only ever add measurements and never re-negotiate the setup. Landed early on purpose: the repo must stay decommission-safe.",
+  "source_of_every_number": "Live reads of the two hosts performed by this agent (ssh to aiboss, local reads on the rental). Every value below was printed by a command in this session; nothing is quoted from the predecessor's narrative without re-reading it.",
+  "what_a_tb_score_is": "Terminal-Bench scores an AGENT+MODEL SYSTEM (Terminus-2 2.0.0 driving a vLLM OpenAI endpoint), never a model in isolation. A task failure does not by itself implicate the quantisation, which is exactly why pass 3 re-runs twice-failed tasks against BF16 on the same card with the same agent.",
+  "topology": {
+    "route": "(c) -- owner-decided: model serves on the rental, task containers run on AIBoss, joined by an ssh -R reverse tunnel through the jump host",
+    "why_not_local_containers": "The rental box is itself a container whose seccomp profile denies clone(CLONE_NEWUSER|CLONE_NEWNS): `unshare -U` and `unshare -m` both return EPERM, there is no docker or podman binary and no systemd. Option (a) is structurally impossible there, not merely inconvenient.",
+    "model_host": {
+      "role": "serves the model only; runs no task container",
+      "gpu": "NVIDIA RTX PRO 6000 Blackwell Server Edition, 97887 MiB",
+      "runtime": "tools/ggrun.sh -- proot into the promoted Gilded Gnosis rootfs (/var/tmp/gg-rootfs); no container runtime needed"
+    },
+    "container_host": {
+      "name": "aiboss (10.15.0.151 via jump host root@ns1.malaiwah.com)",
+      "role": "runs all Terminal-Bench task containers, CPU-ONLY",
+      "cpus": 28,
+      "memory_gb_total": 125,
+      "memory_gb_available_at_pin_time": 117,
+      "podman": "4.9.3 rootless, user API socket at /run/user/$(id -u)/podman/podman.sock",
+      "docker_cli": "27.5.1 build 9f9e405 (static, user-local ~/.local/bin)",
+      "docker_compose": "2.39.1 (user-local CLI plugin ~/.docker/cli-plugins)",
+      "why_docker_cli": "harbor does not use the docker Python SDK: it shells out to the `docker` CLI and `docker compose`. Pointing DOCKER_HOST at the rootless podman socket therefore makes the whole harness work unmodified.",
+      "disk_free_home_gb_at_pin_time": 67
+    },
+    "tunnel": {
+      "form": "ssh -N -R 127.0.0.1:18000:127.0.0.1:8000 aiboss",
+      "options": "BatchMode=yes ExitOnForwardFailure=yes ConnectTimeout=15 ServerAliveInterval=30 ServerAliveCountMax=6 TCPKeepAlive=yes",
+      "reconnect": "tools/run_terminal_bench.sh tunnel loops forever, reclaiming the remote listener with `fuser -k -n tcp 18000` after an unclean drop, because the bench is hours long",
+      "rtt_measurement": "PENDING -- recorded by `run_terminal_bench.sh probe` at window start into receipts/terminal-bench-2.1-hyd.json"
+    }
+  },
+  "harness_pins": {
+    "harbor": "0.21.0 (uv tool from PyPI)",
+    "uv": "0.12.5 (x86_64-unknown-linux-gnu)",
+    "python_on_container_host": "3.12.3",
+    "dataset": "terminal-bench/terminal-bench-2-1",
+    "dataset_version_resolved": 6,
+    "dataset_ref_as_run": "terminal-bench-2-1@6",
+    "dataset_mode": "pinned LOCAL tree (`harbor run -p tasks`), so a registry-side change cannot silently alter a pass mid-protocol",
+    "tasks_tree_path": "aiboss:~/tb21/tasks",
+    "tasks_tree_sha256": "c13961acb68d296b5b12ce158b9e9b89fbe7d561b06b1d748f5cda59a48d0ec2",
+    "tasks_tree_sha256_method": "cd tasks && find . -type f | LC_ALL=C sort | xargs sha256sum | sha256sum",
+    "n_tasks": 89,
+    "agent": "terminus-2 (harbor built-in)",
+    "agent_version": "2.0.0",
+    "agent_version_source": "harbor/agents/terminus_2/terminus_2.py :: version() returns \"2.0.0\"",
+    "litellm_model_string": "hosted_vllm/<served-model-name>",
+    "model_info_required": {
+      "value": {
+        "max_input_tokens": 32768,
+        "max_output_tokens": 8192,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "why": "LiteLLM ships no metadata for hosted_vllm/ names. Without an explicit model_info the agent cannot compute remaining context, so its summarisation trigger misfires. Passed as --ak model_info=..."
+    },
+    "timeout_multiplier": 1.0,
+    "timeout_multiplier_note": "Kept at the task.toml values unless the measured tunnel RTT justifies raising it; any change is recorded in the pass receipt.",
+    "max_retries": 3,
+    "retry_include_transport_only": [
+      "APIConnectionError",
+      "APIError",
+      "InternalServerError",
+      "ServiceUnavailableError",
+      "Timeout",
+      "ConnectionError",
+      "RemoteProtocolError",
+      "EnvironmentStartError",
+      "EnvironmentStartTimeoutError",
+      "AgentSetupTimeoutError"
+    ],
+    "retry_policy_rationale": "In-run retries are restricted to TRANSPORT failures so a tunnel drop or a podman hiccup can never be recorded as the model failing a task. AgentTimeoutError is deliberately excluded: running out of task time is a genuine Terminal-Bench failure mode, and pass 2 retries it anyway."
+  },
+  "resume_design": {
+    "requirement": "resume-by-task-id, hard requirement (the bench is hours long and the rental card is queued behind other agents)",
+    "mechanism": "`harbor job resume -p jobs/<job>`; the runner calls it automatically when the job dir already has config.json",
+    "verified_semantics_by_source_read": {
+      "file": "harbor/job.py",
+      "trial_dir_without_result_json": "deleted (shutil.rmtree) and re-run -- job.py:258-260",
+      "completed_trial": "preserved and skipped; matched against the plan in _init_remaining_trial_configs (job.py:327-357), only unmatched trials go into _remaining_trial_configs",
+      "config_identity_enforced": "job.py:246 raises FileExistsError if the job dir's config.json differs from the config being run -- which is why resume must go through `harbor job resume` (it re-reads the job's own config.json) rather than re-issuing `harbor run`",
+      "errored_trials": "`-f <ExceptionType>` deletes matching errored trials before resuming (cli/jobs.py:1750-1796), so transport-failed trials are retried while genuine failures are kept"
+    },
+    "consequence": "An interrupted or yielded window loses only the trials that were in flight at that instant."
+  },
+  "serving_pins": {
+    "vllm": "0.11.2.dev280+gilded.gnosis.v20.vllm4d006a4.b12xcd3ce19.fi1ac6942.cu132.20260810.r34",
+    "torch": "2.12.0+cu132",
+    "flashinfer": "0.6.18+cu132",
+    "rootfs": "/var/tmp/gg-rootfs (promoted Gilded Gnosis image, r34), entered with proot -- no container runtime on the rental",
+    "max_model_len": 32768,
+    "gpu_memory_utilization": 0.92,
+    "max_num_seqs": 16,
+    "kv_cache_dtype": "fp8",
+    "max_num_batched_tokens": 2048,
+    "prefix_caching": true,
+    "mamba_cache_mode": "align",
+    "speculative_config": {
+      "method": "mtp",
+      "num_speculative_tokens": 3
+    },
+    "enforce_eager": true,
+    "enforce_eager_reason": "Mandatory for the EXL3 loader (docs/03: Exl3Config._require_enforce_eager raises without it). Kept for the BF16 arm as well so pass 3 differs from passes 1-2 in the WEIGHTS ALONE.",
+    "deviation_from_published_card_recipe": {
+      "what": "window 32768 instead of the card's 8192, plus fp8 KV",
+      "why": "Terminus-2 summarises when free context falls below its threshold; an 8k window would thrash on Terminal-Bench's long tool-output transcripts and would measure the summariser, not the model."
+    },
+    "sampling": "The agent sends no temperature, so vLLM applies each checkpoint's generation_config. Those two files are BYTE-IDENTICAL between the hydrated and BF16 checkpoints (verified by diff in this session), which is what makes pass 3 like-for-like.",
+    "known_caveat_carried_from_the_image": "The un-merged #51812 GDN spec-gate defect ships with this promoted image (upper bound 0.515/1000 builds under adversarial traffic)."
+  },
+  "checkpoints": {
+    "pass_1_and_2": {
+      "served_model_name": "qwen38",
+      "local_path": "/var/tmp/models/Qwen3.8-27B-EXL3-K5K6-hydrated",
+      "hf_repo": "malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated",
+      "hf_revision_at_pin_time": "aff12ef6e53006a4c685e01bc40e6880003677fb",
+      "local_size": "21G",
+      "integrity": "sha256sum -c SHA256SUMS passed over the local tree",
+      "mtp_tensors_in_index": 39
+    },
+    "pass_3": {
+      "served_model_name": "qwen38-bf16",
+      "local_path": "/var/tmp/models/Qwen3.8-27B",
+      "hf_repo": "Qwen/Qwen3.8-27B",
+      "hf_revision_at_pin_time": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0",
+      "local_size": "52G",
+      "mtp_tensors_in_index": 15,
+      "note": "Carries MTP tensors, so the identical --speculative-config mtp/3 applies to both arms.",
+      "served_under_a_distinct_name_because": "the published per-task rows must say which weights answered; `qwen38` vs `qwen38-bf16` makes every row in the dataset self-identifying"
+    },
+    "generation_config_identical": true
+  },
+  "cpu_only_guarantee": {
+    "claim": "No Terminal-Bench container ever receives a GPU.",
+    "check_1_task_declarations": "89/89 task.toml files pin `gpus = 0`; zero non-zero. All 89 TB 2.1 tasks are CPU-only by construction.",
+    "check_2_no_code_path": "harbor's docker environment (6 modules under harbor/environments/docker) contains no `DeviceRequests`, no `--gpus`, no `nvidia` and no `/dev/nvidia` reference. Compose overrides are produced by write_resources_compose_file, which emits cpus / mem_limit / reservations ONLY -- it has no GPU parameter at all.",
+    "check_3_live_containers": "Every running container whose image is a TB task image (docker.io/alexgshaw/*) is inspected for HostConfig.Devices and HostConfig.DeviceRequests during the bench and must show none.",
+    "check_4_nvidia_smi": "nvidia-smi compute-app lists are captured on BOTH hosts during every pass.",
+    "co_tenant_gpu_holders_named_not_hidden": [
+      "/qwen38-27b (the owner's live vLLM service)",
+      "/nvidia-gpu-exporter"
+    ],
+    "honesty_note": "The two containers above DO hold nvidia devices. They are pre-existing co-tenant workloads on the shared box, are not created by this bench, and are named explicitly rather than filtered out of the evidence. The assertion is scoped to TB task containers, and the checker prints the co-tenant list every time.",
+    "per_trial_record": "Every trial's result.json records config.environment.override_gpus; tools/tb_rows.py gpu-assert fails the pass if any value is not null/0.",
+    "status_at_pin_time": "ALL CHECKS PASSED (run in this session with 0 TB containers live, i.e. between passes)"
+  },
+  "concurrency": {
+    "flag": "--n-concurrent-trials N in the runner, passed to harbor as -n",
+    "chosen_value": "PENDING -- measured at window start by `run_terminal_bench.sh headroom` and recorded in receipts/terminal-bench-2.1-hyd.json",
+    "why_concurrency_is_mandatory_not_cosmetic": {
+      "sum_of_per_task_agent_timeouts_sec": 149160.0,
+      "sum_hours": 41.43,
+      "max_single_task_timeout_sec": 12000.0,
+      "reading": "Running the 89 tasks serially would allow up to 41.4 h of agent time. The rental card is shared and queued, so the pass must be concurrent to fit a window at all."
+    },
+    "container_side_is_not_the_binding_constraint": {
+      "task_cpu_demand": {
+        "cpus=1": 83,
+        "cpus=2": 3,
+        "cpus=4": 3
+      },
+      "task_memory_demand_mb": {
+        "2048": 68,
+        "4096": 13,
+        "8192": 8
+      },
+      "host_cpus": 28,
+      "reading": "83 of 89 tasks ask for a single core, so AIBoss's 28 cores and 117 GB free RAM leave the container side slack. The binding constraint is the single vLLM server on the 96 GB card, which is why N is picked from measured serving headroom rather than from core count."
+    },
+    "co_tenancy": "AIBoss also hosts the owner's live qwen38-27b service and takes short GPU windows for other agents; the CPU load of the task containers is capped for that reason and re-checked with `uptime` during the bench."
+  },
+  "disk_hazard": {
+    "hazard": "`podman image prune -af` on aiboss would destroy ~192 GB of images belonging to other agents and services (codex-aiboss-shim, gg-r28/r34 vllm builds, fruit-qsrt, glm52-turnkey, the asr/tts servers, pearl-miner).",
+    "mitigation": "The runner's disk_guard only ever removes images matching docker.io/alexgshaw/* (Terminal-Bench task images), and only when free space on aiboss:$HOME drops below 15 GB. There is no global prune anywhere in the tooling.",
+    "tb_task_images_present_at_pin_time": [
+      "alexgshaw/openssl-selfsigned-cert:20251031",
+      "alexgshaw/regex-log:20251031"
+    ]
+  },
+  "harness_validation_evidence": {
+    "what": "An oracle-agent trial run through the full stack BEFORE committing the card to hours of bench: podman rootless -> docker CLI -> compose -> task container -> verifier -> result.json.",
+    "job": "oracle-smoke",
+    "task": "regex-log",
+    "reward": 1.0,
+    "wall_s": 29.716,
+    "meaning": "Proves the container runtime, compose wiring, verifier and artifact capture all work on aiboss. The oracle agent needs no model, so this isolates the infrastructure from the endpoint.",
+    "published_at": "https://huggingface.co/datasets/malaiwah/qwen38-27b-terminal-bench-2.1/tree/main/harness-validation/oracle-smoke"
+  },
+  "dataset": {
+    "repo": "malaiwah/qwen38-27b-terminal-bench-2.1",
+    "type": "dataset",
+    "public_verified": true,
+    "verification_method": "unauthenticated GET https://huggingface.co/api/datasets/malaiwah/qwen38-27b-terminal-bench-2.1?full=true, asserting private == false and listing the published files",
+    "publish_cadence": "as each pass completes, not only at the end -- so a mid-protocol decommission still leaves the evidence public",
+    "layout": "passes/<label>/{results.jsonl,summary.json,job.log,trials/<trial>/{result.json,config.json,trial.log,agent/*,verifier/*}}"
+  },
+  "tooling": {
+    "runner": "tools/run_terminal_bench.sh",
+    "row_extractor": "tools/tb_rows.py",
+    "row_schema_source": "field names taken verbatim from a real harbor 0.21.0 result.json (the oracle-smoke trial), not guessed"
+  },
+  "protocol": {
+    "pass_1": {
+      "job": "tb21-pass1-hyd",
+      "tasks": "all 89",
+      "weights": "K5K6-hydrated"
+    },
+    "pass_2": {
+      "job": "tb21-pass2-hyd-healing",
+      "tasks": "pass-1 failures only",
+      "weights": "K5K6-hydrated",
+      "purpose": "separate flaky/one-off failures from persistent ones"
+    },
+    "pass_3": {
+      "job": "tb21-pass3-bf16-attribution",
+      "tasks": "twice-failed only",
+      "weights": "BF16 Qwen/Qwen3.8-27B, same card, same agent, same sampling, same eager mode",
+      "classification": {
+        "capability": "BF16 also fails -> the failure is the agent+model system's, not the quantisation's",
+        "quantization-suspect": "BF16 passes -> the quantisation is implicated for that task"
+      }
+    },
+    "per_pass_recorded": [
+      "MTP draft/accepted tokens and acceptance rate",
+      "output tok/s",
+      "n-concurrent-trials used",
+      "tunnel RTT",
+      "nvidia-smi process lists on both hosts"
+    ]
+  },
+  "status": "Pins frozen and all CPU-side infrastructure verified. Passes 1-3 PENDING the rental GPU handover (queued behind RentalFidelityBatch2 then SixteenFlipCalib2). No GPU has been taken by this agent."
+}
