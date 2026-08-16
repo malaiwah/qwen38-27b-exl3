@@ -189,8 +189,13 @@ scored body-only: both operands go through one shared BF16 LM head.
 **How closely these absolute numbers may be read.** Each mean is a body-only replay value: both
 operands are projected through the one shared BF16 head, and the replay path is not the engine's
 own logit path. Replaying the unquantized model against its own live logits measures
-`KL(live ‖ replayed)` = **6.54e-04**
+`KL(live ‖ replayed)` = **5.83e-04** — 32 v5 shard-0 contexts, 65,504 scored positions,
+context-bootstrap 95 % CI [5.15e-04, 6.64e-04], top-1 99.10 %, on the **same suite, reference
+capture and shared BF16 head as the means above**
+([`receipts/replay-live-floor-v5.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/replay-live-floor-v5.json)),
+superseding the six-context v3 derivation of 6.54e-04
 ([`receipts/v3-qualification-bf16.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/v3-qualification-bf16.json)),
+which its interval contains —
 and moving hidden-state storage from BF16 to fp32 moves a candidate's KLD by 5.6 %
 ([docs/24](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/docs/24-p0-results.md)). Absolute
 values are therefore **within-suite numbers**: they carry a ~6e-4 implementation offset plus a
@@ -199,8 +204,12 @@ offsets are **common-mode** — every candidate replays through the identical pa
 differences and orderings are the resolvable quantity**: hydrated − online K5/K6 is −4.50e-04
 [−4.69e-04, −4.33e-04] on 4,922 of 5,120 contexts
 ([`receipts/kld5-10M-paired.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/kld5-10M-paired.json)),
-smaller than the replay floor and resolved *because* the floor cancels in the pairing. The floor
-itself was measured on six v3 contexts; re-deriving it on v5 is an open measurement. Method of
+smaller than the replay floor and resolved *because* the floor cancels in the pairing. The floor is now derived
+**inside the suite** rather than on six out-of-suite v3 contexts, and the rule it licenses is
+unchanged. What it does **not** license: it is not a claim that candidate KLDs are 11 % smaller, and
+it does not let any single absolute mean be read more finely — the 5.83e-04 figure is a mean over 32
+contexts whose own means span 3.09e-04 to 1.63e-03 with a worst single position of 0.2534. It is also
+not the cross-engine floor (0.000507), which is a different control. Method of
 record:
 [`docs/42-kld-method.md`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/docs/42-kld-method.md).
 
@@ -1139,7 +1148,8 @@ graph, so it could not have measured the decode path. Re-measured on real decode
 graph and eager agree on 24/32 greedy 32-token sequences (mean |Δ logprob| 0.0118) and
 unquantised BF16 on the same build drifts identically (24/32, 0.0128), so the drift is a
 property of CUDA graphs here rather than of the quantisation.
-**Replay qualification is the weak link at 6.54e-04** mean
+**Replay qualification is the weak link at 5.83e-04** mean, re-derived inside the v5 suite (32
+contexts, 65,504 positions, [5.15e-04, 6.64e-04], superseding the six-context v3 figure of 6.54e-04),
 `KL(live || replayed)` — 2 % of this candidate's KLD and 4 % of the gap to FP8, so no
 ranking depends on it, but differences below ~1e-3 are not resolvable with these
 artifacts.

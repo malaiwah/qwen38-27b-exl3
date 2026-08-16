@@ -218,8 +218,13 @@ quantization is counted and the five rows are comparable to each other.
 **How closely these absolute numbers may be read.** Each mean is a body-only replay value: both
 operands are projected through the one shared BF16 head, and the replay path is not the engine's
 own logit path. Replaying the unquantized model against its own live logits measures
-`KL(live ‖ replayed)` = **6.54e-04**
+`KL(live ‖ replayed)` = **5.83e-04** — 32 v5 shard-0 contexts, 65,504 scored positions,
+context-bootstrap 95 % CI [5.15e-04, 6.64e-04], top-1 99.10 %, on the **same suite, reference
+capture and shared BF16 head as the means above**
+([`receipts/replay-live-floor-v5.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/replay-live-floor-v5.json)),
+superseding the six-context v3 derivation of 6.54e-04
 ([`receipts/v3-qualification-bf16.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/v3-qualification-bf16.json)),
+which its interval contains —
 and moving hidden-state storage from BF16 to fp32 moves a candidate's KLD by 5.6 %
 ([docs/24](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/docs/24-p0-results.md)). Absolute
 values are therefore **within-suite numbers**: they carry a ~6e-4 implementation offset plus a
@@ -228,8 +233,12 @@ offsets are **common-mode** — every candidate replays through the identical pa
 differences and orderings are the resolvable quantity**: hydrated − online K5/K6 is −4.50e-04
 [−4.69e-04, −4.33e-04] on 4,922 of 5,120 contexts
 ([`receipts/kld5-10M-paired.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/kld5-10M-paired.json)),
-smaller than the replay floor and resolved *because* the floor cancels in the pairing. The floor
-itself was measured on six v3 contexts; re-deriving it on v5 is an open measurement. Method of
+smaller than the replay floor and resolved *because* the floor cancels in the pairing. The floor is now derived
+**inside the suite** rather than on six out-of-suite v3 contexts, and the rule it licenses is
+unchanged. What it does **not** license: it is not a claim that candidate KLDs are 11 % smaller, and
+it does not let any single absolute mean be read more finely — the 5.83e-04 figure is a mean over 32
+contexts whose own means span 3.09e-04 to 1.63e-03 with a worst single position of 0.2534. It is also
+not the cross-engine floor (0.000507), which is a different control. Method of
 record:
 [`docs/42-kld-method.md`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/docs/42-kld-method.md).
 
@@ -681,7 +690,9 @@ path. Re-measured properly on real decode steps, graph and eager agree on 24/32 
 32-token sequences with mean |Δ logprob| 0.0118 on the chosen token; unquantised BF16
 on this same build drifts identically (24/32, 0.0128), so this is a property of CUDA
 graphs here and not of the quantisation.
-**Weakest control:** live-vs-replayed logit qualification is 6.54e-04, so differences
+**Weakest control:** live-vs-replayed logit qualification is **5.83e-04**, re-derived inside the v5
+suite (32 contexts, 65,504 positions, [5.15e-04, 6.64e-04], superseding the six-context v3 figure of
+6.54e-04), so differences
 below ~1e-3 are not resolvable with these artifacts. The FP8 gap is **7.6x** that floor
 and the K4 gap **34.5x** it; the K6-head increment (0.000127) and the K5-vs-FP8 gap
 (0.000991) are **at or below** it and are reported as unresolved point estimates, not
@@ -1348,6 +1359,24 @@ static YaRN, not a bare `max_position_embeddings` bump: it needs nested `rope_pa
 with `rope_type: yarn`, `factor: 4.0`, `original_max_position_embeddings: 262144`,
 `VLLM_ALLOW_LONG_MAX_MODEL_LEN=1` and `--max-model-len 1000000`, and Qwen warns it costs
 short-context quality. **Untested on this runtime.**
+
+### Optional: narrow the input embedding table
+
+`VLLM_EXL3_EMBED_BITS=8` converts the 248,320 x 5,120 input table to per-row int8 after load
+(2.543 GB -> 1.272 GB,
+[docs/32](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/docs/32-native-context-embedding-overlay.md)).
+At this family's published 8,192-token profile it moves about 1.2 GiB of weights into KV, measured
+on the physical card: hydrated **66.45 -> 67.62 GiB of KV = 668,852 -> 680,899 tokens (+1.80 %**,
+concurrency 81.65x -> 83.12x); online K5/K6 **345,324 -> 352,571 tokens (+2.10 %**, 42.15x ->
+43.04x). Correctness is unaffected on the frozen probe schedule - 22/22 planted answers and zero
+corruption detectors on both arms - but **output is not identical**: with greedy decoding 13/22
+(hydrated) and 10/22 (online K5/K6) continuations diverge from the BF16-table arm tens of tokens in,
+which is the served consequence of the +0.000065 mean KLD already published in docs/32.
+
+**Recommended only where KV is the binding constraint** - long windows, smaller cards, the context
+edition it was built for. At 8,192 tokens, where the KV pool is already 42x-82x the window, the
+headroom it buys is not worth changing the text a prompt returns
+([`receipts/embed-overlay-8k.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/embed-overlay-8k.json)).
 
 ### Chat template
 

@@ -394,6 +394,19 @@ matter how good the prompt looks.
 | `c31` **whitespace-bearing args** | **lossless** | **lossless** | lossy (`False` for `false`) | lossy (`False` for `false`) |
 | `c32` value containing `</parameter>` | lossy | lossy | lossy | lossy |
 
+
+**Now exercised live, not only through the converter (2026-08-16).** The template's `# Tools` block
+round-trips against a real served engine: single, multi-turn, whitespace-bearing and genuinely
+parallel calls all come back through the `qwen3_coder` parser without loss, over two passes that agree
+byte-for-byte modulo random `tool_call` ids
+([`tool-calls-e2e.json`](../receipts/tool-calls-e2e.json), harness
+[`tools/tool_calls_e2e.py`](../tools/tool_calls_e2e.py)). Eight cases, **zero structural defects**. One
+case does not return 200, and it is a conformance fact rather than a defect: `c16`'s dict-args shape is
+legal for the *template* but not on the *wire*, where `function.arguments` must be a string - the
+server refuses it with a 400 that names that field, which is a clean refusal rather than a silent
+mangle. The suite classifies 5xx, unexplained refusals and acceptance-with-loss as blocking, and that
+refusal as conformant.
+
 Three findings here, in descending importance.
 
 **`c17` is the answer to the question Main most wanted measured.** froggeric "fixes" the
