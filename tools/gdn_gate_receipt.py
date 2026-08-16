@@ -134,6 +134,36 @@ ANALYSIS = {
                 "utils.py:700 puts it in region 3 at the back of the batch."
             ),
         },
+        "corroborated_by_executing_the_images_own_code_no_gpu": {
+            "tool": "tools/gdn_reorder_sim.py",
+            "what_it_does": (
+                "imports reorder_batch_to_split_decodes_and_prefills out of the image, runs "
+                "it over seven named batch compositions at decode_threshold 4, then applies "
+                "gdn_attn.py:278-286 verbatim to the reordered batch and reports whether "
+                "spec_token_indx is the identity. Nothing is reimplemented."
+            ),
+            "result": {
+                "identity_preserved_so_vendored_is_bit_identical": [
+                    "8 speculative decodes + a chunked prefill placed first: the reorder moves the prefill to the back (long_extend)",
+                    "8 speculative decodes + a first-chunk prefill placed first: moved to the back (pure prefill)",
+                    "8 speculative decodes + a brand-new 4-token prompt placed first: moved to the back, because a fresh request has no context",
+                    "8 speculative decodes + a non-speculative plain decode placed LAST: already ordered behind them",
+                    "8 speculative decodes + a padded cache-hit pseudo-speculative request ahead of a non-speculative tiny final chunk",
+                ],
+                "vendored_miscomputes": [
+                    "8 speculative decodes + a non-speculative plain decode placed FIRST: both are region 0, the reorder does not move either, and the speculative tokens are no longer the leading tokens",
+                    "8 speculative decodes + a non-speculative tiny final chunk ahead of a padded cache-hit pseudo-speculative request: both are region 1, same outcome",
+                ],
+                "reading": (
+                    "the reorder is what protects the recipe: every prefill-shaped request, "
+                    "including a very short brand-new prompt, is moved behind the speculative "
+                    "decodes. What it does not protect against is a non-speculative request "
+                    "that is already in the same low region, and there the slot order alone "
+                    "decides. So the defect is reachable in principle on this build, and the "
+                    "open question is purely whether our traffic ever produces such a request."
+                ),
+            },
+        },
     },
     "why_a_logprob_comparison_cannot_settle_this_by_itself": {
         "upstream_effect_size": {
@@ -214,6 +244,19 @@ def load(out: Path, name: str):
     return json.loads(path.read_text()) if path.exists() else None
 
 
+def load_first_json(out: Path, name: str):
+    """The container may prefix stdout with its own banner; take the first JSON value."""
+    path = out / name
+    if not path.exists():
+        return None
+    raw = path.read_text()
+    start = raw.find("{")
+    if start < 0:
+        return None
+    value, _ = json.JSONDecoder().raw_decode(raw[start:])
+    return value
+
+
 def facts(out: Path, tag: str) -> list[str]:
     path = out / f"startup-facts-{tag}.txt"
     return [l for l in path.read_text().splitlines() if l.strip()] if path.exists() else []
@@ -277,6 +320,7 @@ def main() -> int:
             "status": "run" if arms else "no arms found",
             "stage": load(out, "stage.json"),
             "instrument_additivity_check": load(out, "instrument-additive.json"),
+            "reorder_simulation": load_first_json(out, "reorder-sim.json"),
             "module_verify_in_image": text(out, "module-verify-image.txt"),
             "arms": arms,
             "divergence": load(out, "verdict.json"),

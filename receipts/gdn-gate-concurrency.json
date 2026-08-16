@@ -65,6 +65,24 @@
           }
         ],
         "not_a_mechanism": "a short brand-new prompt on its own does not do it: region 0 requires has_context, and a fresh request has num_computed_tokens == 0, so utils.py:700 puts it in region 3 at the back of the batch."
+      },
+      "corroborated_by_executing_the_images_own_code_no_gpu": {
+        "tool": "tools/gdn_reorder_sim.py",
+        "what_it_does": "imports reorder_batch_to_split_decodes_and_prefills out of the image, runs it over seven named batch compositions at decode_threshold 4, then applies gdn_attn.py:278-286 verbatim to the reordered batch and reports whether spec_token_indx is the identity. Nothing is reimplemented.",
+        "result": {
+          "identity_preserved_so_vendored_is_bit_identical": [
+            "8 speculative decodes + a chunked prefill placed first: the reorder moves the prefill to the back (long_extend)",
+            "8 speculative decodes + a first-chunk prefill placed first: moved to the back (pure prefill)",
+            "8 speculative decodes + a brand-new 4-token prompt placed first: moved to the back, because a fresh request has no context",
+            "8 speculative decodes + a non-speculative plain decode placed LAST: already ordered behind them",
+            "8 speculative decodes + a padded cache-hit pseudo-speculative request ahead of a non-speculative tiny final chunk"
+          ],
+          "vendored_miscomputes": [
+            "8 speculative decodes + a non-speculative plain decode placed FIRST: both are region 0, the reorder does not move either, and the speculative tokens are no longer the leading tokens",
+            "8 speculative decodes + a non-speculative tiny final chunk ahead of a padded cache-hit pseudo-speculative request: both are region 1, same outcome"
+          ],
+          "reading": "the reorder is what protects the recipe: every prefill-shaped request, including a very short brand-new prompt, is moved behind the speculative decodes. What it does not protect against is a non-speculative request that is already in the same low region, and there the slot order alone decides. So the defect is reachable in principle on this build, and the open question is purely whether our traffic ever produces such a request."
+        }
       }
     },
     "why_a_logprob_comparison_cannot_settle_this_by_itself": {
@@ -122,5 +140,5 @@
   "measured": {
     "status": "not run"
   },
-  "content_sha256": "60431917d56a14607bfbcac9c0e1202c441e19fc949540026346546c4ab48307"
+  "content_sha256": "c0949f1e309a7a1f5419bc4760f65d4ddcf35558ce19c465572171bbb08ec9e1"
 }

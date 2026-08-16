@@ -111,6 +111,29 @@ verify_modules_in_image() {
   " | tee "$OUT/module-verify-image.txt"
 }
 
+# Corroborate the source-level argument by running the image's OWN reorder function and
+# its OWN spec_token_indx construction over named batch compositions. CPU only, no GPU
+# device: it establishes which compositions the vendored file miscomputes, independently
+# of whether our traffic ever produces them.
+run_reorder_sim() {
+  podman run --rm --network none \
+    -v "$TOOLS/gdn_reorder_sim.py:/tmp/sim.py:ro" \
+    --entrypoint /opt/venv/bin/python "$IMAGE" /tmp/sim.py \
+    >"$OUT/reorder-sim.json" || die "reorder simulation failed"
+  python3 - "$OUT/reorder-sim.json" <<'PY' || die "reorder simulation produced no usable report"
+import json, sys
+raw = open(sys.argv[1]).read()
+decoder = json.JSONDecoder()
+report, end = decoder.raw_decode(raw[raw.index("{"):])
+assert report["threshold_used"] == 4, report["threshold_used"]
+broken = [c["case"] for c in report["cases"] if c["vendored_miscomputes"]]
+safe = [c["case"] for c in report["cases"] if not c["vendored_miscomputes"]]
+assert broken and safe, "the simulation must separate breaking from non-breaking cases"
+print(json.dumps({"reorder_sim_cases": len(report["cases"]),
+                  "miscomputing_cases": broken}, indent=2))
+PY
+}
+
 # The instrument must differ from the vendored gdn_attn.py by insertions only, and the
 # insertions must be removable to recover the vendored bytes exactly. Otherwise the
 # instrument could be changing what it measures.
@@ -347,6 +370,7 @@ phase_stage() {
   verify_image
   verify_modules_in_image
   verify_instrument_additive
+  run_reorder_sim
   echo "$GDN_SHA  $TOOLS/vllm-qwen-gdn-spec-gates.py" | sha256sum -c -
   echo "$INSTR_SHA  $TOOLS/vllm-gdn-reach-instrument.py" | sha256sum -c -
   [[ -d $CTX_REPO/snapshots/$CTX_REV ]] || die "context snapshot missing at $CTX_REPO"
