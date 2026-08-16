@@ -23,7 +23,8 @@
   },
   "comments_posted": {
     "4247": "https://github.com/LMCache/LMCache/issues/4247#issuecomment-5307903588",
-    "4492": "https://github.com/LMCache/LMCache/issues/4492#issuecomment-5307903650"
+    "4492": "https://github.com/LMCache/LMCache/issues/4492#issuecomment-5307903650",
+    "4247_followup_code_audit": "https://github.com/LMCache/LMCache/issues/4247#issuecomment-5307945757"
   },
   "what_our_comments_add": [
     "second architecture, GPU and weight format (Qwen3.8-27B EXL3 on RTX 5090 sm_120 x86_64 vs Qwen3.6-27B-NVFP4 on GB10 aarch64)",
@@ -49,5 +50,35 @@
     "raw": "receipts/lmcache-raw/{logs,out}",
     "verified_reachable": "raw.githubusercontent.com 200, 86,657 B; contents API lists lmcache-raw/logs and lmcache-raw/out"
   },
-  "gpu_used": "none for this filing step - CPU only; the measurements it cites were taken earlier by LMCacheTest/LMCacheTest2 on the owner's RTX 5090"
+  "gpu_used": "none for this filing step - CPU only; the measurements it cites were taken earlier by LMCacheTest/LMCacheTest2 on the owner's RTX 5090",
+  "code_audit": {
+    "trigger": "LMCacheTest2 surfaced closed issue LMCache#2206 (partial-chunk mixing of vLLM live KV with LMCache stored KV when vllm_cached_tokens is not chunk-aligned), closed by PR #2207 flipping save_unfull_chunk default to False",
+    "sources_read": {
+      "pinned_wheel_on_disk": "/var/tmp/gg-rootfs/opt/venv/lib/python3.12/site-packages/lmcache (the exact code the arms ran, wheel 0.5.2+glm52dcp.4)",
+      "upstream_refs_fetched": "LMCache/LMCache @ v0.5.2 and @ dev via contents API"
+    },
+    "findings": [
+      {
+        "claim": "the #2206/#2207 mitigation never reaches the MP path",
+        "evidence": "save_unfull_chunk consumed at integration/vllm/vllm_v1_adapter.py:562-567 and its chunk mask at 822-827; the string is absent from lmcache_mp_connector.py in our wheel, in upstream v0.5.2 and in upstream dev",
+        "scope": "upstream-true, independent of our fork"
+      },
+      {
+        "claim": "the MP path's guard is the skip_first_n_tokens contract, unchanged upstream",
+        "evidence": "skip_first_n_tokens = num_vllm_hit_tokens - start_token_idx with start_token_idx = num_vllm_hit_tokens // chunk * chunk at lmcache_mp_connector.py:452-456,516 (ours and upstream v0.5.2); same expressions moved to lmcache_mp_metadata.py:323 in upstream dev; version-pinned variants compute it block-granularly (lmcache_mp_connector_0180.py:398, _0201.py:395)"
+      },
+      {
+        "claim": "our damage locus is the tail of the retrieve range, not the APC-overlap head #2206 describes",
+        "evidence": "skip region protects [start_token_idx, num_vllm_hit_tokens) at the head of [start_token_idx, end_token_idx); our rule fires on [hit_tokens-1600, hit_tokens), the last chunk written, with end_token_idx chunk-aligned by the assert at lmcache_mp_connector.py:458",
+        "consequence": "#2206's published mechanism does not explain our signature; no root cause asserted"
+      },
+      {
+        "claim": "config default in the pinned wheel is not the culprit",
+        "evidence": "v1/config.py:381-385 declares save_unfull_chunk default False; the only force-to-True paths are enable_blending (v1/config.py:705-711) and PD mode (750-766), neither enabled in our arms"
+      }
+    ],
+    "fork_divergence": "0.5.2+glm52dcp.4 @ 9cebd405 is ahead 3 / behind 155 of upstream dev; its commits touch kv_cache_groups.py, lmcache_mp_connector.py, vllm_multi_process_adapter.py, kv_layer_groups.py, custom_types.py, group_view.py, modules/lookup.py (measured by LMCacheTest2)",
+    "offer_made_upstream": "named-variable rerun on the rig (chunk size, kv_role, non-disk backend, or an upstream-dev wheel) with the ladder as readout",
+    "gpu_used": "none - static source reading plus GitHub contents API"
+  }
 }
