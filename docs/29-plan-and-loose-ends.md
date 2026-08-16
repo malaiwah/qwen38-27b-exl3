@@ -485,6 +485,23 @@ model. Ship a correct one with the valid effort variants, 262,144 context and im
 
 ## Closed by the audit
 
+**Method-audit closures (2026-08-16,
+[42](42-kld-method.md), `receipts/kld-method-reproducibility-audit.json`,
+`receipts/method-hardening-pass.json`):**
+
+- The contamination claim is now third-party verifiable: the v5 corpus text is published under
+  `corpus/text/` in the v5 dataset (941 docs, per-document sha256, per-stratum licence), the
+  dataset card no longer claims fetch-log refetchability, and the corpus-note receipt carries
+  the additive correction — closing the method audit's G1.
+- The absolute-resolution limit now travels with the absolute numbers: every v5 table on the
+  four cards and in docs/33/35 carries the 6.54e-04 replay floor, the within-suite scoping and
+  the common-mode paired-difference argument, with the floor's v5 re-derivation (it was
+  measured on six v3 contexts) still open — closing the method audit's G2 except that one
+  replay, which needs a GPU and is tracked in the todo list.
+- Level-(d) reproducibility is proven, not claimed: all five ten-shard receipts, the paired
+  receipt and the tail receipt re-derive bit-for-bit from published artifacts on CPU, and
+  docs/42 is the method of record.
+
 - The fixed-stride contamination claim was wrong. Every normalized 12-token position (Unicode
   word or Han/Kana character) is now scanned; v3 excludes two affected documents (nine
   analysis contexts) and v4 excludes four affected qualification documents (six contexts).
