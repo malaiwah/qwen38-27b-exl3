@@ -1,0 +1,340 @@
+{
+ "schema": "qwen38-byte-law-recipe-audit/1",
+ "question": "does every published per-role byte prediction re-derive from the module shapes, and does each one name the recipe it assumes? A prediction that silently assumes a different recipe looks like a rounding disagreement.",
+ "why_now": {
+  "trigger": "the S16-V build script's MLP width override, written as '^.*mlp\\\\.(gate|up|down)_proj$', would also have matched the MTP draft's three MLP projections, because EXL3_BITS_OVERRIDE is applied with re.match against every key in f_targets and the draft's modules are among them.",
+  "evidence_that_this_is_real_and_not_theoretical": "the PUBLISHED hydrated build shows the same behaviour: receipts/error-driven-ladder.json records its recipe_bits per module, and mtp.layers.0.mlp.{gate,up}_proj are 5 with mtp.layers.0.mlp.down_proj 6 -- its override's values -- while mtp.fc, which no pattern matches, is 4 from -mb 4. The hydrated draft's MLP follows the override, not the -mb flag.",
+  "what_it_would_have_cost": "33,423,360 B (31.9 MiB) of undershoot against docs/34 \u00a76.2's published S16-V total, which would have read as a byte-law failure rather than as a recipe difference. Caught before converting; the override is now scoped to the language-model body.",
+  "fidelity_impact": "none possible. The fidelity protocol never engages MTP (docs/34 \u00a77), so no MTP width can reach a measured KLD."
+ },
+ "method": {
+  "independence": "module shapes (in_features, out_features, numel for 409 modules) come from receipts/error-driven-ladder.json and role totals from receipts/hydrated-quantization-manifest.json. The affine rule and its overhead term are re-derived from those two, then compared against receipts/vram-class-verdict.json's own byte_law table -- which is therefore audited, not used.",
+  "law": "bytes(role, K) = fixed(role) + params(role) * K / 8, with fixed(role) = sum over the role's exl3 modules of 2*(in+out) + 4, plus whatever non-exl3 tensors the manifest role carries (BF16 norms, the linear_attention F16 in_proj_a/in_proj_b, the MTP's BF16 tensors)",
+  "residual_definition": "manifest role bytes minus the exl3 sum at the manifest's own widths; it is the non-exl3 component and is width-invariant",
+  "disk_rule": "docs/34 \u00a72 states predicted disk bytes = payload + 24.0 MB, rounded from two measurements: 21,610,933,884 - 21,586,964,548 = 23,969,336 B for hydrated and 23,971,318 B for context. Both are carried per row, because the two differ by 1,982 B and the rounded rule differs from either by about 29 kB."
+ },
+ "per_role_table": {
+  "full_attention": {
+   "rederived": {
+    "params": 1677721600,
+    "fixed_bytes": 1327360,
+    "gib_per_bit": 0.1953
+   },
+   "published": {
+    "params": 1677721600,
+    "fixed_bytes": 1327360,
+    "gib_per_bit": 0.1953
+   },
+   "agree": true,
+   "modules": 64,
+   "overhead_component_bytes": 1310976,
+   "non_exl3_component_bytes": 16384
+  },
+  "linear_attention": {
+   "rederived": {
+    "params": 5536481280,
+    "fixed_bytes": 54777408,
+    "gib_per_bit": 0.6445
+   },
+   "published": {
+    "params": 5536481280,
+    "fixed_bytes": 54777408,
+    "gib_per_bit": 0.6445
+   },
+   "agree": true,
+   "modules": 144,
+   "overhead_component_bytes": 3637824,
+   "non_exl3_component_bytes": 51139584
+  },
+  "mlp_gate_proj": {
+   "rederived": {
+    "params": 5704253440,
+    "fixed_bytes": 2883840,
+    "gib_per_bit": 0.6641
+   },
+   "published": {
+    "params": 5704253440,
+    "fixed_bytes": 2883840,
+    "gib_per_bit": 0.6641
+   },
+   "agree": true,
+   "modules": 64,
+   "overhead_component_bytes": 2883840,
+   "non_exl3_component_bytes": 0
+  },
+  "mlp_up_proj": {
+   "rederived": {
+    "params": 5704253440,
+    "fixed_bytes": 2883840,
+    "gib_per_bit": 0.6641
+   },
+   "published": {
+    "params": 5704253440,
+    "fixed_bytes": 2883840,
+    "gib_per_bit": 0.6641
+   },
+   "agree": true,
+   "modules": 64,
+   "overhead_component_bytes": 2883840,
+   "non_exl3_component_bytes": 0
+  },
+  "mlp_down_proj": {
+   "rederived": {
+    "params": 5704253440,
+    "fixed_bytes": 2883840,
+    "gib_per_bit": 0.6641
+   },
+   "published": {
+    "params": 5704253440,
+    "fixed_bytes": 2883840,
+    "gib_per_bit": 0.6641
+   },
+   "agree": true,
+   "modules": 64,
+   "overhead_component_bytes": 2883840,
+   "non_exl3_component_bytes": 0
+  },
+  "lm_head": {
+   "rederived": {
+    "params": 1271398400,
+    "fixed_bytes": 506884,
+    "gib_per_bit": 0.148
+   },
+   "published": {
+    "params": 1271398400,
+    "fixed_bytes": 506884,
+    "gib_per_bit": 0.148
+   },
+   "agree": true,
+   "modules": 1,
+   "overhead_component_bytes": 506884,
+   "non_exl3_component_bytes": 0
+  },
+  "mtp_draft": {
+   "rederived": {
+    "params": 424673280,
+    "fixed_bytes": 300064,
+    "gib_per_bit": 0.0494
+   },
+   "published": {
+    "params": 424673280,
+    "fixed_bytes": 300064,
+    "gib_per_bit": 0.0494
+   },
+   "agree": true,
+   "modules": 8,
+   "overhead_component_bytes": 247840,
+   "non_exl3_component_bytes": 52224
+  }
+ },
+ "totals": {
+  "hydrated (published artifact)": {
+   "recipe_assumed_by_the_published_row": "MLP gate/up K5, down K6, attention K6 serialized, lm_head K6/mcg, MTP self_attn K6 + mlp K5/K5/K6 + eh_proj K4, BF16 embed and vision. The MTP MLP follows the build's EXL3_BITS_OVERRIDE, NOT its -mb 4.",
+   "label": "measured",
+   "claim_source": "receipts/hydrated-quantization-manifest.json role total; docs/34 \u00a71 and \u00a72",
+   "rederived_bytes": 21586964548,
+   "rederived_gb": 21.587,
+   "rederived_gib": 20.1044,
+   "predicted_disk_bytes_under_the_rounded_rule": 21610964548,
+   "predicted_disk_bytes_under_each_measured_whole_tree_delta": {
+    "hydrated": 21610933884,
+    "context": 21610935866
+   },
+   "published_bytes": 21586964548,
+   "difference_bytes": 0,
+   "exact": true
+  },
+  "context edition (published artifact)": {
+   "recipe_assumed_by_the_published_row": "attention K5 serialized, MLP gate/up K5, down K6, lm_head K6/mcg, MTP self_attn K5 + mlp K5/K5/K6 + eh_proj K4, BF16 embed and vision",
+   "label": "measured",
+   "claim_source": "receipts/vram-class-verdict.json byte_law.validation.context",
+   "rederived_bytes": 20672081988,
+   "rederived_gb": 20.672,
+   "rederived_gib": 19.2524,
+   "predicted_disk_bytes_under_the_rounded_rule": 20696081988,
+   "predicted_disk_bytes_under_each_measured_whole_tree_delta": {
+    "hydrated": 20696051324,
+    "context": 20696053306
+   },
+   "published_bytes": 20672081988,
+   "difference_bytes": 0,
+   "exact": true
+  },
+  "S16-V (docs/34 \u00a76.2 primary)": {
+   "recipe_assumed_by_the_published_row": "full_attention K4, linear_attention K3, MLP gate/up/down K3, lm_head K4/mcg, MTP draft ALL K4, BF16 embed on disk and BF16 vision. The all-K4 draft is what the 212,636,704 B mtp_draft row prices, and reproducing it requires the MLP width override to be scoped to the language-model body.",
+   "label": "prediction",
+   "claim_source": "docs/34 \u00a76.2; receipts/vram-class-verdict.json class_16_gib.s16_v_candidate.serialized_bytes",
+   "rederived_bytes": 13711503428,
+   "rederived_gb": 13.712,
+   "rederived_gib": 12.7698,
+   "predicted_disk_bytes_under_the_rounded_rule": 13735503428,
+   "predicted_disk_bytes_under_each_measured_whole_tree_delta": {
+    "hydrated": 13735472764,
+    "context": 13735474746
+   },
+   "published_bytes": 13711503428,
+   "difference_bytes": 0,
+   "exact": true
+  },
+  "S16-V-long (docs/34 \u00a76.2)": {
+   "recipe_assumed_by_the_published_row": "S16-V with full_attention demoted K4 -> K3; MTP draft ALL K4",
+   "label": "prediction",
+   "claim_source": "docs/34 \u00a76.2 profile table, quoted as 13.502 GB",
+   "rederived_bytes": 13501788228,
+   "rederived_gb": 13.502,
+   "rederived_gib": 12.5745,
+   "predicted_disk_bytes_under_the_rounded_rule": 13525788228,
+   "predicted_disk_bytes_under_each_measured_whole_tree_delta": {
+    "hydrated": 13525757564,
+    "context": 13525759546
+   },
+   "published_bytes": 13501788228,
+   "difference_bytes": 0,
+   "exact": true
+  },
+  "S16-T text-only branch (docs/34 \u00a76.2)": {
+   "recipe_assumed_by_the_published_row": "full_attention K3, linear_attention K3, MLP all K4, lm_head K3/mcg, MTP draft ALL K4, vision tower ABSENT, embedding BF16 ON DISK (the int4-g128 form in \u00a76.1 is a load-time overlay, so the serialized row carries BF16)",
+   "label": "prediction",
+   "claim_source": "docs/34 \u00a76.2 profile table, quoted as 14.560 GB",
+   "rederived_bytes": 14560498276,
+   "rederived_gb": 14.56,
+   "rederived_gib": 13.5605,
+   "predicted_disk_bytes_under_the_rounded_rule": 14584498276,
+   "predicted_disk_bytes_under_each_measured_whole_tree_delta": {
+    "hydrated": 14584467612,
+    "context": 14584469594
+   },
+   "published_bytes": 14560498276,
+   "difference_bytes": 0,
+   "exact": true
+  },
+  "cheapest multimodal build that keeps the MLP at 4 bits": {
+   "recipe_assumed_by_the_published_row": "full_attention K3, linear_attention K3, MLP all K4, lm_head K3, MTP draft ALL K4, int8 embedding RESIDENT, BF16 vision tower. This is a resident-payload row, not a serialized one.",
+   "label": "prediction",
+   "claim_source": "receipts/vram-class-verdict.json class_16_gib.the_arithmetic_that_kills_the_safe_option.resident_gib.formula",
+   "rederived_bytes": 14210560068,
+   "rederived_gb": 14.211,
+   "rederived_gib": 13.2346,
+   "predicted_disk_bytes_under_the_rounded_rule": 14234560068,
+   "predicted_disk_bytes_under_each_measured_whole_tree_delta": {
+    "hydrated": 14234529404,
+    "context": 14234531386
+   },
+   "published_gib": 13.235,
+   "difference_gib": 0.0004
+  },
+  "K6-parity (this window's condition 3)": {
+   "recipe_assumed_by_the_published_row": "hydrated with MLP gate/up promoted K5 -> K6. The override regex is the hydrated build's own loose form, so the MTP MLP promotes with the body -- which is why the prediction charges the draft's gate and up as well.",
+   "label": "prediction",
+   "claim_source": "receipts/preregistration-kld9-window.json conditions[2].predicted_bytes.serialized_payload",
+   "rederived_bytes": 23035310148,
+   "rederived_gb": 23.035,
+   "rederived_gib": 21.4533,
+   "predicted_disk_bytes_under_the_rounded_rule": 23059310148,
+   "predicted_disk_bytes_under_each_measured_whole_tree_delta": {
+    "hydrated": 23059279484,
+    "context": 23059281466
+   },
+   "published_bytes": 23035310148,
+   "difference_bytes": 0,
+   "exact": true
+  }
+ },
+ "resident_payloads": {
+  "S16-V resident payload, int8 embed": {
+   "rederived_bytes": 12440105028,
+   "rederived_gib": 11.5858,
+   "plus_planning_allowance_0_35_gib": 11.9358,
+   "claim_source": "receipts/vram-class-verdict.json class_16_gib.s16_v_candidate.resident_payload_gib.formula",
+   "published_bytes": 12440105028,
+   "exact": true,
+   "published_gib": 11.586
+  },
+  "S16-V-long resident payload, int8 embed": {
+   "rederived_bytes": 12230389828,
+   "rederived_gib": 11.3904,
+   "plus_planning_allowance_0_35_gib": 11.7404,
+   "claim_source": "docs/34 \u00a76.2 profile table resident column, 11.74 = payload + 0.35",
+   "published_gib": 11.39
+  },
+  "S16-T resident payload, int4-g128 embed, no vision": {
+   "rederived_bytes": 12673266276,
+   "rederived_gib": 11.8029,
+   "plus_planning_allowance_0_35_gib": 12.1529,
+   "claim_source": "docs/34 \u00a76.2 profile table resident column, 12.15 = payload + 0.35",
+   "published_gib": 11.803
+  }
+ },
+ "docs34_section7_knob_figures": {
+  "attention K6->K5, 64 L, body only": {
+   "published_gib": 0.84,
+   "rederived_gib": 0.8398,
+   "agree_to_quoted_precision": true
+  },
+  "attention K6->K5 including the MTP attention": {
+   "published_gib": 0.852,
+   "rederived_gib": 0.8521,
+   "agree_to_quoted_precision": true
+  },
+  "MLP -> K4, gate 1 + up 1 + down 2 bits": {
+   "published_gib": 2.656,
+   "rederived_gib": 2.6562,
+   "agree_to_quoted_precision": true
+  },
+  "lm_head K6->K5": {
+   "published_gib": 0.148,
+   "rederived_gib": 0.148,
+   "agree_to_quoted_precision": true
+  },
+  "attention K6->K4, 64 L": {
+   "published_gib": 1.68,
+   "rederived_gib": 1.6797,
+   "agree_to_quoted_precision": true
+  },
+  "int8 input-embedding overlay": {
+   "published_gib": 1.184,
+   "rederived_gib": 1.1841,
+   "agree_to_quoted_precision": true
+  },
+  "one bit anywhere, cheapest role (lm_head)": {
+   "published_gib": 0.148,
+   "rederived_gib": 0.148,
+   "agree_to_quoted_precision": true
+  },
+  "one bit anywhere, dearest single knob (MLP gate+up+down)": {
+   "published_gib": 1.992,
+   "rederived_gib": 1.9922,
+   "agree_to_quoted_precision": true
+  }
+ },
+ "which_whole_tree_delta_each_published_disk_row_assumes": {
+  "docs34_6_2_s16v_predicted_disk_bytes": {
+   "published": 13735474746,
+   "payload_plus_context_delta": 13735474746,
+   "payload_plus_hydrated_delta": 13735472764,
+   "payload_plus_rounded_24_0_mb": 13735503428,
+   "which_one_it_is": "the CONTEXT build's measured whole-tree delta of 23,971,318 B, exactly",
+   "difference_from_the_rounded_rule_bytes": 28682,
+   "checked_unchanged": true,
+   "clarification_worth_one_sentence": "docs/34 \u00a72 states the rule as 'payload + 24.0 MB' while \u00a76.2's row uses the context build's measured 23,971,318 B; the two disagree by 28,682 B, which is immaterial to every conclusion but means the two rows are not derived by the same arithmetic."
+  }
+ },
+ "cards": {
+  "checked": "all four model cards and the dataset cards, for any byte figure that is a PREDICTION rather than a measurement",
+  "found": "none. The cards print measured serialized bytes for published artifacts (21,586,964,548 B of payload and 21,610,933,884 B whole-tree for hydrated) and a measured resident figure on the comparison chart (hydrated 20.31 GiB, which is vLLM's own model-loading number from the capture log). No card prints a 16 GB or 24 GB predicted byte total, so no card row moves.",
+  "consequence": "the MTP override finding is a docs/34 clarification, not a card correction."
+ },
+ "loader_overhead_note": {
+  "what": "docs/34 \u00a72 already publishes the loader term as measured at +0.305 to +0.312 GiB on the context build, +0.206 GiB on hydrated and +0.342 GiB in the amendment run, with planning using +0.35 GiB [P] deliberately above every observation.",
+  "reproduced_here": "reading vLLM's 'Model loading took 20.31 GiB' out of the hydrated sibling's capture log gives +0.2056 GiB against the 20.1044 GiB payload, which is the published +0.206.",
+  "what_is_actually_new": "nothing about hydrated. What no run has ever measured is the loader term for a SUB-4-BIT build, which the S16-V capture will produce."
+ },
+ "verdict": {
+  "rows_checked": 25,
+  "rows_that_move": 0,
+  "outcome": "CHECKED, UNCHANGED. Every published per-role byte row, every profile total, every resident payload and every \u00a77 knob figure re-derives exactly from the module shapes, and each one prices the recipe its own text names. In particular docs/34 \u00a76.2's 212,636,704 B mtp_draft row IS the all-K4 figure \u00a76.1 specifies -- it is correct, and it is the build script that had to change to match it.",
+  "what_docs_34_should_gain": "one sentence, not a number: that the all-K4 draft in \u00a76.1 requires the MLP width override to be scoped to the language-model body, because the loose form the hydrated build used also promotes the draft's MLP -- and correspondingly that 'quantized MTP' is the accurate description of the hydrated draft, whose widths are self_attn K6, mlp K5/K5/K6, eh_proj K4, not all-K4."
+ },
+ "errors": [],
+ "content_sha256": "6c94336b260629a59c04bc028238e2730aa9aeb4d3eddf1a737bbe4ed290bd4e"
+}
