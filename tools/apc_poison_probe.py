@@ -1159,6 +1159,28 @@ def verdict(args: argparse.Namespace) -> int:
         for tag, data in arms.items()
         if tag != "B"
     }
+    floor = divergence.get("Bn")
+    if floor:
+        for tag, value in divergence.items():
+            if tag == "Bn":
+                continue
+            value["vs_noise_floor"] = {
+                "identical_text_requests_floor": floor["identical_text_requests"],
+                "mean_abs_chosen_logprob_delta_floor": floor["mean_abs_chosen_logprob_delta"],
+                "mean_delta_over_floor": (
+                    round(
+                        value["mean_abs_chosen_logprob_delta"]
+                        / floor["mean_abs_chosen_logprob_delta"],
+                        4,
+                    )
+                    if floor["mean_abs_chosen_logprob_delta"]
+                    else None
+                ),
+                "within_floor": (
+                    value["mean_abs_chosen_logprob_delta"]
+                    <= floor["mean_abs_chosen_logprob_delta"]
+                ),
+            }
 
     out = {
         "schema": "qwen38-apc-poison-verdict/2",

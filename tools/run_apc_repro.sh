@@ -204,6 +204,14 @@ configure_arm() {
     ARM_DESC='release image gg-r34-patched, prefix caching off: the condition every published measurement ran in'
     ARM_ARGS=(--no-enable-prefix-caching)
     ;;
+  # Byte-identical to arm B, run as a second fresh server. Without this the divergence
+  # numbers have no floor: it measures how much this build's greedy decoding moves
+  # run-to-run with nothing changed at all, which is what every other arm is compared to.
+  Bn)
+    ARM_IMAGE=$RELEASE_IMAGE
+    ARM_DESC='arm B repeated on a second fresh server with identical flags: the run-to-run noise floor for the divergence measurement'
+    ARM_ARGS=(--no-enable-prefix-caching)
+    ;;
   # The reporter runs --max-num-seqs 1. A2/B2 change exactly that one flag, because a
   # batch of one never produces the mixed batch upstream says PR #51812 needs, and because
   # concurrency is the most plausible amplifier this probe would otherwise not model.
@@ -415,7 +423,7 @@ phase_reuse() {
 phase_verdict() {
   local -a args=()
   local arm
-  for arm in A B C D A2 B2; do
+  for arm in A B Bn C D A2 B2; do
     [[ -f $OUT/arm-$arm.json ]] && args+=(--arm-file "$arm=$OUT/arm-$arm.json")
   done
   python3 "$TOOLS/apc_poison_probe.py" verdict "${args[@]}" --out "$OUT/verdict.json"
@@ -432,7 +440,7 @@ def load(name, default=None):
 stage = load("stage.json")
 verdict = load("verdict.json")
 arms, windows, commands, facts = {}, {}, {}, {}
-for tag in ("A", "B", "C", "D", "A2", "B2", "E"):
+for tag in ("A", "B", "Bn", "C", "D", "A2", "B2", "E"):
     data = load(f"arm-{tag}.json")
     if data:
         arms[tag] = data
