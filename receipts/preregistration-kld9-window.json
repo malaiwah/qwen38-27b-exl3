@@ -419,6 +419,33 @@
  ],
  "addenda": [
   {
+   "when": "before any of the three conversions ran",
+   "what": "condition 2 gains a disjointness proof and a per-stratum sub-prediction",
+   "corpus_versus_suite_overlap": {
+    "why_it_matters": "the alt calibration corpus is Project Gutenberg prose, and the v5 suite's `literary` stratum is also drawn from Project Gutenberg. If any book appeared in both, the alt build would be calibrated on its own eval text and the experiment would measure leakage instead of domain mismatch.",
+    "suite_gutenberg_ids_all_ten_shards": 59,
+    "suite_gutenberg_ids_shard_0": 48,
+    "alt_corpus_gutenberg_ids": 13,
+    "intersection": [],
+    "checked_against": "every shard-*/suite/suite-manifest.json in the v5 suite, not just the scored shard",
+    "conclusion": "zero book overlap. Same source, same genre for one of five strata, disjoint texts."
+   },
+   "registered_sub_prediction_per_stratum": {
+    "quantity": "per-stratum paired difference (alt minus published hydrated) over the same contexts, cluster-bootstrapped with the harness's own fidelity.bootstrap, 10,000 resamples, seed 1",
+    "stratum_sizes_shard_0": {
+     "code": 123,
+     "multilingual": 108,
+     "scientific": 107,
+     "encyclopedic": 92,
+     "literary": 82
+    },
+    "registered_ordering": "the alt corpus's disadvantage is SMALLEST on `literary` -- possibly negative, i.e. the alt build better there -- and LARGEST on `code` and `scientific`. Formally: delta(literary) < delta(code) and delta(literary) < delta(scientific).",
+    "why": "the shipped corpus covers c4 web text, source code, technical prose, encyclopaedia articles and a multilingual mix, which matches 430 of the 512 contexts. The alt corpus is 19th-century literature only, which matches the 82 literary contexts and nothing else. If calibration content acts through domain match at all, it must show up in this ordering.",
+    "falsification": "if `literary` is not among the two smallest deltas, the domain-match explanation is wrong even if the overall difference is significant, and whatever calibration content does at these widths is not domain matching."
+   },
+   "predictions_changed": "none. This addendum adds a check and a sub-prediction; the overall registered point, direction, interval and decision rule for condition 2 are unchanged."
+  },
+  {
    "when": "before any of the three conversions ran; the S16-V build script had not been executed",
    "what": "condition 1's EXL3_BITS_OVERRIDE regex was narrowed from '^.*mlp\\.(gate|up|down)_proj$' to the language-model body only",
    "why": "the loose form also matches the MTP draft layer's three MLP projections -- verified against the published hydrated build, whose MTP mlp is K5/K5/K6 from its override rather than K4 from its -mb 4 -- and docs/34 6.1 specifies mtp_draft all K4 for S16-V. The all-K4 mtp_draft row docs/34 6.2 publishes, 212,636,704 B, is re-derived to the byte here from the hydrated manifest's 283,415,584 B by charging the width deltas across the MTP module numels in receipts/error-driven-ladder.json, which confirms which recipe the published prediction assumes.",

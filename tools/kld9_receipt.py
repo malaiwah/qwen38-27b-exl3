@@ -42,6 +42,9 @@ import subprocess
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import fidelity  # noqa: E402  -- for bootstrap(), so intervals here match the harness exactly
+
 REPO = Path(__file__).resolve().parent.parent
 PREREG = REPO / "receipts/preregistration-kld9-window.json"
 GIB = 2 ** 30
@@ -235,6 +238,45 @@ def paired_row(p: Path) -> dict:
     }
 
 
+def per_stratum_paired(a_path: Path, b_path: Path, samples: int = 10000,
+                       seed: int = 1) -> dict:
+    """Paired per-context differences split by suite stratum, same bootstrap as the harness.
+
+    `fidelity.py paired` reports one interval over all 512 contexts.  A calibration-corpus
+    change is expected to act unevenly across domains, so the stratum split is where the
+    pre-registered sub-prediction lives.  `fidelity.bootstrap` is imported rather than
+    reimplemented, so the resampling is bit-for-bit the tool's own.
+    """
+    a = json.loads(a_path.read_text())
+    b = json.loads(b_path.read_text())
+    for field in ("suite_token_sha256", "filter", "head_sha256"):
+        if a.get(field) != b.get(field):
+            raise SystemExit("stratum pairing disagrees on %s" % field)
+    ai = {c["index"]: c for c in a["per_context"]}
+    bi = {c["index"]: c for c in b["per_context"]}
+    if set(ai) != set(bi):
+        raise SystemExit("stratum pairing needs the same context set")
+    by: dict = {}
+    for i in sorted(ai):
+        by.setdefault(ai[i]["stratum"], []).append(
+            (ai[i]["mean_kld"] - bi[i]["mean_kld"], ai[i]["source_cluster"]))
+    out = {}
+    for st, rows in sorted(by.items()):
+        d = [r[0] for r in rows]
+        bs = fidelity.bootstrap(d, [r[1] for r in rows], samples, seed)
+        out[st] = {
+            "contexts": len(d),
+            "difference_a_minus_b": bs["mean"],
+            "ci95": [bs["ci95_low"], bs["ci95_high"]],
+            "clusters": bs["clusters"], "bootstrap_samples": samples,
+            "b_worse_contexts": sum(1 for x in d if x > 0),
+            "interval_contains_zero": bs["ci95_low"] <= 0.0 <= bs["ci95_high"],
+        }
+    out["_reading"] = ("difference is a MINUS b per context, averaged inside the stratum; "
+                       "positive means b carries more KLD in that stratum")
+    return out
+
+
 def require_in_prose(prose: str, needle: str, errors: list, what: str) -> None:
     if needle not in prose:
         errors.append("threshold %s (%s) is not present in the pre-registered rule prose"
@@ -368,6 +410,9 @@ def main() -> int:
     ap.add_argument("--paired", action="append", default=[],
                     metavar="LABEL=PATH", help="repeatable")
     ap.add_argument("--capture-log", type=Path)
+    ap.add_argument("--stratum-baseline", action="append", default=[],
+                    metavar="LABEL=PATH",
+                    help="report to split against by suite stratum; repeatable")
     ap.add_argument("--wd-bytes", type=Path,
                     help="du -sb output for the deleted conversion working directory")
     ap.add_argument("--extra", type=Path, help="JSON merged into the payload")
@@ -473,6 +518,10 @@ def main() -> int:
                      ("token_median_kld", "p95_kld", "p99_kld", "p999_kld", "max_kld",
                       "top1_agreement") if k in report},
         "paired": paired,
+        "per_stratum_paired": {
+            label: per_stratum_paired(Path(path), args.report)
+            for label, _, path in (spec.partition("=") for spec in args.stratum_baseline)
+        },
         "prediction_check": prediction_check(cond, mean, paired, args.cond),
         "verdict": verdict,
         "preservation": {"registered_policy": cond["preservation_policy"]},
