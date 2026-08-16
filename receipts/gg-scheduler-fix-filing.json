@@ -1,0 +1,113 @@
+{
+  "schema": "qwen38-upstream-filing/1",
+  "generated_utc": "2026-08-16T23:20:00Z",
+  "agent": "SchedulerFix",
+  "purpose": "File the hybrid+connector divergent-hit scheduler defect (root-caused by LMCacheFix, receipts/lmcache-fix.json) on our own fork local-inference-lab/vllm, honestly scoped as CPU-proven / GPU-pending.",
+  "status": "ISSUE AND PR FILED, OPEN. CPU gates passed (apply clean, byte-identical round-trip, py_compiles). GPU behavioral proof NOT run by this filing; a separately planned four-arm ladder re-run is the pending gate.",
+  "target_repo": "local-inference-lab/vllm",
+  "target_branch": "dev/gilded-gnosis",
+  "target_branch_head_at_filing": "fa033bd4e1b16d9d729ad94be2d87da5a13210ce",
+  "rootfs_match_verified": "diffed /var/tmp/gg-rootfs/opt/venv/lib/python3.12/site-packages/vllm/v1/core/sched/scheduler.py against `git show origin/dev/gilded-gnosis:vllm/v1/core/sched/scheduler.py` in /var/tmp/gg-vllm-pr before branching: byte-identical",
+  "access": {
+    "gh_cli": "not authenticated (`gh auth status`: not logged into any GitHub hosts)",
+    "github_token_env": "GITHUB_TOKEN and GH_TOKEN both unset",
+    "credential_used": "~/.git-credentials entry for github.com, user malaiwah, classic PAT (ghp_, repo scope) -- same credential prior #392/#393/#394/#396/#398 filings used",
+    "api": "GitHub REST v3, urllib against api.github.com (Authorization: Bearer)",
+    "permissions_on_target": {"admin": false, "maintain": false, "push": false, "triage": false, "pull": true},
+    "pr_route": "cross-fork, same as prior #314/#316/#318/#319/#397/#398 -- head repo malaiwah/vllm-voipmonitor (push: true), base local-inference-lab/vllm dev/gilded-gnosis"
+  },
+  "duplicate_search": {
+    "target": "local-inference-lab/vllm specifically (NOT vllm-project/vllm or LMCache/LMCache, which LMCacheFix already searched and recorded in receipts/lmcache-fix.json.duplicate_search)",
+    "method": "GET /search/issues, advanced_search=true, repo: qualifier, one phrase per query (avoids the documented repo: qualifier being dropped when a query also contains a quoted-phrase OR), every hit filtered on item.repository_url before being counted",
+    "queries": [
+      {"q": "repo:local-inference-lab/vllm hybrid connector", "total_count": 11, "in_repo_count": 11, "relevant_hits": ["#293 (different: load-failure recovery)", "#401 (different: DCP hash alignment)", "#394 (different, already ruled out in lmcache-fix.json)"]},
+      {"q": "repo:local-inference-lab/vllm mamba state connector", "total_count": 5, "in_repo_count": 5, "relevant_hits": ["#401 only relevant, still different"]},
+      {"q": "repo:local-inference-lab/vllm divergent hit", "total_count": 1, "in_repo_count": 1, "relevant_hits": ["#228 (EXL3 Trellis routing, unrelated)"]},
+      {"q": "repo:local-inference-lab/vllm GDN connector", "total_count": 0, "in_repo_count": 0, "relevant_hits": []},
+      {"q": "repo:local-inference-lab/vllm supports_divergent_local_hybrid_hits", "total_count": 0, "in_repo_count": 0, "relevant_hits": []},
+      {"q": "repo:local-inference-lab/vllm scheduler hybrid", "total_count": 22, "in_repo_count": 20, "relevant_hits": ["#293, #401, #392, #393, #394 -- all distinct, see below"]},
+      {"q": "repo:local-inference-lab/vllm LMCache", "total_count": 20, "in_repo_count": 20, "relevant_hits": ["#293, #392, #401, #158, #236 -- none reach find_longest_cache_hit_per_group / num_new_local_computed_tokens"]},
+      {"q": "repo:local-inference-lab/vllm nixl mamba", "total_count": 0, "in_repo_count": 0, "relevant_hits": []},
+      {"q": "repo:local-inference-lab/vllm per_group_hits", "total_count": 0, "in_repo_count": 0, "relevant_hits": []},
+      {"q": "repo:local-inference-lab/vllm find_longest_cache_hit_per_group", "total_count": 0, "in_repo_count": 0, "relevant_hits": []},
+      {"q": "repo:local-inference-lab/vllm silent corruption", "total_count": 11, "in_repo_count": 11, "relevant_hits": ["none touch the scheduler connector path; all EXL3/MoE/PCIe-allreduce topics"]},
+      {"q": "repo:local-inference-lab/vllm state loss connector", "total_count": 0, "in_repo_count": 0, "relevant_hits": []},
+      {"q": "repo:local-inference-lab/vllm 48425", "total_count": 0, "in_repo_count": 0, "relevant_hits": []},
+      {"q": "repo:local-inference-lab/vllm recurrent state uninitialized", "total_count": 0, "in_repo_count": 0, "relevant_hits": []},
+      {"q": "repo:local-inference-lab/vllm num_new_local_computed_tokens", "total_count": 0, "in_repo_count": 0, "relevant_hits": []}
+    ],
+    "adjacent_not_duplicate": {
+      "#401": {
+        "title": "fix(prefix-cache): allow hash-aligned DCP hybrid hits",
+        "state": "open",
+        "files": ["tests/v1/core/prefix_cache/test_partial_prefix_cache_hits.py", "vllm/v1/core/kv_cache_coordinator.py"],
+        "why_not_a_duplicate": "fixes HybridKVCacheCoordinator's DCP hash-alignment gate coarsening hits when dcp_world_size > 1; no connector involvement, different function and file (kv_cache_coordinator.py, not scheduler.py)"
+      },
+      "#293": {
+        "title": "[II] Recover hybrid KV cache load failures across cache groups",
+        "state": "open",
+        "files": ["tests/v1/kv_connector/unit/test_invalid_blocks_correctness.py", "vllm/v1/core/kv_cache_manager.py", "vllm/v1/core/sched/scheduler.py"],
+        "why_not_a_duplicate": "fixes Scheduler._update_requests_with_invalid_blocks unpacking exactly one cache group on connector LOAD FAILURE recovery; different function in the same file, addresses the failure-recovery path not the successful-hit local/external split this defect is in"
+      },
+      "#394": {
+        "title": "[Bug] --mamba-cache-mode align: scheduler admits a request it can never schedule, then re-prefills it forever",
+        "state": "open",
+        "why_not_a_duplicate": "already identified and ruled out as a distinct trigger in receipts/lmcache-fix.json prior to this filing"
+      }
+    },
+    "conclusion": "no open or closed issue/PR in local-inference-lab/vllm addresses this defect (connector-attached hybrid divergent-hit state loss); filed as new"
+  },
+  "filed": {
+    "issue": {
+      "number": 402,
+      "url": "https://github.com/local-inference-lab/vllm/issues/402",
+      "title": "[Bug] Hybrid (Mamba/GDN + attention) scheduler silently corrupts generation with any external KV connector attached; no connector = clean",
+      "state": "open",
+      "body_contains": ["root cause with file:line", "four-arm ladder evidence reinterpreted (L0 0/38, L1cold 7/38, L2warm 7/38, L3restart 38/38)", "trigger condition (hybrid model AND external connector)", "campaign-unaffected statement", "prior-art cite vllm-project/vllm#48425", "duplicate-search results against this repo", "CPU-proven/GPU-pending status"]
+    },
+    "pull_request": {
+      "number": 403,
+      "url": "https://github.com/local-inference-lab/vllm/pull/403",
+      "title": "[Bugfix] Gate hybrid+connector divergent local-hit path on connector opt-in",
+      "state": "open",
+      "closing_keyword": "Closes #402",
+      "head": "malaiwah/vllm-voipmonitor:fix/gg-scheduler-divergent-hybrid-hit-gate",
+      "base": "local-inference-lab/vllm:dev/gilded-gnosis (fa033bd4e)",
+      "commit_sha": "50be10ca16f82e6e8c79bf7dfde04ab23e928edc",
+      "commit_author": "Michel Belleau <michel.belleau@malaiwah.com>",
+      "dco": "Signed-off-by: Michel Belleau <michel.belleau@malaiwah.com> -- matches commit author, verified via GET /repos/local-inference-lab/vllm/pulls/403/commits",
+      "file_line": "vllm/v1/core/sched/scheduler.py, +23/-0, one hunk inside Scheduler.schedule() at the `if request.num_computed_tokens == 0:` block (line 726 on dev/gilded-gnosis @ fa033bd4e)",
+      "derived_from_patch_file": "patches/gg-vllm-hybrid-divergent-hit-gate.patch sha256 5f9ad10bedff87c4f37ce61bfe9be5cc9ed84dce99d9d3685c54b0341529839f, applied with `git apply` onto the branch, not retyped; commit diff verified identical to the patch hunk",
+      "mergeable_state_at_filing": "unstable (pre-run-check fails on the repo policy gate 'author must have >=4 merged PRs', same known gate every prior fork PR (#312/#314/#316/#318/#319/#397/#398) hit -- not a defect in this change; pre-commit/DCO/description checks passed or skipped cleanly)",
+      "body_states_explicitly": [
+        "CPU-verified only: applies cleanly, round-trips byte-identical, py_compiles",
+        "GPU behavioral proof pending a separately-planned four-arm ladder re-run",
+        "tradeoff: nixl P/D hybrid deployments lose the FA-hit optimization until GG rebases the upstream capability-flag plumbing; explicitly not applicable to this campaign (no nixl)"
+      ]
+    }
+  },
+  "cpu_gates_reverified_by_this_filing": {
+    "apply_check": "git apply --check patches/gg-vllm-hybrid-divergent-hit-gate.patch against dev/gilded-gnosis @ fa033bd4e in /var/tmp/gg-vllm-pr: clean",
+    "applied": "git apply (not git am, to preserve the reviewed patch text verbatim), then committed",
+    "round_trip": "committed diff vs. patch file: identical hunk content (+23/-0, same lines)",
+    "py_compile": "python3 -m py_compile vllm/v1/core/sched/scheduler.py: OK, no syntax errors",
+    "rootfs_identity": "the pre-patch file in this checkout is byte-identical to /var/tmp/gg-rootfs's vendored copy, confirmed by diff before branching"
+  },
+  "no_gpu_used": "all work this session was CPU-side: reading receipts and patch, git operations in /var/tmp/gg-vllm-pr, GitHub REST API calls. No GPU, no model weights, no server process.",
+  "scope_limits_honestly_carried_forward": [
+    "behavioral proof that the gate turns L1cold/L2warm 0/38 is a prediction from the root-cause analysis, not a measurement -- stated as such in both the issue and the PR body",
+    "the p1s1 zero-hit L3restart failure (receipts/lmcache-fix.json.unproven_until_gpu_ladder) is not addressed by this patch and not claimed to be",
+    "the nixl tradeoff (loses FA-hit optimization pending upstream capability-flag plumbing) is stated in the PR body and is not applicable to the TB2.1 campaign, which uses no connector at all"
+  ],
+  "campaign_unaffected_statement": {
+    "claim": "no currently running GG serving is affected by this defect",
+    "basis": "the TB2.1 campaign's sr1 image (docker/Containerfile.tb21-sr1) and every in-flight AIBoss pass serve with vLLM's native prefix caching only (--enable-prefix-caching) and no --kv-transfer-config / connector attached; the defect requires both a hybrid model AND an attached external KV connector; the four-arm ladder's own L0 control (no connector) measured 0/38 failed on the identical image, model, host and probe that showed 7/38 and 38/38 failures with a connector attached",
+    "stated_in": ["issue #402 body, Trigger condition section", "PR #403 body, Trigger condition / who this affects section"]
+  },
+  "artifacts": {
+    "branch_repo": "/var/tmp/gg-vllm-pr (origin=local-inference-lab/vllm, upstream=vllm-project/vllm, fork=malaiwah/vllm-voipmonitor)",
+    "branch": "fix/gg-scheduler-divergent-hybrid-hit-gate",
+    "issue_body_source": "generated inline this session, posted verbatim via POST /repos/local-inference-lab/vllm/issues",
+    "pr_body_source": "generated inline this session, posted verbatim via POST /repos/local-inference-lab/vllm/pulls"
+  }
+}
