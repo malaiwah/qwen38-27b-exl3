@@ -1,0 +1,273 @@
+{
+  "schema": "qwen38-gittensor-nvfp4-rtx5090/1",
+  "what": "gittensor-model-hub/Qwen3.8-27B-NVFP4-RTX5090, measured on the identical protocol as every other row of receipts/cross-engine-comparator.json: v5 shard 0, 512 contexts, 1,048,064 scored positions, replayed against the published BF16 reference through the shared BF16 head, plus resident-weight memory under the docs/22 protocol",
+  "why": "its card claims our exact axis by name -- the full native 262,144-token context on one 32 GB RTX 5090 -- with a 20-item smoke as its only fidelity evidence; whatever the numbers turned out to be, they were going on the table",
+  "artifact": {
+    "repo": "gittensor-model-hub/Qwen3.8-27B-NVFP4-RTX5090",
+    "revision": "69274a0d8dff5dd35bcee8290612f71e03b6e981",
+    "revision_pinned_how": "downloaded with --revision at the repo's then-current main head; every LFS sha256 below matches the Hub's files metadata for that revision",
+    "total_bytes": 20616833355,
+    "file_sha256": {
+      "gitattributes": "9a7c7f59da8a2bad26352923e6e6d4c8952822735ea3b8de5c0d614d22af85a7",
+      "LICENSE": "bbedc3fda3305820b977265f01b8619d87570a6739de3a5582c3464840f1e57a",
+      "README.md": "65dc0fff9a6f829884fb1b3ef2ecd9b13696d13aca340406f92e80c6dc0207b3",
+      "README.qwen-upstream.md": "57e4bdb258ee1a7d2635c5174ebd4e56abe392505cdb5f8bbb356b0dc4293641",
+      "assets/rtx5090-accuracy.png": "70013eee4415a5e4c55c36e83f165d39070772976649a5f247223c1730fa9b8c",
+      "assets/rtx5090-context.png": "0a0df80b4c1e4276994bd7688ad49b66efb8c845c4364089edc284222a5cff73",
+      "assets/rtx5090-decode.png": "66d11fe41563f3c091177f0b0e05b2b2094f8febe8ccf6c7918e3661d94b45e6",
+      "assets/rtx5090-hero.png": "65fdb7d51c26626e3fb9effd8fdafce6046be70e944f182ba15d331c018d44a5",
+      "assets/rtx5090-ttft.png": "ab25dd6883749efb301635dc2ab4bf36e9fee31a2874d39b8c760661ff826abd",
+      "chat_template.jinja": "c3cf9e34abf4f9e36c2d72165aa9c132d3e2a725b6c2586aaa3a8af9d7a81041",
+      "config.json": "92d0c418b744f2d1518cbaefd11739744ff43ce9b952219b64adfd5b96f38145",
+      "crc32.txt": "b42dd291f5f98b05807e458f5b47849969a9b3326acbf0c97d28b05826740b83",
+      "generation_config.json": "7ae9e193dbcef99733ccf647c95ef668c35d1a80a8aa88a51ee40a9bcacf5a74",
+      "hf_quant_config.json": "eb294f05267ba5fd0a2f8402a74c904ea5f01e13547003bdbc1e6cbbdcaccbab",
+      "merges.txt": "a9d356d7bdf1ef4949e3e748e95b8e10ad9d4e2e838eddc38a0a7b6b94d1db8d",
+      "model-00001-of-00003.safetensors": "cdd37b0e61eccc8a3d7d08f9d1a4f52856a9d88e4e8b42089bd18a970e3a01ec",
+      "model-00002-of-00003.safetensors": "f2faf6c100edad7014810c989754408251dce5064f3623679ef6c33a5c393bc9",
+      "model-00003-of-00003.safetensors": "9ce944d534eabdd493076a3a52c7ebd31f41c135b340a1ea95c5a695e6f1f6b2",
+      "model.safetensors.index.json": "1cefff97291d43710cc071ffc2b981b80bcf821be1f69d813853d89368c83c2b",
+      "preprocessor_config.json": "27225450ac9c6529872ee1924fcb0962ff5634834f817040f444118116f4e516",
+      "processor_config.json": "d89ef49ce9cd37fbf510158e13c1ef063d9286411c1ec9049932dbe0487143b1",
+      "tokenizer.json": "0997f410c57a1f4e53b09e4be8f4a172d90edd9564368fb0847030937229b9f3",
+      "tokenizer_config.json": "c873857aae349387312ff4cb76d4a17a8d5ed79f89523146200a1570739132db",
+      "video_preprocessor_config.json": "7768af27c1fafa9cc9011c1dc20067e03f8915e03b63504550e11d5066986d13",
+      "vocab.json": "ce99b4cb2983d118806ce0a8b777a35b093e2000a503ebde25853284c9dfa003"
+    },
+    "declared_quantization": {
+      "config_json_quant_method": "modelopt",
+      "hf_quant_config": {
+        "quant_algo": "NVFP4",
+        "kv_cache_quant_algo": "FP8",
+        "group_size": 16,
+        "producer": "modelopt 0.0.1.dev1+gc4129b6e0"
+      }
+    },
+    "composition": {
+      "tensors_in_index": 2399,
+      "quantized_linear_modules": 400,
+      "quantized_weight_dtypes": {
+        "packed_weight": "U8 (two FP4 values per byte)",
+        "weight_scale": "F8_E4M3",
+        "weight_scale_2": "F32",
+        "counts": {
+          "packed": 400,
+          "weight_scale": 400,
+          "weight_scale_2": 400
+        }
+      },
+      "mtp": {
+        "tensors": 15,
+        "dtypes": [
+          "BF16"
+        ],
+        "intact": true,
+        "note": "present and BF16; the upstream card's published serve command does not enable speculative decoding, so whether the draft actually drafts on a 5090 is upstream's unexercised option, not something either side measured"
+      },
+      "vision": {
+        "tensors": 333,
+        "dtypes": [
+          "BF16"
+        ],
+        "intact": true
+      },
+      "lm_head_dtype": "BF16",
+      "embed_tokens_dtype": "BF16",
+      "excluded_modules_declared": 149
+    },
+    "shared_blob_finding": {
+      "shard": "model-00003-of-00003.safetensors",
+      "sha256": "9ce944d534eabdd493076a3a52c7ebd31f41c135b340a1ea95c5a695e6f1f6b2",
+      "finding": "bit-identical to the trailing shard of the vroomfondel, PassingByPixels and kristianpaul ModelOpt NVFP4 exports (the untouched BF16 vision/embed/lm_head/MTP block ModelOpt emits identically; receipts/quant-landscape-scan.json). The two quantized body shards match no checkpoint we have measured, so this is NOT a re-upload and the measurement was necessary"
+    }
+  },
+  "mirror": {
+    "repo": "malaiwah/Qwen3.8-27B-NVFP4-RTX5090-archival-69274a0d",
+    "revision": "e85bcc97cb5d560496afadd43cfe044f3d532dc8",
+    "why": "unconditional policy: a published number must not cite an artifact whose revision can stop resolving (the unsloth NVFP4 squash burned exactly this citation once already); precautionary, upstream still resolves today",
+    "verification": "deep: every non-LFS file re-downloaded and re-hashed, 3 LFS files spot re-downloaded, remaining LFS verified by remote sha256 oid; 26 files, 20,616,840,152 bytes, all verified",
+    "layout_delta": "upstream README.md preserved byte-identically as README.upstream-gittensor.md; the mirror's README.md explains the mirror and carries the digest table",
+    "receipt_sha256": "36d2dfe22c04d9f15f7c7991e5ce6eaffbf18ba35d5e28ca8afa32d8c1c6341f",
+    "mirrored_before_publishing": true
+  },
+  "protocol_identity": {
+    "suite": {
+      "shard": "shard-0000 of the v5 ladder: contexts 0-511 in the parent's fixed order",
+      "shard_suite_token_sha256": "caef8a4628d6c07c162100895096f890cdf9cafc8e4c48b3d66035d737ee7cf7",
+      "parent_suite_token_sha256": "510541f6861b589d44932db253ec25d96d6daaeeee4ea2ab9b65329209482b88",
+      "contexts": 512,
+      "scored_positions": 1048064,
+      "context_length": 2048,
+      "source_clusters": 330
+    },
+    "reference": {
+      "model": "/models/Qwen3.8-27B",
+      "capture": "/var/tmp/work/gguf/hidden-bf16",
+      "capture_manifest_sha256": "01a2f676edcf5d1f958f0e0ffb9dfa1dd8cf5671e3d8c69b822cb806e13200ec",
+      "byte_identical_to_nvfp4_row_reference": true,
+      "note": "hardlink-seeded from the surviving shard-0 BF16 capture; the ladder's verify_capture accepted it against the shard suite before any replay ran"
+    },
+    "head": {
+      "path": "/work/kld2/lm_head.safetensors",
+      "sha256": "25a30fd5f826da0abc4efc4cc71def9f02bcb8085f7175eee284d221dee4cfff",
+      "note": "one shared BF16 lm_head for both operands; the candidate's own BF16 head is not in the loop"
+    },
+    "interval": "source-cluster bootstrap, 10,000 resamples, seed 1, 330 clusters",
+    "harness_sha256": "8ce8fe861c977c856f3263f509878e588caa2eaab29fe310f8c40223941e1294",
+    "runtime_image": {
+      "image": "voipmonitor/vllm@sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b",
+      "file_manifest_sha256": "9f2456247b6d527c379e427c9bae4eef000edde24254ffcb9d61c2020c0e5aac"
+    },
+    "capture_invocation": {
+      "quantization": "--quantization modelopt_fp4",
+      "gpu_memory_utilization": 0.85,
+      "kv_cache_dtype_requested": "auto",
+      "kv_cache_dtype_resolved": "fp8_e4m3",
+      "kv_note": "this checkpoint bakes kv_cache_quant_algo FP8 into its config, so vLLM's auto resolved fp8_e4m3 for it while every other comparator row resolved bfloat16 under the same flag; the diagnostic block below bounds what that is worth"
+    },
+    "candidate_identity": {
+      "model_path": "/models/Qwen3.8-27B-NVFP4-RTX5090",
+      "model_revision": null,
+      "model_revision_source": "none",
+      "index_sha256": "1cefff97291d43710cc071ffc2b981b80bcf821be1f69d813853d89368c83c2b",
+      "config_sha256": "92d0c418b744f2d1518cbaefd11739744ff43ce9b952219b64adfd5b96f38145",
+      "shard_sha256": {
+        "model-00001-of-00003.safetensors": "cdd37b0e61eccc8a3d7d08f9d1a4f52856a9d88e4e8b42089bd18a970e3a01ec",
+        "model-00002-of-00003.safetensors": "f2faf6c100edad7014810c989754408251dce5064f3623679ef6c33a5c393bc9",
+        "model-00003-of-00003.safetensors": "9ce944d534eabdd493076a3a52c7ebd31f41c135b340a1ea95c5a695e6f1f6b2"
+      },
+      "quantization": "modelopt_fp4",
+      "quantization_config": null,
+      "trust_remote_code": false,
+      "kv_cache_dtype_requested": "auto",
+      "kv_cache_dtype_resolved": "fp8_e4m3",
+      "kv_cache_dtype_resolved_source": "cache_config.cache_dtype"
+    },
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Server Edition (rental), the same device that measured the nvfp4 comparator row and the unsloth resident figure below"
+  },
+  "measured": {
+    "fidelity_shard0": {
+      "mean_kld": 0.06216307539218222,
+      "ci95": [
+        0.05849107005915104,
+        0.06635959153477314
+      ],
+      "top1_agreement": 0.8984651700659502,
+      "p999_kld": 2.5910664207600465,
+      "max_kld": 16.040865179852688,
+      "cumulative_receipt": "receipts/kld5-1M-gt5090.json",
+      "cumulative_content_sha256": "b90d2b1e0ffc90fd94607ebd5ebeffb9748871c9bf22258dd630b23e8b7060ba"
+    },
+    "paired_same_512_contexts": {
+      "receipt": "receipts/kld5-1M-paired-gt5090.json",
+      "content_sha256": "36d28495f74e46c2379eb3448b4ca2533d00b1fc73854ae6a518ce1f43ea8252",
+      "vs_context_edition": {
+        "a": "gt5090",
+        "b": "ctx",
+        "contexts": 512,
+        "difference_a_minus_b": 0.05875366543499566,
+        "ci95_low": 0.055324416743911455,
+        "ci95_high": 0.06269411847585536,
+        "a_wins": 0,
+        "b_wins": 512,
+        "clusters": 330
+      },
+      "vs_official_fp8": {
+        "a": "gt5090",
+        "b": "fp8",
+        "contexts": 512,
+        "difference_a_minus_b": 0.056966011841871764,
+        "ci95_low": 0.05361913613719222,
+        "ci95_high": 0.0608295193753068,
+        "a_wins": 0,
+        "b_wins": 512,
+        "clusters": 330
+      },
+      "vs_unsloth_nvfp4": {
+        "a": "gt5090",
+        "b": "nvfp4",
+        "contexts": 512,
+        "difference_a_minus_b": 0.03204766783126801,
+        "ci95_low": 0.03071142465999784,
+        "ci95_high": 0.03358259221996458,
+        "a_wins": 1,
+        "b_wins": 511,
+        "clusters": 330
+      },
+      "the_single_win": {
+        "context_index": 58,
+        "source_cluster": "cpython5-v3.13.1-modules-unicodename-db-h",
+        "margin": -0.0002297381647928618,
+        "note": "the one context of 512 where this build beats unsloth's NVFP4; zero exact ties anywhere"
+      },
+      "reading": "loses every one of 512 contexts to the context edition and to official FP8, and 511 of 512 to unsloth's NVFP4 -- the same weight format, 2.57 GiB more resident memory, roughly half the KLD"
+    },
+    "kv_dtype_diagnostic": {
+      "why": "the only resolved-runtime difference between this row and the rest of the table is its FP8 KV cache; if that explained the gap, blaming the weight conversion would be wrong",
+      "fp8_kv_mean_kld": 0.06216307539218222,
+      "bf16_kv_mean_kld": 0.061798382599695105,
+      "bf16_kv_top1": 0.8986292821812408,
+      "paired_fp8kv_minus_bf16kv": {
+        "difference": 0.00036469279248711495,
+        "ci95": [
+          5.8123424418175604e-05,
+          0.000678962539340008
+        ],
+        "a_wins": 218,
+        "b_wins": 294
+      },
+      "reading": "the FP8-KV term is +0.000365 [+0.000058, +0.000679] -- statistically real, about 1 % of the +0.032 paired gap to unsloth's NVFP4 and about 0.6 % of the row's own mean. The gap is the weight conversion, not the KV cache. The published row is the fp8-KV capture because that is the checkpoint's own declared operating point under the ladder's identical flags",
+      "diagnostic_is_not_the_published_row": true
+    },
+    "resident_weights": {
+      "protocol": "docs/22: engine-reported weight figure under the identical harness flags (safetensors load, enforce_eager, util 0.85, max_model_len 2112), read from vLLM's own 'Model loading took' line",
+      "this_build_gib": 18.77,
+      "log_line": "(EngineCore pid=1501854) INFO 08-16 12:43:27 [gpu_model_runner.py:5415] Model loading took 18.77 GiB memory and 2.304182 seconds",
+      "confirmed_by_second_load": "(EngineCore pid=1504500) INFO 08-16 12:49:33 [gpu_model_runner.py:5415] Model loading took 18.77 GiB memory and 1.930749 seconds",
+      "unsloth_nvfp4_gib": 21.34,
+      "unsloth_log_line": "(EngineCore pid=1317608) INFO 08-16 03:09:47 [gpu_model_runner.py:5415] Model loading took 21.34 GiB memory and 6.030659 seconds",
+      "unsloth_source": "identical invocation, same GPU, from the nvfp4 comparator row's own capture (/var/tmp/work/kld5-nvfp4/shard0.log); matches the 21.34 GiB published in docs/22",
+      "delta_gib": 2.57
+    }
+  },
+  "their_claims_not_ours": {
+    "rule": "everything in this block is upstream's own measurement or claim, preserved verbatim from the mirrored card; we did NOT run their 5090 serving configuration and none of these numbers is confirmed or denied by this receipt. Measured KLD and resident bytes above must never be conflated with this serving envelope",
+    "serving_claims_verbatim": {
+      "weights_in_vram": "18.8 GB (vs unsloth 22.7 GB)",
+      "fp8_kv_pool_on_32gb": "275,941 tokens (vs 77,184)",
+      "full_256k_context": "yes (1.05x at 262,144) (vs ~77k cap)",
+      "decode_concurrency_1": "80.6 tok/s (vs 42.4)",
+      "longest_completed_prompt": "242,686 tokens",
+      "stack": "vLLM 0.27.1 (V1), FlashInfer SM120 NVFP4 GEMM, torch 2.13.0+cu130, CUDA 13.0, driver 580.173.02, util 0.97"
+    },
+    "adjacent_measured_fact": "our 18.77 GiB resident-weight measurement is consistent with their 18.8 GB claim (different host, same engine family); consistency is not verification of the serving envelope",
+    "fidelity_evidence_on_their_card": {
+      "what": "a 20-item smoke on GPQA-Diamond / AIME-2025 / MMLU-Pro: 45/60 (75 %) for both this build and unsloth's NVFP4",
+      "their_own_caveat_verbatim": "This is a 20-item smoke, not a full-test ranking. [...] Do not treat these as published GPQA / AIME / MMLU-Pro scores.",
+      "contrast": "the shard-0 measurement above scores 1,048,064 positions over 512 contexts with a bootstrap interval; a 20-item smoke cannot resolve a 2x KLD difference and their own card says not to lean on it"
+    },
+    "mtp_and_vision": "both intact in BF16 (composition block), so the checkpoint is eligible for the multimodal long-context use its name claims; their published serve command enables neither speculative decoding nor anything vision-specific, and we measured neither"
+  },
+  "published": {
+    "comparator_amendment": "receipts/cross-engine-comparator.json, candidates['nvfp4-rtx5090'], amended additively with every pre-existing value byte-identical (verified by the amendment script before writing)",
+    "chart": "assets/kld-all-measurements-{light,dark}.{svg,png} regenerated with the new comparator row and republished to all four model repos with DOCS-SHA256SUMS rebound"
+  },
+  "artifacts": {
+    "capture_preserved": {
+      "repo": "malaiwah/qwen38-27b-fidelity-suite-v5",
+      "path": "captures/shard-0000/hidden-gt5090",
+      "receipt_sha256": "e2f8b1c748aea45125dab3b0c86344c3270e64733fca0e6d714b2a054e2d19cc",
+      "note": "deep-verified before any local deletion"
+    },
+    "diagnostic_capture_cost_statement": {
+      "artifact": "/var/tmp/work/kld5-gt5090/diag/hidden-gt5090-bf16kv",
+      "policy_tier": "state-the-cost: recomputing it is one capture plus one replay, about 8 minutes of one GPU; not preserved, its report and paired receipt are the durable artifact",
+      "diag_report_sha256": "85acf93785c848c112f0001ae72c1df3c33aa7a9fd0a5168e779b79c35af6062",
+      "diag_paired_sha256": "ba4f367c74c1b9d59c641c6fc2b01d6ce2d250fed26e94f43a981b9cdc147432"
+    },
+    "local_snapshot": "/var/tmp/models/Qwen3.8-27B-NVFP4-RTX5090",
+    "run_root": "/var/tmp/work/kld5-gt5090"
+  },
+  "generated_utc": "2026-08-16T13:06:03Z",
+  "content_sha256": "fe40aed0dd593e420023eaf4cd9eda13a5219a8b5b104beea4be30719f854f54"
+}

@@ -730,3 +730,37 @@ on docs/03/05/09/12/14/17/20 plus the docs/16 stale closing line and the docs/02
 24 orphan-receipt links (startup-times.json now sits beside the K5K6 cold-start numbers). All six
 repos' cards re-published byte-identical. Every edit maps to a gap id in
 `receipts/method-hardening-pass.json`.
+
+## gittensor-model-hub/Qwen3.8-27B-NVFP4-RTX5090, measured on the identical protocol (GittensorCompare)
+
+The checkpoint that attacks the 32 GB / 262,144-token headline by name — with a 20-item smoke as
+its only fidelity evidence — is now on the suite and the cards. Identity first: revision
+`69274a0d` pinned, every file hashed against the Hub's own LFS metadata, headers read directly
+(400 body Linears NVFP4 W4A4 group 16, MTP 15 tensors and vision 333 tensors intact BF16,
+lm_head/embed BF16, FP8 KV baked into config; its trailing BF16 shard `9ce944d5…` is bit-identical
+to three other ModelOpt exports, but both quantized body shards are unique — not a re-upload, so
+the measurement was necessary). Mirrored **before** any published number cited it
+(`malaiwah/Qwen3.8-27B-NVFP4-RTX5090-archival-69274a0d@e85bcc97`, deep-verified, ~zero transfer via
+Xet dedup). Measured on v5 shard 0 — same suite token `caef8a46…`, same 512 contexts and 1,048,064
+positions, same BF16 reference capture (byte-identical to the one the unsloth row replayed
+against), same shared head `25a30fd5…`, same pinned r34 engine, bootstrap 10,000/seed 1/330
+clusters: **mean KLD 0.062163** [0.058491, 0.066360], top-1 **89.85 %**, p99.9 2.5911 — the
+weakest row on the comparator, 2.1x unsloth's NVFP4 in the same weight format. Paired per context:
+loses **512/512** to the context edition (+0.058754), **512/512** to official FP8 (+0.056966),
+**512/512** to hydrated, online and K4, and **511/512 to unsloth's NVFP4** (+0.032048
+[+0.030711, +0.033583]; its one win is context 58 by 0.00023). Resident weights measured under the
+docs/22 protocol: **18.77 GiB** vs unsloth's 21.34 GiB on the same rental GPU with identical flags
+— their 18.8 GB claim is consistent, and the receipt keeps measured (KLD, resident bytes) strictly
+separated from their-claim (5090 serving envelope, KV pool, tok/s), which we did not run. The one
+resolved-runtime difference — its baked FP8 KV — was bounded with a bf16-KV control capture:
++0.000365 [+0.000058, +0.000679], ~1 % of the gap to unsloth; the gap is the weight conversion.
+So the two NVFP4 rows now bound a real trade inside one format: 2.57 GiB of resident memory bought
+at roughly double the KLD. Artifacts: `receipts/gittensor-nvfp4-rtx5090.json` (identity, digests,
+composition, protocol identity, diagnostic), `receipts/kld5-1M-gt5090.json`,
+`receipts/kld5-1M-paired-gt5090.json` (six comparisons), comparator amended additively
+(`nvfp4-rtx5090` row, every pre-existing value verified byte-identical against git HEAD before
+writing), master chart regenerated (ten candidates) and uploaded to all four model repos with
+DOCS-SHA256SUMS rebound and re-fetch digest verification, all four cards carry the row plus one
+honest paired paragraph each (and the dead collection link is fixed), shard-0 capture preserved to
+the v5 dataset (`captures/shard-0000/hidden-gt5090@ea1244fc`, deep-verified). Ladder map extension
+(`gt5090`, `--quantization modelopt_fp4`) follows the nvfp4 pattern and is explicit-only.

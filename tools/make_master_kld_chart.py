@@ -143,6 +143,7 @@ NO_SIZE_REASON = {
     "fp8": "no published serialized-byte receipt of ours",
     "k4": "no published payload receipt",
     "nvfp4": "no published serialized-byte receipt of ours",
+    "nvfp4-rtx5090": "no published serialized-byte receipt of ours",
 }
 
 # id -> (display name, short label, colour key). Engine, floor-carrying and
@@ -158,6 +159,7 @@ IDENTITY = {
     "fp8": ("official Qwen FP8", "official FP8", "fp8"),
     "k4": ("K4", "K4", "k4"),
     "nvfp4": ("Unsloth NVFP4", "NVFP4", "nvfp4"),
+    "nvfp4-rtx5090": ("gittensor NVFP4 (RTX5090)", "NVFP4-5090", "nvfp4"),
 }
 # Label placement only: (dx, dy, ha, va) for the mean label and for the p99.9
 # label, plus the interval cap width. No x or y value is ever nudged.
@@ -171,6 +173,7 @@ PLACE = {
     "fp8": ((10, 0, "left", "center"), (0, 10, "center", "bottom"), 6.0),
     "k4": ((10, 0, "left", "center"), (0, 10, "center", "bottom"), 6.0),
     "nvfp4": ((10, 0, "left", "center"), (0, 10, "center", "bottom"), 6.0),
+    "nvfp4-rtx5090": ((10, 0, "left", "center"), (0, 10, "center", "bottom"), 6.0),
 }
 PLACE_DEFAULT = ((0, 10, "center", "bottom"), (0, 10, "center", "bottom"), 6.0)
 

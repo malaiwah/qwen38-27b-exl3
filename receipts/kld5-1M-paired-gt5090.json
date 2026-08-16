@@ -1,0 +1,126 @@
+{
+  "schema": "qwen38-kld-ladder-paired/1",
+  "generated_utc": "2026-08-16T12:59:10Z",
+  "scope": "paired per-context comparison at the 1M ladder checkpoint of the v5 held-out suite",
+  "suite": {
+    "manifest": "receipts/kld5-suite-manifest.json",
+    "manifest_sha256": "c79dfad3767ca5b3015129077f20dbb9282a2e51ca8bca9ed09be8c7a9c73019",
+    "suite_token_sha256": "510541f6861b589d44932db253ec25d96d6daaeeee4ea2ab9b65329209482b88",
+    "contexts": 512,
+    "context_length": 2048,
+    "scored_positions": 1048064,
+    "source_clusters": 330
+  },
+  "inputs": {
+    "gt5090": {
+      "path": "receipts/kld5-1M-gt5090.json",
+      "sha256": "a868ca61ab145921934e3925ba0a273b298841a88cb69817945d2c0db32753bb",
+      "content_sha256": "b90d2b1e0ffc90fd94607ebd5ebeffb9748871c9bf22258dd630b23e8b7060ba"
+    },
+    "ctx": {
+      "path": "receipts/kld5-1M-tail-ctx.json",
+      "sha256": "ed5c09e9414e2c0c418dffbe82f20ca1398550dcf1cf74772bda44057269f28f",
+      "content_sha256": "0543a0d48d3c140ad2a26085ebb7ff45e383278e85752fddf7fcd77038916797"
+    },
+    "fp8": {
+      "path": "receipts/kld5-1M-tail-fp8.json",
+      "sha256": "526b18c122fa9c68d6541abdff9e604f0dd5f4620733242b4db0b8ff15079331",
+      "content_sha256": "503be126eb267fa0401b9fe6971a9f5f43482f5056dd54b4478739b80c6cbb67"
+    },
+    "nvfp4": {
+      "path": "receipts/kld5-1M-nvfp4.json",
+      "sha256": "02ce3f336d2ca3d93f2fbeebf4f003adf026df2862ff4e862ce0a2cb0dd43865",
+      "content_sha256": "f01ddc78c142bb88733c10fd4e9dfd05d74bca2236df9044b72fc5f3e548139b"
+    },
+    "hyd": {
+      "path": "receipts/kld5-1M-tail-hyd.json",
+      "sha256": "7298b7aeb1b4b5f7fac24485f4da6fb07007870fbb289c5f333f2f04e0a08995",
+      "content_sha256": "01f579d710543abc1b2136a8ec580226b56186289b60f86fec5e9535203d4b08"
+    },
+    "k5k6": {
+      "path": "receipts/kld5-1M-tail-k5k6.json",
+      "sha256": "42fef9468e4a3fa40f675e1ff8d2d1eeeab9538cf626d830927971dfd25f9471",
+      "content_sha256": "68e9f2ca01c23fe1ad58138913138eba0f58959fcaa7eb3674c3f9e8fbb485fa"
+    },
+    "k4": {
+      "path": "receipts/kld5-1M-tail-k4.json",
+      "sha256": "0f7494fa256f0154e9a30b4e7b1ed9e6d9224da5d965e4d998fb5dbb69455c3f",
+      "content_sha256": "ac1ade79b687b2e7ce73be0ba78600ea77f352e1319a5a95aa505aac1571434e"
+    }
+  },
+  "method": {
+    "unit": "one 2,048-token context, 2,047 scored positions",
+    "statistic": "mean over contexts of (candidate A mean KLD - candidate B mean KLD)",
+    "interval": "source-cluster bootstrap, 10,000 resamples, seed 1, 330 clusters resampled with replacement",
+    "operands": "both candidates replayed through the same shared BF16 LM head; body-only, no candidate head quantization counted"
+  },
+  "comparisons": {
+    "gt5090_vs_ctx": {
+      "a": "gt5090",
+      "b": "ctx",
+      "contexts": 512,
+      "difference_a_minus_b": 0.05875366543499566,
+      "ci95_low": 0.055324416743911455,
+      "ci95_high": 0.06269411847585536,
+      "a_wins": 0,
+      "b_wins": 512,
+      "clusters": 330
+    },
+    "gt5090_vs_fp8": {
+      "a": "gt5090",
+      "b": "fp8",
+      "contexts": 512,
+      "difference_a_minus_b": 0.056966011841871764,
+      "ci95_low": 0.05361913613719222,
+      "ci95_high": 0.0608295193753068,
+      "a_wins": 0,
+      "b_wins": 512,
+      "clusters": 330
+    },
+    "gt5090_vs_nvfp4": {
+      "a": "gt5090",
+      "b": "nvfp4",
+      "contexts": 512,
+      "difference_a_minus_b": 0.03204766783126801,
+      "ci95_low": 0.03071142465999784,
+      "ci95_high": 0.03358259221996458,
+      "a_wins": 1,
+      "b_wins": 511,
+      "clusters": 330
+    },
+    "gt5090_vs_hyd": {
+      "a": "gt5090",
+      "b": "hyd",
+      "contexts": 512,
+      "difference_a_minus_b": 0.059463192232497276,
+      "ci95_low": 0.05597316367004932,
+      "ci95_high": 0.06345834285527863,
+      "a_wins": 0,
+      "b_wins": 512,
+      "clusters": 330
+    },
+    "gt5090_vs_k5k6": {
+      "a": "gt5090",
+      "b": "k5k6",
+      "contexts": 512,
+      "difference_a_minus_b": 0.059021715037048006,
+      "ci95_low": 0.055547877003182415,
+      "ci95_high": 0.06300502513992222,
+      "a_wins": 0,
+      "b_wins": 512,
+      "clusters": 330
+    },
+    "gt5090_vs_k4": {
+      "a": "gt5090",
+      "b": "k4",
+      "contexts": 512,
+      "difference_a_minus_b": 0.051817726855499464,
+      "ci95_low": 0.04890917974652291,
+      "ci95_high": 0.05516006438394896,
+      "a_wins": 0,
+      "b_wins": 512,
+      "clusters": 330
+    }
+  },
+  "content_sha256": "36d28495f74e46c2379eb3448b4ca2533d00b1fc73854ae6a518ce1f43ea8252"
+}

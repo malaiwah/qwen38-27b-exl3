@@ -105,7 +105,7 @@ Capacity uses each card's documented profile: hydrated, online and K4 are real R
 5090 MTP-3 tests; context is MTP-3 with an 8.4 MP cap, qualified on a physical RTX 5090 at
 utilisation 0.955.
 These profiles are not interchangeable
-([collection](https://huggingface.co/collections/qwen38-27b-mixed-precision-exl3-measured-6a7fe0cb27817c23e4a57025)).
+([collection](https://huggingface.co/collections/malaiwah/qwen38-27b-mixed-precision-exl3-measured-6a7fe0cb27817c23e4a57025)).
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="assets/context-frontier-dark.svg">
@@ -154,11 +154,11 @@ numbers untouched — this section adds evidence, it does not revise theirs.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="assets/kld-all-measurements-dark.svg">
-  <img alt="Every KL divergence this project has measured, four panels on four protocols with deliberately no shared axis. Panel A, top left — our v5 held-out suite, shard 0: 512 contexts, 1,048,064 scored positions, 330 source clusters, identical for every candidate; y is KL(BF16 reference || candidate) in nats per token on a log scale, x is serialized bytes on disk in GiB and never VRAM, resident weights or KV. Nine candidates with source-cluster bootstrap 95 % intervals and their p99.9: GGUF Q8_0 0.001087, GGUF Q6_K 0.002035, hydrated K5/K6 0.002700, online K5/K6 0.003141, context edition 0.003409, GGUF UD-Q5_K_XL 0.004444, official Qwen FP8 0.005197, K4 0.010345 and Unsloth NVFP4 0.030115. The measured llama.cpp-versus-vLLM cross-engine floor, 0.000507 mean at 99.07 % top-1, is drawn as a dashed reference line; filled squares are llama.cpp rows that contain that term, hollow squares subtract it naively, circles are vLLM rows that never carried it. The four candidates with no published serialized-byte receipt — online K5/K6, official FP8, K4 and NVFP4 — sit in a narrow lane at the right of the same panel on the same y-axis, each labelled with the reason instead of being given an invented x. Panel B, top right — the same suite's ladder checkpoints, cumulative 1,048,064 to 10,480,640 scored positions across ten shards, 5,120 contexts and 842 source clusters at 10M, five vLLM builds only because no GGUF candidate ran all ten shards; every mean moves by less than 2.9 % of its own value across the tenfold increase and no ordering changes. Panel C, bottom left — the two prior suites, each on its own y-axis with a hatched 'NOT ONE AXIS' barrier between them: C1, the corrected v3 suite, 127 contexts and 259,969 positions, printing the measured ratio of each candidate's v3 mean to its own v5 shard-0 mean (official FP8 2.46x, online 2.53x, hydrated 2.66x, context 2.75x, K4 2.87x, NVFP4 3.08x — a 1.25x spread, so no single conversion factor exists, while the ordering is identical in both suites); and C2, the source-disjoint v4 qualification, 36 contexts and 73,692 positions. Panel D, bottom right — a protocol we have never run: turboderp's published chart labels read off his own images, OpenWebText 8 x 8192 = 65,536 formatted positions, his BF16 reference and his output head inside the measured path, with two of our builds present only as dashed vertical decoder-weight markers carrying no y-value. The footer states the two rules the figure exists to enforce: RULE 1, the engine term is not shared — every GGUF value in panel A contains the 0.000507 cross-engine floor and every vLLM value does not, so the squares are upper bounds and the floor-subtracted values are estimates and not identities because KL is not additive; RULE 2, no cross-panel ratio is meaningful, because the panels differ in corpus, context length, scored-position selection, reference numerics, vocabulary handling and head placement." src="assets/kld-all-measurements-light.svg">
+  <img alt="Every KL divergence this project has measured, four panels on four protocols with deliberately no shared axis. Panel A, top left — our v5 held-out suite, shard 0: 512 contexts, 1,048,064 scored positions, 330 source clusters, identical for every candidate; y is KL(BF16 reference || candidate) in nats per token on a log scale, x is serialized bytes on disk in GiB and never VRAM, resident weights or KV. Ten candidates with source-cluster bootstrap 95 % intervals and their p99.9: GGUF Q8_0 0.001087, GGUF Q6_K 0.002035, hydrated K5/K6 0.002700, online K5/K6 0.003141, context edition 0.003409, GGUF UD-Q5_K_XL 0.004444, official Qwen FP8 0.005197, K4 0.010345, Unsloth NVFP4 0.030115 and gittensor NVFP4 (RTX5090) 0.062163. The measured llama.cpp-versus-vLLM cross-engine floor, 0.000507 mean at 99.07 % top-1, is drawn as a dashed reference line; filled squares are llama.cpp rows that contain that term, hollow squares subtract it naively, circles are vLLM rows that never carried it. The five candidates with no published serialized-byte receipt — online K5/K6, official FP8, K4, NVFP4 and gittensor NVFP4-5090 — sit in a narrow lane at the right of the same panel on the same y-axis, each labelled with the reason instead of being given an invented x. Panel B, top right — the same suite's ladder checkpoints, cumulative 1,048,064 to 10,480,640 scored positions across ten shards, 5,120 contexts and 842 source clusters at 10M, five vLLM builds only because no GGUF candidate ran all ten shards; every mean moves by less than 2.9 % of its own value across the tenfold increase and no ordering changes. Panel C, bottom left — the two prior suites, each on its own y-axis with a hatched 'NOT ONE AXIS' barrier between them: C1, the corrected v3 suite, 127 contexts and 259,969 positions, printing the measured ratio of each candidate's v3 mean to its own v5 shard-0 mean (official FP8 2.46x, online 2.53x, hydrated 2.66x, context 2.75x, K4 2.87x, NVFP4 3.08x — a 1.25x spread, so no single conversion factor exists, while the ordering is identical in both suites); and C2, the source-disjoint v4 qualification, 36 contexts and 73,692 positions. Panel D, bottom right — a protocol we have never run: turboderp's published chart labels read off his own images, OpenWebText 8 x 8192 = 65,536 formatted positions, his BF16 reference and his output head inside the measured path, with two of our builds present only as dashed vertical decoder-weight markers carrying no y-value. The footer states the two rules the figure exists to enforce: RULE 1, the engine term is not shared — every GGUF value in panel A contains the 0.000507 cross-engine floor and every vLLM value does not, so the squares are upper bounds and the floor-subtracted values are estimates and not identities because KL is not additive; RULE 2, no cross-panel ratio is meaningful, because the panels differ in corpus, context length, scored-position selection, reference numerics, vocabulary handling and head placement." src="assets/kld-all-measurements-light.svg">
 </picture>
 
 *The widest single view of the evidence: **A** is the only panel where every family appears
-together (v5 shard 0, 512 contexts, 1,048,064 positions, nine candidates — this build is the
+together (v5 shard 0, 512 contexts, 1,048,064 positions, ten candidates — this build is the
 `online` circle at 0.003141), **B** is the same suite's 1M → 10M ladder (five vLLM builds, 5,120
 contexts at 10M), **C1/C2** are the superseded corrected v3 (127 contexts, 259,969 positions) and
 the source-disjoint v4 (36 contexts, 73,692 positions) on separate y-axes behind a barrier, and
@@ -377,6 +377,7 @@ per-candidate reports
 | official FP8 | vLLM | 0.005197 | n/a, same engine | 96.92 % | 0.2440 | 28.51 GiB resident |
 | K4 | vLLM | 0.010345 | n/a, same engine | 95.91 % | 0.5576 | — |
 | `unsloth/Qwen3.8-27B-NVFP4` @ `9c73e2da` | vLLM | 0.030115 | n/a, same engine | 93.16 % | 1.6228 | — |
+| `gittensor-model-hub/Qwen3.8-27B-NVFP4-RTX5090` @ `69274a0d` | vLLM | 0.062163 | n/a, same engine | 89.85 % | 2.5911 | — |
 
 **The engine floor, measured and not assumed.** A GGUF row carries llama.cpp-versus-vLLM numerics
 on top of quantization error, so that term was measured the same way: the unquantized **BF16
@@ -394,11 +395,12 @@ report's **exact** shard-0 p99.9 as the comparator receipt read them; the
 and the exact value lies inside the bin the estimate names. The two differ by construction, not by
 measurement.
 
-**Why two serialized cells read `—`, and they are not the same reason.** This download ships
+**Why several serialized cells read `—`, and they are not the same reason.** This download ships
 attention in BF16 for the runtime to encode at load (30.60 GB on disk, 20.32 GiB resident), so its
-disk bytes are not a like-for-like payload against a GGUF file and are not presented as one; NVFP4's
-cell is empty because we publish no serialized-byte receipt of our own for a third party's
-checkpoint, and its 21.34 GiB is measured resident weights, a different quantity. The two payload
+disk bytes are not a like-for-like payload against a GGUF file and are not presented as one; the two
+NVFP4 cells are empty because we publish no serialized-byte receipt of our own for a third party's
+checkpoint — unsloth's 21.34 GiB and gittensor's 18.77 GiB are measured resident weights, a
+different quantity. The two payload
 figures that are comparable are `immutable_payload_bytes` from
 [`receipts/collection-index.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/collection-index.json)
 (hydrated 21,610,916,123 B = 20.127 GiB, context edition 20,696,033,532 B = 19.275 GiB; the table
@@ -430,6 +432,30 @@ better of the pair
 ([`receipts/kld5-1M-paired-nvfp4.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/kld5-1M-paired-nvfp4.json)).
 It was not paired against this build, so its distance from this row stays a ratio of means and is
 not presented as a win count.
+
+**gittensor's "RTX5090" NVFP4, measured on the same shard because its card claims the 32 GB /
+262,144-token axis by name.** `gittensor-model-hub/Qwen3.8-27B-NVFP4-RTX5090` at revision
+`69274a0d` (ModelOpt W4A4 body, MTP and vision left BF16, FP8 KV cache baked into its config) is
+served by **the same vLLM build as our rows**, so it carries no cross-engine term. It measures
+**0.062163** mean KLD, 95 % CI [0.058491, 0.066360], **89.85 %** top-1, p99.9 **2.5911** — the
+weakest row on this table, at 2.1x unsloth's NVFP4 and 19.8x this build. **Paired per context it
+loses every one of 512 contexts to this build** (+0.059022 in this build's favour, 95 % CI
+[+0.055548, +0.063005], **512 wins to 0**), every one of 512 to official FP8, and **511 of 512 to
+unsloth's NVFP4** (+0.032048, [+0.030711, +0.033583]) — the same weight format at 2.57 GiB less
+measured resident weight (18.77 vs 21.34 GiB, identical flags, engine-reported), which prices that
+memory saving honestly: roughly double the KLD. A bf16-KV control capture moves its mean by only
++0.000365 [+0.000058, +0.000679], so its baked FP8 KV cache explains about 1 % of the gap to
+unsloth — the rest is the weight conversion itself. Its card's serving numbers (18.8 GB weights in
+VRAM, 275,941-token FP8 KV pool, 80.6 tok/s decode, native 262,144 on one 5090) are **its own
+claims, which we did not run**; our measured 18.77 GiB resident is consistent with the first of
+them, and consistency is not verification. Its only published fidelity evidence is a 20-item smoke
+that its own card says not to treat as scores
+([`receipts/kld5-1M-gt5090.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/kld5-1M-gt5090.json),
+[`receipts/kld5-1M-paired-gt5090.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/kld5-1M-paired-gt5090.json),
+full account with the checkpoint's composition, digests and mirror in
+[`receipts/gittensor-nvfp4-rtx5090.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/gittensor-nvfp4-rtx5090.json);
+archival mirror
+[`malaiwah/Qwen3.8-27B-NVFP4-RTX5090-archival-69274a0d`](https://huggingface.co/malaiwah/Qwen3.8-27B-NVFP4-RTX5090-archival-69274a0d)).
 
 **Where this build sits, without spin.** It **loses the 6-bit comparison**: `Q6_K` reads 0.002035
 measured and ~0.001528 net of the floor at 21.31 GiB against this build's 0.003141 — about **51 %
@@ -1266,18 +1292,21 @@ RTX PRO 6000 Blackwell, instead of two model loads. That is exactly how the NVFP
 ladder is a different bill — about 5 hours of GPU for the fifty candidate captures, plus about 54
 minutes for the nine BF16 shard references that were deleted once their reports verified.
 
-**Two archival mirrors keep the third-party citations resolvable.**
+**Three archival mirrors keep the third-party citations resolvable.**
 [`malaiwah/Qwen3.8-27B-NVFP4-archival-9c73e2da`](https://huggingface.co/malaiwah/Qwen3.8-27B-NVFP4-archival-9c73e2da)
 is a **recovery** mirror: upstream super-squashed its history on 2026-08-15 and the Hub now answers
 `Invalid rev id` for `9c73e2da…`, the revision every NVFP4 number on this card was measured against,
 so the reviewed revision is otherwise unreachable.
 [`malaiwah/Qwen3.8-27B-GGUF-archival-f1bfb127`](https://huggingface.co/malaiwah/Qwen3.8-27B-GGUF-archival-f1bfb127)
 is **precautionary**: the five files the cross-engine table cites, at a revision that still resolves
-upstream. Said plainly, a mirror preserves the **citation** — a resolvable repo id, revision and
+upstream. [`malaiwah/Qwen3.8-27B-NVFP4-RTX5090-archival-69274a0d`](https://huggingface.co/malaiwah/Qwen3.8-27B-NVFP4-RTX5090-archival-69274a0d)
+is likewise **precautionary**: the gittensor checkpoint measured above, at a revision that still
+resolves upstream, deep-verified after upload — its 19.2 GB of weights cost essentially zero
+transfer because the Hub already held every chunk. Said plainly, a mirror preserves the **citation** — a resolvable repo id, revision and
 digest table that survive an upstream squash or delete — and is **not** independent byte-level
 redundancy. Hub storage is content-addressed, so our copy and upstream's plausibly reference the
 same underlying chunks; nobody should assume physical copies we do not hold. The measured cost of
-both mirrors was 2.34 GB of transfer for 149.3 GB of content, about 1.6 %, which is that
+the first two mirrors was 2.34 GB of transfer for 149.3 GB of content, about 1.6 %, which is that
 content-addressing showing through.
 
 ## Prior art and credits

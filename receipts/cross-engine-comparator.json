@@ -21,7 +21,8 @@
     "gguf_candidates": "captured with llama.cpp at pinned commit ece963f41b0b02d7a0d61436ae365762c073a4c8 through tools/gguf_capture.cpp, which reads the post-final-norm state (res->t_embd, src/models/qwen35.cpp) \u2014 the same mathematical point the vLLM hook takes; bf16 rounding verified bit-identical to torch on 2,012,449 probe values",
     "cross_engine_caveat": "a GGUF number therefore contains llama.cpp-versus-vLLM numerics in addition to quantization error, which can only inflate it; that term is now measured \u2014 see engine_floor below, 0.000507 mean \u2014 so every GGUF row is reported both as measured and net of the floor, while the EXL3 and FP8 rows share the reference's engine and carry no such term",
     "interval": "source-cluster bootstrap, 10,000 resamples",
-    "nvfp4_candidate": "unsloth's NVFP4 build served by vLLM's compressed-tensors path (--quantization compressed-tensors), captured under the same vLLM build as the BF16 reference, so like the EXL3 and FP8 rows it carries no cross-engine term; only the GGUF rows do"
+    "nvfp4_candidate": "unsloth's NVFP4 build served by vLLM's compressed-tensors path (--quantization compressed-tensors), captured under the same vLLM build as the BF16 reference, so like the EXL3 and FP8 rows it carries no cross-engine term; only the GGUF rows do",
+    "nvfp4_rtx5090_candidate": "gittensor-model-hub's ModelOpt NVFP4 export (W4A4 body Linears, group 16; MTP and vision left BF16), served by vLLM's modelopt_fp4 path under the same pinned build as the BF16 reference, so like the other vLLM rows it carries no cross-engine term. One resolved-runtime difference, stated rather than hidden: this checkpoint bakes kv_cache_quant_algo FP8 into its config, so under the ladder's identical `auto` flag its capture resolved fp8_e4m3 KV while every other row resolved bfloat16 -- that is the checkpoint's own declared operating point, and a bf16-KV diagnostic capture (in receipts/gittensor-nvfp4-rtx5090.json) measures how much of its gap the KV dtype explains"
   },
   "candidates": {
     "gguf-q8_0": {
@@ -173,6 +174,21 @@
       "max_kld": 10.62854133951995,
       "carries_cross_engine_term": false,
       "report": "receipts/kld5-1M-nvfp4.json"
+    },
+    "nvfp4-rtx5090": {
+      "family": "NVFP4 (gittensor, ModelOpt)",
+      "engine": "vLLM (pinned r34)",
+      "artifact": "gittensor-model-hub/Qwen3.8-27B-NVFP4-RTX5090@69274a0d8dff5dd35bcee8290612f71e03b6e981",
+      "mean_kld": 0.06216307539218222,
+      "ci95": [
+        0.05849107005915104,
+        0.06635959153477314
+      ],
+      "top1_agreement": 0.8984651700659502,
+      "p999_kld": 2.5910664207600465,
+      "max_kld": 16.040865179852688,
+      "carries_cross_engine_term": false,
+      "report": "receipts/kld5-1M-gt5090.json"
     }
   },
   "ranking_on_this_shard": [
@@ -184,7 +200,8 @@
     "gguf-q5_k_xl",
     "fp8",
     "k4",
-    "nvfp4"
+    "nvfp4",
+    "nvfp4-rtx5090"
   ],
   "findings": {
     "q8_is_the_fidelity_leader": "Q8_0 measures 0.001087 at 27.05 GiB of serialized weight \u2014 2.5x better than our best build and 4.8x better than official FP8. Anyone who can spare 27 GiB of weights and does not need a long context on a 32 GB card should use it. The critique that Q8 is the honest bar is correct.",
@@ -193,9 +210,10 @@
     "tail_ordering_matches_mean_ordering": "p99.9 runs 0.0351 (Q8_0) < 0.0794 (Q6_K) < 0.1313 (hydrated) < 0.1447 (online) < 0.1632 (context) < 0.2144 (Q5_K_XL) < 0.2440 (FP8) < 0.5576 (K4), i.e. the same order as the means with one crossing: our three builds are lighter-tailed than UD-Q5_K_XL and FP8 despite the context build being close to Q5_K_XL on the mean.",
     "what_this_does_not_settle": "the comparison is text-only teacher-forced fidelity and says nothing about serving a 262,144-token multimodal context on a 32 GB card, which is where these artifacts actually differ; llama.cpp KV-quant behaviour, prefill and decode speed are separate axes; and the net-of-floor column is an estimate because KL is not additive, so at Q8_0's level \u2014 about twice the floor \u2014 the ordering against anything nearer than a factor of two should not be pressed",
     "engine_floor_changes_the_reading": "the cross-engine floor is 0.000507. Net of it, Q8_0 is roughly 0.00058, Q6_K 0.00153 and UD-Q5_K_XL 0.00394. So at the 6-bit operating point GGUF Q6_K (21.31 GiB) is genuinely better than our hydrated build (0.002700 at 20.12 GiB), while at the 5-bit operating point our context edition (0.003409 at 19.27 GiB) is about 13 % better than UD-Q5_K_XL (0.00394 net at 18.83 GiB). Q8_0's measured 0.001087 is only about twice the floor, so its own number sits near the resolution limit of any cross-engine comparison.",
-    "nvfp4_is_the_weakest_point_on_the_table": "unsloth's NVFP4 build measures 0.030115 with 93.16 % top-1 agreement on these same 512 contexts: 5.8x official FP8, 11.2x our hydrated build and 6.8x UD-Q5_K_XL, and it carries no cross-engine term, so none of that gap is engine numerics. It is the size-class competitor most often proposed against these builds, and on teacher-forced distribution fidelity it is not close. It is also the only 4-bit-weight row here, so the bitrate-honest comparison is against K4 (0.010345), which it still loses by 2.9x. This says nothing about its throughput on NVFP4-native hardware, which is the reason the format exists."
+    "nvfp4_is_the_weakest_point_on_the_table": "unsloth's NVFP4 build measures 0.030115 with 93.16 % top-1 agreement on these same 512 contexts: 5.8x official FP8, 11.2x our hydrated build and 6.8x UD-Q5_K_XL, and it carries no cross-engine term, so none of that gap is engine numerics. It is the size-class competitor most often proposed against these builds, and on teacher-forced distribution fidelity it is not close. It is also the only 4-bit-weight row here, so the bitrate-honest comparison is against K4 (0.010345), which it still loses by 2.9x. This says nothing about its throughput on NVFP4-native hardware, which is the reason the format exists.",
+    "nvfp4_conversion_quality_is_a_variable": "gittensor-model-hub/Qwen3.8-27B-NVFP4-RTX5090 measures 0.062163 with 89.85 % top-1 on these same 512 contexts: 12.0x official FP8, 18.2x the context edition, 6.0x K4 and -- the comparison its own card invites -- 2.1x unsloth's NVFP4 of the same base model in the same weight format. It is now the weakest row on this table, displacing unsloth's NVFP4 (the finding above it predates this row and describes the table as it stood). Paired per context it loses 512/512 to the context edition, 512/512 to official FP8, and 511/512 to unsloth's NVFP4 (paired difference +0.032048, 95 % CI [+0.030711, +0.033583]). Its measured resident weights are 18.77 GiB against unsloth's 21.34 GiB under the identical protocol, so the two NVFP4 rows bound a real trade inside one format: 2.57 GiB of resident memory bought at roughly double the KLD. Same-format conversions are not interchangeable, and neither NVFP4 row's gap is engine numerics -- both were captured under the reference's own vLLM build. This says nothing about either build's throughput or serving envelope, which is what their cards compete on."
   },
-  "content_sha256": "b1bbb800c49fc6d46ddfb9b15241fb48a81ee34d74e684a696312b273613f8d0",
+  "content_sha256": "f195995883bd407ae8785d184642102168f88ec47d25130d59df72887529118a",
   "engine_floor": {
     "what": "llama.cpp BF16 GGUF versus the vLLM BF16 reference, identical tokens, identical shared BF16 head, same 512 contexts",
     "artifact": "unsloth/Qwen3.8-27B-GGUF@f1bfb127c64f7072bdd2cad55f258b9c8b2910fe:BF16/Qwen3.8-27B-BF16-00001-of-00002.gguf (two-part, 54,657,735,616 B total)",
@@ -231,6 +249,21 @@
       ],
       "source_report": "receipts/kld5-1M-nvfp4.json",
       "measurement_receipt": "receipts/nvfp4-v5-measurement.json",
+      "measured_values_unchanged": true,
+      "note": "every pre-existing candidate row, the engine floor, the suite block and every other finding are byte-identical to the prior revision; this script verifies that before writing"
+    },
+    {
+      "amended_utc": "2026-08-16T13:00:22Z",
+      "what": "added the nvfp4-rtx5090 row: gittensor-model-hub/Qwen3.8-27B-NVFP4-RTX5090 claims our exact axis (262,144-token native context on one 32 GB RTX 5090) with a 20-item smoke as its only fidelity evidence; it is now measured on this table's own shard-0 512 contexts, under the same vLLM build as the reference",
+      "fields": [
+        "candidates.nvfp4-rtx5090",
+        "ranking_on_this_shard",
+        "method.nvfp4_rtx5090_candidate",
+        "findings.nvfp4_conversion_quality_is_a_variable"
+      ],
+      "source_report": "receipts/kld5-1M-gt5090.json",
+      "paired_report": "receipts/kld5-1M-paired-gt5090.json",
+      "measurement_receipt": "receipts/gittensor-nvfp4-rtx5090.json",
       "measured_values_unchanged": true,
       "note": "every pre-existing candidate row, the engine floor, the suite block and every other finding are byte-identical to the prior revision; this script verifies that before writing"
     }

@@ -129,15 +129,19 @@ host_model_of() {
     # compressed-tensors path -- same engine as the reference, so its number
     # carries no cross-engine term (unlike the GGUF rows).
     nvfp4) printf '%s' "$MODELS_DIR/Qwen3.8-27B-NVFP4" ;;
+    # gittensor-model-hub's ModelOpt NVFP4 build (Qwen3.8-27B-NVFP4-RTX5090),
+    # served by vLLM's modelopt_fp4 path -- same engine as the reference, so
+    # like nvfp4 its number carries no cross-engine term.
+    gt5090) printf '%s' "$MODELS_DIR/Qwen3.8-27B-NVFP4-RTX5090" ;;
     *) die "unknown model name: $1" ;;
   esac
 }
 
 env_of() {
   case "$1" in
-    # NVFP4 needs no environment of ours: the checkpoint carries its own
-    # compressed-tensors config and vLLM reads the scales from the weights.
-    bf16|fp8|nvfp4) printf '%s' '' ;;
+    # neither NVFP4 build needs an environment of ours: each checkpoint carries
+    # its own quantization config and vLLM reads the scales from the weights.
+    bf16|fp8|nvfp4|gt5090) printf '%s' '' ;;
     hyd|ctx) printf '%s' 'VLLM_EXL3_PREFILL_RECONSTRUCT_M=128' ;;
     k4|k5k6) printf '%s' 'VLLM_EXL3_ONLINE_TRELLIS_BITS=6 VLLM_EXL3_ONLINE_CACHE_DIR=/cache/exl3-online VLLM_EXL3_PREFILL_RECONSTRUCT_M=128' ;;
     *) die "unknown model name: $1" ;;
@@ -155,6 +159,9 @@ quant_args_of() {
     # `--quantization compressed-tensors` verbatim from the v3 capture that first
     # scored this checkpoint (/var/tmp/work/kld3/run_v3.sh).
     nvfp4) printf '%s' '--quantization compressed-tensors' ;;
+    # ModelOpt export: config.json says quant_method "modelopt" with quant_algo
+    # NVFP4, which vLLM serves through the explicit modelopt_fp4 method.
+    gt5090) printf '%s' '--quantization modelopt_fp4' ;;
     fp8) printf '%s' '' ;;
     k4|k5k6|hyd|ctx) printf '%s' "$EXL3_ARGS" ;;
     *) die "unknown model name: $1" ;;
