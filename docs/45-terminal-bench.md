@@ -353,11 +353,87 @@ Any row produced against it would be self-identifying anyway: it reports `owned_
 
 ## 8. Results
 
-Pending the rental GPU handover; the card is queued behind other agents and this agent has taken no
-GPU time. Each pass lands here and in its receipt as it completes, and is published to the dataset
-at the same time rather than at the end — so a mid-protocol decommission still leaves the evidence
-public.
+### Pass 1 — all 89 tasks on `K5K6-hydrated`
 
-Recorded per pass: per-task rows (reward, resolved, exception type, token counts, phase timings),
-MTP draft/accepted tokens and acceptance rate, output tok/s, the `-n` actually used, the measured
-tunnel RTT, and `nvidia-smi` process lists on both hosts.
+**31 / 89 resolved = 34.83 %.** `terminus-2` 2.0.0 on `qwen38`, `terminal-bench-2-1@6` from the
+sha256-pinned local tree, `-n 16`, stock 1.0 timeouts, ~3.3 h wall (18:19Z → ~21:39Z; the tail was
+bounded by the single 12,000 s task `build-pov-ray`, the only one outstanding from 88/89).
+Receipt: `receipts/terminal-bench-2.1-hyd.json`. Artifacts: `passes/pass1-hydrated` in the dataset
+(802 files — per-task rows, agent trajectories, asciinema recordings, verifier output).
+
+### The taxonomy is the result, not the score
+
+| | count |
+|---|---|
+| resolved | 31 |
+| unresolved | 58 |
+|  of which `AgentTimeoutError` | **54** |
+|  of which `RuntimeError` | 2 |
+|  ran to completion and still answered wrong | **2** |
+
+**93 % of the failures (54/58) ran out of clock, not out of ability.** At stock 1.0 timeouts on this
+hardware, the binding constraint on this agent+model system is **decode speed**, not task difficulty.
+
+The mechanism is long reasoning bursts against a ~42.5 tok/s single-stream decode: the dry run's
+turn 1 alone spent **15,577 completion tokens** — 1.9× the `max_output_tokens` declared in LiteLLM's
+`model_info`, which is metadata and clamps nothing — roughly six minutes of decode for one turn.
+
+The timeouts were deliberately **not** raised and output was **not** capped. A TB score is comparable
+to other TB runs only if the agent's configuration is stock; capping would have made this number
+better *and* incomparable. So the mechanism is reported rather than engineered away.
+
+This is why pass 3's attribution is **three-way**, not two-way. BF16 cannot separate a timeout from
+an inability: a task that times out on a reasoning burst will likely time out on BF16 too, and a
+two-way rule would file that as `capability` — exonerating the quantisation on a task where *neither
+arm ever produced an answer*. The three buckets, never summed into two:
+
+- **`quantization-suspect`** — BF16 resolves it; the quantisation is implicated for that task.
+- **`capability`** — BF16 runs to completion and still fails; the quantisation is exonerated.
+- **`inconclusive-timeout`** — neither arm completed inside the stock budget; the failure is the
+  system's speed at these timeouts and this benchmark cannot say more.
+
+### Caveat that belongs beside the score
+
+**52 of 89 trials (58 %) emit `Extra text detected before JSON object`.** terminus-2 tolerates prose
+before the JSON object and dispatches the keystrokes anyway, so **a stricter parser would have scored
+this model lower.**
+
+An early reading of this did *not* survive the full sample, and is recorded rather than dropped: at
+25/89 the warned subset resolved 2/10 (20 %) against 8/25 (32 %) overall, which looked like the
+warning predicting failure. At the full 89 it is 19/52 (36.5 %) against 31/89 (34.8 %) — essentially
+no difference. The early signal was small-sample noise; the correct caveat is the unconditional one.
+
+### Throughput and MTP, as deltas
+
+The server's counters are permanently contaminated by this run's own calibration traffic (`probe` +
+`headroom` = 41 requests, all with `max_tokens` set), so only differences across named snapshots are
+valid. Both snapshots are quoted verbatim in the receipt so a reader can subtract them:
+
+| over pass 1 | delta |
+|---|---|
+| prompt tokens | +26,883,659 |
+| generation tokens | +3,330,706 |
+| MTP draft tokens | +3,683,358 |
+| MTP accepted tokens | +2,102,238 |
+| **MTP acceptance** | **0.57074** |
+
+Agent-side totals (12.84 M in / 1.68 M out) are reported beside the server-side figures rather than
+reconciled into one: the server counts every scheduled prefill, including speculative and retried
+work, while the agent counts what it believes it sent.
+
+Prefix caching is a **finding, not a fix**: 51.7 % server-side hit rate
+(606,400 / 1,172,055), while clients see `cached_tokens = 0` regardless, because this build returns
+`prompt_tokens_details: null`. So the run is *not* paying full prefill per turn — the wall-clock and
+timeout risk are better than the agent-side metric implies. No serving flag was changed mid-pass.
+
+CPU-only was re-verified for this pass: all four checks passed and **all 89 trials** record
+`config.environment.override_gpus` as null/0.
+
+### Passes 2 and 3
+
+Pass 2 (retry of the 58 pass-1 failures) and pass 3 (BF16 attribution on the twice-failed set) are
+open; each lands here and in its receipt as it completes, published at the same time rather than at
+the end. An owner-approved diagnostic sits beside pass 3 if the window allows: re-run the
+`inconclusive-timeout` subset alone at `--timeout-multiplier 2.0`, labelled **not comparable to any
+other TB run** and reported apart from the headline — if a task resolves at 2.0× the failure was our
+clock and this hardware; if it still fails, the model genuinely could not do it.
