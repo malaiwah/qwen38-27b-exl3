@@ -1,0 +1,2765 @@
+{
+ "schema": "qwen38-sixteen-flip-kld/1",
+ "question": "what does the first sub-4-bit width in this family measure on shard 0 of the v5 suite, and does sub-4-bit fidelity justify a 16 GB SKU?",
+ "answered_here": "NO",
+ "preregistration": {
+  "file": "receipts/preregistration-kld9-window.json",
+  "file_sha256": "0fa601b4fbc99bf9bb2d2a06f5941f52f8034a4d3858930d9fe3132a546f7c61",
+  "registered_in_commit": "edced9a24675170cf7e073be68b96e4b704f606a",
+  "registered_at_utc": "2026-08-16T15:05:21+00:00",
+  "condition": "S16-V sub-4-bit flip",
+  "why_this_matters": "the prediction, the thresholds and the decision rule were committed and pushed before this conversion ran. This tool reads them back out of that file and asserts each threshold appears in its prose, so the verdict cannot have been chosen after the number was known.",
+  "registered_prediction": {
+   "registered_range": [
+    0.03,
+    0.1
+   ],
+   "registered_range_source": "docs/34 \u00a76.4 [P, extrapolation only]",
+   "point_estimate_byte_law": {
+    "value": 0.0689,
+    "derivation": "hydrated quantized-weight bytes 18121386596 - S16-V quantized-weight bytes 10245925476 = 7875461120 fewer bytes over ~25.6B quantized weights = -2.461 bpw; the 3.73x-per-bit constant gives 25.5x more KLD, so 0.002700 x 25.5 = 0.0689",
+    "caveats": "the uniform-bpw form assumes error is spread in proportion to bytes; S16-V moves five role groups at once, three of them by three bits, and the 3.73x constant is measured only over K3..K8 rungs of a proxy error, never against KLD below 4 bits. Extrapolation, not an estimate."
+   },
+   "point_estimate_surrogate": {
+    "bracket": [
+     0.0318,
+     0.0585
+    ],
+    "derivation": "sqrt_energy objective (w_m = sqrt(out_energy)) over the 400 laddered body modules: hydrated 4.8230, S16-V 105.4, delta 100.6. Scaled by the two implied scales the published surrogate calibration fitted on its two UNIFORM role-group pairs (0.000289 from attention K6->K5, 0.000555 from MLP->K4) this gives 0.0318 to 0.0585.",
+    "extrapolated_rungs": "96 of 400 body modules have no measured K3 rung (numel below the 52M big-module threshold, so their ladder starts at K4); their K3 proxy error is extrapolated by continuing the module's own K5->K4 ratio one further bit.",
+    "caveat": "the published calibration verdict is that NO rule is calibrated: sqrt_energy is merely the only sign-correct rule with a bounded scale spread (2.51x, worst out-of-sample ratio 2.47x). Treat this bracket as an order-of-magnitude check on docs/34 \u00a76.4's range, which it corroborates."
+   },
+   "registered_primary": 0.0689,
+   "registered_falsification": "the registered range is 0.03-0.10. A measured mean below 0.02 or above 0.20 falsifies both estimators and the design study's fidelity paragraph has to be rewritten."
+  },
+  "registered_decision_rule": {
+   "YES": "measured shard-0 token_mean_kld <= K4's 0.010345 -- sub-4-bit costs no more than the worst ALREADY PUBLISHED candidate. Flip item (1) passes outright; the 16 GB no-go would then rest only on items (2)-(4) and the fidelity argument is withdrawn.",
+   "BORDERLINE": "measured mean in (0.010345, 0.030] -- worse than every published candidate but below docs/34 \u00a76.4's predicted range. Item (1) is answered with a number that a card may print; the SKU verdict stays NO-GO on the arithmetic and the remaining items, and the checkpoint is preserved as a research repo.",
+   "NO": "measured mean > 0.030, i.e. inside or above the predicted range. Sub-4-bit fidelity does not justify a 16 GB SKU; docs/34 \u00a76 stands as a design study with item (1) now measured rather than absent.",
+   "tail_side_condition": "reported alongside, not part of the rule: docs/34 calls K4's p99.9 of 0.5555 (10M suite) already the worst of the five published candidates. The shard-0 p99.9 and max of S16-V are reported in every case."
+  }
+ },
+ "protocol": {
+  "what": "shard 0 of the v5 suite, the identical published protocol",
+  "suite_token_sha256": "caef8a4628d6c07c162100895096f890cdf9cafc8e4c48b3d66035d737ee7cf7",
+  "contexts": 512,
+  "scored_positions": 1048064,
+  "reference_capture": "/work/gguf/hidden-bf16",
+  "reference_capture_control": {
+   "why": "the published shard-0 reports captured the BF16 reference at /work/kld5/hidden/shard-0000/hidden-bf16; this window reuses the surviving /work/gguf/hidden-bf16 capture instead",
+   "control": "/var/tmp/work/kld6/reports/report-hyd-rematch.json re-scored the published hydrated checkpoint against /work/gguf/hidden-bf16 and reproduced the published mean BITWISE (0.002699883159684943), paired difference exactly 0.0 on all 512 contexts (receipts/sibling-rebuild-fidelity.json -> capture_noise_floor)",
+   "consequence": "reports produced here are directly pairable against the published shard-0 reports"
+  },
+  "head": "/work/kld2/lm_head.safetensors",
+  "head_sha256": "25a30fd5f826da0abc4efc4cc71def9f02bcb8085f7175eee284d221dee4cfff",
+  "harness": {
+   "tool": "tools/fidelity.py",
+   "copy_used": "/work/kld9/tools/fidelity.py",
+   "note": "byte-identical to the copy the sibling-rebuild run scored with"
+  },
+  "capture_flags": "--gpu-memory-utilization 0.85, VLLM_EXL3_PREFILL_RECONSTRUCT_M=128, quantization exl3 with /work/kld4/qcfg.json",
+  "aggregation": "token_mean_kld with a cluster bootstrap over 330 source clusters, 10,000 resamples; every comparison is a PAIRED per-context difference",
+  "tail_row_required": "docs/34's flip item (1) asks for the tail row as well as the mean: p95, p99, p99.9, max and top-1 agreement are reported for every candidate, from the same report"
+ },
+ "toolchain": {
+  "converter_worktree": "5f3c537ca9d89893d771256f5c43c93656553fbb",
+  "converter_version": "exllamav3 v1.4.2",
+  "worktree_diff_sha256": "578066cda60415e0376f261b7c907baea2baa8239076260013208d8e70c192f2",
+  "worktree_diff_sha256_expected": "578066cda60415e0376f261b7c907baea2baa8239076260013208d8e70c192f2",
+  "alt_tree_code_only_diff_sha256": "578066cda60415e0376f261b7c907baea2baa8239076260013208d8e70c192f2",
+  "alt_tree_code_identity": true,
+  "alt_tree_code_identity_note": "the alt-calibration tree's diff EXCLUDING exllamav3/conversion/standard_cal_data hashes identically to the published converter's full diff, so the two trees differ in calibration DATA only, not in code",
+  "runner": "tools/ggrun.sh over the extracted image rootfs; marisa_trie supplied at /work/convertdeps/site for the convert and quantconfig steps",
+  "finalize": "/work/kld3/finalize_checkpoint.py -m OUT --upstream /models/Qwen3.8-27B",
+  "host": "rental RTX PRO 6000 Blackwell Server Edition, 97,887 MiB",
+  "build_script": {
+   "path": "/var/tmp/work/kld9/build_s16v.sh",
+   "sha256": "51d7177c7968e11ae429f0d903a37a7f5be72369ec39ec6220909a416e06b23c"
+  },
+  "convert_log": {
+   "path": "/var/tmp/work/kld9/convert-s16v.log",
+   "sha256": "9255183b9c961c14b969ff10de03ad8b778d0ea9551753d2bdbeef9aa8a87097",
+   "lines": 1053
+  }
+ },
+ "build": {
+  "predicted_bytes": {
+   "serialized_payload": 13711503428,
+   "serialized_gib": 12.77,
+   "disk_bytes": 13735474746,
+   "source": "docs/34 \u00a76.2, byte law summed over roles; disk = payload + 24.0 MB",
+   "label": "prediction",
+   "byte_law_accuracy_on_the_last_build": {
+    "hydrated_predicted_disk": 21610964548,
+    "hydrated_measured_immutable_payload_bytes": 21610916123,
+    "error_bytes": 48425
+   }
+  },
+  "measured_role_payload_bytes": 13711503428,
+  "measured_role_payload_gib": 12.7698,
+  "payload_prediction_error_bytes": 0,
+  "quantization_manifest_roles": {
+   "embed_tokens": {
+    "modules": 0,
+    "bytes": 2542796800,
+    "gb": 2.543,
+    "formats": {
+     "BF16": 1
+    }
+   },
+   "full_attention": {
+    "modules": 64,
+    "bytes": 840188160,
+    "gb": 0.84,
+    "formats": {
+     "exl3_K4_mcg": 64,
+     "BF16": 32
+    }
+   },
+   "linear_attention": {
+    "modules": 144,
+    "bytes": 2130957888,
+    "gb": 2.131,
+    "formats": {
+     "exl3_K3_mcg": 144,
+     "F16": 96,
+     "BF16": 192
+    }
+   },
+   "lm_head": {
+    "modules": 1,
+    "bytes": 636206084,
+    "gb": 0.636,
+    "formats": {
+     "exl3_K4_mcg": 1
+    }
+   },
+   "mlp_down_proj": {
+    "modules": 64,
+    "bytes": 2141978880,
+    "gb": 2.142,
+    "formats": {
+     "exl3_K3_mcg": 64
+    }
+   },
+   "mlp_gate_proj": {
+    "modules": 64,
+    "bytes": 2141978880,
+    "gb": 2.142,
+    "formats": {
+     "exl3_K3_mcg": 64
+    }
+   },
+   "mlp_up_proj": {
+    "modules": 64,
+    "bytes": 2141978880,
+    "gb": 2.142,
+    "formats": {
+     "exl3_K3_mcg": 64
+    }
+   },
+   "mtp_draft": {
+    "modules": 8,
+    "bytes": 212636704,
+    "gb": 0.213,
+    "formats": {
+     "exl3_K4_mcg": 8,
+     "BF16": 7
+    }
+   },
+   "norms_and_small": {
+    "modules": 0,
+    "bytes": 1320960,
+    "gb": 0.001,
+    "formats": {
+     "BF16": 129
+    }
+   },
+   "vision_tower": {
+    "modules": 0,
+    "bytes": 921460192,
+    "gb": 0.921,
+    "formats": {
+     "BF16": 333
+    }
+   }
+  },
+  "tree": {
+   "dir": "/var/tmp/work/kld9/qwen38-s16v",
+   "file_count": 21,
+   "total_bytes": 13735527028,
+   "total_gib": 12.7922,
+   "files": {
+    ".gitattributes": {
+     "bytes": 1570,
+     "sha256": "34448b82c17d60fec9b65b1f093c115ddbaadc04beb1b0140b6bfed2e012a930"
+    },
+    "DOCS-SHA256SUMS": {
+     "bytes": 233,
+     "sha256": "03875e02f772b06f82fd776d936585de76168abfa3036e9d7899dcee8557b8a2"
+    },
+    "LICENSE": {
+     "bytes": 11544,
+     "sha256": "bbedc3fda3305820b977265f01b8619d87570a6739de3a5582c3464840f1e57a"
+    },
+    "README.md": {
+     "bytes": 65012,
+     "sha256": "57e4bdb258ee1a7d2635c5174ebd4e56abe392505cdb5f8bbb356b0dc4293641"
+    },
+    "SHA256SUMS": {
+     "bytes": 1315,
+     "sha256": "43ed06c5ef2fe715ceb7bf23cb869fd8ac2794789ad7c9d0ee2ebc39899e8391"
+    },
+    "build-receipt.json": {
+     "bytes": 3483,
+     "sha256": "61d5bdd905c1ffa4d19415704a62ae79ade07fbf0675e51e0f8410f599616382"
+    },
+    "chat_template.jinja": {
+     "bytes": 8952,
+     "sha256": "c3cf9e34abf4f9e36c2d72165aa9c132d3e2a725b6c2586aaa3a8af9d7a81041"
+    },
+    "config.json": {
+     "bytes": 4620,
+     "sha256": "9b6c1509c776f5aeca2f3c0594004d0e5ddb23bbf0c4f3b07ca662842c005a1b"
+    },
+    "crc32.txt": {
+     "bytes": 238,
+     "sha256": "b42dd291f5f98b05807e458f5b47849969a9b3326acbf0c97d28b05826740b83"
+    },
+    "generation_config.json": {
+     "bytes": 202,
+     "sha256": "e70c136c1b78ddc1fb0905bac8e733a4dc448d4f852a5dd75143fffc70be550e"
+    },
+    "merges.txt": {
+     "bytes": 3353259,
+     "sha256": "a9d356d7bdf1ef4949e3e748e95b8e10ad9d4e2e838eddc38a0a7b6b94d1db8d"
+    },
+    "model-00001-of-00002.safetensors": {
+     "bytes": 8561779453,
+     "sha256": "cfa4e2e74180d2e9f01dd60771d8674fa10e46f6903d6992ec36de8036bc6100"
+    },
+    "model-00002-of-00002.safetensors": {
+     "bytes": 5150025047,
+     "sha256": "299276e7a3045c3fbefec973a08632895ca06f3107e2065b6fe7ccc168db7b7e"
+    },
+    "model.safetensors.index.json": {
+     "bytes": 238255,
+     "sha256": "14d9722c9d622b5d5a1db41694370c89295861825b9b5f6e4f93ec5a3d3ebcd1"
+    },
+    "preprocessor_config.json": {
+     "bytes": 390,
+     "sha256": "27225450ac9c6529872ee1924fcb0962ff5634834f817040f444118116f4e516"
+    },
+    "quantization_config.json": {
+     "bytes": 480293,
+     "sha256": "378f957aaead99cce96b6049ec59f49e76ecfc0e1ae3384d8be61da867227412"
+    },
+    "quantization_manifest.json": {
+     "bytes": 2770,
+     "sha256": "a507cfbd974a14a6552aa1c7304accd395ff9e560e8e9af1692c3f52d886d45e"
+    },
+    "tokenizer.json": {
+     "bytes": 12809320,
+     "sha256": "0997f410c57a1f4e53b09e4be8f4a172d90edd9564368fb0847030937229b9f3"
+    },
+    "tokenizer_config.json": {
+     "bytes": 17928,
+     "sha256": "b11349aafa7cdc6a320767cf7ceb29ed82f7eda5d65e8e0819e76f0ce947bf27"
+    },
+    "video_preprocessor_config.json": {
+     "bytes": 385,
+     "sha256": "7768af27c1fafa9cc9011c1dc20067e03f8915e03b63504550e11d5066986d13"
+    },
+    "vocab.json": {
+     "bytes": 6722759,
+     "sha256": "ce99b4cb2983d118806ce0a8b777a35b093e2000a503ebde25853284c9dfa003"
+    }
+   }
+  },
+  "realised_widths": {
+   "modules_quantized": 409,
+   "body_modules_with_proxy_err": 400,
+   "per_role": {
+    "full_attn": {
+     "modules": 64,
+     "bpw_values": [
+      4.0
+     ],
+     "proxy_err_min": 0.000179,
+     "proxy_err_median": 0.000724,
+     "proxy_err_max": 0.002289,
+     "proxy_err_mean": 0.000814234375
+    },
+    "linear_attn": {
+     "modules": 144,
+     "bpw_values": [
+      3.0
+     ],
+     "proxy_err_min": 0.001088,
+     "proxy_err_median": 0.003008,
+     "proxy_err_max": 0.010369,
+     "proxy_err_mean": 0.004229708333333334
+    },
+    "mlp_down": {
+     "modules": 64,
+     "bpw_values": [
+      3.0
+     ],
+     "proxy_err_min": 0.000592,
+     "proxy_err_median": 0.009271,
+     "proxy_err_max": 0.010924,
+     "proxy_err_mean": 0.008583406250000002
+    },
+    "mlp_gate": {
+     "modules": 64,
+     "bpw_values": [
+      3.0
+     ],
+     "proxy_err_min": 0.001215,
+     "proxy_err_median": 0.004563,
+     "proxy_err_max": 0.008171,
+     "proxy_err_mean": 0.004786859375
+    },
+    "mlp_up": {
+     "modules": 64,
+     "bpw_values": [
+      3.0
+     ],
+     "proxy_err_min": 0.001088,
+     "proxy_err_median": 0.006575,
+     "proxy_err_max": 0.00984,
+     "proxy_err_mean": 0.006695859375000001
+    }
+   },
+   "head_and_mtp": {
+    "lm_head": {
+     "bpw": 4.0,
+     "proxy_err": 0.000816,
+     "rmse": null
+    },
+    "mtp.fc": {
+     "bpw": 4.0,
+     "proxy_err": null,
+     "rmse": 0.002379
+    },
+    "mtp.layers.0.self_attn.q_proj": {
+     "bpw": 4.0,
+     "proxy_err": null,
+     "rmse": 0.004018
+    },
+    "mtp.layers.0.self_attn.k_proj": {
+     "bpw": 4.0,
+     "proxy_err": null,
+     "rmse": 0.00559
+    },
+    "mtp.layers.0.self_attn.v_proj": {
+     "bpw": 4.0,
+     "proxy_err": null,
+     "rmse": 0.005541
+    },
+    "mtp.layers.0.self_attn.o_proj": {
+     "bpw": 4.0,
+     "proxy_err": null,
+     "rmse": 0.005616
+    },
+    "mtp.layers.0.mlp.up_proj": {
+     "bpw": 4.0,
+     "proxy_err": null,
+     "rmse": 0.005647
+    },
+    "mtp.layers.0.mlp.gate_proj": {
+     "bpw": 4.0,
+     "proxy_err": null,
+     "rmse": 0.005644
+    },
+    "mtp.layers.0.mlp.down_proj": {
+     "bpw": 4.0,
+     "proxy_err": null,
+     "rmse": 0.005644
+    }
+   },
+   "per_module": {
+    "lm_head": {
+     "bpw": 4.0,
+     "proxy_err": 0.000816,
+     "rmse": null
+    },
+    "model.language_model.layers.0.linear_attn.in_proj_qkv": {
+     "bpw": 3.0,
+     "proxy_err": 0.001559,
+     "rmse": null
+    },
+    "model.language_model.layers.0.linear_attn.in_proj_z": {
+     "bpw": 3.0,
+     "proxy_err": 0.002428,
+     "rmse": null
+    },
+    "model.language_model.layers.0.linear_attn.out_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.001088,
+     "rmse": null
+    },
+    "model.language_model.layers.0.mlp.down_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.004146,
+     "rmse": null
+    },
+    "model.language_model.layers.0.mlp.gate_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.003465,
+     "rmse": null
+    },
+    "model.language_model.layers.0.mlp.up_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.00357,
+     "rmse": null
+    },
+    "model.language_model.layers.1.linear_attn.in_proj_qkv": {
+     "bpw": 3.0,
+     "proxy_err": 0.001418,
+     "rmse": null
+    },
+    "model.language_model.layers.1.linear_attn.in_proj_z": {
+     "bpw": 3.0,
+     "proxy_err": 0.001427,
+     "rmse": null
+    },
+    "model.language_model.layers.1.linear_attn.out_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.006097,
+     "rmse": null
+    },
+    "model.language_model.layers.1.mlp.down_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.006242,
+     "rmse": null
+    },
+    "model.language_model.layers.1.mlp.gate_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.004632,
+     "rmse": null
+    },
+    "model.language_model.layers.1.mlp.up_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.00524,
+     "rmse": null
+    },
+    "model.language_model.layers.10.linear_attn.in_proj_qkv": {
+     "bpw": 3.0,
+     "proxy_err": 0.002884,
+     "rmse": null
+    },
+    "model.language_model.layers.10.linear_attn.in_proj_z": {
+     "bpw": 3.0,
+     "proxy_err": 0.002392,
+     "rmse": null
+    },
+    "model.language_model.layers.10.linear_attn.out_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.006425,
+     "rmse": null
+    },
+    "model.language_model.layers.10.mlp.down_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.008437,
+     "rmse": null
+    },
+    "model.language_model.layers.10.mlp.gate_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.007045,
+     "rmse": null
+    },
+    "model.language_model.layers.10.mlp.up_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.00835,
+     "rmse": null
+    },
+    "model.language_model.layers.11.mlp.down_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.009293,
+     "rmse": null
+    },
+    "model.language_model.layers.11.mlp.gate_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.006463,
+     "rmse": null
+    },
+    "model.language_model.layers.11.mlp.up_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.007969,
+     "rmse": null
+    },
+    "model.language_model.layers.11.self_attn.k_proj": {
+     "bpw": 4.0,
+     "proxy_err": 0.000344,
+     "rmse": null
+    },
+    "model.language_model.layers.11.self_attn.o_proj": {
+     "bpw": 4.0,
+     "proxy_err": 0.001017,
+     "rmse": null
+    },
+    "model.language_model.layers.11.self_attn.q_proj": {
+     "bpw": 4.0,
+     "proxy_err": 0.000202,
+     "rmse": null
+    },
+    "model.language_model.layers.11.self_attn.v_proj": {
+     "bpw": 4.0,
+     "proxy_err": 0.000385,
+     "rmse": null
+    },
+    "model.language_model.layers.12.linear_attn.in_proj_qkv": {
+     "bpw": 3.0,
+     "proxy_err": 0.002277,
+     "rmse": null
+    },
+    "model.language_model.layers.12.linear_attn.in_proj_z": {
+     "bpw": 3.0,
+     "proxy_err": 0.001926,
+     "rmse": null
+    },
+    "model.language_model.layers.12.linear_attn.out_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.00693,
+     "rmse": null
+    },
+    "model.language_model.layers.12.mlp.down_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.009408,
+     "rmse": null
+    },
+    "model.language_model.layers.12.mlp.gate_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.006102,
+     "rmse": null
+    },
+    "model.language_model.layers.12.mlp.up_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.007568,
+     "rmse": null
+    },
+    "model.language_model.layers.13.linear_attn.in_proj_qkv": {
+     "bpw": 3.0,
+     "proxy_err": 0.002402,
+     "rmse": null
+    },
+    "model.language_model.layers.13.linear_attn.in_proj_z": {
+     "bpw": 3.0,
+     "proxy_err": 0.001922,
+     "rmse": null
+    },
+    "model.language_model.layers.13.linear_attn.out_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.008207,
+     "rmse": null
+    },
+    "model.language_model.layers.13.mlp.down_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.009657,
+     "rmse": null
+    },
+    "model.language_model.layers.13.mlp.gate_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.006111,
+     "rmse": null
+    },
+    "model.language_model.layers.13.mlp.up_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.007587,
+     "rmse": null
+    },
+    "model.language_model.layers.14.linear_attn.in_proj_qkv": {
+     "bpw": 3.0,
+     "proxy_err": 0.002212,
+     "rmse": null
+    },
+    "model.language_model.layers.14.linear_attn.in_proj_z": {
+     "bpw": 3.0,
+     "proxy_err": 0.001822,
+     "rmse": null
+    },
+    "model.language_model.layers.14.linear_attn.out_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.007258,
+     "rmse": null
+    },
+    "model.language_model.layers.14.mlp.down_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.009421,
+     "rmse": null
+    },
+    "model.language_model.layers.14.mlp.gate_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.006247,
+     "rmse": null
+    },
+    "model.language_model.layers.14.mlp.up_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.007783,
+     "rmse": null
+    },
+    "model.language_model.layers.15.mlp.down_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.010009,
+     "rmse": null
+    },
+    "model.language_model.layers.15.mlp.gate_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.006384,
+     "rmse": null
+    },
+    "model.language_model.layers.15.mlp.up_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.007839,
+     "rmse": null
+    },
+    "model.language_model.layers.15.self_attn.k_proj": {
+     "bpw": 4.0,
+     "proxy_err": 0.000506,
+     "rmse": null
+    },
+    "model.language_model.layers.15.self_attn.o_proj": {
+     "bpw": 4.0,
+     "proxy_err": 0.00111,
+     "rmse": null
+    },
+    "model.language_model.layers.15.self_attn.q_proj": {
+     "bpw": 4.0,
+     "proxy_err": 0.000244,
+     "rmse": null
+    },
+    "model.language_model.layers.15.self_attn.v_proj": {
+     "bpw": 4.0,
+     "proxy_err": 0.000501,
+     "rmse": null
+    },
+    "model.language_model.layers.16.linear_attn.in_proj_qkv": {
+     "bpw": 3.0,
+     "proxy_err": 0.002575,
+     "rmse": null
+    },
+    "model.language_model.layers.16.linear_attn.in_proj_z": {
+     "bpw": 3.0,
+     "proxy_err": 0.002105,
+     "rmse": null
+    },
+    "model.language_model.layers.16.linear_attn.out_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.007563,
+     "rmse": null
+    },
+    "model.language_model.layers.16.mlp.down_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.00916,
+     "rmse": null
+    },
+    "model.language_model.layers.16.mlp.gate_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.005921,
+     "rmse": null
+    },
+    "model.language_model.layers.16.mlp.up_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.007443,
+     "rmse": null
+    },
+    "model.language_model.layers.17.linear_attn.in_proj_qkv": {
+     "bpw": 3.0,
+     "proxy_err": 0.002471,
+     "rmse": null
+    },
+    "model.language_model.layers.17.linear_attn.in_proj_z": {
+     "bpw": 3.0,
+     "proxy_err": 0.001962,
+     "rmse": null
+    },
+    "model.language_model.layers.17.linear_attn.out_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.008599,
+     "rmse": null
+    },
+    "model.language_model.layers.17.mlp.down_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.00878,
+     "rmse": null
+    },
+    "model.language_model.layers.17.mlp.gate_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.00575,
+     "rmse": null
+    },
+    "model.language_model.layers.17.mlp.up_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.007478,
+     "rmse": null
+    },
+    "model.language_model.layers.18.linear_attn.in_proj_qkv": {
+     "bpw": 3.0,
+     "proxy_err": 0.002436,
+     "rmse": null
+    },
+    "model.language_model.layers.18.linear_attn.in_proj_z": {
+     "bpw": 3.0,
+     "proxy_err": 0.00198,
+     "rmse": null
+    },
+    "model.language_model.layers.18.linear_attn.out_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.006184,
+     "rmse": null
+    },
+    "model.language_model.layers.18.mlp.down_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.006914,
+     "rmse": null
+    },
+    "model.language_model.layers.18.mlp.gate_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.004859,
+     "rmse": null
+    },
+    "model.language_model.layers.18.mlp.up_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.006218,
+     "rmse": null
+    },
+    "model.language_model.layers.19.mlp.down_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.008911,
+     "rmse": null
+    },
+    "model.language_model.layers.19.mlp.gate_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.004975,
+     "rmse": null
+    },
+    "model.language_model.layers.19.mlp.up_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.007374,
+     "rmse": null
+    },
+    "model.language_model.layers.19.self_attn.k_proj": {
+     "bpw": 4.0,
+     "proxy_err": 0.000702,
+     "rmse": null
+    },
+    "model.language_model.layers.19.self_attn.o_proj": {
+     "bpw": 4.0,
+     "proxy_err": 0.001617,
+     "rmse": null
+    },
+    "model.language_model.layers.19.self_attn.q_proj": {
+     "bpw": 4.0,
+     "proxy_err": 0.000296,
+     "rmse": null
+    },
+    "model.language_model.layers.19.self_attn.v_proj": {
+     "bpw": 4.0,
+     "proxy_err": 0.000707,
+     "rmse": null
+    },
+    "model.language_model.layers.2.linear_attn.in_proj_qkv": {
+     "bpw": 3.0,
+     "proxy_err": 0.001829,
+     "rmse": null
+    },
+    "model.language_model.layers.2.linear_attn.in_proj_z": {
+     "bpw": 3.0,
+     "proxy_err": 0.001799,
+     "rmse": null
+    },
+    "model.language_model.layers.2.linear_attn.out_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.006841,
+     "rmse": null
+    },
+    "model.language_model.layers.2.mlp.down_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.006554,
+     "rmse": null
+    },
+    "model.language_model.layers.2.mlp.gate_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.007082,
+     "rmse": null
+    },
+    "model.language_model.layers.2.mlp.up_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.00792,
+     "rmse": null
+    },
+    "model.language_model.layers.20.linear_attn.in_proj_qkv": {
+     "bpw": 3.0,
+     "proxy_err": 0.002254,
+     "rmse": null
+    },
+    "model.language_model.layers.20.linear_attn.in_proj_z": {
+     "bpw": 3.0,
+     "proxy_err": 0.002063,
+     "rmse": null
+    },
+    "model.language_model.layers.20.linear_attn.out_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.00791,
+     "rmse": null
+    },
+    "model.language_model.layers.20.mlp.down_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.00948,
+     "rmse": null
+    },
+    "model.language_model.layers.20.mlp.gate_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.005536,
+     "rmse": null
+    },
+    "model.language_model.layers.20.mlp.up_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.008537,
+     "rmse": null
+    },
+    "model.language_model.layers.21.linear_attn.in_proj_qkv": {
+     "bpw": 3.0,
+     "proxy_err": 0.002911,
+     "rmse": null
+    },
+    "model.language_model.layers.21.linear_attn.in_proj_z": {
+     "bpw": 3.0,
+     "proxy_err": 0.002366,
+     "rmse": null
+    },
+    "model.language_model.layers.21.linear_attn.out_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.007282,
+     "rmse": null
+    },
+    "model.language_model.layers.21.mlp.down_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.010678,
+     "rmse": null
+    },
+    "model.language_model.layers.21.mlp.gate_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.006147,
+     "rmse": null
+    },
+    "model.language_model.layers.21.mlp.up_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.009085,
+     "rmse": null
+    },
+    "model.language_model.layers.22.linear_attn.in_proj_qkv": {
+     "bpw": 3.0,
+     "proxy_err": 0.003556,
+     "rmse": null
+    },
+    "model.language_model.layers.22.linear_attn.in_proj_z": {
+     "bpw": 3.0,
+     "proxy_err": 0.002691,
+     "rmse": null
+    },
+    "model.language_model.layers.22.linear_attn.out_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.009251,
+     "rmse": null
+    },
+    "model.language_model.layers.22.mlp.down_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.009751,
+     "rmse": null
+    },
+    "model.language_model.layers.22.mlp.gate_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.004865,
+     "rmse": null
+    },
+    "model.language_model.layers.22.mlp.up_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.009178,
+     "rmse": null
+    },
+    "model.language_model.layers.23.mlp.down_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.009805,
+     "rmse": null
+    },
+    "model.language_model.layers.23.mlp.gate_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.00548,
+     "rmse": null
+    },
+    "model.language_model.layers.23.mlp.up_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.009175,
+     "rmse": null
+    },
+    "model.language_model.layers.23.self_attn.k_proj": {
+     "bpw": 4.0,
+     "proxy_err": 0.000894,
+     "rmse": null
+    },
+    "model.language_model.layers.23.self_attn.o_proj": {
+     "bpw": 4.0,
+     "proxy_err": 0.001787,
+     "rmse": null
+    },
+    "model.language_model.layers.23.self_attn.q_proj": {
+     "bpw": 4.0,
+     "proxy_err": 0.00038,
+     "rmse": null
+    },
+    "model.language_model.layers.23.self_attn.v_proj": {
+     "bpw": 4.0,
+     "proxy_err": 0.000816,
+     "rmse": null
+    },
+    "model.language_model.layers.24.linear_attn.in_proj_qkv": {
+     "bpw": 3.0,
+     "proxy_err": 0.003283,
+     "rmse": null
+    },
+    "model.language_model.layers.24.linear_attn.in_proj_z": {
+     "bpw": 3.0,
+     "proxy_err": 0.002948,
+     "rmse": null
+    },
+    "model.language_model.layers.24.linear_attn.out_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.008423,
+     "rmse": null
+    },
+    "model.language_model.layers.24.mlp.down_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.009336,
+     "rmse": null
+    },
+    "model.language_model.layers.24.mlp.gate_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.005104,
+     "rmse": null
+    },
+    "model.language_model.layers.24.mlp.up_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.008773,
+     "rmse": null
+    },
+    "model.language_model.layers.25.linear_attn.in_proj_qkv": {
+     "bpw": 3.0,
+     "proxy_err": 0.00295,
+     "rmse": null
+    },
+    "model.language_model.layers.25.linear_attn.in_proj_z": {
+     "bpw": 3.0,
+     "proxy_err": 0.002543,
+     "rmse": null
+    },
+    "model.language_model.layers.25.linear_attn.out_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.00793,
+     "rmse": null
+    },
+    "model.language_model.layers.25.mlp.down_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.00956,
+     "rmse": null
+    },
+    "model.language_model.layers.25.mlp.gate_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.005113,
+     "rmse": null
+    },
+    "model.language_model.layers.25.mlp.up_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.008129,
+     "rmse": null
+    },
+    "model.language_model.layers.26.linear_attn.in_proj_qkv": {
+     "bpw": 3.0,
+     "proxy_err": 0.003062,
+     "rmse": null
+    },
+    "model.language_model.layers.26.linear_attn.in_proj_z": {
+     "bpw": 3.0,
+     "proxy_err": 0.00252,
+     "rmse": null
+    },
+    "model.language_model.layers.26.linear_attn.out_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.007496,
+     "rmse": null
+    },
+    "model.language_model.layers.26.mlp.down_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.008663,
+     "rmse": null
+    },
+    "model.language_model.layers.26.mlp.gate_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.004403,
+     "rmse": null
+    },
+    "model.language_model.layers.26.mlp.up_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.006271,
+     "rmse": null
+    },
+    "model.language_model.layers.27.mlp.down_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.009383,
+     "rmse": null
+    },
+    "model.language_model.layers.27.mlp.gate_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.004352,
+     "rmse": null
+    },
+    "model.language_model.layers.27.mlp.up_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.006552,
+     "rmse": null
+    },
+    "model.language_model.layers.27.self_attn.k_proj": {
+     "bpw": 4.0,
+     "proxy_err": 0.000611,
+     "rmse": null
+    },
+    "model.language_model.layers.27.self_attn.o_proj": {
+     "bpw": 4.0,
+     "proxy_err": 0.001586,
+     "rmse": null
+    },
+    "model.language_model.layers.27.self_attn.q_proj": {
+     "bpw": 4.0,
+     "proxy_err": 0.000437,
+     "rmse": null
+    },
+    "model.language_model.layers.27.self_attn.v_proj": {
+     "bpw": 4.0,
+     "proxy_err": 0.000627,
+     "rmse": null
+    },
+    "model.language_model.layers.28.linear_attn.in_proj_qkv": {
+     "bpw": 3.0,
+     "proxy_err": 0.002828,
+     "rmse": null
+    },
+    "model.language_model.layers.28.linear_attn.in_proj_z": {
+     "bpw": 3.0,
+     "proxy_err": 0.002421,
+     "rmse": null
+    },
+    "model.language_model.layers.28.linear_attn.out_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.00865,
+     "rmse": null
+    },
+    "model.language_model.layers.28.mlp.down_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.009639,
+     "rmse": null
+    },
+    "model.language_model.layers.28.mlp.gate_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.004322,
+     "rmse": null
+    },
+    "model.language_model.layers.28.mlp.up_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.006157,
+     "rmse": null
+    },
+    "model.language_model.layers.29.linear_attn.in_proj_qkv": {
+     "bpw": 3.0,
+     "proxy_err": 0.003008,
+     "rmse": null
+    },
+    "model.language_model.layers.29.linear_attn.in_proj_z": {
+     "bpw": 3.0,
+     "proxy_err": 0.002484,
+     "rmse": null
+    },
+    "model.language_model.layers.29.linear_attn.out_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.009242,
+     "rmse": null
+    },
+    "model.language_model.layers.29.mlp.down_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.009636,
+     "rmse": null
+    },
+    "model.language_model.layers.29.mlp.gate_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.004375,
+     "rmse": null
+    },
+    "model.language_model.layers.29.mlp.up_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.006114,
+     "rmse": null
+    },
+    "model.language_model.layers.3.mlp.down_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.009112,
+     "rmse": null
+    },
+    "model.language_model.layers.3.mlp.gate_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.007409,
+     "rmse": null
+    },
+    "model.language_model.layers.3.mlp.up_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.008849,
+     "rmse": null
+    },
+    "model.language_model.layers.3.self_attn.k_proj": {
+     "bpw": 4.0,
+     "proxy_err": 0.000322,
+     "rmse": null
+    },
+    "model.language_model.layers.3.self_attn.o_proj": {
+     "bpw": 4.0,
+     "proxy_err": 0.000563,
+     "rmse": null
+    },
+    "model.language_model.layers.3.self_attn.q_proj": {
+     "bpw": 4.0,
+     "proxy_err": 0.000179,
+     "rmse": null
+    },
+    "model.language_model.layers.3.self_attn.v_proj": {
+     "bpw": 4.0,
+     "proxy_err": 0.000335,
+     "rmse": null
+    },
+    "model.language_model.layers.30.linear_attn.in_proj_qkv": {
+     "bpw": 3.0,
+     "proxy_err": 0.002782,
+     "rmse": null
+    },
+    "model.language_model.layers.30.linear_attn.in_proj_z": {
+     "bpw": 3.0,
+     "proxy_err": 0.002327,
+     "rmse": null
+    },
+    "model.language_model.layers.30.linear_attn.out_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.008008,
+     "rmse": null
+    },
+    "model.language_model.layers.30.mlp.down_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.009224,
+     "rmse": null
+    },
+    "model.language_model.layers.30.mlp.gate_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.004362,
+     "rmse": null
+    },
+    "model.language_model.layers.30.mlp.up_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.005628,
+     "rmse": null
+    },
+    "model.language_model.layers.31.mlp.down_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.009515,
+     "rmse": null
+    },
+    "model.language_model.layers.31.mlp.gate_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.004545,
+     "rmse": null
+    },
+    "model.language_model.layers.31.mlp.up_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.005967,
+     "rmse": null
+    },
+    "model.language_model.layers.31.self_attn.k_proj": {
+     "bpw": 4.0,
+     "proxy_err": 0.000708,
+     "rmse": null
+    },
+    "model.language_model.layers.31.self_attn.o_proj": {
+     "bpw": 4.0,
+     "proxy_err": 0.002229,
+     "rmse": null
+    },
+    "model.language_model.layers.31.self_attn.q_proj": {
+     "bpw": 4.0,
+     "proxy_err": 0.000527,
+     "rmse": null
+    },
+    "model.language_model.layers.31.self_attn.v_proj": {
+     "bpw": 4.0,
+     "proxy_err": 0.00067,
+     "rmse": null
+    },
+    "model.language_model.layers.32.linear_attn.in_proj_qkv": {
+     "bpw": 3.0,
+     "proxy_err": 0.003187,
+     "rmse": null
+    },
+    "model.language_model.layers.32.linear_attn.in_proj_z": {
+     "bpw": 3.0,
+     "proxy_err": 0.002774,
+     "rmse": null
+    },
+    "model.language_model.layers.32.linear_attn.out_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.008961,
+     "rmse": null
+    },
+    "model.language_model.layers.32.mlp.down_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.009429,
+     "rmse": null
+    },
+    "model.language_model.layers.32.mlp.gate_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.004487,
+     "rmse": null
+    },
+    "model.language_model.layers.32.mlp.up_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.005954,
+     "rmse": null
+    },
+    "model.language_model.layers.33.linear_attn.in_proj_qkv": {
+     "bpw": 3.0,
+     "proxy_err": 0.00318,
+     "rmse": null
+    },
+    "model.language_model.layers.33.linear_attn.in_proj_z": {
+     "bpw": 3.0,
+     "proxy_err": 0.002501,
+     "rmse": null
+    },
+    "model.language_model.layers.33.linear_attn.out_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.010369,
+     "rmse": null
+    },
+    "model.language_model.layers.33.mlp.down_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.009542,
+     "rmse": null
+    },
+    "model.language_model.layers.33.mlp.gate_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.004547,
+     "rmse": null
+    },
+    "model.language_model.layers.33.mlp.up_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.006113,
+     "rmse": null
+    },
+    "model.language_model.layers.34.linear_attn.in_proj_qkv": {
+     "bpw": 3.0,
+     "proxy_err": 0.002992,
+     "rmse": null
+    },
+    "model.language_model.layers.34.linear_attn.in_proj_z": {
+     "bpw": 3.0,
+     "proxy_err": 0.002507,
+     "rmse": null
+    },
+    "model.language_model.layers.34.linear_attn.out_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.007362,
+     "rmse": null
+    },
+    "model.language_model.layers.34.mlp.down_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.008553,
+     "rmse": null
+    },
+    "model.language_model.layers.34.mlp.gate_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.004022,
+     "rmse": null
+    },
+    "model.language_model.layers.34.mlp.up_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.005316,
+     "rmse": null
+    },
+    "model.language_model.layers.35.mlp.down_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.008226,
+     "rmse": null
+    },
+    "model.language_model.layers.35.mlp.gate_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.003946,
+     "rmse": null
+    },
+    "model.language_model.layers.35.mlp.up_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.006221,
+     "rmse": null
+    },
+    "model.language_model.layers.35.self_attn.k_proj": {
+     "bpw": 4.0,
+     "proxy_err": 0.000859,
+     "rmse": null
+    },
+    "model.language_model.layers.35.self_attn.o_proj": {
+     "bpw": 4.0,
+     "proxy_err": 0.001861,
+     "rmse": null
+    },
+    "model.language_model.layers.35.self_attn.q_proj": {
+     "bpw": 4.0,
+     "proxy_err": 0.000666,
+     "rmse": null
+    },
+    "model.language_model.layers.35.self_attn.v_proj": {
+     "bpw": 4.0,
+     "proxy_err": 0.000869,
+     "rmse": null
+    },
+    "model.language_model.layers.36.linear_attn.in_proj_qkv": {
+     "bpw": 3.0,
+     "proxy_err": 0.002929,
+     "rmse": null
+    },
+    "model.language_model.layers.36.linear_attn.in_proj_z": {
+     "bpw": 3.0,
+     "proxy_err": 0.002518,
+     "rmse": null
+    },
+    "model.language_model.layers.36.linear_attn.out_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.007508,
+     "rmse": null
+    },
+    "model.language_model.layers.36.mlp.down_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.009384,
+     "rmse": null
+    },
+    "model.language_model.layers.36.mlp.gate_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.004367,
+     "rmse": null
+    },
+    "model.language_model.layers.36.mlp.up_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.007176,
+     "rmse": null
+    },
+    "model.language_model.layers.37.linear_attn.in_proj_qkv": {
+     "bpw": 3.0,
+     "proxy_err": 0.003085,
+     "rmse": null
+    },
+    "model.language_model.layers.37.linear_attn.in_proj_z": {
+     "bpw": 3.0,
+     "proxy_err": 0.002413,
+     "rmse": null
+    },
+    "model.language_model.layers.37.linear_attn.out_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.007766,
+     "rmse": null
+    },
+    "model.language_model.layers.37.mlp.down_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.010924,
+     "rmse": null
+    },
+    "model.language_model.layers.37.mlp.gate_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.005204,
+     "rmse": null
+    },
+    "model.language_model.layers.37.mlp.up_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.008076,
+     "rmse": null
+    },
+    "model.language_model.layers.38.linear_attn.in_proj_qkv": {
+     "bpw": 3.0,
+     "proxy_err": 0.003813,
+     "rmse": null
+    },
+    "model.language_model.layers.38.linear_attn.in_proj_z": {
+     "bpw": 3.0,
+     "proxy_err": 0.002962,
+     "rmse": null
+    },
+    "model.language_model.layers.38.linear_attn.out_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.009774,
+     "rmse": null
+    },
+    "model.language_model.layers.38.mlp.down_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.009868,
+     "rmse": null
+    },
+    "model.language_model.layers.38.mlp.gate_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.00406,
+     "rmse": null
+    },
+    "model.language_model.layers.38.mlp.up_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.007879,
+     "rmse": null
+    },
+    "model.language_model.layers.39.mlp.down_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.009957,
+     "rmse": null
+    },
+    "model.language_model.layers.39.mlp.gate_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.004563,
+     "rmse": null
+    },
+    "model.language_model.layers.39.mlp.up_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.008634,
+     "rmse": null
+    },
+    "model.language_model.layers.39.self_attn.k_proj": {
+     "bpw": 4.0,
+     "proxy_err": 0.000998,
+     "rmse": null
+    },
+    "model.language_model.layers.39.self_attn.o_proj": {
+     "bpw": 4.0,
+     "proxy_err": 0.002289,
+     "rmse": null
+    },
+    "model.language_model.layers.39.self_attn.q_proj": {
+     "bpw": 4.0,
+     "proxy_err": 0.000617,
+     "rmse": null
+    },
+    "model.language_model.layers.39.self_attn.v_proj": {
+     "bpw": 4.0,
+     "proxy_err": 0.000977,
+     "rmse": null
+    },
+    "model.language_model.layers.4.linear_attn.in_proj_qkv": {
+     "bpw": 3.0,
+     "proxy_err": 0.003437,
+     "rmse": null
+    },
+    "model.language_model.layers.4.linear_attn.in_proj_z": {
+     "bpw": 3.0,
+     "proxy_err": 0.003299,
+     "rmse": null
+    },
+    "model.language_model.layers.4.linear_attn.out_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.008872,
+     "rmse": null
+    },
+    "model.language_model.layers.4.mlp.down_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.00991,
+     "rmse": null
+    },
+    "model.language_model.layers.4.mlp.gate_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.007356,
+     "rmse": null
+    },
+    "model.language_model.layers.4.mlp.up_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.009516,
+     "rmse": null
+    },
+    "model.language_model.layers.40.linear_attn.in_proj_qkv": {
+     "bpw": 3.0,
+     "proxy_err": 0.003438,
+     "rmse": null
+    },
+    "model.language_model.layers.40.linear_attn.in_proj_z": {
+     "bpw": 3.0,
+     "proxy_err": 0.003037,
+     "rmse": null
+    },
+    "model.language_model.layers.40.linear_attn.out_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.009033,
+     "rmse": null
+    },
+    "model.language_model.layers.40.mlp.down_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.009573,
+     "rmse": null
+    },
+    "model.language_model.layers.40.mlp.gate_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.004368,
+     "rmse": null
+    },
+    "model.language_model.layers.40.mlp.up_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.008015,
+     "rmse": null
+    },
+    "model.language_model.layers.41.linear_attn.in_proj_qkv": {
+     "bpw": 3.0,
+     "proxy_err": 0.003367,
+     "rmse": null
+    },
+    "model.language_model.layers.41.linear_attn.in_proj_z": {
+     "bpw": 3.0,
+     "proxy_err": 0.002991,
+     "rmse": null
+    },
+    "model.language_model.layers.41.linear_attn.out_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.008492,
+     "rmse": null
+    },
+    "model.language_model.layers.41.mlp.down_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.010221,
+     "rmse": null
+    },
+    "model.language_model.layers.41.mlp.gate_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.005204,
+     "rmse": null
+    },
+    "model.language_model.layers.41.mlp.up_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.00804,
+     "rmse": null
+    },
+    "model.language_model.layers.42.linear_attn.in_proj_qkv": {
+     "bpw": 3.0,
+     "proxy_err": 0.003369,
+     "rmse": null
+    },
+    "model.language_model.layers.42.linear_attn.in_proj_z": {
+     "bpw": 3.0,
+     "proxy_err": 0.002824,
+     "rmse": null
+    },
+    "model.language_model.layers.42.linear_attn.out_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.007512,
+     "rmse": null
+    },
+    "model.language_model.layers.42.mlp.down_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.009271,
+     "rmse": null
+    },
+    "model.language_model.layers.42.mlp.gate_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.004967,
+     "rmse": null
+    },
+    "model.language_model.layers.42.mlp.up_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.006592,
+     "rmse": null
+    },
+    "model.language_model.layers.43.mlp.down_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.009632,
+     "rmse": null
+    },
+    "model.language_model.layers.43.mlp.gate_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.004815,
+     "rmse": null
+    },
+    "model.language_model.layers.43.mlp.up_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.006953,
+     "rmse": null
+    },
+    "model.language_model.layers.43.self_attn.k_proj": {
+     "bpw": 4.0,
+     "proxy_err": 0.000767,
+     "rmse": null
+    },
+    "model.language_model.layers.43.self_attn.o_proj": {
+     "bpw": 4.0,
+     "proxy_err": 0.001755,
+     "rmse": null
+    },
+    "model.language_model.layers.43.self_attn.q_proj": {
+     "bpw": 4.0,
+     "proxy_err": 0.000546,
+     "rmse": null
+    },
+    "model.language_model.layers.43.self_attn.v_proj": {
+     "bpw": 4.0,
+     "proxy_err": 0.000724,
+     "rmse": null
+    },
+    "model.language_model.layers.44.linear_attn.in_proj_qkv": {
+     "bpw": 3.0,
+     "proxy_err": 0.002977,
+     "rmse": null
+    },
+    "model.language_model.layers.44.linear_attn.in_proj_z": {
+     "bpw": 3.0,
+     "proxy_err": 0.002474,
+     "rmse": null
+    },
+    "model.language_model.layers.44.linear_attn.out_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.007973,
+     "rmse": null
+    },
+    "model.language_model.layers.44.mlp.down_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.009847,
+     "rmse": null
+    },
+    "model.language_model.layers.44.mlp.gate_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.004627,
+     "rmse": null
+    },
+    "model.language_model.layers.44.mlp.up_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.006575,
+     "rmse": null
+    },
+    "model.language_model.layers.45.linear_attn.in_proj_qkv": {
+     "bpw": 3.0,
+     "proxy_err": 0.003239,
+     "rmse": null
+    },
+    "model.language_model.layers.45.linear_attn.in_proj_z": {
+     "bpw": 3.0,
+     "proxy_err": 0.002622,
+     "rmse": null
+    },
+    "model.language_model.layers.45.linear_attn.out_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.00893,
+     "rmse": null
+    },
+    "model.language_model.layers.45.mlp.down_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.009816,
+     "rmse": null
+    },
+    "model.language_model.layers.45.mlp.gate_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.004576,
+     "rmse": null
+    },
+    "model.language_model.layers.45.mlp.up_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.006472,
+     "rmse": null
+    },
+    "model.language_model.layers.46.linear_attn.in_proj_qkv": {
+     "bpw": 3.0,
+     "proxy_err": 0.002926,
+     "rmse": null
+    },
+    "model.language_model.layers.46.linear_attn.in_proj_z": {
+     "bpw": 3.0,
+     "proxy_err": 0.00218,
+     "rmse": null
+    },
+    "model.language_model.layers.46.linear_attn.out_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.007194,
+     "rmse": null
+    },
+    "model.language_model.layers.46.mlp.down_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.007944,
+     "rmse": null
+    },
+    "model.language_model.layers.46.mlp.gate_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.00429,
+     "rmse": null
+    },
+    "model.language_model.layers.46.mlp.up_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.00584,
+     "rmse": null
+    },
+    "model.language_model.layers.47.mlp.down_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.008253,
+     "rmse": null
+    },
+    "model.language_model.layers.47.mlp.gate_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.004164,
+     "rmse": null
+    },
+    "model.language_model.layers.47.mlp.up_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.005907,
+     "rmse": null
+    },
+    "model.language_model.layers.47.self_attn.k_proj": {
+     "bpw": 4.0,
+     "proxy_err": 0.0008,
+     "rmse": null
+    },
+    "model.language_model.layers.47.self_attn.o_proj": {
+     "bpw": 4.0,
+     "proxy_err": 0.001645,
+     "rmse": null
+    },
+    "model.language_model.layers.47.self_attn.q_proj": {
+     "bpw": 4.0,
+     "proxy_err": 0.000592,
+     "rmse": null
+    },
+    "model.language_model.layers.47.self_attn.v_proj": {
+     "bpw": 4.0,
+     "proxy_err": 0.000736,
+     "rmse": null
+    },
+    "model.language_model.layers.48.linear_attn.in_proj_qkv": {
+     "bpw": 3.0,
+     "proxy_err": 0.003104,
+     "rmse": null
+    },
+    "model.language_model.layers.48.linear_attn.in_proj_z": {
+     "bpw": 3.0,
+     "proxy_err": 0.002491,
+     "rmse": null
+    },
+    "model.language_model.layers.48.linear_attn.out_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.007682,
+     "rmse": null
+    },
+    "model.language_model.layers.48.mlp.down_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.008359,
+     "rmse": null
+    },
+    "model.language_model.layers.48.mlp.gate_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.003962,
+     "rmse": null
+    },
+    "model.language_model.layers.48.mlp.up_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.00552,
+     "rmse": null
+    },
+    "model.language_model.layers.49.linear_attn.in_proj_qkv": {
+     "bpw": 3.0,
+     "proxy_err": 0.00304,
+     "rmse": null
+    },
+    "model.language_model.layers.49.linear_attn.in_proj_z": {
+     "bpw": 3.0,
+     "proxy_err": 0.002076,
+     "rmse": null
+    },
+    "model.language_model.layers.49.linear_attn.out_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.007974,
+     "rmse": null
+    },
+    "model.language_model.layers.49.mlp.down_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.007627,
+     "rmse": null
+    },
+    "model.language_model.layers.49.mlp.gate_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.003765,
+     "rmse": null
+    },
+    "model.language_model.layers.49.mlp.up_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.005005,
+     "rmse": null
+    },
+    "model.language_model.layers.5.linear_attn.in_proj_qkv": {
+     "bpw": 3.0,
+     "proxy_err": 0.002903,
+     "rmse": null
+    },
+    "model.language_model.layers.5.linear_attn.in_proj_z": {
+     "bpw": 3.0,
+     "proxy_err": 0.00258,
+     "rmse": null
+    },
+    "model.language_model.layers.5.linear_attn.out_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.008842,
+     "rmse": null
+    },
+    "model.language_model.layers.5.mlp.down_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.009853,
+     "rmse": null
+    },
+    "model.language_model.layers.5.mlp.gate_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.008105,
+     "rmse": null
+    },
+    "model.language_model.layers.5.mlp.up_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.009825,
+     "rmse": null
+    },
+    "model.language_model.layers.50.linear_attn.in_proj_qkv": {
+     "bpw": 3.0,
+     "proxy_err": 0.002928,
+     "rmse": null
+    },
+    "model.language_model.layers.50.linear_attn.in_proj_z": {
+     "bpw": 3.0,
+     "proxy_err": 0.001899,
+     "rmse": null
+    },
+    "model.language_model.layers.50.linear_attn.out_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.005926,
+     "rmse": null
+    },
+    "model.language_model.layers.50.mlp.down_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.006541,
+     "rmse": null
+    },
+    "model.language_model.layers.50.mlp.gate_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.003019,
+     "rmse": null
+    },
+    "model.language_model.layers.50.mlp.up_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.003672,
+     "rmse": null
+    },
+    "model.language_model.layers.51.mlp.down_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.00683,
+     "rmse": null
+    },
+    "model.language_model.layers.51.mlp.gate_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.003103,
+     "rmse": null
+    },
+    "model.language_model.layers.51.mlp.up_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.004503,
+     "rmse": null
+    },
+    "model.language_model.layers.51.self_attn.k_proj": {
+     "bpw": 4.0,
+     "proxy_err": 0.000841,
+     "rmse": null
+    },
+    "model.language_model.layers.51.self_attn.o_proj": {
+     "bpw": 4.0,
+     "proxy_err": 0.001182,
+     "rmse": null
+    },
+    "model.language_model.layers.51.self_attn.q_proj": {
+     "bpw": 4.0,
+     "proxy_err": 0.000657,
+     "rmse": null
+    },
+    "model.language_model.layers.51.self_attn.v_proj": {
+     "bpw": 4.0,
+     "proxy_err": 0.000832,
+     "rmse": null
+    },
+    "model.language_model.layers.52.linear_attn.in_proj_qkv": {
+     "bpw": 3.0,
+     "proxy_err": 0.00268,
+     "rmse": null
+    },
+    "model.language_model.layers.52.linear_attn.in_proj_z": {
+     "bpw": 3.0,
+     "proxy_err": 0.002258,
+     "rmse": null
+    },
+    "model.language_model.layers.52.linear_attn.out_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.006126,
+     "rmse": null
+    },
+    "model.language_model.layers.52.mlp.down_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.008092,
+     "rmse": null
+    },
+    "model.language_model.layers.52.mlp.gate_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.003151,
+     "rmse": null
+    },
+    "model.language_model.layers.52.mlp.up_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.004819,
+     "rmse": null
+    },
+    "model.language_model.layers.53.linear_attn.in_proj_qkv": {
+     "bpw": 3.0,
+     "proxy_err": 0.00283,
+     "rmse": null
+    },
+    "model.language_model.layers.53.linear_attn.in_proj_z": {
+     "bpw": 3.0,
+     "proxy_err": 0.002588,
+     "rmse": null
+    },
+    "model.language_model.layers.53.linear_attn.out_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.006685,
+     "rmse": null
+    },
+    "model.language_model.layers.53.mlp.down_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.008777,
+     "rmse": null
+    },
+    "model.language_model.layers.53.mlp.gate_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.003288,
+     "rmse": null
+    },
+    "model.language_model.layers.53.mlp.up_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.005044,
+     "rmse": null
+    },
+    "model.language_model.layers.54.linear_attn.in_proj_qkv": {
+     "bpw": 3.0,
+     "proxy_err": 0.003509,
+     "rmse": null
+    },
+    "model.language_model.layers.54.linear_attn.in_proj_z": {
+     "bpw": 3.0,
+     "proxy_err": 0.002666,
+     "rmse": null
+    },
+    "model.language_model.layers.54.linear_attn.out_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.006629,
+     "rmse": null
+    },
+    "model.language_model.layers.54.mlp.down_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.006778,
+     "rmse": null
+    },
+    "model.language_model.layers.54.mlp.gate_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.002819,
+     "rmse": null
+    },
+    "model.language_model.layers.54.mlp.up_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.003588,
+     "rmse": null
+    },
+    "model.language_model.layers.55.mlp.down_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.008246,
+     "rmse": null
+    },
+    "model.language_model.layers.55.mlp.gate_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.003216,
+     "rmse": null
+    },
+    "model.language_model.layers.55.mlp.up_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.005753,
+     "rmse": null
+    },
+    "model.language_model.layers.55.self_attn.k_proj": {
+     "bpw": 4.0,
+     "proxy_err": 0.001119,
+     "rmse": null
+    },
+    "model.language_model.layers.55.self_attn.o_proj": {
+     "bpw": 4.0,
+     "proxy_err": 0.00136,
+     "rmse": null
+    },
+    "model.language_model.layers.55.self_attn.q_proj": {
+     "bpw": 4.0,
+     "proxy_err": 0.000709,
+     "rmse": null
+    },
+    "model.language_model.layers.55.self_attn.v_proj": {
+     "bpw": 4.0,
+     "proxy_err": 0.00082,
+     "rmse": null
+    },
+    "model.language_model.layers.56.linear_attn.in_proj_qkv": {
+     "bpw": 3.0,
+     "proxy_err": 0.003203,
+     "rmse": null
+    },
+    "model.language_model.layers.56.linear_attn.in_proj_z": {
+     "bpw": 3.0,
+     "proxy_err": 0.003078,
+     "rmse": null
+    },
+    "model.language_model.layers.56.linear_attn.out_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.005497,
+     "rmse": null
+    },
+    "model.language_model.layers.56.mlp.down_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.008524,
+     "rmse": null
+    },
+    "model.language_model.layers.56.mlp.gate_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.003189,
+     "rmse": null
+    },
+    "model.language_model.layers.56.mlp.up_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.005755,
+     "rmse": null
+    },
+    "model.language_model.layers.57.linear_attn.in_proj_qkv": {
+     "bpw": 3.0,
+     "proxy_err": 0.003126,
+     "rmse": null
+    },
+    "model.language_model.layers.57.linear_attn.in_proj_z": {
+     "bpw": 3.0,
+     "proxy_err": 0.003047,
+     "rmse": null
+    },
+    "model.language_model.layers.57.linear_attn.out_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.006151,
+     "rmse": null
+    },
+    "model.language_model.layers.57.mlp.down_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.009222,
+     "rmse": null
+    },
+    "model.language_model.layers.57.mlp.gate_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.003128,
+     "rmse": null
+    },
+    "model.language_model.layers.57.mlp.up_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.006077,
+     "rmse": null
+    },
+    "model.language_model.layers.58.linear_attn.in_proj_qkv": {
+     "bpw": 3.0,
+     "proxy_err": 0.003731,
+     "rmse": null
+    },
+    "model.language_model.layers.58.linear_attn.in_proj_z": {
+     "bpw": 3.0,
+     "proxy_err": 0.003325,
+     "rmse": null
+    },
+    "model.language_model.layers.58.linear_attn.out_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.006485,
+     "rmse": null
+    },
+    "model.language_model.layers.58.mlp.down_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.00625,
+     "rmse": null
+    },
+    "model.language_model.layers.58.mlp.gate_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.003163,
+     "rmse": null
+    },
+    "model.language_model.layers.58.mlp.up_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.005695,
+     "rmse": null
+    },
+    "model.language_model.layers.59.mlp.down_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.007137,
+     "rmse": null
+    },
+    "model.language_model.layers.59.mlp.gate_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.003077,
+     "rmse": null
+    },
+    "model.language_model.layers.59.mlp.up_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.005264,
+     "rmse": null
+    },
+    "model.language_model.layers.59.self_attn.k_proj": {
+     "bpw": 4.0,
+     "proxy_err": 0.001183,
+     "rmse": null
+    },
+    "model.language_model.layers.59.self_attn.o_proj": {
+     "bpw": 4.0,
+     "proxy_err": 0.000977,
+     "rmse": null
+    },
+    "model.language_model.layers.59.self_attn.q_proj": {
+     "bpw": 4.0,
+     "proxy_err": 0.000785,
+     "rmse": null
+    },
+    "model.language_model.layers.59.self_attn.v_proj": {
+     "bpw": 4.0,
+     "proxy_err": 0.000726,
+     "rmse": null
+    },
+    "model.language_model.layers.6.linear_attn.in_proj_qkv": {
+     "bpw": 3.0,
+     "proxy_err": 0.002212,
+     "rmse": null
+    },
+    "model.language_model.layers.6.linear_attn.in_proj_z": {
+     "bpw": 3.0,
+     "proxy_err": 0.001928,
+     "rmse": null
+    },
+    "model.language_model.layers.6.linear_attn.out_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.007584,
+     "rmse": null
+    },
+    "model.language_model.layers.6.mlp.down_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.007827,
+     "rmse": null
+    },
+    "model.language_model.layers.6.mlp.gate_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.006228,
+     "rmse": null
+    },
+    "model.language_model.layers.6.mlp.up_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.007386,
+     "rmse": null
+    },
+    "model.language_model.layers.60.linear_attn.in_proj_qkv": {
+     "bpw": 3.0,
+     "proxy_err": 0.002879,
+     "rmse": null
+    },
+    "model.language_model.layers.60.linear_attn.in_proj_z": {
+     "bpw": 3.0,
+     "proxy_err": 0.002269,
+     "rmse": null
+    },
+    "model.language_model.layers.60.linear_attn.out_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.004029,
+     "rmse": null
+    },
+    "model.language_model.layers.60.mlp.down_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.007901,
+     "rmse": null
+    },
+    "model.language_model.layers.60.mlp.gate_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.002915,
+     "rmse": null
+    },
+    "model.language_model.layers.60.mlp.up_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.004436,
+     "rmse": null
+    },
+    "model.language_model.layers.61.linear_attn.in_proj_qkv": {
+     "bpw": 3.0,
+     "proxy_err": 0.003494,
+     "rmse": null
+    },
+    "model.language_model.layers.61.linear_attn.in_proj_z": {
+     "bpw": 3.0,
+     "proxy_err": 0.002869,
+     "rmse": null
+    },
+    "model.language_model.layers.61.linear_attn.out_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.004929,
+     "rmse": null
+    },
+    "model.language_model.layers.61.mlp.down_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.005954,
+     "rmse": null
+    },
+    "model.language_model.layers.61.mlp.gate_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.002488,
+     "rmse": null
+    },
+    "model.language_model.layers.61.mlp.up_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.003703,
+     "rmse": null
+    },
+    "model.language_model.layers.62.linear_attn.in_proj_qkv": {
+     "bpw": 3.0,
+     "proxy_err": 0.002488,
+     "rmse": null
+    },
+    "model.language_model.layers.62.linear_attn.in_proj_z": {
+     "bpw": 3.0,
+     "proxy_err": 0.001829,
+     "rmse": null
+    },
+    "model.language_model.layers.62.linear_attn.out_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.003967,
+     "rmse": null
+    },
+    "model.language_model.layers.62.mlp.down_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.004365,
+     "rmse": null
+    },
+    "model.language_model.layers.62.mlp.gate_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.00202,
+     "rmse": null
+    },
+    "model.language_model.layers.62.mlp.up_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.002301,
+     "rmse": null
+    },
+    "model.language_model.layers.63.mlp.down_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.000592,
+     "rmse": null
+    },
+    "model.language_model.layers.63.mlp.gate_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.001215,
+     "rmse": null
+    },
+    "model.language_model.layers.63.mlp.up_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.001088,
+     "rmse": null
+    },
+    "model.language_model.layers.63.self_attn.k_proj": {
+     "bpw": 4.0,
+     "proxy_err": 0.000895,
+     "rmse": null
+    },
+    "model.language_model.layers.63.self_attn.o_proj": {
+     "bpw": 4.0,
+     "proxy_err": 0.000445,
+     "rmse": null
+    },
+    "model.language_model.layers.63.self_attn.q_proj": {
+     "bpw": 4.0,
+     "proxy_err": 0.000475,
+     "rmse": null
+    },
+    "model.language_model.layers.63.self_attn.v_proj": {
+     "bpw": 4.0,
+     "proxy_err": 0.000201,
+     "rmse": null
+    },
+    "model.language_model.layers.7.mlp.down_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.009924,
+     "rmse": null
+    },
+    "model.language_model.layers.7.mlp.gate_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.007755,
+     "rmse": null
+    },
+    "model.language_model.layers.7.mlp.up_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.009761,
+     "rmse": null
+    },
+    "model.language_model.layers.7.self_attn.k_proj": {
+     "bpw": 4.0,
+     "proxy_err": 0.000333,
+     "rmse": null
+    },
+    "model.language_model.layers.7.self_attn.o_proj": {
+     "bpw": 4.0,
+     "proxy_err": 0.001011,
+     "rmse": null
+    },
+    "model.language_model.layers.7.self_attn.q_proj": {
+     "bpw": 4.0,
+     "proxy_err": 0.000191,
+     "rmse": null
+    },
+    "model.language_model.layers.7.self_attn.v_proj": {
+     "bpw": 4.0,
+     "proxy_err": 0.000366,
+     "rmse": null
+    },
+    "model.language_model.layers.8.linear_attn.in_proj_qkv": {
+     "bpw": 3.0,
+     "proxy_err": 0.002937,
+     "rmse": null
+    },
+    "model.language_model.layers.8.linear_attn.in_proj_z": {
+     "bpw": 3.0,
+     "proxy_err": 0.002778,
+     "rmse": null
+    },
+    "model.language_model.layers.8.linear_attn.out_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.008397,
+     "rmse": null
+    },
+    "model.language_model.layers.8.mlp.down_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.009823,
+     "rmse": null
+    },
+    "model.language_model.layers.8.mlp.gate_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.008171,
+     "rmse": null
+    },
+    "model.language_model.layers.8.mlp.up_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.00984,
+     "rmse": null
+    },
+    "model.language_model.layers.9.linear_attn.in_proj_qkv": {
+     "bpw": 3.0,
+     "proxy_err": 0.002903,
+     "rmse": null
+    },
+    "model.language_model.layers.9.linear_attn.in_proj_z": {
+     "bpw": 3.0,
+     "proxy_err": 0.002457,
+     "rmse": null
+    },
+    "model.language_model.layers.9.linear_attn.out_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.007076,
+     "rmse": null
+    },
+    "model.language_model.layers.9.mlp.down_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.009652,
+     "rmse": null
+    },
+    "model.language_model.layers.9.mlp.gate_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.00797,
+     "rmse": null
+    },
+    "model.language_model.layers.9.mlp.up_proj": {
+     "bpw": 3.0,
+     "proxy_err": 0.009467,
+     "rmse": null
+    },
+    "mtp.fc": {
+     "bpw": 4.0,
+     "proxy_err": null,
+     "rmse": 0.002379
+    },
+    "mtp.layers.0.mlp.down_proj": {
+     "bpw": 4.0,
+     "proxy_err": null,
+     "rmse": 0.005644
+    },
+    "mtp.layers.0.mlp.gate_proj": {
+     "bpw": 4.0,
+     "proxy_err": null,
+     "rmse": 0.005644
+    },
+    "mtp.layers.0.mlp.up_proj": {
+     "bpw": 4.0,
+     "proxy_err": null,
+     "rmse": 0.005647
+    },
+    "mtp.layers.0.self_attn.k_proj": {
+     "bpw": 4.0,
+     "proxy_err": null,
+     "rmse": 0.00559
+    },
+    "mtp.layers.0.self_attn.o_proj": {
+     "bpw": 4.0,
+     "proxy_err": null,
+     "rmse": 0.005616
+    },
+    "mtp.layers.0.self_attn.q_proj": {
+     "bpw": 4.0,
+     "proxy_err": null,
+     "rmse": 0.004018
+    },
+    "mtp.layers.0.self_attn.v_proj": {
+     "bpw": 4.0,
+     "proxy_err": null,
+     "rmse": 0.005541
+    }
+   }
+  },
+  "working_directory_bytes": "12790298239"
+ },
+ "score": {
+  "token_mean_kld": 0.0453735666541211,
+  "token_median_kld": 0.013874914724507192,
+  "p95_kld": 0.15192803826262566,
+  "p99_kld": 0.5435780031709692,
+  "p999_kld": 2.370396843323769,
+  "max_kld": 12.503124730888468,
+  "mean_jsd_bits": 0.01482121147047097,
+  "top1_agreement": 0.9173361550439668,
+  "contexts": 512,
+  "scored_positions": 1048064,
+  "suite_token_sha256": "caef8a4628d6c07c162100895096f890cdf9cafc8e4c48b3d66035d737ee7cf7",
+  "head_sha256": "25a30fd5f826da0abc4efc4cc71def9f02bcb8085f7175eee284d221dee4cfff",
+  "filter": "all",
+  "report": "/var/tmp/work/kld9/reports/report-s16v.json",
+  "schema": "qwen38-fidelity-report/2",
+  "ci95": [
+   0.04195883239421389,
+   0.04935128385219769
+  ],
+  "clusters": 330,
+  "bootstrap_samples": 10000,
+  "reference": "/work/gguf/hidden-bf16",
+  "candidate": "/work/kld9/hidden/hidden-s16v",
+  "capture_log_sha256": "f2f30b28d05915af5da6b849d07642916400ebc89dd13ac0f69c712c91e6bd3a"
+ },
+ "tail_row": {
+  "token_median_kld": 0.013874914724507192,
+  "p95_kld": 0.15192803826262566,
+  "p99_kld": 0.5435780031709692,
+  "p999_kld": 2.370396843323769,
+  "max_kld": 12.503124730888468,
+  "top1_agreement": 0.9173361550439668
+ },
+ "paired": {
+  "k4": {
+   "paired_report": "/var/tmp/work/kld9/reports/paired-k4-vs-s16v.json",
+   "schema": "qwen38-fidelity-paired/2",
+   "a_label": "k4",
+   "a_mean": 0.01034534853668276,
+   "b_label": "s16v",
+   "b_mean": 0.0453735666541211,
+   "contexts": 512,
+   "difference_a_minus_b": -0.035028218117438344,
+   "median_difference": -0.028031748218890085,
+   "ci95": [
+    -0.03811736153097172,
+    -0.03238249178231694
+   ],
+   "clusters": 330,
+   "bootstrap_samples": 10000,
+   "a_wins": 512,
+   "b_wins": 0,
+   "interval_contains_zero": false,
+   "sign": "a better than b",
+   "reading": "difference is a MINUS b on the same 512 contexts, so a positive value means b carries more KLD and is worse"
+  },
+  "ctx": {
+   "paired_report": "/var/tmp/work/kld9/reports/paired-ctx-vs-s16v.json",
+   "schema": "qwen38-fidelity-paired/2",
+   "a_label": "ctx",
+   "a_mean": 0.003409409957186559,
+   "b_label": "s16v",
+   "b_mean": 0.0453735666541211,
+   "contexts": 512,
+   "difference_a_minus_b": -0.04196415669693454,
+   "median_difference": -0.033672440130907526,
+   "ci95": [
+    -0.04566135004781395,
+    -0.038789919097275194
+   ],
+   "clusters": 330,
+   "bootstrap_samples": 10000,
+   "a_wins": 512,
+   "b_wins": 0,
+   "interval_contains_zero": false,
+   "sign": "a better than b",
+   "reading": "difference is a MINUS b on the same 512 contexts, so a positive value means b carries more KLD and is worse"
+  }
+ },
+ "per_stratum_paired": {
+  "k4": {
+   "code": {
+    "contexts": 123,
+    "difference_a_minus_b": -0.04175066090621385,
+    "ci95": [
+     -0.049419784384009055,
+     -0.035075100727109745
+    ],
+    "clusters": 84,
+    "bootstrap_samples": 10000,
+    "b_worse_contexts": 0,
+    "interval_contains_zero": false
+   },
+   "encyclopedic": {
+    "contexts": 92,
+    "difference_a_minus_b": -0.028655205705708592,
+    "ci95": [
+     -0.03082454763357435,
+     -0.02655403310596721
+    ],
+    "clusters": 76,
+    "bootstrap_samples": 10000,
+    "b_worse_contexts": 0,
+    "interval_contains_zero": false
+   },
+   "literary": {
+    "contexts": 82,
+    "difference_a_minus_b": -0.042975900541918396,
+    "ci95": [
+     -0.0581706859704127,
+     -0.03145015251411067
+    ],
+    "clusters": 48,
+    "bootstrap_samples": 10000,
+    "b_worse_contexts": 0,
+    "interval_contains_zero": false
+   },
+   "multilingual": {
+    "contexts": 108,
+    "difference_a_minus_b": -0.03524671708709457,
+    "ci95": [
+     -0.037528994722835364,
+     -0.03312596176063854
+    ],
+    "clusters": 83,
+    "bootstrap_samples": 10000,
+    "b_worse_contexts": 0,
+    "interval_contains_zero": false
+   },
+   "scientific": {
+    "contexts": 107,
+    "difference_a_minus_b": -0.02646886140089173,
+    "ci95": [
+     -0.02756827293848246,
+     -0.025353339915660845
+    ],
+    "clusters": 39,
+    "bootstrap_samples": 10000,
+    "b_worse_contexts": 0,
+    "interval_contains_zero": false
+   },
+   "_reading": "difference is a MINUS b per context, averaged inside the stratum; positive means b carries more KLD in that stratum"
+  },
+  "ctx": {
+   "code": {
+    "contexts": 123,
+    "difference_a_minus_b": -0.05054137469038032,
+    "ci95": [
+     -0.06011459472820996,
+     -0.04220763895591121
+    ],
+    "clusters": 84,
+    "bootstrap_samples": 10000,
+    "b_worse_contexts": 0,
+    "interval_contains_zero": false
+   },
+   "encyclopedic": {
+    "contexts": 92,
+    "difference_a_minus_b": -0.03463429019910632,
+    "ci95": [
+     -0.03718270731674497,
+     -0.032142812300408795
+    ],
+    "clusters": 76,
+    "bootstrap_samples": 10000,
+    "b_worse_contexts": 0,
+    "interval_contains_zero": false
+   },
+   "literary": {
+    "contexts": 82,
+    "difference_a_minus_b": -0.05068506946888759,
+    "ci95": [
+     -0.06827740922177894,
+     -0.037315799195989416
+    ],
+    "clusters": 48,
+    "bootstrap_samples": 10000,
+    "b_worse_contexts": 0,
+    "interval_contains_zero": false
+   },
+   "multilingual": {
+    "contexts": 108,
+    "difference_a_minus_b": -0.042364818782293916,
+    "ci95": [
+     -0.04503851759017995,
+     -0.03987485116480507
+    ],
+    "clusters": 83,
+    "bootstrap_samples": 10000,
+    "b_worse_contexts": 0,
+    "interval_contains_zero": false
+   },
+   "scientific": {
+    "contexts": 107,
+    "difference_a_minus_b": -0.03131895624915326,
+    "ci95": [
+     -0.03260232744958908,
+     -0.03000845593585377
+    ],
+    "clusters": 39,
+    "bootstrap_samples": 10000,
+    "b_worse_contexts": 0,
+    "interval_contains_zero": false
+   },
+   "_reading": "difference is a MINUS b per context, averaged inside the stratum; positive means b carries more KLD in that stratum"
+  }
+ },
+ "prediction_check": {
+  "registered_primary": 0.0689,
+  "measured": 0.0453735666541211,
+  "ratio_measured_over_registered": 0.6585423316998709,
+  "registered_range": [
+   0.03,
+   0.1
+  ],
+  "registered_range_contains_measured": true,
+  "surrogate_bracket": [
+   0.0318,
+   0.0585
+  ],
+  "surrogate_bracket_contains_measured": true
+ },
+ "verdict": {
+  "outcome": "NO",
+  "rule_applied": "measured mean > 0.030, i.e. inside or above the predicted range. Sub-4-bit fidelity does not justify a 16 GB SKU; docs/34 \u00a76 stands as a design study with item (1) now measured rather than absent.",
+  "thresholds_used": {
+   "k4_shard0_mean": 0.010345348536682758,
+   "docs34_range_floor": 0.03
+  },
+  "answers": "docs/34's flip item (1): a measured KLD for one sub-4-bit width in this family on shard 0 of the v5 suite, with its tail row. That item is no longer absent.",
+  "does_not_answer": "items (2) startup on a physical 16 GB board, (3) needle retrieval and a text-plus-image request at the 4.2 MP cap on a K3 body, and (4) the weighted non-termination check. A 16 GB SKU still requires all three, and no 16 GB board has been started in this project."
+ },
+ "preservation": {
+  "policy": "the pre-registered rule: a clear NO records the recompute cost and deletes the checkpoint; borderline or YES uploads it as a research repo.",
+  "this_result": "a clear NO -- 1.5x the decision threshold and 4.4x the worst previously published candidate.",
+  "recompute_cost": {
+   "conversion": "one pass on an RTX PRO 6000 Blackwell, no periodic checkpointing, from 16:11:00Z to about 16:52Z: roughly 41 minutes of GPU",
+   "capture_and_replay": "about 6 minutes to capture 512 contexts and about 3 to replay",
+   "working_directory_peak_bytes": 12790298239,
+   "everything_needed_to_redo_it": "build_s16v.sh and chain_kld9.sh are recorded here with their digests, the toolchain is the published one, and this receipt carries every realised per-module width and proxy error, so the artifact is reproducible from the record without the checkpoint"
+  },
+  "recommendation_to_the_owner": "keep it and upload it as a research repo anyway, on the EDA precedent. It is the only sub-4-bit artifact in this family, it is the anchor for the K3 rung of a published law, and a third party cannot check the 16 GB verdict without it. 13.7 GB of upload against 50 minutes of a GPU that is usually busy. Held on disk pending that decision; deleting it costs nothing but the recompute recorded above.",
+  "status_at_the_time_of_writing": "checkpoint present at /var/tmp/work/kld9/qwen38-s16v, 13,735,527,028 B over 21 files; the 10 GiB hidden capture was released after replay, as the chain does by design"
+ },
+ "ladder_extension": {
+  "what": "the converter's own realised proxy error at the width it actually used, against the laddered value for the same module at the same width",
+  "measured_rung_available": {
+   "n": 304,
+   "min": 0.9731341993816014,
+   "median": 0.9957287308549542,
+   "max": 1.009342805205256,
+   "mean": 0.9945927217968604
+  },
+  "k3_rung_extrapolated_by_the_ladder_law": {
+   "n": 96,
+   "min": 0.9914929536927227,
+   "median": 1.0163543355478029,
+   "max": 1.0454943698024577,
+   "mean": 1.0146925839640597
+  },
+  "k3_note": "for modules below the ladder's 52M big-module threshold the K3 rung was never measured; the comparison uses this run's own extrapolation eps(3) = eps(4) * eps(4)/eps(5), the same one the pre-registration used, so a ratio near 1.0 is the first direct evidence that the 3.73x-per-bit law holds one rung below where it was fitted"
+ },
+ "resident_weights_measured": {
+  "model_loading_gib": 12.81,
+  "model_loading_seconds": 1.605341,
+  "source": "vLLM gpu_model_runner, quoted from the capture log",
+  "embedding_form": "BF16 on disk and BF16 resident -- the fidelity protocol runs no int8 embedding overlay, so this is the un-overlaid figure",
+  "serialized_payload_gib": 12.7698,
+  "loader_delta_gib": 0.0402,
+  "loader_delta_note": "measured counterpart of docs/34's +0.35 GiB loader allowance, which is labelled a prediction there"
+ },
+ "sixteen_gb_arithmetic": {
+  "what": "docs/34's 16 GB resident-weight line with the loader allowance measured instead of predicted",
+  "int8_embedding_payload_bytes": 12440105028,
+  "int8_embedding_payload_gib": 11.5858,
+  "predicted_resident_gib": 11.94,
+  "predicted_loader_allowance_gib": 0.35,
+  "measured_loader_delta_gib": 0.0402,
+  "resident_with_measured_loader_gib": 11.626,
+  "budgets_gib": {
+   "docs34_section3_basis_12_70": 12.7,
+   "measured_utilisation_0_955_basis_12_49": 12.49
+  },
+  "headroom_gib": {
+   "docs34_section3_basis_12_70": 1.074,
+   "measured_utilisation_0_955_basis_12_49": 0.864
+  },
+  "fits": {
+   "docs34_section3_basis_12_70": true,
+   "measured_utilisation_0_955_basis_12_49": true
+  },
+  "assumption": "the loader delta is measured with the BF16 embedding resident, because the fidelity protocol runs no int8 overlay, and is carried across to the int8-embedding form unchanged. That assumes the loader's own overhead does not scale with the embedding form.",
+  "what_it_does_not_settle": "this is still a 32 GB board. Activation, non-torch and CUDA-graph terms in the 16 GB budget are carried from a 32 GB profile, which is docs/34's flip item (2)."
+ },
+ "headline": "0.045374 mean KLD [0.041959, 0.049351] on shard 0 of the v5 suite. This is the FIRST sub-4-bit width ever measured for KLD in this family, at any role, on any suite, and it answers docs/34's flip item (1) -- the blocking item -- with a NO.",
+ "how_bad_in_context": {
+  "vs_k4_the_worst_previously_published_candidate": "4.39x its 0.010345, and K4 wins 512 of 512 contexts paired; the difference is +0.035028 [+0.032382, +0.038117]",
+  "vs_the_context_edition": "13.31x its 0.003409, 512 of 512 contexts, +0.041964 [+0.038790, +0.045661]",
+  "top_1_agreement": "91.73 %, against K4's 95.91 % and the context edition's 97.55 %",
+  "tail": "p99.9 of 2.3704 and a maximum of 12.5031, against K4's p99.9 of 0.5576 -- the tail degrades faster than the mean, which is the direction docs/34 6.4 predicted",
+  "every_stratum_loses": "all five strata lose to both comparators with intervals excluding zero, worst on code (+0.0505 against the context edition) and literary (+0.0507), best on scientific (+0.0313) and encyclopedic (+0.0346)"
+ },
+ "what_this_measurement_buys_beyond_the_verdict": {
+  "byte_law_at_sub_4_bit": "docs/34 6.2 predicted 13,711,503,428 B of payload for this recipe. The measured payload is 13,711,503,428 B. Zero error, and the first test of the affine byte law below 4 bits.",
+  "the_3_73x_law_one_rung_below_its_fit": "receipts/error-driven-ladder.json has no K3 rung for any module under 52M parameters, and the pre-registration extrapolated those 96 modules as eps(3) = eps(4) x eps(4)/eps(5). The converter's realised K3 proxy errors match that extrapolation with a median ratio of 1.0164 and a maximum of 1.0455, while the 304 modules that DO have a measured rung match theirs at a median 0.9957. So the per-bit law holds one rung below where it was fitted, to within about 4.5 % on the extrapolated modules -- measured here for the first time.",
+  "first_loader_term_for_a_sub_4_bit_build": "+0.0402 GiB against a 12.7698 GiB payload. docs/34 2 records +0.206 on hydrated (20.10 GiB), +0.305 to +0.312 on the context build and +0.342 in the amendment run, and plans with +0.35 [P] above every observation. At this payload the term is an order of magnitude smaller, so the flat allowance is very conservative for small builds and the 16 GB weight arithmetic had slack nobody had measured.",
+  "the_weights_fit_the_class_the_fidelity_does_not": "with the measured loader term the int8-embedding resident weight figure is 11.626 GiB against budgets of 12.70 and 12.49 GiB, i.e. 1.07 and 0.86 GiB of headroom. docs/34's 16 GB NO-GO never rested on the weights not fitting -- it rested on absent fidelity, and the fidelity is now present and bad."
+ },
+ "deviations_from_the_sibling_toolchain": [
+  {
+   "what": "-cpi 1000000, i.e. no periodic checkpointing",
+   "why": "the first attempt died after four layers inside the checkpoint save: os.makedirs(work_dir/ckpt_new, exist_ok=True) recursed to '/' because proot returned a transient failure from stat on the work directory, and mkdir('/') came back ENOSYS instead of EEXIST, which makedirs does not catch. An earlier save in the same run had succeeded, so it is flaky rather than structural.",
+   "byte_reaching": false,
+   "argument": "checkpointing only writes and reads resume state; with no interruption resumption never happens, so the quantization path is the sibling run's. The cost is that a crash restarts from scratch."
+  },
+  {
+   "what": "marisa_trie on PYTHONPATH for every step rather than discovered per step",
+   "byte_reaching": false,
+   "argument": "the published convert step needed it, so the successful convert is the same one"
+  },
+  {
+   "what": "finalize_checkpoint.py invoked with --upstream",
+   "byte_reaching": false,
+   "argument": "adds the upstream-verification block to build-receipt.json and touches no tensor"
+  }
+ ],
+ "first_attempt_that_failed": {
+  "what": "a first conversion attempt with the default 120 s checkpoint interval died at layer 4",
+  "error": "OSError: [Errno 38] Function not implemented: '/' from os.makedirs in convert_model.py's checkpoint save",
+  "recorded_because": "it is a fact about running this toolchain under proot, and the second attempt's -cpi flag is only justified by it"
+ },
+ "errors": [],
+ "content_sha256": "fcc158e70eb697f93a880be720adc263b9a52ac479c890c57c3096dcb2afb6a1"
+}
