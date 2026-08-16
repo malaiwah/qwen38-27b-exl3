@@ -49,6 +49,7 @@ CACHE_EXL3_DIR=${CACHE_EXL3_DIR:-}
 
 RELEASE_TAG=${RELEASE_TAG:-localhost/vllm:gg-r34-patched}
 APC_TAG=${APC_TAG:-localhost/vllm:gg-r34-patched-apc}
+CONVERT_TAG=${CONVERT_TAG:-localhost/vllm:gg-r34-convert}
 VARIANT=${VARIANT:-release}
 
 # published source map: source file -> destination inside the image -> published sha256
@@ -78,23 +79,44 @@ case $VARIANT in
     PARENT_REF=$RELEASE_TAG
     PARENT_DESC="the release image localhost/vllm:gg-r34-patched"
     SBOM_INFIX="-apc"
-    QUALIFIABLE=false
+    QUALIFIABLE=true
     DECLARATION_JSON=$(cat <<'JSON'
 {
-  "role": "declared superset of the release image; prerequisite for prefix caching",
-  "qualified": false,
-  "qualification_note": "the hardware-qualified digest is the release image; using this image with --enable-prefix-caching requires its own qualification run",
-  "delta_vs_release_image": ["/opt/venv/lib/python3.12/site-packages/vllm/v1/core/sched/scheduler.py"],
-  "no_published_measurement_depends_on_this_module": true,
-  "why_latent_today": {
-    "claim": "behaviourally inert on the qualified profile, not textually inert: the module is imported unconditionally and Scheduler is on every request's hot path, but the changed function is never called",
-    "changed_function": "Scheduler._mamba_block_aligned_split",
-    "call_guard": "only when need_mamba_block_aligned_split is true, i.e. has_mamba_layers and mamba_cache_mode == 'align' (vllm/v1/core/sched/scheduler.py:316-318)",
-    "align_mode_requires": "mamba_cache_mode only becomes 'align' when prefix caching is enabled (vllm/model_executor/models/config.py:558-562)",
-    "prefix_caching_default": "default-off for this hybrid model (vllm/engine/arg_utils.py:2532-2534 excludes hybrid models)",
-    "confirmed_by": "enable_prefix_caching=False in the engine banner of every recipe started in this receipt and in the archived native-MTP server logs"
+  "role": "the promoted release unit: a declared superset of localhost/vllm:gg-r34-patched, and the image every published recipe now names",
+  "qualified": true,
+  "qualified_by": {
+    "with_prefix_caching_off": "receipts/qualification-5090-context.json transfers to this digest unchanged. This image is its parent plus one module whose changed function, Scheduler._mamba_block_aligned_split, is only reachable when mamba_cache_mode is 'align', which only happens when prefix caching is enabled. With the cache off the promoted image is behaviourally identical to the qualified parent, not merely similar, and the four-recipe serving smoke in this receipt was run on the promoted digest.",
+    "with_prefix_caching_on_at_8192": "receipts/qualification-5090-apc.json plus this receipt's own smoke: the k4, k5k6 and hydrated recipes all start healthy on this digest with --enable-prefix-caching --mamba-cache-mode align, answer a text and an image request exactly, and report enable_prefix_caching True in the engine banner. Pool is roughly 32x the window at 8,192, so the near-ceiling failures the context profile hit cannot occur.",
+    "with_prefix_caching_on_at_262144": "NOT QUALIFIED, and not for want of trying. receipts/qualification-5090-apc.json records a startup refusal at utilisation 0.955, a deadlock at 0.9555 and a livelock at 0.9585, with the engine's own arithmetic. The context edition's native-window recipe therefore keeps prefix caching OFF. This is a limit of the window-and-image-ceiling combination on a 32,607 MiB card, not a defect of this image."
   },
-  "why_it_exists_anyway": "enabling prefix caching is the largest untapped win for repeated long prompts, and unpatched it is unsafe in the worst way: it returns wrong tokens instead of failing",
+  "what_promotion_did_and_did_not_change": "promotion moved the release unit from the three-module digest to this four-module one, which is what allows any recipe to enable prefix caching at all. It did not, by itself, enable prefix caching everywhere: three of the four published recipes turn it on, the context edition's native-window recipe does not.",
+  "promoted_utc_date": "2026-08-16",
+  "promoted_by": "Main's call, recorded in promotion_status",
+  "supersedes_as_release_unit": {
+    "tag": "localhost/vllm:gg-r34-patched",
+    "manifest_digest": "sha256:6eca4c693f01b6f4e112c04eacd30673b7cfbba4150e6fe2ea3ba1bbfde14c27",
+    "still_valid_as": "this image's parent, the top-level build record of this receipt, and the digest receipts/qualification-5090-context.json was measured against. It is superseded as the recommended runtime, not invalidated as evidence."
+  },
+  "delta_vs_release_image": ["/opt/venv/lib/python3.12/site-packages/vllm/v1/core/sched/scheduler.py"],
+  "why_promoted": "prefix caching is the largest untapped win for repeated long prompts on this model, and it cannot be enabled safely on the parent: unpatched, upstream #43559 returns wrong tokens rather than failing. Promotion is what lets the published recipes turn it on.",
+  "not_rebuilt_for_promotion": {
+    "claim": "no layer was added, no label edited and no tag re-pointed as part of the promotion. The manifest digest promoted is byte-identical to the one built on 2026-08-16T03:16:01Z.",
+    "why": "this digest is the one ApcPoisonRepro's arms C and E measured with no bind mounts. Any relabelling is a new layer and a new digest, which would throw away the only prior evidence on the identical bytes and leave the qualification standing alone.",
+    "stale_label_in_image": {
+      "label": "io.malaiwah.image.qualified=\"false\"",
+      "also_stale": "io.malaiwah.image.role=\"prefix-caching prerequisite; requires its own qualification run before --enable-prefix-caching is used\", and org.opencontainers.image.description, which calls this image \"Not the hardware-qualified digest\"",
+      "status": "accurate as of build time, wrong as of promotion, and deliberately left uncorrected",
+      "precedence": "receipts/production-image.json is authoritative for qualification state; the in-image labels are a build-time statement only. A reader who trusts the label over the receipt reaches the exact inversion of the truth, which is why this is recorded here rather than only in prose."
+    }
+  },
+  "prefix_caching_by_recipe": {
+    "on": ["k4", "k5k6", "hydrated"],
+    "off": ["context, at the native 262,144 window: it does not fit, see qualified_by"],
+    "flags": ["--enable-prefix-caching", "--mamba-cache-mode align"],
+    "mamba_cache_mode_is_derivable": "the engine sets mamba_cache_mode to align on its own once prefix caching is enabled (vllm/model_executor/models/config.py:558-562); both flags exist in this build (vllm serve --help=all lists --enable-prefix-caching/--no-enable-prefix-caching and --mamba-cache-mode {align,all,none}) and the recipe prints both so a reader has something to check the engine banner against",
+    "was_off_before": "prefix caching is default-off for this hybrid model (vllm/engine/arg_utils.py:2532-2534 excludes hybrid models), so every archived smoke row on the parent image reads enable_prefix_caching=False. Those rows are the superseded three-module image, not a failure.",
+    "patched_function_now_reached": "Scheduler._mamba_block_aligned_split, guarded by has_mamba_layers and mamba_cache_mode == 'align' (vllm/v1/core/sched/scheduler.py:316-318). Before promotion it was never called anywhere; from promotion onwards it is on the hot path of every request served by the three recipes that enable the cache, and still unreachable in the context edition's native-window recipe, which does not."
+  },
   "upstream": {
     "pr": "https://github.com/vllm-project/vllm/pull/51113",
     "title": "Keep mamba align prefill chunks block-aligned past last_cache_position",
@@ -114,13 +136,45 @@ case $VARIANT in
     "test_file": "upstream tests/v1/core/test_mamba_align_chunk_split.py, run unmodified",
     "vendored_r34_scheduler": "14 failed, 6 passed",
     "this_module": "20 passed",
-    "gpu_used": false
+    "gpu_used": false,
+    "why_it_matters_for_the_promotion": "the patch is carried as insurance backed by upstream's own regression file, not by a reproduction of our own: receipts/apc-poison-repro.json failed to reproduce the reported corruption on the unpatched parent across 266 scored requests"
   }
 }
 JSON
 )
     ;;
-  *) printf 'FAIL: unknown VARIANT %s (expected release or apc)\n' "$VARIANT" >&2; exit 1 ;;
+  convert)
+    IMAGE_TAG=${IMAGE_TAG:-$CONVERT_TAG}
+    DOCKERFILE=${DOCKERFILE:-$REPO_ROOT/docker/Dockerfile.gg-r34-convert}
+    PATCH_MAP=("$EXL3_MODULE" "$QWEN_MODULE" "$MTP_MODULE")
+    LAYER_ADDS=()
+    PARENT_REF=$RELEASE_TAG
+    PARENT_DESC="the release image localhost/vllm:gg-r34-patched"
+    SBOM_INFIX="-convert"
+    QUALIFIABLE=false
+    DECLARATION_JSON=$(cat <<'JSON'
+{
+  "role": "conversion and quantization path only; not a serving runtime",
+  "qualified": false,
+  "qualification_note": "the serving qualification and receipts/production-image.json are pinned to localhost/vllm:gg-r34-patched, whose digest this tag does not change. Adding a layer to the serving image would have invalidated that pin to fix a build-tool import, which is the wrong trade.",
+  "adds_no_python_modules_under_vllm": true,
+  "added_package": {
+    "name": "marisa_trie",
+    "version": "1.4.1",
+    "wheel": "marisa_trie-1.4.1-cp312-cp312-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl",
+    "wheel_sha256": "4d51bdd22a7238ef4d681effd7c224a267ddae054b64b1cec9ce95bbcd2b6a88",
+    "installed_with": "pip install --no-deps --no-cache-dir on a locally fetched, digest-verified wheel, so no dependency of the inventoried venv can be resolved or upgraded",
+    "why": "imported by exllamav3/loader/safetensors.py, which both conversion entry points reach: compile_model and util/add_quant_config.py",
+    "cost_of_the_gap": "one 2h05 ladder pass died at compile_model with all 409 modules already quantized, and one conversion died at add_quant_config with the checkpoint already written; the import is at the end of a long job, so the gap is expensive every time",
+    "never_imported_at_serve_time": true
+  },
+  "supersedes_workaround": "the local shim at /work/kld6/run_shimmed.py; with this tag no agent needs to shim around the missing import"
+}
+JSON
+)
+    ;;
+  *) printf 'FAIL: unknown VARIANT %s (expected release, apc or convert)\n' "$VARIANT" >&2
+     exit 1 ;;
 esac
 VARIANT_STAGE=$STAGE/$VARIANT
 
@@ -556,11 +610,20 @@ recipe_args() {
   local model_path=$2
   local ignore='["re:.*visual\\..*","re:.*in_proj_a$","re:.*in_proj_b$","re:.*in_proj_ba$","re:.*mtp\\..*","lm_head"]'
   local k4_ignore='["re:.*visual\\..*","re:.*in_proj_a$","re:.*in_proj_b$","re:.*mtp\\..*","lm_head"]'
+  # Prefix caching is on in every published recipe from the promotion of
+  # localhost/vllm:gg-r34-patched-apc onwards, so the recipe smoke-tested here is the recipe
+  # the cards print. --mamba-cache-mode align is what the engine derives on its own once
+  # prefix caching is enabled; it is spelled out because a recipe that only implies it gives
+  # the reader nothing to check the engine banner against. RECIPE_PREFIX_CACHING=0
+  # reproduces the pre-promotion recipe for a control run.
+  local apc=(--enable-prefix-caching --mamba-cache-mode align)
+  if [[ ${RECIPE_PREFIX_CACHING:-1} == 0 ]]; then apc=(--no-enable-prefix-caching); fi
   case $1 in
     k4) printf '%s\n' serve "$model_path" \
         --served-model-name qwen38-k4 --quantization exl3 --enforce-eager \
         --quantization-config "{\"linear\":{\"weight\":\"mxfp8\"},\"ignore\":$k4_ignore}" \
         --max-model-len 8192 --gpu-memory-utilization 0.85 --max-num-seqs 4 \
+        "${apc[@]}" \
         --host 0.0.0.0 --port 8000 ;;
     k5k6) printf '%s\n' serve "$model_path" \
         --served-model-name qwen38 --quantization exl3 \
@@ -570,6 +633,7 @@ recipe_args() {
         --mm-processor-kwargs '{"truncation":false}' \
         --reasoning-parser qwen3 --enable-auto-tool-choice --tool-call-parser qwen3_coder \
         --max-model-len 8192 --gpu-memory-utilization 0.85 --max-num-seqs 8 \
+        "${apc[@]}" \
         --host 0.0.0.0 --port 8000 ;;
     hydrated) printf '%s\n' serve "$model_path" \
         --served-model-name qwen38 --quantization exl3 --enforce-eager \
@@ -577,6 +641,7 @@ recipe_args() {
         --mm-processor-kwargs '{"truncation":false}' \
         --reasoning-parser qwen3 --enable-auto-tool-choice --tool-call-parser qwen3_coder \
         --max-model-len 8192 --gpu-memory-utilization 0.95 --max-num-seqs 8 \
+        "${apc[@]}" \
         --host 0.0.0.0 --port 8000 ;;
     context) printf '%s\n' serve "$model_path" \
         --served-model-name qwen38 --quantization exl3 \
@@ -588,6 +653,7 @@ recipe_args() {
         --mm-processor-kwargs '{"truncation":false,"max_pixels":8388608}' \
         --compilation-config '{"cudagraph_mode":"FULL_DECODE_ONLY","cudagraph_capture_sizes":[4]}' \
         --reasoning-parser qwen3 --enable-auto-tool-choice --tool-call-parser qwen3_coder \
+        "${apc[@]}" \
         --host 0.0.0.0 --port 8000 ;;
     *) die "unknown recipe $1" ;;
   esac
@@ -945,20 +1011,53 @@ if not release["build"]:
 release_recipes = release["smoke"].get("recipes", [])
 
 payload = {
-    "schema": "qwen38-production-image/2",
+    "schema": "qwen38-production-image/3",
+    "schema_change_from_2": "release_unit was a string naming the top-level image; it is now "
+                            "an object, because the release unit and the top-level build "
+                            "record are no longer the same image. A reader that treated "
+                            "release_unit as text must be updated rather than silently "
+                            "reinterpreting it.",
     "generated_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-    "purpose": "P0 / rank 2 immutable production runtime: the three content-pinned patch "
-               "modules folded into the pinned r34 digest, replacing the read-only source "
-               "bind mounts the model cards' patched recipes required",
-    "release_unit": "the image described at the top level of this receipt. Any image under "
-                    "superset_images is explicitly not the qualified artifact.",
+    "purpose": "P0 / rank 2 immutable production runtime: the content-pinned patch modules "
+               "folded into the pinned r34 digest, replacing the read-only source bind "
+               "mounts the model cards' patched recipes required",
+    "release_unit": {
+        "tag": "localhost/vllm:gg-r34-patched-apc",
+        "manifest_digest": "sha256:16a936b877b90fc080181e842f47dbafc5cb8e62688799596836e34ba0b79218",
+        "modules": 4,
+        "described_under": "superset_images, variant \"apc\"",
+        "qualified_by": "receipts/qualification-5090-apc.json",
+        "promoted_utc_date": "2026-08-16",
+        "superseded_release_unit": {
+            "tag": "localhost/vllm:gg-r34-patched",
+            "manifest_digest": "sha256:6eca4c693f01b6f4e112c04eacd30673b7cfbba4150e6fe2ea3ba1bbfde14c27",
+            "superseded_at": "2026-08-16, on Main's call, recorded in promotion_status",
+            "still_valid_as": "the promoted image's parent, the build record at the top "
+                              "level of this receipt, and the digest "
+                              "receipts/qualification-5090-context.json measured. Superseded "
+                              "as the recommended runtime, not invalidated as evidence.",
+        },
+        "why_the_top_level_still_describes_the_parent": "the top-level block is the build "
+            "record of the three-module image and is pinned by other receipts. Moving it "
+            "would break those pins to say something this pointer says without breaking "
+            "anything. Any image under superset_images other than the one named here is "
+            "explicitly not the qualified artifact.",
+    },
+    "upstream_status": "the patch modules are carried pending upstream acceptance, not as a "
+                       "permanent fork: local-inference-lab/vllm issue #392 and PR #393 are "
+                       "open, and PR #51113 is already merged upstream (vllm-project/vllm) "
+                       "but absent from the r34 build. When a base image ships them, the "
+                       "corresponding COPY and its digest come out of the Dockerfile.",
     "hardware_scope": "built and smoke-tested on AIBoss, one physical RTX 5090 (32,607 MiB); "
                       "no throughput number here is comparable to the rental RTX PRO 6000 "
                       "engine-budget receipts",
-    "operational_scope": "the host's live qwen38-27b service (K4 at 262,144 on the r34 "
-                         "digest with one bind-mounted module) was never stopped, altered "
-                         "or reconfigured by this receipt; smoke recipes ran as separate "
-                         "short-lived containers on a distinct loopback port",
+    "operational_scope": "the host's live qwen38-27b service is stopped for, and restored "
+                         "after, any GPU window on this single-card host; the release "
+                         "image's own smoke recipes ran while it was up, on a distinct "
+                         "loopback port, and the promoted image's recipes ran inside the "
+                         "promotion window with the unit down and restored against "
+                         "receipts/aiboss-live-service-snapshot.json afterwards. No recipe "
+                         "ever altered or reconfigured that unit.",
     **release["build"],
     **release["verify"],
     **release["resolution"],
@@ -972,13 +1071,42 @@ payload["acceptance"] = acceptance_for(release["verify"], release["resolution"],
 payload["not_claimed"] = [
     "no image here has been pushed to any public registry: repo_digests are local, and the "
     "release unit is the local manifest digest plus the verified source map",
-    "the model cards still document the three-mount patched recipe: collapsing their "
-    "unmodified and patched recipes into one command needs a digest a reader can pull, "
-    "and this digest is local to the build host",
+    "the model cards do not name this local tag as something to pull. They reproduce the "
+    "promoted image's content with four sha256-verified read-only mounts over the pullable "
+    "public base digest, which is the closest a reader without access to this build host "
+    "can get; the local manifest digest is printed beside it so the two are relatable.",
 ] + caveats(release_recipes, payload["acceptance"])
 
+payload["notes_for_the_next_image_build"] = {
+    "a_boolean_qualified_label_is_unfixable_by_construction": {
+        "what_happened": "Dockerfile.gg-r34-patched-apc carries "
+                         "io.malaiwah.image.qualified=\"false\" and an "
+                         "io.malaiwah.image.role saying the image requires its own "
+                         "qualification run. Both were true when written. Both became false "
+                         "the moment receipts/qualification-5090-apc.json passed, and neither "
+                         "can be corrected.",
+        "why_it_cannot_be_fixed": "qualification necessarily happens after the bytes exist. "
+                                  "Editing a label is a new layer, a new layer is a new "
+                                  "manifest digest, and the corrected image is therefore no "
+                                  "longer the image that was qualified. The label can only "
+                                  "ever be right about a state that had not happened yet.",
+        "what_to_do_instead": "carry a pointer, not a verdict. A label naming the receipt "
+                              "path or a qualification URL stays true across promotion because "
+                              "it asserts where to look rather than what the answer is. Or "
+                              "carry no qualification label at all and track qualification "
+                              "only in receipts, which is what this receipt does.",
+        "precedence_rule_in_force_meanwhile": "receipts/production-image.json is authoritative "
+                                              "for qualification state; io.malaiwah.image.* is "
+                                              "a build-time statement only. A reader who "
+                                              "trusts the label over the receipt reaches the "
+                                              "exact inversion of the truth.",
+        "recorded_because": "Main asked for the lesson to sit where whoever writes the next "
+                            "Dockerfile will see it, rather than in a thread nobody reads.",
+    },
+}
+
 supersets = []
-for variant in ("apc",):
+for variant in ("apc", "convert"):
     frags = {name: fragment(variant, name) for name in
              ("build", "verify", "resolution", "sbom", "toolchain", "smoke")}
     if not frags["build"]:
@@ -995,15 +1123,155 @@ for variant in ("apc",):
     entry["acceptance"] = acceptance_for(frags["verify"], frags["resolution"], frags["sbom"],
                                          frags["toolchain"] or release["toolchain"],
                                          frags["build"], recipes)
-    entry["not_claimed"] = [
-        "this is not the hardware-qualified digest; the release unit at the top level is",
-        "no published measurement depends on this image's extra module",
-        "using --enable-prefix-caching requires this image and a qualification run of its "
-        "own; that run has not been done",
-    ] + caveats(recipes, entry["acceptance"])
+    # These lines are per-variant on purpose. They used to be a shared prefix, which was
+    # safe only while every superset was unqualified; the apc image is the promoted release
+    # unit now, and asserting the shared wording over it would say the opposite of the truth
+    # while asserting the apc wording over convert would claim the conversion image is
+    # qualified. Neither is acceptable, so each variant states its own.
+    entry["not_claimed"] = ({
+        "apc": ["this is the promoted release unit as of 2026-08-16. It is qualified with "
+                "prefix caching OFF by inheritance from receipts/qualification-5090-context.json, "
+                "because the module it adds is unreachable in that mode, and with prefix "
+                "caching ON only at the 8,192-token recipes, on this receipt's own smoke. "
+                "The top-level block of this receipt is its parent, the "
+                "three-module image, kept as the build record and as the digest "
+                "receipts/qualification-5090-context.json measured; it is superseded as the "
+                "recommended runtime, not invalidated as evidence",
+                "the in-image labels io.malaiwah.image.qualified=\"false\" and "
+                "io.malaiwah.image.role are stale as of the promotion and were deliberately "
+                "not corrected: relabelling is a layer and a layer moves the manifest "
+                "digest away from the bytes that were measured. This receipt, not the "
+                "label, is authoritative for qualification state",
+                "prefix caching at the native 262,144 window is NOT qualified on this card and is "
+                "not enabled in the context edition's recipe: it refuses to start at "
+                "utilisation 0.955, deadlocks at 0.9555 and livelocks at 0.9585 "
+                "(receipts/qualification-5090-apc.json). The concurrent-serving variant the "
+                "cards print is not qualified at any sequence count either",
+                "the reuse win (11.6x and 29.3x warm TTFT) is receipts/apc-poison-repro.json "
+                "arm E's, measured on this digest but on a document-reuse probe rather than "
+                "on these serving gates",
+                "LMCache is unmeasured by this project and is the outstanding suspect in the "
+                "one user report of prefix-cache corruption we have. Nothing here says it is "
+                "safe"],
+        "convert": ["this is not the hardware-qualified digest; the promoted release unit "
+                    "recorded in release_unit is",
+                    "no published measurement depends on what this image adds",
+                    "this tag is for conversion and quantization only and has not been "
+                    "served or benchmarked; it exists so the missing import is fixed in an "
+                    "image rather than shimmed per job",
+                    "it deliberately does not change the serving digest, so no serving "
+                    "receipt or qualification needs re-pinning because of it",
+                    "no_runtime_package_installs is false here BY DESIGN and is not a "
+                    "defect: this variant's whole purpose is one build-time pip install, "
+                    "of a locally fetched wheel whose sha256 is verified before install "
+                    "and with --no-deps so no inventoried package can be resolved or "
+                    "upgraded. Nothing is installed at container start."],
+    }.get(variant, ["this is not the hardware-qualified digest; the promoted release unit "
+                    "recorded in release_unit is",
+                    "no published measurement depends on what this image adds"])
+    ) + caveats(recipes, entry["acceptance"])
     supersets.append(entry)
 if supersets:
     payload["superset_images"] = supersets
+payload["promotion_status"] = {
+    "state": "PROMOTED, with prefix caching scoped",
+    "promoted_utc_date": "2026-08-16",
+    "release_unit_before": {
+        "tag": "localhost/vllm:gg-r34-patched",
+        "manifest_digest": "sha256:6eca4c693f01b6f4e112c04eacd30673b7cfbba4150e6fe2ea3ba1bbfde14c27",
+        "modules": 3,
+        "qualified_by": "receipts/qualification-5090-context.json, seven gates with "
+                        "enable_prefix_caching=False",
+    },
+    "release_unit_after": {
+        "tag": "localhost/vllm:gg-r34-patched-apc",
+        "manifest_digest": "sha256:16a936b877b90fc080181e842f47dbafc5cb8e62688799596836e34ba0b79218",
+        "modules": 4,
+        "qualified_by": "with prefix caching off, receipts/qualification-5090-context.json "
+                        "by inheritance -- the added module's changed function is "
+                        "unreachable unless mamba_cache_mode is align. With prefix caching "
+                        "on, receipts/qualification-5090-apc.json plus this receipt's own "
+                        "four-recipe smoke on this digest.",
+        "prefix_caching_scope": "enabled in the k4, k5k6 and hydrated recipes; NOT enabled "
+                                "in the context edition's native 262,144 recipe, which "
+                                "refuses to start at utilisation 0.955, deadlocks at 0.9555 "
+                                "and livelocks at 0.9585. Align mode rounds a request to "
+                                "whole 1,600-token blocks and adds MTP draft slots and a "
+                                "decode block on top, and on a 32,607 MiB card that does not "
+                                "coexist with the 8,388,608-pixel ceiling gate 3 needs "
+                                "headroom for.",
+        "adds": "/opt/venv/lib/python3.12/site-packages/vllm/v1/core/sched/scheduler.py at "
+                "b431c1066dfee3ed56bfa7e71cc8606f9afadc300f22d7fc542c43835d1b22bf "
+                "(upstream vllm-project/vllm#51113)",
+    },
+    "why_promoted": "prefix caching is the largest untapped win for repeated long prompts on "
+                    "this model and it cannot be turned on safely without #51113: unpatched, "
+                    "a prefill chunk ending mid-block publishes a short state and later "
+                    "requests over a shared prefix consume it, returning wrong tokens with "
+                    "HTTP 200. Promotion is what makes enabling it possible at all; where it "
+                    "is actually enabled is a per-recipe question answered by measurement, "
+                    "and the answer came back three yes and one no.",
+    "not_rebuilt": "the promoted digest is byte-identical to the one built at "
+                   "2026-08-16T03:16:01Z. No layer was added, no label edited, no tag "
+                   "re-pointed. Rebuilding would have moved the digest away from the bytes "
+                   "arms C and E of receipts/apc-poison-repro.json measured, which is the "
+                   "only reason this digest rather than a fresh one was promoted.",
+    "decision_record": {
+        "ruled_by": "Main, 2026-08-16",
+        "what_was_ruled": "promote the four-module superset exactly as it stands, and do not "
+                          "bake tools/vllm-qwen-gdn-spec-gates.py (upstream #51812) into it",
+        "reached_independently_first_by": "ImmutableImage and ApcPoisonRepro, who each "
+                                          "declined the GDN coupling on the same evidential "
+                                          "ground before the ruling",
+        "earlier_brief_superseded": "an earlier instruction to promote a five-module image "
+                                    "was withdrawn: no arm measured a five-module digest, so "
+                                    "such an image would have carried an in-image-unmeasured "
+                                    "module and its qualification would have stood alone.",
+    },
+    "evidence": {
+        "qualification": {
+            "receipt": "receipts/qualification-5090-apc.json",
+            "owner": "ShipPrefixCaching; authoritative for the nine gates, the KV capacity "
+                     "comparison and the promoted image's serving behaviour",
+            "what_it_adds": "the in-image, on-hardware serving evidence for this digest with "
+                            "prefix caching on: the original seven gates unchanged, plus a "
+                            "banner gate proving the engine honoured the flags and a KV "
+                            "capacity gate against the 265,122-token baseline",
+        },
+        "correctness_and_reuse": {
+            "receipt": "receipts/apc-poison-repro.json",
+            "receipt_file_sha256": "1baeb5aa5373257563c234179c3cb75fac6c77d968fa38080b3636fa1435a36e",
+            "receipt_internal_content_sha256": "d9c1703a844f41cd4d7821fd9336c8920ecbe8facb96c2c03624218cdd241cd7",
+            "supersedes_earlier_pin": "ed11552d4fcf1c1d317b865ac40d78ff2aaad4dcf07a9af7ad6773bcfdd3d8e3, "
+                                      "re-pinned after its author added discussion, live-service "
+                                      "restore evidence and per-arm digest provenance; the author "
+                                      "states that was the final edit",
+            "owner": "ApcPoisonRepro; authoritative for the prefix-caching correctness and TTFT "
+                     "numbers, which are deliberately not restated here",
+            "which_image_each_arm_speaks_about": {
+                "arms_C_and_E": "statements about the four-module superset "
+                                "sha256:16a936b877b90fc080181e842f47dbafc5cb8e62688799596836e34ba0b79218 "
+                                "with no bind mounts, i.e. evidence about an image, and "
+                                "byte-identical to the digest promoted here",
+                "arm_D": "that same digest plus a read-only bind mount of the GDN module, i.e. "
+                         "evidence about the module and not about any image digest",
+            },
+        },
+    },
+    "candidate_modules_not_baked_into_any_image": [
+        {
+            "source": "tools/vllm-qwen-gdn-spec-gates.py",
+            "sha256": "7cd3f5fe763b621048af4817951a841d99c8b700d9a56ded27ccaca5a56ccbe0",
+            "dest": "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py",
+            "upstream": "vllm-project/vllm#51812",
+            "status": "final and drop-in: ApcPoisonRepro served 38/38 clean with it bind-mounted over the -apc image",
+            "deliberately_not_baked": "it is not coupled to prefix caching. At --max-num-seqs 1 there is no mixed batch, the only condition #51812 bites in, so that run shows the module is harmless rather than that it fixes anything. Baking it would put a module in the release unit whose benefit has never been demonstrated and whose risk surface has never been qualified, and it would move the digest away from the one arms C and E measured.",
+            "how_it_is_offered_instead": "a documented optional overlay for concurrent serving, mounted read-only over the promoted image, with its digest pinned here and on the four model cards. At one stream it is provably irrelevant; at concurrency it is unmeasured by this project and rests on upstream's own numbers.",
+            "reconsider_when": "a concurrent-serving profile is qualified at --max-num-seqs > 1, which would create the mixed batch #51812 acts on and give the module something to be measured against.",
+        }
+    ],
+}
+
 
 temporary = out + ".tmp"
 with open(temporary, "w") as handle:

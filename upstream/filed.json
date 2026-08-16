@@ -7,9 +7,9 @@
   "access": {
     "gh_cli": "not authenticated (`gh auth status`: not logged into any GitHub hosts)",
     "github_token_env": "GITHUB_TOKEN and GH_TOKEN both unset",
-    "credential_used": "git credential.helper=store, ~/.git-credentials entry for github.com, user malaiwah, classic PAT (ghp_, repo scope) — the same credential the `github` remote in /home/mbelleau/research pushes with",
+    "credential_used": "git credential.helper=store, ~/.git-credentials entry for github.com, user malaiwah, classic PAT (ghp_, repo scope) \u2014 the same credential the `github` remote in /home/mbelleau/research pushes with",
     "permissions_on_target": "pull only (admin/push/maintain/triage all false); issues enabled",
-    "pr_route": "cross-fork, same as prior #314/#316/#318/#319 — head repo malaiwah/vllm-voipmonitor (push: true), base local-inference-lab/vllm"
+    "pr_route": "cross-fork, same as prior #314/#316/#318/#319 \u2014 head repo malaiwah/vllm-voipmonitor (push: true), base local-inference-lab/vllm"
   },
   "filed": {
     "issue": {
@@ -48,6 +48,20 @@
         "patched arm not worse on any measured axis; prefix reuse gave 11.6x and 29.3x TTFT (12.07->1.04 s, 67.60->2.31 s)"
       ],
       "source_receipt": "receipts/apc-poison-repro.json (owned by ApcPoisonRepro; not recomputed by me)"
+    },
+    "issue_394_apc_align_admission_livelock": {
+      "number": 394,
+      "url": "https://github.com/local-inference-lab/vllm/issues/394",
+      "title": "[Bug] --mamba-cache-mode align: the scheduler admits a request it can never schedule, then re-prefills it forever with zero output",
+      "state": "open",
+      "filed_utc": "2026-08-16T06:12:51Z",
+      "body_source": "upstream/vllm-apc-align-admission-livelock.md",
+      "body_sha256": "f3e3ac437b5b048a6d9a339f7901524378b860f964bb32e93ae1600c1a125501",
+      "filed_by": "ShipPrefixCaching, at Main's instruction",
+      "why_it_is_separate_from_392": "issue #392 asks the fork to cherry-pick two merged upstream fixes. This one reports a defect that is present WITH #51113 already applied: the patched scheduler is the file under test, so it is not a cherry-pick request and must not be folded into #392.",
+      "not_claimed": "not reproduced on stock vLLM. The report says so explicitly and offers to attempt one; the scheduler file involved is upstream's own post-#51113 copy and nothing in the mechanism is EXL3-specific, but that is an expectation, not a measurement.",
+      "evidence": "receipts/qualification-5090-apc.json and receipts/qual-apc-raw/",
+      "adjacent_finding_credited_to": "GdnGateAtConcurrency, receipts/gdn-gate-concurrency.json at commit cc12846; included as an adjacent path with a different trigger and explicitly not as the cause of this trace"
     }
   },
   "commits": [

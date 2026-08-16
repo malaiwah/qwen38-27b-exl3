@@ -24,7 +24,8 @@ REPO_DIR = pathlib.Path(
     "/mnt/vault/llm/huggingface/hub/models--malaiwah--Qwen3.8-27B-EXL3-K5K6-context")
 SNAPSHOT_RECEIPT = "receipts/aiboss-live-service-snapshot.json"
 COMPARE_FIELDS = ("cmd", "env", "image_digest", "binds", "entrypoint", "working_dir",
-                  "user", "stop_signal", "healthcheck")
+                  "user", "network_mode", "ipc_mode", "devices", "privileged",
+                  "restart_policy")
 
 
 def run(*argv, check=True):
@@ -105,16 +106,22 @@ def inspect_fields():
     raw = json.loads(run("podman", "inspect", "qwen38-27b"))[0]
     config = raw.get("Config", {})
     host = raw.get("HostConfig", {})
+    entrypoint = config.get("Entrypoint")
+    if isinstance(entrypoint, list) and len(entrypoint) == 1:
+        entrypoint = entrypoint[0]
     return {
         "cmd": config.get("Cmd"),
         "env": sorted(config.get("Env") or []),
         "image_digest": raw.get("ImageDigest") or raw.get("Image"),
         "binds": sorted(host.get("Binds") or []),
-        "entrypoint": config.get("Entrypoint"),
+        "entrypoint": entrypoint,
         "working_dir": config.get("WorkingDir"),
         "user": config.get("User"),
-        "stop_signal": config.get("StopSignal"),
-        "healthcheck": config.get("Healthcheck"),
+        "network_mode": host.get("NetworkMode"),
+        "ipc_mode": host.get("IpcMode"),
+        "devices": host.get("Devices"),
+        "privileged": host.get("Privileged"),
+        "restart_policy": (host.get("RestartPolicy") or {}).get("Name"),
     }
 
 
@@ -139,12 +146,31 @@ def restore():
         served = None
 
     live = inspect_fields()
-    candidates = [pathlib.Path.home() / "prodimage" / SNAPSHOT_RECEIPT,
-                  pathlib.Path.home() / SNAPSHOT_RECEIPT,
-                  pathlib.Path.home() / "apcrepro" / SNAPSHOT_RECEIPT]
+    candidates = [W / "aiboss-live-service-snapshot.json",
+                  pathlib.Path.home() / "prodimage" / SNAPSHOT_RECEIPT,
+                  pathlib.Path.home() / SNAPSHOT_RECEIPT]
     snapshot_path = next((p for p in candidates if p.exists()), candidates[0])
     snapshot = json.loads(snapshot_path.read_text()) if snapshot_path.exists() else {}
-    reference = snapshot.get("container") or snapshot.get("inspect") or snapshot
+    if not snapshot:
+        raise SystemExit(f"live-service snapshot not found; looked in {candidates}")
+    container = snapshot.get("container", {})
+    host_config = snapshot.get("host_config", {})
+    reference = {
+        "cmd": container.get("cmd"),
+        "env": sorted(container.get("env") or []),
+        "image_digest": container.get("image_digest"),
+        "binds": sorted(host_config.get("binds") or []),
+        "entrypoint": container.get("entrypoint"),
+        "working_dir": container.get("working_dir"),
+        "user": container.get("user"),
+        "network_mode": host_config.get("network_mode"),
+        "ipc_mode": host_config.get("ipc_mode"),
+        "devices": host_config.get("devices"),
+        "privileged": host_config.get("privileged"),
+        "restart_policy": (host_config.get("restart_policy") or {}).get("Name")
+            if isinstance(host_config.get("restart_policy"), dict)
+            else host_config.get("restart_policy"),
+    }
     compared = {}
     for field in COMPARE_FIELDS:
         want = reference.get(field) if isinstance(reference, dict) else None

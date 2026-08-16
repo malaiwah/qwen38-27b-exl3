@@ -1,0 +1,24 @@
+[2026-08-16T05:03:48Z] handover token: handed over by TwentyFourGigProxy at 2026-08-16T05:02Z, naming ShipPrefixCaching explicitly; queue was PerfSweep5090 -> ApcPoisonRepro -> TwentyFourGigProxy -> ShipPrefixCaching. Restore obligation for qwen38-27b.service accepted by ShipPrefixCaching. 
+[2026-08-16T05:03:48Z] attempt TAG=E gates='g1 g2 g5 g6' util=0.955 len=262144 mtp=3 rev=c45c273b0d6ef2859cb2d85b36dd52253c80d878 image=localhost/vllm:gg-r34-patched-apc
+[2026-08-16T05:03:48Z] PHASE before_load
+{"name": "before_load", "utc": "2026-08-16T05:03:48Z", "memory_total_mib": 32607, "memory_used_mib": 2, "memory_free_mib": 32149, "utilization_gpu_pct": 0, "power_draw_w": 21.75}
+[2026-08-16T05:03:48Z] PHASE startup
+[2026-08-16T05:05:29Z] PHASE startup_failed
+{"name": "startup_failed", "utc": "2026-08-16T05:05:29Z", "memory_total_mib": 32607, "memory_used_mib": 2, "memory_free_mib": 32149, "utilization_gpu_pct": 0, "power_draw_w": 51.65}
+'enable_prefix_caching': True
+'mamba_cache_mode': 'align'
+Using fp8 data type to store kv cache
+Prefix caching in Mamba cache 'align' mode is currently enabled. Its support for Mamba lay
+Initializing a V1 LLM engine (v0.11.2.dev280+gilded.gnosis.v20.vllm4d006a4.b12xcd3ce19.fi1ac6942.cu132.20260810.r34)
+num_spec_tokens=3
+enable_prefix_caching=True
+Model loading took 18.19 GiB memory and 3.694827 seconds
+Setting attention block size to 1600 tokens to ensure that attention page size is >= mamba page size.
+Padding mamba page size by 0.25% to ensure that mamba page size and attention page size are exactly eq
+Add 3 padding layers, may waste at most 6.25% KV cache memory
+Available KV cache memory: 9.28 GiB
+Add 3 padding layers, may waste at most 6.25% KV cache memory
+ValueError: To serve at least one request with the model's max seq len (262144), (9.29 GiB KV cache is needed, which is larger than the available KV cache memory (9.28 GiB). Based on the available memory, the estimated maximum model length is 260800. T
+ValueError: To serve at least one request with the model's max seq len (262144), (9.29 GiB KV cache is needed, which is larger than the available KV cache memory (9.28 GiB). Based on the available memory, the estimated maximum model length is 260800. T
+RECORD {"gate": "gate1_startup_native_allocation", "rc": 1, "wall_sec": 101.244, "utc": "2026-08-16T05:05:30Z", "artifacts": ["logs/server-E.log", "out/startup-fail-E.txt"]}
+[2026-08-16T05:05:30Z] STARTUP FAILED TAG=E

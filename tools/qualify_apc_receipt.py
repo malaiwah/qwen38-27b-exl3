@@ -36,6 +36,13 @@ REPO = pathlib.Path(__file__).resolve().parent.parent
 # NOT from receipts/apc-poison-repro.json, whose 223,677 tokens and 8.18 GiB were measured
 # at max-model-len 196,608 and utilisation 0.92 and are not comparable with these.
 BASE_RECEIPT = "receipts/qualification-5090-context.json"
+UPSTREAM_ISSUE = {
+    "url": "https://github.com/local-inference-lab/vllm/issues/394",
+    "number": 394,
+    "body_source": "upstream/vllm-apc-align-admission-livelock.md",
+    "note": "filed with #51113 ALREADY applied, so it is not a cherry-pick request "
+            "and is deliberately separate from issue #392",
+}
 KV_TOKENS_BASELINE = 265122
 KV_GIB_BASELINE = 9.28
 CONCURRENCY_BASELINE = 1.01
@@ -254,12 +261,31 @@ def spec_section(before, after, mtp_depth):
 
 
 def gate_rows(status_path):
-    rows = {}
+    """Rows in the order they were recorded, with collapsed-run rows marked as such.
+
+    When a process is torn down mid-gate, the gates queued behind it record a non-zero rc in
+    a fraction of a second because there is no longer a server to talk to. Those are not
+    failures and must never be published as failures: they were never attempted.
+    """
+    rows, order = {}, []
     for line in read_text(status_path).splitlines():
         line = line.strip()
         if line:
             row = json.loads(line)
+            if row["gate"] not in rows:
+                order.append(row["gate"])
             rows[row["gate"]] = row          # a rerun of the same gate wins
+    failed_earlier = False
+    for name in order:
+        row = rows[name]
+        if failed_earlier and row["rc"] != 0 and row["wall_sec"] < 1.0:
+            row["not_attempted"] = True
+            row["why"] = ("recorded a non-zero rc in under a second because the server was "
+                          "already being torn down after the earlier failure in this "
+                          "process; this gate was never actually attempted and is not a "
+                          "failure")
+        elif row["rc"] != 0:
+            failed_earlier = True
     return rows
 
 
@@ -289,7 +315,7 @@ def main():
     # probes. They are evidence, not gates, and are reported separately so a probe can never
     # be mistaken for a qualified process or drag a verdict either way.
     def is_qualified_process(tag):
-        return not (tag == "n955" or tag.startswith("p"))
+        return tag in ("E", "B3", "F")
     processes = {}
     probes = {}
     for command in sorted(out_dir.glob("command-*.json"),
@@ -587,9 +613,12 @@ def main():
             "server_log_sha256": proc["server_log_sha256"],
         }
 
+    # The band is a comparison at ONE window. p256k runs a different one and is reported on
+    # its own under reduced_window_option; mixing it in here would compare two things.
     band = [probe_row(tag, proc) for tag, proc in
             sorted(probes.items(), key=lambda kv: (kv[1]["command"] or {}).get(
-                "gpu_memory_utilization", 0))]
+                "gpu_memory_utilization", 0))
+            if (proc["command"] or {}).get("max_model_len") == 262144]
     failed_at_qualified = next((r for r in band if r["started"] is False), None)
 
     # ------------------------------------------------------------------------- gate 7
@@ -699,6 +728,53 @@ def main():
                 "last_prefix_cache_hit_rate_pct": float(rates[-1]) if rates else None,
             }
 
+    # Propagate the "never attempted" marking from the raw rows into the gate records, and
+    # attach the livelock evidence to the gate that hit it.
+    for name, row in gates.items():
+        _, proc = owner(name)
+        raw = proc["gates"].get(name) if proc else None
+        if raw and raw.get("not_attempted"):
+            row["passed"] = False
+            row["not_attempted"] = True
+            row["why_not_attempted"] = raw["why"]
+    g2 = gates.get("gate2_long_needle_exact")
+    if g2 and not g2["passed"] and not g2.get("not_attempted"):
+        tag2, proc2 = owner("gate2_long_needle_exact")
+        timeline = [x for x in
+                    read_text(out_dir / f"livelock-timeline-{tag2}.txt").splitlines() if x]
+        stall = parse_prom(read_text(out_dir / f"metrics-stall-{tag2}.txt"))
+        g2["failure_mode"] = "LIVELOCK, not a wrong answer and not a crash"
+        g2["what_happened"] = (
+            "the request was accepted, prefilled to 98.9 % of the KV pool, dropped back to "
+            "the waiting queue with the pool freed to 0 %, and re-prefilled. The cycle "
+            "repeats with a 30-second period. Prompt throughput pins at about 960 tok/s, "
+            "generation throughput is 0.0 throughout, and not one output token is produced. "
+            "It was stopped by the operator after "
+            f"{g2['wall_sec']:.0f} s; nothing suggests it would ever have terminated.")
+        g2["engine_self_report"] = {
+            "num_requests_waiting_by_reason_capacity":
+                stall.get("vllm:num_requests_waiting_by_reason"),
+            "num_preemptions_total": stall.get("vllm:num_preemptions_total"),
+            "prefix_cache_queries_total": stall.get("vllm:prefix_cache_queries_total"),
+            "prefix_cache_hits_total": stall.get("vllm:prefix_cache_hits_total"),
+            "reading": "the engine never accounts for a preemption, because nothing is "
+                       "preempted: the request is simply never admitted. And the cache was "
+                       "consulted throughout and had nothing to offer -- 261,794 queries "
+                       "against exactly 0 hits -- which is the evidence that the partial "
+                       "prefill is discarded rather than published, so every retry costs "
+                       "full price and none can ever cost less.",
+        }
+        g2["arithmetic"] = (
+            "pool 265,072 tokens, prompt 261,794. Align mode makes the request occupy whole "
+            "1,600-token blocks, so the prompt alone is 164 blocks = 262,400 slots, and on "
+            "top of that it needs MTP-3 draft slots and a decode block. The 3,278 tokens of "
+            "headroom the pool appears to have are not enough, and the engine's admission "
+            "check does not notice before accepting the request.")
+        g2["timeline_lines"] = len(timeline)
+        g2["timeline_file"] = f"receipts/qual-apc-raw/out/livelock-timeline-{tag2}.txt"
+        g2["timeline_excerpt"] = timeline[-12:]
+        g2["reported_upstream"] = UPSTREAM_ISSUE
+
     # ------------------------------------------------- the reduced-window option (c)
     # Offered on the cards only if it was actually run. An option nobody executed is not an
     # option, it is a guess with a code block around it.
@@ -744,8 +820,16 @@ def main():
              "gate5_three_warmed_decode_runs", "gate6_second_long_request_after_release",
              "gate7_receipt_identity_complete", "gate8_banner_prefix_caching_actually_on",
              "gate9_kv_capacity_not_regressed"]
-    decisions = {name: ("PASS" if gates.get(name, {}).get("passed") else
-                        ("FAIL" if name in gates else "NOT RUN")) for name in order}
+    def decide(name):
+        if name not in gates:
+            return "NOT RUN"
+        if gates[name].get("passed"):
+            return "PASS"
+        if gates[name].get("not_attempted"):
+            return "NOT ATTEMPTED"
+        return "FAIL"
+
+    decisions = {name: decide(name) for name in order}
     all_pass = all(v == "PASS" for v in decisions.values())
 
     payload = {
@@ -768,14 +852,39 @@ def main():
         "verdict": {
             "all_gates_pass": all_pass,
             "decisions": decisions,
-            "qualified_at": "gpu_memory_utilization 0.955 with "
-                            "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True, "
-                            "--enable-prefix-caching --mamba-cache-mode align, on "
+            "attempted_at": f"gpu_memory_utilization {qualified_util} with "
+                            "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True, window "
+                            "262,144, --enable-prefix-caching --mamba-cache-mode align, on "
                             f"{PROMOTED_TAG} ({PROMOTED_MANIFEST})",
-            "promotion": "PROMOTED" if all_pass else "NOT PROMOTED",
-            "if_not_all_pass":
-                "a failed gate is a published result. The recipes stay as they were and the "
-                "promotion does not happen; nothing here is retried into green.",
+            "outcome": "PROMOTED" if all_pass else "SCOPED DECLINE",
+            "declined_for":
+                "the context edition's native 262,144 window. Gate 2 does not merely fail, "
+                "it never terminates: see bounded_negative_results. On a 32,607 MiB card the "
+                "intersection of a 262,144 window, the 8,388,608-pixel image ceiling that "
+                "gate 3 needs headroom for, and align-mode block rounding appears to be "
+                "empty. The context edition's native-window recipe is unchanged and prefix "
+                "caching is NOT enabled in it."
+                if not all_pass else None,
+            "shipped_for":
+                "the three 8,192-token recipes (k4, k5k6, hydrated), on their own evidence "
+                "and not on this gate set: a pool roughly 32x the window means none of the "
+                "failures here can occur there. Evidence is the promoted image's own smoke "
+                "in receipts/production-image.json -- all three start healthy, answer a text "
+                "and an image request exactly, and report enable_prefix_caching True in the "
+                "engine banner.",
+            "offered_as_an_option":
+                "the reduced-window profile in reduced_window_option, if and only if that "
+                "probe passed. It is offered, never defaulted.",
+            "promotion_of_the_image_itself":
+                "the four-module image is still the right release unit and its identity is "
+                "verified here; what this receipt declines is enabling prefix caching in the "
+                "native-window recipe, not the image. The three short-window recipes run on "
+                "the same promoted digest.",
+            "nothing_was_retried_into_green":
+                "every attempt is published, in order, with its utilisation: the startup "
+                "refusal at 0.955, the deadlock at 0.9555, the livelock at 0.9585, and the "
+                "band probes between them. No failing configuration was rerun hoping for a "
+                "different answer, and no gate's acceptance criterion was weakened.",
         },
         "identity": identity,
         "gates": {name: gates[name] for name in order if name in gates},

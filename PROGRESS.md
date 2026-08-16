@@ -590,3 +590,63 @@ KV rates now say they are ratios at one window rather than extrapolation coeffic
 the pool is affine in the window. Local and published are byte-identical, proven by re-fetch:
 51,108 / 63,905 / 63,177 / 57,849 B. The verdict receipt's rental-driver defect was handed to
 its owner rather than edited here.
+
+**Prefix caching: the image is promoted, the flag ships on three recipes of four, and the
+native window is a measured no.** The release unit is now the four-module superset
+`localhost/vllm:gg-r34-patched-apc`, manifest
+`sha256:16a936b877b90fc080181e842f47dbafc5cb8e62688799596836e34ba0b79218`, config
+`5ce31638c0a5…`, promoted on Main's call and **not rebuilt**: promoting the exact bytes that
+`receipts/apc-poison-repro.json` arms C and E measured is worth more than cosmetic accuracy in
+a label, so the image's own `io.malaiwah.image.qualified="false"` is left stale and superseded
+by receipt, with the precedence rule recorded in three places and the general lesson — a
+boolean `qualified` label is unfixable by construction, carry a pointer or nothing — written
+into `receipts/production-image.json` under `notes_for_the_next_image_build`. The receipt is
+schema `qwen38-production-image/3`: `release_unit` is now a structured pointer, because the
+release unit and the top-level build record are no longer the same image. The GDN gate module
+(#51812) was **not** baked in; ImmutableImage and ApcPoisonRepro declined that coupling
+independently and Main ruled the same way, so it stays a documented optional overlay for
+concurrent serving.
+
+**Nine gates, and the native 262,144 window failed three ways.** `receipts/qualification-5090-apc.json`
+(schema `qwen38-qualification-5090-apc/1`), with per-process server logs and
+`receipts/qual-apc-raw/`. The banner gate earns its place immediately: every launch really did
+report `enable_prefix_caching: True` and `mamba_cache_mode: align`, so what follows is a
+statement about prefix caching and not about a flag the engine ignored. At
+`--gpu-memory-utilization 0.955` the engine **refuses to start** — `align` rounds a 262,144-token
+request up to 164 whole 1,600-token blocks, needing **9.29 GiB** against an unchanged **9.28
+GiB** supply, and it names 260,800 as the longest window it could serve. At 0.9555 (pool exactly
+262,144, 1.00x) it starts and **deadlocks**. At 0.9585 (pool 265,072, 1.01x, within 50 tokens of
+the cache-off baseline's 265,122) it **livelocks**: prefill to 98.9 % of the pool, requeue with
+the pool freed, re-prefill, 30-second period, ~960 tok/s wasted, **zero output tokens** in 656 s,
+`num_preemptions_total` stuck at `0.0`, and 261,794 prefix-cache queries against exactly **0**
+hits — the partial prefill is discarded rather than published, which is what makes the loop
+stable rather than self-correcting. The pool is quantised (0.9585, 0.959 and 0.96 all give
+265,072), so no utilisation on this card makes it work, and 0.97 is barred anyway by gate 3.
+Filed upstream as `local-inference-lab/vllm` **issue #394**, with #51113 already applied so it is
+explicitly not a cherry-pick request; GdnGateAtConcurrency's `scheduler.py:865-878` padding path
+is credited as an adjacent finding with a different trigger and, on its own initiative and mine,
+recorded as **not** the cause of this trace.
+
+**So the ship is scoped, which is a better answer than either extreme.** Prefix caching is on in
+the `k4`, `k5k6` and `hydrated` recipes, where the pool is roughly 32x the window and none of
+this can bite — evidenced on the promoted digest by the four-recipe smoke in
+`receipts/production-image.json`: all three start healthy, answer a text and an image request
+exactly, and report the cache enabled. It is **off** in the context edition's native-window
+recipe, which is otherwise unchanged. And it is **offered** there as a measured option:
+`--max-model-len 256000` at utilisation 0.9585, pool 264,777, 1.03x, which retrieves a
+255,000-token needle exactly in 180 s, completes three warmed decode runs and answers a second
+long request after release — for **6,144 tokens of context, 2.34 %**. The reuse win the cards
+now print (11.6x at 32,842 prompt tokens, 29.3x at 131,146) and the 266-request zero-corruption
+evidence are ApcPoisonRepro's and are cited, not restated; every card also says plainly that
+**LMCache is unmeasured by us** and is the outstanding suspect in the one user report we have.
+Two corrections landed in the same pass: the KV cost model on the K5K6 and hydrated cards is now
+the measured affine law (34,816 B/token with MTP-3, 32,932 without, plus a **per-request** term
+of 0.63 / 0.14 GiB that concurrency pays again per slot) rather than the 37.4 KB/token ratio that
+folded the fixed term in and overstated the coefficient by 8 %; and every driver string was
+audited against the receipt beside it and found already correct (610.57.04 for the physical 5090,
+595.58.03 only where the rental RTX PRO 6000 is named). Local and published are byte-identical,
+proven by re-fetch with `DOCS-SHA256SUMS` refreshed in the same commit: 92,326 / 90,916 / 78,707 /
+85,741 B (`receipts/apc-card-publication.json`). The user's live `qwen38-27b` service was
+restored and proven: systemd active, podman healthy, `/health` 200, `Qwen3.8-27B` served, GPU back
+to 30,449 MiB, all twelve compared `podman inspect` fields identical to
+`receipts/aiboss-live-service-snapshot.json`.

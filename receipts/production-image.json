@@ -1,10 +1,26 @@
 {
-  "schema": "qwen38-production-image/2",
-  "generated_utc": "2026-08-16T01:06:24Z",
-  "purpose": "P0 / rank 2 immutable production runtime: the three content-pinned patch modules folded into the pinned r34 digest, replacing the read-only source bind mounts the model cards' patched recipes required",
-  "release_unit": "the image described at the top level of this receipt. Any image under superset_images is explicitly not the qualified artifact.",
+  "schema": "qwen38-production-image/3",
+  "schema_change_from_2": "release_unit was a string naming the top-level image; it is now an object, because the release unit and the top-level build record are no longer the same image. A reader that treated release_unit as text must be updated rather than silently reinterpreting it.",
+  "generated_utc": "2026-08-16T06:10:22Z",
+  "purpose": "P0 / rank 2 immutable production runtime: the content-pinned patch modules folded into the pinned r34 digest, replacing the read-only source bind mounts the model cards' patched recipes required",
+  "release_unit": {
+    "tag": "localhost/vllm:gg-r34-patched-apc",
+    "manifest_digest": "sha256:16a936b877b90fc080181e842f47dbafc5cb8e62688799596836e34ba0b79218",
+    "modules": 4,
+    "described_under": "superset_images, variant \"apc\"",
+    "qualified_by": "receipts/qualification-5090-apc.json",
+    "promoted_utc_date": "2026-08-16",
+    "superseded_release_unit": {
+      "tag": "localhost/vllm:gg-r34-patched",
+      "manifest_digest": "sha256:6eca4c693f01b6f4e112c04eacd30673b7cfbba4150e6fe2ea3ba1bbfde14c27",
+      "superseded_at": "2026-08-16, on Main's call, recorded in promotion_status",
+      "still_valid_as": "the promoted image's parent, the build record at the top level of this receipt, and the digest receipts/qualification-5090-context.json measured. Superseded as the recommended runtime, not invalidated as evidence."
+    },
+    "why_the_top_level_still_describes_the_parent": "the top-level block is the build record of the three-module image and is pinned by other receipts. Moving it would break those pins to say something this pointer says without breaking anything. Any image under superset_images other than the one named here is explicitly not the qualified artifact."
+  },
+  "upstream_status": "the patch modules are carried pending upstream acceptance, not as a permanent fork: local-inference-lab/vllm issue #392 and PR #393 are open, and PR #51113 is already merged upstream (vllm-project/vllm) but absent from the r34 build. When a base image ships them, the corresponding COPY and its digest come out of the Dockerfile.",
   "hardware_scope": "built and smoke-tested on AIBoss, one physical RTX 5090 (32,607 MiB); no throughput number here is comparable to the rental RTX PRO 6000 engine-budget receipts",
-  "operational_scope": "the host's live qwen38-27b service (K4 at 262,144 on the r34 digest with one bind-mounted module) was never stopped, altered or reconfigured by this receipt; smoke recipes ran as separate short-lived containers on a distinct loopback port",
+  "operational_scope": "the host's live qwen38-27b service is stopped for, and restored after, any GPU window on this single-card host; the release image's own smoke recipes ran while it was up, on a distinct loopback port, and the promoted image's recipes ran inside the promotion window with the unit down and restored against receipts/aiboss-live-service-snapshot.json afterwards. No recipe ever altered or reconfigured that unit.",
   "variant": "release",
   "declaration": null,
   "base_image": {
@@ -32,8 +48,8 @@
     "pushed_to_registry": false
   },
   "build": {
-    "started_utc": "2026-08-16T00:57:59Z",
-    "finished_utc": "2026-08-16T00:58:00Z",
+    "started_utc": "2026-08-16T03:15:59Z",
+    "finished_utc": "2026-08-16T03:16:00Z",
     "host": "aiboss",
     "podman_version": "4.9.3",
     "command": "podman build --pull=never -f /home/mbelleau/prodimage/receipts/.production-image-stage/release/context/Dockerfile -t localhost/vllm:gg-r34-patched /home/mbelleau/prodimage/receipts/.production-image-stage/release/context",
@@ -45,8 +61,8 @@
       "tools/vllm-qwen3_5_mtp-embed-quant-config.py"
     ],
     "dockerfile_sha256": "0c95510b1dc1f201bd146f21edf8544fcbfd18942da6d66cc5aa1c1854e8d63a",
-    "build_script_sha256": "6dd1f866ba674e13868d17f31a1cd1ec34c3eb747c7678ffbd723a0b117ab8aa",
-    "smoke_client_sha256": "fb95b965f558b0918ed344ed76c1afd9c0e10fd06d4935a8c3eafaf2f3cc3afa",
+    "build_script_sha256": "bad612568226ae48635d95873ede9efa8194cc538e8da5b27bf524a233a5e01d",
+    "smoke_client_sha256": "1b2901e7b63e8f341bdbef5ac35d2d4864bacad2a689b572382e24d7db39cbcc",
     "build_log_sha256": "5bd6e5ef857666b5a73bc4a60e945dafa7143e4459ba4bb6fa377883dc260155"
   },
   "source_map": [
@@ -253,12 +269,323 @@
   },
   "smoke": {
     "client": "docker/smoke_client.py, one text and one image request per recipe, exact match; image fixture drawn by tools/vision_eval.draw_digits",
-    "recipes_attempted": [],
-    "recipes_run": [],
+    "recipes_attempted": [
+      "context",
+      "hydrated",
+      "k5k6",
+      "k4"
+    ],
+    "recipes_run": [
+      "context",
+      "hydrated",
+      "k5k6",
+      "k4"
+    ],
     "recipes_skipped": {},
-    "all_run_recipes_started": false,
-    "all_run_recipes_text_and_image_exact": false,
-    "results": []
+    "all_run_recipes_started": true,
+    "all_run_recipes_text_and_image_exact": true,
+    "results": [
+      {
+        "recipe": "context",
+        "ran": true,
+        "image_tag": "localhost/vllm:gg-r34-patched",
+        "image_manifest_digest": "sha256:6eca4c693f01b6f4e112c04eacd30673b7cfbba4150e6fe2ea3ba1bbfde14c27",
+        "run_command": "podman run --rm --name smoke-context-137853 --detach --device nvidia.com/gpu=all --ipc host --security-opt label=disable --publish 127.0.0.1:8137:8000 --volume /mnt/vault/llm/huggingface/hub/models--malaiwah--Qwen3.8-27B-EXL3-K5K6-context:/models/models--malaiwah--Qwen3.8-27B-EXL3-K5K6-context:ro --volume /home/mbelleau/qual5090/cache/jit:/cache/jit:rw --volume /home/mbelleau/qual5090/cache/exl3-online:/cache/exl3-online:rw -e HF_HUB_OFFLINE=1 -e VLLM_EXL3_EMBED_BITS=8 -e VLLM_EXL3_GRAPH_DECODE=1 -e VLLM_EXL3_PREFILL_RECONSTRUCT_M=128 -e PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True --entrypoint /opt/venv/bin/vllm localhost/vllm:gg-r34-patched serve /models/models--malaiwah--Qwen3.8-27B-EXL3-K5K6-context/snapshots/c45c273b0d6ef2859cb2d85b36dd52253c80d878 --served-model-name qwen38 --quantization exl3 --quantization-config \\{\\\"linear\\\":\\{\\\"weight\\\":\\\"mxfp8\\\"\\}\\,\\\"ignore\\\":\\[\\\"re:.\\*visual\\\\\\\\..\\*\\\"\\,\\\"re:.\\*in_proj_a\\$\\\"\\,\\\"re:.\\*in_proj_b\\$\\\"\\,\\\"re:.\\*in_proj_ba\\$\\\"\\,\\\"re:.\\*mtp\\\\\\\\..\\*\\\"\\,\\\"lm_head\\\"\\]\\} --max-model-len 262144 --gpu-memory-utilization 0.955 --max-num-seqs 1 --kv-cache-dtype fp8 --max-num-batched-tokens 2048 --speculative-config \\{\\\"method\\\":\\\"mtp\\\"\\,\\\"num_speculative_tokens\\\":3\\} --mm-processor-kwargs \\{\\\"truncation\\\":false\\,\\\"max_pixels\\\":8388608\\} --compilation-config \\{\\\"cudagraph_mode\\\":\\\"FULL_DECODE_ONLY\\\"\\,\\\"cudagraph_capture_sizes\\\":\\[4\\]\\} --reasoning-parser qwen3 --enable-auto-tool-choice --tool-call-parser qwen3_coder --host 0.0.0.0 --port 8000",
+        "model_path_in_container": "/models/models--malaiwah--Qwen3.8-27B-EXL3-K5K6-context/snapshots/c45c273b0d6ef2859cb2d85b36dd52253c80d878",
+        "weights_host_path": "/mnt/vault/llm/huggingface/hub/models--malaiwah--Qwen3.8-27B-EXL3-K5K6-context",
+        "model_revision": "c45c273b0d6ef2859cb2d85b36dd52253c80d878",
+        "model_revision_resolved_from": "refs/main",
+        "weights_mount": "read-only",
+        "cache_mount": "warm host caches /home/mbelleau/qual5090/cache/jit -> /cache/jit and /home/mbelleau/qual5090/cache/exl3-online -> /cache/exl3-online, the only writable mounts added",
+        "container_rootfs_read_only": false,
+        "source_bind_mounts": [],
+        "published_port": "127.0.0.1:<port>:8000, loopback only; the listening socket is inside the container network namespace and is not reachable off-host",
+        "host_root_privilege": false,
+        "rootless_podman": true,
+        "started_healthy": true,
+        "startup_seconds": 58,
+        "smoke_client_exit": 0,
+        "engine_banner": {
+          "enable_prefix_caching": "False",
+          "max_model_len": "262144",
+          "kv_cache_dtype_requested": "fp8",
+          "kv_cache_dtype_resolved": "torch.float8_e4m3fn",
+          "gpu_kv_cache_tokens": "265,122",
+          "available_kv_cache_gib": "9.28",
+          "cudagraph_memory_gib": "0.45",
+          "num_speculative_tokens": "3",
+          "cudagraph_mode": "FULL_DECODE_ONLY",
+          "max_concurrency_for_tokens": "262,144"
+        },
+        "container_filesystem_changes_vs_image": {
+          "total_paths_changed": 36,
+          "under_opt": [],
+          "under_usr_lib_or_bin": []
+        },
+        "container_id": "6f74f55f280a",
+        "launched": true,
+        "launch_error": null,
+        "server_log_sha256": "c0c10641f696dd3e5bdbd4542dfaf2a45e632d02a0853040c70a61cd3f447c9b",
+        "server_log_file": "receipts/production-image-context-server.log",
+        "smoke": {
+          "schema": "qwen38-image-smoke/1",
+          "label": "context",
+          "seed": 20260816,
+          "url": "http://127.0.0.1:8137/v1",
+          "served_model_ids": [
+            "qwen38"
+          ],
+          "requested_model": "qwen38",
+          "text": {
+            "expected": "7309172433",
+            "answer": "7309172433",
+            "extracted": "7309172433",
+            "exact": true,
+            "prompt_tokens": 64,
+            "completion_tokens": 11,
+            "wall_sec": 0.414
+          },
+          "image": {
+            "expected": "740562",
+            "answer": "740562",
+            "extracted": "740562",
+            "exact": true,
+            "fixture_sha256": "dab6d2b56f82b813f7cf95fb615f64f8b9e1460d18f7de2f8f464ea0b69ae214",
+            "fixture_bytes": 1286,
+            "prompt_tokens": 120,
+            "completion_tokens": 7,
+            "wall_sec": 0.224
+          },
+          "passed": true
+        },
+        "text_and_image_pass": true
+      },
+      {
+        "recipe": "hydrated",
+        "ran": true,
+        "image_tag": "localhost/vllm:gg-r34-patched",
+        "image_manifest_digest": "sha256:6eca4c693f01b6f4e112c04eacd30673b7cfbba4150e6fe2ea3ba1bbfde14c27",
+        "run_command": "podman run --rm --name smoke-hydrated-137853 --detach --device nvidia.com/gpu=all --ipc host --security-opt label=disable --publish 127.0.0.1:8137:8000 --volume /mnt/vault/llm/huggingface/models--malaiwah--Qwen3.8-27B-EXL3-K5K6-hydrated:/models/models--malaiwah--Qwen3.8-27B-EXL3-K5K6-hydrated:ro --volume /home/mbelleau/qual5090/cache/jit:/cache/jit:rw --volume /home/mbelleau/qual5090/cache/exl3-online:/cache/exl3-online:rw -e HF_HUB_OFFLINE=1 --entrypoint /opt/venv/bin/vllm localhost/vllm:gg-r34-patched serve /models/models--malaiwah--Qwen3.8-27B-EXL3-K5K6-hydrated/snapshots/5112f59411a45547b5fc22c63fc35755175cf5f3 --served-model-name qwen38 --quantization exl3 --enforce-eager --quantization-config \\{\\\"linear\\\":\\{\\\"weight\\\":\\\"mxfp8\\\"\\}\\,\\\"ignore\\\":\\[\\\"re:.\\*visual\\\\\\\\..\\*\\\"\\,\\\"re:.\\*in_proj_a\\$\\\"\\,\\\"re:.\\*in_proj_b\\$\\\"\\,\\\"re:.\\*in_proj_ba\\$\\\"\\,\\\"re:.\\*mtp\\\\\\\\..\\*\\\"\\,\\\"lm_head\\\"\\]\\} --mm-processor-kwargs \\{\\\"truncation\\\":false\\} --reasoning-parser qwen3 --enable-auto-tool-choice --tool-call-parser qwen3_coder --max-model-len 8192 --gpu-memory-utilization 0.95 --max-num-seqs 8 --host 0.0.0.0 --port 8000",
+        "model_path_in_container": "/models/models--malaiwah--Qwen3.8-27B-EXL3-K5K6-hydrated/snapshots/5112f59411a45547b5fc22c63fc35755175cf5f3",
+        "weights_host_path": "/mnt/vault/llm/huggingface/models--malaiwah--Qwen3.8-27B-EXL3-K5K6-hydrated",
+        "model_revision": "5112f59411a45547b5fc22c63fc35755175cf5f3",
+        "model_revision_resolved_from": "refs/main",
+        "weights_mount": "read-only",
+        "cache_mount": "warm host caches /home/mbelleau/qual5090/cache/jit -> /cache/jit and /home/mbelleau/qual5090/cache/exl3-online -> /cache/exl3-online, the only writable mounts added",
+        "container_rootfs_read_only": false,
+        "source_bind_mounts": [],
+        "published_port": "127.0.0.1:<port>:8000, loopback only; the listening socket is inside the container network namespace and is not reachable off-host",
+        "host_root_privilege": false,
+        "rootless_podman": true,
+        "started_healthy": true,
+        "startup_seconds": 168,
+        "smoke_client_exit": 0,
+        "engine_banner": {
+          "enable_prefix_caching": "False",
+          "max_model_len": "8192",
+          "kv_cache_dtype_requested": null,
+          "kv_cache_dtype_resolved": null,
+          "gpu_kv_cache_tokens": "80,749",
+          "available_kv_cache_gib": "6.63",
+          "cudagraph_memory_gib": null,
+          "num_speculative_tokens": null,
+          "cudagraph_mode": "none",
+          "max_concurrency_for_tokens": "8,192"
+        },
+        "container_filesystem_changes_vs_image": {
+          "total_paths_changed": 36,
+          "under_opt": [],
+          "under_usr_lib_or_bin": []
+        },
+        "container_id": "37f669a41741",
+        "launched": true,
+        "launch_error": null,
+        "server_log_sha256": "5afacd71a7f909bcf35c66e816ced38731e2fc2d724cefbf962a245e804d809a",
+        "server_log_file": "receipts/production-image-hydrated-server.log",
+        "smoke": {
+          "schema": "qwen38-image-smoke/1",
+          "label": "hydrated",
+          "seed": 20260816,
+          "url": "http://127.0.0.1:8137/v1",
+          "served_model_ids": [
+            "qwen38"
+          ],
+          "requested_model": "qwen38",
+          "text": {
+            "expected": "7309172433",
+            "answer": "7309172433",
+            "extracted": "7309172433",
+            "exact": true,
+            "prompt_tokens": 64,
+            "completion_tokens": 11,
+            "wall_sec": 33.753
+          },
+          "image": {
+            "expected": "740562",
+            "answer": "740562",
+            "extracted": "740562",
+            "exact": true,
+            "fixture_sha256": "dab6d2b56f82b813f7cf95fb615f64f8b9e1460d18f7de2f8f464ea0b69ae214",
+            "fixture_bytes": 1286,
+            "prompt_tokens": 120,
+            "completion_tokens": 7,
+            "wall_sec": 0.472
+          },
+          "passed": true
+        },
+        "text_and_image_pass": true
+      },
+      {
+        "recipe": "k5k6",
+        "ran": true,
+        "image_tag": "localhost/vllm:gg-r34-patched",
+        "image_manifest_digest": "sha256:6eca4c693f01b6f4e112c04eacd30673b7cfbba4150e6fe2ea3ba1bbfde14c27",
+        "run_command": "podman run --rm --name smoke-k5k6-137853 --detach --device nvidia.com/gpu=all --ipc host --security-opt label=disable --publish 127.0.0.1:8137:8000 --volume /mnt/vault/llm/huggingface/models--malaiwah--Qwen3.8-27B-EXL3-K5K6:/models/models--malaiwah--Qwen3.8-27B-EXL3-K5K6:ro --volume /home/mbelleau/qual5090/cache/jit:/cache/jit:rw --volume /home/mbelleau/qual5090/cache/exl3-online:/cache/exl3-online:rw -e HF_HUB_OFFLINE=1 -e VLLM_EXL3_ONLINE_TRELLIS_BITS=6 -e VLLM_EXL3_ONLINE_CACHE_DIR=/cache/exl3-online -e VLLM_EXL3_GRAPH_DECODE=1 -e VLLM_EXL3_PREFILL_RECONSTRUCT_M=128 --entrypoint /opt/venv/bin/vllm localhost/vllm:gg-r34-patched serve /models/models--malaiwah--Qwen3.8-27B-EXL3-K5K6/snapshots/d325e5780dde8a90fe26b45011a47b5517d9cdf4 --served-model-name qwen38 --quantization exl3 --quantization-config \\{\\\"linear\\\":\\{\\\"weight\\\":\\\"mxfp8\\\"\\}\\,\\\"ignore\\\":\\[\\\"re:.\\*visual\\\\\\\\..\\*\\\"\\,\\\"re:.\\*in_proj_a\\$\\\"\\,\\\"re:.\\*in_proj_b\\$\\\"\\,\\\"re:.\\*in_proj_ba\\$\\\"\\,\\\"re:.\\*mtp\\\\\\\\..\\*\\\"\\,\\\"lm_head\\\"\\]\\} --compilation-config \\{\\\"cudagraph_mode\\\":\\\"FULL_DECODE_ONLY\\\"\\} --speculative-config \\{\\\"method\\\":\\\"mtp\\\"\\,\\\"num_speculative_tokens\\\":3\\} --mm-processor-kwargs \\{\\\"truncation\\\":false\\} --reasoning-parser qwen3 --enable-auto-tool-choice --tool-call-parser qwen3_coder --max-model-len 8192 --gpu-memory-utilization 0.85 --max-num-seqs 8 --host 0.0.0.0 --port 8000",
+        "model_path_in_container": "/models/models--malaiwah--Qwen3.8-27B-EXL3-K5K6/snapshots/d325e5780dde8a90fe26b45011a47b5517d9cdf4",
+        "weights_host_path": "/mnt/vault/llm/huggingface/models--malaiwah--Qwen3.8-27B-EXL3-K5K6",
+        "model_revision": "d325e5780dde8a90fe26b45011a47b5517d9cdf4",
+        "model_revision_resolved_from": "newest snapshot directory (cache has no refs/main)",
+        "weights_mount": "read-only",
+        "cache_mount": "warm host caches /home/mbelleau/qual5090/cache/jit -> /cache/jit and /home/mbelleau/qual5090/cache/exl3-online -> /cache/exl3-online, the only writable mounts added",
+        "container_rootfs_read_only": false,
+        "source_bind_mounts": [],
+        "published_port": "127.0.0.1:<port>:8000, loopback only; the listening socket is inside the container network namespace and is not reachable off-host",
+        "host_root_privilege": false,
+        "rootless_podman": true,
+        "started_healthy": true,
+        "startup_seconds": 205,
+        "smoke_client_exit": 0,
+        "engine_banner": {
+          "enable_prefix_caching": "False",
+          "max_model_len": "8192",
+          "kv_cache_dtype_requested": null,
+          "kv_cache_dtype_resolved": null,
+          "gpu_kv_cache_tokens": "19,233",
+          "available_kv_cache_gib": "2.85",
+          "cudagraph_memory_gib": "0.11",
+          "num_speculative_tokens": "3",
+          "cudagraph_mode": "FULL_DECODE_ONLY",
+          "max_concurrency_for_tokens": "8,192"
+        },
+        "container_filesystem_changes_vs_image": {
+          "total_paths_changed": 36,
+          "under_opt": [],
+          "under_usr_lib_or_bin": []
+        },
+        "container_id": "55d8a8ceca33",
+        "launched": true,
+        "launch_error": null,
+        "server_log_sha256": "37a8dac83e09d02c59196becd22b07f2e4605df4cfb1efc763007f5f6625d9e6",
+        "server_log_file": "receipts/production-image-k5k6-server.log",
+        "smoke": {
+          "schema": "qwen38-image-smoke/1",
+          "label": "k5k6",
+          "seed": 20260816,
+          "url": "http://127.0.0.1:8137/v1",
+          "served_model_ids": [
+            "qwen38"
+          ],
+          "requested_model": "qwen38",
+          "text": {
+            "expected": "7309172433",
+            "answer": "7309172433",
+            "extracted": "7309172433",
+            "exact": true,
+            "prompt_tokens": 64,
+            "completion_tokens": 11,
+            "wall_sec": 0.543
+          },
+          "image": {
+            "expected": "740562",
+            "answer": "740562",
+            "extracted": "740562",
+            "exact": true,
+            "fixture_sha256": "dab6d2b56f82b813f7cf95fb615f64f8b9e1460d18f7de2f8f464ea0b69ae214",
+            "fixture_bytes": 1286,
+            "prompt_tokens": 120,
+            "completion_tokens": 7,
+            "wall_sec": 0.199
+          },
+          "passed": true
+        },
+        "text_and_image_pass": true
+      },
+      {
+        "recipe": "k4",
+        "ran": true,
+        "image_tag": "localhost/vllm:gg-r34-patched",
+        "image_manifest_digest": "sha256:6eca4c693f01b6f4e112c04eacd30673b7cfbba4150e6fe2ea3ba1bbfde14c27",
+        "run_command": "podman run --rm --name smoke-k4-137853 --detach --device nvidia.com/gpu=all --ipc host --security-opt label=disable --publish 127.0.0.1:8137:8000 --volume /mnt/vault/llm/huggingface/models--malaiwah--Qwen3.8-27B-K4:/models/models--malaiwah--Qwen3.8-27B-K4:ro --volume /home/mbelleau/qual5090/cache/jit:/cache/jit:rw --volume /home/mbelleau/qual5090/cache/exl3-online:/cache/exl3-online:rw -e HF_HUB_OFFLINE=1 -e VLLM_EXL3_ONLINE_TRELLIS_BITS=6 -e VLLM_EXL3_ONLINE_CACHE_DIR=/cache/exl3-online -e VLLM_EXL3_ONLINE_CACHE_MODE=readwrite --entrypoint /opt/venv/bin/vllm localhost/vllm:gg-r34-patched serve /models/models--malaiwah--Qwen3.8-27B-K4/snapshots/49f6d5ab5632b443458c774ffc0caeb19e950d3b --served-model-name qwen38-k4 --quantization exl3 --enforce-eager --quantization-config \\{\\\"linear\\\":\\{\\\"weight\\\":\\\"mxfp8\\\"\\}\\,\\\"ignore\\\":\\[\\\"re:.\\*visual\\\\\\\\..\\*\\\"\\,\\\"re:.\\*in_proj_a\\$\\\"\\,\\\"re:.\\*in_proj_b\\$\\\"\\,\\\"re:.\\*mtp\\\\\\\\..\\*\\\"\\,\\\"lm_head\\\"\\]\\} --max-model-len 8192 --gpu-memory-utilization 0.85 --max-num-seqs 4 --host 0.0.0.0 --port 8000",
+        "model_path_in_container": "/models/models--malaiwah--Qwen3.8-27B-K4/snapshots/49f6d5ab5632b443458c774ffc0caeb19e950d3b",
+        "weights_host_path": "/mnt/vault/llm/huggingface/models--malaiwah--Qwen3.8-27B-K4",
+        "model_revision": "49f6d5ab5632b443458c774ffc0caeb19e950d3b",
+        "model_revision_resolved_from": "newest snapshot directory (cache has no refs/main)",
+        "weights_mount": "read-only",
+        "cache_mount": "warm host caches /home/mbelleau/qual5090/cache/jit -> /cache/jit and /home/mbelleau/qual5090/cache/exl3-online -> /cache/exl3-online, the only writable mounts added",
+        "container_rootfs_read_only": false,
+        "source_bind_mounts": [],
+        "published_port": "127.0.0.1:<port>:8000, loopback only; the listening socket is inside the container network namespace and is not reachable off-host",
+        "host_root_privilege": false,
+        "rootless_podman": true,
+        "started_healthy": true,
+        "startup_seconds": 163,
+        "smoke_client_exit": 0,
+        "engine_banner": {
+          "enable_prefix_caching": "False",
+          "max_model_len": "8192",
+          "kv_cache_dtype_requested": null,
+          "kv_cache_dtype_resolved": null,
+          "gpu_kv_cache_tokens": "72,557",
+          "available_kv_cache_gib": "5.97",
+          "cudagraph_memory_gib": null,
+          "num_speculative_tokens": null,
+          "cudagraph_mode": "none",
+          "max_concurrency_for_tokens": "8,192"
+        },
+        "container_filesystem_changes_vs_image": {
+          "total_paths_changed": 36,
+          "under_opt": [],
+          "under_usr_lib_or_bin": []
+        },
+        "container_id": "5816a84d9b30",
+        "launched": true,
+        "launch_error": null,
+        "server_log_sha256": "61ef6283610d9ab1d365731aa32659156454325602843b46832649902a845bd3",
+        "server_log_file": "receipts/production-image-k4-server.log",
+        "smoke": {
+          "schema": "qwen38-image-smoke/1",
+          "label": "k4",
+          "seed": 20260816,
+          "url": "http://127.0.0.1:8137/v1",
+          "served_model_ids": [
+            "qwen38-k4"
+          ],
+          "requested_model": "qwen38-k4",
+          "text": {
+            "expected": "7309172433",
+            "answer": "7309172433",
+            "extracted": "7309172433",
+            "exact": true,
+            "prompt_tokens": 64,
+            "completion_tokens": 11,
+            "wall_sec": 0.996
+          },
+          "image": {
+            "expected": "740562",
+            "answer": "740562",
+            "extracted": "740562",
+            "exact": true,
+            "fixture_sha256": "dab6d2b56f82b813f7cf95fb615f64f8b9e1460d18f7de2f8f464ea0b69ae214",
+            "fixture_bytes": 1286,
+            "prompt_tokens": 120,
+            "completion_tokens": 7,
+            "wall_sec": 0.4
+          },
+          "passed": true
+        },
+        "text_and_image_pass": true
+      }
+    ]
   },
   "acceptance": {
     "modules_in_image_match_published_map": true,
@@ -269,19 +596,27 @@
     "duplicate_source_tree_unreachable_from_working_dir": true,
     "vllm_is_not_an_editable_install": true,
     "sbom_generated": true,
-    "no_runtime_source_bind_mounts": null,
-    "no_startup_file_copies": null,
+    "no_runtime_source_bind_mounts": true,
+    "no_startup_file_copies": true,
     "no_runtime_package_installs": true,
-    "weights_read_only": null,
-    "service_loopback_or_api_key": null,
-    "no_host_root_privilege": null,
+    "weights_read_only": true,
+    "service_loopback_or_api_key": true,
+    "no_host_root_privilege": true,
     "image_digest_and_toolchain_recorded": true
   },
   "not_claimed": [
     "no image here has been pushed to any public registry: repo_digests are local, and the release unit is the local manifest digest plus the verified source map",
-    "the model cards still document the three-mount patched recipe: collapsing their unmodified and patched recipes into one command needs a digest a reader can pull, and this digest is local to the build host",
-    "no recipe served a request, so every runtime gate (mounts, writes, endpoint) is recorded as null rather than passed"
+    "the model cards do not name this local tag as something to pull. They reproduce the promoted image's content with four sha256-verified read-only mounts over the pullable public base digest, which is the closest a reader without access to this build host can get; the local manifest digest is printed beside it so the two are relatable."
   ],
+  "notes_for_the_next_image_build": {
+    "a_boolean_qualified_label_is_unfixable_by_construction": {
+      "what_happened": "Dockerfile.gg-r34-patched-apc carries io.malaiwah.image.qualified=\"false\" and an io.malaiwah.image.role saying the image requires its own qualification run. Both were true when written. Both became false the moment receipts/qualification-5090-apc.json passed, and neither can be corrected.",
+      "why_it_cannot_be_fixed": "qualification necessarily happens after the bytes exist. Editing a label is a new layer, a new layer is a new manifest digest, and the corrected image is therefore no longer the image that was qualified. The label can only ever be right about a state that had not happened yet.",
+      "what_to_do_instead": "carry a pointer, not a verdict. A label naming the receipt path or a qualification URL stays true across promotion because it asserts where to look rather than what the answer is. Or carry no qualification label at all and track qualification only in receipts, which is what this receipt does.",
+      "precedence_rule_in_force_meanwhile": "receipts/production-image.json is authoritative for qualification state; io.malaiwah.image.* is a build-time statement only. A reader who trusts the label over the receipt reaches the exact inversion of the truth.",
+      "recorded_because": "Main asked for the lesson to sit where whoever writes the next Dockerfile will see it, rather than in a thread nobody reads."
+    }
+  },
   "superset_images": [
     {
       "variant": "apc",
@@ -349,8 +684,8 @@
         "pushed_to_registry": false
       },
       "build": {
-        "started_utc": "2026-08-16T01:06:24Z",
-        "finished_utc": "2026-08-16T01:06:24Z",
+        "started_utc": "2026-08-16T03:16:00Z",
+        "finished_utc": "2026-08-16T03:16:01Z",
         "host": "aiboss",
         "podman_version": "4.9.3",
         "command": "podman build --pull=never -f /home/mbelleau/prodimage/receipts/.production-image-stage/apc/context/Dockerfile -t localhost/vllm:gg-r34-patched-apc --build-arg PARENT=localhost/vllm:gg-r34-patched /home/mbelleau/prodimage/receipts/.production-image-stage/apc/context",
@@ -360,8 +695,8 @@
           "tools/vllm-mamba-align-scheduler.py"
         ],
         "dockerfile_sha256": "d309b5cf0a736f2f09b6447e3448a0ec9a14f63ab6433f0375390563f87acb84",
-        "build_script_sha256": "d9ac95f5ff7292dc3901d7b91f142ae7b0702b9ad43d43a24a454f623cb8f94b",
-        "smoke_client_sha256": "fb95b965f558b0918ed344ed76c1afd9c0e10fd06d4935a8c3eafaf2f3cc3afa",
+        "build_script_sha256": "bad612568226ae48635d95873ede9efa8194cc538e8da5b27bf524a233a5e01d",
+        "smoke_client_sha256": "1b2901e7b63e8f341bdbef5ac35d2d4864bacad2a689b572382e24d7db39cbcc",
         "build_log_sha256": "b8fcc643c13ddc0f789db525c6780311025285dc79df3f5dab033866708bdbf4"
       },
       "source_map": [
@@ -578,6 +913,505 @@
       },
       "smoke": {
         "client": "docker/smoke_client.py, one text and one image request per recipe, exact match; image fixture drawn by tools/vision_eval.draw_digits",
+        "recipes_attempted": [
+          "hydrated",
+          "k5k6",
+          "k4"
+        ],
+        "recipes_run": [
+          "hydrated",
+          "k5k6",
+          "k4"
+        ],
+        "recipes_skipped": {},
+        "all_run_recipes_started": true,
+        "all_run_recipes_text_and_image_exact": true,
+        "results": [
+          {
+            "recipe": "hydrated",
+            "ran": true,
+            "image_tag": "localhost/vllm:gg-r34-patched-apc",
+            "image_manifest_digest": "sha256:16a936b877b90fc080181e842f47dbafc5cb8e62688799596836e34ba0b79218",
+            "run_command": "podman run --rm --name smoke-hydrated-256854 --detach --device nvidia.com/gpu=all --ipc host --security-opt label=disable --publish 127.0.0.1:8137:8000 --volume /mnt/vault/llm/huggingface/models--malaiwah--Qwen3.8-27B-EXL3-K5K6-hydrated:/models/models--malaiwah--Qwen3.8-27B-EXL3-K5K6-hydrated:ro --volume /home/mbelleau/qual5090/cache/jit:/cache/jit:rw --volume /home/mbelleau/qual5090/cache/exl3-online:/cache/exl3-online:rw -e HF_HUB_OFFLINE=1 --entrypoint /opt/venv/bin/vllm localhost/vllm:gg-r34-patched-apc serve /models/models--malaiwah--Qwen3.8-27B-EXL3-K5K6-hydrated/snapshots/5112f59411a45547b5fc22c63fc35755175cf5f3 --served-model-name qwen38 --quantization exl3 --enforce-eager --quantization-config \\{\\\"linear\\\":\\{\\\"weight\\\":\\\"mxfp8\\\"\\}\\,\\\"ignore\\\":\\[\\\"re:.\\*visual\\\\\\\\..\\*\\\"\\,\\\"re:.\\*in_proj_a\\$\\\"\\,\\\"re:.\\*in_proj_b\\$\\\"\\,\\\"re:.\\*in_proj_ba\\$\\\"\\,\\\"re:.\\*mtp\\\\\\\\..\\*\\\"\\,\\\"lm_head\\\"\\]\\} --mm-processor-kwargs \\{\\\"truncation\\\":false\\} --reasoning-parser qwen3 --enable-auto-tool-choice --tool-call-parser qwen3_coder --max-model-len 8192 --gpu-memory-utilization 0.95 --max-num-seqs 8 --enable-prefix-caching --mamba-cache-mode align --host 0.0.0.0 --port 8000",
+            "model_path_in_container": "/models/models--malaiwah--Qwen3.8-27B-EXL3-K5K6-hydrated/snapshots/5112f59411a45547b5fc22c63fc35755175cf5f3",
+            "weights_host_path": "/mnt/vault/llm/huggingface/models--malaiwah--Qwen3.8-27B-EXL3-K5K6-hydrated",
+            "model_revision": "5112f59411a45547b5fc22c63fc35755175cf5f3",
+            "model_revision_resolved_from": "refs/main",
+            "weights_mount": "read-only",
+            "cache_mount": "warm host caches /home/mbelleau/qual5090/cache/jit -> /cache/jit and /home/mbelleau/qual5090/cache/exl3-online -> /cache/exl3-online, the only writable mounts added",
+            "container_rootfs_read_only": false,
+            "source_bind_mounts": [],
+            "published_port": "127.0.0.1:<port>:8000, loopback only; the listening socket is inside the container network namespace and is not reachable off-host",
+            "host_root_privilege": false,
+            "rootless_podman": true,
+            "started_healthy": true,
+            "startup_seconds": 137,
+            "smoke_client_exit": 0,
+            "engine_banner": {
+              "enable_prefix_caching": "True",
+              "max_model_len": "8192",
+              "kv_cache_dtype_requested": null,
+              "kv_cache_dtype_resolved": null,
+              "gpu_kv_cache_tokens": "66,499",
+              "available_kv_cache_gib": "6.63",
+              "cudagraph_memory_gib": null,
+              "num_speculative_tokens": null,
+              "cudagraph_mode": "none",
+              "max_concurrency_for_tokens": "8,192"
+            },
+            "container_filesystem_changes_vs_image": {
+              "total_paths_changed": 36,
+              "under_opt": [],
+              "under_usr_lib_or_bin": []
+            },
+            "container_id": "45c9b91263fc",
+            "launched": true,
+            "launch_error": null,
+            "server_log_sha256": "6dcab341075cabe90b78fbeb8b48df57bba04c862de7db63ed34db046b5a370d",
+            "server_log_file": "receipts/production-image-apc-hydrated-server.log",
+            "smoke": {
+              "schema": "qwen38-image-smoke/1",
+              "label": "hydrated",
+              "seed": 20260816,
+              "url": "http://127.0.0.1:8137/v1",
+              "served_model_ids": [
+                "qwen38"
+              ],
+              "requested_model": "qwen38",
+              "text": {
+                "expected": "7309172433",
+                "answer": "7309172433",
+                "extracted": "7309172433",
+                "exact": true,
+                "prompt_tokens": 64,
+                "completion_tokens": 11,
+                "wall_sec": 0.769
+              },
+              "image": {
+                "expected": "740562",
+                "answer": "740562",
+                "extracted": "740562",
+                "exact": true,
+                "fixture_sha256": "dab6d2b56f82b813f7cf95fb615f64f8b9e1460d18f7de2f8f464ea0b69ae214",
+                "fixture_bytes": 1286,
+                "prompt_tokens": 120,
+                "completion_tokens": 7,
+                "wall_sec": 0.466
+              },
+              "passed": true
+            },
+            "text_and_image_pass": true
+          },
+          {
+            "recipe": "k5k6",
+            "ran": true,
+            "image_tag": "localhost/vllm:gg-r34-patched-apc",
+            "image_manifest_digest": "sha256:16a936b877b90fc080181e842f47dbafc5cb8e62688799596836e34ba0b79218",
+            "run_command": "podman run --rm --name smoke-k5k6-256854 --detach --device nvidia.com/gpu=all --ipc host --security-opt label=disable --publish 127.0.0.1:8137:8000 --volume /mnt/vault/llm/huggingface/models--malaiwah--Qwen3.8-27B-EXL3-K5K6:/models/models--malaiwah--Qwen3.8-27B-EXL3-K5K6:ro --volume /home/mbelleau/qual5090/cache/jit:/cache/jit:rw --volume /home/mbelleau/qual5090/cache/exl3-online:/cache/exl3-online:rw -e HF_HUB_OFFLINE=1 -e VLLM_EXL3_ONLINE_TRELLIS_BITS=6 -e VLLM_EXL3_ONLINE_CACHE_DIR=/cache/exl3-online -e VLLM_EXL3_GRAPH_DECODE=1 -e VLLM_EXL3_PREFILL_RECONSTRUCT_M=128 --entrypoint /opt/venv/bin/vllm localhost/vllm:gg-r34-patched-apc serve /models/models--malaiwah--Qwen3.8-27B-EXL3-K5K6/snapshots/d325e5780dde8a90fe26b45011a47b5517d9cdf4 --served-model-name qwen38 --quantization exl3 --quantization-config \\{\\\"linear\\\":\\{\\\"weight\\\":\\\"mxfp8\\\"\\}\\,\\\"ignore\\\":\\[\\\"re:.\\*visual\\\\\\\\..\\*\\\"\\,\\\"re:.\\*in_proj_a\\$\\\"\\,\\\"re:.\\*in_proj_b\\$\\\"\\,\\\"re:.\\*in_proj_ba\\$\\\"\\,\\\"re:.\\*mtp\\\\\\\\..\\*\\\"\\,\\\"lm_head\\\"\\]\\} --compilation-config \\{\\\"cudagraph_mode\\\":\\\"FULL_DECODE_ONLY\\\"\\} --speculative-config \\{\\\"method\\\":\\\"mtp\\\"\\,\\\"num_speculative_tokens\\\":3\\} --mm-processor-kwargs \\{\\\"truncation\\\":false\\} --reasoning-parser qwen3 --enable-auto-tool-choice --tool-call-parser qwen3_coder --max-model-len 8192 --gpu-memory-utilization 0.85 --max-num-seqs 8 --enable-prefix-caching --mamba-cache-mode align --host 0.0.0.0 --port 8000",
+            "model_path_in_container": "/models/models--malaiwah--Qwen3.8-27B-EXL3-K5K6/snapshots/d325e5780dde8a90fe26b45011a47b5517d9cdf4",
+            "weights_host_path": "/mnt/vault/llm/huggingface/models--malaiwah--Qwen3.8-27B-EXL3-K5K6",
+            "model_revision": "d325e5780dde8a90fe26b45011a47b5517d9cdf4",
+            "model_revision_resolved_from": "newest snapshot directory (cache has no refs/main)",
+            "weights_mount": "read-only",
+            "cache_mount": "warm host caches /home/mbelleau/qual5090/cache/jit -> /cache/jit and /home/mbelleau/qual5090/cache/exl3-online -> /cache/exl3-online, the only writable mounts added",
+            "container_rootfs_read_only": false,
+            "source_bind_mounts": [],
+            "published_port": "127.0.0.1:<port>:8000, loopback only; the listening socket is inside the container network namespace and is not reachable off-host",
+            "host_root_privilege": false,
+            "rootless_podman": true,
+            "started_healthy": true,
+            "startup_seconds": 220,
+            "smoke_client_exit": 0,
+            "engine_banner": {
+              "enable_prefix_caching": "True",
+              "max_model_len": "8192",
+              "kv_cache_dtype_requested": null,
+              "kv_cache_dtype_resolved": null,
+              "gpu_kv_cache_tokens": "17,014",
+              "available_kv_cache_gib": "2.85",
+              "cudagraph_memory_gib": "0.11",
+              "num_speculative_tokens": "3",
+              "cudagraph_mode": "FULL_DECODE_ONLY",
+              "max_concurrency_for_tokens": "8,192"
+            },
+            "container_filesystem_changes_vs_image": {
+              "total_paths_changed": 36,
+              "under_opt": [],
+              "under_usr_lib_or_bin": []
+            },
+            "container_id": "990d5d1675a7",
+            "launched": true,
+            "launch_error": null,
+            "server_log_sha256": "f9a171ef8db6d4182260e5b46d3d9c53d5b4be19d98ffd2d199be1962b66723d",
+            "server_log_file": "receipts/production-image-apc-k5k6-server.log",
+            "smoke": {
+              "schema": "qwen38-image-smoke/1",
+              "label": "k5k6",
+              "seed": 20260816,
+              "url": "http://127.0.0.1:8137/v1",
+              "served_model_ids": [
+                "qwen38"
+              ],
+              "requested_model": "qwen38",
+              "text": {
+                "expected": "7309172433",
+                "answer": "7309172433",
+                "extracted": "7309172433",
+                "exact": true,
+                "prompt_tokens": 64,
+                "completion_tokens": 11,
+                "wall_sec": 0.366
+              },
+              "image": {
+                "expected": "740562",
+                "answer": "740562",
+                "extracted": "740562",
+                "exact": true,
+                "fixture_sha256": "dab6d2b56f82b813f7cf95fb615f64f8b9e1460d18f7de2f8f464ea0b69ae214",
+                "fixture_bytes": 1286,
+                "prompt_tokens": 120,
+                "completion_tokens": 7,
+                "wall_sec": 0.198
+              },
+              "passed": true
+            },
+            "text_and_image_pass": true
+          },
+          {
+            "recipe": "k4",
+            "ran": true,
+            "image_tag": "localhost/vllm:gg-r34-patched-apc",
+            "image_manifest_digest": "sha256:16a936b877b90fc080181e842f47dbafc5cb8e62688799596836e34ba0b79218",
+            "run_command": "podman run --rm --name smoke-k4-256854 --detach --device nvidia.com/gpu=all --ipc host --security-opt label=disable --publish 127.0.0.1:8137:8000 --volume /mnt/vault/llm/huggingface/models--malaiwah--Qwen3.8-27B-K4:/models/models--malaiwah--Qwen3.8-27B-K4:ro --volume /home/mbelleau/qual5090/cache/jit:/cache/jit:rw --volume /home/mbelleau/qual5090/cache/exl3-online:/cache/exl3-online:rw -e HF_HUB_OFFLINE=1 -e VLLM_EXL3_ONLINE_TRELLIS_BITS=6 -e VLLM_EXL3_ONLINE_CACHE_DIR=/cache/exl3-online -e VLLM_EXL3_ONLINE_CACHE_MODE=readwrite --entrypoint /opt/venv/bin/vllm localhost/vllm:gg-r34-patched-apc serve /models/models--malaiwah--Qwen3.8-27B-K4/snapshots/49f6d5ab5632b443458c774ffc0caeb19e950d3b --served-model-name qwen38-k4 --quantization exl3 --enforce-eager --quantization-config \\{\\\"linear\\\":\\{\\\"weight\\\":\\\"mxfp8\\\"\\}\\,\\\"ignore\\\":\\[\\\"re:.\\*visual\\\\\\\\..\\*\\\"\\,\\\"re:.\\*in_proj_a\\$\\\"\\,\\\"re:.\\*in_proj_b\\$\\\"\\,\\\"re:.\\*mtp\\\\\\\\..\\*\\\"\\,\\\"lm_head\\\"\\]\\} --max-model-len 8192 --gpu-memory-utilization 0.85 --max-num-seqs 4 --enable-prefix-caching --mamba-cache-mode align --host 0.0.0.0 --port 8000",
+            "model_path_in_container": "/models/models--malaiwah--Qwen3.8-27B-K4/snapshots/49f6d5ab5632b443458c774ffc0caeb19e950d3b",
+            "weights_host_path": "/mnt/vault/llm/huggingface/models--malaiwah--Qwen3.8-27B-K4",
+            "model_revision": "49f6d5ab5632b443458c774ffc0caeb19e950d3b",
+            "model_revision_resolved_from": "newest snapshot directory (cache has no refs/main)",
+            "weights_mount": "read-only",
+            "cache_mount": "warm host caches /home/mbelleau/qual5090/cache/jit -> /cache/jit and /home/mbelleau/qual5090/cache/exl3-online -> /cache/exl3-online, the only writable mounts added",
+            "container_rootfs_read_only": false,
+            "source_bind_mounts": [],
+            "published_port": "127.0.0.1:<port>:8000, loopback only; the listening socket is inside the container network namespace and is not reachable off-host",
+            "host_root_privilege": false,
+            "rootless_podman": true,
+            "started_healthy": true,
+            "startup_seconds": 158,
+            "smoke_client_exit": 0,
+            "engine_banner": {
+              "enable_prefix_caching": "True",
+              "max_model_len": "8192",
+              "kv_cache_dtype_requested": null,
+              "kv_cache_dtype_resolved": null,
+              "gpu_kv_cache_tokens": "59,753",
+              "available_kv_cache_gib": "5.97",
+              "cudagraph_memory_gib": null,
+              "num_speculative_tokens": null,
+              "cudagraph_mode": "none",
+              "max_concurrency_for_tokens": "8,192"
+            },
+            "container_filesystem_changes_vs_image": {
+              "total_paths_changed": 36,
+              "under_opt": [],
+              "under_usr_lib_or_bin": []
+            },
+            "container_id": "2962041817bb",
+            "launched": true,
+            "launch_error": null,
+            "server_log_sha256": "b7abfb07db8f06cb048b93733e4c94cbd35b4051c6435f17f2dea854ffdb7101",
+            "server_log_file": "receipts/production-image-apc-k4-server.log",
+            "smoke": {
+              "schema": "qwen38-image-smoke/1",
+              "label": "k4",
+              "seed": 20260816,
+              "url": "http://127.0.0.1:8137/v1",
+              "served_model_ids": [
+                "qwen38-k4"
+              ],
+              "requested_model": "qwen38-k4",
+              "text": {
+                "expected": "7309172433",
+                "answer": "7309172433",
+                "extracted": "7309172433",
+                "exact": true,
+                "prompt_tokens": 64,
+                "completion_tokens": 11,
+                "wall_sec": 0.589
+              },
+              "image": {
+                "expected": "740562",
+                "answer": "740562",
+                "extracted": "740562",
+                "exact": true,
+                "fixture_sha256": "dab6d2b56f82b813f7cf95fb615f64f8b9e1460d18f7de2f8f464ea0b69ae214",
+                "fixture_bytes": 1286,
+                "prompt_tokens": 120,
+                "completion_tokens": 7,
+                "wall_sec": 0.418
+              },
+              "passed": true
+            },
+            "text_and_image_pass": true
+          }
+        ]
+      },
+      "acceptance": {
+        "modules_in_image_match_published_map": true,
+        "layer_adds_exactly_its_declared_files": true,
+        "import_machinery_resolves_to_patched_modules": true,
+        "no_stale_bytecode_for_patched_modules": true,
+        "only_the_imported_tree_is_patched": true,
+        "duplicate_source_tree_unreachable_from_working_dir": true,
+        "vllm_is_not_an_editable_install": true,
+        "sbom_generated": true,
+        "no_runtime_source_bind_mounts": true,
+        "no_startup_file_copies": true,
+        "no_runtime_package_installs": true,
+        "weights_read_only": true,
+        "service_loopback_or_api_key": true,
+        "no_host_root_privilege": true,
+        "image_digest_and_toolchain_recorded": true
+      },
+      "not_claimed": [
+        "this is the promoted release unit as of 2026-08-16. It is qualified with prefix caching OFF by inheritance from receipts/qualification-5090-context.json, because the module it adds is unreachable in that mode, and with prefix caching ON only at the 8,192-token recipes, on this receipt's own smoke. The top-level block of this receipt is its parent, the three-module image, kept as the build record and as the digest receipts/qualification-5090-context.json measured; it is superseded as the recommended runtime, not invalidated as evidence",
+        "the in-image labels io.malaiwah.image.qualified=\"false\" and io.malaiwah.image.role are stale as of the promotion and were deliberately not corrected: relabelling is a layer and a layer moves the manifest digest away from the bytes that were measured. This receipt, not the label, is authoritative for qualification state",
+        "prefix caching at the native 262,144 window is NOT qualified on this card and is not enabled in the context edition's recipe: it refuses to start at utilisation 0.955, deadlocks at 0.9555 and livelocks at 0.9585 (receipts/qualification-5090-apc.json). The concurrent-serving variant the cards print is not qualified at any sequence count either",
+        "the reuse win (11.6x and 29.3x warm TTFT) is receipts/apc-poison-repro.json arm E's, measured on this digest but on a document-reuse probe rather than on these serving gates",
+        "LMCache is unmeasured by this project and is the outstanding suspect in the one user report of prefix-cache corruption we have. Nothing here says it is safe"
+      ]
+    },
+    {
+      "variant": "convert",
+      "declaration": {
+        "role": "conversion and quantization path only; not a serving runtime",
+        "qualified": false,
+        "qualification_note": "the serving qualification and receipts/production-image.json are pinned to localhost/vllm:gg-r34-patched, whose digest this tag does not change. Adding a layer to the serving image would have invalidated that pin to fix a build-tool import, which is the wrong trade.",
+        "adds_no_python_modules_under_vllm": true,
+        "added_package": {
+          "name": "marisa_trie",
+          "version": "1.4.1",
+          "wheel": "marisa_trie-1.4.1-cp312-cp312-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl",
+          "wheel_sha256": "4d51bdd22a7238ef4d681effd7c224a267ddae054b64b1cec9ce95bbcd2b6a88",
+          "installed_with": "pip install --no-deps --no-cache-dir on a locally fetched, digest-verified wheel, so no dependency of the inventoried venv can be resolved or upgraded",
+          "why": "imported by exllamav3/loader/safetensors.py, which both conversion entry points reach: compile_model and util/add_quant_config.py",
+          "cost_of_the_gap": "one 2h05 ladder pass died at compile_model with all 409 modules already quantized, and one conversion died at add_quant_config with the checkpoint already written; the import is at the end of a long job, so the gap is expensive every time",
+          "never_imported_at_serve_time": true
+        },
+        "supersedes_workaround": "the local shim at /work/kld6/run_shimmed.py; with this tag no agent needs to shim around the missing import"
+      },
+      "base_image": {
+        "reference": "docker.io/voipmonitor/vllm@sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b",
+        "tag": "docker.io/voipmonitor/vllm:gilded-gnosis-v20-vllm4d006a4-b12xcd3ce19-fi1ac6942-cu132-20260810-r34",
+        "config_id": "0ff4b1de4e950cf48dd0405562908a2f81597f4524698c0291ac2c40514ae17e",
+        "present_locally_before_build": true,
+        "pull_during_build": false
+      },
+      "parent_image": {
+        "reference": "localhost/vllm:gg-r34-patched",
+        "description": "the release image localhost/vllm:gg-r34-patched",
+        "config_id": "3cd11158a540ff4c23cece491774fecd3e61f6e4784771273e72bd65e44b773c",
+        "manifest_digest": "sha256:6eca4c693f01b6f4e112c04eacd30673b7cfbba4150e6fe2ea3ba1bbfde14c27"
+      },
+      "image": {
+        "tag": "localhost/vllm:gg-r34-convert",
+        "config_id": "sha256:4b6581ede1813de35e379797f36ad53ee47415273179011edbb7633fa4e0c62c",
+        "manifest_digest": "sha256:24d498c29112004fa779232fe94a64365ac0423ae8860353c1aec4f4b5b92867",
+        "created_utc": "2026-08-16 04:30:25.414400202 +0000 UTC",
+        "size_bytes": 25198303766,
+        "repo_digests": [
+          "localhost/vllm@sha256:24d498c29112004fa779232fe94a64365ac0423ae8860353c1aec4f4b5b92867"
+        ],
+        "pushed_to_registry": false
+      },
+      "build": {
+        "started_utc": "2026-08-16T04:28:13Z",
+        "finished_utc": "2026-08-16T04:30:25Z",
+        "host": "aiboss",
+        "podman_version": "4.9.3",
+        "command": "podman build --pull=never -f /home/mbelleau/prodimage/receipts/.production-image-stage/convert/context/Dockerfile -t localhost/vllm:gg-r34-convert --build-arg PARENT=localhost/vllm:gg-r34-patched /home/mbelleau/prodimage/receipts/.production-image-stage/convert/context",
+        "context": "minimal: Dockerfile plus only the module(s) this layer copies",
+        "context_files": [
+          "Dockerfile"
+        ],
+        "dockerfile_sha256": "7dcc9dfe0a3b41566bd1d5f99c6fa1aa2cd7532a6dbab011e939bbe658019ab9",
+        "build_script_sha256": "b1f8243ec0c2a07ee9af1c2df063ab6d68df23af5506af546993978dec98a8d8",
+        "smoke_client_sha256": "1b2901e7b63e8f341bdbef5ac35d2d4864bacad2a689b572382e24d7db39cbcc",
+        "build_log_sha256": "82212d3e589ab1c0467abba157ea8b8c26ba436d4dbe6955a1ecf4731182050d"
+      },
+      "source_map": [
+        {
+          "source": "tools/vllm-exl3-prefill-dispatch.py",
+          "dest": "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py",
+          "sha256": "2df9d0799fd323798cead1edb773cab556c94798eec263ee03ded35408c6e4ee",
+          "bytes": 227678
+        },
+        {
+          "source": "tools/vllm-qwen3_5-embed-quant-config.py",
+          "dest": "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5.py",
+          "sha256": "04d2bd587b37142f4f55a8d00b9f8c907309490168cb7fcdfde450531df2c9e7",
+          "bytes": 24458
+        },
+        {
+          "source": "tools/vllm-qwen3_5_mtp-embed-quant-config.py",
+          "dest": "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5_mtp.py",
+          "sha256": "0090dc131f0eaf439b24d50baf4def9f10b052864c76e695053d64f66b274bab",
+          "bytes": 11456
+        }
+      ],
+      "added_by_this_layer": [],
+      "patch_modules": [
+        {
+          "source": "tools/vllm-exl3-prefill-dispatch.py",
+          "dest": "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py",
+          "published_sha256": "2df9d0799fd323798cead1edb773cab556c94798eec263ee03ded35408c6e4ee",
+          "in_image_sha256": "2df9d0799fd323798cead1edb773cab556c94798eec263ee03ded35408c6e4ee",
+          "base_image_sha256": "42c0e9150a065c48e3780eebc8b3c89ea410d82610e2c14bc97546dee6866214",
+          "parent_image_sha256": "2df9d0799fd323798cead1edb773cab556c94798eec263ee03ded35408c6e4ee",
+          "matches_published_map": true,
+          "differs_from_base": true,
+          "added_by_this_layer": false
+        },
+        {
+          "source": "tools/vllm-qwen3_5-embed-quant-config.py",
+          "dest": "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5.py",
+          "published_sha256": "04d2bd587b37142f4f55a8d00b9f8c907309490168cb7fcdfde450531df2c9e7",
+          "in_image_sha256": "04d2bd587b37142f4f55a8d00b9f8c907309490168cb7fcdfde450531df2c9e7",
+          "base_image_sha256": "5189ef2192bccd055692527b3585915e3be911f6794635c51dabf52ded2e8252",
+          "parent_image_sha256": "04d2bd587b37142f4f55a8d00b9f8c907309490168cb7fcdfde450531df2c9e7",
+          "matches_published_map": true,
+          "differs_from_base": true,
+          "added_by_this_layer": false
+        },
+        {
+          "source": "tools/vllm-qwen3_5_mtp-embed-quant-config.py",
+          "dest": "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5_mtp.py",
+          "published_sha256": "0090dc131f0eaf439b24d50baf4def9f10b052864c76e695053d64f66b274bab",
+          "in_image_sha256": "0090dc131f0eaf439b24d50baf4def9f10b052864c76e695053d64f66b274bab",
+          "base_image_sha256": "165306afb3bccfd7d4707ec925aa7affca119a003c6c40fb22eba13611eefa92",
+          "parent_image_sha256": "0090dc131f0eaf439b24d50baf4def9f10b052864c76e695053d64f66b274bab",
+          "matches_published_map": true,
+          "differs_from_base": true,
+          "added_by_this_layer": false
+        }
+      ],
+      "immutability": {
+        "parent_image": "localhost/vllm:gg-r34-patched",
+        "python_files_changed_vs_parent": [],
+        "python_files_changed_vs_parent_are_exactly_this_layers_adds": true,
+        "python_files_changed_vs_base": [
+          "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py",
+          "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5.py",
+          "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5_mtp.py"
+        ],
+        "python_files_changed_are_exactly_the_patch_set": true,
+        "image_config_entrypoint_cmd_user_workdir_unchanged": true,
+        "image_config_inherited": "[\"/opt/nvidia/nvidia_entrypoint.sh\"]|[\"/usr/local/bin/run-kimi26-vllm\"]||/",
+        "image_config_working_dir": "/",
+        "image_config_working_dir_is_the_duplicate_source_tree": false,
+        "env_vars_added_vs_base_image": [],
+        "added_history_entries_vs_base": [
+          "/bin/sh -c #(nop) LABEL org.opencontainers.image.title=\"Gilded Gnosis vLLM r34 + native-context patches + conversion dependencies\"       org.opencontainers.image.description=\"Conversion-side image: release runtime plus marisa_trie 1.4.1 for exllamav3 compile_model and util/add_quant_config.py. Not the qualified serving digest.\"       org.opencontainers.image.base.digest=\"sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b\"       io.malaiwah.image.qualified=\"false\"       io.malaiwah.image.role=\"conversion and quantization only; serving qualification is pinned to localhost/vllm:gg-r34-patched and is unaffected by this tag\"       io.malaiwah.added.marisa_trie.version=\"1.4.1\"       io.malaiwah.added.marisa_trie.wheel_sha256=\"4d51bdd22a7238ef4d681effd7c224a267ddae054b64b1cec9ce95bbcd2b6a88\"       io.malaiwah.added.marisa_trie.reason=\"imported by exllamav3/loader/safetensors.py, reached by compile_model and util/add_quant_config.py\"",
+          "/bin/sh -c set -eu;     WHEEL=marisa_trie-1.4.1-cp312-cp312-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl;     URL=https://files.pythonhosted.org/packages/bb/95/cd6e73d0857608f2946f3bc5ccac86488073b96fb37bc1b45b0184268bed/$WHEEL;     cd /tmp;     /opt/venv/bin/python -c 'import sys,urllib.request;urllib.request.urlretrieve(sys.argv[1],sys.argv[2])'       \"$URL\" \"/tmp/$WHEEL\";     printf '%s  %s\\n'       4d51bdd22a7238ef4d681effd7c224a267ddae054b64b1cec9ce95bbcd2b6a88 \"/tmp/$WHEEL\"       | sha256sum -c -;     /opt/venv/bin/pip install --no-deps --no-cache-dir \"/tmp/$WHEEL\";     rm -f \"/tmp/$WHEEL\";     /opt/venv/bin/python -c 'import marisa_trie, importlib.metadata as m; t = marisa_trie.Trie([\"alpha\", \"beta\"]); assert \"alpha\" in t; print(\"marisa_trie\", m.version(\"marisa-trie\"), \"import and Trie() ok\")';     PYTHONPATH=/opt/exllamav3-python /opt/venv/bin/python -c 'import sys;exec(\"try:\\n import exllamav3.loader.safetensors\\n print(\\\"probe: exllamav3.loader.safetensors imports\\\")\\nexcept Exception as e:\\n print(f\\\"probe: importing the exllamav3 package root fails with {type(e).__name__}: {e}. This layer guarantees marisa_trie only; that is a separate pre-existing gap in the pinned venv, unrelated to the missing import this image fixes.\\\")\")'",
+          "/bin/sh -c #(nop) LABEL org.opencontainers.image.title=\"Gilded Gnosis vLLM r34 + Qwen3.8-27B EXL3 native-context patches\"       org.opencontainers.image.description=\"r34 with the three content-pinned EXL3/Qwen3.5 modules folded in; no runtime source mounts\"       org.opencontainers.image.base.name=\"docker.io/voipmonitor/vllm:gilded-gnosis-v20-vllm4d006a4-b12xcd3ce19-fi1ac6942-cu132-20260810-r34\"       org.opencontainers.image.base.digest=\"sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b\"       org.opencontainers.image.source=\"https://github.com/malaiwah/qwen38-27b-exl3\"       io.malaiwah.patch.exl3_py.sha256=\"2df9d0799fd323798cead1edb773cab556c94798eec263ee03ded35408c6e4ee\"       io.malaiwah.patch.qwen3_5_py.sha256=\"04d2bd587b37142f4f55a8d00b9f8c907309490168cb7fcdfde450531df2c9e7\"       io.malaiwah.patch.qwen3_5_mtp_py.sha256=\"0090dc131f0eaf439b24d50baf4def9f10b052864c76e695053d64f66b274bab\"       io.malaiwah.patch.upstream_prs=\"local-inference-lab/vllm#312,#314,#316,#318,#319\"",
+          "/bin/sh -c set -eu;     V=/opt/venv/lib/python3.12/site-packages/vllm;     printf '%s  %s\\n'       2df9d0799fd323798cead1edb773cab556c94798eec263ee03ded35408c6e4ee       \"$V/model_executor/layers/quantization/exl3.py\"       04d2bd587b37142f4f55a8d00b9f8c907309490168cb7fcdfde450531df2c9e7       \"$V/model_executor/models/qwen3_5.py\"       0090dc131f0eaf439b24d50baf4def9f10b052864c76e695053d64f66b274bab       \"$V/model_executor/models/qwen3_5_mtp.py\"       | sha256sum -c -;     chmod 0644       \"$V/model_executor/layers/quantization/exl3.py\"       \"$V/model_executor/models/qwen3_5.py\"       \"$V/model_executor/models/qwen3_5_mtp.py\";     rm -f \"$V/model_executor/layers/quantization/__pycache__/exl3.\"*.pyc           \"$V/model_executor/models/__pycache__/qwen3_5.\"*.pyc           \"$V/model_executor/models/__pycache__/qwen3_5_mtp.\"*.pyc;     /opt/venv/bin/python -c 'import ast,sys;[ast.parse(open(p,encoding=\"utf-8\").read(),p) for p in sys.argv[1:]]'       \"$V/model_executor/layers/quantization/exl3.py\"       \"$V/model_executor/models/qwen3_5.py\"       \"$V/model_executor/models/qwen3_5_mtp.py\"",
+          "/bin/sh -c #(nop) COPY file:2e61e3b32d33d565c5ea9a442e13e8a598c483403c73495fce7c6244af3410a3 in /opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5_mtp.py ",
+          "/bin/sh -c #(nop) COPY file:5448d27c8f22aec874239c88229e0eeb96a4976890f70de8bf1745c56d921c6d in /opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5.py ",
+          "/bin/sh -c #(nop) COPY file:cf78957646d4c772b1be9f89a44f60f6f57fcad9a69e49c44e703880a599d224 in /opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py "
+        ],
+        "package_manager_invocations_in_added_layers": 1,
+        "runtime_package_installs": true,
+        "source_bind_mounts_required_at_runtime": false,
+        "startup_file_copies_required": false
+      },
+      "import_resolution": {
+        "measured_in": "localhost/vllm:gg-r34-convert",
+        "measured": {
+          "probe_invocation": "podman run --entrypoint /opt/venv/bin/python IMAGE - (script on stdin, no -w), so sys.path[0] is derived from the working directory exactly as `python -m` or `python -c` would be",
+          "cwd": "/",
+          "sys_path_0": "",
+          "sys_path": [
+            "",
+            "/opt/venv/lib/python3.12/site-packages/nvidia_cutlass_dsl/dsl_packages",
+            "/opt/venv/lib/python3.12/site-packages/nvidia_cutlass_dsl/dsl_packages",
+            "/usr/lib/python312.zip",
+            "/usr/lib/python3.12",
+            "/usr/lib/python3.12/lib-dynload",
+            "/opt/venv/lib/python3.12/site-packages"
+          ],
+          "site_packages": "/opt/venv/lib/python3.12/site-packages",
+          "path_configuration_files": {
+            "_pynvml_redirector.pth": [
+              "# SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.",
+              "# SPDX-License-Identifier: BSD-3-Clause",
+              "import _pynvml_redirector"
+            ],
+            "distutils-precedence.pth": [
+              "import os; var = 'SETUPTOOLS_USE_DISTUTILS'; enabled = os.environ.get(var, 'local') == 'local'; enabled and __import__('_distutils_hack').add_shim();"
+            ],
+            "nvidia_cutlass_dsl_packages.pth": [
+              "import sys, os, nvidia_cutlass_dsl; sys.path.insert(0, os.path.join(nvidia_cutlass_dsl.__path__[0], 'dsl_packages'))"
+            ]
+          },
+          "editable_install_pth_present": false,
+          "vllm_dist_info_direct_url": {
+            "dir_info": {},
+            "url": "file:///opt/vllm"
+          },
+          "vllm_installed_editable": false,
+          "second_source_tree": "/opt/vllm",
+          "second_source_tree_on_sys_path": false,
+          "second_source_tree_reachable_from_cwd": false,
+          "modules": {
+            "vllm.model_executor.layers.quantization.exl3": {
+              "resolved_origin": "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py",
+              "resolved_origin_sha256": "2df9d0799fd323798cead1edb773cab556c94798eec263ee03ded35408c6e4ee",
+              "cached_bytecode_path": "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/__pycache__/exl3.cpython-312.pyc",
+              "stale_bytecode_present": false,
+              "unimported_duplicate_path": "/opt/vllm/vllm/model_executor/layers/quantization/exl3.py",
+              "unimported_duplicate_sha256": "42c0e9150a065c48e3780eebc8b3c89ea410d82610e2c14bc97546dee6866214"
+            },
+            "vllm.model_executor.models.qwen3_5": {
+              "resolved_origin": "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5.py",
+              "resolved_origin_sha256": "04d2bd587b37142f4f55a8d00b9f8c907309490168cb7fcdfde450531df2c9e7",
+              "cached_bytecode_path": "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/__pycache__/qwen3_5.cpython-312.pyc",
+              "stale_bytecode_present": false,
+              "unimported_duplicate_path": "/opt/vllm/vllm/model_executor/models/qwen3_5.py",
+              "unimported_duplicate_sha256": "5189ef2192bccd055692527b3585915e3be911f6794635c51dabf52ded2e8252"
+            },
+            "vllm.model_executor.models.qwen3_5_mtp": {
+              "resolved_origin": "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5_mtp.py",
+              "resolved_origin_sha256": "0090dc131f0eaf439b24d50baf4def9f10b052864c76e695053d64f66b274bab",
+              "cached_bytecode_path": "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/__pycache__/qwen3_5_mtp.cpython-312.pyc",
+              "stale_bytecode_present": false,
+              "unimported_duplicate_path": "/opt/vllm/vllm/model_executor/models/qwen3_5_mtp.py",
+              "unimported_duplicate_sha256": "165306afb3bccfd7d4707ec925aa7affca119a003c6c40fb22eba13611eefa92"
+            }
+          }
+        },
+        "other_copies_of_these_filenames_on_the_filesystem": [
+          "/opt/exllamav3-python/exllamav3/architecture/qwen3_5.py",
+          "/opt/exllamav3-python/exllamav3/architecture/qwen3_5_mtp.py",
+          "/opt/exllamav3-python/exllamav3/modules/arch_specific/qwen3_5_mtp.py",
+          "/opt/exllamav3-python/exllamav3/modules/quant/exl3.py",
+          "/opt/vllm/vllm/model_executor/layers/quantization/exl3.py",
+          "/opt/vllm/vllm/model_executor/models/qwen3_5.py",
+          "/opt/vllm/vllm/model_executor/models/qwen3_5_mtp.py",
+          "/opt/vllm/vllm/transformers_utils/configs/qwen3_5.py"
+        ]
+      },
+      "sbom": {
+        "source": "pip-freeze+dpkg (syft not installed on the build host)",
+        "tool_version": "none",
+        "captured_from": "localhost/vllm:gg-r34-convert",
+        "python_packages": 225,
+        "python_packages_file": "receipts/production-image-convert-sbom-pip.txt",
+        "python_packages_sha256": "6be189eb6e4bde5606474247ce78a0cab08e27f223d062e5dc271fe39902ce6d",
+        "debian_packages": 318,
+        "debian_packages_file": "receipts/production-image-convert-sbom-dpkg.txt",
+        "debian_packages_sha256": "b761466750e2a0537195a8cace9fc93d9f8875e3326549fec5c64858d78042dc",
+        "package_lists_identical_to_release_image": false
+      },
+      "smoke": {
+        "client": "docker/smoke_client.py, one text and one image request per recipe, exact match; image fixture drawn by tools/vision_eval.draw_digits",
         "recipes_attempted": [],
         "recipes_run": [],
         "recipes_skipped": {},
@@ -596,18 +1430,76 @@
         "sbom_generated": true,
         "no_runtime_source_bind_mounts": null,
         "no_startup_file_copies": null,
-        "no_runtime_package_installs": true,
+        "no_runtime_package_installs": false,
         "weights_read_only": null,
         "service_loopback_or_api_key": null,
         "no_host_root_privilege": null,
         "image_digest_and_toolchain_recorded": true
       },
       "not_claimed": [
-        "this is not the hardware-qualified digest; the release unit at the top level is",
-        "no published measurement depends on this image's extra module",
-        "using --enable-prefix-caching requires this image and a qualification run of its own; that run has not been done",
+        "this is not the hardware-qualified digest; the promoted release unit recorded in release_unit is",
+        "no published measurement depends on what this image adds",
+        "this tag is for conversion and quantization only and has not been served or benchmarked; it exists so the missing import is fixed in an image rather than shimmed per job",
+        "it deliberately does not change the serving digest, so no serving receipt or qualification needs re-pinning because of it",
+        "no_runtime_package_installs is false here BY DESIGN and is not a defect: this variant's whole purpose is one build-time pip install, of a locally fetched wheel whose sha256 is verified before install and with --no-deps so no inventoried package can be resolved or upgraded. Nothing is installed at container start.",
         "no recipe served a request, so every runtime gate (mounts, writes, endpoint) is recorded as null rather than passed"
       ]
     }
-  ]
+  ],
+  "promotion_status": {
+    "state": "PROMOTED, with prefix caching scoped",
+    "promoted_utc_date": "2026-08-16",
+    "release_unit_before": {
+      "tag": "localhost/vllm:gg-r34-patched",
+      "manifest_digest": "sha256:6eca4c693f01b6f4e112c04eacd30673b7cfbba4150e6fe2ea3ba1bbfde14c27",
+      "modules": 3,
+      "qualified_by": "receipts/qualification-5090-context.json, seven gates with enable_prefix_caching=False"
+    },
+    "release_unit_after": {
+      "tag": "localhost/vllm:gg-r34-patched-apc",
+      "manifest_digest": "sha256:16a936b877b90fc080181e842f47dbafc5cb8e62688799596836e34ba0b79218",
+      "modules": 4,
+      "qualified_by": "with prefix caching off, receipts/qualification-5090-context.json by inheritance -- the added module's changed function is unreachable unless mamba_cache_mode is align. With prefix caching on, receipts/qualification-5090-apc.json plus this receipt's own four-recipe smoke on this digest.",
+      "prefix_caching_scope": "enabled in the k4, k5k6 and hydrated recipes; NOT enabled in the context edition's native 262,144 recipe, which refuses to start at utilisation 0.955, deadlocks at 0.9555 and livelocks at 0.9585. Align mode rounds a request to whole 1,600-token blocks and adds MTP draft slots and a decode block on top, and on a 32,607 MiB card that does not coexist with the 8,388,608-pixel ceiling gate 3 needs headroom for.",
+      "adds": "/opt/venv/lib/python3.12/site-packages/vllm/v1/core/sched/scheduler.py at b431c1066dfee3ed56bfa7e71cc8606f9afadc300f22d7fc542c43835d1b22bf (upstream vllm-project/vllm#51113)"
+    },
+    "why_promoted": "prefix caching is the largest untapped win for repeated long prompts on this model and it cannot be turned on safely without #51113: unpatched, a prefill chunk ending mid-block publishes a short state and later requests over a shared prefix consume it, returning wrong tokens with HTTP 200. Promotion is what makes enabling it possible at all; where it is actually enabled is a per-recipe question answered by measurement, and the answer came back three yes and one no.",
+    "not_rebuilt": "the promoted digest is byte-identical to the one built at 2026-08-16T03:16:01Z. No layer was added, no label edited, no tag re-pointed. Rebuilding would have moved the digest away from the bytes arms C and E of receipts/apc-poison-repro.json measured, which is the only reason this digest rather than a fresh one was promoted.",
+    "decision_record": {
+      "ruled_by": "Main, 2026-08-16",
+      "what_was_ruled": "promote the four-module superset exactly as it stands, and do not bake tools/vllm-qwen-gdn-spec-gates.py (upstream #51812) into it",
+      "reached_independently_first_by": "ImmutableImage and ApcPoisonRepro, who each declined the GDN coupling on the same evidential ground before the ruling",
+      "earlier_brief_superseded": "an earlier instruction to promote a five-module image was withdrawn: no arm measured a five-module digest, so such an image would have carried an in-image-unmeasured module and its qualification would have stood alone."
+    },
+    "evidence": {
+      "qualification": {
+        "receipt": "receipts/qualification-5090-apc.json",
+        "owner": "ShipPrefixCaching; authoritative for the nine gates, the KV capacity comparison and the promoted image's serving behaviour",
+        "what_it_adds": "the in-image, on-hardware serving evidence for this digest with prefix caching on: the original seven gates unchanged, plus a banner gate proving the engine honoured the flags and a KV capacity gate against the 265,122-token baseline"
+      },
+      "correctness_and_reuse": {
+        "receipt": "receipts/apc-poison-repro.json",
+        "receipt_file_sha256": "1baeb5aa5373257563c234179c3cb75fac6c77d968fa38080b3636fa1435a36e",
+        "receipt_internal_content_sha256": "d9c1703a844f41cd4d7821fd9336c8920ecbe8facb96c2c03624218cdd241cd7",
+        "supersedes_earlier_pin": "ed11552d4fcf1c1d317b865ac40d78ff2aaad4dcf07a9af7ad6773bcfdd3d8e3, re-pinned after its author added discussion, live-service restore evidence and per-arm digest provenance; the author states that was the final edit",
+        "owner": "ApcPoisonRepro; authoritative for the prefix-caching correctness and TTFT numbers, which are deliberately not restated here",
+        "which_image_each_arm_speaks_about": {
+          "arms_C_and_E": "statements about the four-module superset sha256:16a936b877b90fc080181e842f47dbafc5cb8e62688799596836e34ba0b79218 with no bind mounts, i.e. evidence about an image, and byte-identical to the digest promoted here",
+          "arm_D": "that same digest plus a read-only bind mount of the GDN module, i.e. evidence about the module and not about any image digest"
+        }
+      }
+    },
+    "candidate_modules_not_baked_into_any_image": [
+      {
+        "source": "tools/vllm-qwen-gdn-spec-gates.py",
+        "sha256": "7cd3f5fe763b621048af4817951a841d99c8b700d9a56ded27ccaca5a56ccbe0",
+        "dest": "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py",
+        "upstream": "vllm-project/vllm#51812",
+        "status": "final and drop-in: ApcPoisonRepro served 38/38 clean with it bind-mounted over the -apc image",
+        "deliberately_not_baked": "it is not coupled to prefix caching. At --max-num-seqs 1 there is no mixed batch, the only condition #51812 bites in, so that run shows the module is harmless rather than that it fixes anything. Baking it would put a module in the release unit whose benefit has never been demonstrated and whose risk surface has never been qualified, and it would move the digest away from the one arms C and E measured.",
+        "how_it_is_offered_instead": "a documented optional overlay for concurrent serving, mounted read-only over the promoted image, with its digest pinned here and on the four model cards. At one stream it is provably irrelevant; at concurrency it is unmeasured by this project and rests on upstream's own numbers.",
+        "reconsider_when": "a concurrent-serving profile is qualified at --max-num-seqs > 1, which would create the mixed batch #51812 acts on and give the module something to be measured against."
+      }
+    ]
+  }
 }

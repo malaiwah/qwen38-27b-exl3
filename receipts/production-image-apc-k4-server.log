@@ -1,0 +1,255 @@
+/opt/venv/lib/python3.12/site-packages/torch/cuda/__init__.py:63: FutureWarning: The pynvml package is deprecated. Please install nvidia-ml-py instead. If you did not install pynvml directly, please report this to the maintainers of the package that installed pynvml for you.
+  import pynvml  # type: ignore[import]
+(APIServer pid=1) INFO 08-16 05:52:35 [api_utils.py:345] 
+(APIServer pid=1) INFO 08-16 05:52:35 [api_utils.py:345]        █     █     █▄   ▄█
+(APIServer pid=1) INFO 08-16 05:52:35 [api_utils.py:345]  ▄▄ ▄█ █     █     █ ▀▄▀ █  version 0.11.2.dev280+gilded.gnosis.v20.vllm4d006a4.b12xcd3ce19.fi1ac6942.cu132.20260810.r34
+(APIServer pid=1) INFO 08-16 05:52:35 [api_utils.py:345]   █▄█▀ █     █     █     █  model   /models/models--malaiwah--Qwen3.8-27B-K4/snapshots/49f6d5ab5632b443458c774ffc0caeb19e950d3b
+(APIServer pid=1) INFO 08-16 05:52:35 [api_utils.py:345]    ▀▀  ▀▀▀▀▀ ▀▀▀▀▀ ▀     ▀
+(APIServer pid=1) INFO 08-16 05:52:35 [api_utils.py:345] 
+(APIServer pid=1) INFO 08-16 05:52:35 [api_utils.py:273] non-default args: {'model_tag': '/models/models--malaiwah--Qwen3.8-27B-K4/snapshots/49f6d5ab5632b443458c774ffc0caeb19e950d3b', 'host': '0.0.0.0', 'model': '/models/models--malaiwah--Qwen3.8-27B-K4/snapshots/49f6d5ab5632b443458c774ffc0caeb19e950d3b', 'max_model_len': 8192, 'quantization': 'exl3', 'quantization_config': QuantizationConfigArgs(linear=QuantSpec(weight=QuantKey(dtype=torch.float8_e4m3fn, scale=ScaleDesc(dtype=torch.uint8, static=False, group_shape=GroupShape(row=1, col=32)), scale2=None, symmetric=True), activation=None), moe=None, shared_experts=None, ignore=['re:.*visual\\..*', 're:.*in_proj_a$', 're:.*in_proj_b$', 're:.*mtp\\..*', 'lm_head']), 'enforce_eager': True, 'served_model_name': ['qwen38-k4'], 'gpu_memory_utilization': 0.85, 'enable_prefix_caching': True, 'mamba_cache_mode': 'align', 'max_num_seqs': 4}
+(APIServer pid=1) WARNING 08-16 05:52:35 [envs.py:2421] Unknown vLLM environment variable detected: VLLM_RTX6K_FUSED_ALLREDUCE_ADD
+(APIServer pid=1) WARNING 08-16 05:52:35 [envs.py:2421] Unknown vLLM environment variable detected: VLLM_RTX6K_FUSED_ALLREDUCE_ADD_END_BARRIER
+(APIServer pid=1) INFO 08-16 05:52:35 [model.py:622] Resolved architecture: Qwen3_5ForConditionalGeneration
+(APIServer pid=1) INFO 08-16 05:52:35 [model.py:1794] Using max model len 8192
+(APIServer pid=1) INFO 08-16 05:52:36 [config.py:583] Warning: Prefix caching in Mamba cache 'align' mode is currently enabled. Its support for Mamba layers is experimental. Please report any issues you may observe.
+(APIServer pid=1) INFO 08-16 05:52:36 [vllm.py:1162] Asynchronous scheduling is enabled.
+(APIServer pid=1) WARNING 08-16 05:52:36 [vllm.py:1216] Enforce eager set, disabling torch.compile and CUDAGraphs. This is equivalent to setting -cc.mode=none -cc.cudagraph_mode=none
+(APIServer pid=1) WARNING 08-16 05:52:36 [vllm.py:1245] Inductor compilation was disabled by user settings, optimizations settings that are only active during inductor compilation will be ignored.
+(APIServer pid=1) INFO 08-16 05:52:36 [kernel.py:299] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['vllm_c', 'native'], fused_add_rms_norm=['vllm_c', 'native'])
+(APIServer pid=1) INFO 08-16 05:52:36 [vllm.py:1424] Cudagraph is disabled under eager mode
+(APIServer pid=1) INFO 08-16 05:52:36 [compilation.py:329] Enabled custom fusions: norm_quant, act_quant
+(APIServer pid=1) [ERROR] `min_frames` is part of Qwen3VLVideoProcessorInitKwargs, but not documented. Make sure to add it to the docstring of the function in /opt/venv/lib/python3.12/site-packages/transformers/models/qwen3_vl/video_processing_qwen3_vl.py.
+(APIServer pid=1) [ERROR] `max_frames` is part of Qwen3VLVideoProcessorInitKwargs, but not documented. Make sure to add it to the docstring of the function in /opt/venv/lib/python3.12/site-packages/transformers/models/qwen3_vl/video_processing_qwen3_vl.py.
+(APIServer pid=1) [transformers] The `use_fast` parameter is deprecated and will be removed in a future version. Use `backend="torchvision"` instead of `use_fast=True`, or `backend="pil"` instead of `use_fast=False`.
+/opt/venv/lib/python3.12/site-packages/torch/cuda/__init__.py:63: FutureWarning: The pynvml package is deprecated. Please install nvidia-ml-py instead. If you did not install pynvml directly, please report this to the maintainers of the package that installed pynvml for you.
+  import pynvml  # type: ignore[import]
+(EngineCore pid=198) INFO 08-16 05:52:49 [core.py:116] Initializing a V1 LLM engine (v0.11.2.dev280+gilded.gnosis.v20.vllm4d006a4.b12xcd3ce19.fi1ac6942.cu132.20260810.r34) with config: model='/models/models--malaiwah--Qwen3.8-27B-K4/snapshots/49f6d5ab5632b443458c774ffc0caeb19e950d3b', speculative_config=None, tokenizer='/models/models--malaiwah--Qwen3.8-27B-K4/snapshots/49f6d5ab5632b443458c774ffc0caeb19e950d3b', skip_tokenizer_init=False, tokenizer_mode=auto, revision=None, tokenizer_revision=None, trust_remote_code=False, dtype=torch.bfloat16, max_seq_len=8192, download_dir=None, load_format=auto, tensor_parallel_size=1, pipeline_parallel_size=1, data_parallel_size=1, decode_context_parallel_size=1, dcp_comm_backend=ag_rs, disable_custom_all_reduce=False, quantization=exl3, quantization_config=QuantizationConfigArgs(linear=QuantSpec(weight=QuantKey(dtype=torch.float8_e4m3fn, scale=ScaleDesc(dtype=torch.uint8, static=False, group_shape=GroupShape(row=1, col=32)), scale2=None, symmetric=True), activation=None), moe=None, shared_experts=None, ignore=['re:.*visual\\..*', 're:.*in_proj_a$', 're:.*in_proj_b$', 're:.*mtp\\..*', 'lm_head']), enforce_eager=True, enable_return_routed_experts=False, kv_cache_dtype=auto, device_config=cuda, structured_outputs_config=StructuredOutputsConfig(backend='auto', disable_any_whitespace=False, disable_additional_properties=False, reasoning_parser='', reasoning_parser_plugin='', enable_in_reasoning=False), observability_config=ObservabilityConfig(show_hidden_metrics_for_version=None, otlp_traces_endpoint=None, collect_detailed_traces=None, kv_cache_metrics=False, kv_cache_metrics_sample=0.01, cudagraph_metrics=False, enable_layerwise_nvtx_tracing=False, enable_mfu_metrics=False, enable_mm_processor_stats=False, enable_logging_iteration_details=False, jit_monitor_mode='warn', jit_monitor_verbose=False), seed=0, served_model_name=qwen38-k4, enable_prefix_caching=True, enable_chunked_prefill=True, pooler_config=None, compilation_config={'mode': <CompilationMode.NONE: 0>, 'debug_dump_path': None, 'cache_dir': '', 'compile_cache_save_format': 'binary', 'backend': 'inductor', 'custom_ops': ['all'], 'ir_enable_torch_wrap': False, 'splitting_ops': [], 'compile_mm_encoder': False, 'cudagraph_mm_encoder': False, 'encoder_cudagraph_token_budgets': [], 'encoder_cudagraph_max_vision_items_per_batch': 0, 'encoder_cudagraph_max_frames_per_batch': None, 'compile_sizes': [], 'compile_ranges_endpoints': [2048], 'inductor_compile_config': {'enable_auto_functionalized_v2': False, 'combo_kernels': True, 'benchmark_combo_kernel': True}, 'inductor_passes': {}, 'cudagraph_mode': <CUDAGraphMode.NONE: 0>, 'cudagraph_num_of_warmups': 0, 'cudagraph_capture_sizes': [], 'cudagraph_copy_inputs': False, 'cudagraph_specialize_lora': True, 'use_inductor_graph_partition': False, 'pass_config': {'fuse_norm_quant': True, 'fuse_act_quant': True, 'fuse_attn_quant': False, 'enable_sp': False, 'fuse_gemm_comms': False, 'fuse_allreduce_rms': False, 'enable_qk_norm_rope_fusion': False, 'fuse_rope_kvcache_cat_mla': False, 'fuse_act_padding': False, 'fuse_qk_norm_rope_kvcache': False}, 'max_cudagraph_capture_size': 0, 'dynamic_shapes_config': {'type': <DynamicShapesType.BACKED: 'backed'>, 'evaluate_guards': False, 'assume_32_bit_indexing': False}, 'local_cache_dir': None, 'fast_moe_cold_start': False, 'static_all_moe_layers': []}, kernel_config=KernelConfig(ir_op_priority=IrOpPriorityConfig(rms_norm=['vllm_c', 'native'], fused_add_rms_norm=['vllm_c', 'native']), enable_flashinfer_autotune=True, enable_cutedsl_warmup=True, enable_bf16x3_router_gemm=False, moe_backend='auto', linear_backend='auto')
+(EngineCore pid=198) [ERROR] `min_frames` is part of Qwen3VLVideoProcessorInitKwargs, but not documented. Make sure to add it to the docstring of the function in /opt/venv/lib/python3.12/site-packages/transformers/models/qwen3_vl/video_processing_qwen3_vl.py.
+(EngineCore pid=198) [ERROR] `max_frames` is part of Qwen3VLVideoProcessorInitKwargs, but not documented. Make sure to add it to the docstring of the function in /opt/venv/lib/python3.12/site-packages/transformers/models/qwen3_vl/video_processing_qwen3_vl.py.
+(EngineCore pid=198) INFO 08-16 05:52:50 [parallel_state.py:1884] world_size=1 rank=0 local_rank=0 distributed_init_method=tcp://10.0.2.100:48859 backend=nccl
+[W816 05:52:50.844393161 socket.cpp:764] [c10d] The client socket cannot be initialized to connect to [2962041817bb]:48859 (errno: 97 - Address family not supported by protocol).
+(EngineCore pid=198) INFO 08-16 05:52:50 [parallel_state.py:2283] rank 0 in world size 1 is assigned as DP rank 0, PP rank 0, PCP rank 0, TP rank 0, EP rank N/A, EPLB rank N/A
+(EngineCore pid=198) INFO 08-16 05:52:51 [topk_topp_sampler.py:55] Using FlashInfer for top-p & top-k sampling.
+(EngineCore pid=198) [transformers] The `use_fast` parameter is deprecated and will be removed in a future version. Use `backend="torchvision"` instead of `use_fast=True`, or `backend="pil"` instead of `use_fast=False`.
+(EngineCore pid=198) INFO 08-16 05:52:54 [gpu_model_runner.py:5318] Starting to load model /models/models--malaiwah--Qwen3.8-27B-K4/snapshots/49f6d5ab5632b443458c774ffc0caeb19e950d3b...
+(EngineCore pid=198) INFO 08-16 05:52:54 [cuda.py:544] Using backend AttentionBackendEnum.FLASH_ATTN for vit attention
+(EngineCore pid=198) INFO 08-16 05:52:54 [mm_encoder_attention.py:373] Using AttentionBackendEnum.FLASH_ATTN for MMEncoderAttention.
+(EngineCore pid=198) WARNING 08-16 05:52:54 [exl3.py:1948] EXL3 BF16 online Trellis: encoding eligible non-EXL3 linear weights at K=6; 128-unaligned matrices retain the configured MXFP8 path.
+(EngineCore pid=198) INFO 08-16 05:52:54 [qwen_gdn_linear_attn.py:151] Using Triton/FLA GDN prefill kernel (requested=auto, head_k_dim=128).
+(EngineCore pid=198) INFO 08-16 05:52:54 [cuda.py:485] Using FLASH_ATTN attention backend out of potential backends: ['FLASH_ATTN', 'FLASHINFER', 'TRITON_ATTN', 'FLEX_ATTENTION'].
+(EngineCore pid=198) INFO 08-16 05:52:54 [flash_attn.py:776] Using FlashAttention version 2
+(EngineCore pid=198) INFO 08-16 05:52:54 [weight_utils.py:934] Filesystem type for checkpoints: NFS. Checkpoint size: 26.37 GiB. Available RAM: 119.25 GiB.
+(EngineCore pid=198) INFO 08-16 05:52:54 [weight_utils.py:892] Prefetching checkpoint files into page cache started (in background, num_threads=8, block_size=16777216 bytes)
+(EngineCore pid=198) Loading safetensors checkpoint shards:   0% Completed | 0/4 [00:00<?, ?it/s]
+(EngineCore pid=198) Loading safetensors checkpoint shards:  25% Completed | 1/4 [00:37<01:53, 37.93s/it]
+(EngineCore pid=198) Loading safetensors checkpoint shards:  50% Completed | 2/4 [00:38<00:31, 15.84s/it]
+(EngineCore pid=198) INFO 08-16 05:53:33 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.0.linear_attn.in_proj_qkvz (fallback proxy error 0.00030777)
+(EngineCore pid=198) INFO 08-16 05:53:33 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.0.linear_attn.out_proj (fallback proxy error 0.00035106)
+(EngineCore pid=198) INFO 08-16 05:53:33 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.1.linear_attn.in_proj_qkvz (fallback proxy error 0.00031532)
+(EngineCore pid=198) INFO 08-16 05:53:33 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.1.linear_attn.out_proj (fallback proxy error 0.00032429)
+(EngineCore pid=198) INFO 08-16 05:53:33 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.10.linear_attn.in_proj_qkvz (fallback proxy error 0.00033749)
+(EngineCore pid=198) INFO 08-16 05:53:33 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.10.linear_attn.out_proj (fallback proxy error 0.00031875)
+(EngineCore pid=198) INFO 08-16 05:53:33 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.11.self_attn.o_proj (fallback proxy error 0.00031880)
+(EngineCore pid=198) INFO 08-16 05:53:33 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.11.self_attn.qkv_proj (fallback proxy error 0.00030941)
+(EngineCore pid=198) INFO 08-16 05:53:33 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.12.linear_attn.in_proj_qkvz (fallback proxy error 0.00033043)
+(EngineCore pid=198) INFO 08-16 05:53:33 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.12.linear_attn.out_proj (fallback proxy error 0.00032273)
+(EngineCore pid=198) INFO 08-16 05:53:33 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.13.linear_attn.in_proj_qkvz (fallback proxy error 0.00031815)
+(EngineCore pid=198) INFO 08-16 05:53:33 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.13.linear_attn.out_proj (fallback proxy error 0.00032946)
+(EngineCore pid=198) INFO 08-16 05:53:33 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.14.linear_attn.in_proj_qkvz (fallback proxy error 0.00033543)
+(EngineCore pid=198) INFO 08-16 05:53:33 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.14.linear_attn.out_proj (fallback proxy error 0.00032684)
+(EngineCore pid=198) INFO 08-16 05:53:33 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.15.self_attn.o_proj (fallback proxy error 0.00031609)
+(EngineCore pid=198) INFO 08-16 05:53:33 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.15.self_attn.qkv_proj (fallback proxy error 0.00031144)
+(EngineCore pid=198) INFO 08-16 05:53:33 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.16.linear_attn.in_proj_qkvz (fallback proxy error 0.00032274)
+(EngineCore pid=198) INFO 08-16 05:53:33 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.16.linear_attn.out_proj (fallback proxy error 0.00032827)
+(EngineCore pid=198) INFO 08-16 05:53:33 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.17.linear_attn.in_proj_qkvz (fallback proxy error 0.00033097)
+(EngineCore pid=198) INFO 08-16 05:53:33 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.17.linear_attn.out_proj (fallback proxy error 0.00033459)
+(EngineCore pid=198) INFO 08-16 05:53:34 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.18.linear_attn.in_proj_qkvz (fallback proxy error 0.00031822)
+(EngineCore pid=198) INFO 08-16 05:53:34 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.18.linear_attn.out_proj (fallback proxy error 0.00032160)
+(EngineCore pid=198) INFO 08-16 05:53:34 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.19.self_attn.o_proj (fallback proxy error 0.00033101)
+(EngineCore pid=198) INFO 08-16 05:53:34 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.19.self_attn.qkv_proj (fallback proxy error 0.00032122)
+(EngineCore pid=198) INFO 08-16 05:53:34 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.2.linear_attn.in_proj_qkvz (fallback proxy error 0.00032937)
+(EngineCore pid=198) INFO 08-16 05:53:34 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.2.linear_attn.out_proj (fallback proxy error 0.00032684)
+(EngineCore pid=198) INFO 08-16 05:53:37 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.20.linear_attn.in_proj_qkvz (fallback proxy error 0.00032641)
+(EngineCore pid=198) INFO 08-16 05:53:38 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.20.linear_attn.out_proj (fallback proxy error 0.00031459)
+(EngineCore pid=198) INFO 08-16 05:53:41 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.21.linear_attn.in_proj_qkvz (fallback proxy error 0.00032623)
+(EngineCore pid=198) INFO 08-16 05:53:41 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.21.linear_attn.out_proj (fallback proxy error 0.00033660)
+(EngineCore pid=198) INFO 08-16 05:53:43 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.22.linear_attn.in_proj_qkvz (fallback proxy error 0.00032594)
+(EngineCore pid=198) INFO 08-16 05:53:44 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.22.linear_attn.out_proj (fallback proxy error 0.00034164)
+(EngineCore pid=198) INFO 08-16 05:53:45 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.23.self_attn.o_proj (fallback proxy error 0.00033559)
+(EngineCore pid=198) INFO 08-16 05:53:47 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.23.self_attn.qkv_proj (fallback proxy error 0.00032014)
+(EngineCore pid=198) INFO 08-16 05:53:50 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.24.linear_attn.in_proj_qkvz (fallback proxy error 0.00032240)
+(EngineCore pid=198) INFO 08-16 05:53:51 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.24.linear_attn.out_proj (fallback proxy error 0.00032966)
+(EngineCore pid=198) INFO 08-16 05:53:53 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.25.linear_attn.in_proj_qkvz (fallback proxy error 0.00033025)
+(EngineCore pid=198) INFO 08-16 05:53:54 [weight_utils.py:864] Prefetching checkpoint files: 10% (1/4)
+(EngineCore pid=198) INFO 08-16 05:53:54 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.25.linear_attn.out_proj (fallback proxy error 0.00031544)
+(EngineCore pid=198) INFO 08-16 05:53:56 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.26.linear_attn.in_proj_qkvz (fallback proxy error 0.00032299)
+(EngineCore pid=198) INFO 08-16 05:53:57 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.26.linear_attn.out_proj (fallback proxy error 0.00033106)
+(EngineCore pid=198) INFO 08-16 05:53:57 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.27.self_attn.o_proj (fallback proxy error 0.00032067)
+(EngineCore pid=198) INFO 08-16 05:53:59 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.27.self_attn.qkv_proj (fallback proxy error 0.00031797)
+(EngineCore pid=198) INFO 08-16 05:54:01 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.28.linear_attn.in_proj_qkvz (fallback proxy error 0.00033589)
+(EngineCore pid=198) INFO 08-16 05:54:01 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.28.linear_attn.out_proj (fallback proxy error 0.00032396)
+(EngineCore pid=198) INFO 08-16 05:54:03 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.29.linear_attn.in_proj_qkvz (fallback proxy error 0.00030863)
+(EngineCore pid=198) INFO 08-16 05:54:04 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.29.linear_attn.out_proj (fallback proxy error 0.00032273)
+(EngineCore pid=198) INFO 08-16 05:54:05 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.3.self_attn.o_proj (fallback proxy error 0.00034761)
+(EngineCore pid=198) INFO 08-16 05:54:06 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.3.self_attn.qkv_proj (fallback proxy error 0.00033029)
+(EngineCore pid=198) INFO 08-16 05:54:09 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.30.linear_attn.in_proj_qkvz (fallback proxy error 0.00031463)
+(EngineCore pid=198) INFO 08-16 05:54:10 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.30.linear_attn.out_proj (fallback proxy error 0.00030585)
+(EngineCore pid=198) INFO 08-16 05:54:10 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.31.self_attn.o_proj (fallback proxy error 0.00032301)
+(EngineCore pid=198) INFO 08-16 05:54:12 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.31.self_attn.qkv_proj (fallback proxy error 0.00031029)
+(EngineCore pid=198) INFO 08-16 05:54:14 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.32.linear_attn.in_proj_qkvz (fallback proxy error 0.00031479)
+(EngineCore pid=198) INFO 08-16 05:54:14 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.32.linear_attn.out_proj (fallback proxy error 0.00031918)
+(EngineCore pid=198) INFO 08-16 05:54:16 [weight_utils.py:864] Prefetching checkpoint files: 20% (2/4)
+(EngineCore pid=198) INFO 08-16 05:54:16 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.33.linear_attn.in_proj_qkvz (fallback proxy error 0.00032030)
+(EngineCore pid=198) INFO 08-16 05:54:17 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.33.linear_attn.out_proj (fallback proxy error 0.00032225)
+(EngineCore pid=198) INFO 08-16 05:54:18 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.34.linear_attn.in_proj_qkvz (fallback proxy error 0.00031419)
+(EngineCore pid=198) INFO 08-16 05:54:19 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.34.linear_attn.out_proj (fallback proxy error 0.00031144)
+(EngineCore pid=198) INFO 08-16 05:54:19 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.35.self_attn.o_proj (fallback proxy error 0.00033450)
+(EngineCore pid=198) INFO 08-16 05:54:20 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.35.self_attn.qkv_proj (fallback proxy error 0.00031169)
+(EngineCore pid=198) INFO 08-16 05:54:22 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.36.linear_attn.in_proj_qkvz (fallback proxy error 0.00032396)
+(EngineCore pid=198) INFO 08-16 05:54:23 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.36.linear_attn.out_proj (fallback proxy error 0.00032181)
+(EngineCore pid=198) INFO 08-16 05:54:24 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.37.linear_attn.in_proj_qkvz (fallback proxy error 0.00032697)
+(EngineCore pid=198) INFO 08-16 05:54:25 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.37.linear_attn.out_proj (fallback proxy error 0.00032677)
+(EngineCore pid=198) INFO 08-16 05:54:26 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.38.linear_attn.in_proj_qkvz (fallback proxy error 0.00032239)
+(EngineCore pid=198) INFO 08-16 05:54:27 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.38.linear_attn.out_proj (fallback proxy error 0.00031789)
+(EngineCore pid=198) INFO 08-16 05:54:27 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.39.self_attn.o_proj (fallback proxy error 0.00032876)
+(EngineCore pid=198) INFO 08-16 05:54:28 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.39.self_attn.qkv_proj (fallback proxy error 0.00031254)
+(EngineCore pid=198) INFO 08-16 05:54:30 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.4.linear_attn.in_proj_qkvz (fallback proxy error 0.00033684)
+(EngineCore pid=198) INFO 08-16 05:54:30 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.4.linear_attn.out_proj (fallback proxy error 0.00034794)
+(EngineCore pid=198) INFO 08-16 05:54:31 [weight_utils.py:864] Prefetching checkpoint files: 30% (3/4)
+(EngineCore pid=198) INFO 08-16 05:54:31 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.5.linear_attn.in_proj_qkvz (fallback proxy error 0.00032615)
+(EngineCore pid=198) INFO 08-16 05:54:32 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.5.linear_attn.out_proj (fallback proxy error 0.00032264)
+(EngineCore pid=198) INFO 08-16 05:54:33 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.8.linear_attn.in_proj_qkvz (fallback proxy error 0.00032890)
+(EngineCore pid=198) INFO 08-16 05:54:33 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.8.linear_attn.out_proj (fallback proxy error 0.00032702)
+(EngineCore pid=198) INFO 08-16 05:54:34 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.9.linear_attn.in_proj_qkvz (fallback proxy error 0.00032657)
+(EngineCore pid=198) INFO 08-16 05:54:34 [weight_utils.py:864] Prefetching checkpoint files: 40% (4/4)
+(EngineCore pid=198) INFO 08-16 05:54:34 [weight_utils.py:887] Prefetching checkpoint files into page cache finished in 100.27s
+(EngineCore pid=198) INFO 08-16 05:54:34 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.9.linear_attn.out_proj (fallback proxy error 0.00031750)
+(EngineCore pid=198) Loading safetensors checkpoint shards:  75% Completed | 3/4 [01:40<00:36, 36.90s/it]
+(EngineCore pid=198) INFO 08-16 05:54:34 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.40.linear_attn.in_proj_qkvz (fallback proxy error 0.00031882)
+(EngineCore pid=198) INFO 08-16 05:54:34 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.40.linear_attn.out_proj (fallback proxy error 0.00032972)
+(EngineCore pid=198) INFO 08-16 05:54:34 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.41.linear_attn.in_proj_qkvz (fallback proxy error 0.00032245)
+(EngineCore pid=198) INFO 08-16 05:54:34 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.41.linear_attn.out_proj (fallback proxy error 0.00032884)
+(EngineCore pid=198) INFO 08-16 05:54:35 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.42.linear_attn.in_proj_qkvz (fallback proxy error 0.00032367)
+(EngineCore pid=198) INFO 08-16 05:54:35 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.42.linear_attn.out_proj (fallback proxy error 0.00032794)
+(EngineCore pid=198) INFO 08-16 05:54:35 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.43.self_attn.o_proj (fallback proxy error 0.00031969)
+(EngineCore pid=198) INFO 08-16 05:54:35 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.43.self_attn.qkv_proj (fallback proxy error 0.00030718)
+(EngineCore pid=198) INFO 08-16 05:54:35 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.44.linear_attn.in_proj_qkvz (fallback proxy error 0.00032391)
+(EngineCore pid=198) INFO 08-16 05:54:35 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.44.linear_attn.out_proj (fallback proxy error 0.00032379)
+(EngineCore pid=198) INFO 08-16 05:54:35 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.45.linear_attn.in_proj_qkvz (fallback proxy error 0.00031929)
+(EngineCore pid=198) INFO 08-16 05:54:35 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.45.linear_attn.out_proj (fallback proxy error 0.00032822)
+(EngineCore pid=198) INFO 08-16 05:54:35 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.46.linear_attn.in_proj_qkvz (fallback proxy error 0.00032708)
+(EngineCore pid=198) INFO 08-16 05:54:35 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.46.linear_attn.out_proj (fallback proxy error 0.00032954)
+(EngineCore pid=198) INFO 08-16 05:54:35 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.47.self_attn.o_proj (fallback proxy error 0.00033920)
+(EngineCore pid=198) INFO 08-16 05:54:35 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.47.self_attn.qkv_proj (fallback proxy error 0.00032178)
+(EngineCore pid=198) INFO 08-16 05:54:35 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.48.linear_attn.in_proj_qkvz (fallback proxy error 0.00030908)
+(EngineCore pid=198) INFO 08-16 05:54:35 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.48.linear_attn.out_proj (fallback proxy error 0.00032073)
+(EngineCore pid=198) INFO 08-16 05:54:35 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.49.linear_attn.in_proj_qkvz (fallback proxy error 0.00032242)
+(EngineCore pid=198) INFO 08-16 05:54:35 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.49.linear_attn.out_proj (fallback proxy error 0.00032752)
+(EngineCore pid=198) INFO 08-16 05:54:35 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.50.linear_attn.in_proj_qkvz (fallback proxy error 0.00033118)
+(EngineCore pid=198) INFO 08-16 05:54:35 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.50.linear_attn.out_proj (fallback proxy error 0.00032678)
+(EngineCore pid=198) INFO 08-16 05:54:35 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.51.self_attn.o_proj (fallback proxy error 0.00032219)
+(EngineCore pid=198) INFO 08-16 05:54:35 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.51.self_attn.qkv_proj (fallback proxy error 0.00031035)
+(EngineCore pid=198) INFO 08-16 05:54:35 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.52.linear_attn.in_proj_qkvz (fallback proxy error 0.00032365)
+(EngineCore pid=198) INFO 08-16 05:54:35 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.52.linear_attn.out_proj (fallback proxy error 0.00033446)
+(EngineCore pid=198) INFO 08-16 05:54:35 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.53.linear_attn.in_proj_qkvz (fallback proxy error 0.00032835)
+(EngineCore pid=198) INFO 08-16 05:54:35 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.53.linear_attn.out_proj (fallback proxy error 0.00031092)
+(EngineCore pid=198) INFO 08-16 05:54:35 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.54.linear_attn.in_proj_qkvz (fallback proxy error 0.00032442)
+(EngineCore pid=198) INFO 08-16 05:54:35 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.54.linear_attn.out_proj (fallback proxy error 0.00032523)
+(EngineCore pid=198) INFO 08-16 05:54:35 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.55.self_attn.o_proj (fallback proxy error 0.00032854)
+(EngineCore pid=198) INFO 08-16 05:54:35 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.55.self_attn.qkv_proj (fallback proxy error 0.00030929)
+(EngineCore pid=198) INFO 08-16 05:54:35 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.56.linear_attn.in_proj_qkvz (fallback proxy error 0.00032632)
+(EngineCore pid=198) INFO 08-16 05:54:35 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.56.linear_attn.out_proj (fallback proxy error 0.00032836)
+(EngineCore pid=198) INFO 08-16 05:54:35 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.57.linear_attn.in_proj_qkvz (fallback proxy error 0.00031647)
+(EngineCore pid=198) INFO 08-16 05:54:35 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.57.linear_attn.out_proj (fallback proxy error 0.00032108)
+(EngineCore pid=198) INFO 08-16 05:54:35 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.58.linear_attn.in_proj_qkvz (fallback proxy error 0.00032627)
+(EngineCore pid=198) INFO 08-16 05:54:35 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.58.linear_attn.out_proj (fallback proxy error 0.00032178)
+(EngineCore pid=198) INFO 08-16 05:54:35 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.59.self_attn.o_proj (fallback proxy error 0.00032960)
+(EngineCore pid=198) INFO 08-16 05:54:35 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.59.self_attn.qkv_proj (fallback proxy error 0.00031906)
+(EngineCore pid=198) INFO 08-16 05:54:35 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.6.linear_attn.in_proj_qkvz (fallback proxy error 0.00031115)
+(EngineCore pid=198) INFO 08-16 05:54:35 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.6.linear_attn.out_proj (fallback proxy error 0.00033695)
+(EngineCore pid=198) INFO 08-16 05:54:35 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.60.linear_attn.in_proj_qkvz (fallback proxy error 0.00030882)
+(EngineCore pid=198) INFO 08-16 05:54:35 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.60.linear_attn.out_proj (fallback proxy error 0.00032054)
+(EngineCore pid=198) INFO 08-16 05:54:35 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.61.linear_attn.in_proj_qkvz (fallback proxy error 0.00031510)
+(EngineCore pid=198) INFO 08-16 05:54:35 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.61.linear_attn.out_proj (fallback proxy error 0.00033325)
+(EngineCore pid=198) INFO 08-16 05:54:35 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.62.linear_attn.in_proj_qkvz (fallback proxy error 0.00033122)
+(EngineCore pid=198) INFO 08-16 05:54:35 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.62.linear_attn.out_proj (fallback proxy error 0.00032886)
+(EngineCore pid=198) INFO 08-16 05:54:35 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.63.self_attn.o_proj (fallback proxy error 0.00033764)
+(EngineCore pid=198) INFO 08-16 05:54:35 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.63.self_attn.qkv_proj (fallback proxy error 0.00031937)
+(EngineCore pid=198) INFO 08-16 05:54:35 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.7.self_attn.o_proj (fallback proxy error 0.00032859)
+(EngineCore pid=198) INFO 08-16 05:54:35 [exl3.py:2515] Online EXL3 K6 cache hit for language_model.model.layers.7.self_attn.qkv_proj (fallback proxy error 0.00031982)
+(EngineCore pid=198) Loading safetensors checkpoint shards: 100% Completed | 4/4 [01:41<00:00, 22.65s/it]
+(EngineCore pid=198) Loading safetensors checkpoint shards: 100% Completed | 4/4 [01:41<00:00, 25.27s/it]
+(EngineCore pid=198) 
+(EngineCore pid=198) INFO 08-16 05:54:35 [default_loader.py:451] Loading weights took 101.13 seconds
+(EngineCore pid=198) INFO 08-16 05:54:36 [gpu_model_runner.py:5415] Model loading took 17.82 GiB memory and 102.191725 seconds
+(EngineCore pid=198) INFO 08-16 05:54:36 [interface.py:905] Setting attention block size to 784 tokens to ensure that attention page size is >= mamba page size.
+(EngineCore pid=198) INFO 08-16 05:54:36 [interface.py:929] Padding mamba page size by 0.13% to ensure that mamba page size and attention page size are exactly equal.
+(EngineCore pid=198) INFO 08-16 05:54:37 [gpu_model_runner.py:6491] Encoder cache will be initialized with a budget of 16384 tokens, and profiled with 1 image items of the maximum feature size.
+(EngineCore pid=198) INFO 08-16 05:54:43 [kernel_warmup.py:398] Skipping FlashInfer autotune because no FlashInfer compute kernels are active.
+(EngineCore pid=198) INFO 08-16 05:54:43 [kernel_warmup.py:85] Warming up ll_bf16 router GEMM kernels.
+(EngineCore pid=198) INFO 08-16 05:54:47 [cutedsl_warmup.py:101] Skipping CuTeDSL warmup because no compile units were requested.
+(EngineCore pid=198) INFO 08-16 05:54:52 [gpu_worker.py:617] Available KV cache memory: 5.97 GiB
+(EngineCore pid=198) INFO 08-16 05:54:52 [kv_cache_utils.py:2437] GPU KV cache size: 59,753 tokens
+(EngineCore pid=198) INFO 08-16 05:54:52 [kv_cache_utils.py:2438] Maximum concurrency for 8,192 tokens per request: 7.29x
+(EngineCore pid=198) INFO 08-16 05:54:52 [gpu_worker.py:918] Free memory on device (30.9/31.4 GiB) on startup. Desired GPU memory utilization is (0.85, 26.69 GiB). Actual usage is 17.82 GiB for weight, 2.63 GiB for peak activation, 0.27 GiB for non-torch memory, and 0.0 GiB for CUDAGraph memory. Replace gpu_memory_utilization config with `--kv-cache-memory-bytes=6256984884` (5.83 GiB) to fit into requested memory, or `--kv-cache-memory-bytes=10781822976` (10.04 GiB) to fully utilize gpu memory. Current kv cache memory in use is 5.97 GiB.
+(EngineCore pid=198) INFO 08-16 05:54:52 [jit_monitor.py:79] Kernel JIT monitor activated; monitored JIT compilations during inference will use mode=warn.
+(EngineCore pid=198) INFO 08-16 05:54:52 [core.py:352] init engine (profile, create kv cache, warmup model) took 15.62 s
+(EngineCore pid=198) INFO 08-16 05:54:52 [vllm.py:1162] Asynchronous scheduling is enabled.
+(EngineCore pid=198) WARNING 08-16 05:54:52 [vllm.py:1216] Enforce eager set, disabling torch.compile and CUDAGraphs. This is equivalent to setting -cc.mode=none -cc.cudagraph_mode=none
+(EngineCore pid=198) WARNING 08-16 05:54:52 [vllm.py:1245] Inductor compilation was disabled by user settings, optimizations settings that are only active during inductor compilation will be ignored.
+(EngineCore pid=198) INFO 08-16 05:54:52 [kernel.py:299] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['vllm_c', 'native'], fused_add_rms_norm=['vllm_c', 'native'])
+(EngineCore pid=198) INFO 08-16 05:54:52 [vllm.py:1424] Cudagraph is disabled under eager mode
+(EngineCore pid=198) INFO 08-16 05:54:52 [compilation.py:329] Enabled custom fusions: norm_quant, act_quant
+(APIServer pid=1) INFO 08-16 05:54:52 [api_server.py:680] Supported tasks: ['generate']
+(APIServer pid=1) WARNING 08-16 05:54:52 [model.py:1552] Default vLLM sampling parameters have been overridden by the model's `generation_config.json`: `{'temperature': 1.0, 'top_k': 20, 'top_p': 0.95}`. If this is not intended, please relaunch vLLM instance with `--generation-config vllm`.
+(APIServer pid=1) INFO 08-16 05:54:53 [hf.py:540] Detected the chat template content format to be 'openai'. You can set `--chat-template-content-format` to override this.
+(APIServer pid=1) INFO 08-16 05:55:00 [base.py:236] Multi-modal warmup completed in 7.288s
+(APIServer pid=1) INFO 08-16 05:55:00 [base.py:236] Readonly multi-modal warmup completed in 0.340s
+(APIServer pid=1) INFO 08-16 05:55:00 [api_server.py:684] Starting vLLM server on http://0.0.0.0:8000
+(APIServer pid=1) INFO 08-16 05:55:00 [launcher.py:37] Available routes are:
+(APIServer pid=1) INFO 08-16 05:55:00 [launcher.py:46] Route: /openapi.json, Methods: HEAD, GET
+(APIServer pid=1) INFO 08-16 05:55:00 [launcher.py:46] Route: /docs, Methods: HEAD, GET
+(APIServer pid=1) INFO 08-16 05:55:00 [launcher.py:46] Route: /docs/oauth2-redirect, Methods: HEAD, GET
+(APIServer pid=1) INFO 08-16 05:55:00 [launcher.py:46] Route: /redoc, Methods: HEAD, GET
+(APIServer pid=1) INFO 08-16 05:55:00 [launcher.py:46] Route: /load, Methods: GET
+(APIServer pid=1) INFO 08-16 05:55:00 [launcher.py:46] Route: /version, Methods: GET
+(APIServer pid=1) INFO 08-16 05:55:00 [launcher.py:46] Route: /health, Methods: GET
+(APIServer pid=1) INFO 08-16 05:55:00 [launcher.py:46] Route: /metrics, Methods: GET
+(APIServer pid=1) INFO 08-16 05:55:00 [launcher.py:46] Route: /tokenize, Methods: POST
+(APIServer pid=1) INFO 08-16 05:55:00 [launcher.py:46] Route: /detokenize, Methods: POST
+(APIServer pid=1) INFO 08-16 05:55:00 [launcher.py:46] Route: /v1/models, Methods: GET
+(APIServer pid=1) INFO 08-16 05:55:00 [launcher.py:46] Route: /ping, Methods: GET
+(APIServer pid=1) INFO 08-16 05:55:00 [launcher.py:46] Route: /ping, Methods: POST
+(APIServer pid=1) INFO 08-16 05:55:00 [launcher.py:46] Route: /invocations, Methods: POST
+(APIServer pid=1) INFO 08-16 05:55:00 [launcher.py:46] Route: /v1/chat/completions, Methods: POST
+(APIServer pid=1) INFO 08-16 05:55:00 [launcher.py:46] Route: /v1/chat/completions/batch, Methods: POST
+(APIServer pid=1) INFO 08-16 05:55:00 [launcher.py:46] Route: /v1/responses, Methods: POST
+(APIServer pid=1) INFO 08-16 05:55:00 [launcher.py:46] Route: /v1/responses/{response_id}, Methods: GET
+(APIServer pid=1) INFO 08-16 05:55:00 [launcher.py:46] Route: /v1/responses/{response_id}/cancel, Methods: POST
+(APIServer pid=1) INFO 08-16 05:55:00 [launcher.py:46] Route: /v1/completions, Methods: POST
+(APIServer pid=1) INFO 08-16 05:55:00 [launcher.py:46] Route: /v1/messages, Methods: POST
+(APIServer pid=1) INFO 08-16 05:55:00 [launcher.py:46] Route: /v1/messages/count_tokens, Methods: POST
+(APIServer pid=1) INFO 08-16 05:55:00 [launcher.py:46] Route: /generative_scoring, Methods: POST
+(APIServer pid=1) INFO 08-16 05:55:00 [launcher.py:46] Route: /scale_elastic_ep, Methods: POST
+(APIServer pid=1) INFO 08-16 05:55:00 [launcher.py:46] Route: /is_scaling_elastic_ep, Methods: POST
+(APIServer pid=1) INFO 08-16 05:55:00 [launcher.py:46] Route: /v1/chat/completions/render, Methods: POST
+(APIServer pid=1) INFO 08-16 05:55:00 [launcher.py:46] Route: /v1/completions/render, Methods: POST
+(APIServer pid=1) INFO 08-16 05:55:00 [launcher.py:46] Route: /v1/chat/completions/derender, Methods: POST
+(APIServer pid=1) INFO 08-16 05:55:00 [launcher.py:46] Route: /v1/completions/derender, Methods: POST
+(APIServer pid=1) INFO 08-16 05:55:00 [launcher.py:46] Route: /inference/v1/generate, Methods: POST
+(APIServer pid=1) INFO:     Started server process [1]
+(APIServer pid=1) INFO:     Waiting for application startup.
+(APIServer pid=1) INFO:     Application startup complete.
+(APIServer pid=1) INFO:     10.0.2.100:51854 - "GET /health HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     10.0.2.100:51858 - "GET /v1/models HTTP/1.1" 200 OK
+(EngineCore pid=198) WARNING 08-16 05:55:04 [jit_monitor.py:135] Triton kernel JIT compilation during inference: _zero_kv_blocks_kernel. This causes a latency spike; consider extending warmup to cover this shape/config.
+(EngineCore pid=198) WARNING 08-16 05:55:04 [jit_monitor.py:135] Triton kernel JIT compilation during inference: _compute_slot_mapping_kernel. This causes a latency spike; consider extending warmup to cover this shape/config.
+(EngineCore pid=198) WARNING 08-16 05:55:04 [jit_monitor.py:135] Triton kernel JIT compilation during inference: _causal_conv1d_fwd_kernel. This causes a latency spike; consider extending warmup to cover this shape/config.
+(EngineCore pid=198) WARNING 08-16 05:55:04 [jit_monitor.py:135] Triton kernel JIT compilation during inference: _causal_conv1d_update_kernel. This causes a latency spike; consider extending warmup to cover this shape/config.
+(EngineCore pid=198) WARNING 08-16 05:55:04 [jit_monitor.py:135] Triton kernel JIT compilation during inference: fused_recurrent_gated_delta_rule_packed_decode_kernel. This causes a latency spike; consider extending warmup to cover this shape/config.
+(EngineCore pid=198) WARNING 08-16 05:55:04 [jit_monitor.py:135] Triton kernel JIT compilation during inference: _triton_mrope_forward. This causes a latency spike; consider extending warmup to cover this shape/config.
+(APIServer pid=1) INFO:     10.0.2.100:51874 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+(EngineCore pid=198) WARNING 08-16 05:55:04 [jit_monitor.py:135] Triton kernel JIT compilation during inference: _bilinear_pos_embed_kernel. This causes a latency spike; consider extending warmup to cover this shape/config.
+(EngineCore pid=198) WARNING 08-16 05:55:04 [jit_monitor.py:135] Triton kernel JIT compilation during inference: rotary_kernel. This causes a latency spike; consider extending warmup to cover this shape/config.
+(EngineCore pid=198) WARNING 08-16 05:55:04 [jit_monitor.py:135] Triton kernel JIT compilation during inference: _fused_post_conv_kernel. This causes a latency spike; consider extending warmup to cover this shape/config.
+(APIServer pid=1) INFO:     10.0.2.100:51882 - "POST /v1/chat/completions HTTP/1.1" 200 OK

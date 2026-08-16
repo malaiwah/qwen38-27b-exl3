@@ -1,0 +1,45 @@
+{
+  "gpu": {
+    "model": "NVIDIA GeForce RTX 5090",
+    "uuid": "GPU-506a575d-01d7-b12e-9a0a-c1ab5f38ae0a",
+    "physical_card": true,
+    "engine_budget_simulation": false,
+    "memory_total_mib": 32607,
+    "free_mib_with_gpu_idle": 9190,
+    "compute_mode": "Exclusive_Process",
+    "power_limit_w": 400.0,
+    "persistence_mode": "Enabled",
+    "budget_rule": "the engine requests ceil(cudaMemGetInfo total x utilisation), and cudaMemGetInfo total is FB Total minus FB Reserved (32,607 - 458 = 32,149 MiB), never the free figure"
+  },
+  "host": {
+    "hostname": "aiboss",
+    "role": "the user's own machine",
+    "driver_version": "610.57.04",
+    "container_engine": "podman 4.9.3 rootless",
+    "os_release": "Ubuntu 24.04.4 LTS",
+    "kernel": "6.8.0-137-generic"
+  },
+  "model": {
+    "hf_repo": "malaiwah/Qwen3.8-27B-EXL3-K5K6-context",
+    "revision": "c45c273b0d6ef2859cb2d85b36dd52253c80d878",
+    "snapshot_path": "/mnt/vault/llm/huggingface/hub/models--malaiwah--Qwen3.8-27B-EXL3-K5K6-context/snapshots/c45c273b0d6ef2859cb2d85b36dd52253c80d878",
+    "index_sha256": "cd53b8e487b5c70b1ffe26578464a9cfd9bea9d7ed50a39e39ba3e153c1ab1b4",
+    "shard_sha256": {
+      "model-00001-of-00003.safetensors": "c9e837be0dc9ad35fe22a42b9cefb192957767bc83d82bd893aa6b9c036cfa00",
+      "model-00002-of-00003.safetensors": "222fb1aac7254a98799ac852266d9e8e326a535d4292e3341141e03ec662bc03",
+      "model-00003-of-00003.safetensors": "d01bd1d5664382ca1490d3232453d4fbcf6b8bcf1b27bbe69f2a9ef4fc7019fc"
+    },
+    "note": "serialized bytes on disk in the vault HF cache; never called VRAM"
+  },
+  "harness_sha256": {
+    "qualify_apc_5090.sh": "e896838d56d4f6dfe7d54fa1783825c9bfbdbd2e5f8b17602cb52eb9a2521588",
+    "qualify_apc_env.py": "a5ed524b9084c66b577526db1fab7b69c13c949edd337550f1142c2ba536249d",
+    "longctx.py": "a63b087d9c63fdb40f6e065619e915c4bee47b75ba89cc8a6e39aadf71a635ab",
+    "longmm.py": "bcd6527f290d89a8442eb2704fb30281b8513cb795dabfd78295dcae2e4c8b31",
+    "vision_eval.py": "7bf9a7ebef93b46d9ee52cfc2aa6ee53ff05025ad4562e561f79be0445de0a08",
+    "bench.py": "d5dfd9db22dced3ee5b54c77f30e8aa0558a6a177d77eb6279c7df3b7885b2e9",
+    "native-mtp-8mp-fixture.png": "7e3748a403f201b83ac67130895223122660e1cb07877ef768c1d6a49127533d",
+    "gpu_sampler.py": "68e0732c44025784833929d1c32de61a74ed10dd76a150e1d672d3893e9df777"
+  },
+  "harness_note": "longctx.py, longmm.py, vision_eval.py, bench.py and the image fixture are the physical qualification's own files, unmodified; the gate bodies are copied from qual.sh verbatim so the two qualifications compare like with like"
+}

@@ -1,0 +1,62 @@
+[2026-08-16T05:12:08Z] handover token: handed over by TwentyFourGigProxy at 2026-08-16T05:02Z, naming ShipPrefixCaching explicitly; queue was PerfSweep5090 -> ApcPoisonRepro -> TwentyFourGigProxy -> ShipPrefixCaching. Restore obligation for qwen38-27b.service accepted by ShipPrefixCaching. 
+[2026-08-16T05:12:08Z] attempt TAG=E gates='g1 g2 g5 g6' util=0.9555 len=262144 mtp=3 rev=c45c273b0d6ef2859cb2d85b36dd52253c80d878 image=localhost/vllm:gg-r34-patched-apc
+[2026-08-16T05:12:08Z] PHASE before_load
+{"name": "before_load", "utc": "2026-08-16T05:12:08Z", "memory_total_mib": 32607, "memory_used_mib": 2, "memory_free_mib": 32149, "utilization_gpu_pct": 0, "power_draw_w": 21.77}
+[2026-08-16T05:12:08Z] PHASE startup
+[2026-08-16T05:13:04Z] PHASE startup_done
+{"name": "after_startup", "utc": "2026-08-16T05:13:04Z", "memory_total_mib": 32607, "memory_used_mib": 30450, "memory_free_mib": 1701, "utilization_gpu_pct": 0, "power_draw_w": 76.92}
+Add 3 padding layers, may waste at most 6.25% KV cache memory
+Available KV cache memory: 9.3 GiB
+'enable_prefix_caching': True
+enable_prefix_caching=True
+Free memory on device (30.9/31.4 GiB) on startup. Desired GPU memory utilization is (0.9555, 30.0 GiB). Actual usage is 18.19 GiB for weight, 1.78 GiB for peak activation, 0.27 GiB for non-torch memory, and 0.45 GiB for CUDAGraph memory. Replace gpu_memory_utilization config with `--kv-cache-memory-bytes=9831464289` (9.16 GiB) to fit into requested memory, or `--kv-cache-memory-bytes=10799736832` (10.06 GiB) to fully utilize gpu memory. Current kv cache memory in use is 9.3 GiB.
+GPU KV cache size: 262,144 tokens
+Graph capturing finished in 1 secs, took 0.45 GiB
+init engine (profile, create kv cache, warmup model) took 13.47 s (compilation: 1.97 s)
+Initializing a V1 LLM engine (v0.11.2.dev280+gilded.gnosis.v20.vllm4d006a4.b12xcd3ce19.fi1ac6942.cu132.20260810.r34)
+'mamba_cache_mode': 'align'
+Maximum concurrency for 262,144 tokens per request: 1.00x
+Model loading took 18.19 GiB memory and 3.709796 seconds
+num_spec_tokens=3
+Padding mamba page size by 0.25% to ensure that mamba page size and attention page size are exactly eq
+Prefix caching in Mamba cache 'align' mode is currently enabled. Its support for Mamba lay
+Setting attention block size to 1600 tokens to ensure that attention page size is >= mamba page size.
+Using fp8 data type to store kv cache
+RECORD {"gate": "gate1_startup_native_allocation", "rc": 0, "wall_sec": 55.733, "utc": "2026-08-16T05:13:05Z", "artifacts": ["out/startup-facts-E.txt", "out/command-E.json", "logs/server-E.log"]}
+{
+  "enable_prefix_caching_banner": "True",
+  "mamba_cache_mode_banner": "align",
+  "mamba_block_size_banner": null,
+  "attention_block_size_tokens": "1600",
+  "kv_padding_layers": "3",
+  "kv_padding_waste_pct": "6.25",
+  "available_kv_cache_gib": "9.3",
+  "gpu_kv_cache_tokens": 262144,
+  "maximum_concurrency_window": "262,144",
+  "maximum_concurrency": 1.0,
+  "prefix_caching_hash_algo": null,
+  "mamba_prefix_caching_note": "Prefix caching in Mamba cache 'align' mode is currently enabled. Its support for Mamba lay",
+  "kv_tokens_baseline": 265122,
+  "concurrency_baseline": 1.01,
+  "max_model_len": 262144,
+  "gate8_banner_proves_prefix_caching_on": true,
+  "gate9_kv_capacity_not_regressed": true,
+  "kv_tokens_delta_vs_baseline": -2978,
+  "kv_tokens_pct_vs_baseline": 98.877,
+  "prefix_caching_kv_cost_tokens": 2978
+}
+RECORD {"gate": "gate8_banner_prefix_caching_actually_on", "rc": 0, "wall_sec": 0.0, "utc": "2026-08-16T05:13:05Z", "artifacts": ["out/banner-E.json", "out/startup-facts-E.txt", "out/engine-config-E.txt"]}
+RECORD {"gate": "gate9_kv_capacity_not_regressed", "rc": 0, "wall_sec": 0.0, "utc": "2026-08-16T05:13:05Z", "artifacts": ["out/banner-E.json", "out/startup-facts-E.txt"]}
+[2026-08-16T05:13:05Z] PHASE g2_long_needle
+RECORD {"gate": "gate2_long_needle_exact", "rc": 1, "wall_sec": 571.372, "utc": "2026-08-16T05:22:36Z", "artifacts": ["out/g2-needle-E.json", "logs/g2-E.out", "logs/g2-E.err"]}
+[2026-08-16T05:22:36Z] PHASE g2_released
+{"name": "after_g2_release", "utc": "2026-08-16T05:22:36Z", "memory_total_mib": 32607, "memory_used_mib": 2, "memory_free_mib": 32149, "utilization_gpu_pct": 0, "power_draw_w": 24.03}
+[2026-08-16T05:22:36Z] PHASE g5_decode
+RECORD {"gate": "gate5_three_warmed_decode_runs", "rc": 1, "wall_sec": 0.074, "utc": "2026-08-16T05:22:36Z", "artifacts": ["logs/g5-E.out", "logs/g5-E.err", "out/metrics-before-g5-E.txt", "out/metrics-after-g5-E.txt"]}
+[2026-08-16T05:22:36Z] PHASE gate6_second_long
+RECORD {"gate": "gate6_second_long_request_after_release", "rc": 1, "wall_sec": 0.084, "utc": "2026-08-16T05:22:36Z", "artifacts": ["out/gate6-needle-E.json", "logs/gate6-E.out", "logs/gate6-E.err"]}
+[2026-08-16T05:22:36Z] PHASE shutdown
+[2026-08-16T05:22:46Z] PHASE after_release
+{"name": "after_release", "utc": "2026-08-16T05:22:47Z", "memory_total_mib": 32607, "memory_used_mib": 2, "memory_free_mib": 32149, "utilization_gpu_pct": 0, "power_draw_w": 23.23}
+[2026-08-16T05:22:50Z] QUALAPC_DONE TAG=E
+./qualify_apc_5090.sh: line 215: CTN: unbound variable

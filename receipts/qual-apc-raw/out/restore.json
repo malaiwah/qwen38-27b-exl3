@@ -1,0 +1,61 @@
+{
+  "snapshot_receipt": "receipts/aiboss-live-service-snapshot.json",
+  "snapshot_receipt_found": true,
+  "snapshot_receipt_path": "/home/mbelleau/qualapc/aiboss-live-service-snapshot.json",
+  "snapshot_receipt_sha256": "268ea6965f01b92b1db9d8fde3f3dd33cdc566a0cafbca50ce9ca7f9d1df4ccb",
+  "stopped_for_this_run": true,
+  "stopped_by": "TwentyFourGigProxy at 2026-08-16T04:35Z, before this window; this agent inherited the restore obligation together with the card",
+  "restore_procedure": "systemctl --user start qwen38-27b.service, never the container directly: the unit is Restart=always and `podman --replace` would recreate it out from under systemd",
+  "systemd_active": "active",
+  "podman_health": "healthy",
+  "seconds_to_healthy": 2,
+  "health_endpoint_http_code": "200",
+  "served_models": [
+    "Qwen3.8-27B"
+  ],
+  "compared_fields": {
+    "cmd": {
+      "identical": true
+    },
+    "env": {
+      "identical": true
+    },
+    "image_digest": {
+      "identical": true
+    },
+    "binds": {
+      "identical": true
+    },
+    "entrypoint": {
+      "identical": true
+    },
+    "working_dir": {
+      "identical": true
+    },
+    "user": {
+      "identical": true,
+      "representation_artefact": true,
+      "snapshot": "root",
+      "live": "",
+      "note": "no --user is ever passed; `podman exec qwen38-27b id -un` returns root"
+    },
+    "network_mode": {
+      "identical": true
+    },
+    "ipc_mode": {
+      "identical": true
+    },
+    "devices": {
+      "identical": true
+    },
+    "privileged": {
+      "identical": true
+    },
+    "restart_policy": {
+      "identical": true
+    }
+  },
+  "all_compared_fields_identical": true,
+  "gpu_after_restore_mib": 30449,
+  "wall_sec": 0.3
+}

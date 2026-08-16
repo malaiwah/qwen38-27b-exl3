@@ -685,12 +685,16 @@ graphs, vision enabled):
 | K6 attention, seqs 8, util 0.98 | 202,185 tok / 7.55 GiB | — | text fine, **a 3,264-token image OOMed** with 33 MiB free |
 
 **Native 262,144 does not fit this checkpoint with MTP-3 on a 32 GB card.** The engine needs
-**9.13 GiB** of KV (37.4 KB/token: 16 full-attention layers, 4 KV heads, head_dim 256; the
-other 48 layers are Gated DeltaNet and hold per-sequence state). Without MTP that falls to
-33.5 KB/token and buys ~11 % more length. Both KB/token figures are ratios measured at that
-one window, not coefficients to extrapolate other windows with: the KV pool one request needs
-is affine in the window — a per-token term plus a fixed per-request term — so dividing a KV
-budget by a KB/token figure does not predict a context length. The smaller
+**9.13 GiB** of KV. The cost is affine in the window rather than a flat per-token rate:
+`34,816 B/token × 262,144 + 0.63 GiB`, where the per-token term covers 16 full-attention
+layers, 4 KV heads, head_dim 256 (the other 48 layers are Gated DeltaNet and hold per-sequence
+state) and the 0.63 GiB is a **fixed per-request** term. Without MTP both fall, to 32,932
+B/token and 0.14 GiB, buying ~11 % more length. Both pairs are measured by provoking startup
+refusals at two windows ([`docs/34-vram-class-profiles.md`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/docs/34-vram-class-profiles.md) §4.1). Dividing a KV budget by a per-token rate therefore does
+not predict a context length, and because the fixed term is per **request**, raising
+`--max-num-seqs` pays it again for every slot. The 37.4 KB/token this card published
+previously was pool ÷ reported tokens at one window, which folded the fixed term in and
+overstated the coefficient by about 8 %. The smaller
 [`malaiwah/Qwen3.8-27B-K4`](https://huggingface.co/malaiwah/Qwen3.8-27B-K4) reaches native
 length on a real 32 GB card (289,577-token capacity) with no overlay at all.
 The context edition is **hardware-qualified at native length on a physical RTX 5090**: 262,144
@@ -755,20 +759,106 @@ open upstream ([#314](https://github.com/local-inference-lab/vllm/pull/314),
 [#318](https://github.com/local-inference-lab/vllm/pull/318)); the sibling card carries the
 exact one-module patch recipe and current sha256. No published image digest contains it.
 
-**Two upstream fixes are absent from this pinned image.** Upstream vLLM #51113 (mamba `align`
-prefill-chunk splitting: a chunk that ends mid-block leaves its slot holding a short state, which a
-later chunk then publishes anyway — wrong tokens, HTTP 200, no crash) merged on 2026-08-06, and
-#51812 (Qwen GDN speculative gate ordering: the gathered Q/K/V rows and the unsorted `a`/`b` gate
-rows can belong to different tokens in a mixed batch, which drifts logits) merged on 2026-08-11 —
-both after this image was built, and both re-verified absent at fork head `fa033bd4e`, where the two
-target files are byte-identical to the r34 vendored copies. Cherry-picks were requested upstream on
-2026-08-16: [issue #392](https://github.com/local-inference-lab/vllm/issues/392) and
-[PR #393](https://github.com/local-inference-lab/vllm/pull/393). Until they land, both are published
-as mount-in modules — `tools/vllm-mamba-align-scheduler.py` and `tools/vllm-qwen-gdn-spec-gates.py`
-— and **neither is part of the qualified image digest**: upstream's own CPU-only regression file
-gives 14 failed / 6 passed against the vendored scheduler and 20 passed against the patched tree
-([`receipts/mamba-align-defect.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/mamba-align-defect.json),
-[`receipts/gdn-spec-gate-defect.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/gdn-spec-gate-defect.json)).
+**Prefix caching is on in the recipe below, and it is on here and not everywhere.** At an
+8,192-token window the KV pool is roughly thirty times the window, so a single request comes
+nowhere near the pool ceiling and the failures that stopped the native-context profile cannot
+occur. That is not an argument, it is the reason this recipe was measured separately: it starts
+healthy on the promoted image with `--enable-prefix-caching --mamba-cache-mode align`, answers
+a text and an image request exactly, and reports `enable_prefix_caching: True` in the engine
+banner
+([`receipts/production-image.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/production-image.json)).
+The context edition's native 262,144-token recipe does **not** enable it, and its card explains
+why
+([`receipts/qualification-5090-apc.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/qualification-5090-apc.json)).
+
+**The release unit moved on 2026-08-16, and #51113 is why.** Upstream vLLM #51113 (mamba
+`align` prefill-chunk splitting: a chunk that ends mid-block leaves its slot holding a short
+state, which a later chunk then publishes anyway — wrong tokens, HTTP 200, no crash) merged
+2026-08-06, after the pinned public image was built, and is still absent from it and from fork
+head `fa033bd4e`. Cherry-picks were requested upstream on 2026-08-16 ([issue
+#392](https://github.com/local-inference-lab/vllm/issues/392), [PR
+#393](https://github.com/local-inference-lab/vllm/pull/393)). Until they land it is carried as
+`tools/vllm-mamba-align-scheduler.py` (`sha256 b431c106…`), and the image this project serves
+is now the four-module `localhost/vllm:gg-r34-patched-apc`, manifest `sha256:16a936b877b90f…`,
+promoted from the three-module `localhost/vllm:gg-r34-patched` (`sha256:6eca4c693f01b6…`)
+([`receipts/production-image.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/production-image.json)).
+With prefix caching off the two images are not merely similar but behaviourally identical,
+because the added module's changed function is unreachable unless `mamba_cache_mode` is `align`
+— so the earlier hardware qualification carries over unchanged. One warning if you inspect the
+image yourself: its build-time label `io.malaiwah.image.qualified` still reads `false` and is
+**superseded by the receipts named here** — it was written before the image could possibly have
+been qualified, and correcting it would add a layer and change the very digest that was
+measured. That digest is local to the build host, so the recipes here reproduce its content
+with sha256-verified read-only mounts over the pullable public base.
+
+**What prefix caching buys.** On disjoint documents, so the cold case is genuinely cold: a
+32,842-token prefix went **12.07 s cold → 1.04 s warm (11.6×**, 2,442 of 32,842 prompt tokens
+recomputed, 92.6 % hit rate) and a 131,146-token prefix went **67.60 s → 2.31 s (29.3×**, 3,146
+of 131,146 recomputed, 97.6 %); a 38-request schedule ran 84.0 s with the cache against 144.4 s
+without
+([`receipts/apc-poison-repro.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/apc-poison-repro.json)).
+**And what we actually know about its safety.** Correctness was probed adversarially before any
+of this shipped: seven freshly started servers, 38 requests each, **266 scored requests**,
+nested token prefixes so later requests hit blocks published by earlier ones, and no prompt
+length a multiple of the measured 1,600-token mamba block, so prefill chunks end mid-block by
+construction — **zero corrupted responses, zero wrong answers, zero acceptance collapses, on
+the unpatched image as well as the patched one**. Thresholds were committed before the first
+server started; the worst repeated block was 15 characters against an 80-character threshold,
+with no U+FFFD anywhere. Greedy chosen-logprob drift with the cache on is 0.1063 mean absolute
+against a measured run-to-run floor of 0.0823 — drift, never an answer change. So the module is
+carried as **insurance backed by upstream's own regression file** — 14 failed / 6 passed
+against the vendored scheduler, 20 passed against this one — and **not** by a reproduction of
+our own: we tried hard to reproduce the reported corruption and could not
+([`receipts/mamba-align-defect.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/mamba-align-defect.json)).
+
+**LMCache is unmeasured by us.** It is not part of any recipe on this card, this project has
+never run it, and it is the outstanding suspect in the one user report of prefix-cache
+corruption we have. Nothing here says LMCache is safe; the evidence above covers vLLM's own
+prefix cache and nothing else.
+
+**#51812 stays an optional overlay, deliberately.** Upstream #51812 (Qwen GDN speculative gate
+ordering: gathered Q/K/V rows and unsorted `a`/`b` gate rows can belong to different tokens in
+a mixed batch, which drifts logits) merged 2026-08-11 and is absent from the same images. It is
+**not** in the promoted release unit, because a mixed batch is the only condition it bites in
+and `--max-num-seqs 1` never produces one — the run that served 38/38 clean with it mounted
+therefore shows it is harmless, not that it fixes anything, and at concurrency it is unmeasured
+by us and rests on upstream's own numbers. If you serve concurrently, mount it as well:
+`tools/vllm-qwen-gdn-spec-gates.py` (`sha256 7cd3f5fe…`) over
+`/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py`
+([`receipts/gdn-spec-gate-defect.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/gdn-spec-gate-defect.json)).
+
+**Scope on this build, stated narrowly.** What was measured on this profile is that the recipe
+starts healthy on the promoted image with the cache on, answers a text and an image request
+exactly, and reports the cache enabled in its banner. That is a serving smoke, not a gate
+suite: this window has no long-needle, combined-image or decode-dispersion gate of its own, and
+the 11.6× and 29.3× reuse figures above were measured on the context edition's much longer
+prompts, not on 8,192-token ones. Expect the shape of the win — recomputing only what changed —
+rather than those multiples.
+
+Enabling it on this profile is one extra read-only mount and two flags:
+
+```bash
+set -euo pipefail
+git clone https://github.com/malaiwah/qwen38-27b-exl3 && cd qwen38-27b-exl3
+cat <<'SHA256' | sha256sum -c -
+b431c1066dfee3ed56bfa7e71cc8606f9afadc300f22d7fc542c43835d1b22bf  tools/vllm-mamba-align-scheduler.py
+SHA256
+SCHED=$PWD/tools/vllm-mamba-align-scheduler.py
+
+docker run --rm --gpus '"device=0"' --ipc host -p 127.0.0.1:8000:8000 \
+  -v /models:/models:ro \
+  -v "$SCHED:/opt/venv/lib/python3.12/site-packages/vllm/v1/core/sched/scheduler.py:ro" \
+  --entrypoint /opt/venv/bin/vllm \
+  voipmonitor/vllm@sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b \
+  serve /models/Qwen3.8-27B-EXL3-K5K6-hydrated \
+    --served-model-name qwen38 --quantization exl3 --enforce-eager \
+    --quantization-config '{"linear":{"weight":"mxfp8"},"ignore":["re:.*visual\\..*","re:.*in_proj_a$","re:.*in_proj_b$","re:.*in_proj_ba$","re:.*mtp\\..*","lm_head"]}' \
+    --mm-processor-kwargs '{"truncation":false}' \
+    --reasoning-parser qwen3 --enable-auto-tool-choice --tool-call-parser qwen3_coder \
+    --max-model-len 8192 --gpu-memory-utilization 0.95 --max-num-seqs 8 \
+    --enable-prefix-caching --mamba-cache-mode align \
+    --host 0.0.0.0 --port 8000
+```
 
 ### Concurrent serving: speculative depth is a concurrency-dependent choice
 
