@@ -266,7 +266,7 @@ c1 = {
 }
 
 c2 = {
-    "order": 2,
+    "order": 3,
     "name": "alt-calibration hydrated rebuild",
     "receipt_to_be_written": "receipts/calibration-corpus-kld.json",
     "why": "docs/37 settled ALLOCATION at a fixed byte budget and left CONTENT untested. This is "
@@ -348,7 +348,7 @@ c2 = {
 }
 
 c3 = {
-    "order": 3,
+    "order": 2,
     "name": "K6-parity",
     "receipt_to_be_written": "receipts/k6-parity-kld.json",
     "why": "docs/29 L189-198: the Q6_K loss is a byte gap, not an engineering gap, and that is "
@@ -600,6 +600,22 @@ doc = {
     "addenda": [
         {
             "when": "before any of the three conversions ran",
+            "what": "run order changed from (S16-V, alt-calibration, K6-parity) to (S16-V, "
+                    "K6-parity, alt-calibration), and the drop candidate is named",
+            "why": "owner decision. K6-parity tests docs/29 L189-198's byte-gap decomposition on "
+                   "an artifact already committed to be kept and uploaded, so it outranks the "
+                   "calibration-content experiment, which cannot move a published verdict "
+                   "whichever way it lands.",
+            "also_recorded_by_the_owner": "if condition 2 runs at all, the per-stratum readout "
+                "registered in addendum 2 is the PRIMARY result and the aggregate difference is "
+                "secondary.",
+            "reporting_rule_restated": "each verdict is stated explicitly even when it lands "
+                "against the prediction, and a missed prediction is reported by how much and in "
+                "which direction rather than by reframing the rule.",
+            "predictions_changed": "none. Order and reporting emphasis only.",
+        },
+        {
+            "when": "before any of the three conversions ran",
             "what": "condition 2 gains a disjointness proof and a per-stratum sub-prediction",
             "corpus_versus_suite_overlap": {
                 "why_it_matters": "the alt calibration corpus is Project Gutenberg prose, and the "
@@ -666,18 +682,21 @@ doc = {
         },
     ],
     "order_and_disk": {
-        "order": "S16-V first (highest leverage: it is docs/34's blocking flip item), "
-                 "alt-calibration second, K6-parity third",
-        "why_that_order": "the flip condition is the one that changes a published verdict; the "
-                          "parity build is the one whose checkpoint is kept whatever happens, so "
-                          "it goes last where its bytes can stay on disk until upload.",
+        "order": "S16-V first, K6-parity second, alt-calibration third",
+        "why_that_order": "owner decision, recorded in addendum 3: S16-V is docs/34's blocking "
+                          "flip item, K6-parity tests docs/29's byte-gap decomposition on an "
+                          "artifact already committed to be kept and uploaded, and "
+                          "alt-calibration is the only one of the three whose result cannot move "
+                          "a published verdict -- the hydrated recipe, its bytes and its number "
+                          "stay exactly as published whichever way it lands.",
         "disk_discipline": "each conversion's working directory is deleted immediately after its "
                            "convert step (nothing downstream reads it), each candidate's hidden "
                            "capture is deleted after its replay, and df is checked between "
                            "conversions. /var/tmp/work/kld9/hidden/hidden-{ctx,fp8,hyd,k4,nvfp4} "
                            "belongs to RentalFidelityBatch2 and is not touched.",
-        "if_the_window_cannot_fit_all_three": "the remainder is handed to ShortlistScore with "
-                                              "this file as the plan.",
+        "if_the_window_cannot_fit_all_three": "alt-calibration is the one to drop, and it is "
+            "handed to ShortlistScore with this file as the plan. Its prep is fully staged and "
+            "digest-proven, so it is a one-command job for whoever runs it.",
     },
 }
 out = os.path.join(R, "receipts/preregistration-kld9-window.json")
