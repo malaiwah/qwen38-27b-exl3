@@ -1026,6 +1026,36 @@ speed — 2.14 accepted tokens per step here against 2.69 there, since these fro
 literary prose — while step time agrees to 2.6 % (25.72 ms against 25.05 implied). The two
 measurements are consistent.
 
+### Chat template
+
+This repo ships `chat_template.jinja` byte-identical to `Qwen/Qwen3.8-27B` (sha256
+`c3cf9e34abf4f9e36c2d72165aa9c132d3e2a725b6c2586aaa3a8af9d7a81041`), and the same bytes again in
+the `chat_template` key of `tokenizer_config.json`. Do not replace one without the other: under
+transformers 5.15.0 the `.jinja` file takes priority, so editing only `tokenizer_config.json` is
+a no-op. To override, pass `--chat-template <file>`.
+
+Three upstream-template restrictions to code against. All three are Qwen's, unchanged by us, and
+all three surface as HTTP 400:
+
+- **`reasoning_effort` accepts only `xhigh` (default), `medium`, `low`, or `none`.** `high`,
+  `minimal` and `max` are rejected even though vLLM's OpenAI surface advertises them. If your
+  client hard-codes `high`, serve with `--default-chat-template-kwargs.reasoning_effort=xhigh`.
+- **Exactly one `system` message, first.** Two `system` messages 400 with `System message must
+  be at the beginning.` (vllm#41114, open; fix PR vllm#44505 closed unmerged). Merge them
+  client-side. A `developer` role is safe - vLLM folds and consolidates it (vllm#43590).
+- **Content blocks must be `text`, `image`, `image_url` or `video`.** Anything else, including
+  an Anthropic `tool_result` carrying a `tool_reference` item on `/v1/messages`, 400s with
+  `Unexpected item type in content.` (vllm#52489, open).
+
+Echoing `reasoning_content` back on assistant history turns is what buys a full prefix-cache
+hit: measured 100 % prefix reuse when the client returns it, 94.7 % at ten turns when it does
+not. Community "fixed" Qwen templates are not recommended here: measured against
+`--tool-call-parser qwen3_coder`, `qwen3.8-froggeric-v22` renders a tool call whose arguments
+the parser recovers as `{}`. Details in
+[`docs/39-chat-template-audit.md`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/docs/39-chat-template-audit.md)
+and [`receipts/chat-template-audit.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/chat-template-audit.json).
+
+
 ## What is not verified
 
 The paired MMLU-Pro suite above has now run for this build and all five comparators, and this

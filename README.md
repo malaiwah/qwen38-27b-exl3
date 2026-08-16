@@ -269,6 +269,7 @@ See [PROGRESS.md](PROGRESS.md) for the full session record.
 | [docs/34-vram-class-profiles.md](docs/34-vram-class-profiles.md) | the 24 GB and 16 GB class verdicts, the measured affine KV law, and a capped-budget proxy qualification |
 | [docs/36-performance-levers-5090.md](docs/36-performance-levers-5090.md) | 11 configurations on the physical 5090: what moved throughput, what is a no-op, and the GDN gate reachability rate |
 | [docs/37-error-driven-allocation.md](docs/37-error-driven-allocation.md) | the error-driven allocation experiment that lost, the 3.73x-per-bit law it produced, and why the objective is not a surrogate for KLD |
+| [docs/39-chat-template-audit.md](docs/39-chat-template-audit.md) | every chat template in this model family captured with revision and sha256, diffed by named construct, and the verdict that ours is byte-identical to official; the community "fixed" template measured losing tool-call arguments under `qwen3_coder`, and the loudest complaint traced to the 2.4T flagship's template rather than the 27B's |
 
 Tooling in [tools/](tools/) is what produced the evidence: an unprivileged OCI image
 puller and a proot-based runner for it, the BF16 attention splice and checkpoint
@@ -291,6 +292,10 @@ collection index are these files:
 | [tools/gguf_capture.cpp](tools/gguf_capture.cpp) | llama.cpp-side capture of the post-final-norm state for a GGUF at pinned commit `ece963f4`, so a GGUF can be replayed through our shared BF16 head; bf16 rounding verified bit-identical to torch on 2,012,449 probe values | `receipts/gguf-report-{q8_0,q6_k,q5_k_xl,engine-floor}.json`, `receipts/cross-engine-comparator.json` |
 | [tools/gguf_manifest.py](tools/gguf_manifest.py) | pins each capture to its GGUF blob digest and the llama.cpp identity that produced it | the four `receipts/gguf-report-*.json` |
 | [tools/build_llamacpp.sh](tools/build_llamacpp.sh) | builds the capture binary against the pinned llama.cpp commit | `engine_identity` in every GGUF report |
+| [tools/chat_template_matrix.py](tools/chat_template_matrix.py) | renders every candidate chat template over 34 fixed cases inside the pinned image, reconstructing transformers' Jinja environment exactly, and reports token counts and sha256 per rendered prompt; CPU only | `receipts/chat-template-audit.json`, `receipts/chat-templates/renders.json` |
+| [tools/chat_template_roundtrip.py](tools/chat_template_roundtrip.py) | feeds each template's rendered tool call back through the image's own `vllm.parser.qwen3._qwen3_arg_converter` and reports whether `--tool-call-parser qwen3_coder` recovers the arguments losslessly | `tool_call_roundtrip` in the audit receipt |
+| [tools/chat_template_prefix.py](tools/chat_template_prefix.py) | first-divergent-token between the generated token stream and the re-rendered history, per client reasoning-echo behaviour, i.e. the point past which no prefix-cache block is reusable | `prompt_growth_and_prefix_stability` in the audit receipt |
+| [tools/fetch_chat_templates.sh](tools/fetch_chat_templates.sh), [tools/gguf_chat_template.py](tools/gguf_chat_template.py) | fetch every family template with its revision and digest, including off-default-branch refs and the one that exists only inside GGUF metadata (read over HTTP range requests, no tensor bytes) | `receipts/chat-templates/{SHA256SUMS,raw/}` |
 
 ## Status
 
