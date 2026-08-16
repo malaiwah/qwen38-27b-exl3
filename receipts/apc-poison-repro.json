@@ -24703,6 +24703,7 @@
       "out/module-verify-apc.txt": "5c8526ed7bad464b7a5a47b07b81cac41542807ceab1f7d12692b2233ebdf377",
       "out/module-verify-release.txt": "11afe2851af87610ee5f354df0e5f917a32191bf3086aa4d385a867237409a20",
       "out/prompt-build.txt": "2fc150d31e43c6b42e4e0ef44a80313c80fb6d052d59fa6f638b64a38a7a004a",
+      "out/restore.json": "da3199a8541266dcf77aeb6d1c25df0e2d6f1dc0c7691b01197552405eb96bff",
       "out/reuse-E.json": "9780e3f6661a6e25f60c99a48c2c42f1edcb369409503f532d2bbbdfbcc8bda8",
       "out/stage.json": "8ec152b77985b2742684014adb5d59540ccb19d7da5338b19a4b0b9c40545420",
       "out/startup-facts-A.txt": "44f3fd9d840cf3485a957f45cd715d4a9a9c1fb75a0837123e2ccbdd3884394a",
@@ -24732,7 +24733,7 @@
       "pilot/windows-A.json": "128d23327883d0d6210d0cd712efc983966cad03c42bc413da00a88cb5f1aaf8"
     }
   },
-  "content_sha256": "f02891008ed8393edbcc131110d303f2a23b484c5ed3c8543d527911f0269a7d",
+  "content_sha256": "e0d628144e8d5fb995f30aaa8b681a2e6b35f0d444a12d36d18d87a436eaa2f6",
   "interpretation": {
     "one_line": "The reporter's exact serving condition, on the same card class, did not reproduce his symptoms in 266 scored requests across seven freshly started servers. The absent PR #51113 is still a real defect proven at source and by upstream's own regression file, but this probe did not make it bite, so it is not yet established as the cause of what he saw.",
     "what_was_clean_and_by_how_much": {
@@ -24786,6 +24787,40 @@
       "evidence_against_promoting_on_this_receipt_alone": "This receipt measures one probe workload on one card. It is not a serving qualification: it does not re-run the four card recipes, the image serving gates, the multimodal suite, or the fidelity guards, and promoting the superset invalidates the digest pin that receipts/production-image.json and the 5090 qualification receipt share.",
       "recommendation": "Promotion is justified in principle and is NOT justified by this receipt alone. Gate it on a fresh serving qualification of the superset tag, using this receipt as the correctness-under-prefix-caching evidence and arm E as the reason to bother. That qualification is the next ticket; this receipt is its input, not its substitute. Note also that arm E's 128k case had a 97.6 % hit rate against a 223,677-token KV cache, so the reuse win is real at the sizes that matter but the cache is not large enough to hold many concurrent 128k prefixes.",
       "decision_owner": "not this agent; recorded here so the next ticket inherits the evidence rather than re-deriving it"
+    }
+  },
+  "published": {
+    "discussion": "https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6-context/discussions/1",
+    "comment_id": "6a813d32a479dd58850ab03b",
+    "comment_author": "malaiwah",
+    "comment_posted_utc": "2026-08-16T04:31:46Z",
+    "receipt_url": "https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/apc-poison-repro.json",
+    "reporter_update_that_changes_the_reading": "At 03:13 UTC cosmicnag reported the garbling stopped, but his decisive control removed four things at once: the LMCache wrapper and connector, the cleared LMCache L2 files, --enable-prefix-caching and --mamba-cache-mode align. That proves the set is guilty, not which member. This receipt is the missing half of the decomposition: prefix caching plus align mode, without LMCache, stayed clean over 266 requests, which moves LMCache 0.5.2 kv_both from 'untested' to 'leading suspect'."
+  },
+  "live_service_restored": {
+    "unit_active": "active",
+    "container_health": "healthy",
+    "health_endpoint_ok": true,
+    "state": "running",
+    "image": "docker.io/voipmonitor/vllm@sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b",
+    "started_at": "2026-08-16 00:27:12.790688892 -0400 EDT",
+    "compute_apps": "190541, 30434 MiB",
+    "snapshot_field_diff": {
+      "spec": "receipts/aiboss-live-service-snapshot.json",
+      "fields_checked": [
+        "cmd",
+        "env",
+        "image_digest",
+        "binds",
+        "entrypoint",
+        "working_dir",
+        "user",
+        "stop_signal",
+        "healthcheck"
+      ],
+      "fields_differing": 1,
+      "only_difference": ".Config.User reads \"\" on the restored container where the snapshot recorded \"root\". No --user was ever passed, so the field is unset and the image default applies; `podman exec qwen38-27b id -un` returns root, confirming no drift in effect.",
+      "serving_check": "GET /v1/models returns the Qwen3.8-27B K4 snapshot the unit is pinned to, and nvidia-smi shows the single compute app holding 30,434 MiB"
     }
   }
 }
