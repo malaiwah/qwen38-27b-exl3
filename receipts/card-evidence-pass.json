@@ -1,0 +1,533 @@
+{
+  "cards": {
+    "ctx": {
+      "bytes": 85039,
+      "docs_sha256sums_sha256": "170cb856e16c6cac5dd36519d80a3be7978d97669e3560c1bc724a7dfc424ca4",
+      "file": "MODEL_CARD-K5K6-context.md",
+      "hub_commit": "68081f4c224258625d61d6d8627f3fdfa901763c",
+      "lines": 1114,
+      "published_as": "malaiwah/Qwen3.8-27B-EXL3-K5K6-context/README.md",
+      "sha256": "8ed2d3aa69fda74f89cb7fbd9c57e5e393cb953d3fb4dec5bdce5eebd97bb36b"
+    },
+    "hyd": {
+      "bytes": 72144,
+      "docs_sha256sums_sha256": "3da190130d5bbb7d6ff2e8b5965df2863371e7b74ff9c436eae2b85ad0ea3ac5",
+      "file": "MODEL_CARD-K5K6-hydrated.md",
+      "hub_commit": "d871829e58001a31236d7a18dcd4013cc9d893bd",
+      "lines": 915,
+      "published_as": "malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated/README.md",
+      "sha256": "d8717ac2b069fc75ebe040893f34d0c96d111c2170a99e09d5ff9f618fc9228a"
+    },
+    "k4": {
+      "bytes": 79610,
+      "docs_sha256sums_sha256": "e8f790762e8c93db2b286827d5245851274c35656ade04129e6e2c3f20e4bc00",
+      "file": "MODEL_CARD-K4.md",
+      "hub_commit": "65ecc853b39b4bcfec780fd63b43c397fdfab56c",
+      "lines": 1046,
+      "published_as": "malaiwah/Qwen3.8-27B-K4/README.md",
+      "sha256": "c7a96a9230c111de5c0b58caeaeb1b71a44181352c052dfc8f37e1316ddb932c"
+    },
+    "k5k6": {
+      "bytes": 85122,
+      "docs_sha256sums_sha256": "74bee8db0bed6b78d7d71c94d92df6335859b676e2cf1bf1f413bc9f8692a865",
+      "file": "MODEL_CARD-K5K6.md",
+      "hub_commit": "15860ad98c076a4a79cedb028fb1f146eeebb36d",
+      "lines": 1102,
+      "published_as": "malaiwah/Qwen3.8-27B-EXL3-K5K6/README.md",
+      "sha256": "f002019f7e9ac088efcebff5b0425229c609fc2c4809942b7bca02f5357e5d7f"
+    }
+  },
+  "content_sha256": "39ecdb82982ebf723b2c07dd5bfb75fe097507f003ebcd35f954185b8106f5f8",
+  "content_sha256_excludes": [
+    "content_sha256"
+  ],
+  "evidence_items": {
+    "capture_determinism": {
+      "arithmetic": "5 candidates x 512 contexts x 2047 positions",
+      "deviation_from_the_brief": "the brief said 'three harness generations'; capture-determinism.json evidences TWO runs and two harness files, so the cards say 'independent runs with separate model loads and different harness generations' and cite the third generation separately through the score-from-0 control, which is the only part a third generation actually evidences",
+      "explicitly_not_claimed": [
+        "vLLM is bitwise deterministic in general",
+        "determinism under CUDA graphs",
+        "determinism at max_num_seqs > 1",
+        "determinism across GPUs or drivers",
+        "anything downstream of the logits"
+      ],
+      "fields_that_differ": [
+        "reference",
+        "candidate",
+        "schema",
+        "kld_tail"
+      ],
+      "receipt": "receipts/capture-determinism.json",
+      "receipt_sha256": "be3d6f2949aa62454f89f4f04236185a7b35a995007545487d8cd1457c613e4d",
+      "reports_per_candidate": 2,
+      "runs_compared": 2,
+      "scope_carried_in_the_same_paragraph": [
+        "one GPU",
+        "one driver",
+        "one pinned rootfs",
+        "enforce_eager=True",
+        "max_num_seqs=1",
+        "one context per forward",
+        "512 MiB bf16 KV"
+      ],
+      "scored_positions_reproduced": 5240320,
+      "third_generation_corroboration": {
+        "receipt": "receipts/scored-window-offset.json",
+        "receipt_sha256": "cedc33ef1c12536dc6752e0dcbd59fd505b80f5564dccc97abce28f263a5d9a3",
+        "why": "the --score-from 0 window reports come from a third harness generation (report schema /3) and reproduce the published shard-0 means exactly: hyd 0.002699883159684943, ctx 0.003409409957186559, fp8 0.0051970635503104596"
+      }
+    },
+    "chart": {
+      "alt_text_verified_against": [
+        "the rendered assets/kld-all-measurements-light.png read at 2880x2160",
+        "MasterKldChart's own confirmation of the frozen digests and panel contents"
+      ],
+      "files": {
+        "assets/kld-all-measurements-dark.png": "743958d75b9155111f58083427522edbb08086ba7611f09cdae9f48a4b8ac787",
+        "assets/kld-all-measurements-dark.svg": "f65c306834fd685d4fe7b59f8e37e86f95461c1bd9bd4a79806018f4e2ddc6f0",
+        "assets/kld-all-measurements-light.png": "f5a5cb43397a4548d24ceba603a8bf2eca7e7f8adedc1da582f0a132e9c70013",
+        "assets/kld-all-measurements-light.svg": "8aa38d114e4f045da0a9e04aeae97563aea898cfeed9bbd405dce703d0bb2846"
+      },
+      "footer_rules_carried_in_alt_text": [
+        "RULE 1 the engine term is not shared",
+        "RULE 2 no cross-panel ratio is meaningful"
+      ],
+      "generator": "tools/make_master_kld_chart.py (owned by MasterKldChart; read only in this pass)",
+      "known_future_staleness": "receipts/kld5-10M-nvfp4.json does not exist yet; when NvfpOnV5's ten-shard run lands, a regenerated figure gains a 10M NVFP4 point in panel B and all four digests change (reported by MasterKldChart)",
+      "panels": {
+        "A": "v5 shard 0, 512 contexts, 1,048,064 positions, 330 clusters, nine candidates, x = serialized bytes on disk, engine floor 0.000507 drawn",
+        "B": "same suite ladder, cumulative 1,048,064 -> 10,480,640 positions, 5,120 contexts / 842 clusters at 10M, five vLLM builds",
+        "C1": "corrected v3, 127 contexts, 259,969 positions, own y-axis, carries the six v3/v5 ratios",
+        "C2": "source-disjoint v4, 36 contexts, 73,692 positions, own y-axis, hatched barrier between C1 and C2",
+        "D": "turboderp's published labels, OpenWebText 8 x 8192 = 65,536 positions, our builds as x-only markers"
+      }
+    },
+    "external_cross_citation": {
+      "base_ppl": [
+        6.95023,
+        0.044933
+      ],
+      "doc": "docs/35-external-protocol-comparability.md",
+      "doc_sha256": "706ce25c8457a3b34535201b206d25ce9570bb5b4762bc5c756e651200ace80d",
+      "level_difference_vs_our_net_of_floor": {
+        "our_net_values": [
+          0.000579,
+          0.001528,
+          0.003936
+        ],
+        "q5_k_xl": "1.12x",
+        "q6_k": "1.50x",
+        "q8_0": "1.60x",
+        "source": "docs/35 Run A / Run B table, net column from receipts/cross-engine-comparator.json engine_floor_subtracted_estimate"
+      },
+      "ppl_does_not_track_kld": "Q6_K has the smallest PPL delta (+0.00079) while Q8_0 (+0.00467) is the better quant on every divergence statistic",
+      "protocol": "llama.cpp llama-perplexity --kl-divergence, WikiText-2 raw test, n_ctx 512, 147,900 scored positions, candidate head inside the measured path, both operands in llama.cpp",
+      "receipt": "receipts/wikitext-kld-run-a.json",
+      "receipt_sha256": "4a8fc320222f22f68bc578246b13543885dbffbbef53568cd27a3255c5bb4ca3",
+      "rows": {
+        "q5_k_xl": {
+          "mean_kld": 0.004426,
+          "ppl_delta": 0.0182,
+          "ppl_q": 6.96843,
+          "same_top_pct": 97.178,
+          "sem": 0.000167
+        },
+        "q6_k": {
+          "mean_kld": 0.002286,
+          "ppl_delta": 0.000786,
+          "ppl_q": 6.951016,
+          "same_top_pct": 97.875,
+          "sem": 0.000108
+        },
+        "q8_0": {
+          "mean_kld": 0.000926,
+          "ppl_delta": 0.004666,
+          "ppl_q": 6.954896,
+          "same_top_pct": 98.761,
+          "sem": 4.2e-05
+        }
+      },
+      "their_harness_floor": {
+        "mechanism": "uint16 16-nat log-probability encoding; capture-log PPL 6.9525 against scoring-run 6.950230 on identical weights and tokens",
+        "minimum_kld": [
+          -8e-05,
+          -5.6e-05,
+          -7.7e-05
+        ],
+        "stated_as": "5.6e-5 to 8.0e-5"
+      },
+      "tokenizer_null_result": {
+        "identical": true,
+        "int32le_sha256": "cd9ca15e7ec195fe4bf9b6debfa3b9bf6db8ae3e83021fcfe470d6c91edf84e7",
+        "n_tokens": 297194,
+        "receipt": "receipts/wikitext-kld-token-identity.json",
+        "receipt_sha256": "82bcbf1141c4b4e338f2477d8928c139747d03d2e162236c4a5755065d78655f",
+        "scored_prefix_tokens": 296960
+      }
+    },
+    "nvfp4_paired": {
+      "not_claimed": "no paired comparison of NVFP4 against K4, the hydrated build or the online build exists; those distances are stated as ratios of means only",
+      "nvfp4_vs_ctx": {
+        "a_wins": 0,
+        "b_wins": 512,
+        "ci95": [
+          0.02446525016515461,
+          0.029284842555892348
+        ],
+        "difference": 0.026705997603727653
+      },
+      "nvfp4_vs_fp8": {
+        "a_wins": 0,
+        "b_wins": 512,
+        "ci95": [
+          0.02275635261561385,
+          0.0274239123872108
+        ],
+        "difference": 0.024918344010603753
+      },
+      "printed_as": "loses every one of 512 contexts against both comparators: +0.026706 [+0.024465, +0.029285] and +0.024918 [+0.022756, +0.027424], 0 wins to 512",
+      "receipt": "receipts/kld5-1M-paired-nvfp4.json",
+      "receipt_sha256": "ee2a3dc14b7fc3075dc44eb38e3dc3073cafaa96e9e87abe6eb7c3ac561ea558"
+    },
+    "nvfp4_v5_shard0": {
+      "comparator_row": {
+        "candidates_key": "nvfp4",
+        "carries_cross_engine_term": false,
+        "p999_kld": 1.622844287351794,
+        "read_only_for_this_pass": true,
+        "receipt": "receipts/cross-engine-comparator.json",
+        "receipt_sha256": "3fd7e57f76a082276c8d3cbf117cb0137d64cd61e6b5dba13451cf09d7f12acc"
+      },
+      "exact_percentiles_source": {
+        "note": "the cards print the EXACT p99.9 1.6228 in the shard-0 table, matching the other rows, which take it from receipts/cross-engine-comparator.json; the histogram estimate 1.6128 and its bin bounds are quoted only in the K4 card where the construction difference is explained",
+        "p95_kld": 0.10050953765824026,
+        "p999_kld": 1.622844287351794,
+        "p99_kld": 0.3354553113034804,
+        "path": "/var/tmp/work/kld5-nvfp4/reports/shard-0000/report-nvfp4.json",
+        "pinned_by": "receipts/kld5-1M-nvfp4.json /shards/0/report_sha256 and /inputs",
+        "sha256": "49bdf713182f4e40421ba5eb5d2840506ea83f4bb878c491d91d695b45771e5d",
+        "token_median_kld": 0.0095837720025429
+      },
+      "printed_as": "0.030115 | [0.027637, 0.032965] | 93.16 % | median 0.009584 | p95 0.10051 | p99 0.33546 | p99.9 1.6228 | max 10.6285 | JSD 0.010104 bits",
+      "ratios_derived_here": {
+        "method": "quotient of the two means as published in receipts/cross-engine-comparator.json; printed to one decimal in the cards",
+        "p999_vs_context_0.1632": 9.94,
+        "p999_vs_hydrated_0.1313": 12.36,
+        "p999_vs_k4_0.5576": 2.91,
+        "p999_vs_online_0.1447": 11.21,
+        "vs_context_0.003409": 8.833,
+        "vs_gguf_q8_0_measured_0.001087": 27.71,
+        "vs_hydrated_0.002700": 11.154,
+        "vs_k4_0.010345": 2.911,
+        "vs_official_fp8_0.005197": 5.795,
+        "vs_online_0.003141": 9.587
+      },
+      "read_from_that_file": {
+        "ci95": [
+          0.02763715653434525,
+          0.03296468638390454
+        ],
+        "contexts": 512,
+        "max_kld": 10.62854133951995,
+        "mean_jsd_bits": 0.010103668913600107,
+        "mean_kld": 0.030115407560914208,
+        "p999_histogram_bounds": [
+          1.584893192461111,
+          1.678804018122559
+        ],
+        "p999_histogram_estimate": 1.6128235478141013,
+        "scored_positions": 1048064,
+        "source_clusters": 330,
+        "top1_agreement": 0.9315795600268686
+      },
+      "receipt": "receipts/kld5-1M-nvfp4.json",
+      "receipt_sha256": "02ce3f336d2ca3d93f2fbeebf4f003adf026df2862ff4e862ce0a2cb0dd43865"
+    },
+    "perf_sweep_5090": {
+      "artifact_under_test": "malaiwah/Qwen3.8-27B-EXL3-K5K6-context",
+      "closed_avenues_published": {
+        "attention_backend_FLASHINFER": "no-op; the engine already auto-selects FLASHINFER on SM120 with fp8 KV and head_size 256",
+        "attention_backend_TRITON_ATTN": "up to 5.5 % worse step time at C8; +5.5 % at temperature 0 reverses to -7.3 % at 0.6, i.e. acceptance noise",
+        "custom_ops_all": "2.2-5.2 % worse step time and not bit-exact",
+        "dynamic_speculative_decoding": "both knobs downgrade cudagraph_mode FULL_DECODE_ONLY -> PIECEWISE, which Exl3Config refuses, so the server does not start; forced eager loses 48 % of decode",
+        "prefill": "did not move on any lever, no graph-decode row more than 4.0 % from the reference, so the deficit is structural rather than untuned"
+      },
+      "doc": "docs/36-performance-levers-5090.md",
+      "doc_sha256": "39c93b968141c74ee81930b56b9d9129b307c8dfd53db9a6fe3d2211b4804766",
+      "hardware_label_required_on_every_figure": "one physical GeForce RTX 5090, 32,607 MiB, driver 610.57.04, image localhost/vllm:gg-r34-patched sha256:6eca4c69..., no source bind mounts; never differenced against any rental RTX PRO 6000 number",
+      "receipt": "receipts/perf-sweep-5090.json",
+      "receipt_sha256": "edf4cbe892d5ac0219e0361e90748a37a8f12729c9677a5f829ce345fcb5180e",
+      "reconciliation_sentence": "82.94 tok/s at one stream against the qualification's 107.56 is entirely acceptance (2.14 against 2.69 accepted tokens per step, literary prose against repetitive technical prose); step time agrees to 2.6 %, 25.72 ms against 25.05 implied",
+      "reference_row": {
+        "accepted_tokens_per_step_c1": 2.1429,
+        "decode_aggregate_T0": {
+          "c1": 82.94,
+          "c4": 263.12,
+          "c8": 313.28
+        },
+        "gpu_kv_cache_tokens": 272570,
+        "prefill_tok_s": {
+          "2048": 3374.4,
+          "6144": 3255.4
+        },
+        "step_time_ms": {
+          "c1": 25.7213,
+          "c4": 30.6432,
+          "c8": 49.5248
+        }
+      },
+      "utilisation_caveat_carried": "the 8-sequence 262,144-token matrix only starts at --gpu-memory-utilization 0.97, which is text-only because a large image OOMs in the vision tower; vision-capable deployments keep --max-num-seqs 1 at the qualified 0.955",
+      "winner": {
+        "decided_on": "accepted tokens per step divided by step time, never acceptance rate",
+        "depth_2": "dominated at both ends",
+        "eight_streams": {
+          "accepted_tokens_per_step_change_pct": -22.98,
+          "aggregate_gain_pct": 30.67,
+          "aggregate_tok_s": 409.35,
+          "config": "num_speculative_tokens=1",
+          "gpu_kv_cache_tokens": 283481,
+          "image_suite": "24/30, digits 8 bars 9 grid 7, identical to the rank-1 qualification",
+          "kv_tokens_gained": 10911,
+          "needle": {
+            "prompt_tokens": 261794,
+            "retrieved_exact": true
+          },
+          "per_request_gain_pct": 22.75,
+          "step_time_change_pct": -37.25
+        },
+        "single_stream": "MTP depth 3, decision metric 83.31 against depth 1's 74.28"
+      }
+    },
+    "public_artifacts": {
+      "dataset": {
+        "per_shard_reports": {
+          "gguf": 4,
+          "kld5": 50,
+          "kld5-tail": 10,
+          "kld5-win": 15,
+          "total": 79
+        },
+        "printed_as": "10.83 GB / 10.083 GiB",
+        "repo": "malaiwah/qwen38-27b-fidelity-suite-v5",
+        "revision_verified": "08bde6ccb78799462733f52199b9a50272f9b87f",
+        "shard0_bf16_reference": {
+          "bytes": 10732326844,
+          "files": 513
+        },
+        "total_bytes": 10826796868,
+        "total_files": 5835,
+        "verification_strength": "5,326 of 5,835 files re-downloaded and re-hashed; the 509-file 10 GB tree checked against the Hub's LFS sha256 plus a three-file CDN spot check"
+      },
+      "mirror_wording_required_by_the_policy": "a mirror preserves the CITATION - a resolvable repo id, revision and digest table - and is NOT independent byte-level redundancy, because Hub storage is content-addressed; measured cost 2.34 GB of transfer for 149.3 GB of content, about 1.6 %",
+      "mirrors": {
+        "gguf": {
+          "kind": "precautionary",
+          "repo": "malaiwah/Qwen3.8-27B-GGUF-archival-f1bfb127",
+          "upstream_revision": "f1bfb127c64f7072bdd2cad55f258b9c8b2910fe",
+          "upstream_revision_resolves": true
+        },
+        "nvfp4": {
+          "kind": "recovery",
+          "repo": "malaiwah/Qwen3.8-27B-NVFP4-archival-9c73e2da",
+          "upstream_revision": "9c73e2daee1d0fd494ffbd1d8753f2174a953796",
+          "upstream_revision_resolves": false
+        }
+      },
+      "receipt": "receipts/preserved-artifacts.json",
+      "receipt_sha256": "5dd6777b6ae0dd8ac8507d9fa545943b63cc6fa985a342085609c4f1e1424e53",
+      "replay_cost_quoted": {
+        "new_candidate_shard0": "about 6 minutes of GPU on one RTX PRO 6000 Blackwell",
+        "source": "preserved-artifacts.json recompute_cost_each / recompute_cost_total",
+        "ten_shard_ladder": "about 5 hours for fifty candidate captures plus about 54 minutes for the nine deleted BF16 shard references"
+      }
+    },
+    "upstream_fixes": {
+      "absent_at": "dev/gilded-gnosis head fa033bd4e; both target files byte-identical to the r34 vendored copies",
+      "deliberately_not_claimed": "nothing about prefix caching, which is still in flight (ApcPoisonRepro), and nothing about the 24 GB profile (TwentyFourGigProxy)",
+      "filed_as": {
+        "issue": "https://github.com/local-inference-lab/vllm/issues/392",
+        "pr": "https://github.com/local-inference-lab/vllm/pull/393",
+        "requested_utc_date": "2026-08-16"
+      },
+      "patch_modules": [
+        "tools/vllm-mamba-align-scheduler.py",
+        "tools/vllm-qwen-gdn-spec-gates.py"
+      ],
+      "receipts": {
+        "gdn_spec_gates": {
+          "path": "receipts/gdn-spec-gate-defect.json",
+          "sha256": "694cecbf338dc37b1a9237ec10c2ec68c6e741a7c19f8b6f30d0212732fe2174"
+        },
+        "mamba_align": {
+          "path": "receipts/mamba-align-defect.json",
+          "sha256": "a654f3df5776466575a6706a73f3ea369b73587e6fb832a6ea5917f617c31e82"
+        },
+        "plan": {
+          "path": "docs/29-plan-and-loose-ends.md",
+          "sha256": "0b05cf508aefe9dc7df527930cf355178fba745546a4cbcf156a277f181b3f2e"
+        }
+      },
+      "regression_evidence": "upstream's own CPU-only regression file: 14 failed / 6 passed vendored, 20 passed patched",
+      "stated_limit": "neither module is part of the qualified image digest; the scheduler one is baked only into the non-qualified -apc variant and the GDN module is in no image yet",
+      "upstream_prs_cherry_picked": {
+        "51113": "mamba align prefill-chunk splitting, merged 2026-08-06",
+        "51812": "Qwen GDN speculative gate ordering, merged 2026-08-11"
+      }
+    },
+    "v3_vs_v5_scaling": {
+      "block": "suite_comparability_v3_vs_v5",
+      "ordering_identical": true,
+      "printed_as": "2.4625x / 2.5293x / 2.6564x / 2.7505x / 2.8688x / 3.0791x, a 1.2504x band, ordering identical in both suites, never mix an absolute value across suites",
+      "ratios_quoted_not_recomputed": {
+        "ctx": 2.7504780725288045,
+        "fp8": 2.4624986758761565,
+        "hyd": 2.6564237900632226,
+        "k4": 2.868817287451217,
+        "k5k6": 2.5292967988424118,
+        "nvfp4": 3.0790651709420223
+      },
+      "receipt": "receipts/nvfp4-v5-measurement.json",
+      "receipt_sha256": "be6d44b81c44217bc92fe156f07d005a824071ec7cd57014fbbc44686b952ef9",
+      "spread_end_to_end": 1.2503824676561468,
+      "v3_corrected_nvfp4": 0.09272730252953497,
+      "v5_shard0_nvfp4": 0.030115407560914208
+    }
+  },
+  "generated_utc": "2026-08-16T04:01:27Z",
+  "placement_per_card": {
+    "chart": {
+      "all_four": true,
+      "convention": "<picture> with a dark srcset and a light src, matching the existing figures; alt text written from the rendered PNG and the generator",
+      "placement": {
+        "ctx": "immediately after the v5 headline table and its reading",
+        "hyd": "top of Fidelity, before Suite identity",
+        "k4": "immediately after the v5 mean and paired tables",
+        "k5k6": "top of Fidelity, before Suite identity"
+      }
+    },
+    "cross_citation_section": {
+      "all_four": true,
+      "heading": "### Cross-citation: the same three GGUFs under llama.cpp's own protocol",
+      "links": "docs/35",
+      "position": "end of the Against-GGUF section, after the scored-window objection"
+    },
+    "determinism_prose": {
+      "all_four": true,
+      "where": "in the fidelity/method section beside the chart, with the scope limits in the same paragraph"
+    },
+    "nvfp4_row_in_shard0_table": {
+      "all_four": true,
+      "k4_extra": "the K4 card frames NVFP4 as the 4-bit-class comparator its readers weigh it against, adds the histogram-versus-exact p99.9 bracket, and its ranking prose was rewritten from 'last on every column' to 'second from last, last among the rows a fidelity-first reader would shortlist'",
+      "paired_prose": "beside the table in all four cards, as a win count rather than a ratio",
+      "row": "| `unsloth/Qwen3.8-27B-NVFP4` @ `9c73e2da` | vLLM | 0.030115 | n/a, same engine | 93.16 % | 1.6228 | \u2014 |",
+      "table": "Against GGUF, measured on our suite",
+      "treatment": "same as the other vLLM rows: no cross-engine term, nothing subtracted; the serialized cell is em-dash with the reason printed, matching the chart's no-published-serialized-size lane"
+    },
+    "perf_sweep": {
+      "all_four": true,
+      "heading": "### Concurrent serving: speculative depth is a concurrency-dependent choice",
+      "position": {
+        "ctx": "end of Throughput, with the full row table",
+        "hyd": "Serving (this card has no throughput section)",
+        "k4": "after Throughput - with CUDA graphs",
+        "k5k6": "end of Throughput"
+      },
+      "recipe_variant": {
+        "ctx": "the same command with --max-num-seqs 8 and num_speculative_tokens 1",
+        "hyd": "conditional: if MTP is added, N=3 single-stream and N=1 at eight streams",
+        "k4": "conditional: if MTP is added, N=3 single-stream and N=1 at eight streams",
+        "k5k6": "recipe B with num_speculative_tokens 1"
+      }
+    },
+    "reproduce_this": {
+      "all_four": true,
+      "position": {
+        "ctx": "after What is not verified",
+        "hyd": "after Machine-readable evidence",
+        "k4": "after Reproducing this quant",
+        "k5k6": "after Safety and intended use"
+      },
+      "side_effects": "the four stale 'no published captures' bullets were corrected to say the shard-0 BF16 reference survived and is published"
+    },
+    "upstream_line": {
+      "all_four": true,
+      "position": {
+        "ctx": "Serving, after the open-upstream list",
+        "hyd": "Serving, after the patch paragraph",
+        "k4": "Serving, after the four load-bearing flags",
+        "k5k6": "Serving, load-bearing list item 6"
+      }
+    },
+    "v3_vs_v5_sentence": {
+      "all_four": true,
+      "ctx": "after the overlap-corrected paragraph in the v3 subsection",
+      "hyd": "replaces the stale 'NVFP4 has no v5 row' sentence",
+      "k4": "after the overlap-corrected paragraph in the v3 prior-receipt section",
+      "k5k6": "after the overlap-corrected paragraph"
+    }
+  },
+  "published": {
+    "asset_sha256": {
+      "assets/kld-all-measurements-dark.png": "743958d75b9155111f58083427522edbb08086ba7611f09cdae9f48a4b8ac787",
+      "assets/kld-all-measurements-dark.svg": "f65c306834fd685d4fe7b59f8e37e86f95461c1bd9bd4a79806018f4e2ddc6f0",
+      "assets/kld-all-measurements-light.png": "f5a5cb43397a4548d24ceba603a8bf2eca7e7f8adedc1da582f0a132e9c70013",
+      "assets/kld-all-measurements-light.svg": "8aa38d114e4f045da0a9e04aeae97563aea898cfeed9bbd405dce703d0bb2846"
+    },
+    "commit_message": "Cards: NVFP4 on v5, v3-vs-v5 scaling, capture determinism, external cross-citation, all-measurements chart, reproduce section, upstream fixes, 5090 lever sweep",
+    "files_per_repo": [
+      "README.md",
+      "assets/kld-all-measurements-{light,dark}.{svg,png}",
+      "DOCS-SHA256SUMS"
+    ],
+    "tool": "huggingface_hub create_commit with HF_HOME=/var/tmp/hf-home-3"
+  },
+  "question": "which pieces of newly landed evidence went into which model card, with the receipt behind every number, and are the published cards byte-identical to the local files?",
+  "schema": "qwen38-card-evidence-pass/1",
+  "starting_point": {
+    "commit": "0696ff3",
+    "conventions_preserved": [
+      "arms named at 0.97",
+      "whole-tree download bytes with K4's asterisked exception",
+      "resident versus checkpoint separation",
+      "hardware-labelled throughput",
+      "the 18.41/18.19 reconciliation sentence",
+      "serialized bytes are never called VRAM or resident"
+    ],
+    "resolution_receipt": "receipts/card-consistency-audit-resolution.json",
+    "resolution_receipt_sha256": "c541b180dca1b32f23fad3912308edbd7e9f8a3a030b03db8d2a3c5ecdd8c0e9",
+    "what": "CardFixes' resolution of all 16 card-consistency audit findings"
+  },
+  "verification": {
+    "assets_bytes_identical_in_every_repo": true,
+    "cross_card_consistency": {
+      "cross_citation_table": "three rows, byte-identical in all four cards",
+      "links": "every github blob/tree link in all four cards resolves to a file that exists in this repository",
+      "markdown": "every table has a constant column count, every <picture> carries a dark source plus a light src plus alt text, front matter intact, fences balanced",
+      "new_number_strings": "every figure listed in evidence_items was grepped for in all four cards and found",
+      "shard0_table": "parsed out of all four cards: nine rows each, every numeric cell identical; the only textual difference is the pre-existing 'same engine as the reference' phrasing on each card's own row"
+    },
+    "docs_sha256sums_consistent": {
+      "malaiwah/Qwen3.8-27B-EXL3-K5K6": true,
+      "malaiwah/Qwen3.8-27B-EXL3-K5K6-context": true,
+      "malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated": true,
+      "malaiwah/Qwen3.8-27B-K4": true
+    },
+    "docs_sha256sums_entries": 23,
+    "method": "each README.md and each of the four new assets was re-downloaded with force_download and compared byte-for-byte against the local file; DOCS-SHA256SUMS was re-downloaded and its README and new-asset lines recomputed from the local bytes",
+    "not_verified_here": [
+      "Hub dark-theme rendering was not driven in a browser: the shared browser daemon failed to start. Instead both theme SVGs were fetched over https from two repos (HTTP 200, image/svg+xml) and their sha256 recomputed from the served bytes; the <picture> block is byte-identical in form to the existing figures on these cards, which do render in both themes."
+    ],
+    "readme_bytes_identical": {
+      "malaiwah/Qwen3.8-27B-EXL3-K5K6": true,
+      "malaiwah/Qwen3.8-27B-EXL3-K5K6-context": true,
+      "malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated": true,
+      "malaiwah/Qwen3.8-27B-K4": true
+    },
+    "served_svg_digests_rechecked_over_https": {
+      "dark": "f65c306834fd685d4fe7b59f8e37e86f95461c1bd9bd4a79806018f4e2ddc6f0",
+      "light": "8aa38d114e4f045da0a9e04aeae97563aea898cfeed9bbd405dce703d0bb2846"
+    }
+  },
+  "written_by": "CardEvidence"
+}
