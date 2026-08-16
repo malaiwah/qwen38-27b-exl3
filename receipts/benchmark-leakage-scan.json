@@ -1,0 +1,506 @@
+{
+ "schema": "qwen38-benchmark-leakage-scan/1",
+ "generated_utc": "2026-08-16T13:10:30Z",
+ "method": "hash every normalized lexical-token 12-gram (Unicode words plus one token per Han/Kana character, NFKC + casefold, blake2b-128) of every conversion calibration corpus, then test every benchmark item text shingle for membership; offset-independent, all positions",
+ "limitation": "lexical overlap audit; does not detect semantic paraphrases",
+ "scanner": {
+  "algorithm_file": "tools/near_duplicate_scan.py",
+  "algorithm_sha256": "4220f2af6115ddcabda3a29042a89a9947dc03413d7c19e3c0a3041b12d390e3",
+  "driver_file": "tools/benchmark_leakage_scan.py",
+  "driver_sha256": "f653a52bc4faccea3517b5e718b1a781e02def98498ac76754381dba91637151",
+  "shingle_words": 12,
+  "digest": "blake2b-128"
+ },
+ "calibration": {
+  "dir": "/var/tmp/work/exllamav3/exllamav3/conversion/standard_cal_data",
+  "files": [
+   {
+    "path": "/var/tmp/work/exllamav3/exllamav3/conversion/standard_cal_data/c4.utf8",
+    "bytes": 1338229,
+    "sha256": "2daf1ef16e02dbd337f86296acd4c3f2eb703800ad21fd1f48b40280c699cd41",
+    "lexical_tokens": 228850,
+    "shingles": 228839
+   },
+   {
+    "path": "/var/tmp/work/exllamav3/exllamav3/conversion/standard_cal_data/code.utf8",
+    "bytes": 1357117,
+    "sha256": "12a80d96af7e16b3ecbf2e6899a9c70aee2f4e0003b581979fe6876944e2d891",
+    "lexical_tokens": 158912,
+    "shingles": 158901
+   },
+   {
+    "path": "/var/tmp/work/exllamav3/exllamav3/conversion/standard_cal_data/multilingual.utf8",
+    "bytes": 293500,
+    "sha256": "68182e06506ead0d2676673fdee4bbe6564ccb06cee3b8373b7e4824297ea91e",
+    "lexical_tokens": 47132,
+    "shingles": 47121
+   },
+   {
+    "path": "/var/tmp/work/exllamav3/exllamav3/conversion/standard_cal_data/technical.utf8",
+    "bytes": 350054,
+    "sha256": "7cac2a0ddd7bc4db19e52e3b12ced3812514059f1f11bfc427b7849e0077a2ee",
+    "lexical_tokens": 56336,
+    "shingles": 56325
+   },
+   {
+    "path": "/var/tmp/work/exllamav3/exllamav3/conversion/standard_cal_data/tiny.utf8",
+    "bytes": 261689,
+    "sha256": "51449c33b579f8b12e776dcbfa58ef47bab69f6ab7f44e972b7d98c4cfcac7fd",
+    "lexical_tokens": 50470,
+    "shingles": 50459
+   },
+   {
+    "path": "/var/tmp/work/exllamav3/exllamav3/conversion/standard_cal_data/wiki.utf8",
+    "bytes": 2093275,
+    "sha256": "d53fe0aeadf3355eb5d32b48bf8691575244c31caccae88ed46be8e1b40209c7",
+    "lexical_tokens": 340342,
+    "shingles": 340331
+   }
+  ],
+  "distinct_shingles": 859426
+ },
+ "benchmarks": {
+  "mmlu_pro_70": {
+   "source": {
+    "kind": "local pinned receipt",
+    "receipt": "receipts/public-capability-suite-mmlupro-70.json",
+    "receipt_sha256": "76def43fae81b49720a4310c8abb0c790322dd1b4430f7fbff799c6a6cd52ad5",
+    "suite_sha256": "46fac6d39afe94541f655833fd52414692dc835cf8fcc48d69c369a0054bd8b3",
+    "upstream": {
+     "dataset": "TIGER-Lab/MMLU-Pro",
+     "revision": "b189ec765aa7ed75c8acfea42df31fdae71f97be",
+     "test": {
+      "filename": "test-00000-of-00001.parquet",
+      "sha256": "0e24a191921c2f453518a537a8b2117bd137e7714d4ef1565e9ba06c1ecb9ad8"
+     },
+     "validation": {
+      "filename": "validation-00000-of-00001.parquet",
+      "sha256": "139423c23722e480c807ac4a191409a710cfce4eba744c1d641cf88e730e2078"
+     }
+    },
+    "fields_scanned": [
+     "item_text (question + options)",
+     "rendered_prompt (system + five-shot user prompt)"
+    ]
+   },
+   "items_scanned": 70,
+   "shingles_scanned": 69709,
+   "items_with_hits": 0,
+   "total_hits": 0,
+   "hit_items": [],
+   "verdict": "all 70 items scanned (69709 12-token shingles); zero exact normalized 12-token n-gram overlaps with the conversion calibration corpora"
+  },
+  "humanevalplus": {
+   "source": {
+    "kind": "huggingface dataset",
+    "dataset": "evalplus/humanevalplus",
+    "revision": "d32357cf319e50e9c8d8dab5ea876c72b0fd321b",
+    "filename": "test-00000-of-00001-5973903632b82d40.parquet",
+    "file_sha256": "4436f5c03d77c17e0cbc57543b90665b5c1266f55a43992a5ed7922cd34a7558",
+    "fields_scanned": [
+     "prompt",
+     "canonical_solution",
+     "test"
+    ]
+   },
+   "items_scanned": 164,
+   "shingles_scanned": 1565572,
+   "items_with_hits": 19,
+   "total_hits": 3721,
+   "hit_items": [
+    {
+     "id": "HumanEval/3",
+     "hits": 632,
+     "fields": {
+      "test": {
+       "hits": 632,
+       "hits_all_numeric_tokens": 632,
+       "longest_exact_run_words": 30,
+       "calibration_sources": [
+        "c4.utf8",
+        "code.utf8"
+       ],
+       "sample_matched_shingles": [
+        "1 2 3 4 5 6 7 8 9 10 11 12",
+        "2 3 4 5 6 7 8 9 10 11 12 13",
+        "3 4 5 6 7 8 9 10 11 12 13 14"
+       ]
+      }
+     }
+    },
+    {
+     "id": "HumanEval/26",
+     "hits": 31,
+     "fields": {
+      "test": {
+       "hits": 31,
+       "hits_all_numeric_tokens": 31,
+       "longest_exact_run_words": 20,
+       "calibration_sources": [
+        "c4.utf8"
+       ],
+       "sample_matched_shingles": [
+        "1 2 3 4 5 6 7 8 9 10 11 12",
+        "2 3 4 5 6 7 8 9 10 11 12 13",
+        "3 4 5 6 7 8 9 10 11 12 13 14"
+       ]
+      }
+     }
+    },
+    {
+     "id": "HumanEval/33",
+     "hits": 166,
+     "fields": {
+      "test": {
+       "hits": 166,
+       "hits_all_numeric_tokens": 166,
+       "longest_exact_run_words": 20,
+       "calibration_sources": [
+        "c4.utf8"
+       ],
+       "sample_matched_shingles": [
+        "1 2 3 4 5 6 7 8 9 10 11 12",
+        "2 3 4 5 6 7 8 9 10 11 12 13",
+        "3 4 5 6 7 8 9 10 11 12 13 14"
+       ]
+      }
+     }
+    },
+    {
+     "id": "HumanEval/35",
+     "hits": 82,
+     "fields": {
+      "test": {
+       "hits": 82,
+       "hits_all_numeric_tokens": 82,
+       "longest_exact_run_words": 20,
+       "calibration_sources": [
+        "c4.utf8"
+       ],
+       "sample_matched_shingles": [
+        "1 2 3 4 5 6 7 8 9 10 11 12",
+        "2 3 4 5 6 7 8 9 10 11 12 13",
+        "3 4 5 6 7 8 9 10 11 12 13 14"
+       ]
+      }
+     }
+    },
+    {
+     "id": "HumanEval/37",
+     "hits": 2,
+     "fields": {
+      "test": {
+       "hits": 2,
+       "hits_all_numeric_tokens": 2,
+       "longest_exact_run_words": 12,
+       "calibration_sources": [
+        "c4.utf8"
+       ],
+       "sample_matched_shingles": [
+        "1 2 3 4 5 6 7 8 9 10 11 12"
+       ]
+      }
+     }
+    },
+    {
+     "id": "HumanEval/39",
+     "hits": 1,
+     "fields": {
+      "test": {
+       "hits": 1,
+       "hits_all_numeric_tokens": 1,
+       "longest_exact_run_words": 12,
+       "calibration_sources": [
+        "c4.utf8"
+       ],
+       "sample_matched_shingles": [
+        "1 2 3 4 5 6 7 8 9 10 11 12"
+       ]
+      }
+     }
+    },
+    {
+     "id": "HumanEval/40",
+     "hits": 46,
+     "fields": {
+      "test": {
+       "hits": 46,
+       "hits_all_numeric_tokens": 46,
+       "longest_exact_run_words": 15,
+       "calibration_sources": [
+        "c4.utf8"
+       ],
+       "sample_matched_shingles": [
+        "1 2 3 4 5 6 7 8 9 10 11 12",
+        "2 3 4 5 6 7 8 9 10 11 12 13",
+        "3 4 5 6 7 8 9 10 11 12 13 14"
+       ]
+      }
+     }
+    },
+    {
+     "id": "HumanEval/43",
+     "hits": 2,
+     "fields": {
+      "test": {
+       "hits": 2,
+       "hits_all_numeric_tokens": 2,
+       "longest_exact_run_words": 12,
+       "calibration_sources": [
+        "c4.utf8"
+       ],
+       "sample_matched_shingles": [
+        "1 2 3 4 5 6 7 8 9 10 11 12"
+       ]
+      }
+     }
+    },
+    {
+     "id": "HumanEval/47",
+     "hits": 49,
+     "fields": {
+      "test": {
+       "hits": 49,
+       "hits_all_numeric_tokens": 49,
+       "longest_exact_run_words": 20,
+       "calibration_sources": [
+        "c4.utf8"
+       ],
+       "sample_matched_shingles": [
+        "1 2 3 4 5 6 7 8 9 10 11 12",
+        "2 3 4 5 6 7 8 9 10 11 12 13",
+        "3 4 5 6 7 8 9 10 11 12 13 14"
+       ]
+      }
+     }
+    },
+    {
+     "id": "HumanEval/58",
+     "hits": 1,
+     "fields": {
+      "test": {
+       "hits": 1,
+       "hits_all_numeric_tokens": 1,
+       "longest_exact_run_words": 12,
+       "calibration_sources": [
+        "c4.utf8"
+       ],
+       "sample_matched_shingles": [
+        "1 2 3 4 5 6 7 8 9 10 11 12"
+       ]
+      }
+     }
+    },
+    {
+     "id": "HumanEval/69",
+     "hits": 29,
+     "fields": {
+      "test": {
+       "hits": 29,
+       "hits_all_numeric_tokens": 29,
+       "longest_exact_run_words": 20,
+       "calibration_sources": [
+        "c4.utf8"
+       ],
+       "sample_matched_shingles": [
+        "1 2 3 4 5 6 7 8 9 10 11 12",
+        "2 3 4 5 6 7 8 9 10 11 12 13",
+        "3 4 5 6 7 8 9 10 11 12 13 14"
+       ]
+      }
+     }
+    },
+    {
+     "id": "HumanEval/73",
+     "hits": 1125,
+     "fields": {
+      "test": {
+       "hits": 1125,
+       "hits_all_numeric_tokens": 1125,
+       "longest_exact_run_words": 30,
+       "calibration_sources": [
+        "c4.utf8"
+       ],
+       "sample_matched_shingles": [
+        "1 2 3 4 5 6 7 8 9 10 11 12",
+        "2 3 4 5 6 7 8 9 10 11 12 13",
+        "3 4 5 6 7 8 9 10 11 12 13 14"
+       ]
+      }
+     }
+    },
+    {
+     "id": "HumanEval/85",
+     "hits": 111,
+     "fields": {
+      "test": {
+       "hits": 111,
+       "hits_all_numeric_tokens": 111,
+       "longest_exact_run_words": 20,
+       "calibration_sources": [
+        "c4.utf8"
+       ],
+       "sample_matched_shingles": [
+        "1 2 3 4 5 6 7 8 9 10 11 12",
+        "2 3 4 5 6 7 8 9 10 11 12 13",
+        "3 4 5 6 7 8 9 10 11 12 13 14"
+       ]
+      }
+     }
+    },
+    {
+     "id": "HumanEval/108",
+     "hits": 237,
+     "fields": {
+      "test": {
+       "hits": 237,
+       "hits_all_numeric_tokens": 237,
+       "longest_exact_run_words": 20,
+       "calibration_sources": [
+        "c4.utf8"
+       ],
+       "sample_matched_shingles": [
+        "1 2 3 4 5 6 7 8 9 10 11 12",
+        "2 3 4 5 6 7 8 9 10 11 12 13",
+        "3 4 5 6 7 8 9 10 11 12 13 14"
+       ]
+      }
+     }
+    },
+    {
+     "id": "HumanEval/109",
+     "hits": 19,
+     "fields": {
+      "test": {
+       "hits": 19,
+       "hits_all_numeric_tokens": 19,
+       "longest_exact_run_words": 30,
+       "calibration_sources": [
+        "c4.utf8"
+       ],
+       "sample_matched_shingles": [
+        "1 2 3 4 5 6 7 8 9 10 11 12",
+        "2 3 4 5 6 7 8 9 10 11 12 13",
+        "3 4 5 6 7 8 9 10 11 12 13 14"
+       ]
+      }
+     }
+    },
+    {
+     "id": "HumanEval/128",
+     "hits": 79,
+     "fields": {
+      "test": {
+       "hits": 79,
+       "hits_all_numeric_tokens": 79,
+       "longest_exact_run_words": 16,
+       "calibration_sources": [
+        "c4.utf8"
+       ],
+       "sample_matched_shingles": [
+        "5 6 7 8 9 10 11 12 13 14 15 16",
+        "6 7 8 9 10 11 12 13 14 15 16 17",
+        "7 8 9 10 11 12 13 14 15 16 17 18"
+       ]
+      }
+     }
+    },
+    {
+     "id": "HumanEval/129",
+     "hits": 201,
+     "fields": {
+      "test": {
+       "hits": 201,
+       "hits_all_numeric_tokens": 201,
+       "longest_exact_run_words": 25,
+       "calibration_sources": [
+        "c4.utf8"
+       ],
+       "sample_matched_shingles": [
+        "1 2 3 4 5 6 7 8 9 10 11 12",
+        "2 3 4 5 6 7 8 9 10 11 12 13",
+        "3 4 5 6 7 8 9 10 11 12 13 14"
+       ]
+      }
+     }
+    },
+    {
+     "id": "HumanEval/142",
+     "hits": 562,
+     "fields": {
+      "test": {
+       "hits": 562,
+       "hits_all_numeric_tokens": 562,
+       "longest_exact_run_words": 21,
+       "calibration_sources": [
+        "c4.utf8"
+       ],
+       "sample_matched_shingles": [
+        "2 3 4 5 6 7 8 9 10 11 12 13",
+        "3 4 5 6 7 8 9 10 11 12 13 14",
+        "1 2 3 4 5 6 7 8 9 10 11 12"
+       ]
+      }
+     }
+    },
+    {
+     "id": "HumanEval/145",
+     "hits": 346,
+     "fields": {
+      "test": {
+       "hits": 346,
+       "hits_all_numeric_tokens": 346,
+       "longest_exact_run_words": 30,
+       "calibration_sources": [
+        "c4.utf8"
+       ],
+       "sample_matched_shingles": [
+        "1 2 3 4 5 6 7 8 9 10 11 12",
+        "2 3 4 5 6 7 8 9 10 11 12 13",
+        "3 4 5 6 7 8 9 10 11 12 13 14"
+       ]
+      }
+     }
+    }
+   ],
+   "verdict": "19/164 items share at least one exact normalized 12-token n-gram with the conversion calibration corpora (3721 matched shingles, 3721 of them consisting solely of numeric tokens, confined to field(s): test)"
+  },
+  "gpqa_diamond": {
+   "source": {
+    "kind": "huggingface dataset (gated)",
+    "dataset": "Idavidrein/gpqa",
+    "revision": "633f5ee89ab8ad4522a9f850766b73f62147ffdd",
+    "filename": "gpqa_diamond.csv",
+    "file_sha256": "41d1213cd7a4998605a26c2798500652572007161b3a92817ba46b35befcd305",
+    "fields_scanned": [
+     "item_text (question + correct answer + 3 incorrect answers)"
+    ]
+   },
+   "items_scanned": 198,
+   "shingles_scanned": 18796,
+   "items_with_hits": 0,
+   "total_hits": 0,
+   "hit_items": [],
+   "verdict": "all 198 items scanned (18796 12-token shingles); zero exact normalized 12-token n-gram overlaps with the conversion calibration corpora"
+  },
+  "task_retention_40": {
+   "source": {
+    "kind": "deterministic regeneration",
+    "generator": "tools/task_retention.py",
+    "seed": 20260815,
+    "per_kind": 10,
+    "suite_sha256": "e1eccaaf98071d7dc25cb1b10da08459d0de8a3061e76790c490f80072642030",
+    "suite_sha256_matches_published_runs": true,
+    "fields_scanned": [
+     "prompt"
+    ]
+   },
+   "items_scanned": 40,
+   "shingles_scanned": 855,
+   "items_with_hits": 0,
+   "total_hits": 0,
+   "hit_items": [],
+   "verdict": "all 40 items scanned (855 12-token shingles); zero exact normalized 12-token n-gram overlaps with the conversion calibration corpora"
+  }
+ }
+}
