@@ -133,6 +133,19 @@ host_model_of() {
     # served by vLLM's modelopt_fp4 path -- same engine as the reference, so
     # like nvfp4 its number carries no cross-engine term.
     gt5090) printf '%s' "$MODELS_DIR/Qwen3.8-27B-NVFP4-RTX5090" ;;
+    # turboderp's stock uniform-bitrate EXL3 rungs (docs/29 F2 controls): same
+    # engine, same exllamav3 1.4.2 conversion family as our builds, uniform
+    # allocation -- they separate our role-aware allocation from the format.
+    # Branch heads of turboderp/Qwen3.8-27B-exl3: 5.00bpw@a35e75a7, 6.00bpw@d32ba0bb.
+    turbo5) printf '%s' "$MODELS_DIR/Qwen3.8-27B-exl3-5.00bpw" ;;
+    turbo6) printf '%s' "$MODELS_DIR/Qwen3.8-27B-exl3-6.00bpw" ;;
+    # sakamakismile's pure-NVFP4 re-graft (no FP8 group_0 block, 222 ignores):
+    # compressed-tensors like unsloth's, same engine as the reference.
+    saka) printf '%s' "$MODELS_DIR/Qwen3.8-27B-MTP-NVFP4" ;;
+    # cyankiwi's "AWQ-INT4" is a compressed-tensors pack-quantized W4A16 export
+    # (llm-compressor AWQ recipe, int4 asymmetric g32), not a legacy autoawq
+    # checkpoint, so it rides the same compressed-tensors path in vLLM.
+    awq) printf '%s' "$MODELS_DIR/Qwen3.8-27B-AWQ-INT4" ;;
     *) die "unknown model name: $1" ;;
   esac
 }
@@ -141,8 +154,8 @@ env_of() {
   case "$1" in
     # neither NVFP4 build needs an environment of ours: each checkpoint carries
     # its own quantization config and vLLM reads the scales from the weights.
-    bf16|fp8|nvfp4|gt5090) printf '%s' '' ;;
-    hyd|ctx) printf '%s' 'VLLM_EXL3_PREFILL_RECONSTRUCT_M=128' ;;
+    bf16|fp8|nvfp4|gt5090|saka|awq) printf '%s' '' ;;
+    hyd|ctx|turbo5|turbo6) printf '%s' 'VLLM_EXL3_PREFILL_RECONSTRUCT_M=128' ;;
     k4|k5k6) printf '%s' 'VLLM_EXL3_ONLINE_TRELLIS_BITS=6 VLLM_EXL3_ONLINE_CACHE_DIR=/cache/exl3-online VLLM_EXL3_PREFILL_RECONSTRUCT_M=128' ;;
     *) die "unknown model name: $1" ;;
   esac
@@ -158,12 +171,12 @@ quant_args_of() {
     bf16) printf '%s' '' ;;
     # `--quantization compressed-tensors` verbatim from the v3 capture that first
     # scored this checkpoint (/var/tmp/work/kld3/run_v3.sh).
-    nvfp4) printf '%s' '--quantization compressed-tensors' ;;
+    nvfp4|saka|awq) printf '%s' '--quantization compressed-tensors' ;;
     # ModelOpt export: config.json says quant_method "modelopt" with quant_algo
     # NVFP4, which vLLM serves through the explicit modelopt_fp4 method.
     gt5090) printf '%s' '--quantization modelopt_fp4' ;;
     fp8) printf '%s' '' ;;
-    k4|k5k6|hyd|ctx) printf '%s' "$EXL3_ARGS" ;;
+    k4|k5k6|hyd|ctx|turbo5|turbo6) printf '%s' "$EXL3_ARGS" ;;
     *) die "unknown model name: $1" ;;
   esac
 }
