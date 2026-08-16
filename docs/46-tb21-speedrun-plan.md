@@ -93,7 +93,15 @@ vllm serve <model> --served-model-name qwen38
   --mamba-cache-mode align
   --enable-prefix-caching           # 51.7 % measured hit rate on TB traffic
   --speculative-config '{"method":"mtp","num_speculative_tokens":3}'
-  --max-num-seqs 16                 # per replica; revisit via headroom rule
+  --max-num-seqs 64                 # per replica: a CEILING for the knee search, not a chosen value.
+                                    # 16 was inherited from the TB pins, unmeasured. The ladder sweeps
+                                    # concurrency up to this cap; if the knee lands AT the cap, raise the
+                                    # cap and re-sweep - the server cap must never be the binding
+                                    # constraint during the search. Mamba/GDN state is preallocated per
+                                    # max-num-seqs on this hybrid, so the cap costs KV pool: record the
+                                    # engine's KV line at each cap value tried. The measured knee (owner
+                                    # rule: per-request >= 50 % of single-stream, then max aggregate)
+                                    # becomes the BASELINE -n for every TB tier.
   --max-num-batched-tokens 8192     # sweep {2048, 8192} in G1; align-safe (#51113 in image)
   --gpu-memory-utilization 0.92     # 96 GB card; raise only after G1 headroom read
   --api-key <key> --disable-log-requests
@@ -140,7 +148,8 @@ Synthetic saturation first (cheap), TB only where it decides a card line:
 | **full speed run** | best 4x (or 8x) config per model, three-pass protocol (§6) | the headline |
 
 Synthetic probe per candidate config (executor writes a ~100-line async OpenAI-client ladder; shape below):
-concurrency 1,2,4,8,16,32,64 x {512-token prompt / 256 out, 4k prompt / 1k out, 30k prompt / 2k out},
+concurrency 1,2,4,8,16,32,64 (extend 96,128 if the knee is still rising at 64) x {512-token prompt /
+256 out, 4k prompt / 1k out, 30k prompt / 2k out},
 3 repeats, medians; record aggregate tok/s, per-request tok/s, TTFT. Pick the knee by the standing headroom
 rule: **cap at `max-num-seqs`, require per-request ≥ 50 % of single-stream, then maximise aggregate.**
 Then read the real KV line and prefix-hit counters. One config change at a time; every probe run named and
