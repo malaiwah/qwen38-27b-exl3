@@ -875,3 +875,37 @@ only: 24,576 + 17,874 = 42,450 raw headroom, 40,960 at the next 4,096 step (3.6 
 as open and no 24 GB board booted. Landing receipt receipts/arena-landing.json; publication
 byte-proof receipts/arena-card-publication.json (six repos, all byte-identical). CPU only: no GPU
 was taken and no service was touched.
+
+## 2026-08-16 — Upstream PR filed for the admission livelock (UpstreamPr52520b)
+
+`vllm-project/vllm#52520` — the hybrid-Mamba align stall the fork trace exposed — now has a fix
+proposed upstream: **https://github.com/vllm-project/vllm/pull/52530**, one commit, +381/-2, base
+`main`, head `malaiwah/vllm-voipmonitor:fix/kv-pool-unservable-request-admission`. The gate that
+made the PR legitimate was met first: the defect **reproduces on unmodified upstream
+`4d2a68d64d9e05921ed5c4099146e768a92d71d5`**, CPU only, no GPU and no model weights
+(`upstream/repro-52520-stock-main.py/.out`). Startup sizes the pool from each spec's
+`max_memory_usage_bytes` and compares against *all* blocks, but `BlockPool` permanently reserves
+one as the null block, so a pool built at exactly the startup minimum — 69 blocks for
+`max_model_len=1024`, `block_size=16`, mamba-align with 3 speculative blocks — is one usable block
+short of one `max_model_len` request, and runtime admission asks for one block *less* than the
+pool is short by. Measured: the 1023-token request is admitted, prefills to 1008 tokens
+(`(69-1-5)*16`, the length the pool can actually serve), self-preempts, and is refused on every
+step thereafter with zero output; at 70 blocks the identical request runs. The fix follows merged
+**#40946**'s shape — one bound with two call sites: `_estimate_max_model_len_from_groups`, already
+the helper behind the startup message, is now also called by a new
+`max_servable_num_tokens(vllm_config, groups, num_blocks)` evaluated against `num_blocks - 1`, and
+the scheduler fails an over-long request at admission (`FINISHED_IGNORED`) instead of re-prefilling
+it forever. Correctly-sized pools are untouched: the bound is then `>= max_model_len` and the check
+short-circuits. CPU-only regression file `tests/v1/core/test_kv_pool_unservable_requests.py`
+**fails 3-of-5 on stock main and passes 5-of-5 on the branch**, with the two over-rejection guards
+green on both; `tests/v1/core/` is 2 failed / 500 passed / 2 errors on the branch against 2 / 495 /
+2 on stock main, the same four GPU-requiring cases. DCO signed, ruff 0.14.0 + ruff-format + typos +
+mypy 1.20.2 all clean. The PR states its relationship to open **#47272** explicitly and asks not to
+be merged instead of it: #47272 owns the capacity side (refuse the pool at boot), this PR owns the
+request side (never admit what can never be scheduled), and it remains the backstop for
+`_auto_fit_max_model_len`, which runs before #47272's reservation. Two things are deliberately
+**not** claimed: the reporter's zero-preemption-counter observation does **not** reproduce on main
+(the self-preemption path does increment `vllm:num_preemptions_total`), so no accounting fix is
+filed; and the failure is `finish_reason="length"` rather than a literal HTTP 400, offered as a
+follow-up rather than smuggled in. Receipt `receipts/upstream-pr-52520.json`. CPU only: no GPU was
+taken and no service was touched.

@@ -1,0 +1,76 @@
+W0816 12:57:36.599000 1507847 torch/utils/cpp_extension.py:140] No CUDA runtime is found, using CUDA_HOME='/usr/local/cuda'
+vLLM 0.11.2.dev0+g4d2a68d6
+max_model_len=1024 block_size=16 num_speculative_blocks=3 max_num_batched_tokens=256
+startup bound: full-attention cdiv(1024,16)=64 + mamba-align (2+3)=5  ->  69 blocks
+INFO 08-16 12:57:38 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 12:57:38 [model.py:1965] Using max model len 1024
+INFO 08-16 12:57:38 [scheduler.py:242] Chunked prefill is enabled with max_num_batched_tokens=256.
+WARNING 08-16 12:57:38 [vllm.py:1187] Async scheduling not supported with ngram-based speculative decoding and will be disabled.
+INFO 08-16 12:57:38 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+WARNING 08-16 12:57:38 [vllm.py:1845] max_num_scheduled_tokens is set to 256 based on the speculative decoding settings. This may lead to suboptimal performance. Consider increasing max_num_batched_tokens to accommodate the additional draft token slots, or decrease num_speculative_tokens.
+WARNING 08-16 12:57:38 [vllm.py:653] Model Runner V2 does not yet support ngram/ngram_gpu speculative decoding; using the V1 model runner instead.
+
+pool of 69 blocks: startup check accepts=True (num_blocks=69)
+INFO 08-16 12:57:38 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 12:57:38 [model.py:1965] Using max model len 1024
+INFO 08-16 12:57:38 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+  pool=69 blocks, free at start=68 (one block is BlockPool's null block)
+    step   0 scheduled=  256 computed=  256 free= 48 status=RUNNING preemptions=0
+    step   1 scheduled=  256 computed=  512 free= 31 status=RUNNING preemptions=0
+    step   2 scheduled=  256 computed=  768 free= 15 status=RUNNING preemptions=0
+    step   3 scheduled=  240 computed= 1008 free=  0 status=RUNNING preemptions=0
+    step   4 scheduled=    0 computed=    0 free= 68 status=PREEMPTED preemptions=1
+    step   5 scheduled=    0 computed=    0 free= 68 status=PREEMPTED preemptions=1
+    step   6 scheduled=    0 computed=    0 free= 68 status=PREEMPTED preemptions=1
+    step   7 scheduled=    0 computed=    0 free= 68 status=PREEMPTED preemptions=1
+    step   8 scheduled=    0 computed=    0 free= 68 status=PREEMPTED preemptions=1
+    step   9 scheduled=    0 computed=    0 free= 68 status=PREEMPTED preemptions=1
+    step  10 scheduled=    0 computed=    0 free= 68 status=PREEMPTED preemptions=1
+    step  11 scheduled=    0 computed=    0 free= 68 status=PREEMPTED preemptions=1
+    step  12 scheduled=    0 computed=    0 free= 68 status=PREEMPTED preemptions=1
+    step  13 scheduled=    0 computed=    0 free= 68 status=PREEMPTED preemptions=1
+    step  14 scheduled=    0 computed=    0 free= 68 status=PREEMPTED preemptions=1
+    step  15 scheduled=    0 computed=    0 free= 68 status=PREEMPTED preemptions=1
+    step  16 scheduled=    0 computed=    0 free= 68 status=PREEMPTED preemptions=1
+    step  17 scheduled=    0 computed=    0 free= 68 status=PREEMPTED preemptions=1
+    step  18 scheduled=    0 computed=    0 free= 68 status=PREEMPTED preemptions=1
+    step  19 scheduled=    0 computed=    0 free= 68 status=PREEMPTED preemptions=1
+    step  20 scheduled=    0 computed=    0 free= 68 status=PREEMPTED preemptions=1
+    step  21 scheduled=    0 computed=    0 free= 68 status=PREEMPTED preemptions=1
+    step  22 scheduled=    0 computed=    0 free= 68 status=PREEMPTED preemptions=1
+    step  23 scheduled=    0 computed=    0 free= 68 status=PREEMPTED preemptions=1
+  VERDICT prompt=1023: finished=False computed=0 preemptions=1 status=PREEMPTED
+INFO 08-16 12:57:38 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 12:57:38 [model.py:1965] Using max model len 1024
+INFO 08-16 12:57:38 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+
+pool of 70 blocks: startup check accepts=True (num_blocks=70)
+INFO 08-16 12:57:39 [model.py:672] Resolved architecture: OPTForCausalLM
+INFO 08-16 12:57:39 [model.py:1965] Using max model len 1024
+INFO 08-16 12:57:39 [kernel.py:308] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+  pool=70 blocks, free at start=69 (one block is BlockPool's null block)
+    step   0 scheduled=  256 computed=  256 free= 49 status=RUNNING preemptions=0
+    step   1 scheduled=  256 computed=  512 free= 32 status=RUNNING preemptions=0
+    step   2 scheduled=  256 computed=  768 free= 16 status=RUNNING preemptions=0
+    step   3 scheduled=  240 computed= 1008 free=  1 status=RUNNING preemptions=0
+    step   4 scheduled=   15 computed= 1023 free=  0 status=RUNNING preemptions=0
+    step   5 scheduled=    0 computed= 1023 free=  0 status=RUNNING preemptions=0
+    step   6 scheduled=    0 computed= 1023 free=  0 status=RUNNING preemptions=0
+    step   7 scheduled=    0 computed= 1023 free=  0 status=RUNNING preemptions=0
+    step   8 scheduled=    0 computed= 1023 free=  0 status=RUNNING preemptions=0
+    step   9 scheduled=    0 computed= 1023 free=  0 status=RUNNING preemptions=0
+    step  10 scheduled=    0 computed= 1023 free=  0 status=RUNNING preemptions=0
+    step  11 scheduled=    0 computed= 1023 free=  0 status=RUNNING preemptions=0
+    step  12 scheduled=    0 computed= 1023 free=  0 status=RUNNING preemptions=0
+    step  13 scheduled=    0 computed= 1023 free=  0 status=RUNNING preemptions=0
+    step  14 scheduled=    0 computed= 1023 free=  0 status=RUNNING preemptions=0
+    step  15 scheduled=    0 computed= 1023 free=  0 status=RUNNING preemptions=0
+    step  16 scheduled=    0 computed= 1023 free=  0 status=RUNNING preemptions=0
+    step  17 scheduled=    0 computed= 1023 free=  0 status=RUNNING preemptions=0
+    step  18 scheduled=    0 computed= 1023 free=  0 status=RUNNING preemptions=0
+    step  19 scheduled=    0 computed= 1023 free=  0 status=RUNNING preemptions=0
+    step  20 scheduled=    0 computed= 1023 free=  0 status=RUNNING preemptions=0
+    step  21 scheduled=    0 computed= 1023 free=  0 status=RUNNING preemptions=0
+    step  22 scheduled=    0 computed= 1023 free=  0 status=RUNNING preemptions=0
+    step  23 scheduled=    0 computed= 1023 free=  0 status=RUNNING preemptions=0
+  VERDICT prompt=1023: finished=False computed=1023 preemptions=0 status=RUNNING

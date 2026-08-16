@@ -1,0 +1,105 @@
+{
+  "schema": "qwen38-upstream-pr/1",
+  "generated_utc": "2026-08-16T14:20:00Z",
+  "agent": "UpstreamPr52520b (resumed UpstreamPr52520, which was killed by the provider rate limit with the fix staged but uncommitted)",
+  "purpose": "Fix vllm-project/vllm#52520: a request the KV cache pool can never hold is admitted, chunk-prefilled to ~99 % of the pool, descheduled, and re-prefilled forever with zero output tokens.",
+  "pull_request": {
+    "url": "https://github.com/vllm-project/vllm/pull/52530",
+    "number": 52530,
+    "state": "open",
+    "draft": false,
+    "mergeable_at_filing": true,
+    "title": "[Bugfix][Core] Fail requests the KV cache pool can never hold instead of retrying them forever",
+    "base": "vllm-project/vllm@main",
+    "base_sha_at_filing": "fe1c317157",
+    "head_repo": "malaiwah/vllm-voipmonitor",
+    "head_branch": "fix/kv-pool-unservable-request-admission",
+    "head_sha": "53b84b27c81d5534927c0d9998163a87cffd1a3f",
+    "commits": 1,
+    "diffstat": "5 files changed, 381 insertions(+), 2 deletions(-)",
+    "closing_keyword": "\"Fixes #52520.\" is the third line of the PR body; GitHub recorded the cross-reference on the issue timeline.",
+    "body_source": "upstream/pr-vllm-52520-body.md"
+  },
+  "gate_zero_reproduction_before_any_fix": {
+    "verdict": "REPRODUCED on unmodified upstream main",
+    "upstream_commit": "4d2a68d64d9e05921ed5c4099146e768a92d71d5",
+    "vllm_version_string": "0.11.2.dev0+g4d2a68d6",
+    "hardware": "CPU only, no GPU, no model weights (CUDA_VISIBLE_DEVICES=\"\"); scheduler driven directly through schedule()/update_from_output()",
+    "script": "upstream/repro-52520-stock-main.py",
+    "transcript": "upstream/repro-52520-stock-main.out",
+    "configuration": "hybrid FullAttentionSpec + MambaSpec(mamba_cache_mode=align, num_speculative_blocks=3), block_size=16, max_model_len=1024, max_num_batched_tokens=256, enable_prefix_caching",
+    "startup_bound": "cdiv(1024,16)=64 attention blocks + (2+3)=5 mamba blocks = 69 blocks; get_kv_cache_configs accepts a 69-block pool",
+    "observed_at_69_blocks": "prompt=1023 admitted, prefilled to 1008 tokens over 4 steps, self-preempted at the last chunk, then scheduled=0 for every remaining step; VERDICT finished=False computed=0 preemptions=1 status=PREEMPTED",
+    "observed_at_70_blocks": "same prompt prefills to 1023 and stays RUNNING; one block of headroom is the entire difference",
+    "why_1008": "(69 - 1 null block - 5 mamba blocks) * 16 = 1008, the sequence length the pool can actually serve"
+  },
+  "fix": {
+    "shape": "one bound, two call sites, following merged #40946's precedent for SWA/chunked-local",
+    "shared_helper": "_estimate_max_model_len_from_groups in vllm/v1/core/kv_cache_utils.py",
+    "call_sites": [
+      "startup: _check_enough_kv_cache_memory via partial(_estimate_max_model_len_from_groups, ...) at kv_cache_utils.py:2234 (pre-existing)",
+      "runtime: max_servable_num_tokens(vllm_config, kv_cache_groups, num_blocks), new, evaluated against num_blocks - 1 blocks because BlockPool permanently reserves one as the null block"
+    ],
+    "scheduler_changes": [
+      "Scheduler.max_servable_num_tokens computed once at construction; ERROR log when it is below max_model_len, naming the number the operator needs",
+      "Scheduler._is_unservable(request): short-circuits to False whenever the bound covers max_model_len (every correctly-sized deployment), so the hot path is one integer comparison",
+      "add_request fails an unservable request instead of queueing it; it is drained in update_from_output as RequestStatus.FINISHED_IGNORED, the same deferred-finish pattern grammar_compile_error_reqs already uses",
+      "get_num_unfinished_requests counts unservable_reqs, which sit in no queue, so EngineCore.step is still reached to emit their terminal output"
+    ],
+    "no_behaviour_change_when_pool_is_correctly_sized": "bound >= max_model_len makes _is_unservable return False on its first comparison; the 70-block reproduction row is byte-for-byte identical before and after",
+    "status_choice": "FINISHED_IGNORED (maps to finish_reason=\"length\"), which vllm/v1/request.py already documents as the status for prompts longer than the model's length cap. FinishReason.ERROR is documented as a retryable internal error always converted to a 500, which is the wrong contract."
+  },
+  "test_evidence": {
+    "file": "tests/v1/core/test_kv_pool_unservable_requests.py (new, 257 lines, pytestmark = pytest.mark.cpu_test)",
+    "fail_before": "on 4d2a68d6 with vllm/ reverted and the test kept: 3 failed, 2 passed in 3.48s. test_max_servable_num_tokens_reserves_the_null_block -> AttributeError: 'Scheduler' object has no attribute 'max_servable_num_tokens'; test_unservable_request_is_failed_not_prefilled_and_retried and test_request_at_the_bound_is_failed_because_it_needs_an_output_slot -> AssertionError: assert not {'0': 256} (main scheduling the first prefill chunk of the request it will discard). The 2 that pass before and after are the over-rejection guards and must never go red.",
+    "pass_after": "5 passed, 14 warnings in 3.83s",
+    "surrounding_suite": {
+      "command": "pytest tests/v1/core/ -q -p no:randomly",
+      "main_4d2a68d6": "2 failed, 495 passed, 2 errors in 348.75s",
+      "this_branch": "2 failed, 500 passed, 2 errors in 351.08s",
+      "identical_pre_existing_failures": [
+        "FAILED test_reset_prefix_cache_e2e.py::test_reset_prefix_cache_e2e",
+        "FAILED test_scheduler.py::test_async_scheduling_pp_allows_rescheduling_with_output_placeholders",
+        "ERROR test_scheduler_e2e.py::test_concurrent_partial_prefill (setup)",
+        "ERROR test_scheduler_e2e.py::test_prefix_cache_stats_is_recorded (setup)"
+      ],
+      "why_they_fail": "all four need a GPU-backed engine core; the sandbox is CPU-only"
+    },
+    "collateral_test_edits": "tests/v1/core/test_scheduler.py and tests/v1/core/test_async_scheduler.py each gain one line: both build a Scheduler with object.__new__ and set its attributes by hand, so they must set the new unservable_reqs set."
+  },
+  "gates": {
+    "dco": "Signed-off-by: Michel Belleau <michel.belleau@malaiwah.com>, matching the commit author; single commit",
+    "ruff_check": "0.14.0 (pinned in .pre-commit-config.yaml): All checks passed!",
+    "ruff_format": "5 files already formatted",
+    "typos": "clean (--force-exclude on the changed files)",
+    "mypy": "tools/pre_commit/mypy.py 3.12 with mypy 1.20.2: Success, no issues found (2 source files in the default group, 3 in the tests/v1/core group)",
+    "pr_template": "Purpose / Test Plan / Test Result filled; the Essential Elements checklist is included and ticked"
+  },
+  "prior_art_relationship": {
+    "47272": {
+      "state_at_filing": "open",
+      "decision": "SCOPED AROUND, stated explicitly in the PR body under its own heading",
+      "their_row": "the capacity side: #47272 subtracts one block from the memory the startup check validates against, so a pool that cannot serve max_model_len is refused at boot. This PR does not touch that code path, and the body says 'Please do not merge this instead of #47272.'",
+      "our_row": "the request side: make the runtime bound the same function as the startup bound, and give the engine an answer for a request it cannot serve other than retrying it. Needed independently, because the scheduler has no concept of 'never schedulable', only 'not now'. Remains the backstop for _auto_fit_max_model_len, which runs before #47272's reservation."
+    },
+    "40946": "merged; the design precedent this PR copies (one bound, two call sites) for the same class of defect on SWA/chunked-local attention",
+    "35541": "closed not-planned/stale; asked for exactly this behaviour ('abort requests that can never fit ... rather than hanging indefinitely')",
+    "40384": "why the numbers here are stated in blocks and tokens rather than inverted from the 'GPU KV cache size' log line"
+  },
+  "not_fixed_and_why": {
+    "preemption_accounting_blind_spot": "The issue reports vllm:num_preemptions_total staying at 0.0 across the re-prefills. NOT REPRODUCED on main: the self-preemption path does increment request.num_preemptions and record EngineCoreEventType.PREEMPTED, which IterationStats counts into vllm:num_preemptions_total. So no accounting fix is claimed and none is filed, and the PR body says so. With this PR the point is moot for this defect: nothing is preempted because nothing is admitted.",
+    "http_400": "The failure is FINISHED_IGNORED -> finish_reason=\"length\", not a literal 400. Returning a 400 would mean plumbing the pool-derived bound into input_processor._validate_prompt_len alongside max_model_len, a frontend/engine-core change. Offered as a follow-up in the PR body rather than smuggled in.",
+    "startup_refusal": "Deliberately left to #47272 (see above); this PR does not change _check_enough_kv_cache_memory or its inputs.",
+    "field_trace_not_replayed": "The 261,794-token trace in #52520 came from a downstream fork build on a hybrid Qwen3.5 model. The mechanism is upstream code and the PR demonstrates it on stock main; the fork build itself was not re-run for this PR, and the body states that scope."
+  },
+  "environment": {
+    "clone": "/var/tmp/vllm-52520, git clone --filter=blob:none of vllm-project/vllm, HEAD 4d2a68d64d9e05921ed5c4099146e768a92d71d5 at branch point",
+    "python": "3.12 from the extracted r34 rootfs at /var/tmp/gg-rootfs, launched through its own ld.so via /var/tmp/rootfs-shim/py3 with CUDA_VISIBLE_DEVICES empty; the clone's pure-python vllm shadows the installed one via PYTHONPATH",
+    "gpu_used": "none; both cards were held by other agents for the whole of this work"
+  },
+  "artifacts": {
+    "upstream/pr-vllm-52520-body.md": "c19868175b0b306066fa6e9cacb8a7950212f370e2f262bc16916ff78e809e39",
+    "upstream/repro-52520-stock-main.py": "9e820809f131e446b1d9b16f4a1473bc920d2b02e8cacad1b1fc04e65a96855b",
+    "upstream/repro-52520-stock-main.out": "a725a95f6cac3f87048eb80b2ef555fe3e3166ce5fe814d07fb6da86d0804dff"
+  }
+}
