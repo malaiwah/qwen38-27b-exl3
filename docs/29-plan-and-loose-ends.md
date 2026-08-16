@@ -511,6 +511,15 @@ model. Ship a correct one with the valid effort variants, 262,144 context and im
 
 ## Closed by the audit
 
+- The KV-dtype sweep is landed where readers act on it (`652c1c9`, published byte-identical to all six
+  repos): each card's serving section now carries fp8 as the measured default with the per-token-head
+  family's 3.0x-prefill price and `int4_per_token_head`'s two named prices under the receipt's
+  bf16-KV-probe (not-v5-KLD) framing plus the nvfp4 refusal, docs/34 §10.2 gained the per-dtype
+  exact-form coefficients with fp8 as the digit-for-digit control and the [P]-labelled class
+  consequences, and docs/28's "4-bit KV is not an escape" now carries a dated superseding note — an
+  escape with two named prices, not a free one ([38](38-kv-dtype-sweep.md),
+  `receipts/kv-dtype-sweep-5090.json`, `receipts/kv-on-cards.json`).
+
 **Method-audit closures (2026-08-16,
 [42](42-kld-method.md), `receipts/kld-method-reproducibility-audit.json`,
 `receipts/method-hardening-pass.json`):**
