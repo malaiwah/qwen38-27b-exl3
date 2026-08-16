@@ -2784,5 +2784,65 @@
     },
     "gpu_memory_note": "30835 MiB in use after restore versus 30449 MiB recorded in gpu_state_before_stop. Same container spec and same --gpu-memory-utilization 0.98; the difference is allocator//JIT-cache variation across a cold start, not a configuration change. The authoritative equivalence evidence is the byte-identical image digest, cmd, env and binds plus the generation proof.",
     "scratch_cleaned": "the 3.9 GiB LMCache L2 directory on aiboss (/home/mbelleau/lmcachetest/l2/data) was deleted after the artifacts were captured; /home/mbelleau/lmcachetest is now 8.3 MiB. No other agent's images or caches were touched."
+  },
+  "upstream_disposition": {
+    "outcome": "NO NEW ISSUE FILED - the report already existed upstream twice; this evidence was posted as corroboration on both existing threads instead",
+    "filed_by": "Main (owner approval granted for filing on the owner's behalf); LMCacheTest2 produced the evidence and verified the duplicate search independently before standing down",
+    "filing_receipt": "receipts/lmcache-upstream-filing.json (commit 9548fcc)",
+    "canonical_repo_verification": {
+      "upstream": "LMCache/LMCache, not a fork, default branch 'dev', issues enabled, latest release v0.5.3 (tags through v0.5.4rc4)",
+      "fork_we_actually_ran": "local-inference-lab/LMCache, a fork of LMCache/LMCache, has_issues=false - so upstream was the only filing surface",
+      "why_this_matters": "the wheel in our image is a FORK build, so upstream is not necessarily the code that failed; the comments say so explicitly"
+    },
+    "fork_divergence_measured": {
+      "build_commit": "9cebd405d0caf4bebe01d694b5a8bf4e3e354314 (release/v0.5.2-glm52-dcp-base)",
+      "vs_upstream_dev": "diverged: ahead_by 3, behind_by 155",
+      "fork_commits": [
+        "fix(vllm): support MLA cache transfer with DCP",
+        "fix(vllm): scope physical block expansion to DCP",
+        "Merge pull request #1 from local-inference-lab/fix/glm52-dcp-v052-20260728"
+      ],
+      "non_test_source_files_the_fork_changes": [
+        "lmcache/integration/vllm/kv_cache_groups.py (+115/-15)",
+        "lmcache/integration/vllm/lmcache_mp_connector.py (+7/-2)",
+        "lmcache/integration/vllm/vllm_multi_process_adapter.py (+88/-23)",
+        "lmcache/v1/kv_layer_groups.py (+34/-12)",
+        "lmcache/v1/multiprocess/custom_types.py (+15/-0)",
+        "lmcache/v1/multiprocess/group_view.py (+41/-31)",
+        "lmcache/v1/multiprocess/modules/lookup.py (+14/-2)"
+      ],
+      "honest_consequence": "the fork's delta lands squarely on the KV-cache-group, layer-group and lookup machinery that sits in the suspect path. This receipt therefore does NOT attribute the defect to upstream LMCache code. What is attributed - by the control in results.the_predictive_rule_this_is_the_primary_result - is that the corruption tracks the chunk the connector supplied, in the build we ran."
+    },
+    "existing_upstream_reports_this_corroborates": {
+      "LMCache/LMCache#4247": {
+        "title": "[Bug] LMCacheMPConnector silently corrupts output on shared-prefix requests for hybrid Mamba/GDN models under vLLM 0.26.0 (EngineKVFormat 10)",
+        "state": "open",
+        "matches": "our L1cold/L2warm regime: same connector shape (MP, kv_both, fs_native L2, chunk 1600), same fp8 KV + MTP speculative decoding, same hybrid Mamba/GDN + full-attention architecture class, same symptom (multilingual token salad, no error) - on a different model (nvidia/Qwen3.6-27B-NVFP4), different GPU (GB10/aarch64) and different weight format",
+        "our_comment": "https://github.com/LMCache/LMCache/issues/4247#issuecomment-5307903588"
+      },
+      "LMCache/LMCache#4492": {
+        "title": "[Bug] MP-mode cross-restart: retrieve for a previously-cached prompt returns corrupted output after restarting the single vLLM instance",
+        "state": "open",
+        "matches": "our L3restart regime exactly: new vLLM process over a still-warm external cache returns fast, deterministic, wrong output",
+        "our_comment": "https://github.com/LMCache/LMCache/issues/4492#issuecomment-5307903650"
+      },
+      "LMCache/LMCache#2206": {
+        "title": "[BUG] Incorrect output when LMCache loads partial chunks overlapping with vLLM prefix cache",
+        "state": "closed",
+        "relevance": "independently proposed, in December 2025, the mechanism our rule measures: when the vLLM-cached token count is not chunk-aligned, a single chunk ends up mixing vLLM's live KV with LMCache's stored KV, and attention over that mixed chunk is inconsistent. Our result is a quantitative version of that hypothesis - the failure localises to the LAST chunk supplied, with zero false negatives over 114 request-arm instances and a same-geometry control that is correct 7/7 without LMCache. Recorded here because the issue is closed and the hypothesis in it was never confirmed with a control."
+      },
+      "other_related_open_issues_seen_in_the_duplicate_search": [
+        "#4345 Garbage output with MTP speculative decoding on long prompts",
+        "#3911 Excessive CPU RAM usage when combining --mamba-cache-mode align with LMCacheMPConnector",
+        "#4463 / #4467 silent KV corruption for vLLM fused/packed layout",
+        "#2734 [BugFix] Fix local disk KV cache reuse after restart",
+        "#2863 Support hybrid KV cache models (Mamba + attention) in GPU connector V3"
+      ]
+    },
+    "vllm_51766_cross_reference": {
+      "decision": "NOT posted",
+      "reason": "vLLM #51766 ('[Bugfix][Core] Preserve Mamba running CoW after external hits') is CLOSED and merged, and the people who can act on this finding are LMCache maintainers, who already have the adjacency argument in both comments above. A comment on a closed, merged PR in a different project saying 'we have an adjacent but demonstrably different thing elsewhere' would be noise, not signal. The adjacency claim itself is unchanged and is stated in results.upstream_relationship."
+    },
+    "reporter_answered": "HuggingFace discussion #1 answered by Main from the text handed over by LMCacheTest2 (comment 6a81c777...)"
   }
 }
