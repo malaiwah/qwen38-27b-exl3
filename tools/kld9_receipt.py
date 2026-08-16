@@ -610,7 +610,13 @@ def main() -> int:
             if args.cond == "s16v":
                 payload["sixteen_gb_arithmetic"] = sixteen_gb_arithmetic(rw)
     if args.extra:
-        payload.update(json.loads(args.extra.read_text()))
+        # --extra adds narrative, it never overwrites a measured field: a key collision here
+        # silently replaced the paired block once, so it is now fatal.
+        add = json.loads(args.extra.read_text())
+        clash = sorted(set(add) & set(payload))
+        if clash:
+            raise SystemExit("--extra would overwrite measured fields %s" % clash)
+        payload.update(add)
     payload["errors"] = errors
     payload["content_sha256"] = canonical_sha256(
         {k: v for k, v in payload.items() if k != "content_sha256"})

@@ -1,42 +1,52 @@
 {
- "schema": "qwen38-sixteen-flip-kld/1",
- "question": "what does the first sub-4-bit width in this family measure on shard 0 of the v5 suite, and does sub-4-bit fidelity justify a 16 GB SKU?",
- "answered_here": "NO",
+ "schema": "qwen38-k6-parity-kld/1",
+ "question": "at byte parity with GGUF Q6_K, does our recipe match or beat it -- i.e. is the 6-bit-class loss a byte gap rather than an engineering gap?",
+ "answered_here": "MATCHES_Q6K",
  "preregistration": {
   "file": "receipts/preregistration-kld9-window.json",
   "file_sha256": "0fa601b4fbc99bf9bb2d2a06f5941f52f8034a4d3858930d9fe3132a546f7c61",
   "registered_in_commit": "edced9a24675170cf7e073be68b96e4b704f606a",
   "registered_at_utc": "2026-08-16T15:05:21+00:00",
-  "condition": "S16-V sub-4-bit flip",
+  "condition": "K6-parity",
   "why_this_matters": "the prediction, the thresholds and the decision rule were committed and pushed before this conversion ran. This tool reads them back out of that file and asserts each threshold appears in its prose, so the verdict cannot have been chosen after the number was known.",
   "registered_prediction": {
-   "registered_range": [
-    0.03,
-    0.1
+   "registered_headline": 0.0016,
+   "registered_headline_source": "docs/29 L195, the figure already on the record",
+   "estimators": {
+    "byte_law_at_q6k_surplus": {
+     "value": 0.001601,
+     "derivation": "hydrated 0.002700 / 3.73^0.397 = 0.001601. This is docs/29's ~0.0016: it charges the parity build Q6_K's byte surplus rather than its own."
+    },
+    "byte_law_at_own_spend": {
+     "value": 0.001488,
+     "derivation": "the parity build spends 1448345600 bytes = 1.349 GiB over hydrated, which over ~25.6B quantized weights is +0.4526 bpw; 3.73^0.4526 = 1.815x, so 0.002700 / 1.815 = 0.001488",
+     "note": "the parity build buys MORE bytes than Q6_K's surplus (1.349 GiB against 1.183), so its own-spend prediction sits below docs/29's headline."
+    },
+    "role_share_bound": {
+     "value": 0.001175,
+     "derivation": "gate+up carry 77.1% of the sqrt-energy-weighted proxy error at hydrated widths; promoting them one bit divides that share by the measured MLP K5->K6 rung ratio 3.7390 (docs/37 \u00a73.1), leaving a factor (1-0.7711)+0.7711/3.7390 = 0.4352, so 0.002700 x 0.4352 = 0.001175",
+     "caveat": "assumes the whole KLD scales with the weighted proxy error and that the un-promoted roles contribute no floor of their own. This is the most aggressive of the three and is registered as the lower end."
+    },
+    "surrogate_scaled": {
+     "bracket": [
+      0.001189,
+      0.001912
+     ],
+     "derivation": "sqrt_energy objective delta for gate/up K5->K6 is -2.7243; scaled by the two uniform role-group scales (0.000555, 0.000289) that is -0.001511 to -0.000788 on the hydrated mean."
+    }
+   },
+   "registered_interval": [
+    0.001175,
+    0.001601
    ],
-   "registered_range_source": "docs/34 \u00a76.4 [P, extrapolation only]",
-   "point_estimate_byte_law": {
-    "value": 0.0689,
-    "derivation": "hydrated quantized-weight bytes 18121386596 - S16-V quantized-weight bytes 10245925476 = 7875461120 fewer bytes over ~25.6B quantized weights = -2.461 bpw; the 3.73x-per-bit constant gives 25.5x more KLD, so 0.002700 x 25.5 = 0.0689",
-    "caveats": "the uniform-bpw form assumes error is spread in proportion to bytes; S16-V moves five role groups at once, three of them by three bits, and the 3.73x constant is measured only over K3..K8 rungs of a proxy error, never against KLD below 4 bits. Extrapolation, not an estimate."
-   },
-   "point_estimate_surrogate": {
-    "bracket": [
-     0.0318,
-     0.0585
-    ],
-    "derivation": "sqrt_energy objective (w_m = sqrt(out_energy)) over the 400 laddered body modules: hydrated 4.8230, S16-V 105.4, delta 100.6. Scaled by the two implied scales the published surrogate calibration fitted on its two UNIFORM role-group pairs (0.000289 from attention K6->K5, 0.000555 from MLP->K4) this gives 0.0318 to 0.0585.",
-    "extrapolated_rungs": "96 of 400 body modules have no measured K3 rung (numel below the 52M big-module threshold, so their ladder starts at K4); their K3 proxy error is extrapolated by continuing the module's own K5->K4 ratio one further bit.",
-    "caveat": "the published calibration verdict is that NO rule is calibrated: sqrt_energy is merely the only sign-correct rule with a bounded scale spread (2.51x, worst out-of-sample ratio 2.47x). Treat this bracket as an order-of-magnitude check on docs/34 \u00a76.4's range, which it corroborates."
-   },
-   "registered_primary": 0.0689,
-   "registered_falsification": "the registered range is 0.03-0.10. A measured mean below 0.02 or above 0.20 falsifies both estimators and the design study's fidelity paragraph has to be rewritten."
+   "registered_primary": 0.001488,
+   "registered_consequence": "every estimator predicts the parity build BEATS Q6_K's net-of-floor 0.001528 or matches it. The sharp pre-registered claim is therefore BEATS_Q6K or MATCHES_Q6K; MISSES falsifies the byte decomposition."
   },
   "registered_decision_rule": {
-   "YES": "measured shard-0 token_mean_kld <= K4's 0.010345 -- sub-4-bit costs no more than the worst ALREADY PUBLISHED candidate. Flip item (1) passes outright; the 16 GB no-go would then rest only on items (2)-(4) and the fidelity argument is withdrawn.",
-   "BORDERLINE": "measured mean in (0.010345, 0.030] -- worse than every published candidate but below docs/34 \u00a76.4's predicted range. Item (1) is answered with a number that a card may print; the SKU verdict stays NO-GO on the arithmetic and the remaining items, and the checkpoint is preserved as a research repo.",
-   "NO": "measured mean > 0.030, i.e. inside or above the predicted range. Sub-4-bit fidelity does not justify a 16 GB SKU; docs/34 \u00a76 stands as a design study with item (1) now measured rather than absent.",
-   "tail_side_condition": "reported alongside, not part of the rule: docs/34 calls K4's p99.9 of 0.5555 (10M suite) already the worst of the five published candidates. The shard-0 p99.9 and max of S16-V are reported in every case."
+   "BEATS_Q6K": "measured mean < 0.001528 (Q6_K's net-of-floor estimate). Our recipe is better than GGUF Q6_K at equal bytes; the 6-bit-class loss in receipts/cross-engine-comparator.json was a byte gap and is now closed. Release candidate for a fifth repo.",
+   "MATCHES_Q6K": "measured mean in [0.001528, 0.002035], i.e. between Q6_K net and Q6_K measured. Indistinguishable from Q6_K at equal bytes once the cross-engine floor's own slack is admitted; still a release candidate.",
+   "MISSES": "measured mean > 0.002035 (Q6_K's measured upper bound). Q6_K is better than our recipe at equal bytes and the loss is NOT purely a byte gap; the byte-law prediction is falsified in magnitude and docs/29's decomposition must be rewritten.",
+   "owner_override_on_preservation": "the checkpoint is KEPT AND UPLOADED whatever the result -- owner priority, stated at scope-addition time."
   }
  },
  "protocol": {
@@ -73,30 +83,29 @@
   "finalize": "/work/kld3/finalize_checkpoint.py -m OUT --upstream /models/Qwen3.8-27B",
   "host": "rental RTX PRO 6000 Blackwell Server Edition, 97,887 MiB",
   "build_script": {
-   "path": "/var/tmp/work/kld9/build_s16v.sh",
-   "sha256": "51d7177c7968e11ae429f0d903a37a7f5be72369ec39ec6220909a416e06b23c"
+   "path": "/var/tmp/work/kld9/build_k6parity.sh",
+   "sha256": "249b20804f6a5fd07551b5a007c7b68ddfc0fbf4c59d18f1144fd4bde9187420"
   },
   "convert_log": {
-   "path": "/var/tmp/work/kld9/convert-s16v.log",
-   "sha256": "9255183b9c961c14b969ff10de03ad8b778d0ea9551753d2bdbeef9aa8a87097",
-   "lines": 1053
+   "path": "/var/tmp/work/kld9/convert-k6parity.log",
+   "sha256": "d4c21dad498baf4d656d9fe5812ea794d2a5d0408da15e0856bd54c5d46aff2b",
+   "lines": 1054
   }
  },
  "build": {
   "predicted_bytes": {
-   "serialized_payload": 13711503428,
-   "serialized_gib": 12.77,
-   "disk_bytes": 13735474746,
-   "source": "docs/34 \u00a76.2, byte law summed over roles; disk = payload + 24.0 MB",
-   "label": "prediction",
-   "byte_law_accuracy_on_the_last_build": {
-    "hydrated_predicted_disk": 21610964548,
-    "hydrated_measured_immutable_payload_bytes": 21610916123,
-    "error_bytes": 48425
-   }
+   "serialized_payload": 23035310148,
+   "serialized_gib": 21.453,
+   "disk_bytes": 23059310148,
+   "derivation": "hydrated payload 21586964548 + 2 x 713031680 (gate and up, 64 modules each, K5->K6 costs exactly the byte difference between the published K5 gate role and the published K6 down role) + 22282240 (the MTP layer's gate and up, which the override regex also matches, at 1 bit per parameter) = 23035310148",
+   "byte_parity_target": {
+    "gguf_q6_k_serialized_gib": 21.313,
+    "ratio_parity_over_q6k": 1.0066
+   },
+   "label": "prediction"
   },
-  "measured_role_payload_bytes": 13711503428,
-  "measured_role_payload_gib": 12.7698,
+  "measured_role_payload_bytes": 23035310148,
+  "measured_role_payload_gib": 21.4533,
   "payload_prediction_error_bytes": 0,
   "quantization_manifest_roles": {
    "embed_tokens": {
@@ -109,61 +118,62 @@
    },
    "full_attention": {
     "modules": 64,
-    "bytes": 840188160,
-    "gb": 0.84,
+    "bytes": 1259618560,
+    "gb": 1.26,
     "formats": {
-     "exl3_K4_mcg": 64,
+     "exl3_K6_mcg": 64,
      "BF16": 32
     }
    },
    "linear_attention": {
     "modules": 144,
-    "bytes": 2130957888,
-    "gb": 2.131,
+    "bytes": 4207138368,
+    "gb": 4.207,
     "formats": {
-     "exl3_K3_mcg": 144,
+     "exl3_K6_mcg": 144,
      "F16": 96,
      "BF16": 192
     }
    },
    "lm_head": {
     "modules": 1,
-    "bytes": 636206084,
-    "gb": 0.636,
+    "bytes": 954055684,
+    "gb": 0.954,
     "formats": {
-     "exl3_K4_mcg": 1
+     "exl3_K6_mcg": 1
     }
    },
    "mlp_down_proj": {
     "modules": 64,
-    "bytes": 2141978880,
-    "gb": 2.142,
+    "bytes": 4281073920,
+    "gb": 4.281,
     "formats": {
-     "exl3_K3_mcg": 64
+     "exl3_K6_mcg": 64
     }
    },
    "mlp_gate_proj": {
     "modules": 64,
-    "bytes": 2141978880,
-    "gb": 2.142,
+    "bytes": 4281073920,
+    "gb": 4.281,
     "formats": {
-     "exl3_K3_mcg": 64
+     "exl3_K6_mcg": 64
     }
    },
    "mlp_up_proj": {
     "modules": 64,
-    "bytes": 2141978880,
-    "gb": 2.142,
+    "bytes": 4281073920,
+    "gb": 4.281,
     "formats": {
-     "exl3_K3_mcg": 64
+     "exl3_K6_mcg": 64
     }
    },
    "mtp_draft": {
     "modules": 8,
-    "bytes": 212636704,
-    "gb": 0.213,
+    "bytes": 305697824,
+    "gb": 0.306,
     "formats": {
-     "exl3_K4_mcg": 8,
+     "exl3_K4_mcg": 1,
+     "exl3_K6_mcg": 7,
      "BF16": 7
     }
    },
@@ -185,10 +195,10 @@
    }
   },
   "tree": {
-   "dir": "/var/tmp/work/kld9/qwen38-s16v",
-   "file_count": 21,
-   "total_bytes": 13735527028,
-   "total_gib": 12.7922,
+   "dir": "/var/tmp/work/kld9/qwen38-k6parity",
+   "file_count": 22,
+   "total_bytes": 23059333816,
+   "total_gib": 21.4757,
    "files": {
     ".gitattributes": {
      "bytes": 1570,
@@ -207,12 +217,12 @@
      "sha256": "57e4bdb258ee1a7d2635c5174ebd4e56abe392505cdb5f8bbb356b0dc4293641"
     },
     "SHA256SUMS": {
-     "bytes": 1315,
-     "sha256": "43ed06c5ef2fe715ceb7bf23cb869fd8ac2794789ad7c9d0ee2ebc39899e8391"
+     "bytes": 1414,
+     "sha256": "e35d05fcd5a126b76719931a7aa8a482bb703565b2d7cf94a81c58279fdbe454"
     },
     "build-receipt.json": {
-     "bytes": 3483,
-     "sha256": "61d5bdd905c1ffa4d19415704a62ae79ade07fbf0675e51e0f8410f599616382"
+     "bytes": 3554,
+     "sha256": "c891b2788182fbebe50f7ef8123aa423d5a7950a9227198ead8f8aa15772c80d"
     },
     "chat_template.jinja": {
      "bytes": 8952,
@@ -220,7 +230,7 @@
     },
     "config.json": {
      "bytes": 4620,
-     "sha256": "9b6c1509c776f5aeca2f3c0594004d0e5ddb23bbf0c4f3b07ca662842c005a1b"
+     "sha256": "fbb105334da6554c10784ff1257fda5e3821d4d5426d64469cee2b2ad67ba2b3"
     },
     "crc32.txt": {
      "bytes": 238,
@@ -234,17 +244,21 @@
      "bytes": 3353259,
      "sha256": "a9d356d7bdf1ef4949e3e748e95b8e10ad9d4e2e838eddc38a0a7b6b94d1db8d"
     },
-    "model-00001-of-00002.safetensors": {
-     "bytes": 8561779453,
-     "sha256": "cfa4e2e74180d2e9f01dd60771d8674fa10e46f6903d6992ec36de8036bc6100"
+    "model-00001-of-00003.safetensors": {
+     "bytes": 8553504253,
+     "sha256": "c314cf652097cbc8b0ea581520c849ed79900a6aef68c00139a36ffb4b4002ea"
     },
-    "model-00002-of-00002.safetensors": {
-     "bytes": 5150025047,
-     "sha256": "299276e7a3045c3fbefec973a08632895ca06f3107e2065b6fe7ccc168db7b7e"
+    "model-00002-of-00003.safetensors": {
+     "bytes": 8587999586,
+     "sha256": "258ce8aa477132983e100f333ee30f48928c7d1dc7a3344c8ea4300dd39b46fe"
+    },
+    "model-00003-of-00003.safetensors": {
+     "bytes": 5894107293,
+     "sha256": "b2c8a4697699a31dc636a9666c0cd7abd49707af1f2514a1be58d1e52b36ca20"
     },
     "model.safetensors.index.json": {
      "bytes": 238255,
-     "sha256": "14d9722c9d622b5d5a1db41694370c89295861825b9b5f6e4f93ec5a3d3ebcd1"
+     "sha256": "a35eb2fe60f8465198efcf6b69d8939ce41f4f704e339bf5e5aececc52baf5fe"
     },
     "preprocessor_config.json": {
      "bytes": 390,
@@ -252,11 +266,11 @@
     },
     "quantization_config.json": {
      "bytes": 480293,
-     "sha256": "378f957aaead99cce96b6049ec59f49e76ecfc0e1ae3384d8be61da867227412"
+     "sha256": "f837288ffb2f4749f2b0044742f6abfb6c81d5d180c6a28fbdf853601cc640b3"
     },
     "quantization_manifest.json": {
-     "bytes": 2770,
-     "sha256": "a507cfbd974a14a6552aa1c7304accd395ff9e560e8e9af1692c3f52d886d45e"
+     "bytes": 2756,
+     "sha256": "e16eb8dddd7e0889352339a83ff02b3e0e15f204c401d6e44fc010487db2a8c8"
     },
     "tokenizer.json": {
      "bytes": 12809320,
@@ -283,58 +297,58 @@
     "full_attn": {
      "modules": 64,
      "bpw_values": [
-      4.0
+      6.0
      ],
-     "proxy_err_min": 0.000179,
-     "proxy_err_median": 0.000724,
-     "proxy_err_max": 0.002289,
-     "proxy_err_mean": 0.000814234375
+     "proxy_err_min": 1.3e-05,
+     "proxy_err_median": 5.2e-05,
+     "proxy_err_max": 0.000161,
+     "proxy_err_mean": 5.826562500000001e-05
     },
     "linear_attn": {
      "modules": 144,
      "bpw_values": [
-      3.0
+      6.0
      ],
-     "proxy_err_min": 0.001088,
-     "proxy_err_median": 0.003008,
-     "proxy_err_max": 0.010369,
-     "proxy_err_mean": 0.004229708333333334
+     "proxy_err_min": 2e-05,
+     "proxy_err_median": 5.5e-05,
+     "proxy_err_max": 0.000188,
+     "proxy_err_mean": 7.804166666666668e-05
     },
     "mlp_down": {
      "modules": 64,
      "bpw_values": [
-      3.0
+      6.0
      ],
-     "proxy_err_min": 0.000592,
-     "proxy_err_median": 0.009271,
-     "proxy_err_max": 0.010924,
-     "proxy_err_mean": 0.008583406250000002
+     "proxy_err_min": 1.1e-05,
+     "proxy_err_median": 0.00017,
+     "proxy_err_max": 0.0002,
+     "proxy_err_mean": 0.00015676562500000009
     },
     "mlp_gate": {
      "modules": 64,
      "bpw_values": [
-      3.0
+      6.0
      ],
-     "proxy_err_min": 0.001215,
-     "proxy_err_median": 0.004563,
-     "proxy_err_max": 0.008171,
-     "proxy_err_mean": 0.004786859375
+     "proxy_err_min": 2.3e-05,
+     "proxy_err_median": 8.3e-05,
+     "proxy_err_max": 0.00015,
+     "proxy_err_mean": 8.748437499999998e-05
     },
     "mlp_up": {
      "modules": 64,
      "bpw_values": [
-      3.0
+      6.0
      ],
-     "proxy_err_min": 0.001088,
-     "proxy_err_median": 0.006575,
-     "proxy_err_max": 0.00984,
-     "proxy_err_mean": 0.006695859375000001
+     "proxy_err_min": 2e-05,
+     "proxy_err_median": 0.00012,
+     "proxy_err_max": 0.000181,
+     "proxy_err_mean": 0.00012279687499999997
     }
    },
    "head_and_mtp": {
     "lm_head": {
-     "bpw": 4.0,
-     "proxy_err": 0.000816,
+     "bpw": 6.0,
+     "proxy_err": 5.9e-05,
      "rmse": null
     },
     "mtp.fc": {
@@ -343,2045 +357,2045 @@
      "rmse": 0.002379
     },
     "mtp.layers.0.self_attn.q_proj": {
-     "bpw": 4.0,
+     "bpw": 6.0,
      "proxy_err": null,
-     "rmse": 0.004018
+     "rmse": 0.000203
     },
     "mtp.layers.0.self_attn.k_proj": {
-     "bpw": 4.0,
+     "bpw": 6.0,
      "proxy_err": null,
-     "rmse": 0.00559
+     "rmse": 0.000313
     },
     "mtp.layers.0.self_attn.v_proj": {
-     "bpw": 4.0,
+     "bpw": 6.0,
      "proxy_err": null,
-     "rmse": 0.005541
+     "rmse": 0.000302
     },
     "mtp.layers.0.self_attn.o_proj": {
-     "bpw": 4.0,
+     "bpw": 6.0,
      "proxy_err": null,
-     "rmse": 0.005616
+     "rmse": 0.000303
     },
     "mtp.layers.0.mlp.up_proj": {
-     "bpw": 4.0,
+     "bpw": 6.0,
      "proxy_err": null,
-     "rmse": 0.005647
+     "rmse": 0.000315
     },
     "mtp.layers.0.mlp.gate_proj": {
-     "bpw": 4.0,
+     "bpw": 6.0,
      "proxy_err": null,
-     "rmse": 0.005644
+     "rmse": 0.000309
     },
     "mtp.layers.0.mlp.down_proj": {
-     "bpw": 4.0,
+     "bpw": 6.0,
      "proxy_err": null,
-     "rmse": 0.005644
+     "rmse": 0.000314
     }
    },
    "per_module": {
     "lm_head": {
-     "bpw": 4.0,
-     "proxy_err": 0.000816,
+     "bpw": 6.0,
+     "proxy_err": 5.9e-05,
      "rmse": null
     },
     "model.language_model.layers.0.linear_attn.in_proj_qkv": {
-     "bpw": 3.0,
-     "proxy_err": 0.001559,
+     "bpw": 6.0,
+     "proxy_err": 3.3e-05,
      "rmse": null
     },
     "model.language_model.layers.0.linear_attn.in_proj_z": {
-     "bpw": 3.0,
-     "proxy_err": 0.002428,
+     "bpw": 6.0,
+     "proxy_err": 4.4e-05,
      "rmse": null
     },
     "model.language_model.layers.0.linear_attn.out_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.001088,
+     "bpw": 6.0,
+     "proxy_err": 2e-05,
      "rmse": null
     },
     "model.language_model.layers.0.mlp.down_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.004146,
+     "bpw": 6.0,
+     "proxy_err": 7.5e-05,
      "rmse": null
     },
     "model.language_model.layers.0.mlp.gate_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.003465,
+     "bpw": 6.0,
+     "proxy_err": 6.2e-05,
      "rmse": null
     },
     "model.language_model.layers.0.mlp.up_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.00357,
+     "bpw": 6.0,
+     "proxy_err": 6.4e-05,
      "rmse": null
     },
     "model.language_model.layers.1.linear_attn.in_proj_qkv": {
-     "bpw": 3.0,
-     "proxy_err": 0.001418,
+     "bpw": 6.0,
+     "proxy_err": 2.6e-05,
      "rmse": null
     },
     "model.language_model.layers.1.linear_attn.in_proj_z": {
-     "bpw": 3.0,
-     "proxy_err": 0.001427,
+     "bpw": 6.0,
+     "proxy_err": 2.7e-05,
      "rmse": null
     },
     "model.language_model.layers.1.linear_attn.out_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.006097,
+     "bpw": 6.0,
+     "proxy_err": 0.000132,
      "rmse": null
     },
     "model.language_model.layers.1.mlp.down_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.006242,
+     "bpw": 6.0,
+     "proxy_err": 0.000114,
      "rmse": null
     },
     "model.language_model.layers.1.mlp.gate_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.004632,
+     "bpw": 6.0,
+     "proxy_err": 8.4e-05,
      "rmse": null
     },
     "model.language_model.layers.1.mlp.up_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.00524,
+     "bpw": 6.0,
+     "proxy_err": 9.5e-05,
      "rmse": null
     },
     "model.language_model.layers.10.linear_attn.in_proj_qkv": {
-     "bpw": 3.0,
-     "proxy_err": 0.002884,
+     "bpw": 6.0,
+     "proxy_err": 5.3e-05,
      "rmse": null
     },
     "model.language_model.layers.10.linear_attn.in_proj_z": {
-     "bpw": 3.0,
-     "proxy_err": 0.002392,
+     "bpw": 6.0,
+     "proxy_err": 4.4e-05,
      "rmse": null
     },
     "model.language_model.layers.10.linear_attn.out_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.006425,
+     "bpw": 6.0,
+     "proxy_err": 0.000117,
      "rmse": null
     },
     "model.language_model.layers.10.mlp.down_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.008437,
+     "bpw": 6.0,
+     "proxy_err": 0.000155,
      "rmse": null
     },
     "model.language_model.layers.10.mlp.gate_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.007045,
+     "bpw": 6.0,
+     "proxy_err": 0.00013,
      "rmse": null
     },
     "model.language_model.layers.10.mlp.up_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.00835,
+     "bpw": 6.0,
+     "proxy_err": 0.000155,
      "rmse": null
     },
     "model.language_model.layers.11.mlp.down_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.009293,
+     "bpw": 6.0,
+     "proxy_err": 0.000171,
      "rmse": null
     },
     "model.language_model.layers.11.mlp.gate_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.006463,
+     "bpw": 6.0,
+     "proxy_err": 0.000119,
      "rmse": null
     },
     "model.language_model.layers.11.mlp.up_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.007969,
+     "bpw": 6.0,
+     "proxy_err": 0.000147,
      "rmse": null
     },
     "model.language_model.layers.11.self_attn.k_proj": {
-     "bpw": 4.0,
-     "proxy_err": 0.000344,
+     "bpw": 6.0,
+     "proxy_err": 2.5e-05,
      "rmse": null
     },
     "model.language_model.layers.11.self_attn.o_proj": {
-     "bpw": 4.0,
-     "proxy_err": 0.001017,
+     "bpw": 6.0,
+     "proxy_err": 7.3e-05,
      "rmse": null
     },
     "model.language_model.layers.11.self_attn.q_proj": {
-     "bpw": 4.0,
-     "proxy_err": 0.000202,
+     "bpw": 6.0,
+     "proxy_err": 1.5e-05,
      "rmse": null
     },
     "model.language_model.layers.11.self_attn.v_proj": {
-     "bpw": 4.0,
-     "proxy_err": 0.000385,
+     "bpw": 6.0,
+     "proxy_err": 2.7e-05,
      "rmse": null
     },
     "model.language_model.layers.12.linear_attn.in_proj_qkv": {
-     "bpw": 3.0,
-     "proxy_err": 0.002277,
+     "bpw": 6.0,
+     "proxy_err": 4.2e-05,
      "rmse": null
     },
     "model.language_model.layers.12.linear_attn.in_proj_z": {
-     "bpw": 3.0,
-     "proxy_err": 0.001926,
+     "bpw": 6.0,
+     "proxy_err": 3.6e-05,
      "rmse": null
     },
     "model.language_model.layers.12.linear_attn.out_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.00693,
+     "bpw": 6.0,
+     "proxy_err": 0.000128,
      "rmse": null
     },
     "model.language_model.layers.12.mlp.down_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.009408,
+     "bpw": 6.0,
+     "proxy_err": 0.000173,
      "rmse": null
     },
     "model.language_model.layers.12.mlp.gate_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.006102,
+     "bpw": 6.0,
+     "proxy_err": 0.000112,
      "rmse": null
     },
     "model.language_model.layers.12.mlp.up_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.007568,
+     "bpw": 6.0,
+     "proxy_err": 0.00014,
      "rmse": null
     },
     "model.language_model.layers.13.linear_attn.in_proj_qkv": {
-     "bpw": 3.0,
-     "proxy_err": 0.002402,
+     "bpw": 6.0,
+     "proxy_err": 4.5e-05,
      "rmse": null
     },
     "model.language_model.layers.13.linear_attn.in_proj_z": {
-     "bpw": 3.0,
-     "proxy_err": 0.001922,
+     "bpw": 6.0,
+     "proxy_err": 3.6e-05,
      "rmse": null
     },
     "model.language_model.layers.13.linear_attn.out_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.008207,
+     "bpw": 6.0,
+     "proxy_err": 0.00015,
      "rmse": null
     },
     "model.language_model.layers.13.mlp.down_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.009657,
+     "bpw": 6.0,
+     "proxy_err": 0.000177,
      "rmse": null
     },
     "model.language_model.layers.13.mlp.gate_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.006111,
+     "bpw": 6.0,
+     "proxy_err": 0.000112,
      "rmse": null
     },
     "model.language_model.layers.13.mlp.up_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.007587,
+     "bpw": 6.0,
+     "proxy_err": 0.00014,
      "rmse": null
     },
     "model.language_model.layers.14.linear_attn.in_proj_qkv": {
-     "bpw": 3.0,
-     "proxy_err": 0.002212,
+     "bpw": 6.0,
+     "proxy_err": 4.1e-05,
      "rmse": null
     },
     "model.language_model.layers.14.linear_attn.in_proj_z": {
-     "bpw": 3.0,
-     "proxy_err": 0.001822,
+     "bpw": 6.0,
+     "proxy_err": 3.4e-05,
      "rmse": null
     },
     "model.language_model.layers.14.linear_attn.out_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.007258,
+     "bpw": 6.0,
+     "proxy_err": 0.000132,
      "rmse": null
     },
     "model.language_model.layers.14.mlp.down_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.009421,
+     "bpw": 6.0,
+     "proxy_err": 0.000173,
      "rmse": null
     },
     "model.language_model.layers.14.mlp.gate_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.006247,
+     "bpw": 6.0,
+     "proxy_err": 0.000115,
      "rmse": null
     },
     "model.language_model.layers.14.mlp.up_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.007783,
+     "bpw": 6.0,
+     "proxy_err": 0.000143,
      "rmse": null
     },
     "model.language_model.layers.15.mlp.down_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.010009,
+     "bpw": 6.0,
+     "proxy_err": 0.000184,
      "rmse": null
     },
     "model.language_model.layers.15.mlp.gate_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.006384,
+     "bpw": 6.0,
+     "proxy_err": 0.000117,
      "rmse": null
     },
     "model.language_model.layers.15.mlp.up_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.007839,
+     "bpw": 6.0,
+     "proxy_err": 0.000144,
      "rmse": null
     },
     "model.language_model.layers.15.self_attn.k_proj": {
-     "bpw": 4.0,
-     "proxy_err": 0.000506,
+     "bpw": 6.0,
+     "proxy_err": 3.6e-05,
      "rmse": null
     },
     "model.language_model.layers.15.self_attn.o_proj": {
-     "bpw": 4.0,
-     "proxy_err": 0.00111,
+     "bpw": 6.0,
+     "proxy_err": 7.9e-05,
      "rmse": null
     },
     "model.language_model.layers.15.self_attn.q_proj": {
-     "bpw": 4.0,
-     "proxy_err": 0.000244,
+     "bpw": 6.0,
+     "proxy_err": 1.8e-05,
      "rmse": null
     },
     "model.language_model.layers.15.self_attn.v_proj": {
-     "bpw": 4.0,
-     "proxy_err": 0.000501,
+     "bpw": 6.0,
+     "proxy_err": 3.6e-05,
      "rmse": null
     },
     "model.language_model.layers.16.linear_attn.in_proj_qkv": {
-     "bpw": 3.0,
-     "proxy_err": 0.002575,
+     "bpw": 6.0,
+     "proxy_err": 4.8e-05,
      "rmse": null
     },
     "model.language_model.layers.16.linear_attn.in_proj_z": {
-     "bpw": 3.0,
-     "proxy_err": 0.002105,
+     "bpw": 6.0,
+     "proxy_err": 3.9e-05,
      "rmse": null
     },
     "model.language_model.layers.16.linear_attn.out_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.007563,
+     "bpw": 6.0,
+     "proxy_err": 0.000138,
      "rmse": null
     },
     "model.language_model.layers.16.mlp.down_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.00916,
+     "bpw": 6.0,
+     "proxy_err": 0.000169,
      "rmse": null
     },
     "model.language_model.layers.16.mlp.gate_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.005921,
+     "bpw": 6.0,
+     "proxy_err": 0.000108,
      "rmse": null
     },
     "model.language_model.layers.16.mlp.up_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.007443,
+     "bpw": 6.0,
+     "proxy_err": 0.000138,
      "rmse": null
     },
     "model.language_model.layers.17.linear_attn.in_proj_qkv": {
-     "bpw": 3.0,
-     "proxy_err": 0.002471,
+     "bpw": 6.0,
+     "proxy_err": 4.6e-05,
      "rmse": null
     },
     "model.language_model.layers.17.linear_attn.in_proj_z": {
-     "bpw": 3.0,
-     "proxy_err": 0.001962,
+     "bpw": 6.0,
+     "proxy_err": 3.7e-05,
      "rmse": null
     },
     "model.language_model.layers.17.linear_attn.out_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.008599,
+     "bpw": 6.0,
+     "proxy_err": 0.000157,
      "rmse": null
     },
     "model.language_model.layers.17.mlp.down_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.00878,
+     "bpw": 6.0,
+     "proxy_err": 0.000161,
      "rmse": null
     },
     "model.language_model.layers.17.mlp.gate_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.00575,
+     "bpw": 6.0,
+     "proxy_err": 0.000105,
      "rmse": null
     },
     "model.language_model.layers.17.mlp.up_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.007478,
+     "bpw": 6.0,
+     "proxy_err": 0.000138,
      "rmse": null
     },
     "model.language_model.layers.18.linear_attn.in_proj_qkv": {
-     "bpw": 3.0,
-     "proxy_err": 0.002436,
+     "bpw": 6.0,
+     "proxy_err": 4.5e-05,
      "rmse": null
     },
     "model.language_model.layers.18.linear_attn.in_proj_z": {
-     "bpw": 3.0,
-     "proxy_err": 0.00198,
+     "bpw": 6.0,
+     "proxy_err": 3.7e-05,
      "rmse": null
     },
     "model.language_model.layers.18.linear_attn.out_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.006184,
+     "bpw": 6.0,
+     "proxy_err": 0.000113,
      "rmse": null
     },
     "model.language_model.layers.18.mlp.down_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.006914,
+     "bpw": 6.0,
+     "proxy_err": 0.000128,
      "rmse": null
     },
     "model.language_model.layers.18.mlp.gate_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.004859,
+     "bpw": 6.0,
+     "proxy_err": 9e-05,
      "rmse": null
     },
     "model.language_model.layers.18.mlp.up_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.006218,
+     "bpw": 6.0,
+     "proxy_err": 0.000115,
      "rmse": null
     },
     "model.language_model.layers.19.mlp.down_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.008911,
+     "bpw": 6.0,
+     "proxy_err": 0.000163,
      "rmse": null
     },
     "model.language_model.layers.19.mlp.gate_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.004975,
+     "bpw": 6.0,
+     "proxy_err": 9.1e-05,
      "rmse": null
     },
     "model.language_model.layers.19.mlp.up_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.007374,
+     "bpw": 6.0,
+     "proxy_err": 0.000136,
      "rmse": null
     },
     "model.language_model.layers.19.self_attn.k_proj": {
-     "bpw": 4.0,
-     "proxy_err": 0.000702,
+     "bpw": 6.0,
+     "proxy_err": 5e-05,
      "rmse": null
     },
     "model.language_model.layers.19.self_attn.o_proj": {
-     "bpw": 4.0,
-     "proxy_err": 0.001617,
+     "bpw": 6.0,
+     "proxy_err": 0.000115,
      "rmse": null
     },
     "model.language_model.layers.19.self_attn.q_proj": {
-     "bpw": 4.0,
-     "proxy_err": 0.000296,
+     "bpw": 6.0,
+     "proxy_err": 2.3e-05,
      "rmse": null
     },
     "model.language_model.layers.19.self_attn.v_proj": {
-     "bpw": 4.0,
-     "proxy_err": 0.000707,
+     "bpw": 6.0,
+     "proxy_err": 5e-05,
      "rmse": null
     },
     "model.language_model.layers.2.linear_attn.in_proj_qkv": {
-     "bpw": 3.0,
-     "proxy_err": 0.001829,
+     "bpw": 6.0,
+     "proxy_err": 3.4e-05,
      "rmse": null
     },
     "model.language_model.layers.2.linear_attn.in_proj_z": {
-     "bpw": 3.0,
-     "proxy_err": 0.001799,
+     "bpw": 6.0,
+     "proxy_err": 3.3e-05,
      "rmse": null
     },
     "model.language_model.layers.2.linear_attn.out_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.006841,
+     "bpw": 6.0,
+     "proxy_err": 0.000126,
      "rmse": null
     },
     "model.language_model.layers.2.mlp.down_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.006554,
+     "bpw": 6.0,
+     "proxy_err": 0.000119,
      "rmse": null
     },
     "model.language_model.layers.2.mlp.gate_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.007082,
+     "bpw": 6.0,
+     "proxy_err": 0.00013,
      "rmse": null
     },
     "model.language_model.layers.2.mlp.up_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.00792,
+     "bpw": 6.0,
+     "proxy_err": 0.000145,
      "rmse": null
     },
     "model.language_model.layers.20.linear_attn.in_proj_qkv": {
-     "bpw": 3.0,
-     "proxy_err": 0.002254,
+     "bpw": 6.0,
+     "proxy_err": 4.2e-05,
      "rmse": null
     },
     "model.language_model.layers.20.linear_attn.in_proj_z": {
-     "bpw": 3.0,
-     "proxy_err": 0.002063,
+     "bpw": 6.0,
+     "proxy_err": 3.8e-05,
      "rmse": null
     },
     "model.language_model.layers.20.linear_attn.out_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.00791,
+     "bpw": 6.0,
+     "proxy_err": 0.000144,
      "rmse": null
     },
     "model.language_model.layers.20.mlp.down_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.00948,
+     "bpw": 6.0,
+     "proxy_err": 0.000173,
      "rmse": null
     },
     "model.language_model.layers.20.mlp.gate_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.005536,
+     "bpw": 6.0,
+     "proxy_err": 0.000101,
      "rmse": null
     },
     "model.language_model.layers.20.mlp.up_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.008537,
+     "bpw": 6.0,
+     "proxy_err": 0.000157,
      "rmse": null
     },
     "model.language_model.layers.21.linear_attn.in_proj_qkv": {
-     "bpw": 3.0,
-     "proxy_err": 0.002911,
+     "bpw": 6.0,
+     "proxy_err": 5.4e-05,
      "rmse": null
     },
     "model.language_model.layers.21.linear_attn.in_proj_z": {
-     "bpw": 3.0,
-     "proxy_err": 0.002366,
+     "bpw": 6.0,
+     "proxy_err": 4.3e-05,
      "rmse": null
     },
     "model.language_model.layers.21.linear_attn.out_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.007282,
+     "bpw": 6.0,
+     "proxy_err": 0.000132,
      "rmse": null
     },
     "model.language_model.layers.21.mlp.down_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.010678,
+     "bpw": 6.0,
+     "proxy_err": 0.000196,
      "rmse": null
     },
     "model.language_model.layers.21.mlp.gate_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.006147,
+     "bpw": 6.0,
+     "proxy_err": 0.000112,
      "rmse": null
     },
     "model.language_model.layers.21.mlp.up_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.009085,
+     "bpw": 6.0,
+     "proxy_err": 0.000166,
      "rmse": null
     },
     "model.language_model.layers.22.linear_attn.in_proj_qkv": {
-     "bpw": 3.0,
-     "proxy_err": 0.003556,
+     "bpw": 6.0,
+     "proxy_err": 6.6e-05,
      "rmse": null
     },
     "model.language_model.layers.22.linear_attn.in_proj_z": {
-     "bpw": 3.0,
-     "proxy_err": 0.002691,
+     "bpw": 6.0,
+     "proxy_err": 4.9e-05,
      "rmse": null
     },
     "model.language_model.layers.22.linear_attn.out_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.009251,
+     "bpw": 6.0,
+     "proxy_err": 0.000168,
      "rmse": null
     },
     "model.language_model.layers.22.mlp.down_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.009751,
+     "bpw": 6.0,
+     "proxy_err": 0.000177,
      "rmse": null
     },
     "model.language_model.layers.22.mlp.gate_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.004865,
+     "bpw": 6.0,
+     "proxy_err": 8.9e-05,
      "rmse": null
     },
     "model.language_model.layers.22.mlp.up_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.009178,
+     "bpw": 6.0,
+     "proxy_err": 0.000168,
      "rmse": null
     },
     "model.language_model.layers.23.mlp.down_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.009805,
-     "rmse": null
-    },
-    "model.language_model.layers.23.mlp.gate_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.00548,
-     "rmse": null
-    },
-    "model.language_model.layers.23.mlp.up_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.009175,
-     "rmse": null
-    },
-    "model.language_model.layers.23.self_attn.k_proj": {
-     "bpw": 4.0,
-     "proxy_err": 0.000894,
-     "rmse": null
-    },
-    "model.language_model.layers.23.self_attn.o_proj": {
-     "bpw": 4.0,
-     "proxy_err": 0.001787,
-     "rmse": null
-    },
-    "model.language_model.layers.23.self_attn.q_proj": {
-     "bpw": 4.0,
-     "proxy_err": 0.00038,
-     "rmse": null
-    },
-    "model.language_model.layers.23.self_attn.v_proj": {
-     "bpw": 4.0,
-     "proxy_err": 0.000816,
-     "rmse": null
-    },
-    "model.language_model.layers.24.linear_attn.in_proj_qkv": {
-     "bpw": 3.0,
-     "proxy_err": 0.003283,
-     "rmse": null
-    },
-    "model.language_model.layers.24.linear_attn.in_proj_z": {
-     "bpw": 3.0,
-     "proxy_err": 0.002948,
-     "rmse": null
-    },
-    "model.language_model.layers.24.linear_attn.out_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.008423,
-     "rmse": null
-    },
-    "model.language_model.layers.24.mlp.down_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.009336,
-     "rmse": null
-    },
-    "model.language_model.layers.24.mlp.gate_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.005104,
-     "rmse": null
-    },
-    "model.language_model.layers.24.mlp.up_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.008773,
-     "rmse": null
-    },
-    "model.language_model.layers.25.linear_attn.in_proj_qkv": {
-     "bpw": 3.0,
-     "proxy_err": 0.00295,
-     "rmse": null
-    },
-    "model.language_model.layers.25.linear_attn.in_proj_z": {
-     "bpw": 3.0,
-     "proxy_err": 0.002543,
-     "rmse": null
-    },
-    "model.language_model.layers.25.linear_attn.out_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.00793,
-     "rmse": null
-    },
-    "model.language_model.layers.25.mlp.down_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.00956,
-     "rmse": null
-    },
-    "model.language_model.layers.25.mlp.gate_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.005113,
-     "rmse": null
-    },
-    "model.language_model.layers.25.mlp.up_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.008129,
-     "rmse": null
-    },
-    "model.language_model.layers.26.linear_attn.in_proj_qkv": {
-     "bpw": 3.0,
-     "proxy_err": 0.003062,
-     "rmse": null
-    },
-    "model.language_model.layers.26.linear_attn.in_proj_z": {
-     "bpw": 3.0,
-     "proxy_err": 0.00252,
-     "rmse": null
-    },
-    "model.language_model.layers.26.linear_attn.out_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.007496,
-     "rmse": null
-    },
-    "model.language_model.layers.26.mlp.down_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.008663,
-     "rmse": null
-    },
-    "model.language_model.layers.26.mlp.gate_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.004403,
-     "rmse": null
-    },
-    "model.language_model.layers.26.mlp.up_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.006271,
-     "rmse": null
-    },
-    "model.language_model.layers.27.mlp.down_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.009383,
-     "rmse": null
-    },
-    "model.language_model.layers.27.mlp.gate_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.004352,
-     "rmse": null
-    },
-    "model.language_model.layers.27.mlp.up_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.006552,
-     "rmse": null
-    },
-    "model.language_model.layers.27.self_attn.k_proj": {
-     "bpw": 4.0,
-     "proxy_err": 0.000611,
-     "rmse": null
-    },
-    "model.language_model.layers.27.self_attn.o_proj": {
-     "bpw": 4.0,
-     "proxy_err": 0.001586,
-     "rmse": null
-    },
-    "model.language_model.layers.27.self_attn.q_proj": {
-     "bpw": 4.0,
-     "proxy_err": 0.000437,
-     "rmse": null
-    },
-    "model.language_model.layers.27.self_attn.v_proj": {
-     "bpw": 4.0,
-     "proxy_err": 0.000627,
-     "rmse": null
-    },
-    "model.language_model.layers.28.linear_attn.in_proj_qkv": {
-     "bpw": 3.0,
-     "proxy_err": 0.002828,
-     "rmse": null
-    },
-    "model.language_model.layers.28.linear_attn.in_proj_z": {
-     "bpw": 3.0,
-     "proxy_err": 0.002421,
-     "rmse": null
-    },
-    "model.language_model.layers.28.linear_attn.out_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.00865,
-     "rmse": null
-    },
-    "model.language_model.layers.28.mlp.down_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.009639,
-     "rmse": null
-    },
-    "model.language_model.layers.28.mlp.gate_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.004322,
-     "rmse": null
-    },
-    "model.language_model.layers.28.mlp.up_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.006157,
-     "rmse": null
-    },
-    "model.language_model.layers.29.linear_attn.in_proj_qkv": {
-     "bpw": 3.0,
-     "proxy_err": 0.003008,
-     "rmse": null
-    },
-    "model.language_model.layers.29.linear_attn.in_proj_z": {
-     "bpw": 3.0,
-     "proxy_err": 0.002484,
-     "rmse": null
-    },
-    "model.language_model.layers.29.linear_attn.out_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.009242,
-     "rmse": null
-    },
-    "model.language_model.layers.29.mlp.down_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.009636,
-     "rmse": null
-    },
-    "model.language_model.layers.29.mlp.gate_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.004375,
-     "rmse": null
-    },
-    "model.language_model.layers.29.mlp.up_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.006114,
-     "rmse": null
-    },
-    "model.language_model.layers.3.mlp.down_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.009112,
-     "rmse": null
-    },
-    "model.language_model.layers.3.mlp.gate_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.007409,
-     "rmse": null
-    },
-    "model.language_model.layers.3.mlp.up_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.008849,
-     "rmse": null
-    },
-    "model.language_model.layers.3.self_attn.k_proj": {
-     "bpw": 4.0,
-     "proxy_err": 0.000322,
-     "rmse": null
-    },
-    "model.language_model.layers.3.self_attn.o_proj": {
-     "bpw": 4.0,
-     "proxy_err": 0.000563,
-     "rmse": null
-    },
-    "model.language_model.layers.3.self_attn.q_proj": {
-     "bpw": 4.0,
+     "bpw": 6.0,
      "proxy_err": 0.000179,
      "rmse": null
     },
+    "model.language_model.layers.23.mlp.gate_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.0001,
+     "rmse": null
+    },
+    "model.language_model.layers.23.mlp.up_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000168,
+     "rmse": null
+    },
+    "model.language_model.layers.23.self_attn.k_proj": {
+     "bpw": 6.0,
+     "proxy_err": 6.3e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.23.self_attn.o_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000126,
+     "rmse": null
+    },
+    "model.language_model.layers.23.self_attn.q_proj": {
+     "bpw": 6.0,
+     "proxy_err": 2.8e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.23.self_attn.v_proj": {
+     "bpw": 6.0,
+     "proxy_err": 5.8e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.24.linear_attn.in_proj_qkv": {
+     "bpw": 6.0,
+     "proxy_err": 6e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.24.linear_attn.in_proj_z": {
+     "bpw": 6.0,
+     "proxy_err": 5.5e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.24.linear_attn.out_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000153,
+     "rmse": null
+    },
+    "model.language_model.layers.24.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.00017,
+     "rmse": null
+    },
+    "model.language_model.layers.24.mlp.gate_proj": {
+     "bpw": 6.0,
+     "proxy_err": 9.3e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.24.mlp.up_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000161,
+     "rmse": null
+    },
+    "model.language_model.layers.25.linear_attn.in_proj_qkv": {
+     "bpw": 6.0,
+     "proxy_err": 5.4e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.25.linear_attn.in_proj_z": {
+     "bpw": 6.0,
+     "proxy_err": 4.7e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.25.linear_attn.out_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000144,
+     "rmse": null
+    },
+    "model.language_model.layers.25.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000174,
+     "rmse": null
+    },
+    "model.language_model.layers.25.mlp.gate_proj": {
+     "bpw": 6.0,
+     "proxy_err": 9.3e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.25.mlp.up_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000149,
+     "rmse": null
+    },
+    "model.language_model.layers.26.linear_attn.in_proj_qkv": {
+     "bpw": 6.0,
+     "proxy_err": 5.6e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.26.linear_attn.in_proj_z": {
+     "bpw": 6.0,
+     "proxy_err": 4.6e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.26.linear_attn.out_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000137,
+     "rmse": null
+    },
+    "model.language_model.layers.26.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000158,
+     "rmse": null
+    },
+    "model.language_model.layers.26.mlp.gate_proj": {
+     "bpw": 6.0,
+     "proxy_err": 8e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.26.mlp.up_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000114,
+     "rmse": null
+    },
+    "model.language_model.layers.27.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.00017,
+     "rmse": null
+    },
+    "model.language_model.layers.27.mlp.gate_proj": {
+     "bpw": 6.0,
+     "proxy_err": 7.9e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.27.mlp.up_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000119,
+     "rmse": null
+    },
+    "model.language_model.layers.27.self_attn.k_proj": {
+     "bpw": 6.0,
+     "proxy_err": 4.3e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.27.self_attn.o_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000112,
+     "rmse": null
+    },
+    "model.language_model.layers.27.self_attn.q_proj": {
+     "bpw": 6.0,
+     "proxy_err": 3.2e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.27.self_attn.v_proj": {
+     "bpw": 6.0,
+     "proxy_err": 4.4e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.28.linear_attn.in_proj_qkv": {
+     "bpw": 6.0,
+     "proxy_err": 5.2e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.28.linear_attn.in_proj_z": {
+     "bpw": 6.0,
+     "proxy_err": 4.4e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.28.linear_attn.out_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000157,
+     "rmse": null
+    },
+    "model.language_model.layers.28.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000176,
+     "rmse": null
+    },
+    "model.language_model.layers.28.mlp.gate_proj": {
+     "bpw": 6.0,
+     "proxy_err": 7.8e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.28.mlp.up_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000112,
+     "rmse": null
+    },
+    "model.language_model.layers.29.linear_attn.in_proj_qkv": {
+     "bpw": 6.0,
+     "proxy_err": 5.5e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.29.linear_attn.in_proj_z": {
+     "bpw": 6.0,
+     "proxy_err": 4.6e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.29.linear_attn.out_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000169,
+     "rmse": null
+    },
+    "model.language_model.layers.29.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000175,
+     "rmse": null
+    },
+    "model.language_model.layers.29.mlp.gate_proj": {
+     "bpw": 6.0,
+     "proxy_err": 7.9e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.29.mlp.up_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000111,
+     "rmse": null
+    },
+    "model.language_model.layers.3.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000166,
+     "rmse": null
+    },
+    "model.language_model.layers.3.mlp.gate_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000137,
+     "rmse": null
+    },
+    "model.language_model.layers.3.mlp.up_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000163,
+     "rmse": null
+    },
+    "model.language_model.layers.3.self_attn.k_proj": {
+     "bpw": 6.0,
+     "proxy_err": 2.3e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.3.self_attn.o_proj": {
+     "bpw": 6.0,
+     "proxy_err": 4.1e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.3.self_attn.q_proj": {
+     "bpw": 6.0,
+     "proxy_err": 1.3e-05,
+     "rmse": null
+    },
     "model.language_model.layers.3.self_attn.v_proj": {
-     "bpw": 4.0,
-     "proxy_err": 0.000335,
+     "bpw": 6.0,
+     "proxy_err": 2.4e-05,
      "rmse": null
     },
     "model.language_model.layers.30.linear_attn.in_proj_qkv": {
-     "bpw": 3.0,
-     "proxy_err": 0.002782,
+     "bpw": 6.0,
+     "proxy_err": 5.1e-05,
      "rmse": null
     },
     "model.language_model.layers.30.linear_attn.in_proj_z": {
-     "bpw": 3.0,
-     "proxy_err": 0.002327,
+     "bpw": 6.0,
+     "proxy_err": 4.4e-05,
      "rmse": null
     },
     "model.language_model.layers.30.linear_attn.out_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.008008,
+     "bpw": 6.0,
+     "proxy_err": 0.000146,
      "rmse": null
     },
     "model.language_model.layers.30.mlp.down_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.009224,
+     "bpw": 6.0,
+     "proxy_err": 0.000167,
      "rmse": null
     },
     "model.language_model.layers.30.mlp.gate_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.004362,
+     "bpw": 6.0,
+     "proxy_err": 7.9e-05,
      "rmse": null
     },
     "model.language_model.layers.30.mlp.up_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.005628,
+     "bpw": 6.0,
+     "proxy_err": 0.000102,
      "rmse": null
     },
     "model.language_model.layers.31.mlp.down_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.009515,
+     "bpw": 6.0,
+     "proxy_err": 0.000172,
      "rmse": null
     },
     "model.language_model.layers.31.mlp.gate_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.004545,
+     "bpw": 6.0,
+     "proxy_err": 8.2e-05,
      "rmse": null
     },
     "model.language_model.layers.31.mlp.up_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.005967,
+     "bpw": 6.0,
+     "proxy_err": 0.000108,
      "rmse": null
     },
     "model.language_model.layers.31.self_attn.k_proj": {
-     "bpw": 4.0,
-     "proxy_err": 0.000708,
+     "bpw": 6.0,
+     "proxy_err": 4.9e-05,
      "rmse": null
     },
     "model.language_model.layers.31.self_attn.o_proj": {
-     "bpw": 4.0,
-     "proxy_err": 0.002229,
+     "bpw": 6.0,
+     "proxy_err": 0.000157,
      "rmse": null
     },
     "model.language_model.layers.31.self_attn.q_proj": {
-     "bpw": 4.0,
-     "proxy_err": 0.000527,
+     "bpw": 6.0,
+     "proxy_err": 3.9e-05,
      "rmse": null
     },
     "model.language_model.layers.31.self_attn.v_proj": {
-     "bpw": 4.0,
-     "proxy_err": 0.00067,
+     "bpw": 6.0,
+     "proxy_err": 4.7e-05,
      "rmse": null
     },
     "model.language_model.layers.32.linear_attn.in_proj_qkv": {
-     "bpw": 3.0,
-     "proxy_err": 0.003187,
+     "bpw": 6.0,
+     "proxy_err": 5.9e-05,
      "rmse": null
     },
     "model.language_model.layers.32.linear_attn.in_proj_z": {
-     "bpw": 3.0,
-     "proxy_err": 0.002774,
+     "bpw": 6.0,
+     "proxy_err": 5.1e-05,
      "rmse": null
     },
     "model.language_model.layers.32.linear_attn.out_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.008961,
+     "bpw": 6.0,
+     "proxy_err": 0.000163,
      "rmse": null
     },
     "model.language_model.layers.32.mlp.down_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.009429,
+     "bpw": 6.0,
+     "proxy_err": 0.000171,
      "rmse": null
     },
     "model.language_model.layers.32.mlp.gate_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.004487,
+     "bpw": 6.0,
+     "proxy_err": 8.1e-05,
      "rmse": null
     },
     "model.language_model.layers.32.mlp.up_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.005954,
+     "bpw": 6.0,
+     "proxy_err": 0.000108,
      "rmse": null
     },
     "model.language_model.layers.33.linear_attn.in_proj_qkv": {
-     "bpw": 3.0,
-     "proxy_err": 0.00318,
+     "bpw": 6.0,
+     "proxy_err": 5.8e-05,
      "rmse": null
     },
     "model.language_model.layers.33.linear_attn.in_proj_z": {
-     "bpw": 3.0,
-     "proxy_err": 0.002501,
+     "bpw": 6.0,
+     "proxy_err": 4.9e-05,
      "rmse": null
     },
     "model.language_model.layers.33.linear_attn.out_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.010369,
+     "bpw": 6.0,
+     "proxy_err": 0.000188,
      "rmse": null
     },
     "model.language_model.layers.33.mlp.down_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.009542,
+     "bpw": 6.0,
+     "proxy_err": 0.000172,
      "rmse": null
     },
     "model.language_model.layers.33.mlp.gate_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.004547,
+     "bpw": 6.0,
+     "proxy_err": 8.2e-05,
      "rmse": null
     },
     "model.language_model.layers.33.mlp.up_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.006113,
+     "bpw": 6.0,
+     "proxy_err": 0.000111,
      "rmse": null
     },
     "model.language_model.layers.34.linear_attn.in_proj_qkv": {
-     "bpw": 3.0,
-     "proxy_err": 0.002992,
+     "bpw": 6.0,
+     "proxy_err": 5.5e-05,
      "rmse": null
     },
     "model.language_model.layers.34.linear_attn.in_proj_z": {
-     "bpw": 3.0,
-     "proxy_err": 0.002507,
+     "bpw": 6.0,
+     "proxy_err": 4.7e-05,
      "rmse": null
     },
     "model.language_model.layers.34.linear_attn.out_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.007362,
+     "bpw": 6.0,
+     "proxy_err": 0.000133,
      "rmse": null
     },
     "model.language_model.layers.34.mlp.down_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.008553,
+     "bpw": 6.0,
+     "proxy_err": 0.000154,
      "rmse": null
     },
     "model.language_model.layers.34.mlp.gate_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.004022,
+     "bpw": 6.0,
+     "proxy_err": 7.3e-05,
      "rmse": null
     },
     "model.language_model.layers.34.mlp.up_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.005316,
+     "bpw": 6.0,
+     "proxy_err": 9.6e-05,
      "rmse": null
     },
     "model.language_model.layers.35.mlp.down_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.008226,
+     "bpw": 6.0,
+     "proxy_err": 0.000149,
      "rmse": null
     },
     "model.language_model.layers.35.mlp.gate_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.003946,
+     "bpw": 6.0,
+     "proxy_err": 7.1e-05,
      "rmse": null
     },
     "model.language_model.layers.35.mlp.up_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.006221,
+     "bpw": 6.0,
+     "proxy_err": 0.000113,
      "rmse": null
     },
     "model.language_model.layers.35.self_attn.k_proj": {
-     "bpw": 4.0,
-     "proxy_err": 0.000859,
+     "bpw": 6.0,
+     "proxy_err": 6e-05,
      "rmse": null
     },
     "model.language_model.layers.35.self_attn.o_proj": {
-     "bpw": 4.0,
-     "proxy_err": 0.001861,
+     "bpw": 6.0,
+     "proxy_err": 0.000131,
      "rmse": null
     },
     "model.language_model.layers.35.self_attn.q_proj": {
-     "bpw": 4.0,
-     "proxy_err": 0.000666,
+     "bpw": 6.0,
+     "proxy_err": 5.4e-05,
      "rmse": null
     },
     "model.language_model.layers.35.self_attn.v_proj": {
-     "bpw": 4.0,
-     "proxy_err": 0.000869,
+     "bpw": 6.0,
+     "proxy_err": 6.1e-05,
      "rmse": null
     },
     "model.language_model.layers.36.linear_attn.in_proj_qkv": {
-     "bpw": 3.0,
-     "proxy_err": 0.002929,
+     "bpw": 6.0,
+     "proxy_err": 5.4e-05,
      "rmse": null
     },
     "model.language_model.layers.36.linear_attn.in_proj_z": {
-     "bpw": 3.0,
-     "proxy_err": 0.002518,
+     "bpw": 6.0,
+     "proxy_err": 4.7e-05,
      "rmse": null
     },
     "model.language_model.layers.36.linear_attn.out_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.007508,
+     "bpw": 6.0,
+     "proxy_err": 0.000137,
      "rmse": null
     },
     "model.language_model.layers.36.mlp.down_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.009384,
+     "bpw": 6.0,
+     "proxy_err": 0.00017,
      "rmse": null
     },
     "model.language_model.layers.36.mlp.gate_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.004367,
+     "bpw": 6.0,
+     "proxy_err": 7.9e-05,
      "rmse": null
     },
     "model.language_model.layers.36.mlp.up_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.007176,
+     "bpw": 6.0,
+     "proxy_err": 0.000131,
      "rmse": null
     },
     "model.language_model.layers.37.linear_attn.in_proj_qkv": {
-     "bpw": 3.0,
-     "proxy_err": 0.003085,
+     "bpw": 6.0,
+     "proxy_err": 5.7e-05,
      "rmse": null
     },
     "model.language_model.layers.37.linear_attn.in_proj_z": {
-     "bpw": 3.0,
-     "proxy_err": 0.002413,
+     "bpw": 6.0,
+     "proxy_err": 4.4e-05,
      "rmse": null
     },
     "model.language_model.layers.37.linear_attn.out_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.007766,
+     "bpw": 6.0,
+     "proxy_err": 0.000144,
      "rmse": null
     },
     "model.language_model.layers.37.mlp.down_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.010924,
+     "bpw": 6.0,
+     "proxy_err": 0.0002,
      "rmse": null
     },
     "model.language_model.layers.37.mlp.gate_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.005204,
+     "bpw": 6.0,
+     "proxy_err": 9.5e-05,
      "rmse": null
     },
     "model.language_model.layers.37.mlp.up_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.008076,
+     "bpw": 6.0,
+     "proxy_err": 0.000147,
      "rmse": null
     },
     "model.language_model.layers.38.linear_attn.in_proj_qkv": {
-     "bpw": 3.0,
-     "proxy_err": 0.003813,
+     "bpw": 6.0,
+     "proxy_err": 6.9e-05,
      "rmse": null
     },
     "model.language_model.layers.38.linear_attn.in_proj_z": {
-     "bpw": 3.0,
-     "proxy_err": 0.002962,
+     "bpw": 6.0,
+     "proxy_err": 5.4e-05,
      "rmse": null
     },
     "model.language_model.layers.38.linear_attn.out_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.009774,
+     "bpw": 6.0,
+     "proxy_err": 0.000178,
      "rmse": null
     },
     "model.language_model.layers.38.mlp.down_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.009868,
+     "bpw": 6.0,
+     "proxy_err": 0.000179,
      "rmse": null
     },
     "model.language_model.layers.38.mlp.gate_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.00406,
+     "bpw": 6.0,
+     "proxy_err": 7.4e-05,
      "rmse": null
     },
     "model.language_model.layers.38.mlp.up_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.007879,
+     "bpw": 6.0,
+     "proxy_err": 0.000143,
      "rmse": null
     },
     "model.language_model.layers.39.mlp.down_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.009957,
+     "bpw": 6.0,
+     "proxy_err": 0.000181,
      "rmse": null
     },
     "model.language_model.layers.39.mlp.gate_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.004563,
+     "bpw": 6.0,
+     "proxy_err": 8.3e-05,
      "rmse": null
     },
     "model.language_model.layers.39.mlp.up_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.008634,
+     "bpw": 6.0,
+     "proxy_err": 0.000157,
      "rmse": null
     },
     "model.language_model.layers.39.self_attn.k_proj": {
-     "bpw": 4.0,
-     "proxy_err": 0.000998,
+     "bpw": 6.0,
+     "proxy_err": 7e-05,
      "rmse": null
     },
     "model.language_model.layers.39.self_attn.o_proj": {
-     "bpw": 4.0,
-     "proxy_err": 0.002289,
+     "bpw": 6.0,
+     "proxy_err": 0.000161,
      "rmse": null
     },
     "model.language_model.layers.39.self_attn.q_proj": {
-     "bpw": 4.0,
-     "proxy_err": 0.000617,
+     "bpw": 6.0,
+     "proxy_err": 4.6e-05,
      "rmse": null
     },
     "model.language_model.layers.39.self_attn.v_proj": {
-     "bpw": 4.0,
-     "proxy_err": 0.000977,
+     "bpw": 6.0,
+     "proxy_err": 6.8e-05,
      "rmse": null
     },
     "model.language_model.layers.4.linear_attn.in_proj_qkv": {
-     "bpw": 3.0,
-     "proxy_err": 0.003437,
+     "bpw": 6.0,
+     "proxy_err": 6.5e-05,
      "rmse": null
     },
     "model.language_model.layers.4.linear_attn.in_proj_z": {
-     "bpw": 3.0,
-     "proxy_err": 0.003299,
+     "bpw": 6.0,
+     "proxy_err": 6.1e-05,
      "rmse": null
     },
     "model.language_model.layers.4.linear_attn.out_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.008872,
+     "bpw": 6.0,
+     "proxy_err": 0.000162,
      "rmse": null
     },
     "model.language_model.layers.4.mlp.down_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.00991,
+     "bpw": 6.0,
+     "proxy_err": 0.000181,
      "rmse": null
     },
     "model.language_model.layers.4.mlp.gate_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.007356,
+     "bpw": 6.0,
+     "proxy_err": 0.000135,
      "rmse": null
     },
     "model.language_model.layers.4.mlp.up_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.009516,
+     "bpw": 6.0,
+     "proxy_err": 0.000175,
      "rmse": null
     },
     "model.language_model.layers.40.linear_attn.in_proj_qkv": {
-     "bpw": 3.0,
-     "proxy_err": 0.003438,
+     "bpw": 6.0,
+     "proxy_err": 6.3e-05,
      "rmse": null
     },
     "model.language_model.layers.40.linear_attn.in_proj_z": {
-     "bpw": 3.0,
-     "proxy_err": 0.003037,
+     "bpw": 6.0,
+     "proxy_err": 5.5e-05,
      "rmse": null
     },
     "model.language_model.layers.40.linear_attn.out_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.009033,
+     "bpw": 6.0,
+     "proxy_err": 0.000166,
      "rmse": null
     },
     "model.language_model.layers.40.mlp.down_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.009573,
+     "bpw": 6.0,
+     "proxy_err": 0.000174,
      "rmse": null
     },
     "model.language_model.layers.40.mlp.gate_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.004368,
+     "bpw": 6.0,
+     "proxy_err": 7.9e-05,
      "rmse": null
     },
     "model.language_model.layers.40.mlp.up_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.008015,
+     "bpw": 6.0,
+     "proxy_err": 0.000147,
      "rmse": null
     },
     "model.language_model.layers.41.linear_attn.in_proj_qkv": {
-     "bpw": 3.0,
-     "proxy_err": 0.003367,
+     "bpw": 6.0,
+     "proxy_err": 6.2e-05,
      "rmse": null
     },
     "model.language_model.layers.41.linear_attn.in_proj_z": {
-     "bpw": 3.0,
-     "proxy_err": 0.002991,
+     "bpw": 6.0,
+     "proxy_err": 5.5e-05,
      "rmse": null
     },
     "model.language_model.layers.41.linear_attn.out_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.008492,
+     "bpw": 6.0,
+     "proxy_err": 0.000156,
      "rmse": null
     },
     "model.language_model.layers.41.mlp.down_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.010221,
+     "bpw": 6.0,
+     "proxy_err": 0.000186,
      "rmse": null
     },
     "model.language_model.layers.41.mlp.gate_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.005204,
+     "bpw": 6.0,
+     "proxy_err": 9.4e-05,
      "rmse": null
     },
     "model.language_model.layers.41.mlp.up_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.00804,
+     "bpw": 6.0,
+     "proxy_err": 0.000147,
      "rmse": null
     },
     "model.language_model.layers.42.linear_attn.in_proj_qkv": {
-     "bpw": 3.0,
-     "proxy_err": 0.003369,
+     "bpw": 6.0,
+     "proxy_err": 6.1e-05,
      "rmse": null
     },
     "model.language_model.layers.42.linear_attn.in_proj_z": {
-     "bpw": 3.0,
-     "proxy_err": 0.002824,
+     "bpw": 6.0,
+     "proxy_err": 5.3e-05,
      "rmse": null
     },
     "model.language_model.layers.42.linear_attn.out_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.007512,
+     "bpw": 6.0,
+     "proxy_err": 0.000139,
      "rmse": null
     },
     "model.language_model.layers.42.mlp.down_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.009271,
+     "bpw": 6.0,
+     "proxy_err": 0.000169,
      "rmse": null
     },
     "model.language_model.layers.42.mlp.gate_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.004967,
+     "bpw": 6.0,
+     "proxy_err": 9e-05,
      "rmse": null
     },
     "model.language_model.layers.42.mlp.up_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.006592,
+     "bpw": 6.0,
+     "proxy_err": 0.00012,
      "rmse": null
     },
     "model.language_model.layers.43.mlp.down_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.009632,
+     "bpw": 6.0,
+     "proxy_err": 0.000176,
      "rmse": null
     },
     "model.language_model.layers.43.mlp.gate_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.004815,
+     "bpw": 6.0,
+     "proxy_err": 8.8e-05,
      "rmse": null
     },
     "model.language_model.layers.43.mlp.up_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.006953,
+     "bpw": 6.0,
+     "proxy_err": 0.000127,
      "rmse": null
     },
     "model.language_model.layers.43.self_attn.k_proj": {
-     "bpw": 4.0,
-     "proxy_err": 0.000767,
+     "bpw": 6.0,
+     "proxy_err": 5.4e-05,
      "rmse": null
     },
     "model.language_model.layers.43.self_attn.o_proj": {
-     "bpw": 4.0,
-     "proxy_err": 0.001755,
+     "bpw": 6.0,
+     "proxy_err": 0.000124,
      "rmse": null
     },
     "model.language_model.layers.43.self_attn.q_proj": {
-     "bpw": 4.0,
-     "proxy_err": 0.000546,
+     "bpw": 6.0,
+     "proxy_err": 4e-05,
      "rmse": null
     },
     "model.language_model.layers.43.self_attn.v_proj": {
-     "bpw": 4.0,
-     "proxy_err": 0.000724,
+     "bpw": 6.0,
+     "proxy_err": 5.1e-05,
      "rmse": null
     },
     "model.language_model.layers.44.linear_attn.in_proj_qkv": {
-     "bpw": 3.0,
-     "proxy_err": 0.002977,
+     "bpw": 6.0,
+     "proxy_err": 5.5e-05,
      "rmse": null
     },
     "model.language_model.layers.44.linear_attn.in_proj_z": {
-     "bpw": 3.0,
-     "proxy_err": 0.002474,
+     "bpw": 6.0,
+     "proxy_err": 4.6e-05,
      "rmse": null
     },
     "model.language_model.layers.44.linear_attn.out_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.007973,
+     "bpw": 6.0,
+     "proxy_err": 0.000146,
      "rmse": null
     },
     "model.language_model.layers.44.mlp.down_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.009847,
+     "bpw": 6.0,
+     "proxy_err": 0.000179,
      "rmse": null
     },
     "model.language_model.layers.44.mlp.gate_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.004627,
+     "bpw": 6.0,
+     "proxy_err": 8.4e-05,
      "rmse": null
     },
     "model.language_model.layers.44.mlp.up_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.006575,
+     "bpw": 6.0,
+     "proxy_err": 0.00012,
      "rmse": null
     },
     "model.language_model.layers.45.linear_attn.in_proj_qkv": {
-     "bpw": 3.0,
-     "proxy_err": 0.003239,
+     "bpw": 6.0,
+     "proxy_err": 5.9e-05,
      "rmse": null
     },
     "model.language_model.layers.45.linear_attn.in_proj_z": {
-     "bpw": 3.0,
-     "proxy_err": 0.002622,
+     "bpw": 6.0,
+     "proxy_err": 4.9e-05,
      "rmse": null
     },
     "model.language_model.layers.45.linear_attn.out_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.00893,
+     "bpw": 6.0,
+     "proxy_err": 0.000164,
      "rmse": null
     },
     "model.language_model.layers.45.mlp.down_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.009816,
+     "bpw": 6.0,
+     "proxy_err": 0.000179,
      "rmse": null
     },
     "model.language_model.layers.45.mlp.gate_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.004576,
+     "bpw": 6.0,
+     "proxy_err": 8.3e-05,
      "rmse": null
     },
     "model.language_model.layers.45.mlp.up_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.006472,
+     "bpw": 6.0,
+     "proxy_err": 0.000118,
      "rmse": null
     },
     "model.language_model.layers.46.linear_attn.in_proj_qkv": {
-     "bpw": 3.0,
-     "proxy_err": 0.002926,
+     "bpw": 6.0,
+     "proxy_err": 5.4e-05,
      "rmse": null
     },
     "model.language_model.layers.46.linear_attn.in_proj_z": {
-     "bpw": 3.0,
-     "proxy_err": 0.00218,
+     "bpw": 6.0,
+     "proxy_err": 4.1e-05,
      "rmse": null
     },
     "model.language_model.layers.46.linear_attn.out_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.007194,
+     "bpw": 6.0,
+     "proxy_err": 0.000132,
      "rmse": null
     },
     "model.language_model.layers.46.mlp.down_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.007944,
+     "bpw": 6.0,
+     "proxy_err": 0.000145,
      "rmse": null
     },
     "model.language_model.layers.46.mlp.gate_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.00429,
+     "bpw": 6.0,
+     "proxy_err": 7.8e-05,
      "rmse": null
     },
     "model.language_model.layers.46.mlp.up_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.00584,
+     "bpw": 6.0,
+     "proxy_err": 0.000106,
      "rmse": null
     },
     "model.language_model.layers.47.mlp.down_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.008253,
+     "bpw": 6.0,
+     "proxy_err": 0.00015,
      "rmse": null
     },
     "model.language_model.layers.47.mlp.gate_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.004164,
+     "bpw": 6.0,
+     "proxy_err": 7.6e-05,
      "rmse": null
     },
     "model.language_model.layers.47.mlp.up_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.005907,
+     "bpw": 6.0,
+     "proxy_err": 0.000108,
      "rmse": null
     },
     "model.language_model.layers.47.self_attn.k_proj": {
-     "bpw": 4.0,
-     "proxy_err": 0.0008,
+     "bpw": 6.0,
+     "proxy_err": 5.7e-05,
      "rmse": null
     },
     "model.language_model.layers.47.self_attn.o_proj": {
-     "bpw": 4.0,
-     "proxy_err": 0.001645,
+     "bpw": 6.0,
+     "proxy_err": 0.000116,
      "rmse": null
     },
     "model.language_model.layers.47.self_attn.q_proj": {
-     "bpw": 4.0,
-     "proxy_err": 0.000592,
+     "bpw": 6.0,
+     "proxy_err": 4.4e-05,
      "rmse": null
     },
     "model.language_model.layers.47.self_attn.v_proj": {
-     "bpw": 4.0,
-     "proxy_err": 0.000736,
+     "bpw": 6.0,
+     "proxy_err": 5.2e-05,
      "rmse": null
     },
     "model.language_model.layers.48.linear_attn.in_proj_qkv": {
-     "bpw": 3.0,
-     "proxy_err": 0.003104,
+     "bpw": 6.0,
+     "proxy_err": 5.7e-05,
      "rmse": null
     },
     "model.language_model.layers.48.linear_attn.in_proj_z": {
-     "bpw": 3.0,
-     "proxy_err": 0.002491,
+     "bpw": 6.0,
+     "proxy_err": 4.7e-05,
      "rmse": null
     },
     "model.language_model.layers.48.linear_attn.out_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.007682,
+     "bpw": 6.0,
+     "proxy_err": 0.000142,
      "rmse": null
     },
     "model.language_model.layers.48.mlp.down_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.008359,
+     "bpw": 6.0,
+     "proxy_err": 0.000152,
      "rmse": null
     },
     "model.language_model.layers.48.mlp.gate_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.003962,
+     "bpw": 6.0,
+     "proxy_err": 7.2e-05,
      "rmse": null
     },
     "model.language_model.layers.48.mlp.up_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.00552,
+     "bpw": 6.0,
+     "proxy_err": 0.000101,
      "rmse": null
     },
     "model.language_model.layers.49.linear_attn.in_proj_qkv": {
-     "bpw": 3.0,
-     "proxy_err": 0.00304,
+     "bpw": 6.0,
+     "proxy_err": 5.6e-05,
      "rmse": null
     },
     "model.language_model.layers.49.linear_attn.in_proj_z": {
-     "bpw": 3.0,
-     "proxy_err": 0.002076,
+     "bpw": 6.0,
+     "proxy_err": 4e-05,
      "rmse": null
     },
     "model.language_model.layers.49.linear_attn.out_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.007974,
+     "bpw": 6.0,
+     "proxy_err": 0.000145,
      "rmse": null
     },
     "model.language_model.layers.49.mlp.down_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.007627,
+     "bpw": 6.0,
+     "proxy_err": 0.000139,
      "rmse": null
     },
     "model.language_model.layers.49.mlp.gate_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.003765,
+     "bpw": 6.0,
+     "proxy_err": 6.9e-05,
      "rmse": null
     },
     "model.language_model.layers.49.mlp.up_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.005005,
+     "bpw": 6.0,
+     "proxy_err": 9.1e-05,
      "rmse": null
     },
     "model.language_model.layers.5.linear_attn.in_proj_qkv": {
-     "bpw": 3.0,
-     "proxy_err": 0.002903,
+     "bpw": 6.0,
+     "proxy_err": 5.5e-05,
      "rmse": null
     },
     "model.language_model.layers.5.linear_attn.in_proj_z": {
-     "bpw": 3.0,
-     "proxy_err": 0.00258,
+     "bpw": 6.0,
+     "proxy_err": 4.8e-05,
      "rmse": null
     },
     "model.language_model.layers.5.linear_attn.out_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.008842,
+     "bpw": 6.0,
+     "proxy_err": 0.000162,
      "rmse": null
     },
     "model.language_model.layers.5.mlp.down_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.009853,
+     "bpw": 6.0,
+     "proxy_err": 0.000181,
      "rmse": null
     },
     "model.language_model.layers.5.mlp.gate_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.008105,
+     "bpw": 6.0,
+     "proxy_err": 0.000148,
      "rmse": null
     },
     "model.language_model.layers.5.mlp.up_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.009825,
+     "bpw": 6.0,
+     "proxy_err": 0.000181,
      "rmse": null
     },
     "model.language_model.layers.50.linear_attn.in_proj_qkv": {
-     "bpw": 3.0,
-     "proxy_err": 0.002928,
+     "bpw": 6.0,
+     "proxy_err": 5.4e-05,
      "rmse": null
     },
     "model.language_model.layers.50.linear_attn.in_proj_z": {
-     "bpw": 3.0,
-     "proxy_err": 0.001899,
+     "bpw": 6.0,
+     "proxy_err": 3.7e-05,
      "rmse": null
     },
     "model.language_model.layers.50.linear_attn.out_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.005926,
+     "bpw": 6.0,
+     "proxy_err": 0.000107,
      "rmse": null
     },
     "model.language_model.layers.50.mlp.down_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.006541,
+     "bpw": 6.0,
+     "proxy_err": 0.000119,
      "rmse": null
     },
     "model.language_model.layers.50.mlp.gate_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.003019,
+     "bpw": 6.0,
+     "proxy_err": 5.5e-05,
      "rmse": null
     },
     "model.language_model.layers.50.mlp.up_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.003672,
+     "bpw": 6.0,
+     "proxy_err": 6.7e-05,
      "rmse": null
     },
     "model.language_model.layers.51.mlp.down_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.00683,
+     "bpw": 6.0,
+     "proxy_err": 0.000124,
      "rmse": null
     },
     "model.language_model.layers.51.mlp.gate_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.003103,
+     "bpw": 6.0,
+     "proxy_err": 5.7e-05,
      "rmse": null
     },
     "model.language_model.layers.51.mlp.up_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.004503,
+     "bpw": 6.0,
+     "proxy_err": 8.3e-05,
      "rmse": null
     },
     "model.language_model.layers.51.self_attn.k_proj": {
-     "bpw": 4.0,
-     "proxy_err": 0.000841,
+     "bpw": 6.0,
+     "proxy_err": 5.9e-05,
      "rmse": null
     },
     "model.language_model.layers.51.self_attn.o_proj": {
-     "bpw": 4.0,
-     "proxy_err": 0.001182,
+     "bpw": 6.0,
+     "proxy_err": 8.4e-05,
      "rmse": null
     },
     "model.language_model.layers.51.self_attn.q_proj": {
-     "bpw": 4.0,
-     "proxy_err": 0.000657,
+     "bpw": 6.0,
+     "proxy_err": 5.1e-05,
      "rmse": null
     },
     "model.language_model.layers.51.self_attn.v_proj": {
-     "bpw": 4.0,
-     "proxy_err": 0.000832,
+     "bpw": 6.0,
+     "proxy_err": 5.9e-05,
      "rmse": null
     },
     "model.language_model.layers.52.linear_attn.in_proj_qkv": {
-     "bpw": 3.0,
-     "proxy_err": 0.00268,
+     "bpw": 6.0,
+     "proxy_err": 5e-05,
      "rmse": null
     },
     "model.language_model.layers.52.linear_attn.in_proj_z": {
-     "bpw": 3.0,
-     "proxy_err": 0.002258,
+     "bpw": 6.0,
+     "proxy_err": 4.4e-05,
      "rmse": null
     },
     "model.language_model.layers.52.linear_attn.out_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.006126,
+     "bpw": 6.0,
+     "proxy_err": 0.000112,
      "rmse": null
     },
     "model.language_model.layers.52.mlp.down_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.008092,
+     "bpw": 6.0,
+     "proxy_err": 0.000148,
      "rmse": null
     },
     "model.language_model.layers.52.mlp.gate_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.003151,
+     "bpw": 6.0,
+     "proxy_err": 5.8e-05,
      "rmse": null
     },
     "model.language_model.layers.52.mlp.up_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.004819,
+     "bpw": 6.0,
+     "proxy_err": 8.8e-05,
      "rmse": null
     },
     "model.language_model.layers.53.linear_attn.in_proj_qkv": {
-     "bpw": 3.0,
-     "proxy_err": 0.00283,
+     "bpw": 6.0,
+     "proxy_err": 5.2e-05,
      "rmse": null
     },
     "model.language_model.layers.53.linear_attn.in_proj_z": {
-     "bpw": 3.0,
-     "proxy_err": 0.002588,
+     "bpw": 6.0,
+     "proxy_err": 4.9e-05,
      "rmse": null
     },
     "model.language_model.layers.53.linear_attn.out_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.006685,
+     "bpw": 6.0,
+     "proxy_err": 0.000122,
      "rmse": null
     },
     "model.language_model.layers.53.mlp.down_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.008777,
+     "bpw": 6.0,
+     "proxy_err": 0.000161,
      "rmse": null
     },
     "model.language_model.layers.53.mlp.gate_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.003288,
+     "bpw": 6.0,
+     "proxy_err": 6e-05,
      "rmse": null
     },
     "model.language_model.layers.53.mlp.up_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.005044,
+     "bpw": 6.0,
+     "proxy_err": 9.3e-05,
      "rmse": null
     },
     "model.language_model.layers.54.linear_attn.in_proj_qkv": {
-     "bpw": 3.0,
-     "proxy_err": 0.003509,
+     "bpw": 6.0,
+     "proxy_err": 6.5e-05,
      "rmse": null
     },
     "model.language_model.layers.54.linear_attn.in_proj_z": {
-     "bpw": 3.0,
-     "proxy_err": 0.002666,
+     "bpw": 6.0,
+     "proxy_err": 5.2e-05,
      "rmse": null
     },
     "model.language_model.layers.54.linear_attn.out_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.006629,
+     "bpw": 6.0,
+     "proxy_err": 0.000121,
      "rmse": null
     },
     "model.language_model.layers.54.mlp.down_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.006778,
+     "bpw": 6.0,
+     "proxy_err": 0.000124,
      "rmse": null
     },
     "model.language_model.layers.54.mlp.gate_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.002819,
+     "bpw": 6.0,
+     "proxy_err": 5.2e-05,
      "rmse": null
     },
     "model.language_model.layers.54.mlp.up_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.003588,
+     "bpw": 6.0,
+     "proxy_err": 6.7e-05,
      "rmse": null
     },
     "model.language_model.layers.55.mlp.down_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.008246,
+     "bpw": 6.0,
+     "proxy_err": 0.000151,
      "rmse": null
     },
     "model.language_model.layers.55.mlp.gate_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.003216,
+     "bpw": 6.0,
+     "proxy_err": 5.9e-05,
      "rmse": null
     },
     "model.language_model.layers.55.mlp.up_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.005753,
+     "bpw": 6.0,
+     "proxy_err": 0.000106,
      "rmse": null
     },
     "model.language_model.layers.55.self_attn.k_proj": {
-     "bpw": 4.0,
-     "proxy_err": 0.001119,
+     "bpw": 6.0,
+     "proxy_err": 8e-05,
      "rmse": null
     },
     "model.language_model.layers.55.self_attn.o_proj": {
-     "bpw": 4.0,
-     "proxy_err": 0.00136,
+     "bpw": 6.0,
+     "proxy_err": 9.6e-05,
      "rmse": null
     },
     "model.language_model.layers.55.self_attn.q_proj": {
-     "bpw": 4.0,
-     "proxy_err": 0.000709,
+     "bpw": 6.0,
+     "proxy_err": 5.5e-05,
      "rmse": null
     },
     "model.language_model.layers.55.self_attn.v_proj": {
-     "bpw": 4.0,
-     "proxy_err": 0.00082,
+     "bpw": 6.0,
+     "proxy_err": 5.8e-05,
      "rmse": null
     },
     "model.language_model.layers.56.linear_attn.in_proj_qkv": {
-     "bpw": 3.0,
-     "proxy_err": 0.003203,
+     "bpw": 6.0,
+     "proxy_err": 6e-05,
      "rmse": null
     },
     "model.language_model.layers.56.linear_attn.in_proj_z": {
-     "bpw": 3.0,
-     "proxy_err": 0.003078,
+     "bpw": 6.0,
+     "proxy_err": 5.7e-05,
      "rmse": null
     },
     "model.language_model.layers.56.linear_attn.out_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.005497,
+     "bpw": 6.0,
+     "proxy_err": 0.000101,
      "rmse": null
     },
     "model.language_model.layers.56.mlp.down_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.008524,
+     "bpw": 6.0,
+     "proxy_err": 0.000157,
      "rmse": null
     },
     "model.language_model.layers.56.mlp.gate_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.003189,
+     "bpw": 6.0,
+     "proxy_err": 5.9e-05,
      "rmse": null
     },
     "model.language_model.layers.56.mlp.up_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.005755,
+     "bpw": 6.0,
+     "proxy_err": 0.000106,
      "rmse": null
     },
     "model.language_model.layers.57.linear_attn.in_proj_qkv": {
-     "bpw": 3.0,
-     "proxy_err": 0.003126,
+     "bpw": 6.0,
+     "proxy_err": 5.9e-05,
      "rmse": null
     },
     "model.language_model.layers.57.linear_attn.in_proj_z": {
-     "bpw": 3.0,
-     "proxy_err": 0.003047,
+     "bpw": 6.0,
+     "proxy_err": 5.7e-05,
      "rmse": null
     },
     "model.language_model.layers.57.linear_attn.out_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.006151,
+     "bpw": 6.0,
+     "proxy_err": 0.000113,
      "rmse": null
     },
     "model.language_model.layers.57.mlp.down_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.009222,
+     "bpw": 6.0,
+     "proxy_err": 0.00017,
      "rmse": null
     },
     "model.language_model.layers.57.mlp.gate_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.003128,
+     "bpw": 6.0,
+     "proxy_err": 5.8e-05,
      "rmse": null
     },
     "model.language_model.layers.57.mlp.up_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.006077,
+     "bpw": 6.0,
+     "proxy_err": 0.000113,
      "rmse": null
     },
     "model.language_model.layers.58.linear_attn.in_proj_qkv": {
-     "bpw": 3.0,
-     "proxy_err": 0.003731,
+     "bpw": 6.0,
+     "proxy_err": 7e-05,
      "rmse": null
     },
     "model.language_model.layers.58.linear_attn.in_proj_z": {
-     "bpw": 3.0,
-     "proxy_err": 0.003325,
+     "bpw": 6.0,
+     "proxy_err": 6.2e-05,
      "rmse": null
     },
     "model.language_model.layers.58.linear_attn.out_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.006485,
+     "bpw": 6.0,
+     "proxy_err": 0.000119,
      "rmse": null
     },
     "model.language_model.layers.58.mlp.down_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.00625,
+     "bpw": 6.0,
+     "proxy_err": 0.000116,
      "rmse": null
     },
     "model.language_model.layers.58.mlp.gate_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.003163,
+     "bpw": 6.0,
+     "proxy_err": 5.9e-05,
      "rmse": null
     },
     "model.language_model.layers.58.mlp.up_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.005695,
+     "bpw": 6.0,
+     "proxy_err": 0.000106,
      "rmse": null
     },
     "model.language_model.layers.59.mlp.down_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.007137,
+     "bpw": 6.0,
+     "proxy_err": 0.000132,
      "rmse": null
     },
     "model.language_model.layers.59.mlp.gate_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.003077,
+     "bpw": 6.0,
+     "proxy_err": 5.7e-05,
      "rmse": null
     },
     "model.language_model.layers.59.mlp.up_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.005264,
+     "bpw": 6.0,
+     "proxy_err": 9.8e-05,
      "rmse": null
     },
     "model.language_model.layers.59.self_attn.k_proj": {
-     "bpw": 4.0,
-     "proxy_err": 0.001183,
+     "bpw": 6.0,
+     "proxy_err": 8.5e-05,
      "rmse": null
     },
     "model.language_model.layers.59.self_attn.o_proj": {
-     "bpw": 4.0,
-     "proxy_err": 0.000977,
+     "bpw": 6.0,
+     "proxy_err": 7e-05,
      "rmse": null
     },
     "model.language_model.layers.59.self_attn.q_proj": {
-     "bpw": 4.0,
-     "proxy_err": 0.000785,
+     "bpw": 6.0,
+     "proxy_err": 6.1e-05,
      "rmse": null
     },
     "model.language_model.layers.59.self_attn.v_proj": {
-     "bpw": 4.0,
-     "proxy_err": 0.000726,
+     "bpw": 6.0,
+     "proxy_err": 5.2e-05,
      "rmse": null
     },
     "model.language_model.layers.6.linear_attn.in_proj_qkv": {
-     "bpw": 3.0,
-     "proxy_err": 0.002212,
+     "bpw": 6.0,
+     "proxy_err": 4.1e-05,
      "rmse": null
     },
     "model.language_model.layers.6.linear_attn.in_proj_z": {
-     "bpw": 3.0,
-     "proxy_err": 0.001928,
+     "bpw": 6.0,
+     "proxy_err": 3.6e-05,
      "rmse": null
     },
     "model.language_model.layers.6.linear_attn.out_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.007584,
+     "bpw": 6.0,
+     "proxy_err": 0.00014,
      "rmse": null
     },
     "model.language_model.layers.6.mlp.down_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.007827,
+     "bpw": 6.0,
+     "proxy_err": 0.000144,
      "rmse": null
     },
     "model.language_model.layers.6.mlp.gate_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.006228,
+     "bpw": 6.0,
+     "proxy_err": 0.000115,
      "rmse": null
     },
     "model.language_model.layers.6.mlp.up_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.007386,
+     "bpw": 6.0,
+     "proxy_err": 0.000137,
      "rmse": null
     },
     "model.language_model.layers.60.linear_attn.in_proj_qkv": {
-     "bpw": 3.0,
-     "proxy_err": 0.002879,
+     "bpw": 6.0,
+     "proxy_err": 5.4e-05,
      "rmse": null
     },
     "model.language_model.layers.60.linear_attn.in_proj_z": {
-     "bpw": 3.0,
-     "proxy_err": 0.002269,
+     "bpw": 6.0,
+     "proxy_err": 4.3e-05,
      "rmse": null
     },
     "model.language_model.layers.60.linear_attn.out_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.004029,
+     "bpw": 6.0,
+     "proxy_err": 7.4e-05,
      "rmse": null
     },
     "model.language_model.layers.60.mlp.down_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.007901,
+     "bpw": 6.0,
+     "proxy_err": 0.000145,
      "rmse": null
     },
     "model.language_model.layers.60.mlp.gate_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.002915,
+     "bpw": 6.0,
+     "proxy_err": 5.4e-05,
      "rmse": null
     },
     "model.language_model.layers.60.mlp.up_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.004436,
+     "bpw": 6.0,
+     "proxy_err": 8.3e-05,
      "rmse": null
     },
     "model.language_model.layers.61.linear_attn.in_proj_qkv": {
-     "bpw": 3.0,
-     "proxy_err": 0.003494,
+     "bpw": 6.0,
+     "proxy_err": 6.6e-05,
      "rmse": null
     },
     "model.language_model.layers.61.linear_attn.in_proj_z": {
-     "bpw": 3.0,
-     "proxy_err": 0.002869,
+     "bpw": 6.0,
+     "proxy_err": 5.5e-05,
      "rmse": null
     },
     "model.language_model.layers.61.linear_attn.out_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.004929,
+     "bpw": 6.0,
+     "proxy_err": 9.1e-05,
      "rmse": null
     },
     "model.language_model.layers.61.mlp.down_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.005954,
+     "bpw": 6.0,
+     "proxy_err": 0.00011,
      "rmse": null
     },
     "model.language_model.layers.61.mlp.gate_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.002488,
+     "bpw": 6.0,
+     "proxy_err": 4.6e-05,
      "rmse": null
     },
     "model.language_model.layers.61.mlp.up_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.003703,
+     "bpw": 6.0,
+     "proxy_err": 6.9e-05,
      "rmse": null
     },
     "model.language_model.layers.62.linear_attn.in_proj_qkv": {
-     "bpw": 3.0,
-     "proxy_err": 0.002488,
+     "bpw": 6.0,
+     "proxy_err": 4.7e-05,
      "rmse": null
     },
     "model.language_model.layers.62.linear_attn.in_proj_z": {
-     "bpw": 3.0,
-     "proxy_err": 0.001829,
+     "bpw": 6.0,
+     "proxy_err": 3.6e-05,
      "rmse": null
     },
     "model.language_model.layers.62.linear_attn.out_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.003967,
+     "bpw": 6.0,
+     "proxy_err": 7.3e-05,
      "rmse": null
     },
     "model.language_model.layers.62.mlp.down_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.004365,
+     "bpw": 6.0,
+     "proxy_err": 8e-05,
      "rmse": null
     },
     "model.language_model.layers.62.mlp.gate_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.00202,
+     "bpw": 6.0,
+     "proxy_err": 3.8e-05,
      "rmse": null
     },
     "model.language_model.layers.62.mlp.up_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.002301,
+     "bpw": 6.0,
+     "proxy_err": 4.3e-05,
      "rmse": null
     },
     "model.language_model.layers.63.mlp.down_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.000592,
+     "bpw": 6.0,
+     "proxy_err": 1.1e-05,
      "rmse": null
     },
     "model.language_model.layers.63.mlp.gate_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.001215,
+     "bpw": 6.0,
+     "proxy_err": 2.3e-05,
      "rmse": null
     },
     "model.language_model.layers.63.mlp.up_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.001088,
+     "bpw": 6.0,
+     "proxy_err": 2e-05,
      "rmse": null
     },
     "model.language_model.layers.63.self_attn.k_proj": {
-     "bpw": 4.0,
-     "proxy_err": 0.000895,
+     "bpw": 6.0,
+     "proxy_err": 6.6e-05,
      "rmse": null
     },
     "model.language_model.layers.63.self_attn.o_proj": {
-     "bpw": 4.0,
-     "proxy_err": 0.000445,
+     "bpw": 6.0,
+     "proxy_err": 3.2e-05,
      "rmse": null
     },
     "model.language_model.layers.63.self_attn.q_proj": {
-     "bpw": 4.0,
-     "proxy_err": 0.000475,
+     "bpw": 6.0,
+     "proxy_err": 3.5e-05,
      "rmse": null
     },
     "model.language_model.layers.63.self_attn.v_proj": {
-     "bpw": 4.0,
-     "proxy_err": 0.000201,
+     "bpw": 6.0,
+     "proxy_err": 1.5e-05,
      "rmse": null
     },
     "model.language_model.layers.7.mlp.down_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.009924,
+     "bpw": 6.0,
+     "proxy_err": 0.000182,
      "rmse": null
     },
     "model.language_model.layers.7.mlp.gate_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.007755,
+     "bpw": 6.0,
+     "proxy_err": 0.000142,
      "rmse": null
     },
     "model.language_model.layers.7.mlp.up_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.009761,
+     "bpw": 6.0,
+     "proxy_err": 0.00018,
      "rmse": null
     },
     "model.language_model.layers.7.self_attn.k_proj": {
-     "bpw": 4.0,
-     "proxy_err": 0.000333,
+     "bpw": 6.0,
+     "proxy_err": 2.4e-05,
      "rmse": null
     },
     "model.language_model.layers.7.self_attn.o_proj": {
-     "bpw": 4.0,
-     "proxy_err": 0.001011,
+     "bpw": 6.0,
+     "proxy_err": 7.2e-05,
      "rmse": null
     },
     "model.language_model.layers.7.self_attn.q_proj": {
-     "bpw": 4.0,
-     "proxy_err": 0.000191,
+     "bpw": 6.0,
+     "proxy_err": 1.4e-05,
      "rmse": null
     },
     "model.language_model.layers.7.self_attn.v_proj": {
-     "bpw": 4.0,
-     "proxy_err": 0.000366,
+     "bpw": 6.0,
+     "proxy_err": 2.6e-05,
      "rmse": null
     },
     "model.language_model.layers.8.linear_attn.in_proj_qkv": {
-     "bpw": 3.0,
-     "proxy_err": 0.002937,
+     "bpw": 6.0,
+     "proxy_err": 5.5e-05,
      "rmse": null
     },
     "model.language_model.layers.8.linear_attn.in_proj_z": {
-     "bpw": 3.0,
-     "proxy_err": 0.002778,
+     "bpw": 6.0,
+     "proxy_err": 5.2e-05,
      "rmse": null
     },
     "model.language_model.layers.8.linear_attn.out_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.008397,
+     "bpw": 6.0,
+     "proxy_err": 0.000155,
      "rmse": null
     },
     "model.language_model.layers.8.mlp.down_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.009823,
+     "bpw": 6.0,
+     "proxy_err": 0.00018,
      "rmse": null
     },
     "model.language_model.layers.8.mlp.gate_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.008171,
+     "bpw": 6.0,
+     "proxy_err": 0.00015,
      "rmse": null
     },
     "model.language_model.layers.8.mlp.up_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.00984,
+     "bpw": 6.0,
+     "proxy_err": 0.000181,
      "rmse": null
     },
     "model.language_model.layers.9.linear_attn.in_proj_qkv": {
-     "bpw": 3.0,
-     "proxy_err": 0.002903,
+     "bpw": 6.0,
+     "proxy_err": 5.4e-05,
      "rmse": null
     },
     "model.language_model.layers.9.linear_attn.in_proj_z": {
-     "bpw": 3.0,
-     "proxy_err": 0.002457,
+     "bpw": 6.0,
+     "proxy_err": 4.6e-05,
      "rmse": null
     },
     "model.language_model.layers.9.linear_attn.out_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.007076,
+     "bpw": 6.0,
+     "proxy_err": 0.000129,
      "rmse": null
     },
     "model.language_model.layers.9.mlp.down_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.009652,
+     "bpw": 6.0,
+     "proxy_err": 0.000177,
      "rmse": null
     },
     "model.language_model.layers.9.mlp.gate_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.00797,
+     "bpw": 6.0,
+     "proxy_err": 0.000146,
      "rmse": null
     },
     "model.language_model.layers.9.mlp.up_proj": {
-     "bpw": 3.0,
-     "proxy_err": 0.009467,
+     "bpw": 6.0,
+     "proxy_err": 0.000174,
      "rmse": null
     },
     "mtp.fc": {
@@ -2390,379 +2404,266 @@
      "rmse": 0.002379
     },
     "mtp.layers.0.mlp.down_proj": {
-     "bpw": 4.0,
+     "bpw": 6.0,
      "proxy_err": null,
-     "rmse": 0.005644
+     "rmse": 0.000314
     },
     "mtp.layers.0.mlp.gate_proj": {
-     "bpw": 4.0,
+     "bpw": 6.0,
      "proxy_err": null,
-     "rmse": 0.005644
+     "rmse": 0.000309
     },
     "mtp.layers.0.mlp.up_proj": {
-     "bpw": 4.0,
+     "bpw": 6.0,
      "proxy_err": null,
-     "rmse": 0.005647
+     "rmse": 0.000315
     },
     "mtp.layers.0.self_attn.k_proj": {
-     "bpw": 4.0,
+     "bpw": 6.0,
      "proxy_err": null,
-     "rmse": 0.00559
+     "rmse": 0.000313
     },
     "mtp.layers.0.self_attn.o_proj": {
-     "bpw": 4.0,
+     "bpw": 6.0,
      "proxy_err": null,
-     "rmse": 0.005616
+     "rmse": 0.000303
     },
     "mtp.layers.0.self_attn.q_proj": {
-     "bpw": 4.0,
+     "bpw": 6.0,
      "proxy_err": null,
-     "rmse": 0.004018
+     "rmse": 0.000203
     },
     "mtp.layers.0.self_attn.v_proj": {
-     "bpw": 4.0,
+     "bpw": 6.0,
      "proxy_err": null,
-     "rmse": 0.005541
+     "rmse": 0.000302
     }
    }
   },
-  "working_directory_bytes": "12790298239"
+  "working_directory_bytes": "22114105487"
  },
  "score": {
-  "token_mean_kld": 0.0453735666541211,
-  "token_median_kld": 0.013874914724507192,
-  "p95_kld": 0.15192803826262566,
-  "p99_kld": 0.5435780031709692,
-  "p999_kld": 2.370396843323769,
-  "max_kld": 12.503124730888468,
-  "mean_jsd_bits": 0.01482121147047097,
-  "top1_agreement": 0.9173361550439668,
+  "token_mean_kld": 0.0016338188146399824,
+  "token_median_kld": 0.0006804808305105325,
+  "p95_kld": 0.005092528802593587,
+  "p99_kld": 0.015228503503932686,
+  "p999_kld": 0.06885482059362956,
+  "max_kld": 2.1254057813552976,
+  "mean_jsd_bits": 0.0005845671053433417,
+  "top1_agreement": 0.9824819858329262,
   "contexts": 512,
   "scored_positions": 1048064,
   "suite_token_sha256": "caef8a4628d6c07c162100895096f890cdf9cafc8e4c48b3d66035d737ee7cf7",
   "head_sha256": "25a30fd5f826da0abc4efc4cc71def9f02bcb8085f7175eee284d221dee4cfff",
   "filter": "all",
-  "report": "/var/tmp/work/kld9/reports/report-s16v.json",
+  "report": "/var/tmp/work/kld9/reports/report-k6parity.json",
   "schema": "qwen38-fidelity-report/2",
   "ci95": [
-   0.04195883239421389,
-   0.04935128385219769
+   0.0015411783169567094,
+   0.0017415093988557213
   ],
   "clusters": 330,
   "bootstrap_samples": 10000,
   "reference": "/work/gguf/hidden-bf16",
-  "candidate": "/work/kld9/hidden/hidden-s16v",
-  "capture_log_sha256": "f2f30b28d05915af5da6b849d07642916400ebc89dd13ac0f69c712c91e6bd3a"
+  "candidate": "/work/kld9/hidden/hidden-k6parity",
+  "capture_log_sha256": "c7238af2f61913bf690580864928bddbd430c3e766446e1e5aaa23b6a67b5031"
  },
  "tail_row": {
-  "token_median_kld": 0.013874914724507192,
-  "p95_kld": 0.15192803826262566,
-  "p99_kld": 0.5435780031709692,
-  "p999_kld": 2.370396843323769,
-  "max_kld": 12.503124730888468,
-  "top1_agreement": 0.9173361550439668
+  "token_median_kld": 0.0006804808305105325,
+  "p95_kld": 0.005092528802593587,
+  "p99_kld": 0.015228503503932686,
+  "p999_kld": 0.06885482059362956,
+  "max_kld": 2.1254057813552976,
+  "top1_agreement": 0.9824819858329262
  },
  "paired": {
-  "k4": {
-   "paired_report": "/var/tmp/work/kld9/reports/paired-k4-vs-s16v.json",
+  "hyd": {
+   "paired_report": "/var/tmp/work/kld9/reports/paired-hyd-vs-k6parity.json",
    "schema": "qwen38-fidelity-paired/2",
-   "a_label": "k4",
-   "a_mean": 0.01034534853668276,
-   "b_label": "s16v",
-   "b_mean": 0.0453735666541211,
+   "a_label": "hyd",
+   "a_mean": 0.002699883159684943,
+   "b_label": "k6parity",
+   "b_mean": 0.0016338188146399822,
    "contexts": 512,
-   "difference_a_minus_b": -0.035028218117438344,
-   "median_difference": -0.028031748218890085,
+   "difference_a_minus_b": 0.0010660643450449605,
+   "median_difference": 0.0008319132778571902,
    "ci95": [
-    -0.03811736153097172,
-    -0.03238249178231694
+    0.0009737980446834834,
+    0.0011728742766718033
    ],
    "clusters": 330,
    "bootstrap_samples": 10000,
-   "a_wins": 512,
-   "b_wins": 0,
+   "a_wins": 1,
+   "b_wins": 511,
    "interval_contains_zero": false,
-   "sign": "a better than b",
+   "sign": "b better than a",
    "reading": "difference is a MINUS b on the same 512 contexts, so a positive value means b carries more KLD and is worse"
   },
-  "ctx": {
-   "paired_report": "/var/tmp/work/kld9/reports/paired-ctx-vs-s16v.json",
+  "q6k": {
+   "paired_report": "/var/tmp/work/kld9/reports/paired-q6k-vs-k6parity.json",
    "schema": "qwen38-fidelity-paired/2",
-   "a_label": "ctx",
-   "a_mean": 0.003409409957186559,
-   "b_label": "s16v",
-   "b_mean": 0.0453735666541211,
+   "a_label": "q6k",
+   "a_mean": 0.002035222177682657,
+   "b_label": "k6parity",
+   "b_mean": 0.0016338188146399822,
    "contexts": 512,
-   "difference_a_minus_b": -0.04196415669693454,
-   "median_difference": -0.033672440130907526,
+   "difference_a_minus_b": 0.00040140336304267474,
+   "median_difference": 0.00039398777943927955,
    "ci95": [
-    -0.04566135004781395,
-    -0.038789919097275194
+    0.0003781521358049761,
+    0.00042539869529026716
    ],
    "clusters": 330,
    "bootstrap_samples": 10000,
-   "a_wins": 512,
-   "b_wins": 0,
+   "a_wins": 19,
+   "b_wins": 493,
    "interval_contains_zero": false,
-   "sign": "a better than b",
+   "sign": "b better than a",
    "reading": "difference is a MINUS b on the same 512 contexts, so a positive value means b carries more KLD and is worse"
   }
  },
  "per_stratum_paired": {
-  "k4": {
+  "hyd": {
    "code": {
     "contexts": 123,
-    "difference_a_minus_b": -0.04175066090621385,
+    "difference_a_minus_b": 0.001359291110311449,
     "ci95": [
-     -0.049419784384009055,
-     -0.035075100727109745
+     0.001084779747506828,
+     0.0016798942711366634
     ],
     "clusters": 84,
     "bootstrap_samples": 10000,
-    "b_worse_contexts": 0,
+    "b_worse_contexts": 122,
     "interval_contains_zero": false
    },
    "encyclopedic": {
     "contexts": 92,
-    "difference_a_minus_b": -0.028655205705708592,
+    "difference_a_minus_b": 0.0009141348128917562,
     "ci95": [
-     -0.03082454763357435,
-     -0.02655403310596721
+     0.0008427476222991623,
+     0.000988032210890313
     ],
     "clusters": 76,
     "bootstrap_samples": 10000,
-    "b_worse_contexts": 0,
+    "b_worse_contexts": 92,
     "interval_contains_zero": false
    },
    "literary": {
     "contexts": 82,
-    "difference_a_minus_b": -0.042975900541918396,
+    "difference_a_minus_b": 0.00122919541971111,
     "ci95": [
-     -0.0581706859704127,
-     -0.03145015251411067
+     0.0009021032621567221,
+     0.0016594654947203176
     ],
     "clusters": 48,
     "bootstrap_samples": 10000,
-    "b_worse_contexts": 0,
+    "b_worse_contexts": 82,
     "interval_contains_zero": false
    },
    "multilingual": {
     "contexts": 108,
-    "difference_a_minus_b": -0.03524671708709457,
+    "difference_a_minus_b": 0.0010586633624374408,
     "ci95": [
-     -0.037528994722835364,
-     -0.03312596176063854
+     0.0009745976852604059,
+     0.0011505688883863966
     ],
     "clusters": 83,
     "bootstrap_samples": 10000,
-    "b_worse_contexts": 0,
+    "b_worse_contexts": 108,
     "interval_contains_zero": false
    },
    "scientific": {
     "contexts": 107,
-    "difference_a_minus_b": -0.02646886140089173,
+    "difference_a_minus_b": 0.0007420753995244425,
     "ci95": [
-     -0.02756827293848246,
-     -0.025353339915660845
+     0.0007078248107892501,
+     0.000777247946676242
     ],
     "clusters": 39,
     "bootstrap_samples": 10000,
-    "b_worse_contexts": 0,
-    "interval_contains_zero": false
-   },
-   "_reading": "difference is a MINUS b per context, averaged inside the stratum; positive means b carries more KLD in that stratum"
-  },
-  "ctx": {
-   "code": {
-    "contexts": 123,
-    "difference_a_minus_b": -0.05054137469038032,
-    "ci95": [
-     -0.06011459472820996,
-     -0.04220763895591121
-    ],
-    "clusters": 84,
-    "bootstrap_samples": 10000,
-    "b_worse_contexts": 0,
-    "interval_contains_zero": false
-   },
-   "encyclopedic": {
-    "contexts": 92,
-    "difference_a_minus_b": -0.03463429019910632,
-    "ci95": [
-     -0.03718270731674497,
-     -0.032142812300408795
-    ],
-    "clusters": 76,
-    "bootstrap_samples": 10000,
-    "b_worse_contexts": 0,
-    "interval_contains_zero": false
-   },
-   "literary": {
-    "contexts": 82,
-    "difference_a_minus_b": -0.05068506946888759,
-    "ci95": [
-     -0.06827740922177894,
-     -0.037315799195989416
-    ],
-    "clusters": 48,
-    "bootstrap_samples": 10000,
-    "b_worse_contexts": 0,
-    "interval_contains_zero": false
-   },
-   "multilingual": {
-    "contexts": 108,
-    "difference_a_minus_b": -0.042364818782293916,
-    "ci95": [
-     -0.04503851759017995,
-     -0.03987485116480507
-    ],
-    "clusters": 83,
-    "bootstrap_samples": 10000,
-    "b_worse_contexts": 0,
-    "interval_contains_zero": false
-   },
-   "scientific": {
-    "contexts": 107,
-    "difference_a_minus_b": -0.03131895624915326,
-    "ci95": [
-     -0.03260232744958908,
-     -0.03000845593585377
-    ],
-    "clusters": 39,
-    "bootstrap_samples": 10000,
-    "b_worse_contexts": 0,
+    "b_worse_contexts": 107,
     "interval_contains_zero": false
    },
    "_reading": "difference is a MINUS b per context, averaged inside the stratum; positive means b carries more KLD in that stratum"
   }
  },
  "prediction_check": {
-  "registered_primary": 0.0689,
-  "measured": 0.0453735666541211,
-  "ratio_measured_over_registered": 0.6585423316998709,
-  "registered_range": [
-   0.03,
-   0.1
+  "registered_primary": 0.001488,
+  "measured": 0.0016338188146399824,
+  "ratio_measured_over_registered": 1.097996515215042,
+  "registered_interval": [
+   0.001175,
+   0.001601
   ],
-  "registered_range_contains_measured": true,
-  "surrogate_bracket": [
-   0.0318,
-   0.0585
-  ],
-  "surrogate_bracket_contains_measured": true
+  "registered_interval_contains_measured": false
  },
  "verdict": {
-  "outcome": "NO",
-  "rule_applied": "measured mean > 0.030, i.e. inside or above the predicted range. Sub-4-bit fidelity does not justify a 16 GB SKU; docs/34 \u00a76 stands as a design study with item (1) now measured rather than absent.",
+  "outcome": "MATCHES_Q6K",
+  "rule_applied": "measured mean in [0.001528, 0.002035], i.e. between Q6_K net and Q6_K measured. Indistinguishable from Q6_K at equal bytes once the cross-engine floor's own slack is admitted; still a release candidate.",
   "thresholds_used": {
-   "k4_shard0_mean": 0.010345348536682758,
-   "docs34_range_floor": 0.03
+   "q6k_net_of_floor_estimate": 0.0015278671188742878,
+   "q6k_measured": 0.002035222177682657
   },
-  "answers": "docs/34's flip item (1): a measured KLD for one sub-4-bit width in this family on shard 0 of the v5 suite, with its tail row. That item is no longer absent.",
-  "does_not_answer": "items (2) startup on a physical 16 GB board, (3) needle retrieval and a text-plus-image request at the 4.2 MP cap on a K3 body, and (4) the weighted non-termination check. A 16 GB SKU still requires all three, and no 16 GB board has been started in this project."
+  "cross_engine_caveat": "the Q6_K row was captured in llama.cpp against the same 512 contexts and the same suite token, so the comparison carries the cross-engine term measured at 0.000507 mean (receipts/gguf-report-engine-floor.json). A GGUF number is an upper bound on its own quantization error and the net figure is a naive subtraction, not an identity, because KL is not additive. The hydrated pairing carries no such term."
  },
  "preservation": {
-  "registered_policy": "clear NO -> receipt records the recompute cost and the checkpoint is deleted; BORDERLINE or YES -> uploaded as a research repo like the error-driven one, and Main is told."
- },
- "ladder_extension": {
-  "what": "the converter's own realised proxy error at the width it actually used, against the laddered value for the same module at the same width",
-  "measured_rung_available": {
-   "n": 304,
-   "min": 0.9731341993816014,
-   "median": 0.9957287308549542,
-   "max": 1.009342805205256,
-   "mean": 0.9945927217968604
-  },
-  "k3_rung_extrapolated_by_the_ladder_law": {
-   "n": 96,
-   "min": 0.9914929536927227,
-   "median": 1.0163543355478029,
-   "max": 1.0454943698024577,
-   "mean": 1.0146925839640597
-  },
-  "k3_note": "for modules below the ladder's 52M big-module threshold the K3 rung was never measured; the comparison uses this run's own extrapolation eps(3) = eps(4) * eps(4)/eps(5), the same one the pre-registration used, so a ratio near 1.0 is the first direct evidence that the 3.73x-per-bit law holds one rung below where it was fitted"
+  "registered_policy": "keep and upload the checkpoint in every branch of the decision rule."
  },
  "resident_weights_measured": {
-  "model_loading_gib": 12.81,
-  "model_loading_seconds": 1.605341,
+  "model_loading_gib": 21.56,
+  "model_loading_seconds": 2.508405,
   "source": "vLLM gpu_model_runner, quoted from the capture log",
   "embedding_form": "BF16 on disk and BF16 resident -- the fidelity protocol runs no int8 embedding overlay, so this is the un-overlaid figure",
-  "serialized_payload_gib": 12.7698,
-  "loader_delta_gib": 0.0402,
+  "serialized_payload_gib": 21.4533,
+  "loader_delta_gib": 0.1067,
   "loader_delta_note": "measured counterpart of docs/34's +0.35 GiB loader allowance, which is labelled a prediction there"
  },
- "sixteen_gb_arithmetic": {
-  "what": "docs/34's 16 GB resident-weight line with the loader allowance measured instead of predicted",
-  "int8_embedding_payload_bytes": 12440105028,
-  "int8_embedding_payload_gib": 11.5858,
-  "predicted_resident_gib": 11.94,
-  "predicted_loader_allowance_gib": 0.35,
-  "measured_loader_delta_gib": 0.0402,
-  "resident_with_measured_loader_gib": 11.626,
-  "budgets_gib": {
-   "docs34_section3_basis_12_70": 12.7,
-   "measured_utilisation_0_955_basis_12_49": 12.49
-  },
-  "headroom_gib": {
-   "docs34_section3_basis_12_70": 1.074,
-   "measured_utilisation_0_955_basis_12_49": 0.864
-  },
-  "fits": {
-   "docs34_section3_basis_12_70": true,
-   "measured_utilisation_0_955_basis_12_49": true
-  },
-  "assumption": "the loader delta is measured with the BF16 embedding resident, because the fidelity protocol runs no int8 overlay, and is carried across to the int8-embedding form unchanged. That assumes the loader's own overhead does not scale with the embedding form.",
-  "what_it_does_not_settle": "this is still a 32 GB board. Activation, non-torch and CUDA-graph terms in the 16 GB budget are carried from a 32 GB profile, which is docs/34's flip item (2)."
+ "headline": "0.001634 mean KLD [0.001541, 0.001742] on shard 0. At equal FILE bytes the K6-parity build lands BETWEEN GGUF Q6_K's net-of-floor 0.001528 and its measured 0.002035, i.e. MATCHES, and it does so while carrying 2.3062 GiB LESS transformer body than Q6_K.",
+ "the_prediction_and_its_miss": {
+  "registered_headline_docs29": 0.0016,
+  "measured": 0.0016338188146399824,
+  "comment_on_the_headline": "docs/29 L195's law-predicted 0.0016 is within 2.1 % of the measured value. That is the single most accurate quantitative prediction this project has made in advance.",
+  "registered_primary": 0.001488,
+  "ratio_to_primary": 1.098,
+  "registered_interval": [
+   0.001175,
+   0.001601
+  ],
+  "interval_contains_measured": false,
+  "by_how_much_and_in_which_direction": "the measurement is 0.0000328 ABOVE the top of the registered interval, i.e. the interval narrowly FAILED to contain it -- 2.0 % above its upper bound. Stated as a miss rather than reframed: the three estimators bracketed [0.001175, 0.001601] and the truth was just outside on the pessimistic side. The role-share bound (0.001175) was the least accurate of the three and the byte-law form at Q6_K's own surplus (0.001601) the most, which is the opposite of the ranking the surrogate calibration's scale spread would suggest."
  },
- "headline": "0.045374 mean KLD [0.041959, 0.049351] on shard 0 of the v5 suite. This is the FIRST sub-4-bit width ever measured for KLD in this family, at any role, on any suite, and it answers docs/34's flip item (1) -- the blocking item -- with a NO.",
- "how_bad_in_context": {
-  "vs_k4_the_worst_previously_published_candidate": "4.39x its 0.010345, and K4 wins 512 of 512 contexts paired; the difference is +0.035028 [+0.032382, +0.038117]",
-  "vs_the_context_edition": "13.31x its 0.003409, 512 of 512 contexts, +0.041964 [+0.038790, +0.045661]",
-  "top_1_agreement": "91.73 %, against K4's 95.91 % and the context edition's 97.55 %",
-  "tail": "p99.9 of 2.3704 and a maximum of 12.5031, against K4's p99.9 of 0.5576 -- the tail degrades faster than the mean, which is the direction docs/34 6.4 predicted",
-  "every_stratum_loses": "all five strata lose to both comparators with intervals excluding zero, worst on code (+0.0505 against the context edition) and literary (+0.0507), best on scientific (+0.0313) and encyclopedic (+0.0346)"
- },
- "what_this_measurement_buys_beyond_the_verdict": {
-  "byte_law_at_sub_4_bit": "docs/34 6.2 predicted 13,711,503,428 B of payload for this recipe. The measured payload is 13,711,503,428 B. Zero error, and the first test of the affine byte law below 4 bits.",
-  "the_3_73x_law_one_rung_below_its_fit": "receipts/error-driven-ladder.json has no K3 rung for any module under 52M parameters, and the pre-registration extrapolated those 96 modules as eps(3) = eps(4) x eps(4)/eps(5). The converter's realised K3 proxy errors match that extrapolation with a median ratio of 1.0164 and a maximum of 1.0455, while the 304 modules that DO have a measured rung match theirs at a median 0.9957. So the per-bit law holds one rung below where it was fitted, to within about 4.5 % on the extrapolated modules -- measured here for the first time.",
-  "first_loader_term_for_a_sub_4_bit_build": "+0.0402 GiB against a 12.7698 GiB payload. docs/34 2 records +0.206 on hydrated (20.10 GiB), +0.305 to +0.312 on the context build and +0.342 in the amendment run, and plans with +0.35 [P] above every observation. At this payload the term is an order of magnitude smaller, so the flat allowance is very conservative for small builds and the 16 GB weight arithmetic had slack nobody had measured.",
-  "the_weights_fit_the_class_the_fidelity_does_not": "with the measured loader term the int8-embedding resident weight figure is 11.626 GiB against budgets of 12.70 and 12.49 GiB, i.e. 1.07 and 0.86 GiB of headroom. docs/34's 16 GB NO-GO never rested on the weights not fitting -- it rested on absent fidelity, and the fidelity is now present and bad."
+ "what_this_settles": {
+  "the_6_bit_class_loss_was_a_byte_gap": "receipts/cross-engine-comparator.json recorded GGUF Q6_K as genuinely better than our best build at the 6-bit operating point. docs/29 L189-198 decomposed that as +0.397 bpw of byte surplus against a 3.73x-per-bit law and predicted the gap would close if we spent the same bytes. It closes: at equal file bytes the two are indistinguishable once the floor's slack is admitted.",
+  "and_it_understates_our_side": "receipts/cross-candidate-byte-accounting.json measures the body asymmetry. At this file size Q6_K carries 19.3599 GiB of transformer body against this build's, because our embedding is BF16 where theirs is Q6_K, our payload includes a BF16 vision tower their text file does not contain at all, and we ship an MTP draft they have no equivalent of. A match on this axis is a win on that one.",
+  "what_it_does_not_settle": "body parity is a separate and unrun experiment (attention K6->K7 on top of this recipe, about +1.4 GiB of body); the comparison is text-only teacher-forced fidelity on one shard; and the serving cost is real -- 21.45 GiB of payload is 1.35 GiB more than hydrated, which comes out of the KV budget on a 32 GB card."
  },
  "deviations_from_the_sibling_toolchain": [
   {
-   "what": "-cpi 1000000, i.e. no periodic checkpointing",
-   "why": "the first attempt died after four layers inside the checkpoint save: os.makedirs(work_dir/ckpt_new, exist_ok=True) recursed to '/' because proot returned a transient failure from stat on the work directory, and mkdir('/') came back ENOSYS instead of EEXIST, which makedirs does not catch. An earlier save in the same run had succeeded, so it is flaky rather than structural.",
+   "what": "-cpi 1000000, no periodic checkpointing",
+   "why": "the S16-V conversion's first attempt died inside the checkpoint save when os.makedirs recursed to '/' after a transient proot stat failure and mkdir('/') returned ENOSYS instead of EEXIST",
    "byte_reaching": false,
-   "argument": "checkpointing only writes and reads resume state; with no interruption resumption never happens, so the quantization path is the sibling run's. The cost is that a crash restarts from scratch."
+   "argument": "checkpointing only writes and reads resume state; with no interruption resumption never happens"
   },
   {
-   "what": "marisa_trie on PYTHONPATH for every step rather than discovered per step",
+   "what": "marisa_trie on PYTHONPATH for every step rather than per step",
    "byte_reaching": false,
-   "argument": "the published convert step needed it, so the successful convert is the same one"
+   "argument": "the published convert step needed it anyway"
   },
   {
    "what": "finalize_checkpoint.py invoked with --upstream",
    "byte_reaching": false,
-   "argument": "adds the upstream-verification block to build-receipt.json and touches no tensor"
+   "argument": "adds the upstream-verification block only"
   }
  ],
- "first_attempt_that_failed": {
-  "what": "a first conversion attempt with the default 120 s checkpoint interval died at layer 4",
-  "error": "OSError: [Errno 38] Function not implemented: '/' from os.makedirs in convert_model.py's checkpoint save",
-  "recorded_because": "it is a fact about running this toolchain under proot, and the second attempt's -cpi flag is only justified by it"
+ "paired_readings": {
+  "versus_hydrated_same_engine_no_cross_engine_term": "the parity build is better by 0.001066 [0.000974, 0.001173], winning 511 of 512 contexts. Promoting MLP gate and up from K5 to K6 cuts mean KLD by 39.5 % (0.002700 -> 0.001634) for +1.348 GiB of payload.",
+  "versus_gguf_q6_k_cross_engine": "the parity build is better than Q6_K's MEASURED value by 0.000401 [0.000378, 0.000425], winning 493 of 512 contexts, with the interval excluding zero. Net of the measured cross-engine floor of 0.000507 the Q6_K estimate is 0.001528, which is 0.000106 BELOW our measurement -- so we beat the upper bound decisively and sit just above the naive lower estimate. KL is not additive, so the net figure is an estimate and not an identity, and no ordering that close should be pressed."
  },
  "preservation_decision": {
-  "policy": "the pre-registered rule: a clear NO records the recompute cost and deletes the checkpoint; borderline or YES uploads it as a research repo.",
-  "this_result": "a clear NO -- 1.5x the decision threshold and 4.4x the worst previously published candidate.",
-  "recompute_cost": {
-   "conversion": "one pass on an RTX PRO 6000 Blackwell, no periodic checkpointing, from 16:11:00Z to about 16:52Z: roughly 41 minutes of GPU",
-   "capture_and_replay": "about 6 minutes to capture 512 contexts and about 3 to replay",
-   "working_directory_peak_bytes": 12790298239,
-   "everything_needed_to_redo_it": "build_s16v.sh and chain_kld9.sh are recorded here with their digests, the toolchain is the published one, and this receipt carries every realised per-module width and proxy error, so the artifact is reproducible from the record without the checkpoint"
-  },
-  "recommendation_to_the_owner": "keep it and upload it as a research repo anyway, on the EDA precedent. It is the only sub-4-bit artifact in this family, it is the anchor for the K3 rung of a published law, and a third party cannot check the 16 GB verdict without it. 13.7 GB of upload against 50 minutes of a GPU that is usually busy. Held on disk pending that decision; deleting it costs nothing but the recompute recorded above.",
-  "status_at_the_time_of_writing": "checkpoint present at /var/tmp/work/kld9/qwen38-s16v, 13,735,527,028 B over 21 files; the 10 GiB hidden capture was released after replay, as the chain does by design"
+  "decision": "KEEP AND UPLOAD, unconditional and pre-registered as such before the conversion ran (owner priority). This is a release-candidate variant: it matches the best off-the-shelf 6-bit GGUF on our own suite at equal file bytes and beats its measured value outright.",
+  "status_at_the_time_of_writing": "checkpoint present at /var/tmp/work/kld9/qwen38-k6parity, 23,059,333,816 B over 21 files, digested in build.tree of this receipt. Upload to the Hub with tools/preserve_artifacts.sh --deep is the remaining step and needs no GPU.",
+  "card": "tools/parity-card-body.md plus tools/parity_card.py, both committed BEFORE this conversion ran, render the card from this receipt; the MATCHES_Q6K branch text was written before the number existed."
  },
  "errors": [],
- "content_sha256": "3c59d56a22dc43d7f58a179cc00ddbf039659361b3cf4a30d7dbe1315df83d43"
+ "content_sha256": "f8a62ff3efb9f1c44f2e181d944559d3d74a75e4be87e76f7c4d677b18c4eae3"
 }
