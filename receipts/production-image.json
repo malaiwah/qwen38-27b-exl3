@@ -1,0 +1,171 @@
+{
+  "schema": "qwen38-production-image/1",
+  "generated_utc": "2026-08-16T00:20:33Z",
+  "purpose": "P0 / rank 2 immutable production runtime: the three content-pinned patch modules folded into the pinned r34 digest, replacing the read-only source bind mounts the model cards' patched recipes required",
+  "hardware_scope": "built and smoke-tested on AIBoss, one physical RTX 5090 (32,607 MiB); no throughput number here is comparable to the rental RTX PRO 6000 engine-budget receipts",
+  "operational_scope": "the host's live qwen38-27b service (K4 at 262,144 on the r34 digest with one bind-mounted module) was never stopped, altered or reconfigured by this receipt; smoke recipes ran as separate short-lived containers on a distinct loopback port",
+  "base_image": {
+    "reference": "docker.io/voipmonitor/vllm@sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b",
+    "tag": "docker.io/voipmonitor/vllm:gilded-gnosis-v20-vllm4d006a4-b12xcd3ce19-fi1ac6942-cu132-20260810-r34",
+    "config_id": "0ff4b1de4e950cf48dd0405562908a2f81597f4524698c0291ac2c40514ae17e",
+    "present_locally_before_build": true,
+    "pull_during_build": false
+  },
+  "image": {
+    "tag": "localhost/vllm:gg-r34-patched",
+    "config_id": "sha256:3cd11158a540ff4c23cece491774fecd3e61f6e4784771273e72bd65e44b773c",
+    "manifest_digest": "sha256:6eca4c693f01b6f4e112c04eacd30673b7cfbba4150e6fe2ea3ba1bbfde14c27",
+    "created_utc": "2026-08-16 00:17:57.897274732 +0000 UTC",
+    "size_bytes": 25077281580,
+    "repo_digests": [
+      "localhost/vllm@sha256:6eca4c693f01b6f4e112c04eacd30673b7cfbba4150e6fe2ea3ba1bbfde14c27"
+    ],
+    "pushed_to_registry": false
+  },
+  "build": {
+    "started_utc": "2026-08-16T00:18:55Z",
+    "finished_utc": "2026-08-16T00:18:56Z",
+    "host": "aiboss",
+    "podman_version": "4.9.3",
+    "command": "podman build --pull=never -f /home/mbelleau/prodimage/receipts/.production-image-stage/context/Dockerfile -t localhost/vllm:gg-r34-patched /home/mbelleau/prodimage/receipts/.production-image-stage/context",
+    "context": "minimal: Dockerfile plus the three tools/ modules only",
+    "context_files": [
+      "Dockerfile",
+      "tools/vllm-exl3-prefill-dispatch.py",
+      "tools/vllm-qwen3_5-embed-quant-config.py",
+      "tools/vllm-qwen3_5_mtp-embed-quant-config.py"
+    ],
+    "dockerfile_sha256": "0c95510b1dc1f201bd146f21edf8544fcbfd18942da6d66cc5aa1c1854e8d63a",
+    "build_script_sha256": "8d91c81f26ce1a8dbff93395a0e2f61e033f9e6ebc695612bd8014e3ff84e8d3",
+    "smoke_client_sha256": "fb95b965f558b0918ed344ed76c1afd9c0e10fd06d4935a8c3eafaf2f3cc3afa",
+    "build_log_sha256": "5bd6e5ef857666b5a73bc4a60e945dafa7143e4459ba4bb6fa377883dc260155"
+  },
+  "source_map": [
+    {
+      "source": "tools/vllm-exl3-prefill-dispatch.py",
+      "dest": "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py",
+      "sha256": "2df9d0799fd323798cead1edb773cab556c94798eec263ee03ded35408c6e4ee",
+      "bytes": 227678
+    },
+    {
+      "source": "tools/vllm-qwen3_5-embed-quant-config.py",
+      "dest": "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5.py",
+      "sha256": "04d2bd587b37142f4f55a8d00b9f8c907309490168cb7fcdfde450531df2c9e7",
+      "bytes": 24458
+    },
+    {
+      "source": "tools/vllm-qwen3_5_mtp-embed-quant-config.py",
+      "dest": "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5_mtp.py",
+      "sha256": "0090dc131f0eaf439b24d50baf4def9f10b052864c76e695053d64f66b274bab",
+      "bytes": 11456
+    }
+  ],
+  "patch_modules": [
+    {
+      "source": "tools/vllm-exl3-prefill-dispatch.py",
+      "dest": "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py",
+      "published_sha256": "2df9d0799fd323798cead1edb773cab556c94798eec263ee03ded35408c6e4ee",
+      "in_image_sha256": "2df9d0799fd323798cead1edb773cab556c94798eec263ee03ded35408c6e4ee",
+      "base_image_sha256": "42c0e9150a065c48e3780eebc8b3c89ea410d82610e2c14bc97546dee6866214",
+      "matches_published_map": true,
+      "differs_from_base": true
+    },
+    {
+      "source": "tools/vllm-qwen3_5-embed-quant-config.py",
+      "dest": "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5.py",
+      "published_sha256": "04d2bd587b37142f4f55a8d00b9f8c907309490168cb7fcdfde450531df2c9e7",
+      "in_image_sha256": "04d2bd587b37142f4f55a8d00b9f8c907309490168cb7fcdfde450531df2c9e7",
+      "base_image_sha256": "5189ef2192bccd055692527b3585915e3be911f6794635c51dabf52ded2e8252",
+      "matches_published_map": true,
+      "differs_from_base": true
+    },
+    {
+      "source": "tools/vllm-qwen3_5_mtp-embed-quant-config.py",
+      "dest": "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5_mtp.py",
+      "published_sha256": "0090dc131f0eaf439b24d50baf4def9f10b052864c76e695053d64f66b274bab",
+      "in_image_sha256": "0090dc131f0eaf439b24d50baf4def9f10b052864c76e695053d64f66b274bab",
+      "base_image_sha256": "165306afb3bccfd7d4707ec925aa7affca119a003c6c40fb22eba13611eefa92",
+      "matches_published_map": true,
+      "differs_from_base": true
+    }
+  ],
+  "immutability": {
+    "python_files_changed_vs_base": [
+      "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py",
+      "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5.py",
+      "/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5_mtp.py"
+    ],
+    "python_files_changed_are_exactly_the_patch_set": true,
+    "image_config_entrypoint_cmd_user_workdir_unchanged": true,
+    "image_config_inherited": "[\"/opt/nvidia/nvidia_entrypoint.sh\"]|[\"/usr/local/bin/run-kimi26-vllm\"]||/",
+    "env_vars_added_by_this_image": [],
+    "added_history_entries": [
+      "/bin/sh -c #(nop) LABEL org.opencontainers.image.title=\"Gilded Gnosis vLLM r34 + Qwen3.8-27B EXL3 native-context patches\"       org.opencontainers.image.description=\"r34 with the three content-pinned EXL3/Qwen3.5 modules folded in; no runtime source mounts\"       org.opencontainers.image.base.name=\"docker.io/voipmonitor/vllm:gilded-gnosis-v20-vllm4d006a4-b12xcd3ce19-fi1ac6942-cu132-20260810-r34\"       org.opencontainers.image.base.digest=\"sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b\"       org.opencontainers.image.source=\"https://github.com/malaiwah/qwen38-27b-exl3\"       io.malaiwah.patch.exl3_py.sha256=\"2df9d0799fd323798cead1edb773cab556c94798eec263ee03ded35408c6e4ee\"       io.malaiwah.patch.qwen3_5_py.sha256=\"04d2bd587b37142f4f55a8d00b9f8c907309490168cb7fcdfde450531df2c9e7\"       io.malaiwah.patch.qwen3_5_mtp_py.sha256=\"0090dc131f0eaf439b24d50baf4def9f10b052864c76e695053d64f66b274bab\"       io.malaiwah.patch.upstream_prs=\"local-inference-lab/vllm#312,#314,#316,#318,#319\"",
+      "/bin/sh -c set -eu;     V=/opt/venv/lib/python3.12/site-packages/vllm;     printf '%s  %s\\n'       2df9d0799fd323798cead1edb773cab556c94798eec263ee03ded35408c6e4ee       \"$V/model_executor/layers/quantization/exl3.py\"       04d2bd587b37142f4f55a8d00b9f8c907309490168cb7fcdfde450531df2c9e7       \"$V/model_executor/models/qwen3_5.py\"       0090dc131f0eaf439b24d50baf4def9f10b052864c76e695053d64f66b274bab       \"$V/model_executor/models/qwen3_5_mtp.py\"       | sha256sum -c -;     chmod 0644       \"$V/model_executor/layers/quantization/exl3.py\"       \"$V/model_executor/models/qwen3_5.py\"       \"$V/model_executor/models/qwen3_5_mtp.py\";     rm -f \"$V/model_executor/layers/quantization/__pycache__/exl3.\"*.pyc           \"$V/model_executor/models/__pycache__/qwen3_5.\"*.pyc           \"$V/model_executor/models/__pycache__/qwen3_5_mtp.\"*.pyc;     /opt/venv/bin/python -c 'import ast,sys;[ast.parse(open(p,encoding=\"utf-8\").read(),p) for p in sys.argv[1:]]'       \"$V/model_executor/layers/quantization/exl3.py\"       \"$V/model_executor/models/qwen3_5.py\"       \"$V/model_executor/models/qwen3_5_mtp.py\"",
+      "/bin/sh -c #(nop) COPY file:2e61e3b32d33d565c5ea9a442e13e8a598c483403c73495fce7c6244af3410a3 in /opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5_mtp.py ",
+      "/bin/sh -c #(nop) COPY file:5448d27c8f22aec874239c88229e0eeb96a4976890f70de8bf1745c56d921c6d in /opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5.py ",
+      "/bin/sh -c #(nop) COPY file:cf78957646d4c772b1be9f89a44f60f6f57fcad9a69e49c44e703880a599d224 in /opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py "
+    ],
+    "package_manager_invocations_in_added_layers": 0,
+    "runtime_package_installs": false,
+    "source_bind_mounts_required_at_runtime": false,
+    "startup_file_copies_required": false
+  },
+  "toolchain": {
+    "in_image": {
+      "python": "3.12.3",
+      "cuda_runtime_env": "13.2.1",
+      "torch_cuda_arch_list": "12.0a",
+      "libc_platform": "Linux-6.8.0-137-generic-x86_64-with-glibc2.39",
+      "torch": "2.12.0+cu132",
+      "torch_cuda": "13.2",
+      "torch_cudnn": "92000",
+      "vllm": "0.11.2.dev280+gilded.gnosis.v20.vllm4d006a4.b12xcd3ce19.fi1ac6942.cu132.20260810.r34"
+    },
+    "host_driver_version": "610.57.04",
+    "host_cuda_umd_version": "13.3",
+    "host_gpu": "NVIDIA GeForce RTX 5090, GPU-506a575d-01d7-b12e-9a0a-c1ab5f38ae0a, 32607 MiB",
+    "os_release": "Ubuntu 24.04.4 LTS"
+  },
+  "privilege": {
+    "podman_rootless": true,
+    "invoking_host_uid": 1000,
+    "image_config_user": "",
+    "note": "the image declares no USER, so processes are uid 0 inside the container's user namespace; rootless podman maps that to host uid 1000, so no host-root privilege is held"
+  },
+  "sbom": {
+    "source": "pip-freeze+dpkg (syft not installed on the build host)",
+    "tool_version": "none",
+    "captured_from": "localhost/vllm:gg-r34-patched",
+    "python_packages": 224,
+    "python_packages_file": "receipts/production-image-sbom-pip.txt",
+    "python_packages_sha256": "031c1296d6dbe27b6a41ea3b2f4c9fef96a2b52d4209e23ed83219eee6905836",
+    "debian_packages": 318,
+    "debian_packages_file": "receipts/production-image-sbom-dpkg.txt",
+    "debian_packages_sha256": "b761466750e2a0537195a8cace9fc93d9f8875e3326549fec5c64858d78042dc"
+  },
+  "smoke": {
+    "client": "docker/smoke_client.py, one text and one image request per recipe, exact match; image fixture drawn by tools/vision_eval.draw_digits",
+    "recipes_attempted": [],
+    "recipes_run": [],
+    "recipes_skipped": {},
+    "all_run_recipes_started": false,
+    "all_run_recipes_text_and_image_exact": false,
+    "results": []
+  },
+  "acceptance": {
+    "modules_in_image_match_published_map": true,
+    "sbom_generated": true,
+    "no_runtime_source_bind_mounts": null,
+    "no_startup_file_copies": null,
+    "no_runtime_package_installs": true,
+    "weights_read_only": null,
+    "service_loopback_or_api_key": null,
+    "no_host_root_privilege": null,
+    "image_digest_and_toolchain_recorded": true
+  },
+  "not_claimed": [
+    "the image has not been pushed to any public registry: repo_digests is empty and the release unit here is the local manifest digest plus the verified source map",
+    "no recipe was started on the GPU in this receipt; the smoke section records only what was attempted"
+  ]
+}

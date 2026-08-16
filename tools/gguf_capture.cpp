@@ -12,7 +12,7 @@
 // output row and `llama_get_embeddings_ith` returns those states in batch order.
 //
 //   gguf_capture --model Q8_0.gguf --suite SUITE_DIR --out CAP_DIR
-//                --indices 0-511 --ngl 999 --threads 16 --ubatch 256
+//                --indices 0-511 --ngl 999 --threads 16
 //                --expect-hidden 5120
 //
 // Per context it writes `hidden_NNNN.safetensors` holding a single row-major
@@ -268,7 +268,7 @@ struct params {
     std::string indices = "all";
     int  ngl = 0;
     int  threads = 16;
-    int  ubatch = 512;
+    int  ubatch = 0;      // 0 = one physical batch per context, as vLLM capture does
     int  expect_hidden = 0;
     bool flash_attn = false;
     bool cpu_only = false;
@@ -285,7 +285,10 @@ static void usage() {
         "  --cpu-only       offer the engine no device at all (upstream `--device none`).\n"
         "                   --ngl 0 keeps weights off the GPU but still schedules ops on\n"
         "                   one when a device exists; this is how you touch no GPU.\n"
-        "  --ubatch         physical batch; caps the logit buffer a decode allocates\n"
+        "  --ubatch         physical batch; default 0 evaluates each context in ONE ubatch,\n"
+        "                   which is what `fidelity.py capture` does (max_num_batched_tokens\n"
+        "                   = context length).  A smaller value cuts the device logit buffer\n"
+        "                   (n_vocab x ubatch x 4 B) at the cost of splitting the forward pass\n"
         "  --expect-hidden  abort unless the hidden width is exactly this (5120 for Qwen3.8-27B)\n");
 }
 
@@ -314,12 +317,15 @@ int main(int argc, char ** argv) {
         usage();
         die("--model, --suite and --out are required");
     }
-    if (p.threads <= 0 || p.ubatch <= 0) { die("--threads and --ubatch must be positive"); }
+    if (p.threads <= 0 || p.ubatch < 0) { die("--threads must be positive, --ubatch >= 0"); }
 
     // ---------------------------------------------------------- the suite
     const json suite = json::parse(read_file(p.suite + "/suite-manifest.json"));
     const int ctx_len = suite.at("context_length").get<int>();
     if (ctx_len < 2) { die("suite context_length must be at least 2"); }
+    // Suites from v5 onward record the width they were built for; treat it as
+    // binding, so a wrong model fails before it spends a single forward pass.
+    const int suite_hidden = suite.value("hidden_size", 0);
     std::vector<json> chosen;
     if (p.indices == "all") {
         for (const auto & c : suite.at("context_index")) { chosen.push_back(c); }
@@ -360,11 +366,15 @@ int main(int argc, char ** argv) {
         die("hidden width " + std::to_string(n_embd_out) + " != --expect-hidden " +
             std::to_string(p.expect_hidden));
     }
+    if (suite_hidden && n_embd_out != suite_hidden) {
+        die("hidden width " + std::to_string(n_embd_out) + " != suite hidden_size " +
+            std::to_string(suite_hidden));
+    }
 
     llama_context_params cparams = llama_context_default_params();
     cparams.n_ctx                 = (uint32_t) ctx_len;
     cparams.n_batch               = (uint32_t) ctx_len;
-    cparams.n_ubatch              = (uint32_t) std::min(p.ubatch, ctx_len);
+    cparams.n_ubatch              = (uint32_t) (p.ubatch > 0 ? std::min(p.ubatch, ctx_len) : ctx_len);
     cparams.n_seq_max             = 1;
     cparams.n_outputs_max         = (uint32_t) ctx_len;   // every position is an output row
     cparams.n_outputs_max_per_seq = (uint32_t) ctx_len;   // default is 1: it would reject the batch

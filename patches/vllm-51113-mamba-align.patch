@@ -1,0 +1,83 @@
+Port of upstream vLLM PR #51113 to the pinned r34 vendored scheduler.
+
+    upstream PR      https://github.com/vllm-project/vllm/pull/51113
+    upstream commit  c56f169d9ae46ca420617e2cf5f0c9135da0f651 (merged 2026-08-06)
+    upstream issue   #43559
+    target file      /opt/venv/lib/python3.12/site-packages/vllm/v1/core/sched/scheduler.py
+    image            voipmonitor/vllm@sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b
+                     (gilded-gnosis-v20-vllm4d006a4-b12xcd3ce19-fi1ac6942-cu132-20260810-r34)
+    vendored sha256  1ea341f4cc28d282452597c25d97eea84be8b5f984d2e1a6b548356c8417fdce
+    patched  sha256  b431c1066dfee3ed56bfa7e71cc8606f9afadc300f22d7fc542c43835d1b22bf
+    shipped as       tools/vllm-mamba-align-scheduler.py (whole patched module)
+
+In mamba "align" cache mode a mamba slot p is defined to hold the state after
+exactly (p + 1) * block_size tokens, and state is only materialized at prefill
+chunk ends. The vendored `Scheduler._mamba_block_aligned_split` forces chunk
+ends onto block boundaries only while `end < last_cache_position`. With EAGLE /
+MTP, `last_cache_position` is backed off one block (and clamped to 0 for prompts
+under two blocks), so the window between `last_cache_position` and the true end
+of prefill is left unaligned -- while `KVCacheCoordinator` still publishes a
+hash for one block past the aligned boundary. A chunk ending mid-block there
+gets its slot hashed as a full-block state; a later request hitting that hash
+restores a truncated state. Upstream re-gates both alignment rules on the true
+prefill end (`prefill_end`) instead of the cacheable-range bound.
+
+The vendored file is a fork variant: its comments differ from upstream's and it
+lacks upstream's `max_prefill_tokens` / `long_prefill_token_threshold` relaxation
+inside the guarded branch. Only the two reviewed behavioural changes are ported;
+the surrounding vendored body is left byte-identical.
+
+Hunk 1 introduces `prefill_end` and gates the block-flooring on it.
+Hunk 2 makes an unaligned resume re-align unconditionally.
+
+Apply with:  patch -p1 < patches/vllm-51113-mamba-align.patch
+
+--- a/vllm/v1/core/sched/scheduler.py
++++ b/vllm/v1/core/sched/scheduler.py
+@@ -382,22 +382,25 @@
+         )
+         # Split only during prefill: `request.num_tokens - 1` extends this to
+         # resumed requests replaying their output tokens.
+-        if start >= max(request.num_prompt_tokens, request.num_tokens - 1):
++        prefill_end = max(request.num_prompt_tokens, request.num_tokens - 1)
++        if start >= prefill_end:
+             return num_new_tokens
+ 
+         block_size = self.cache_config.block_size
+         # The last block-aligned position whose state can be cached. With
+         # Eagle, FullAttn prunes the last matching block, so back off one
+         # block to avoid a Mamba cache miss.
+         last_cache_position = request.num_tokens - request.num_tokens % block_size
+         if self.use_eagle:
+             last_cache_position = max(last_cache_position - block_size, 0)
+ 
+         end = start + num_new_tokens
+-        # Until `last_cache_position`, chunk ends must land on block
+-        # boundaries. May yield an empty chunk (budget cannot reach the next
+-        # boundary); the caller then skips the request.
+-        if end < last_cache_position:
++        # Invariant: slot p holds the state after exactly (p + 1) * block_size
++        # tokens. State is written at chunk ends, so chunk ends must be block
++        # aligned. Exempt: the prompt's last chunk, whose slot decode advances
++        # to the boundary. May yield an empty chunk (budget cannot reach the
++        # next boundary); the caller then skips the request.
++        if end < prefill_end:
+             end = end // block_size * block_size
+ 
+         next_block_boundary = (start // block_size + 1) * block_size
+@@ -407,12 +410,9 @@
+             else 0
+         )
+         stops = (
+-            # Resumed mid-block (fine-grained partial hash hit): re-align to
+-            # the block grid before running on, so the crossed boundary's
+-            # state is materialized (unless it is past the cacheable range).
+-            next_block_boundary
+-            if start % block_size != 0 and next_block_boundary <= last_cache_position
+-            else 0,
++            # Same invariant: a chunk starting mid-block stops at the boundary
++            # rather than running past it.
++            next_block_boundary if start % block_size != 0 else 0,
+             # Never run past the last cacheable block boundary mid-chunk.
+             last_cache_position,
+             # Fine-grained hits: the prompt's partial-tail entry can only be

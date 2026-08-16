@@ -276,6 +276,97 @@ Range **0.0124-0.05818**. No corpus identity, token count, context length, refer
 precision, KL direction or engine accompanies them, and NVFP4 does not run under
 `llama-perplexity`, so the protocol identified above does not apply to these rows. See D12.
 
+## The EXL3 author's own charts, read off the images
+
+`turboderp/Qwen3.8-27B-exl3` publishes three charts, and they matter more than the Unsloth
+tables because they are the comparison the community keeps asking for: one BF16 reference, one
+protocol, one machine, five families on the same axes — EXL3 at seven bitrates, the Unsloth
+GGUF UD ladder, one GGUF-IQ point, Unsloth NVFP4 and official Qwen FP8. Subtitle on all three:
+`openwebtext, 8 × 8192 tokens, formatted`. The x-axis is **quantized weight size, GiB,
+excluding embeddings and including the output head** — decoder linear storage, not VRAM.
+
+Values below are read off the published rasters. They are labelled on the plots, so they are
+the authors' own printed numbers rather than digitisation guesses, but they are not a published
+data file: treat them as chart labels, cite them as such, and never mix them with our numbers.
+
+| family / point | size on his axis (GiB) | mean KLD | median KLD | mean ÷ median |
+|---|---:|---:|---:|---:|
+| EXL3 2.00 bpw | ~6.6 | 0.351 | 0.1268 | 2.8 |
+| EXL3 2.50 bpw | ~8.1 | 0.299 | 0.0783 | 3.8 |
+| EXL3 3.00 bpw | ~9.5 | 0.112 | 0.0273 | 4.1 |
+| EXL3 4.00 bpw | ~12.4 | 0.052 | 0.0086 | 6.0 |
+| EXL3 5.00 bpw | ~15.0 | **0.014** | 0.0022 | 6.4 |
+| EXL3 6.00 bpw | ~17.8 | **0.007** | 0.0010 | 7.0 |
+| GGUF UD-Q2_K_XL | ~9.6 | 0.237 | 0.0916 | 2.6 |
+| GGUF UD-Q3_K_XL | ~12.0 | 0.089 | 0.0238 | 3.7 |
+| GGUF UD-Q4_K_XL | ~16.0 | 0.039 | 0.0069 | 5.7 |
+| GGUF UD-Q5_K_XL | ~18.0 | **0.019** | 0.0032 | 5.9 |
+| GGUF UD-Q6_K_XL | ~23.1 | **0.009** | 0.0012 | 7.5 |
+| GGUF-IQ IQ4_XS | ~13.9 | 0.055 | 0.0131 | 4.2 |
+| NVFP4 (Unsloth) | ~17.9 | 0.041 | 0.0103 | 4.0 |
+| FP8 (Qwen) | ~25.1 | **0.023** | 0.0035 | 6.6 |
+| synthetic noise floor | — | 0.0052 | 0.0007 | 7.4 |
+
+Five readings, in order of how much they change what we should say.
+
+**1. At equal size, EXL3 is about a bit ahead of the GGUF UD ladder, on his measurement.**
+5.00 bpw at ~15.0 GiB scores 0.014 against UD-Q5_K_XL's 0.019 at ~18.0 GiB — better *and*
+3 GiB smaller. 6.00 bpw at ~17.8 GiB scores 0.007 against UD-Q6_K_XL's 0.009 at ~23.1 GiB —
+better at 5.3 GiB less. The one place GGUF wins on the raw number is 4-bit (UD-Q4_K_XL 0.039
+at 16.0 GiB versus EXL3 4.00's 0.052 at 12.4 GiB), and even there the EXL3 point is 3.6 GiB
+smaller, so the size-matched comparison still favours EXL3. This is the format author's own
+chart, so it is not independent of him — but it is the first same-protocol, same-reference
+comparison of these families that exists for this model at all.
+
+**2. Official FP8 is a Q4-to-Q5-class quality point that costs 25.1 GiB.** On his axis it
+scores 0.023, between UD-Q4_K_XL (0.039) and UD-Q5_K_XL (0.019), while occupying more decoder
+weight than any other point on the chart. The public framing that "FP8 benchmarks about the
+same as a Q5/Q6" is therefore slightly generous to FP8 here, and our own result — three
+builds 34-48 % below official FP8 at 18-20 GiB resident — is consistent in direction with his
+ordering even though the absolute numbers are not comparable.
+
+**3. Cross-protocol ratios are not stable, and this chart proves it with our own comparators.**
+He measures Qwen FP8 at 0.023 and Unsloth NVFP4 at 0.041, a ratio of 1.8. We measure the same
+two checkpoints at 0.012798 and 0.092727 on the corrected v3 suite, a ratio of 7.2. Same two
+artifacts, same direction of KL, wildly different ratio. Nobody should compute
+`ours ÷ theirs`, in either direction, and the earlier community objection that our NVFP4 number
+disagrees with Unsloth's is best answered with this: three protocols, three different NVFP4
+numbers (0.041 his, 0.0124-0.05818 theirs, 0.0927 ours), each internally consistent.
+
+**4. His mean is a tail statistic and his caption says so.** Mean ÷ median runs 2.6-7.5 across
+every family, rising with quality: the better the quant, the more its mean is carried by a thin
+set of positions where the reference itself is undecided. His histogram chart shows the same
+thing structurally — roughly log-normal distributions whose right tails, not their modes,
+separate the good quants. That is the same conclusion our own tail work reached
+(`docs/33`), and it is the reason we now publish p99/p99.9/p99.99 with exact exceedance
+counts instead of a mean alone.
+
+**5. His protocol runs out of resolution exactly where the interesting builds are.** The
+synthetic floor — the BF16 reference perturbed at bf16-rounding scale, seeded — has mean
+0.0052 and median 0.0007. His 6.00 bpw point is 0.007 mean, i.e. **1.35x the floor**, and on
+the histogram the floor curve overlaps the 6.00 bpw and UD-Q6_K_XL curves. So the top of his
+ladder is measured at the edge of what 65,536 positions and an FP16-cached reference can
+resolve. Ours is a different regime: 10,480,640 positions, an exactly-deterministic
+runtime-repeat floor of 0.000000 across three captures, and a replay qualification floor of
+6.54e-04 — which is itself above his median floor, in the other direction. Neither floor
+transfers; each bounds its own protocol.
+
+### Where our builds sit on his x-axis
+
+His axis is computable for our checkpoints from the published role manifest, so the *size*
+comparison is exact even though the *quality* comparison is not. Summing attention, MLP and
+`lm_head` bytes from [`receipts/hydrated-quantization-manifest.json`](../receipts/hydrated-quantization-manifest.json)
+and excluding embeddings, vision, MTP and norms — his stated convention — the hydrated build is
+**17,837,971,012 B = 16.61 GiB**, which lands between his 5.00 bpw (~15.0 GiB) and 6.00 bpw
+(~17.8 GiB) points. That is the whole thesis of a role-asymmetric recipe in one number: K5
+gate/up, K6 down, K6 attention and a K6 head buy 6-bit-class *placement* at 5-to-6-bit *cost*,
+and against his GGUF ladder that same 16.61 GiB undercuts UD-Q6_K_XL by 6.5 GiB and official
+FP8 by 8.5 GiB of decoder weight.
+
+What we still cannot say is where our y-value would land on his chart, because we have never
+run his protocol. Run A below is what would settle it, and his qbench is the natural second
+harness to add after the GGUF work, since it already contains every comparator we care about.
+
 ## Pinned artifacts
 
 Repo `unsloth/Qwen3.8-27B-GGUF` at revision **`f1bfb127c64f7072bdd2cad55f258b9c8b2910fe`**;
@@ -331,14 +422,24 @@ unchanged, so a GGUF row is directly paired against every existing row.
 ### Control C — isolate D1 on our own data
 
 `tools/fidelity.py replay --score-from N` (added in this iteration; replay-time slicing of
-already-captured hidden states, so no recapture and no new GPU capture) restricts every
-statistic — token mean and median, percentiles, tail histogram, per-context means, top-1, JSD,
-exact max, bootstrap — to positions with at least `N` tokens of left context, and records the
-choice in a `scored_position_window` report block (schema `qwen38-scored-position-window/1`,
-fields `score_from`, `windowed`, `positions_per_context`,
-`positions_per_context_before_window`, `dropped_positions_per_context`,
-`min_left_context_tokens`, `policy`). `tools/kld_aggregate.py` refuses to weld reports whose
-window differs.
+already-captured hidden states, so no recapture and no new GPU capture, and one capture set
+serves any `N`) restricts every statistic — token mean and median, percentiles, tail
+histogram, per-context means, top-1, JSD, exact max, bootstrap — to positions with at least
+`N` tokens of left context, and records the choice in a top-level `scored_position_window`
+report block (schema `qwen38-scored-position-window/1`; fields `score_from`, `windowed`,
+`policy`, `positions_per_context`, `positions_per_context_min`/`_max`,
+`capture_positions_per_context`, `dropped_positions_per_context`, `dropped_positions_total`,
+`first_scored_position_index`, `min_left_context_tokens`).
+
+The window is declared in the schema string rather than left implicit: an unwindowed run
+stays `qwen38-fidelity-report/2` with every pre-existing field unchanged, a windowed run is
+`qwen38-fidelity-report/3`, and `tools/kld_aggregate.py` (now
+`qwen38-kld-ladder-cumulative/3`, carrying the same block) rejects `/2`-with-window,
+`/3`-without-window and any mixed-window set — each window aggregates into its own receipt.
+Already-published receipts stay at `/2` and are untouched. One operational consequence:
+`tools/kld_ladder.sh` verifies only `/1` and `/2` and requires every row to score the full
+context, so it fails closed on a windowed report; the comparability run has to be driven
+outside that script.
 
 | setting | retained positions per context | total retained | reproduces |
 |---|---:|---:|---|

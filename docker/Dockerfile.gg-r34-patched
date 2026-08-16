@@ -1,0 +1,79 @@
+# Immutable production runtime for the Qwen3.8-27B EXL3 family.
+#
+# Base, pinned by digest (never by tag):
+#   docker.io/voipmonitor/vllm
+#   tag    gilded-gnosis-v20-vllm4d006a4-b12xcd3ce19-fi1ac6942-cu132-20260810-r34
+#   digest sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b
+#
+# The published r34 image predates every patch the native-context profile needs, so the
+# reproducible-but-not-distributable recipe was three read-only bind mounts over
+# site-packages. This image folds those three modules in at build time instead: the run
+# command carries no source mounts, no startup file copies and no package installs.
+#
+# The three modules are content-pinned. Their SHA-256 digests are published in
+# receipts/native-mtp-8mp-amendment.json under patch_files_sha256 and are re-verified
+# below *inside* the image, so this image cannot be built from anything other than the
+# reviewed sources. Upstream provenance of the changes they carry:
+#   vllm-exl3-prefill-dispatch.py      PR #312 BF16 fallback for unrepresentable
+#                                      online-overlay shapes, PR #314 EXL3 graph-decode
+#                                      autotune priming, PR #316 prefill reconstruction
+#                                      dispatch, PR #318 B12X row-count routing
+#   vllm-qwen3_5-embed-quant-config.py PR #319 pass the existing quant config to the
+#   vllm-qwen3_5_mtp-embed-quant-config.py  Qwen3.5 target and MTP draft input-embedding
+#                                      constructors (int8 input-table overlay)
+#
+# Build context is the repository root, so `tools/` resolves to the published modules:
+#   podman build -f docker/Dockerfile.gg-r34-patched -t localhost/vllm:gg-r34-patched .
+# Use docker/build-image.sh, which verifies the sources before the build, verifies them
+# again inside the result, and writes receipts/production-image.json.
+
+FROM docker.io/voipmonitor/vllm@sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b
+
+# Exact destinations, written literally so a reader can diff them against the mount
+# targets in the model cards' patched recipes.
+COPY tools/vllm-exl3-prefill-dispatch.py \
+     /opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py
+COPY tools/vllm-qwen3_5-embed-quant-config.py \
+     /opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5.py
+COPY tools/vllm-qwen3_5_mtp-embed-quant-config.py \
+     /opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5_mtp.py
+
+# Fail closed: the digests below are the published map. A mismatch aborts the build, so
+# no image digest can exist for unreviewed sources. Stale bytecode compiled from the
+# base image's modules is dropped in the same layer (the bind-mount recipe had to do
+# this at container start; here it is a build step), and the sources are parsed so a
+# truncated copy cannot survive as a runtime ImportError.
+RUN set -eu; \
+    V=/opt/venv/lib/python3.12/site-packages/vllm; \
+    printf '%s  %s\n' \
+      2df9d0799fd323798cead1edb773cab556c94798eec263ee03ded35408c6e4ee \
+      "$V/model_executor/layers/quantization/exl3.py" \
+      04d2bd587b37142f4f55a8d00b9f8c907309490168cb7fcdfde450531df2c9e7 \
+      "$V/model_executor/models/qwen3_5.py" \
+      0090dc131f0eaf439b24d50baf4def9f10b052864c76e695053d64f66b274bab \
+      "$V/model_executor/models/qwen3_5_mtp.py" \
+      | sha256sum -c -; \
+    chmod 0644 \
+      "$V/model_executor/layers/quantization/exl3.py" \
+      "$V/model_executor/models/qwen3_5.py" \
+      "$V/model_executor/models/qwen3_5_mtp.py"; \
+    rm -f "$V/model_executor/layers/quantization/__pycache__/exl3."*.pyc \
+          "$V/model_executor/models/__pycache__/qwen3_5."*.pyc \
+          "$V/model_executor/models/__pycache__/qwen3_5_mtp."*.pyc; \
+    /opt/venv/bin/python -c 'import ast,sys;[ast.parse(open(p,encoding="utf-8").read(),p) for p in sys.argv[1:]]' \
+      "$V/model_executor/layers/quantization/exl3.py" \
+      "$V/model_executor/models/qwen3_5.py" \
+      "$V/model_executor/models/qwen3_5_mtp.py"
+
+# Entrypoint, command, user and environment are inherited unchanged from the base digest,
+# so every model-card recipe runs against this image by swapping the image reference and
+# deleting the three -v source mounts. Nothing else about the recipe changes.
+LABEL org.opencontainers.image.title="Gilded Gnosis vLLM r34 + Qwen3.8-27B EXL3 native-context patches" \
+      org.opencontainers.image.description="r34 with the three content-pinned EXL3/Qwen3.5 modules folded in; no runtime source mounts" \
+      org.opencontainers.image.base.name="docker.io/voipmonitor/vllm:gilded-gnosis-v20-vllm4d006a4-b12xcd3ce19-fi1ac6942-cu132-20260810-r34" \
+      org.opencontainers.image.base.digest="sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b" \
+      org.opencontainers.image.source="https://github.com/malaiwah/qwen38-27b-exl3" \
+      io.malaiwah.patch.exl3_py.sha256="2df9d0799fd323798cead1edb773cab556c94798eec263ee03ded35408c6e4ee" \
+      io.malaiwah.patch.qwen3_5_py.sha256="04d2bd587b37142f4f55a8d00b9f8c907309490168cb7fcdfde450531df2c9e7" \
+      io.malaiwah.patch.qwen3_5_mtp_py.sha256="0090dc131f0eaf439b24d50baf4def9f10b052864c76e695053d64f66b274bab" \
+      io.malaiwah.patch.upstream_prs="local-inference-lab/vllm#312,#314,#316,#318,#319"

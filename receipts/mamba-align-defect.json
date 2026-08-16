@@ -1,0 +1,335 @@
+{
+  "schema": "qwen38-mamba-align-defect/1",
+  "generated_utc": "2026-08-16T00:52:00Z",
+  "purpose": "Empirical proof, on CPU only, that the pinned r34 runtime carries the mamba \"align\" prefill-chunk-splitting defect fixed by upstream vLLM PR #51113, plus the shipped port of that fix and an evidence-backed blast-radius assessment of the published measurements.",
+  "claim_scope": "A source-and-unit-level proof about vllm/v1/core/sched/scheduler.py in one pinned image. No GPU was used and no model was loaded: the rental RTX PRO 6000 was running unrelated measurement jobs throughout, and CUDA_VISIBLE_DEVICES was empty for every command below (torch.cuda.is_available() == False). Nothing here re-measures throughput or fidelity.",
+
+  "upstream": {
+    "pr": "https://github.com/vllm-project/vllm/pull/51113",
+    "title": "Keep mamba align prefill chunks block-aligned past last_cache_position",
+    "merge_commit": "c56f169d9ae46ca420617e2cf5f0c9135da0f651",
+    "merged_utc_date": "2026-08-06",
+    "fixes_issue": "https://github.com/vllm-project/vllm/issues/43559",
+    "fetched_from_both_remotes_identical": true,
+    "remotes_checked": [
+      "vllm-project/vllm",
+      "local-inference-lab/vllm"
+    ],
+    "parent_commit_diff_confirms_two_behavioural_changes": true,
+    "note_upstream_diff_vs_vendored_diff": "Upstream's pre-image of this function differs from the vendored one in comments and in an extra max_prefill_tokens / long_prefill_token_threshold relaxation inside the guarded branch that r34 does not have. Only the two reviewed behavioural changes were ported; the surrounding vendored body is byte-identical."
+  },
+
+  "runtime_under_test": {
+    "image": "voipmonitor/vllm@sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b",
+    "image_tag": "docker.io/voipmonitor/vllm:gilded-gnosis-v20-vllm4d006a4-b12xcd3ce19-fi1ac6942-cu132-20260810-r34",
+    "vllm_version_in_image": "0.11.2.dev280+gilded.gnosis.v20.vllm4d006a4.b12xcd3ce19.fi1ac6942.cu132.20260810.r34",
+    "upstream_base_commit_of_image": "4d006a4",
+    "image_build_date": "2026-08-10",
+    "fix_absent_although_merged_four_days_before_the_build": true,
+    "extracted_rootfs_read_only_by_policy": "/var/tmp/gg-rootfs",
+    "rootfs_not_written": "Every command ran with PYTHONDONTWRITEBYTECODE=1 and pytest -p no:cacheprovider; the module under test was copied out to /var/tmp/work before any edit. No file under /var/tmp/gg-rootfs was created, modified or deleted."
+  },
+
+  "digests": {
+    "vendored_scheduler_path_in_image": "/opt/venv/lib/python3.12/site-packages/vllm/v1/core/sched/scheduler.py",
+    "vendored_scheduler_sha256": "1ea341f4cc28d282452597c25d97eea84be8b5f984d2e1a6b548356c8417fdce",
+    "vendored_second_copy_path_in_image": "/opt/vllm/vllm/v1/core/sched/scheduler.py",
+    "vendored_second_copy_sha256_identical": true,
+    "vendored_lines": 2926,
+    "patched_module_path": "tools/vllm-mamba-align-scheduler.py",
+    "patched_module_sha256": "b431c1066dfee3ed56bfa7e71cc8606f9afadc300f22d7fc542c43835d1b22bf",
+    "patch_path": "patches/vllm-51113-mamba-align.patch",
+    "patch_sha256": "4d7aa7c6eaff69b283266416b18efa062f558e3c557274be1244ecbd6c2834be",
+    "patch_hunks": 2,
+    "patch_reproduces_module_byte_identically": true,
+    "patch_apply_check": "patch -p1 --dry-run and patch -p1 both clean on a fresh copy of the recorded vendored digest; result sha256 == patched_module_sha256; cmp against tools/vllm-mamba-align-scheduler.py returned equal",
+    "patched_module_py_compile_ok": true
+  },
+
+  "the_defect": {
+    "function": "Scheduler._mamba_block_aligned_split",
+    "invariant_violated": "In mamba \"align\" cache mode slot p is defined to hold the state after exactly (p + 1) * block_size tokens, and state is only materialized at prefill chunk ends. A chunk that ends mid-block therefore leaves its slot holding a short state, and a later chunk crossing that boundary publishes the slot's hash anyway.",
+    "vendored_code": {
+      "guard": "vllm/v1/core/sched/scheduler.py:400  `if end < last_cache_position:` then `end = end // block_size * block_size`",
+      "stops_entry": "vllm/v1/core/sched/scheduler.py:413-415  `next_block_boundary if start % block_size != 0 and next_block_boundary <= last_cache_position else 0,`",
+      "prefill_end_occurrences_in_vendored_file": 0
+    },
+    "fixed_code": {
+      "guard": "`prefill_end = max(request.num_prompt_tokens, request.num_tokens - 1)` bound once, then `if end < prefill_end:`",
+      "stops_entry": "`next_block_boundary if start % block_size != 0 else 0,`",
+      "prefill_end_occurrences_in_patched_file": 3,
+      "last_cache_position_occurrences": "8 in vendored -> 5 in patched"
+    },
+    "why_last_cache_position_is_the_wrong_bound": "last_cache_position = num_tokens - num_tokens % block_size, and with EAGLE/MTP it is backed off one further block and clamped at 0. For a prompt shorter than two mamba blocks it is 0, so the vendored guard never fires and no prefill chunk end is aligned at all. Meanwhile KVCacheCoordinator still publishes hashes one block past the aligned boundary, so the unaligned window is exactly the window that gets hashed.",
+    "exposed_window_tokens": "(P mod B) + B, for prompt length P and mamba block size B"
+  },
+
+  "reachability_chain": {
+    "status": "PROVEN AS SOURCE STRUCTURE; the first link is CORRECTED BY MEASUREMENT (see effective_configuration below). All paths are relative to /opt/venv/lib/python3.12/site-packages/vllm inside the recorded image digest.",
+    "links": [
+      {
+        "n": 1,
+        "claim": "CacheConfig declares prefix caching on by default",
+        "evidence": "config/cache.py:94  `enable_prefix_caching: bool = True`",
+        "status": "proven-but-not-effective",
+        "correction": "This field default is never what a `vllm serve` process gets. EngineArgs resolves the effective value first (engine/arg_utils.py:1912-1913 asserts it is already set, :1924 passes it into CacheConfig), and engine/arg_utils.py:2532-2534 computes `default_prefix_caching = model_config.is_prefix_caching_supported and not model_config.is_hybrid`. Qwen3.5 is hybrid, so the effective default is False and the defect is opt-in behind an explicit --enable-prefix-caching."
+      },
+      {
+        "n": 2,
+        "claim": "with prefix caching on, a model without supports_mamba_prefix_caching is forced into mamba_cache_mode=\"align\"",
+        "evidence": "model_executor/models/config.py:558-562  `if cache_config.enable_prefix_caching:` / `if cache_config.mamba_cache_mode == \"none\": cache_config.mamba_cache_mode = \"all\" if model_config.supports_mamba_prefix_caching else \"align\"`",
+        "status": "proven"
+      },
+      {
+        "n": 3,
+        "claim": "qwen3_5 never declares supports_mamba_prefix_caching, so it takes the \"align\" branch",
+        "evidence": "model_executor/models/qwen3_5.py: 0 occurrences of `supports_mamba_prefix_caching`; model_executor/models/qwen3_5_mtp.py: 0 occurrences",
+        "status": "proven"
+      },
+      {
+        "n": 4,
+        "claim": "speculative method \"mtp\" makes use_eagle() true, which is what backs last_cache_position off a block",
+        "evidence": "config/speculative.py:1551-1555  `return self.method in (\"eagle\", \"eagle3\", \"mtp\", \"dflash\", \"dspark\")`",
+        "status": "proven"
+      },
+      {
+        "n": 5,
+        "claim": "mamba layers plus align mode switch the buggy split on",
+        "evidence": "v1/core/sched/scheduler.py:316-318  `self.need_mamba_block_aligned_split = (self.has_mamba_layers and self.cache_config.mamba_cache_mode == \"align\")`",
+        "status": "proven"
+      },
+      {
+        "n": 6,
+        "claim": "the coordinator extends eagle-group caching one block past where the alignment guarantee stops, publishing the unaligned window",
+        "evidence": "v1/core/kv_cache_coordinator.py:800-806  `# EAGLE groups match one block past each aligned boundary and drop it, so make that lookahead block eligible to be cached.` / `if manager.use_eagle and aligned_num_computed_tokens > 0: num_tokens_to_cache = min(num_computed_tokens, aligned_num_computed_tokens + manager.block_size)`  (the conditional statement itself is :802-806)",
+        "status": "proven"
+      },
+      {
+        "n": 7,
+        "claim": "r34 also lacks the later partial mitigation: the eagle read-side margin is skipped for MambaSpec",
+        "evidence": "v1/core/kv_cache_coordinator.py:892  `if drop_eagle_block and not isinstance(spec, MambaSpec):`",
+        "status": "proven"
+      },
+      {
+        "n": 8,
+        "claim": "MambaManager.find_longest_cache_hit accepts drop_eagle_block and never uses it",
+        "evidence": "v1/core/single_type_kv_cache_manager.py:1268 `class MambaManager(SingleTypeKVCacheManager)`, method at :1290-1365, `drop_eagle_block` appears exactly once in that span (the parameter at :1297) and is absent from the body",
+        "status": "proven"
+      }
+    ],
+    "model_is_hybrid_evidence": "model_executor/models/qwen3_5.py:411  `class Qwen3_5ForConditionalGeneration(Qwen3VLForConditionalGeneration, IsHybrid)`; registry resolves the flag via model_executor/models/interfaces.py:847-850 `return getattr(model, \"is_hybrid\", False)`; config/model.py:1679-1687 additionally requires a non-\"attention\" entry in layer_types, which Qwen3.5 has (\"linear_attention\")."
+  },
+
+  "test_method": {
+    "which_option_was_used": "Option 1 of the assignment: upstream's own CPU-only regression file, run unmodified against both the vendored and the patched scheduler. The fallback property test was not needed.",
+    "test_file": "tests/v1/core/test_mamba_align_chunk_split.py",
+    "test_file_source": "https://raw.githubusercontent.com/vllm-project/vllm/c56f169d9ae46ca420617e2cf5f0c9135da0f651/tests/v1/core/test_mamba_align_chunk_split.py",
+    "test_file_sha256": "6b57360273223dbd208c7712b440a3fa267a61a039a8ec47c4fa476cf23e0b81",
+    "test_file_modified": false,
+    "nothing_stubbed": "The assertions run against the image's real KVCacheManager, HybridKVCacheCoordinator, MambaManager, BlockPool and Request. The only SimpleNamespace in play is upstream's own `_split` stub for `self`, which is part of the fetched test file. `tests/v1/core/utils.py` (create_requests) and its two transitive test-helper imports were fetched verbatim from the same commit.",
+    "how_the_full_vllm_install_was_obtained_without_a_gpu": "No virtualenv was built: a fresh CPU venv cannot supply this image's compiled vLLM. Instead the image's own python3.12 and site-packages were driven in place from the host through the rootfs dynamic loader, which needs no chroot (user namespaces are unavailable on this host) and writes nothing into the rootfs. One host/container discrepancy had to be bridged: nvidia/nccl/lib/libnccl.so.2 is an absolute symlink to /opt/libnccl.so.2.30.4, which dangles outside the container, letting the host's older libnccl shadow it and leaving libtorch_cuda.so with an undefined ncclCommResume; a private symlink directory rebases that one link.",
+    "loader_invocation": "/var/tmp/gg-rootfs/lib64/ld-linux-x86-64.so.2 --library-path <libshim>:<site-packages>/nvidia/{nccl,cu13,cudnn,cusparselt,nvshmem}/lib:<site-packages>/torch/lib:/var/tmp/gg-rootfs/usr/lib/x86_64-linux-gnu:/var/tmp/gg-rootfs/lib/x86_64-linux-gnu /var/tmp/gg-rootfs/usr/bin/python3.12",
+    "environment": {
+      "CUDA_VISIBLE_DEVICES": "",
+      "PYTHONDONTWRITEBYTECODE": "1",
+      "torch_version": "2.12.0+cu132",
+      "torch_cuda_is_available": false,
+      "pytest_version": "8.4.1",
+      "python": "3.12.3"
+    },
+    "how_the_patched_module_was_substituted": "A conftest.py executes the shipped file under the real module name `vllm.v1.core.sched.scheduler` (importlib.util.spec_from_file_location + sys.modules insertion) before any test imports it, asserting the vendored module has not been imported yet and that the resulting Scheduler.__module__ is that name. This is the same substitution the production image performs with a COPY over site-packages, so the test exercises the file that ships rather than a re-typed copy of one function.",
+    "workdir": "/var/tmp/work/mamba-align",
+    "harness_input_digests": {
+      "tests/v1/core/test_mamba_align_chunk_split.py": "6b57360273223dbd208c7712b440a3fa267a61a039a8ec47c4fa476cf23e0b81",
+      "tests/v1/core/utils.py": "d38794bc0f2be4c9957c78adb62f165dd4ccafee6ab8cb004193263efc660b42",
+      "tests/v1/kv_connector/unit/utils.py": "c7edd1b041a12c634ca5e4ac1a42cc5af91a649bdbeea02a28949ccbc6b682c6",
+      "tests/utils.py": "12c8a9f04b9068617af6b5836612f6a6ab2369954cd46aeb7f02c379e8d4eb3a",
+      "conftest.py": "82abfbec570ef7812cf99a89dfbd8faf2c7406536dff7b68a895e64bf542c95f",
+      "ggpy": "0b21f482cf21b651202da4f73ee56714ec30928e75a5a45ee76b78feee7c483a"
+    }
+  },
+
+  "test_results": {
+    "collected": 20,
+    "vendored_r34_scheduler": {
+      "command": "ggpy -m pytest tests/v1/core/test_mamba_align_chunk_split.py -p no:cacheprovider -v",
+      "summary_line": "14 failed, 6 passed, 1 warning in 4.64s",
+      "failed": 14,
+      "passed": 6,
+      "failing_tests": [
+        "test_fragmented_first_chunk_does_not_poison_mamba_prefix_cache",
+        "test_fragmented_tail_chunk_does_not_poison_mamba_prefix_cache",
+        "test_intermediate_chunk_ends_stay_block_aligned[800]",
+        "test_intermediate_chunk_ends_stay_block_aligned[900]",
+        "test_intermediate_chunk_ends_stay_block_aligned[1599]",
+        "test_poisoning_is_block_size_independent[1536-30000-budgets0]",
+        "test_poisoning_is_block_size_independent[12288-30000-budgets1]",
+        "test_poisoning_is_block_size_independent[12288-41000-budgets2]",
+        "test_unaligned_resume_never_runs_past_its_block[1601-False]",
+        "test_unaligned_resume_never_runs_past_its_block[1601-True]",
+        "test_unaligned_resume_never_runs_past_its_block[2531-False]",
+        "test_unaligned_resume_never_runs_past_its_block[2531-True]",
+        "test_unaligned_resume_never_runs_past_its_block[3011-False]",
+        "test_unaligned_resume_never_runs_past_its_block[3011-True]"
+      ],
+      "representative_failures": [
+        "test_intermediate_chunk_ends_stay_block_aligned[900]: AssertionError: mamba slot 0 is hashed as state@1600 but holds state@900",
+        "test_poisoning_is_block_size_independent[12288-30000-budgets1]: AssertionError: mamba slot 1 is hashed as state@24576 but holds state@16288",
+        "test_unaligned_resume_never_runs_past_its_block[2531-False]: AssertionError: chunk [2531, 3602) starts mid-block and runs past 3200; the slot holding state@2531 gets hashed as state@3200"
+      ]
+    },
+    "patched_module": {
+      "command": "MAMBA_ALIGN_PATCHED=/home/mbelleau/research/tools/vllm-mamba-align-scheduler.py ggpy -m pytest tests/v1/core/test_mamba_align_chunk_split.py -p no:cacheprovider -v",
+      "summary_line": "20 passed, 1 warning in 0.38s",
+      "failed": 0,
+      "passed": 20
+    },
+    "negative_control": {
+      "why": "Proves the substitution harness is not what changes the outcome, i.e. it does not silently skip or neuter tests.",
+      "command": "MAMBA_ALIGN_PATCHED=<vendored copy> ggpy -m pytest tests/v1/core/test_mamba_align_chunk_split.py -p no:cacheprovider",
+      "summary_line": "14 failed, 6 passed, 15 warnings in 0.39s",
+      "matches_unsubstituted_vendored_run": true
+    },
+    "logs": {
+      "note": "Full verbose pytest output for all three runs is at /var/tmp/work/mamba-align/logs/{run-vendored,run-patched,control-vendored-via-harness}.log on the rental host. It is scratch, not repo-committed.",
+      "files": [
+        "run-vendored.log",
+        "run-patched.log",
+        "control-vendored-via-harness.log"
+      ]
+    }
+  },
+
+  "effective_configuration": {
+    "headline": "The defect is real and proven in the code, but in this build it is opt-in: prefix caching is off by default for Qwen3.5 because the model is hybrid, and no recipe in this repository ever turns it on.",
+    "source_gate": "engine/arg_utils.py:2532-2534  `default_prefix_caching = (model_config.is_prefix_caching_supported and not model_config.is_hybrid)` with the comment `# Hybrid models support prefix caching but keep it opt-in for now while the feature matures.` The resolution is logged at DEBUG only, which is why the server logs carry no explanatory line.",
+    "measured_confirmation": {
+      "status": "proven",
+      "what": "Every archived engine banner in this repository reports enable_prefix_caching=False, on runs whose launcher never passes a prefix-caching flag.",
+      "logs_checked": [
+        "receipts/native-mtp-cap-8mp-server.log :: enable_prefix_caching=False, speculative_config method='mtp' num_spec_tokens=3",
+        "receipts/native-mtp-8mp-combined-server.log :: enable_prefix_caching=False, speculative_config method='mtp'",
+        "receipts/native-mtp-cap-server.log :: enable_prefix_caching=False, speculative_config method='mtp'",
+        "receipts/native-mtp-cap-8mp-bench.log :: client-side log, no engine banner"
+      ],
+      "launchers_checked": [
+        "tools/mtp_native.sh:34-39 (vllm serve args: no prefix-caching flag)",
+        "tools/native_mtp_cap.sh:115-120 (vllm serve args: no prefix-caching flag)"
+      ],
+      "flag_never_passed_anywhere_in_repo": "grep for --enable-prefix-caching across the whole repository returns nothing",
+      "explicitly_disabled_in_fidelity_harnesses": [
+        "tools/qwen38_kld.py:117  enable_prefix_caching=False",
+        "tools/fidelity.py:545  enable_prefix_caching=False",
+        "tools/fidelity.py:1140  enable_prefix_caching=False",
+        "docs/05-kld-protocol.md:44 records the same"
+      ]
+    },
+    "consequence": "With enable_prefix_caching False, mamba_cache_mode stays \"none\" (model_executor/models/config.py:558 gates the \"align\" default on it), need_mamba_block_aligned_split is False (scheduler.py:316-318), and _mamba_block_aligned_split is not reached. The published numbers therefore cannot have been corrupted by this defect.",
+    "why_the_fix_still_ships": "The fix is a prerequisite for ever enabling prefix caching on this model. Prefix caching is the single largest available win for repeated long-context prompts on a 262k-context deployment, and turning it on unpatched silently returns wrong tokens rather than failing. Shipping the patch converts a blocked feature into a usable one."
+  },
+
+  "blast_radius": [
+    {
+      "item": "MTP acceptance 58.2 % (815 / 1401 drafted tokens over 467 drafts)",
+      "source": "docs/22-results-iteration-2.md:75-79",
+      "coupling": "direct: a poisoned mamba prefix-cache hit restores a truncated SSM state, which changes draft/target agreement",
+      "at_risk_if_prefix_caching_on": true,
+      "actually_affected": false,
+      "actually_affected_basis": "inferred-strong",
+      "basis_detail": "This run's engine banner is not archived, so the config is not read off a log for this specific run. It is the same image, the same hybrid model and the same launcher family as the three archived MTP banners, all of which report enable_prefix_caching=False, and no recipe in the repository passes --enable-prefix-caching. Under those conditions the buggy function is never called.",
+      "remediation": "Fix shipped as tools/vllm-mamba-align-scheduler.py. No re-measurement required to defend the published figure. Required only if prefix caching is ever enabled, in which case the figure must be re-measured on the patched image before publication."
+    },
+    {
+      "item": "2.745 tokens/step mean acceptance length",
+      "source": "docs/22-results-iteration-2.md:80; derived from the same counters as the 58.2 % row (1.745 accepted + 1 target token)",
+      "coupling": "derived: not an independent measurement, it is an algebraic restatement of the acceptance counters",
+      "at_risk_if_prefix_caching_on": true,
+      "actually_affected": false,
+      "actually_affected_basis": "inferred-strong",
+      "basis_detail": "Identical exposure to the acceptance row because it is computed from the same counters; it cannot be affected independently of it.",
+      "remediation": "Same as the acceptance row: recomputed automatically by any rerun of it. No separate action."
+    },
+    {
+      "item": "Decode 113.8 tok/s single-stream with MTP-3",
+      "source": "MODEL_CARD-K5K6.md:503, docs/22-results-iteration-2.md performance table",
+      "coupling": "coupled, not direct: speculative throughput is a function of acceptance length, so it moves with the acceptance rows rather than being independently corrupted",
+      "at_risk_if_prefix_caching_on": true,
+      "actually_affected": false,
+      "actually_affected_basis": "inferred-strong",
+      "basis_detail": "Same run family and same configuration argument as the acceptance rows. Note this figure already carries an unrelated protocol caveat recorded in receipts/native-mtp-8mp-amendment.json (\"previous 113.8 tok/s headline used a different profile and three-run protocol\"); that caveat stands independently of this defect.",
+      "remediation": "No action for this defect. Its existing protocol caveat is unchanged."
+    },
+    {
+      "item": "266,612-token GPU KV cache allocation",
+      "source": "receipts/native-mtp-8mp-amendment.json measured_memory.gpu_kv_cache_tokens; server banner \"GPU KV cache size: 266,612 tokens\"",
+      "coupling": "none",
+      "at_risk_if_prefix_caching_on": false,
+      "actually_affected": false,
+      "actually_affected_basis": "proven",
+      "basis_detail": "Allocation is fixed by memory profiling before any request is scheduled. The defect changes which cached state a chunk publishes and later restores; it changes no block count, page size or budget. Independently, the run's own banner reports enable_prefix_caching=False.",
+      "remediation": "None required. Figure stands as published."
+    },
+    {
+      "item": "Two long-context retrievals: 261,794-token text needle and 236,824-token combined text+image needle, both retrieved_exact",
+      "source": "receipts/native-mtp-8mp-amendment.json proofs.near_native_text and proofs.combined_long_multimodal",
+      "coupling": "would require a poisoned cache entry published by an earlier request in the same process",
+      "at_risk_if_prefix_caching_on": "only when sharing a process with earlier requests",
+      "actually_affected": false,
+      "actually_affected_basis": "proven",
+      "basis_detail": "Stronger than the shared-process argument, and it makes that argument unnecessary: the engine banners of the exact runs that produced these two retrievals (receipts/native-mtp-cap-8mp-server.log and receipts/native-mtp-8mp-combined-server.log) both report enable_prefix_caching=False. With prefix caching off there is no mamba prefix-cache hit to poison, whether or not the process was shared. For the record the combined log shows only 2 request completions, so it was effectively a cold process anyway.",
+      "remediation": "None required. Both retrievals stand as published."
+    }
+  ],
+
+  "remediation_state": {
+    "patch_ported": true,
+    "patch_applies_to_recorded_vendored_digest": true,
+    "module_shipped_for_image_inclusion": "tools/vllm-mamba-align-scheduler.py",
+    "handed_to": "ImmutableImage, for inclusion as a fourth content-pinned patch alongside vllm-exl3-prefill-dispatch.py, vllm-qwen3_5-embed-quant-config.py and vllm-qwen3_5_mtp-embed-quant-config.py",
+    "image_destination": "/opt/venv/lib/python3.12/site-packages/vllm/v1/core/sched/scheduler.py",
+    "published_measurements_requiring_re_measurement": [],
+    "published_measurements_requiring_a_caveat": [],
+    "open": [
+      "The fourth patch is not yet in any built image; docker/Dockerfile.gg-r34-patched and docker/build-image.sh still carry a three-entry patch map.",
+      "The fix is not exercised end to end on a GPU with --enable-prefix-caching, because prefix caching has never been enabled for this model in this repository and the card was unavailable. Enabling it is a separate, unstarted piece of work with its own acceptance gate.",
+      "r34 also lacks the later read-side mitigations (kv_cache_coordinator.py:892 MambaSpec margin skip, MambaManager's unused drop_eagle_block). PR #51113 is the scheduler-side fix only; whether those two are additionally required before enabling prefix caching is not established here."
+    ]
+  },
+
+  "proven_vs_inferred": {
+    "proven_by_command_output": [
+      "The vendored r34 module fails upstream's regression file: 14 failed, 6 passed of 20.",
+      "The shipped patched module passes it: 20 passed, 0 failed.",
+      "The substitution harness is not the cause: fed the vendored file it reproduces 14 failed, 6 passed.",
+      "patches/vllm-51113-mamba-align.patch is two hunks, applies cleanly to sha256 1ea341f4... and yields exactly sha256 b431c106..., byte-identical to tools/vllm-mamba-align-scheduler.py.",
+      "The patched module compiles under the image's own python 3.12.3 and imports successfully under the real module name.",
+      "The image's vLLM imports and the whole test runs with torch.cuda.is_available() == False.",
+      "The upstream diff at the merge commit against its parent contains exactly the two behavioural changes ported here.",
+      "Every archived engine banner in this repository reports enable_prefix_caching=False."
+    ],
+    "proven_by_source_reading": [
+      "All eight reachability links, each with file:line inside the recorded image digest.",
+      "The hybrid opt-out gate at engine/arg_utils.py:2532-2534 that makes prefix caching default-off for this model."
+    ],
+    "inferred": [
+      "That the 58.2 % / 2.745 / 113.8 run also had prefix caching off. Its own engine banner is not archived; the inference rests on the identical image, model, launcher family and the absence of the flag anywhere in the repository. Labelled inferred-strong, not proven.",
+      "That the exposed window is exactly (P mod B) + B tokens. This follows from the arithmetic of last_cache_position and the coordinator's one-block extension; the tests confirm the violation occurs but do not measure the window width directly."
+    ],
+    "not_verified": [
+      "Any GPU-side consequence: no model was loaded, no token was generated, no throughput or fidelity number was measured or re-measured.",
+      "Whether enabling prefix caching on the patched image is otherwise correct for this model (read-side mitigations, memory cost, hit rates)."
+    ]
+  },
+
+  "reproduction": {
+    "steps": [
+      "1. Copy vllm/v1/core/sched/scheduler.py out of the extracted r34 rootfs; confirm sha256 1ea341f4cc28d282452597c25d97eea84be8b5f984d2e1a6b548356c8417fdce.",
+      "2. patch -p1 < patches/vllm-51113-mamba-align.patch; confirm sha256 b431c1066dfee3ed56bfa7e71cc8606f9afadc300f22d7fc542c43835d1b22bf and that it equals tools/vllm-mamba-align-scheduler.py.",
+      "3. Fetch tests/v1/core/test_mamba_align_chunk_split.py, tests/v1/core/utils.py, tests/v1/kv_connector/unit/utils.py and tests/utils.py from commit c56f169d9ae46ca420617e2cf5f0c9135da0f651; verify the digests in test_method.harness_input_digests; add empty __init__.py files down the tests/ tree.",
+      "4. Drive the image's own python3.12 via the rootfs loader (see test_method.loader_invocation) with CUDA_VISIBLE_DEVICES empty, PYTHONDONTWRITEBYTECODE=1 and a symlink directory rebasing nvidia/nccl/lib/libnccl.so.2 onto <rootfs>/opt/libnccl.so.2.30.4.",
+      "5. Run pytest -p no:cacheprovider on the test file with no substitution: expect 14 failed, 6 passed.",
+      "6. Re-run with the conftest substitution pointed at tools/vllm-mamba-align-scheduler.py: expect 20 passed.",
+      "7. Re-run the substitution pointed at the unpatched copy as a control: expect 14 failed, 6 passed."
+    ]
+  }
+}

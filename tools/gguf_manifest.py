@@ -52,7 +52,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 CAPTURE_SCHEMA = "qwen38-fidelity-capture/2"
 ENGINE_SCHEMA = "qwen38-gguf-capture-engine/1"
-SUITE_SCHEMA = "qwen38-distribution-fidelity/1"
+SUITE_SCHEMA_FAMILY = "qwen38-distribution-fidelity/"
 
 
 def load_fidelity():
@@ -158,8 +158,12 @@ def read_inputs(args) -> tuple[Path, dict, dict, list[dict], dict]:
 
     suite_path = Path(args.suite, "suite-manifest.json")
     suite = json.loads(suite_path.read_text())
-    if suite.get("schema") != SUITE_SCHEMA:
-        die(f"{suite_path} schema {suite.get('schema')!r} != {SUITE_SCHEMA!r}")
+    if not str(suite.get("schema", "")).startswith(SUITE_SCHEMA_FAMILY):
+        die(f"{suite_path} schema {suite.get('schema')!r} is not a {SUITE_SCHEMA_FAMILY}N suite")
+    # Suites from v5 onward declare the width they were built for; when they do it
+    # decides, not a command-line flag anyone can mistype.
+    if suite.get("hidden_size") and engine["n_embd_out"] != suite["hidden_size"]:
+        die(f"capture width {engine['n_embd_out']} != suite hidden_size {suite['hidden_size']}")
     if engine.get("suite_context_length") != suite["context_length"]:
         die(f"capture used context_length {engine.get('suite_context_length')}, suite "
             f"says {suite['context_length']}")
@@ -426,7 +430,7 @@ def cmd_smoke_fixture(args) -> int:
             "source_cluster": f"synthetic-{i}",
         })
     manifest = {
-        "schema": SUITE_SCHEMA,
+        "schema": SUITE_SCHEMA_FAMILY + "1",
         "model": "synthetic",
         "synthetic": True,
         "note": "format fixture for the GGUF capture path; token ids are random, "

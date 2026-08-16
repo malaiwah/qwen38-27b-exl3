@@ -1,0 +1,174 @@
+{
+  "schema": "qwen38-cross-engine-comparator/1",
+  "generated_utc": "2026-08-16T00:56:07Z",
+  "question": "where do the GGUF quants readers actually use sit against our EXL3 builds and official FP8, on OUR held-out suite, through ONE shared BF16 head?",
+  "why": "the standing public critique is that official FP8 is a throughput format whose quality is Q4-to-Q5 class, so beating it is a weak claim; Q8_0 and Q6_K are the honest bar.",
+  "suite": {
+    "manifest": "receipts/kld5-suite-manifest.json",
+    "shard": "shard-0000 of the v5 ladder: contexts 0-511 in the parent's fixed order",
+    "shard_suite_token_sha256": "caef8a4628d6c07c162100895096f890cdf9cafc8e4c48b3d66035d737ee7cf7",
+    "contexts": 512,
+    "context_length": 2048,
+    "scored_positions": 1048064,
+    "source_clusters": 330,
+    "note": "every candidate below scored the identical 512 contexts and the identical 1,048,064 positions"
+  },
+  "method": {
+    "metric": "KL(BF16 reference || candidate), full 248,320-entry vocabulary, exact two-pass, float32 within vocabulary chunks and float64 across them",
+    "head": "one shared BF16 lm_head for both operands; no candidate's own head quantization is counted",
+    "reference": "BF16 Qwen/Qwen3.8-27B captured under vLLM at the final norm",
+    "exl3_candidates": "captured under the same vLLM build as the reference, so they carry no cross-engine term",
+    "gguf_candidates": "captured with llama.cpp at pinned commit ece963f41b0b02d7a0d61436ae365762c073a4c8 through tools/gguf_capture.cpp, which reads the post-final-norm state (res->t_embd, src/models/qwen35.cpp) \u2014 the same mathematical point the vLLM hook takes; bf16 rounding verified bit-identical to torch on 2,012,449 probe values",
+    "cross_engine_caveat": "a GGUF number therefore contains llama.cpp-versus-vLLM numerics in addition to quantization error, which can only inflate it; the BF16-GGUF engine-floor control that would subtract it is queued, so GGUF rows here are upper bounds and our EXL3 rows are not",
+    "interval": "source-cluster bootstrap, 10,000 resamples"
+  },
+  "candidates": {
+    "gguf-q8_0": {
+      "family": "GGUF (unsloth)",
+      "engine": "llama.cpp",
+      "artifact": "unsloth/Qwen3.8-27B-GGUF@f1bfb127c64f7072bdd2cad55f258b9c8b2910fe:Qwen3.8-27B-Q8_0.gguf",
+      "serialized_bytes": 29047086048,
+      "serialized_gib": 27.052,
+      "gguf_sha256": "a680f44a06920e5d689774823782006aa3acc8db95750323373b24139b67e348",
+      "mean_kld": 0.0010868053790075265,
+      "ci95": [
+        0.0010502617170092276,
+        0.0011268527755633677
+      ],
+      "top1_agreement": 0.9853052867000488,
+      "p999_kld": 0.03511761959961298,
+      "max_kld": 3.2689112438820302,
+      "carries_cross_engine_term": true,
+      "report": "receipts/gguf-report-q8_0.json"
+    },
+    "gguf-q6_k": {
+      "family": "GGUF (unsloth)",
+      "engine": "llama.cpp",
+      "artifact": "unsloth/Qwen3.8-27B-GGUF@f1bfb127c64f7072bdd2cad55f258b9c8b2910fe:Qwen3.8-27B-Q6_K.gguf",
+      "serialized_bytes": 22884408288,
+      "serialized_gib": 21.313,
+      "gguf_sha256": "562fbf760503008f118e5df38de5b3e97992d1f693f475815631198547486727",
+      "mean_kld": 0.002035222177682657,
+      "ci95": [
+        0.0019387574794298842,
+        0.0021448220442398056
+      ],
+      "top1_agreement": 0.9798018059965804,
+      "p999_kld": 0.07944353984230398,
+      "max_kld": 3.0882506367051974,
+      "carries_cross_engine_term": true,
+      "report": "receipts/gguf-report-q6_k.json"
+    },
+    "gguf-q5_k_xl": {
+      "family": "GGUF (unsloth)",
+      "engine": "llama.cpp",
+      "artifact": "unsloth/Qwen3.8-27B-GGUF@f1bfb127c64f7072bdd2cad55f258b9c8b2910fe:Qwen3.8-27B-UD-Q5_K_XL.gguf",
+      "serialized_bytes": 20218178624,
+      "serialized_gib": 18.83,
+      "gguf_sha256": "176a6a3f034e9cdc447c10cd00329fc9b31002e6589b9295f2ad4f1eefe0f6ab",
+      "mean_kld": 0.004443525854630678,
+      "ci95": [
+        0.004158160489738586,
+        0.004769891143584534
+      ],
+      "top1_agreement": 0.9719730856130924,
+      "p999_kld": 0.214432893005265,
+      "max_kld": 4.969763278826321,
+      "carries_cross_engine_term": true,
+      "report": "receipts/gguf-report-q5_k_xl.json"
+    },
+    "hyd": {
+      "family": "EXL3 (ours)",
+      "engine": "vLLM (pinned r34)",
+      "artifact": "malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated",
+      "mean_kld": 0.002699883159684943,
+      "ci95": [
+        0.0025165341342532257,
+        0.0029118291286379205
+      ],
+      "top1_agreement": 0.9779689026624329,
+      "p999_kld": 0.13126287966486647,
+      "max_kld": 3.7348466556786946,
+      "carries_cross_engine_term": false,
+      "report": "receipts/kld5-10M-hyd.json (this shard is its first of ten)"
+    },
+    "k5k6": {
+      "family": "EXL3 (ours)",
+      "engine": "vLLM (pinned r34)",
+      "artifact": "malaiwah/Qwen3.8-27B-EXL3-K5K6",
+      "mean_kld": 0.0031413603551342147,
+      "ci95": [
+        0.0029467532068065522,
+        0.003368682230985319
+      ],
+      "top1_agreement": 0.9761083292623352,
+      "p999_kld": 0.14470799411698693,
+      "max_kld": 5.506768094147674,
+      "carries_cross_engine_term": false,
+      "report": "receipts/kld5-10M-k5k6.json (this shard is its first of ten)"
+    },
+    "ctx": {
+      "family": "EXL3 (ours)",
+      "engine": "vLLM (pinned r34)",
+      "artifact": "malaiwah/Qwen3.8-27B-EXL3-K5K6-context",
+      "mean_kld": 0.003409409957186559,
+      "ci95": [
+        0.0031704108176442074,
+        0.003686531427353988
+      ],
+      "top1_agreement": 0.9754566515021983,
+      "p999_kld": 0.1631958112023867,
+      "max_kld": 3.7491887151263654,
+      "carries_cross_engine_term": false,
+      "report": "receipts/kld5-10M-ctx.json (this shard is its first of ten)"
+    },
+    "fp8": {
+      "family": "official FP8",
+      "engine": "vLLM (pinned r34)",
+      "artifact": "Qwen/Qwen3.8-27B-FP8",
+      "mean_kld": 0.0051970635503104596,
+      "ci95": [
+        0.004879906227191791,
+        0.005557464379117151
+      ],
+      "top1_agreement": 0.9692137121397166,
+      "p999_kld": 0.24396262721444806,
+      "max_kld": 5.295716603680546,
+      "carries_cross_engine_term": false,
+      "report": "receipts/kld5-10M-fp8.json (this shard is its first of ten)"
+    },
+    "k4": {
+      "family": "EXL3 (ours)",
+      "engine": "vLLM (pinned r34)",
+      "artifact": "malaiwah/Qwen3.8-27B-K4",
+      "mean_kld": 0.010345348536682758,
+      "ci95": [
+        0.009562594149420877,
+        0.01124581917295876
+      ],
+      "top1_agreement": 0.9591322667318026,
+      "p999_kld": 0.5576395587246648,
+      "max_kld": 7.564510417655803,
+      "carries_cross_engine_term": false,
+      "report": "receipts/kld5-10M-k4.json (this shard is its first of ten)"
+    }
+  },
+  "ranking_on_this_shard": [
+    "gguf-q8_0",
+    "gguf-q6_k",
+    "hyd",
+    "k5k6",
+    "ctx",
+    "gguf-q5_k_xl",
+    "fp8",
+    "k4"
+  ],
+  "findings": {
+    "q8_is_the_fidelity_leader": "Q8_0 measures 0.001087 at 27.05 GiB of serialized weight \u2014 2.5x better than our best build and 4.8x better than official FP8. Anyone who can spare 27 GiB of weights and does not need a long context on a 32 GB card should use it. The critique that Q8 is the honest bar is correct.",
+    "fp8_is_a_weak_bar": "official FP8 measures 0.005197 while Q6_K measures 0.002035 at 7.2 GiB less serialized weight; on this suite FP8 is beaten by every GGUF point at or above 5 bits. Our published claim of 34-48 % below FP8 stands, and it is a smaller achievement than it sounds.",
+    "our_builds_sit_where_a_5_to_6_bit_build_should": "hydrated 0.002700 at 20.12 GiB of payload lands between Q6_K (0.002035 at 21.31 GiB) and UD-Q5_K_XL (0.004444 at 18.83 GiB), and slightly better than a log-linear interpolation of those two at its own size; the context edition 0.003409 at 19.27 GiB beats UD-Q5_K_XL by 23 % at 0.44 GiB more. So the format advantage at this bitrate is real but modest \u2014 nothing like a full bit on this suite.",
+    "tail_ordering_matches_mean_ordering": "p99.9 runs 0.0351 (Q8_0) < 0.0794 (Q6_K) < 0.1313 (hydrated) < 0.1447 (online) < 0.1632 (context) < 0.2144 (Q5_K_XL) < 0.2440 (FP8) < 0.5576 (K4), i.e. the same order as the means with one crossing: our three builds are lighter-tailed than UD-Q5_K_XL and FP8 despite the context build being close to Q5_K_XL on the mean.",
+    "what_this_does_not_settle": "the GGUF rows are upper bounds until the BF16-GGUF engine-floor control is measured; the comparison is text-only teacher-forced fidelity and says nothing about serving a 262,144-token multimodal context on a 32 GB card, which is where these artifacts actually differ."
+  },
+  "content_sha256": "e56af922025ca068915dce1142ae5574c3f0e7590a4507cfa0d4485f07260e9a"
+}

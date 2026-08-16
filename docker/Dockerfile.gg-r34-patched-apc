@@ -1,0 +1,71 @@
+# Declared superset of the release runtime, for prefix caching only. NOT the qualified
+# artifact: the hardware-qualified digest is the one built by Dockerfile.gg-r34-patched
+# with exactly the three published modules, and it is the image the model cards pin.
+#
+# Parent is that release image, so the three qualified modules are byte-identical here by
+# construction rather than by assertion, and the only delta in this layer is one file:
+#
+#   tools/vllm-mamba-align-scheduler.py
+#   -> vllm/v1/core/sched/scheduler.py
+#   sha256 b431c1066dfee3ed56bfa7e71cc8606f9afadc300f22d7fc542c43835d1b22bf
+#
+# That file is the r34 vendored scheduler
+# (sha256 1ea341f4cc28d282452597c25d97eea84be8b5f984d2e1a6b548356c8417fdce) plus the two
+# hunks of upstream vLLM PR #51113, "Keep mamba align prefill chunks block-aligned past
+# last_cache_position" (merge c56f169d9ae46ca420617e2cf5f0c9135da0f651, merged 2026-08-06,
+# fixes issue #43559). patches/vllm-51113-mamba-align.patch reproduces it byte-identically
+# from the vendored digest. Evidence: receipts/mamba-align-defect.json, and upstream's own
+# CPU-only regression file tests/v1/core/test_mamba_align_chunk_split.py, which is
+# 14 failed / 6 passed against the vendored scheduler and 20 passed against this one.
+#
+# Why it exists, and why it is separate:
+#
+#   The defect is latent in every measurement published so far. Prefix caching is
+#   default-off for this hybrid model in this build (vllm/engine/arg_utils.py:2532-2534
+#   excludes hybrid models), and the defect's function,
+#   Scheduler._mamba_block_aligned_split, is only called when mamba_cache_mode is "align",
+#   which only happens when prefix caching is enabled. The module is on every request's
+#   hot path; the *function* is not reached. So no published number depends on this file,
+#   and folding it into the release image would only move the release digest away from the
+#   digest that was qualified on the physical RTX 5090.
+#
+#   It is worth building anyway because enabling prefix caching is the largest untapped
+#   win for repeated long prompts, and unpatched it is unsafe in the worst way: it returns
+#   wrong tokens rather than failing. Using this image is a prerequisite for ever passing
+#   --enable-prefix-caching, and doing so needs its own qualification run.
+#
+#   podman build -f docker/Dockerfile.gg-r34-patched-apc -t localhost/vllm:gg-r34-patched-apc .
+#   (build the release image first; docker/build-image.sh handles both)
+
+ARG PARENT=localhost/vllm:gg-r34-patched
+FROM ${PARENT}
+
+COPY tools/vllm-mamba-align-scheduler.py \
+     /opt/venv/lib/python3.12/site-packages/vllm/v1/core/sched/scheduler.py
+
+# Fail closed on all four modules, not just the new one: this image is only meaningful if
+# it is a strict superset of the release image's verified source map.
+RUN set -eu; \
+    V=/opt/venv/lib/python3.12/site-packages/vllm; \
+    printf '%s  %s\n' \
+      2df9d0799fd323798cead1edb773cab556c94798eec263ee03ded35408c6e4ee \
+      "$V/model_executor/layers/quantization/exl3.py" \
+      04d2bd587b37142f4f55a8d00b9f8c907309490168cb7fcdfde450531df2c9e7 \
+      "$V/model_executor/models/qwen3_5.py" \
+      0090dc131f0eaf439b24d50baf4def9f10b052864c76e695053d64f66b274bab \
+      "$V/model_executor/models/qwen3_5_mtp.py" \
+      b431c1066dfee3ed56bfa7e71cc8606f9afadc300f22d7fc542c43835d1b22bf \
+      "$V/v1/core/sched/scheduler.py" \
+      | sha256sum -c -; \
+    chmod 0644 "$V/v1/core/sched/scheduler.py"; \
+    rm -f "$V/v1/core/sched/__pycache__/scheduler."*.pyc; \
+    /opt/venv/bin/python -c 'import ast,sys;[ast.parse(open(p,encoding="utf-8").read(),p) for p in sys.argv[1:]]' \
+      "$V/v1/core/sched/scheduler.py"
+
+LABEL org.opencontainers.image.title="Gilded Gnosis vLLM r34 + Qwen3.8-27B EXL3 native-context patches + PR #51113 (prefix-caching prerequisite)" \
+      org.opencontainers.image.description="Declared superset of localhost/vllm:gg-r34-patched; adds only vllm/v1/core/sched/scheduler.py from PR #51113. Not the hardware-qualified digest." \
+      io.malaiwah.image.qualified="false" \
+      io.malaiwah.image.role="prefix-caching prerequisite; requires its own qualification run before --enable-prefix-caching is used" \
+      io.malaiwah.patch.scheduler_py.sha256="b431c1066dfee3ed56bfa7e71cc8606f9afadc300f22d7fc542c43835d1b22bf" \
+      io.malaiwah.patch.scheduler_py.upstream_pr="vllm-project/vllm#51113" \
+      io.malaiwah.patch.scheduler_py.upstream_merge="c56f169d9ae46ca420617e2cf5f0c9135da0f651"
