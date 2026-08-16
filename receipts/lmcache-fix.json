@@ -49,7 +49,13 @@
       "what": "gates the GG scheduler's per-group hybrid+connector path on getattr(connector, 'supports_divergent_local_hybrid_hits', False), mirroring upstream vLLM's #48425-lineage contract. With LMCacheMPConnector (no opt-in) the scheduler falls back to get_computed_blocks (min across groups), which resumes only where every group's state exists -- the exact configuration the clean L0 control ran.",
       "gates_passed_cpu": "patch applies cleanly to the pinned image's scheduler.py and round-trips byte-identically to the reviewed edit; patched file py_compiles. Behavioral proof is GPU-ladder-only by nature and is the named pending item.",
       "tradeoff_stated": "a GG deployment using nixl P/D with hybrid models would lose the FA-hit optimization until GG rebases the full upstream capability plumbing; the campaign image does not use nixl.",
-      "routing": "handed to Main for the GG-vLLM tree (owner of downstream vLLM patches); ImageForge consumes it as an image layer only if Main approves; it is a vLLM patch, not an LMCache wheel change."
+      "routing": "handed to Main for the GG-vLLM tree (owner of downstream vLLM patches); ImageForge consumes it as an image layer only if Main approves; it is a vLLM patch, not an LMCache wheel change.",
+      "shipped_bytes_verification": {
+        "note": "the code-reading above was initially done on /var/tmp/gg-rootfs (a sibling image extraction, voipmonitor/vllm@820181fb); the defect was then re-verified against the EXACT bytes the ladder arms ran",
+        "base_image_scheduler": "extracted from localhost/vllm:gg-r34-patched-apc on the driver VM; sha256 b431c1066dfee3ed56bfa7e71cc8606f9afadc300f22d7fc542c43835d1b22bf matches the reuse-test receipt's stage-time assertion; unconditional per-group path present at lines 727-764 with num_new_local_computed_tokens = max(per_group_hits) at line 754",
+        "patch_applicability": "applies with patch -p1 --fuzz=0 to the base scheduler (b431c106) AND to sr1's post-#52530 scheduler (e98b7227, hunk offset +37 lines); both patched files py_compile. An sr2 layer can consume the same patch file unchanged.",
+        "lmcache_wheel_reading_unaffected": "the LMCache wheel bytes in gg-rootfs are RECORD-hash-identified as the shipped wheel (sha 83207aac...), so all LMCache-side findings were already against exact shipped code"
+      }
     }
   },
   "duplicate_search": {
