@@ -1172,8 +1172,17 @@ the value that fails the combined long-text-plus-seven-megapixel request
 not return an error: it accepts the request and stays busy forever.
 `vllm:num_preemptions_total` stays at `0.0` and the only signal is
 `vllm:num_requests_waiting_by_reason{reason="capacity"} = 1`, which is indistinguishable from a
-healthy server that is momentarily full. Your hardware is not failing. Reported upstream as
-[issue #394](https://github.com/local-inference-lab/vllm/issues/394).
+healthy server that is momentarily full. Your hardware is not failing. Filed upstream as
+[vllm-project/vllm#52520](https://github.com/vllm-project/vllm/issues/52520) — an accepted
+request that can never be scheduled is re-prefilled indefinitely instead of being rejected at
+admission, and no preemption counter moves — with the fork-side trace at
+[local-inference-lab/vllm#394](https://github.com/local-inference-lab/vllm/issues/394). The
+exact-boundary variant of the same row, where the pool equals `max_model_len` and the startup
+check passes at 1.00× before the server produces nothing, is the open upstream PR
+[#47272](https://github.com/vllm-project/vllm/pull/47272), which our measurement corroborates
+at a 1,600-token mamba block size. Our own prior-art search, with every query recorded so the
+negatives are checkable, is in
+[`receipts/upstream-issue-sweep.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/upstream-issue-sweep.json).
 
 **If you want prefix caching on this edition, cap the window.** Measured, not inferred: at
 `--max-model-len 256000` with `--gpu-memory-utilization 0.9585` the pool is 264,777 tokens
