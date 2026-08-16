@@ -948,6 +948,32 @@ venue. The failure *family* is publicly known and cited rather than claimed as n
 that `plan()` cannot be captured by CUDA graph, and `flashinfer-ai/flashinfer#1832` documents non-uniform
 `q_len` in speculative decode - but no existing report matches this gate.
 
+**The upstream reviewer was right, and #52530 grew 2026-08-16.** `brianosaurus` reviewed
+[#52530](https://github.com/vllm-project/vllm/pull/52530), confirmed the null-block diagnosis,
+independently verified that the deferred cleanup cannot hang (unservable requests are counted by
+`get_num_unfinished_requests`, so `EngineCore.step` does not take its early return), and asked whether
+the **decode** case was deliberately out of scope: `_is_unservable` bounds admission on
+`num_tokens + 1`, but a generate request grows to `prompt + max_tokens`. We answered by reproducing it
+rather than arguing. On unmodified upstream `main` at `4d2a68d6`, CPU-only, no weights: `prompt=1000,
+max_tokens=24, ignore_eos` against a 69-block pool passes the frontend check (1024 <= 1024) and passes
+`_is_unservable` (1001 <= 1008), reaches 1,009 tokens at output token 9, is preempted at step 13, and
+then sits **3,987 further scheduler steps with `scheduled=0`, output frozen at 9 of 24, all 68 blocks
+free, status PREEMPTED** - a livelock, the same defect. Controls: a 70-block pool finishes 24/24 in 28
+steps, and the same pool with `max_tokens=8` finishes 8/8 in 12 steps. **One honest correction to our
+own framing:** `num_preemptions_total` increments **once** and does not climb, because the request
+becomes too long to re-prefill - the decode case collapses into the prefill case rather than
+oscillating. The fix is a one-line length cap at the point of exhaustion
+(`check_stop(request, self.max_servable_num_tokens)`), chosen over the reviewer's admission-time
+`num_tokens + max_tokens` bound because that bound would refuse requests that stop before the wall -
+the `max_tokens=8` control is exactly such a request and it completes on the same pool - and over an
+error at exhaustion, because the client has already been streamed tokens and `finish_reason:"length"`
+is truthful. **And a retraction:** our acknowledgement comment said the speculative reserve widens the
+gap between `max_servable_num_tokens` and `max_model_len`; measured across 14 configurations it
+contributes **zero** (it is priced on both sides), and the gap is exactly the null block -
+`((max_model_len - 1) mod block_size) + 1` tokens, never more, and zero when one spare block exists.
+PR now +470/-3 over two commits, ruff/typos/mypy clean, 7/7 on the new tests where the isolated revert
+fails 1 and stock `main` fails 5.
+
 **LMCache corruption landed upstream 2026-08-16 - as corroboration, not a new issue.** Owner granted standing
 approval to post on the LMCache project (and any other upstream project) on his behalf. A duplicate search
 (six queries, recorded in [`receipts/lmcache-upstream-filing.json`](../receipts/lmcache-upstream-filing.json))
