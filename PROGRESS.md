@@ -1032,3 +1032,36 @@ field. The harness now classifies that as conformance rather than as a defect �
 correct, while a 5xx, an unexplained refusal or acceptance-with-loss stays a P0 — and two passes on
 two separate serves of the same build agree on every status and, modulo the server's random per-call
 `tool_call` ids, on every byte of every response.
+
+## 2026-08-16 — kld9 window: the 16 GB flip condition and K6-parity (SixteenFlipCalib2)
+
+Two of three pre-registered conversions ran on the rental RTX PRO 6000; the third was handed on.
+Everything was pre-registered before converting in `receipts/preregistration-kld9-window.json`,
+which grew five pre-conversion addenda as the prep turned up problems.
+
+- **S16-V, the first sub-4-bit width ever measured in this family: 0.045374 [0.041959, 0.049351].**
+  docs/34 flip item (1) is closed and the answer is **NO**. Loses 512/512 to K4 (4.39x) and 512/512
+  to the context edition (13.31x), every stratum with intervals excluding zero; p99.9 2.3704, max
+  12.5031, top-1 91.73 %. The pre-registered range [0.03, 0.10] and the independent surrogate
+  bracket [0.0318, 0.0585] both contained it; the registered point estimate 0.0689 was 1.52x too
+  high. Receipt `receipts/sixteen-flip-kld.json`.
+- **K6-parity: 0.001634 [0.001541, 0.001742] — MATCHES GGUF `Q6_K` at equal file bytes.** Between
+  Q6_K net 0.001528 and measured 0.002035; better than hydrated by 0.001066 (511/512) and better
+  than Q6_K measured by 0.000401 (493/512). docs/29 predicted 0.0016 in advance — within 2.1 %.
+  The registered interval [0.001175, 0.001601] MISSED, 2.0 % low. Receipt
+  `receipts/k6-parity-kld.json`, card `MODEL_CARD-K6-parity.md`.
+- **The byte law is exact below 4 bits and at parity**: both payloads predicted to the byte
+  (13,711,503,428 and 23,035,310,148, zero error).
+- **The 3.73x-per-bit law holds one rung below its fit**: realised K3 proxy errors match the
+  extrapolation at median 1.0164 for the 96 modules with no measured rung.
+- **The 16 GB class was never lost on bytes.** With the first loader term ever measured for a
+  sub-4-bit build (+0.0402 GiB) the resident figure is 11.626 GiB against budgets of 12.70 and
+  12.49. It is lost on measured fidelity instead.
+- **Four axis errors found in the published cross-engine comparison** and corrected in
+  `receipts/cross-candidate-byte-accounting.json`: GGUF whole-file against our tensor payload,
+  text-only against multimodal (the Q6_K GGUF has no vision tensors — mmproj ships separately),
+  non-uniform embedding and head widths per tier, and body against body. Two move against us and
+  two for us. `receipts/byte-law-recipe-audit.json` re-derived 25 published byte rows; none moved.
+- Open, no GPU needed: upload both checkpoints (37 GB, digested in the receipts) and write the
+  S16-V research-artifact card. Alt-calibration handed to `ShortlistScore` with
+  `local://altcal-handover.md`.
