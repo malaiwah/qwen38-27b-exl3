@@ -93,7 +93,11 @@ export HF_HOME=${HF_HOME:-/var/tmp/hf-home-3}
 
 QCFG='{"linear":{"weight":"mxfp8"},"ignore":["re:.*visual\\..*","re:.*in_proj_a$","re:.*in_proj_b$","re:.*in_proj_ba$","re:.*mtp\\..*","lm_head"]}'
 SPEC='{"method":"mtp","num_speculative_tokens":3}'
-MODEL_INFO='{"max_input_tokens":32768,"max_output_tokens":8192,"input_cost_per_token":0,"output_cost_per_token":0}'
+# The cache_* costs are present only to silence LiteLLM's register_model warning
+# ("cache cost fields will default to 0"), observed in the agent preflight. All
+# costs are 0 because this is a local endpoint; the fields that matter are the
+# token limits, without which the agent miscomputes remaining context.
+MODEL_INFO='{"max_input_tokens":32768,"max_output_tokens":8192,"input_cost_per_token":0,"output_cost_per_token":0,"cache_creation_input_token_cost":0,"cache_read_input_token_cost":0}'
 
 usage() { sed -n '2,80p' "$0"; exit 1; }
 
@@ -131,16 +135,42 @@ serve() {
     --host 127.0.0.1 --port "$LPORT"
 }
 
-# The remote TCP port is owned by OUR OWN proxy, not by sshd. Rationale, learned
-# the hard way during preflight: with a plain `ssh -R <port>:...` an unclean
-# client death leaves sshd holding a STALE listener that accepts and then resets
-# (curl rc=56), and that listener belongs to sshd's *root* privsep process --
-# unkillable by this user, invisible to both `fuser` and `lsof`. The port cannot
-# just be changed either, because harbor bakes api_base into the job config and
-# resume demands an identical config, so it must stay fixed across all 3 passes.
-# Therefore: ssh binds a unix SOCKET (with StreamLocalBindUnlink=yes, so ssh
-# itself clears any stale socket file), and tools/tb_tunnel_proxy.py -- an
-# ordinary user process we can kill and restart -- owns 127.0.0.1:$RPORT.
+# Two preflight lessons are baked into this function.
+#
+# (1) The tunnel MUST own a dedicated ssh connection.
+#     ~/.ssh/config sets `ControlMaster auto` + `ControlPersist 600` for this
+#     host, so by default a forward is registered on a shared, persistent master
+#     and OUTLIVES the client process. That silently breaks a reconnect loop in
+#     both directions: killing the client does not drop the forward (so drops go
+#     undetected and a reconnect test can appear to pass while proving nothing),
+#     and the loop's own `ssh -N` can exit immediately having handed the forward
+#     to the master. ControlMaster=no + ControlPath=none makes the forward's
+#     lifetime equal to this process's lifetime, which is the whole point.
+#     Note rssh() deliberately still uses the shared master: for short commands
+#     that multiplexing is pure win.
+#
+# (2) The remote TCP port is owned by OUR OWN proxy, not by sshd.
+#     A plain `ssh -R <port>:...` makes sshd own the remote listener, so its
+#     state is not ours to manage -- and the port cannot simply be changed when
+#     something goes wrong, because harbor bakes api_base into the job config
+#     and resume demands an identical config (job.py:246), so it must stay fixed
+#     across all three passes. Instead ssh binds a unix SOCKET and
+#     tools/tb_tunnel_proxy.py -- an ordinary user process we can kill and
+#     restart -- owns 127.0.0.1:$RPORT. It also refuses fast when the socket is
+#     absent (FileNotFoundError) or dead (ConnectionRefusedError), which is what
+#     makes wait-ready and probe real signals.
+#
+# (3) The stale remote socket must be unlinked BY US, before every attempt.
+#     StreamLocalBindUnlink is a red herring for `-R`: for a REMOTE forward the
+#     unlink happens on the server, so it is sshd_config's StreamLocalBindUnlink
+#     that governs it, and that defaults to "no". Observed directly -- after an
+#     unclean drop every reconnect failed with
+#     "Error: remote port forwarding failed for listen path <sock>" in a loop,
+#     while the stale socket file sat there and the proxy logged
+#     ConnectionRefusedError. We cannot edit sshd_config, but the socket lives
+#     under /run/user/1000 and is ours, so the loop deletes it itself.
+#     (Deleting it is only safe because of (1): with a persistent master still
+#     holding the forward it would have removed a live listener.)
 tunnel() {
   local sock=${TB_SOCK:-/run/user/1000/tb21-vllm.sock}
   echo "[tunnel] rental:$LPORT -> unix:$sock -> $REMOTE:127.0.0.1:$RPORT"
@@ -149,7 +179,6 @@ tunnel() {
     echo "[tunnel] FATAL: cannot deploy the proxy" >&2; return 1; }
   # rssh already cd's into $HOME/$RDIR, so these paths are relative to it.
   rssh "if [ -f .tunnel-proxy.pid ]; then kill \$(cat .tunnel-proxy.pid) 2>/dev/null || true; sleep 1; fi;
-        rm -f $sock;
         nohup python3 tb_tunnel_proxy.py --port $RPORT --socket $sock \
           --pidfile .tunnel-proxy.pid >> tunnel-proxy.log 2>&1 &
         sleep 1; tail -3 tunnel-proxy.log"
@@ -157,9 +186,12 @@ tunnel() {
   while true; do
     n=$((n+1))
     echo "[tunnel] attempt $n at $(date -Is)"
+    # Clear any stale socket left by an unclean drop; sshd will not do it.
+    rssh "rm -f $sock" 2>/dev/null || true
     ssh -N -o BatchMode=yes -o ExitOnForwardFailure=yes -o ConnectTimeout=15 \
         -o ServerAliveInterval=30 -o ServerAliveCountMax=6 -o TCPKeepAlive=yes \
         -o StreamLocalBindUnlink=yes \
+        -o ControlMaster=no -o ControlPath=none \
         -R "$sock:127.0.0.1:$LPORT" "$REMOTE" && rc=0 || rc=$?
     echo "[tunnel] dropped rc=$rc at $(date -Is); reconnecting in 5s" >&2
     sleep 5

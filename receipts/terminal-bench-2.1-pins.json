@@ -26,8 +26,8 @@
       "disk_free_home_gb_at_pin_time": 67
     },
     "tunnel": {
-      "form": "ssh -N -R /run/user/1000/tb21-vllm.sock:127.0.0.1:8000 aiboss  (unix socket, NOT a TCP port), plus tools/tb_tunnel_proxy.py on aiboss owning 127.0.0.1:18010",
-      "options": "BatchMode=yes ExitOnForwardFailure=yes ConnectTimeout=15 ServerAliveInterval=30 ServerAliveCountMax=6 TCPKeepAlive=yes StreamLocalBindUnlink=yes",
+      "form": "ssh -N -R /run/user/1000/tb21-vllm.sock:127.0.0.1:8000 aiboss  (unix socket, NOT a TCP port), with ControlMaster=no + ControlPath=none, plus tools/tb_tunnel_proxy.py on aiboss owning 127.0.0.1:18010",
+      "options": "BatchMode=yes ExitOnForwardFailure=yes ConnectTimeout=15 ServerAliveInterval=30 ServerAliveCountMax=6 TCPKeepAlive=yes ControlMaster=no ControlPath=none",
       "reconnect": "tools/run_terminal_bench.sh tunnel loops forever, reclaiming the remote listener with `fuser -k -n tcp 18000` after an unclean drop, because the bench is hours long",
       "rtt_measurement": {
         "status": "MEASURED before the GPU window, with a stand-in HTTP endpoint on the same port (python3 -m http.server on rental 127.0.0.1:8000). Re-measured against the LIVE vLLM endpoint at window start by `run_terminal_bench.sh probe`, and that value is what the pass receipt carries.",
@@ -71,27 +71,43 @@
         }
       },
       "reconnect_verified": {
-        "status": "VERIFIED before the GPU window, against the FINAL unix-socket design",
-        "method": "Brought the tunnel up (proxy listening on 127.0.0.1:18010, unix socket present, HTTP 200 through it at 0.5825 s TTFB), then SIGKILL'd the ssh client to simulate the worst case -- an unclean death, which is exactly what poisoned port 18000 under the old design.",
-        "tunnel_log": [
-          "[proxy] listening 127.0.0.1:18010 -> unix:/run/user/1000/tb21-vllm.sock pid=413688",
-          "[tunnel] attempt 1 at 2026-08-16T14:34:17+00:00",
-          "[tunnel] dropped rc=137 at 2026-08-16T14:34:31+00:00; reconnecting in 5s",
-          "[tunnel] attempt 2 at 2026-08-16T14:34:36+00:00"
+        "status": "VERIFIED HONESTLY against the final design, after the first attempt at this test was found invalid (see correction_superseded_claim)",
+        "why_this_test_is_valid": "The tunnel now owns a dedicated ssh connection, so a SIGKILL of that process genuinely removes the forward. The test asserts the drop is REAL before asserting recovery -- the step the invalid test was missing.",
+        "sequence": [
+          "baseline through the tunnel: http=200 ttfb=0.515785",
+          "SIGKILL the dedicated ssh client at 2026-08-16T14:47:22Z",
+          "immediately after: curl rc=56, http=000 -- the forward is genuinely gone (this is the assertion the earlier invalid test could never have made)",
+          "[tunnel] dropped rc=137 at 14:47:22 -> [tunnel] attempt 2 at 14:47:27",
+          "RECOVERED 14 s after the kill: http=200"
         ],
-        "recovery": "Recovered on the SAME port within ~14 s of the kill: http=200 ttfb=0.581403.",
-        "proxy_survived_the_drop": "The proxy kept running across the tunnel drop (same pid 413688), so the TCP port was never released and therefore could never be poisoned.",
-        "clean_shutdown_proof": "On deliberate stop, the proxy released 18010 immediately, while port 18000 remained held by the root-owned sshd -- the contrast that motivates the design.",
-        "why_it_matters": "The bench runs for hours over a link with a 266 ms leg; an unrecovered or poisoned tunnel would otherwise convert into a wave of task failures."
+        "proxy_survived_the_drop": "The proxy kept the TCP port across the drop, so harbor's api_base target never disappeared; only the upstream unix socket went away, and the proxy refused fast in the meantime.",
+        "why_it_matters": "The bench runs for hours over a link with a 266 ms leg. An unrecovered drop would otherwise convert into a wave of task failures -- and in-run retries are transport-only precisely so that such a wave is retried rather than scored."
       },
       "remote_port": 18010,
       "port_ownership_design": {
-        "problem_found_in_preflight": "With a plain `ssh -R <port>:127.0.0.1:8000`, an unclean client death leaves sshd holding a STALE TCP listener on the remote side. Measured: it accepts the connection and immediately resets it (curl exits rc=56 after 0.29 s), so every request through it fails.",
-        "why_it_could_not_simply_be_cleaned": "That listener is held by sshd's ROOT privsep process (`sshd: mbelleau [priv]`), confirmed by resolving the listening socket's inode from /proc/net/tcp and finding no readable /proc/<pid>/fd match among this user's processes. `fuser -k -n tcp` and `lsof -iTCP` both report nothing. An unprivileged agent cannot reclaim the port; it stays poisoned until sshd happens to reap it.",
-        "why_changing_the_port_is_not_a_general_fix": "harbor bakes `api_base` into the job's config.json, and resume requires an identical config (job.py:246). The port must therefore stay fixed across all three passes, so a poisoned port cannot be worked around by moving.",
-        "fix": "Take port ownership away from sshd. ssh binds a UNIX SOCKET with StreamLocalBindUnlink=yes -- which makes ssh itself unlink any stale socket file before binding, so the ssh side cannot be poisoned -- and tools/tb_tunnel_proxy.py, an ordinary user process, owns the TCP port harbor talks to. That process is killable and restartable by this agent, and it binds with SO_REUSEADDR.",
-        "extra_benefit": "The proxy refuses fast (instead of hanging) whenever the unix socket is absent or not accepting, which is what makes `wait-ready` and `probe` real signals rather than timeouts.",
-        "port_18000_abandoned": "18000 was poisoned during preflight and is still held by the root sshd; the run uses 18010, which our own proxy owns."
+        "why_not_a_plain_tcp_reverse_forward": "With `ssh -R <port>:...` the remote TCP listener belongs to sshd, so its lifetime and state are not ours to manage. And the port cannot simply be changed when something goes wrong: harbor bakes api_base into the job's config.json and resume requires an identical config (job.py:246), so the port must stay fixed across all three passes.",
+        "design": "ssh binds a UNIX SOCKET under /run/user/1000 (ours), and tools/tb_tunnel_proxy.py -- an ordinary user process -- owns the TCP port harbor talks to (127.0.0.1:18010). The proxy is killable and restartable by this agent and binds with SO_REUSEADDR.",
+        "requirement_1_dedicated_connection": "ControlMaster=no + ControlPath=none on the tunnel's ssh. Without this the forward is handed to the persistent master and outlives the loop, which both hides real drops and invalidates any reconnect test. rssh() still uses the shared master deliberately: for short commands multiplexing is pure win.",
+        "requirement_2_we_unlink_the_stale_socket": {
+          "finding": "StreamLocalBindUnlink is a red herring for `-R`. For a REMOTE forward the unlink happens on the server, so it is governed by sshd_config's StreamLocalBindUnlink, which defaults to \"no\" -- the client-side option does not help.",
+          "observed_failure": "After an unclean drop every reconnect attempt failed in a loop with `Error: remote port forwarding failed for listen path /run/user/1000/tb21-vllm.sock`, while the stale socket file remained and the proxy logged ConnectionRefusedError.",
+          "fix": "The tunnel loop deletes the socket itself before every attempt (`rm -f` over the shared master). sshd_config is not ours to edit, but the socket lives under /run/user/1000 and is ours.",
+          "safety": "Deleting it is only safe because of requirement 1: with a persistent master still holding the forward, the same delete would have removed a LIVE listener -- which is exactly the bug that broke the first attempt at this design."
+        },
+        "diagnostic_benefit": "The proxy distinguishes a missing socket (FileNotFoundError) from a dead one (ConnectionRefusedError) and refuses fast instead of hanging, which is what makes `wait-ready` and `probe` real signals rather than timeouts."
+      },
+      "correction_superseded_claim": {
+        "note": "Recorded in full rather than silently replaced. This agent published the claim below and it was WRONG; the corrected mechanism follows in port_ownership_design and reconnect_verified.",
+        "what_was_published": "That after an unclean client death the stale reverse-forward listener was held by sshd's ROOT privsep process, was therefore unreclaimable by this user, and that port 18000 was permanently poisoned.",
+        "published_in_commits": [
+          "7d38209",
+          "2b26777"
+        ],
+        "why_it_looked_true": "`ss -ltnp`, `fuser -v -n tcp` and `lsof -nP -iTCP` all reported no owner for the listening socket; resolving the socket inode from /proc/net/tcp found no readable /proc/<pid>/fd match among this user's processes, and the only remaining candidates were the root-owned `sshd: mbelleau [priv]` privsep processes.",
+        "what_was_actually_true": "The forward belonged to our OWN persistent ssh master. ~/.ssh/config sets `ControlMaster auto` with `ControlPath /var/tmp/ssh-aiboss-%r` and `ControlPersist 600`, so forwards are registered on a shared master and outlive the client process entirely.",
+        "how_it_was_disproved": "`ssh -O cancel -R 127.0.0.1:18000:127.0.0.1:8000 aiboss` released port 18000 immediately while `ssh -O check` still reported the master alive. A root-owned listener could not have been cancelled that way. Separately, port 18000 had earlier started answering HTTP 200 again the moment a server was placed on rental:8000 -- proving the forward was live all along, not stale; the earlier `curl rc=56` meant only that nothing was listening at the far end.",
+        "the_consequence_that_mattered": "The 'reconnect verified' test published in those commits was INVALID. Killing the client did not drop the forward, because the persistent master was doing the forwarding, so the test could not have detected a failure to reconnect. It was re-run honestly (see reconnect_verified) and only passes now because ControlMaster=no makes the forward's lifetime equal to the loop's ssh process.",
+        "unaffected": "The 581 ms round-trip figure and its decomposition are unaffected: those are path RTT measurements, independent of which process owns the forward."
       }
     }
   },
@@ -244,13 +260,62 @@
     ]
   },
   "harness_validation_evidence": {
-    "what": "An oracle-agent trial run through the full stack BEFORE committing the card to hours of bench: podman rootless -> docker CLI -> compose -> task container -> verifier -> result.json.",
-    "job": "oracle-smoke",
-    "task": "regex-log",
-    "reward": 1.0,
-    "wall_s": 29.716,
-    "meaning": "Proves the container runtime, compose wiring, verifier and artifact capture all work on aiboss. The oracle agent needs no model, so this isolates the infrastructure from the endpoint.",
-    "published_at": "https://huggingface.co/datasets/malaiwah/qwen38-27b-terminal-bench-2.1/tree/main/harness-validation/oracle-smoke"
+    "stage_1_infrastructure_oracle": {
+      "what": "An oracle-agent trial through the full stack: podman rootless -> docker CLI -> compose -> task container -> verifier -> result.json.",
+      "job": "oracle-smoke",
+      "task": "regex-log",
+      "reward": 1.0,
+      "wall_s": 29.716,
+      "proves": "container runtime, compose wiring, verifier and artifact capture all work on aiboss",
+      "does_not_prove": "anything about the agent: the oracle agent needs no model, so Terminus-2's endpoint integration is untouched by this test",
+      "published_at": "harness-validation/oracle-smoke"
+    },
+    "stage_2_agent_integration_mock_endpoint": {
+      "what": "The gap left by stage 1, closed with NO GPU: a minimal but genuinely OpenAI-compatible endpoint (tools/tb_mock_endpoint.py) returning valid Terminus-2 JSON responses, reached through the real reverse tunnel, driving a real task container.",
+      "why": "Discovering a LiteLLM naming, model_info, api_base, response-parsing or transcript bug while holding a queued shared GPU for a multi-hour bench would be expensive. The rental card was still two agents away, so this cost nothing but time.",
+      "job": "tb21-mock-agent-preflight",
+      "task": "regex-log",
+      "command_shape": "harbor run -p tasks -a terminus-2 -m hosted_vllm/qwen38 --ak api_base=http://127.0.0.1:18010/v1 --ak model_info={...} --ak max_turns=3 --ae HOSTED_VLLM_API_KEY=local -i regex-log -n 1",
+      "result": {
+        "trials": 1,
+        "exceptions": 0,
+        "reward": 0.0,
+        "runtime_s": 43
+      },
+      "reward_zero_is_the_expected_outcome": "The mock does not solve the task; a reward of 0 with ZERO exceptions is exactly the pass condition for a plumbing test. What is being asserted is that every link in the chain worked, not that the task was solved.",
+      "what_it_proved": {
+        "litellm_hosted_vllm_naming": "accepted; the model resolved as 'qwen38'",
+        "explicit_model_info": "accepted (no context-window error); recorded in the trial as model 'qwen38'",
+        "api_base_through_the_tunnel": "the agent's calls arrived at the rental: the mock logged the chat completions",
+        "agent_identity_recorded": "agent 'terminus-2', agent_version '2.0.0' in result.json",
+        "response_parsing": "the agent parsed the JSON schema (analysis/plan/commands/task_complete) and acted on it",
+        "multi_turn_loop": "the mock saw 1 message on the first chat call and 3 on the second, i.e. the previous turn's terminal output was fed back",
+        "keystrokes_reached_the_container": "the captured pane shows the mock's exact commands executed at a root shell inside the task container: 'echo tb21-preflight-turn-11 > /tmp/tb21_preflight_marker' and the turn-12 line",
+        "token_accounting": {
+          "n_input_tokens": 2185,
+          "n_output_tokens": 178,
+          "n_cache_tokens": 0
+        },
+        "phase_timings": {
+          "env_setup_s": 2.138,
+          "agent_exec_s": 5.645,
+          "verifier_s": 6.882,
+          "wall_s": 42.277
+        },
+        "transcript_and_artifact_capture": [
+          "agent/trajectory.json",
+          "agent/terminus_2.pane",
+          "agent/recording.cast (asciinema)",
+          "verifier/ctrf.json",
+          "verifier/reward.txt",
+          "verifier/test-stdout.txt"
+        ],
+        "cpu_only_recorded_per_trial": "config.environment.override_gpus = null"
+      },
+      "one_defect_found_and_fixed": "LiteLLM warned 'register_model: model=qwen38 not in built-in cost map ... cache cost fields will default to 0'. cache_creation_input_token_cost and cache_read_input_token_cost were added to model_info (all costs 0, local endpoint) to clear it.",
+      "not_used_in_any_scored_pass": "This is a preflight instrument only. The three protocol passes talk to the real vLLM server. Any row produced against the double is self-identifying anyway: the mock reports owned_by 'mock-preflight-endpoint', and the job name is 'tb21-mock-agent-preflight'.",
+      "published_at": "harness-validation/mock-agent-preflight"
+    }
   },
   "dataset": {
     "repo": "malaiwah/qwen38-27b-terminal-bench-2.1",
