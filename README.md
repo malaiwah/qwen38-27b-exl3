@@ -1,24 +1,36 @@
-> **Status: iteration 2 published; fidelity re-measured on 10,480,640 held-out positions
-> (2026-08-15).** The current checkpoint is
+> **Status 2026-08-16: the collection is hardware-qualified, the comparator set is measured, and
+> the method is now reproducible from published artifacts.** The current checkpoint is
 > [`malaiwah/Qwen3.8-27B-EXL3-K5K6`](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6):
 > mean KLD **0.003210** (95 % CI [0.002982, 0.003480]) body-only at **20.32 GiB** resident
 > weights, versus official [`Qwen/Qwen3.8-27B-FP8`](https://huggingface.co/Qwen/Qwen3.8-27B-FP8)
 > at **0.005294** — **39 % lower divergence at 71 % of its resident weight**, paired
-> **-0.002084** [-0.002249, -0.001942] winning **5,105 of 5,120** held-out contexts
-> (`receipts/kld5-10M-k5k6.json`, `receipts/kld5-10M-paired.json`). The best profile in the
-> collection is the hydrated build at **0.002760**, paired **-0.002534** on **5,118/5,120**.
-> The headline suite is now v5: **5,120 contexts x 2,047 positions = 10,480,640 scored
-> positions** over **842 source clusters**, calibration- and v4-token-disjoint
-> (`receipts/kld5-suite-manifest.json`). The earlier headline — 0.007945 body-only on 136 v3
-> contexts / 278,392 positions ([docs/22](docs/22-results-iteration-2.md)) — stands exactly as
-> measured and is superseded only as *the* headline; v5 absolute KLD is **not** comparable to
-> v3, so quote paired differences across suites, never means. Figures labelled K4 or v1 belong
-> to iteration 1 and are superseded. One earlier control was **withdrawn**: the
-> "CUDA-graph parity 0.000000" receipt captured a *prefill* forward, which
-> `FULL_DECODE_ONLY` never captures, so it could not have measured decode; the decode
-> probe that replaces it is [docs/27](docs/27-graph-decode-drift-control.md). Open items
-> are tracked in [docs/21](docs/21-independent-review-response.md),
-> [docs/23](docs/23-next-attack-list.md) and [docs/29](docs/29-plan-and-loose-ends.md).
+> **-0.002084** [-0.002249, -0.001942] winning **5,105 of 5,120** held-out contexts. The best
+> profile in the collection is the hydrated build at **0.002760**, paired **-0.002534** on
+> **5,118/5,120**. The headline suite is v5: **5,120 contexts x 2,047 positions = 10,480,640
+> scored positions** over **842 source clusters**, calibration- and v4-token-disjoint.
+>
+> Landed since: the context edition is **qualified on a physical RTX 5090** (all seven gates at
+> `--gpu-memory-utilization 0.955` with `expandable_segments`, 265,122 KV tokens at 262,144 —
+> and a second physical 5090 needed 0.956, so utilisation is a per-card measurement, not a
+> constant). `unsloth`'s NVFP4 is now **on our suite** at 0.031059 over 10.48 M positions,
+> losing 5,120 of 5,120 contexts to both the context edition and FP8. The external
+> `llama-perplexity` protocol was **run for cross-citation** and reproduces our ordering.
+> Capture and replay are **bit-reproducible**, and a fresh conversion of the same recipe — a
+> *sibling*, 97.6 % of quantized modules differing in bytes — scores **indistinguishable** from
+> the published checkpoint, so the recipe determines fidelity while the published bytes remain
+> the artifact. The suite, the shared BF16 reference capture and every per-shard report are
+> published as a [dataset](https://huggingface.co/datasets/malaiwah/qwen38-27b-fidelity-suite-v5),
+> with archival mirrors of the third-party artifacts our numbers cite.
+>
+> The earlier headline — 0.007945 body-only on 136 v3 contexts / 278,392 positions
+> ([docs/22](docs/22-results-iteration-2.md)) — stands exactly as measured and is superseded only
+> as *the* headline; v5 absolute KLD is **not** comparable to v3 (the two suites differ by a
+> measured 2.46-3.08x with identical ordering), so quote paired differences across suites, never
+> means. Figures labelled K4 or v1 belong to iteration 1 and are superseded. One earlier control
+> was **withdrawn**: the "CUDA-graph parity 0.000000" receipt captured a *prefill* forward, which
+> `FULL_DECODE_ONLY` never captures, so it could not have measured decode; the decode probe that
+> replaces it is [docs/27](docs/27-graph-decode-drift-control.md). Open items are tracked in
+> [docs/29](docs/29-plan-and-loose-ends.md).
 
 # Qwen3.8-27B EXL3 mixed-precision quants (`K4`, `EXL3-K5K6`)
 
@@ -105,6 +117,7 @@ contexts and the same 1,048,064 positions every candidate above saw** (`tools/gg
 | GGUF `UD-Q5_K_XL` | llama.cpp | 0.004444 | ~0.003936 | 97.20 % | 0.2144 | 18.83 GiB |
 | official FP8 | vLLM | 0.005197 | n/a, same engine | 96.92 % | 0.2440 | 28.51 GiB resident |
 | K4 EXL3 | vLLM | 0.010345 | n/a, same engine | 95.91 % | 0.5576 | — |
+| `unsloth/Qwen3.8-27B-NVFP4` | vLLM | 0.030115 | n/a, same engine | 93.16 % | 1.6228 | 22.57 GB checkpoint |
 
 The **cross-engine floor** is measured the same way, not assumed: the unquantized BF16 GGUF
 against the vLLM BF16 reference, identical tokens, identical shared head, the same 512 contexts,
@@ -139,8 +152,18 @@ What that table says, in the order that matters:
   32 GB card should use it.
 - **Official FP8 is beaten by every GGUF point at or above 5 bits**, so our published "34-48 %
   below FP8" is true and a weaker achievement than it sounds.
-- **K4 is the weakest point in the table**, worse than every GGUF measured here and worse than
-  official FP8.
+- **K4 is the weakest of our own builds**, worse than every GGUF measured here and worse than
+  official FP8. The one row it beats is `unsloth`'s NVFP4.
+- **The other 4-bit-weight artifact is far behind.** `unsloth/Qwen3.8-27B-NVFP4` reads
+  **0.030115** with **93.16 %** top-1 on this same shard, under the same engine so with no
+  cross-engine term: 2.9x K4 at the same weight class, 8.8x the context edition, 27.7x `Q8_0`.
+  It loses **512 of 512** contexts to both the context edition and official FP8 with zero ties,
+  and over the full ten shards reads **0.031059** [0.027916, 0.034795] at 92.90 % top-1, losing
+  **5,120 of 5,120** (`receipts/kld5-1M-nvfp4.json`, `receipts/kld5-10M-nvfp4.json`,
+  `receipts/kld5-1M-paired-nvfp4.json`). The revision we measured, `9c73e2da`, no longer
+  resolves upstream after a 2026-08-15 history squash; the weights at current HEAD are
+  byte-identical and we keep the reviewed revision alive as
+  [`malaiwah/Qwen3.8-27B-NVFP4-archival-9c73e2da`](https://huggingface.co/malaiwah/Qwen3.8-27B-NVFP4-archival-9c73e2da).
 
 What it does **not** settle: this is text-only teacher-forced fidelity on one shard — one tenth of the
 suite, though a close tenth: over all 10,480,640 positions the five vLLM means read 0.002760 / 0.003210 /
@@ -243,6 +266,9 @@ See [PROGRESS.md](PROGRESS.md) for the full session record.
 | [docs/33-evidence-volume-and-intervals.md](docs/33-evidence-volume-and-intervals.md) | the 10,480,640-position rerun, the measured tail, and why ten times the positions did not narrow the interval |
 | [docs/29-plan-and-loose-ends.md](docs/29-plan-and-loose-ends.md) | ranked open work and acceptance gates, including the evidence-volume objection (F1) this session closed |
 | [docs/35-external-protocol-comparability.md](docs/35-external-protocol-comparability.md) | why our KLD and Unsloth's are not interchangeable, the twelve deltas, and the two of them now measured: the scoring-window offset and the cross-engine floor |
+| [docs/34-vram-class-profiles.md](docs/34-vram-class-profiles.md) | the 24 GB and 16 GB class verdicts, the measured affine KV law, and a capped-budget proxy qualification |
+| [docs/36-performance-levers-5090.md](docs/36-performance-levers-5090.md) | 11 configurations on the physical 5090: what moved throughput, what is a no-op, and the GDN gate reachability rate |
+| [docs/37-error-driven-allocation.md](docs/37-error-driven-allocation.md) | the error-driven allocation experiment that lost, the 3.73x-per-bit law it produced, and why the objective is not a surrogate for KLD |
 
 Tooling in [tools/](tools/) is what produced the evidence: an unprivileged OCI image
 puller and a proot-based runner for it, the BF16 attention splice and checkpoint
@@ -288,6 +314,15 @@ collection index are these files:
 - [x] Exact tail now aggregable for future runs: a fixed log-spaced KLD histogram in `tools/fidelity.py` (`qwen38-fidelity-report/2`) plus bin-bounded cumulative quantiles in `tools/kld_aggregate.py`; this run kept only per-shard percentiles and the exact global maximum, and says so in its receipts
 - [x] First public-benchmark matrix, all six models: paired MMLU-Pro (70 questions, pinned `TIGER-Lab/MMLU-Pro@b189ec76`) — BF16 **57/70**, context **58/70** at **56/57** retention (Wilson lower **90.7 %**, the only candidate clearing the pre-registered 0.90 bar), K4 **57/70** and official FP8 **56/70** at **55/57** (88.1 %), hydrated **56/70** and online K5/K6 **55/70** at **54/57** (85.6 %); the four shortfalls are a 70-item power limit — 56/57 is the smallest count that can clear 0.90 — not a broken build, so the next step is item volume and task diversity
 - [x] Collection index published: `receipts/collection-index.json` from `tools/collection_index.py`, four immutable rows, receipt-traced fields, one disclosed divergence left unfixed rather than rewriting a published receipt
-- [x] Comparator breadth (F2) half-closed by measurement, and the unflattering half published: GGUF `Q8_0` **0.001087**, `Q6_K` **0.002035** and `UD-Q5_K_XL` **0.004444** scored on shard 0 of the v5 suite through the same shared BF16 head, against a measured llama.cpp-versus-vLLM engine floor of **0.000507** — so at the 6-bit point `Q6_K` (0.001528 net, 21.31 GiB) **beats our best build** (0.002700, 20.12 GiB payload), at the 5-bit point our context edition (0.003409, 19.27 GiB) is ~13 % better than `UD-Q5_K_XL` (0.003936 net, 18.83 GiB), `Q8_0` leads on fidelity at 27.05 GiB, and K4 is the weakest point in the table (`receipts/cross-engine-comparator.json`, `receipts/gguf-report-*.json`)
+- [x] Comparator breadth (F2) closed by measurement, including the unflattering half: GGUF `Q8_0` **0.001087**, `Q6_K` **0.002035** and `UD-Q5_K_XL` **0.004444** scored on shard 0 of the v5 suite through the same shared BF16 head, against a measured llama.cpp-versus-vLLM engine floor of **0.000507** — so at the 6-bit point `Q6_K` (0.001528 net, 21.31 GiB) **beats our best build** (0.002700, 20.12 GiB payload), at the 5-bit point our context edition (0.003409, 19.27 GiB) is ~13 % better than `UD-Q5_K_XL` (0.003936 net, 18.83 GiB), and `Q8_0` leads on fidelity at 27.05 GiB (`receipts/cross-engine-comparator.json`)
 - [x] The largest cross-protocol objection bounded instead of argued: restricting scoring to their 256-token left-context floor lowers every candidate's mean by 1.3-2.1 % and second-half-only by 3.9-4.9 %, uniformly, changing no ordering (`receipts/scored-window-offset.json`)
-- [ ] Still open in F2: their wikitext-2 protocol run for cross-citation, stock uniform-bitrate EXL3 controls, and the reader-suggested ik_llama (`IQ4_KS_KT`) and NVFP4-NInfer comparators — neither of which has any KLD number today ([docs/29](docs/29-plan-and-loose-ends.md) F2)
+- [x] **Their protocol run for cross-citation**: `llama-perplexity --kl-divergence` on wikitext-2 raw at ctx 512, 147,900 scored positions, base PPL 6.950230 ± 0.044933 — `Q8_0` **0.000926**, `Q6_K` **0.002286**, `UD-Q5_K_XL` **0.004426**, the **same ordering** as our suite at 1.60x / 1.50x / 1.12x our net-of-floor values, with their harness floor measured on our own hardware at 5.6e-5 to 8.0e-5 and tokenisation eliminated as an explanation (bit-identical 297,194-token streams). Also found: **PPL does not reproduce the KLD ordering** (`receipts/wikitext-kld-run-a.json`, [docs/35](docs/35-external-protocol-comparability.md))
+- [x] **`unsloth/Qwen3.8-27B-NVFP4` measured on our suite**, the comparator readers ask for most: **0.031059** [0.027916, 0.034795] at 92.90 % top-1 over 10,480,640 positions, losing **5,120 of 5,120** contexts to both the context edition and official FP8; 2.9x K4 at the same 4-bit weight class (`receipts/kld5-10M-nvfp4.json`, `receipts/kld5-1M-paired-nvfp4.json`)
+- [x] **Capture and replay are bit-reproducible**: 5,240,320 scored positions identical across independent runs, separate model loads and three harness generations, under eager single-sequence capture — which makes every published KLD number re-derivable rather than merely re-runnable (`receipts/capture-determinism.json`)
+- [x] **The converter is not deterministic, and it does not matter for fidelity.** A fresh conversion of the published hydrated recipe returns 13 of 16 pinned files identical and three safetensors shards differing in tensor bytes only — 399 of 409 quantized modules, 97.6 %, at 41-92 % of bytes each — with identical headers, offsets, shard sizes and per-role byte totals. That *sibling* then scored **-3.755e-06** paired against the published checkpoint, 95 % [-2.854e-05, +2.062e-05] bracketing zero, 257 contexts to 255. So the recipe determines fidelity to within this protocol's resolution and the published bytes are the artifact (`receipts/converter-determinism.json`, `receipts/sibling-rebuild-fidelity.json`)
+- [x] **Performance levers measured on the physical 5090**, 11 configurations: MTP depth is a concurrency decision — depth 3 wins at one stream (83.31 vs 74.28 per-request tok/s) and `num_speculative_tokens 1` wins at eight (**+30.67 %**, 313.28 → 409.35 tok/s aggregate, plus 10,911 more KV tokens). Closed as no-ops or losses: explicit `FLASHINFER` (already auto-selected on SM120), `TRITON_ATTN`, `custom_ops:["all"]`, and dynamic speculative decoding (refuses to start under `FULL_DECODE_ONLY`). Prefill did not move on any lever ([docs/36](docs/36-performance-levers-5090.md))
+- [x] **Prefix caching shipped, scoped by measurement**: on the three 8,192-token recipes it is worth **11.6x** and **29.3x** warm TTFT at 32 k and 131 k prefixes (whole schedule 144.4 s → 84.0 s); at the context edition's native 262,144 it is **declined** because align-mode block rounding makes the window unservable three different ways, with a measured 256,000-token option priced at 6,144 tokens. The four-module image `gg-r34-patched-apc` is the release unit (`receipts/apc-poison-repro.json`, `receipts/qualification-5090-apc.json`)
+- [x] **VRAM classes decided**: 24 GB is a GO as a serving profile over the published context edition at **24,576 tokens with MTP-3** or 45,056 with MTP off, validated by a capped-budget proxy with the physical-board gate left open; 16 GB is a NO-GO as a SKU and published as a design study. The per-token KV model was replaced by the measured affine law `a*L + M` ([docs/34](docs/34-vram-class-profiles.md))
+- [x] **A user-reported defect investigated to a measured negative**: 266 requests across seven freshly started servers reproduced no corruption under the reporter's exact condition, which decomposed his four-variable control and left LMCache as the sole suspect; the two absent upstream fixes were requested at the fork (issue #392, PR #393) and a net-new admission livelock was filed upstream as [vllm-project/vllm#52520](https://github.com/vllm-project/vllm/issues/52520)
+- [x] **Materials published for third-party replay**: the v5 suite, all ten shard views, the shard-0 BF16 reference capture and 79 per-shard reports as [`malaiwah/qwen38-27b-fidelity-suite-v5`](https://huggingface.co/datasets/malaiwah/qwen38-27b-fidelity-suite-v5), the losing error-driven candidate as a documented negative, and archival mirrors of the NVFP4 and GGUF revisions our published numbers cite — because one of them stopped resolving upstream mid-session
+- [ ] Still open in F2: stock uniform-bitrate EXL3 controls, and the reader-suggested ik_llama (`IQ4_KS_KT`) and NVFP4-NInfer comparators — neither of which has any KLD number today ([docs/29](docs/29-plan-and-loose-ends.md) F2)
