@@ -1,0 +1,509 @@
+{
+ "schema": "h-sharing-research/1",
+ "generated_utc": "2026-08-16T12:45:37Z",
+ "agent": "HSharingResearch",
+ "doc": "docs/43-runtime-memory-sharing.md",
+ "no_gpu": true,
+ "inputs": {
+  "checkpoint": {
+   "hf_repo": "malaiwah/Qwen3.8-27B-EXL3-K5K6-context",
+   "index": "model.safetensors.index.json",
+   "shards": [
+    "model-00001-of-00003.safetensors",
+    "model-00002-of-00003.safetensors",
+    "model-00003-of-00003.safetensors"
+   ],
+   "header_bytes": {
+    "model-00001-of-00003.safetensors": 97113,
+    "model-00002-of-00003.safetensors": 137582,
+    "model-00003-of-00003.safetensors": 66219
+   },
+   "method": "ranged HTTP reads of safetensors headers and the 818 sign vectors only; no weight shards downloaded"
+  },
+  "rootfs": "/var/tmp/gg-rootfs (voipmonitor/vllm@sha256:820181fb..., r34, vllm-0.11.2.dev280+gilded.gnosis.v20.vllm4d006a4.b12xcd3ce19)",
+  "exllamav3_source": "/var/tmp/work/exllamav3 (1.4.2)",
+  "manifests": [
+   "receipts/context-quantization-manifest.json",
+   "receipts/collection-index.json"
+  ]
+ },
+ "q1_shared_h_precedent": {
+  "name": "shared_h_v1",
+  "kind": "conversion-time checkpoint artifact layout + loader/kernel support (NOT a runtime flag)",
+  "model": "GLM-5.2 (rank-sliced EXL3 mixed K3/K4 MoE)",
+  "savings_quoted": {
+   "mtp0_mib_per_gpu": 672.36,
+   "mtp3_mib_per_gpu": 681.33,
+   "source": "https://github.com/local-inference-lab/vllm/pull/228 body, verbatim: \"Physical shared-H saving: 672.36 MiB/GPU at MTP0 and 681.33 MiB/GPU at MTP3.\""
+  },
+  "quotes": [
+   {
+    "url": "https://github.com/local-inference-lab/vllm/pull/225",
+    "state": "closed, merged=false (superseded by #228)",
+    "quote": "Gate/up SU and down SV are allocated as one physical `[1,H]` row and broadcast by stride/pointer contract without expansion."
+   },
+   {
+    "url": "https://github.com/local-inference-lab/vllm/pull/225",
+    "quote": "For GLM-5.2, the shared-H layout removes 672.36 MiB/GPU of duplicated persistent rotations across 75 MoE layers."
+   },
+   {
+    "url": "https://github.com/local-inference-lab/vllm/pull/225",
+    "quote": "The shared-H loader is explicit and backward compatible. A complete newly encoded shared-H checkpoint still requires its own KLD and E2E release validation."
+   },
+   {
+    "url": "https://github.com/local-inference-lab/vllm/pull/228",
+    "state": "open, merged=false; code nonetheless present in the pinned r34 rootfs",
+    "quote": "shared-H checkpoint loading without expanding one rotation row per expert"
+   },
+   {
+    "url": "https://github.com/local-inference-lab/b12x/pull/117",
+    "state": "closed, merged=true (master)",
+    "quote": "`206/50`, shared-H on both tiers, zero relative error, cosine 1.0."
+   }
+  ],
+  "rootfs_evidence": {
+   "layout_constants": "vllm/model_executor/layers/quantization/exl3.py:351-365",
+   "metadata_validation": "exl3.py:1590-1613",
+   "fail_closed_names": "exl3.py:2124-2159",
+   "b12x_broadcast_flags": "b12x/moe/_shared/kernels/w4a16/mixed_trellis.py:74-76,654-656,1370-1372; kernel.py:5968-6522,7757-7838",
+   "b12x_broadcast_comment": "prepare.py:1860-1862: \"(1, hidden_size) is a broadcast row shared by all experts (kquant shared-su artifacts); kernels index it with expert stride 0.\""
+  },
+  "kimi_k3": {
+   "mechanism": "Fruit QSRT qsrt_atoms_v1 canonical atoms (H=1024, I=512, 96 fixed atoms per expert), physical atom rotation; NOT shared_h_v1",
+   "urls": [
+    "https://github.com/local-inference-lab/b12x/pull/129",
+    "https://github.com/local-inference-lab/vllm/pull/269"
+   ]
+  },
+  "queries_run": [
+   "repo:local-inference-lab/b12x \"share H\"",
+   "repo:local-inference-lab/b12x \"shared H\"",
+   "repo:local-inference-lab/b12x \"sign vector\"",
+   "repo:local-inference-lab/b12x GLM-5.2",
+   "repo:local-inference-lab/b12x Kimi",
+   "repo:local-inference-lab/b12x hadamard",
+   "repo:local-inference-lab/b12x suh",
+   "repo:local-inference-lab/b12x suv",
+   "repo:local-inference-lab/b12x svh",
+   "repo:local-inference-lab/vllm \"share H\"",
+   "repo:local-inference-lab/vllm \"shared H\"",
+   "repo:local-inference-lab/vllm \"sign vector\"",
+   "repo:local-inference-lab/vllm GLM-5.2",
+   "repo:local-inference-lab/vllm Kimi",
+   "repo:local-inference-lab/vllm hadamard",
+   "repo:local-inference-lab/vllm suh",
+   "repo:local-inference-lab/vllm suv",
+   "repo:local-inference-lab/vllm svh"
+  ],
+  "suv_hits": {
+   "local-inference-lab/vllm": 0,
+   "local-inference-lab/b12x": 0
+  }
+ },
+ "q2_our_checkpoint_quantification": {
+  "modules": 409,
+  "vectors_hashed": 818,
+  "suh_total_bytes": 5928960,
+  "svh_total_bytes": 8424448,
+  "combined_bytes": 14353408,
+  "combined_mib": 13.69,
+  "shape_histogram": [
+   {
+    "field": "svh",
+    "shape": [
+     17408
+    ],
+    "dtype": "F16",
+    "count": 130,
+    "mib": 4.316
+   },
+   {
+    "field": "suh",
+    "shape": [
+     5120
+    ],
+    "dtype": "F16",
+    "count": 278,
+    "mib": 2.715
+   },
+   {
+    "field": "suh",
+    "shape": [
+     17408
+    ],
+    "dtype": "F16",
+    "count": 65,
+    "mib": 2.158
+   },
+   {
+    "field": "svh",
+    "shape": [
+     5120
+    ],
+    "dtype": "F16",
+    "count": 131,
+    "mib": 1.279
+   },
+   {
+    "field": "svh",
+    "shape": [
+     10240
+    ],
+    "dtype": "F16",
+    "count": 48,
+    "mib": 0.938
+   },
+   {
+    "field": "suh",
+    "shape": [
+     6144
+    ],
+    "dtype": "F16",
+    "count": 65,
+    "mib": 0.762
+   },
+   {
+    "field": "svh",
+    "shape": [
+     6144
+    ],
+    "dtype": "F16",
+    "count": 48,
+    "mib": 0.562
+   },
+   {
+    "field": "svh",
+    "shape": [
+     248320
+    ],
+    "dtype": "F16",
+    "count": 1,
+    "mib": 0.474
+   },
+   {
+    "field": "svh",
+    "shape": [
+     12288
+    ],
+    "dtype": "F16",
+    "count": 17,
+    "mib": 0.398
+   },
+   {
+    "field": "svh",
+    "shape": [
+     1024
+    ],
+    "dtype": "F16",
+    "count": 34,
+    "mib": 0.066
+   },
+   {
+    "field": "suh",
+    "shape": [
+     10240
+    ],
+    "dtype": "F16",
+    "count": 1,
+    "mib": 0.02
+   }
+  ],
+  "sha256_duplicate_groups": 0,
+  "sha256_method": "per-vector ranged GET of [data_offsets] within each shard, sha256 over raw fp16 bytes",
+  "layer10_probe": {
+   "gate_suh_unique_magnitudes": 260,
+   "up_suh_unique_magnitudes": 297,
+   "gate_vs_up_sign_agreement": 1.0,
+   "meaning": "stored vectors are sign*per-channel-scale, not +-1; sign pattern already shared per Hessian at conversion (quantize.py:890), magnitudes per-module (quantize.py:1207-1210)"
+  },
+  "loader_file_lines": {
+   "register": "exl3.py:2606-2610",
+   "validate": "exl3.py:2774-2785",
+   "tp_slice": "exl3.py:2839-2919",
+   "fused_qkv_shared_suh": "exl3.py:2897",
+   "apply_generic": "exl3.py:977-1007",
+   "apply_k6": "exl3.py:1263-1305",
+   "hadamard_apply": "exl3.py:891,925,949,960",
+   "b12x_prepare_zero_copy": "prepare.py:2059-2060",
+   "graph_decode_default_off": "exl3.py:1027-1036"
+  },
+  "verdict": "pure loader dedup saves 0 B today; converter-cooperating sharing capped at 13.69 MiB; do not build"
+ },
+ "q3_runtime_overhead_inventory": {
+  "geometry_census": [
+   {
+    "K": 5120,
+    "N": 17408,
+    "bits": 5,
+    "modules": 130
+   },
+   {
+    "K": 6144,
+    "N": 5120,
+    "bits": 5,
+    "modules": 65
+   },
+   {
+    "K": 17408,
+    "N": 5120,
+    "bits": 6,
+    "modules": 65
+   },
+   {
+    "K": 5120,
+    "N": 10240,
+    "bits": 5,
+    "modules": 48
+   },
+   {
+    "K": 5120,
+    "N": 6144,
+    "bits": 5,
+    "modules": 48
+   },
+   {
+    "K": 5120,
+    "N": 1024,
+    "bits": 5,
+    "modules": 34
+   },
+   {
+    "K": 5120,
+    "N": 12288,
+    "bits": 5,
+    "modules": 17
+   },
+   {
+    "K": 5120,
+    "N": 248320,
+    "bits": 6,
+    "modules": 1
+   },
+   {
+    "K": 10240,
+    "N": 5120,
+    "bits": 4,
+    "modules": 1
+   }
+  ],
+  "reconstruct_scratch": {
+   "mechanism": "persistent fp16 (K, min(N,32768)) per distinct geometry, never freed; exl3.py:766-767,785-795; dispatch >=128 rows by default exl3.py:770-782,986-993,1287-1294",
+   "buffers": [
+    {
+     "k": 5120,
+     "chunk": 1024,
+     "mib": 10.0
+    },
+    {
+     "k": 5120,
+     "chunk": 6144,
+     "mib": 60.0
+    },
+    {
+     "k": 5120,
+     "chunk": 10240,
+     "mib": 100.0
+    },
+    {
+     "k": 5120,
+     "chunk": 12288,
+     "mib": 120.0
+    },
+    {
+     "k": 5120,
+     "chunk": 17408,
+     "mib": 170.0
+    },
+    {
+     "k": 5120,
+     "chunk": 32768,
+     "mib": 320.0
+    },
+    {
+     "k": 6144,
+     "chunk": 5120,
+     "mib": 60.0
+    },
+    {
+     "k": 10240,
+     "chunk": 5120,
+     "mib": 100.0
+    },
+    {
+     "k": 17408,
+     "chunk": 5120,
+     "mib": 170.0
+    }
+   ],
+   "total_all_mib": 1110.0,
+   "total_allocating_at_qualified_profile_mib": 790.0,
+   "head_chunk_mib": 320.0,
+   "head_note": "head 5120x32768 chunk requires >=128 sampled logit rows; not reached at max_num_seqs 1-8 with MTP-3",
+   "arena_consolidation_saving_mib": 620.0,
+   "saving_label": "INFERENCE - source arithmetic; requires one 5090 run to confirm pool gain",
+   "tokens_equivalent": {
+    "mtp3_a_34816": 18676,
+    "mtp_off_a_32932": 19744
+   },
+   "fork_precedent": "https://github.com/local-inference-lab/vllm/issues/203 (\"keep separate plans, share the bytes\"); https://github.com/local-inference-lab/vllm/pull/270"
+  },
+  "fp8_prefill_scratch_if_enabled": {
+   "geometry_buffers_mib": 555.0,
+   "per_module_scales_mib": 16.1,
+   "mechanism": "exl3.py:798,814-821,824-858; off by default exl3.py:803-811"
+  },
+  "not_overhead": {
+   "b12x_prepared_weights": "zero-copy views + 4 B dummy_scale/module (prepare.py:2059-2060,2123-2124)",
+   "hadamard_matrices": "in-kernel (had_r_128; resolver b12x kernel.py:11166-11180); TQ backend caches one 64 KB H (turboquant_attn.py:73-88)",
+   "mcg_codebook": "scalar int32 sentinel per module (census: mcg I32 [])",
+   "moe_pools": "_MIXED_TRELLIS_BUFFERS/_R7_* are MoE-only (exl3.py:115-121,560-617)",
+   "c_tmp_cap": "192*4*64*256 fp32 = 12 MiB architecture bound (exl3.py:109-114)"
+  }
+ },
+ "q4_kld_risk": {
+  "mechanisms": [
+   "decorrelation loss: per-module random signs (quantize.py:890-893,1306) randomize residual directions; one shared H correlates them across modules",
+   "scale flattening: stored suh folds per-input-channel scales (quantize.py:1207-1210, byte-verified 260/297 unique magnitudes); sharing discards per-module scaling"
+  ],
+  "already_correlated_within_layer": "gate/up same-layer sign agreement measured 1.0000 (converter shares su per Hessian capture)",
+  "measurement_cost": "one conversion + one shard-0 KLD score, ~1 h GPU, protocol exists",
+  "ship_policy": "separate opt-in quant variant if any fidelity cost; never a silent change",
+  "magnitude": "not guessed"
+ },
+ "q5_nvfp4_kv": {
+  "nvfp4_plain": {
+   "backend": "FLASHINFER only",
+   "layout": "head//2 fp4 + head//16 fp8 scales (torch_utils.py:415-417); head 256 -> 144 B/side/token vs fp8 256 B",
+   "gates": [
+    "flashinfer.py backend supports_kv_cache_dtype:447-452 -> is_device_capability_family(100)",
+    "platforms/interface.py:481-493 family = capability//10 -> 10.x only; RTX 5090 = 12.0 refused",
+    "flashinfer.py:786-796 \"requires the SM100 trtllm-gen FlashInfer path\"",
+    "utils/flashinfer.py:373-394 trtllm kernels SM90(decode)/SM100/SM103 only",
+    "config/vllm.py:2326-2335 nvfp4 KV rejected for MLA"
+   ],
+   "cost": "vendor trtllm-gen cubin / upstream kernel work for SM120; not config, not a fork patch"
+  },
+  "nvfp4_ds_mla": {
+   "backend": "B12X_MLA_SPARSE (b12x_mla_sparse.py:722-726)",
+   "record_bytes": {
+    "default": 432,
+    "kv_fp8_rope": 368,
+    "fp8_ds_mla": 656,
+    "source": "b12x_mla_sparse.py:802-806,1399-1404"
+   },
+   "glm_only": "b12x_mla_sparse.py:1288-1301 \"the compact record is GLM nvfp4_ds_mla-only\"; Qwen3.8 is not MLA -> inapplicable"
+  },
+  "turboquant": {
+   "backend": "TURBOQUANT triton (turboquant_attn.py), head-256 documented",
+   "slot_layout_quote": "turboquant_attn.py:16 \"For turboquant_k3v4_nc head_dim=256: [100 bytes key | 512 bytes value] = 612\"",
+   "arithmetic": "612 B/token/head vs fp8 512 B -> capacity regression vs our fp8 baseline; values stored fp16"
+  },
+  "gdn": "linear-attention state uses MambaDType (cache.py:38), unaffected by kv-cache-dtype",
+  "kv_dtype_sweep_receipt": {
+   "path": "receipts/kv-dtype-sweep-5090.json",
+   "landed_at_writing": false,
+   "note": "KvDtypeSweep measuring on the physical 5090; capacity/refusal verdicts defer to that receipt"
+  }
+ },
+ "q6_shareable_inventory": {
+  "mtp_lm_head": {
+   "saving_bytes": 0,
+   "evidence": [
+    "no lm_head/embed tensors under mtp.* in headers (39 tensors, 257.8 MiB)",
+    "llm_base_proposer.py:1649-1665 explicit share",
+    "receipts/apc-repro-raw/pilot/server-A.log:81 \"Sharing target model lm_head weights with the draft model.\""
+   ]
+  },
+  "mtp_embed": {
+   "saving_bytes": 0,
+   "evidence": "shared_weight_names=[\"embed_tokens\"]; prior retraction stands"
+  },
+  "embed_overlay_double_residency": {
+   "saving_bytes": 0,
+   "evidence": "BF16 released, exl3.py:2259-2264"
+  },
+  "residency_model": {
+   "disk_tensors_gib": 19.252,
+   "embed_bf16_gib": 2.368,
+   "embed_int8_gib": 1.185,
+   "expected_resident_int8_overlay_gib": 18.069,
+   "measured_5090_gib": 18.19,
+   "measured_rental_gib": 18.41,
+   "overhead_5090_gib": 0.121,
+   "overhead_rental_gib": 0.341,
+   "gap_explanation": "both measurements sit above the same 18.069 GiB tensor bytes; 0.22 GiB is measurement-context overhead delta (rental image identity \"not fully authenticated during capture\" per native-mtp-8mp-amendment.json, different GPU); not weights, not overlay double-residency (+1.18 GiB signature absent)"
+  },
+  "norms_mib": 1.3,
+  "codebook_bytes_per_module": 4,
+  "hadamard_resident": 0,
+  "vision_runtime_overlay": {
+   "candidate_saving_mib": 439,
+   "basis": "0.858 GiB BF16 at 8-bit overlay",
+   "precedent": "PR 225 \"Only BF16 dense/shared-expert weights are eligible for the MXFP8 overlay\"",
+   "gate": "vision-path fidelity unmeasured; separate opt-in variant; conversion untouched (do-not-reopen respected)"
+  },
+  "embed_int4_overlay": {
+   "candidate_saving_mib": 592,
+   "gate": "fidelity unmeasured; opt-in variant"
+  }
+ },
+ "ranked_levers": [
+  {
+   "rank": 1,
+   "lever": "R1 reconstruct-scratch arena",
+   "saving": "~620 MiB KV pool on every class",
+   "kld_risk": "none (byte-exact)",
+   "cost": "small exl3.py patch",
+   "verdict": "build first"
+  },
+  {
+   "rank": 2,
+   "lever": "KV dtype",
+   "saving": "defer to kv-dtype-sweep-5090.json",
+   "kld_risk": "measured elsewhere",
+   "cost": "n/a",
+   "verdict": "defer; turboquant -100 B/token vs fp8 by layout; nvfp4 refused on SM120"
+  },
+  {
+   "rank": 3,
+   "lever": "R2 fp8-prefill scratch arena",
+   "saving": "avoids +555 MiB if VLLM_EXL3_PREFILL_FP8 ships",
+   "kld_risk": "none",
+   "cost": "trivial once R1 exists",
+   "verdict": "build with R1 if fp8 prefill ships"
+  },
+  {
+   "rank": 4,
+   "lever": "vision MXFP8 runtime overlay",
+   "saving": "+439 MiB",
+   "kld_risk": "unmeasured",
+   "cost": "moderate",
+   "verdict": "opt-in variant, measure first"
+  },
+  {
+   "rank": 5,
+   "lever": "embed int8->int4 overlay",
+   "saving": "+592 MiB",
+   "kld_risk": "unmeasured",
+   "cost": "small",
+   "verdict": "opt-in variant, measure first"
+  },
+  {
+   "rank": 6,
+   "lever": "shared-H on this model",
+   "saving": "<=13.69 MiB",
+   "kld_risk": "real mechanism, unmeasured",
+   "cost": "converter+loader",
+   "verdict": "do not build; MoE-only lever"
+  },
+  {
+   "rank": 7,
+   "lever": "nvfp4 KV port to SM120",
+   "saving": "n/a",
+   "kld_risk": "n/a",
+   "cost": "vendor cubins/upstream",
+   "verdict": "out of reach"
+  }
+ ],
+ "sixteen_gib_answer": "No runtime-sharing stack reaches 16 GB: weights 18.19 GiB alone exceed the card; full runtime inventory (~1.6 GiB) lands ~16.6 GiB vs the class 12.49 GiB weights+KV budget (vram-class-verdict). Only the S16-V sub-4-bit rebuild (12.77 GiB serialized, prediction) flips the class. Measure first: (1) sub-4-bit shard-0 KLD (~1 h GPU, protocol exists); (2) KvDtypeSweep receipt; (3) R1 measured pool gain."
+}
