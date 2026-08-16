@@ -96,8 +96,9 @@ The name is historical: `suite3.py` builds the v5 suite. `fidelity.py suite` emi
 | strata | code / encyclopedic / literary / multilingual / scientific, 1,024 contexts each |
 | source clusters | 842, one document family per cluster |
 | partitions | analysis 4,064, qualification 1,056, sentinels 32 |
-| corpus | 941 documents, 70,348,971 B (Gutenberg, arXiv, Wikipedia en+de/fr/es/ja/zh/ru, CPython `Lib/`) |
-| corpus provenance | [`receipts/kld5-corpus-fetch-log.json`](../receipts/kld5-corpus-fetch-log.json) — per-document URL, bytes, sha256, every skip and failure |
+| corpus | 941 documents, 70,348,971 B: 323 English Wikipedia, 276 Wikipedia in 20 other languages, 178 `python/cpython@v3.13.1` + 63 `numpy/numpy@v2.2.1` files, 59 Project Gutenberg books, 42 arXiv title+abstract batches |
+| corpus provenance | [`receipts/kld5-corpus-fetch-log.json`](../receipts/kld5-corpus-fetch-log.json) — per-document stratum, stem, bytes, chars, sha256, every skip and failure. A provenance record, not a re-fetch script: 862 of 941 rows carry `url: "preexisting"` (gap G1 of [the method audit](../receipts/kld-method-reproducibility-audit.json)) |
+| corpus text | published 2026-08-16 in the v5 dataset under `corpus/text/` — all 941 documents verified bit-for-bit against the fetch log before and after upload, with per-document sha256 and per-stratum licence in `corpus/text/manifest.json`. The contamination scan below is re-derivable by a third party from it |
 
 The **token id files are the authoritative evaluation input.** Retokenizing the source text
 does not reproduce them; each context's `token_sha256` is the sha256 of `json.dumps(ids)`,

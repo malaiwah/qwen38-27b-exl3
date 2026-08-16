@@ -1,5 +1,8 @@
 # Publishing iterative variants
 
+> **Superseded.** Branch-based publication was abandoned in favour of separate repos plus
+> the collection index; this document prescribes the abandoned scheme.
+
 The point of iterating is that someone else can re-measure. Each variant is
 therefore published as a **named branch of one Hugging Face repo**
 (`malaiwah/Qwen3.8-27B-K4`) rather than as a new repo, so `--revision` selects a

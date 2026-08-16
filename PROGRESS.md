@@ -708,3 +708,25 @@ passing: `tools/kld_aggregate.py`'s `paired_window` refused to pair a receipt bu
 still refused), and `tools/preserve_artifacts.sh` parsed only the machine-readable shape of
 `hf auth whoami` and `hf upload`, so it reported "not logged in" against an authenticated cache,
 and discarded a *successful* 10.7 GB upload as unverified, whenever it ran outside an agent shell.
+
+## 2026-08-16: the method audit's two P0s are closed — the corpus text is published, the resolution floor sits beside every v5 table
+
+The adversarial method audit (`receipts/kld-method-reproducibility-audit.json`, landed this
+session with `docs/42-kld-method.md` and `receipts/near-duplicate-v5.json` after verifying each
+against the audit's own digest pins) found two P0 defects in the published claims. Both are now
+closed. **G1**: 862 of the 941 rows in `corpus/corpus_fetch_log.json` carry `url: "preexisting"`,
+so the dataset card's "refetch the corpus from this" sentence and its tier-3 "refetchable" ground
+were false — the 69 MB corpus text itself is now published in the v5 dataset under `corpus/text/`
+(941 documents verified bit-for-bit against the fetch log before upload and re-verified after by
+a fresh unauthenticated download; per-document sha256 and per-stratum licence in
+`corpus/text/manifest.json`), the card corrected, the corpus-note receipt amended additively, and
+no stratum needed the shingle-digest fallback. **G2**: the ~6e-4 replay-vs-live floor and the
+~5 % storage systematic from docs/24 now appear as one resolution paragraph immediately after the
+v5 cumulative table on all four model cards and in docs/33 and docs/35 — absolute values are
+within-suite, paired differences are the resolvable quantity because the floor is common-mode,
+the floor's six-v3-context derivation is disclosed, and its v5 re-derivation is tracked open.
+Also in this pass: the audit's G9 remainder (docs/35 D10 now cites docs/42), supersession banners
+on docs/03/05/09/12/14/17/20 plus the docs/16 stale closing line and the docs/02 MTP drift, and
+24 orphan-receipt links (startup-times.json now sits beside the K5K6 cold-start numbers). All six
+repos' cards re-published byte-identical. Every edit maps to a gap id in
+`receipts/method-hardening-pass.json`.

@@ -1,5 +1,8 @@
 # Distribution-fidelity protocol v2 (hidden-state replay)
 
+> **Superseded.** This v2 protocol was in turn superseded by the v5 method; the method of
+> record is [42-kld-method.md](42-kld-method.md).
+
 Adopted from
 [`rtx6kpro:models/kimi-k3/distribution-fidelity-1024x2048.md`](https://github.com/local-inference-lab/rtx6kpro/blob/master/models/kimi-k3/distribution-fidelity-1024x2048.md),
 which supersedes the single-window `prompt_logprobs` protocol used in iteration 1.

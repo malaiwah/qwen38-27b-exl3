@@ -1,0 +1,142 @@
+{
+  "schema": "qwen38-method-hardening-pass/1",
+  "generated_utc": "2026-08-16T12:56:40Z",
+  "actor": "MethodHardening",
+  "closes": "the two P0 gaps of receipts/kld-method-reproducibility-audit.json (G1, G2), its G9 remainder, and the hygiene set from the BigPictureReread re-read (H-02, H-03, H-05, H-09, H-12, H-14, H-16, H-17, H-20, H-ORPHANS)",
+  "landed_audit_deliverables": {
+    "commit_note": "docs/42-kld-method.md, receipts/kld-method-reproducibility-audit.json, receipts/near-duplicate-v5.json, the audit's two README rows (its gap G9, first half) and the chat-template apc-card-publication receipt were verified against the audit receipt's own digests, then committed first, before any edit of this pass",
+    "verified": {
+      "docs/42-kld-method.md": "sha256 6a7125b69c42be090699d69bc556a467d8b4ceee49e9efc5d9f674f24f52c82b, equal to the audit receipt's inputs pin",
+      "receipts/near-duplicate-v5.json": "sha256 2a9fee14ecb883d2e7027b7ee2bec1d87a0df217177ae070e95ca4cd89401a94, equal to the audit receipt's inputs pin",
+      "receipts/kld-method-reproducibility-audit.json": "content_sha256 self-verifies: sha256 of json.dumps(payload, indent=2, ensure_ascii=False) excluding content_sha256 and content_sha256_excludes = 9e639c7607cbd18aa20dca28507d4f3118d7ee47159fb2c136ae6b78a245f3b4"
+    }
+  },
+  "edits": [
+    {
+      "gap": "G1",
+      "artifact": "huggingface dataset malaiwah/qwen38-27b-fidelity-suite-v5, corpus/text/",
+      "change": "published the corpus text itself: 941 documents (69 MB) in five stratum directories, plus manifest.json (per-document path/stratum/bytes/chars/sha256 and per-stratum licence + attribution) and SHA256SUMS",
+      "upload_commit": "https://huggingface.co/datasets/malaiwah/qwen38-27b-fidelity-suite-v5/commit/c34a5f2487ed5c15921c74375fdc5c3fd0a66228",
+      "verification": "all 941 documents verified bit-for-bit against receipts/kld5-corpus-fetch-log.json (sha256 fd44298cb2c6315b5b511c9e81f3b2a5c6c5b124e0f3e16a38279d5680db8322) BEFORE upload, and the whole corpus/text/ tree re-downloaded AFTER upload with a throwaway unauthenticated cache and re-hashed: 941/941 documents match the fetch log, manifest.json and SHA256SUMS byte-identical to the staged upload",
+      "licence_note": "no stratum required the shingle-digest fallback: encyclopedic + multilingual are Wikipedia text under CC BY-SA 4.0 (article title = each document's first line), literary is Project Gutenberg text public-domain in the US with PG headers/trademark absent, scientific is arXiv title+abstract metadata under the arXiv API terms of use, code is PSF-2.0 (cpython) and BSD-3-Clause (numpy)"
+    },
+    {
+      "gap": "G1",
+      "file": "DATASET_CARD-v5.md",
+      "change": "file-tree entry for corpus_fetch_log.json rewritten as a provenance record (862/941 rows url='preexisting', not a re-fetch script) with a new corpus/text/ entry; the tier-3 'refetchable' bullet replaced by the published-after-all correction citing the audit's G1; the Licence section now states the per-stratum terms of the redistributed text"
+    },
+    {
+      "gap": "G1",
+      "file": "receipts/kld5-suite-manifest-corpus-note-amendment.json",
+      "change": "amended additively (new key amendment_2026_08_16, all earlier fields byte-unchanged — verified by reload-and-compare against HEAD): the 'every corpus document appears there with its source URL' sentence corrected, the publication and its upload commit recorded"
+    },
+    {
+      "gap": "G1",
+      "file": "docs/42-kld-method.md",
+      "change": "suite-identity table: corpus row now describes the real v5 composition (323 en-wiki / 276 wiki in 20 languages / 178 cpython v3.13.1 + 63 numpy v2.2.1 / 59 Gutenberg / 42 arXiv batches) instead of the v3-era prose; provenance row carries the 862-preexisting caveat; new corpus-text row records the publication"
+    },
+    {
+      "gap": "G2",
+      "file": "MODEL_CARD-K5K6.md, MODEL_CARD-K5K6-context.md, MODEL_CARD-K5K6-hydrated.md, MODEL_CARD-K4.md",
+      "change": "one 'How closely these absolute numbers may be read' paragraph inserted immediately after each card's v5 cumulative-means table, adapted from the audit's drop-in text: the 6.54e-04 replay-vs-live floor (receipts/v3-qualification-bf16.json), the 5.6 % BF16-to-fp32 storage systematic (docs/24), absolute values are within-suite and unresolvable below ~1e-3, paired differences are the resolvable quantity because the floor is common-mode (hydrated - online = -4.50e-04 [-4.69e-04, -4.33e-04] on 4,922/5,120, receipts/kld5-10M-paired.json), the floor's six-v3-context derivation and open v5 re-derivation, and docs/42 as method of record"
+    },
+    {
+      "gap": "G2",
+      "file": "docs/33-evidence-volume-and-intervals.md, docs/35-external-protocol-comparability.md",
+      "change": "the same resolution paragraph, doc-styled with relative links, inserted after each file's ten-shard cumulative table; the docs/35 copy additionally notes that cross-protocol comparisons of absolute levels inherit the floor on top of the twelve deltas"
+    },
+    {
+      "gap": "G9",
+      "file": "docs/35-external-protocol-comparability.md",
+      "change": "D10 'ours' cell repointed from 05-kld-protocol.md to 42-kld-method.md (the audit's G9 second half; the README half was in its own landed edit)"
+    },
+    {
+      "gap": "H-05",
+      "file": "docs/05-kld-protocol.md",
+      "change": "supersession banner -> docs/14 -> docs/42"
+    },
+    {
+      "gap": "H-14",
+      "file": "docs/14-fidelity-protocol-v2.md",
+      "change": "supersession banner -> docs/42"
+    },
+    {
+      "gap": "H-09",
+      "file": "docs/09-variant-publication.md",
+      "change": "superseded banner: branch publication abandoned for separate repos + collection index"
+    },
+    {
+      "gap": "H-12",
+      "file": "docs/12-iteration-2-plan.md",
+      "change": "historical-plan banner -> docs/29"
+    },
+    {
+      "gap": "H-17",
+      "file": "docs/17-next-iteration-shopping-list.md",
+      "change": "historical banner -> docs/29"
+    },
+    {
+      "gap": "H-20",
+      "file": "docs/20-context-extension-and-k3-gap.md",
+      "change": "historical banner: strata/chunk items closed by v5 (docs/42, docs/33); long-context tier still open in docs/29"
+    },
+    {
+      "gap": "H-03",
+      "file": "docs/03-gg-runtime-contract.md",
+      "change": "stock-image banner: blocker 2 lifted by docs/19 graph-decode patch, blocker 4 by the physical 5090 qualification receipt"
+    },
+    {
+      "gap": "H-03b",
+      "file": "docs/03-gg-runtime-contract.md",
+      "change": "in-place '(Lifted: ...)' pointers at blocker 2 and blocker 4"
+    },
+    {
+      "gap": "H-16",
+      "file": "docs/16-head-attribution.md",
+      "change": "'Resolved:' line after the stale closing sentence, pointing at docs/24 P0.2 (fp32 negative; paired head result stands)"
+    },
+    {
+      "gap": "H-02",
+      "file": "docs/02-recipe-k4.md",
+      "change": "'MTP stays BF16' scoped to K4 only, pointer to docs/22"
+    },
+    {
+      "gap": "H-ORPHANS",
+      "file": "MODEL_CARD-K5K6.md",
+      "change": "cold-start list item now carries the measured 957 s cold / 173 s warm / 178 s hydrated numbers with a link to receipts/startup-times.json"
+    },
+    {
+      "gap": "H-ORPHANS",
+      "file": "docs/18, docs/26, docs/28, docs/30, docs/32, docs/33, docs/36",
+      "change": "23 receipt-name links added at the prose that already states each finding: needle-*.json and b12x-vs-reconstruct.json (docs/30), prefill-pp-mlp-trellis/overlay-off.json (docs/26), prefill-pp-chunk8k.json (docs/36), v3-noise-r1-vs-r2/r2-vs-r3.json (docs/18), v3-paired-head-asym-v2.json + v3-report-v2-asym-k6head.json (docs/28), paired-ctx-embed8.json + report-ctx-embed8.json + native-needle-*.json (docs/32), kld5-suite-manifest-corpus-note-amendment.json (docs/33); every link stat-verified"
+    }
+  ],
+  "card_publication": {
+    "tool": "tools/publish_cards.py",
+    "receipt": "receipts/apc-card-publication.json",
+    "generated_utc": "2026-08-16T12:55:38Z",
+    "all_byte_identical": true,
+    "per_repo_local_sha256": {
+      "malaiwah/Qwen3.8-27B-EXL3-K5K6-context": "d5f1e8c481135447f9e69f9d04a1dd317d762bd699c3bd0f875902f241e1c880",
+      "malaiwah/Qwen3.8-27B-EXL3-K5K6": "1039637f1b14d8aa0ca62a40eafb131053ccda3a734c99a4a5b9061003634b27",
+      "malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated": "89b12ccb05cf90d49e63f13ec238a9727b57703cec73a90bcb957eb82d2f6b6a",
+      "malaiwah/Qwen3.8-27B-K4": "4565bc8935b11b2724ac2ec75f2ab113f425d9f428940f1ba8c3661495593f14",
+      "malaiwah/Qwen3.8-27B-EXL3-EDA-research": "41b830ae18c005d3c2ad1f0ddb2b835f9e57e334c751352d6623a23d8fb28eb7",
+      "malaiwah/qwen38-27b-fidelity-suite-v5": "9e2a8d80b22b54ae76c7b17887780a2b63d3dd46dd2d11b07823b0949d221abe"
+    },
+    "note": "five repos re-published, byte-identity verified by re-download; the EDA-research card was untouched by this pass and came back already_current"
+  },
+  "not_touched": [
+    "docs/29",
+    "docs/38-41",
+    "upstream/",
+    "the comparator table and chart assets (owned by GittensorCompare)",
+    "every pre-existing receipt except the additively-amended corpus-note amendment"
+  ],
+  "coordination": "card sequencing arbitrated by Main: this pass edited the four model cards first; GittensorCompare rebases after 'cards released'",
+  "content_sha256": "0dd418511c9b01549eef865feec6a14a3675550eb675504d929b93b60e753fe4",
+  "content_sha256_excludes": [
+    "content_sha256",
+    "content_sha256_excludes"
+  ]
+}

@@ -65,7 +65,7 @@ was never going to be trustworthy.
 
 | control | result | interpretation |
 |---|---|---|
-| runtime-repeat noise floor, captures 1-2 and 2-3 over 32 sentinels | **0.000000**, top-1 1.0 | this runtime is bit-deterministic across process restarts; every difference reported above is far outside noise. The reference protocol's TP16 runtime had a floor of 0.0032, which would have swamped our head-attribution result |
+| runtime-repeat noise floor, captures 1-2 and 2-3 over 32 sentinels ([`receipts/v3-noise-r1-vs-r2.json`](../receipts/v3-noise-r1-vs-r2.json), [`receipts/v3-noise-r2-vs-r3.json`](../receipts/v3-noise-r2-vs-r3.json)) | **0.000000**, top-1 1.0 | this runtime is bit-deterministic across process restarts; every difference reported above is far outside noise. The reference protocol's TP16 runtime had a floor of 0.0032, which would have swamped our head-attribution result |
 | harness self-check | 0.000000 | no densification or window bias |
 | ~~CUDA-graph parity~~ **withdrawn** | published as 0.000000, top-1 1.0 | not a parity measurement: `fidelity.py capture` takes one **prefill** forward, and `cudagraph_mode=FULL_DECODE_ONLY` captures no prefill graph, so this compared two runs of the same eager prefill. The narrow claim it supports is "enabling graph decode does not change prefill numerics". Replaced by a real decode probe — [27](27-graph-decode-drift-control.md) |
 | **replay qualification** | mean `KL(live \|\| replayed)` = **6.54e-04**, top-1 98.999 %, max 0.0913 | **this is our weakest link**: ~500x worse than the reference protocol's 1.23e-06 |

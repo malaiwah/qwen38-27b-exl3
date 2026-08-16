@@ -249,6 +249,24 @@ anything downstream of the logits.
 | `Qwen/Qwen3.8-27B-FP8` | 28.51 GiB | 0.005294 | [0.004927, 0.005728] | 96.79 % | 10.714 |
 | [`malaiwah/Qwen3.8-27B-K4`](https://huggingface.co/malaiwah/Qwen3.8-27B-K4) | 17.89 GiB | 0.010604 | [0.009640, 0.011746] | 95.76 % | 14.283 |
 
+**How closely these absolute numbers may be read.** Each mean is a body-only replay value: both
+operands are projected through the one shared BF16 head, and the replay path is not the engine's
+own logit path. Replaying the unquantized model against its own live logits measures
+`KL(live ‖ replayed)` = **6.54e-04**
+([`receipts/v3-qualification-bf16.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/v3-qualification-bf16.json)),
+and moving hidden-state storage from BF16 to fp32 moves a candidate's KLD by 5.6 %
+([docs/24](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/docs/24-p0-results.md)). Absolute
+values are therefore **within-suite numbers**: they carry a ~6e-4 implementation offset plus a
+~5 % storage systematic, and absolute differences below about 1e-3 are not resolvable. Both
+offsets are **common-mode** — every candidate replays through the identical path — so **paired
+differences and orderings are the resolvable quantity**: this build − online K5/K6 is −4.50e-04
+[−4.69e-04, −4.33e-04] on 4,922 of 5,120 contexts
+([`receipts/kld5-10M-paired.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/kld5-10M-paired.json)),
+smaller than the replay floor and resolved *because* the floor cancels in the pairing. The floor
+itself was measured on six v3 contexts; re-deriving it on v5 is an open measurement. Method of
+record:
+[`docs/42-kld-method.md`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/docs/42-kld-method.md).
+
 This build is **48 % below official FP8** at 71 % of its resident weight, and it is the best of
 the five on mean KLD, on both interval bounds and on top-1 agreement; the one column where
 another checkpoint wins is the exact maximum, where the context edition's 5.557 beats this

@@ -18,6 +18,9 @@ path that was used for every row count before it.
 | C | BF16 (no overlay) | trellis | 2,485 | 2,473 | 28.5 |
 | D | BF16 (no overlay) | reconstruct | 5,618 | 5,728 | 28.5 |
 
+Rows C and D are receipted in [`receipts/prefill-pp-mlp-trellis.json`](../receipts/prefill-pp-mlp-trellis.json)
+and [`receipts/prefill-pp-overlay-off.json`](../receipts/prefill-pp-overlay-off.json).
+
 Read the deltas along each axis:
 
 - **MLP kernel: 2.13x (A->B) and 2.26x (C->D).** This is the whole story of prefill.

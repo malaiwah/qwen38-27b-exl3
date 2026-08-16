@@ -54,8 +54,21 @@ suite/shard-00{00..09}/suite-manifest.json
 suite/shard-00NN/commands/*.sh     the exact capture and replay command lines the ladder ran
                                      for that shard (guest paths preserved, for reference).
 corpus/corpus_fetch_log.json       every source document: stratum, stem, URL, bytes, chars,
-                                     sha256, plus every skip and every failure.  Refetch the
-                                     corpus from this; distrust a re-fetch that moves a digest.
+                                     sha256, plus every skip and every failure.  A provenance
+                                     record, NOT a re-fetch script: 862 of the 941 rows carry
+                                     url "preexisting" — carried forward from an earlier fetch
+                                     run — and only the 79 CPython v3.13.1 tarball members
+                                     resolve to a pinned URL, so the text is not
+                                     reconstructible from this file.  The text itself is the
+                                     next entry.
+corpus/text/                       the corpus text itself: all 941 documents (69 MB) in five
+                                     stratum directories, verified bit-identical to the fetch
+                                     log's digests before upload, plus manifest.json
+                                     (per-document sha256, per-stratum licence and attribution)
+                                     and SHA256SUMS for `sha256sum -c`.  This is what makes the
+                                     contamination exclusion re-derivable by a third party:
+                                     re-run tools/near_duplicate_scan.py from the research repo
+                                     against the public exllamav3 calibration files.
 reference/hidden-bf16/             THE most reusable artifact in this repo.  512 files,
                                      hidden_NNNN.safetensors, each [2047, 5120] bf16, plus
                                      capture-manifest.json.  Unquantized BF16
@@ -146,8 +159,13 @@ Three tiers, not one rule:
 
 Tier 3, itemised — what is *not* here and why:
 
-* **The corpus text itself** (69 MB). Refetchable from `corpus/corpus_fetch_log.json`, which
-  pins every file's sha256; and `suite/tokens/` is the authoritative evaluation input anyway.
+* ~~**The corpus text itself** (69 MB)~~ — **published after all: `corpus/text/`, 2026-08-16.**
+  The ground this bullet originally gave ("refetchable from `corpus/corpus_fetch_log.json`")
+  did not hold: 862 of the 941 fetch-log rows carry `url: "preexisting"`, so the text was not
+  reconstructible from the log and the contamination exclusion was not verifiable off this
+  machine — found by the adversarial method audit
+  ([`receipts/kld-method-reproducibility-audit.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/kld-method-reproducibility-audit.json),
+  gap G1). `suite/tokens/` remains the authoritative evaluation input.
 * **The shared BF16 LM head** (2.54 GB). Already published once, in
   `malaiwah/qwen38-27b-fidelity-suite-v3` as `lm-head/weight.safetensors`, sha256
   `25a30fd5f826da0abc4efc4cc71def9f02bcb8085f7175eee284d221dee4cfff` — verified equal to this
@@ -314,5 +332,12 @@ does not depend on the scored window.
 ## Licence
 
 Apache-2.0 for the artifacts produced here — captures, reports, manifests, token id lists.
-Source text is not redistributed; `corpus/corpus_fetch_log.json` names every upstream source,
-and that text stays under its own licence.
+The corpus text under `corpus/text/` is redistributed source text and carries its own
+per-stratum terms, stated in `corpus/text/manifest.json`: the two Wikipedia strata
+(`encyclopedic/`, `multilingual/`) are **CC BY-SA 4.0**, with each document's first line being
+the article title and therefore its attribution handle; `literary/` is Project Gutenberg text,
+public domain in the United States, with PG headers and trademark not included; `scientific/`
+is arXiv titles and abstracts, redistributed as metadata under arXiv's API terms of use, with
+individual abstracts possibly remaining under author copyright; `code/` is PSF-2.0
+(`python/cpython@v3.13.1`) and BSD-3-Clause (`numpy/numpy@v2.2.1`).
+`corpus/corpus_fetch_log.json` names every upstream source and pins every document's sha256.

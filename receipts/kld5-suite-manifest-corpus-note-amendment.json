@@ -16,5 +16,15 @@
     "change": "the builder no longer emits hard-coded corpus provenance; it points at the per-document digests and the fetch log instead.",
     "applies_to": "suites built after this commit; the published v5 manifest is left byte-identical."
   },
-  "generated_utc": "2026-08-15T21:35:27Z"
+  "generated_utc": "2026-08-15T21:35:27Z",
+  "amendment_2026_08_16": {
+    "corrects": "authoritative_source.note, above",
+    "published_claim": "every corpus document appears there with its source URL, byte count and sha256",
+    "defect": "overstated: 862 of the 941 rows in receipts/kld5-corpus-fetch-log.json carry url='preexisting' with fetched_this_run=false, and only the 79 CPython v3.13.1 tarball members resolve to a pinned URL, so the corpus text was not reconstructible from the fetch log and the contamination exclusion was not verifiable by a third party. Found by the adversarial method audit, receipts/kld-method-reproducibility-audit.json, gap G1.",
+    "correction": "the fetch log identifies every document by stratum, stem, bytes, chars and sha256 — a provenance record, not a re-fetch script. The corpus text itself is now published in the v5 dataset under corpus/text/: all 941 documents, each verified bit-for-bit against the fetch log's digest before upload, plus corpus/text/manifest.json (per-document sha256, per-stratum licence and attribution) and corpus/text/SHA256SUMS.",
+    "published_at": "https://huggingface.co/datasets/malaiwah/qwen38-27b-fidelity-suite-v5/tree/main/corpus/text",
+    "upload_commit": "https://huggingface.co/datasets/malaiwah/qwen38-27b-fidelity-suite-v5/commit/c34a5f2487ed5c15921c74375fdc5c3fd0a66228",
+    "earlier_fields_unchanged": true,
+    "generated_utc": "2026-08-16T12:51:30Z"
+  }
 }

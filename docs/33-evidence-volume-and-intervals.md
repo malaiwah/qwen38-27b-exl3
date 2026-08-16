@@ -10,7 +10,7 @@ the part that volume cannot fix.
 
 | item | value |
 |---|---|
-| suite | [`receipts/kld5-suite-manifest.json`](../receipts/kld5-suite-manifest.json), schema `qwen38-distribution-fidelity/6` |
+| suite | [`receipts/kld5-suite-manifest.json`](../receipts/kld5-suite-manifest.json), schema `qwen38-distribution-fidelity/6`; `corpus_note` field amended by [`receipts/kld5-suite-manifest-corpus-note-amendment.json`](../receipts/kld5-suite-manifest-corpus-note-amendment.json) |
 | contexts | 5,120 of 2,048 tokens, 2,047 scored positions each |
 | scored positions | **10,480,640** |
 | source clusters | **842** (one document family per cluster) |
@@ -36,6 +36,18 @@ Body-only, both operands through one shared BF16 head, cumulative over all ten s
 | context edition | 0.003509 | [0.003220, 0.003852] | 97.44 % | 5.557 |
 | official FP8 | 0.005294 | [0.004927, 0.005728] | 96.79 % | 10.714 |
 | K4 | 0.010604 | [0.009640, 0.011746] | 95.76 % | 14.283 |
+
+**How closely these absolute numbers may be read.** Each mean is a body-only replay value, and
+the replay path is not the engine's own logit path: replaying the unquantized model against its
+own live logits measures 6.54e-04
+([`receipts/v3-qualification-bf16.json`](../receipts/v3-qualification-bf16.json)), and BF16→fp32
+hidden-state storage moves a candidate's KLD by 5.6 % ([docs/24](24-p0-results.md)). Absolute
+values are within-suite numbers — a ~6e-4 implementation offset plus a ~5 % storage systematic,
+so absolute differences below ~1e-3 are not resolvable. Both offsets are common-mode across
+candidates, so paired differences are the resolvable quantity: the hydrated − online row below,
+−0.000450, is smaller than the replay floor and resolved *because* the floor cancels in the
+pairing. The floor was measured on six v3 contexts; its v5 re-derivation is an open measurement.
+Method of record: [docs/42](42-kld-method.md).
 
 Paired per context, 10,000 cluster resamples
 ([`receipts/kld5-10M-paired.json`](../receipts/kld5-10M-paired.json)):

@@ -1,5 +1,8 @@
 # Shopping list for iteration 2
 
+> **Historical shopping list.** The live tracker is
+> [29-plan-and-loose-ends.md](29-plan-and-loose-ends.md).
+
 Rewritten after the v3 held-out re-measurement and the CUDA-graph landing. Ordered by
 expected value, each with the evidence that justifies it and the test that closes it.
 

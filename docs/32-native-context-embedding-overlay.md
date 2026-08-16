@@ -53,11 +53,16 @@ throughput.
 | multimodal, 30 synthetic cases | 24/30 | **24/30, identical** |
 
 On the original 136-context receipt the cost is **+0.000065 mean KLD**, 95 % CI
-[+0.0000046, +0.00013], 49/136 contexts. On the corrected 127-context subset the
+[+0.0000046, +0.00013], 49/136 contexts ([`receipts/paired-ctx-embed8.json`](../receipts/paired-ctx-embed8.json);
+int8 side scored in [`receipts/report-ctx-embed8.json`](../receipts/report-ctx-embed8.json)).
+On the corrected 127-context subset the
 point-estimate difference is **+0.000082**; both are below the replay-resolution caveat.
 
 Generation, not allocation alone: a planted code was retrieved exactly at
-depths 0.1, 0.5 and 0.9 from **227,334-token prompts**, 94.6-95.0 seconds each,
+depths 0.1, 0.5 and 0.9 ([`receipts/native-needle-0.1.json`](../receipts/native-needle-0.1.json),
+[`receipts/native-needle-0.5.json`](../receipts/native-needle-0.5.json),
+[`receipts/native-needle-0.9.json`](../receipts/native-needle-0.9.json))
+from **227,334-token prompts**, 94.6-95.0 seconds each,
 about 2,400 prompt tokens per total request wall second, including decode and HTTP overhead.
 This is not an engine-timed prefill rate. The 30-case synthetic vision score was unchanged.
 

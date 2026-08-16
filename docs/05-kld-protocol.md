@@ -1,5 +1,9 @@
 # KLD protocol
 
+> **Superseded.** This is the iteration-1 single-window logits protocol, superseded via
+> [14-fidelity-protocol-v2.md](14-fidelity-protocol-v2.md) (v2) by
+> [42-kld-method.md](42-kld-method.md), the method of record. Kept for provenance.
+
 **The KLD scripts are not in the container image.** Searched the flattened r34
 rootfs: no KLD harness, only vLLM's stock `benchmarks/` tree. That matches how
 the published driver works — `bench-glm52-exl3-shared-h-kld.sh` mounts a

@@ -55,7 +55,13 @@ Measured on a budget of 30.44 GiB, which is what a 5090 gives vLLM at utilisatio
 ## Long context, verified by generation rather than allocation
 
 9/9 exact needle retrievals, three depths at each length, on the 5090-sized budget:
-28,613 tokens (6.3 s), 113,345 (34.3 s), **196,857 (76.1 s)**. Prompt tokens divided by
+28,613 tokens (6.3 s), 113,345 (34.3 s), **196,857 (76.1 s)**
+([`receipts/needle-32768-0.1.json`](../receipts/needle-32768-0.1.json),
+[`-0.5`](../receipts/needle-32768-0.5.json), [`-0.9`](../receipts/needle-32768-0.9.json);
+[`receipts/needle-131072-0.1.json`](../receipts/needle-131072-0.1.json),
+[`-0.5`](../receipts/needle-131072-0.5.json), [`-0.9`](../receipts/needle-131072-0.9.json);
+[`receipts/needle-225000-0.1.json`](../receipts/needle-225000-0.1.json),
+[`-0.5`](../receipts/needle-225000-0.5.json), [`-0.9`](../receipts/needle-225000-0.9.json)). Prompt tokens divided by
 total request wall time fall from ~4,500 to 2,588 tok/s as length grows. Those quotients
 include decode and HTTP overhead; they are not engine-timed prefill measurements and do not
 by themselves attribute the decline.
@@ -76,7 +82,8 @@ produced a *false pass*:
 B12X's native kernel *before* the reconstruct dispatch from PR #316 is consulted. On this build
 that is 208 attention projections, 64 `down_proj` and the head — the majority of the model —
 running a decode kernel through prefill. Measured per matrix at m=2048, B12X against
-reconstruct+GEMM: `down_proj` 1.11x, `lm_head` 1.40x, attention `in_proj_qkvz` 1.08x in favour
+reconstruct+GEMM ([`receipts/b12x-vs-reconstruct.json`](../receipts/b12x-vs-reconstruct.json)):
+`down_proj` 1.11x, `lm_head` 1.40x, attention `in_proj_qkvz` 1.08x in favour
 of reconstruct; at m≤8 B12X wins by ~5x. Routing by row count inside the opaque op gains
 **+3.4 % prefill** (5,078 → 5,250 tok/s) and costs **+0.0000377 mean KLD**, CI
 [−0.00001, +0.00009], 59/136 contexts — a coin flip. Shipped.

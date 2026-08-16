@@ -161,6 +161,21 @@ Current ladder on that suite, cumulative over all ten shards:
 | official FP8 | 0.005294 | [0.004927, 0.005728] | 96.79 % | 10.714 | [`kld5-10M-fp8.json`](../receipts/kld5-10M-fp8.json) |
 | K4 | 0.010604 | [0.009640, 0.011746] | 95.76 % | 14.283 | [`kld5-10M-k4.json`](../receipts/kld5-10M-k4.json) |
 
+**How closely these absolute numbers may be read.** Each mean is a body-only replay value, and
+the replay path is not the engine's own logit path: replaying the unquantized model against its
+own live logits measures 6.54e-04
+([`receipts/v3-qualification-bf16.json`](../receipts/v3-qualification-bf16.json)), and BF16→fp32
+hidden-state storage moves a candidate's KLD by 5.6 % ([docs/24](24-p0-results.md)). Absolute
+values are within-suite numbers — a ~6e-4 implementation offset plus a ~5 % storage systematic,
+so absolute differences below ~1e-3 are not resolvable, and cross-protocol comparisons of
+absolute levels inherit that floor on top of every delta in the table below. Both offsets are
+common-mode across candidates, so paired differences are the resolvable quantity: hydrated −
+online K5/K6 is −0.000450 [−0.000469, −0.000433] on 4,922 of 5,120 contexts
+([`receipts/kld5-10M-paired.json`](../receipts/kld5-10M-paired.json)), smaller than the replay
+floor and resolved *because* the floor cancels in the pairing. The floor was measured on six v3
+contexts; its v5 re-derivation is an open measurement. Method of record:
+[docs/42](42-kld-method.md).
+
 The GGUFs are no longer absent from our protocol, but they cannot join *that* table: they were
 run on **shard 0** of the same suite, not on all ten shards, so their numbers belong in the
 shard-0 table below and never in a column welded from 10,480,640 positions. Note also
@@ -186,7 +201,7 @@ measurement.
 | **D7** | uncertainty model | per-token SEM assuming i.i.d. tokens, e.g. `± 0.000073` on 0.006949 [U-LOG-Q5]; 147,900 positions | source-cluster bootstrap, 842 clusters x 10,000 resamples; 10,480,640 positions ([`kld5-10M-hyd.json`](../receipts/kld5-10M-hyd.json)) | no effect on the point estimate | their interval is narrower than an honest one for correlated tokens; do not place the two intervals side by side without saying so |
 | **D8** | framing | raw text, no chat template, no system prompt [U-LOG-B] | raw text, `add_special_tokens=False` | **none** | recorded so it is not mistaken for a difference; their own Dynamic-2.0 page argues text-only evaluation is inadequate for instruct models [U-DYN2], but that argument applies to both sides equally |
 | **D9** | contamination auditability | eval set is deliberately not their calibration set [U-DYN2], but the calibration set is private and no imatrix blob ships in the GGUF repo [HF-GGUF], so overlap is unauditable | whole-document pre-exclusion on exact 12-word calibration overlap, 44 documents removed before any result was visible ([`kld5-suite-manifest.json`](../receipts/kld5-suite-manifest.json)) | unknown; overlap would push theirs lower | asymmetry of evidence, not of intent — ours is auditable, theirs is not, and that must be stated when both numbers appear together |
-| **D10** | engine, kernels, KV | llama.cpp CUDA, flash-attn on, f16 KV, batch/ubatch 16384, `n_seq=32` [U-LOG-B] | vLLM/EXL3, `enforce_eager`, `max_num_seqs=1`, one chunk per prefill, `kv_cache_dtype=auto` ([05-kld-protocol.md](05-kld-protocol.md)) | unknown, small at ctx 512 | second tokenizer implementation too: GGUF BPE (`tokenizer.ggml.model=gpt2`, `pre=qwen35`) vs HF `tokenizers`. **Asserted, not assumed, and it is a null: the two streams over `wiki.test.raw` are bit-identical, 297,194 tokens, same `sha256` of the int32 stream ([`wikitext-kld-token-identity.json`](../receipts/wikitext-kld-token-identity.json))** |
+| **D10** | engine, kernels, KV | llama.cpp CUDA, flash-attn on, f16 KV, batch/ubatch 16384, `n_seq=32` [U-LOG-B] | vLLM/EXL3, `enforce_eager`, `max_num_seqs=1`, one chunk per prefill, `kv_cache_dtype=auto` ([42-kld-method.md](42-kld-method.md)) | unknown, small at ctx 512 | second tokenizer implementation too: GGUF BPE (`tokenizer.ggml.model=gpt2`, `pre=qwen35`) vs HF `tokenizers`. **Asserted, not assumed, and it is a null: the two streams over `wiki.test.raw` are bit-identical, 297,194 tokens, same `sha256` of the int32 stream ([`wikitext-kld-token-identity.json`](../receipts/wikitext-kld-token-identity.json))** |
 | **D11** | top-1 definition | `Same top p` = argmax(candidate logits) vs argmax of the **uint16-quantized** reference, no tie handling [LC:224-240] | exact argmax on both operands | theirs lower | near-ties flip under 16-bit reference storage; at 98-99 % agreement this is a real contributor |
 | **D12** | the NVFP4 rows have no protocol at all | corpus labels only (zh, code, refgen, chat, ja/ko/ru/es); no tokens, ctx, reference precision, direction or engine [U-Q38]; NVFP4 cannot run under `llama-perplexity` | 278,392 positions, protocol above | not comparable in either direction | our 0.094978 ([`v3-report-nvfp4-analysis.json`](../receipts/v3-report-nvfp4-analysis.json)), 0.092727 contamination-corrected ([`analysis-v3-contamination-corrected.json`](../receipts/analysis-v3-contamination-corrected.json)) and their 0.0124-0.05818 [U-Q38] should both be published, never divided |
 

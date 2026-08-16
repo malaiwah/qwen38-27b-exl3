@@ -1,5 +1,8 @@
 # Iteration 2 plan
 
+> **Historical plan.** Executed and cancelled items have receipts; the live tracker is
+> [29-plan-and-loose-ends.md](29-plan-and-loose-ends.md).
+
 Constraints, restated as acceptance criteria:
 
 1. Mean KLD **below 0.034030** on the frozen window (iteration 1's number).

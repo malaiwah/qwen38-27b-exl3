@@ -119,7 +119,8 @@ serving option.
 refused by the same exl3 guard as above, and our history records Xid 31 on graph-captured short
 SM120 prefills. `VLLM_EXL3_PREFILL_FP8` is a silent no-op: the pinned extension exports neither
 `reconstruct_fp8_slice` nor `reconstruct_had_slice`. `--max-num-batched-tokens 8192` was already
-measured as noise. Prefix caching is off by default for this hybrid model
+measured as noise ([`receipts/prefill-pp-chunk8k.json`](../receipts/prefill-pp-chunk8k.json)).
+Prefix caching is off by default for this hybrid model
 (`enable_prefix_caching=False` in every banner, measured hit rate 0.0) and enabling it needs the
 `-apc` superset image, which is not the qualified artifact. SparkInfer and b12x are one component
 under two names, so there is no second engine to switch on.

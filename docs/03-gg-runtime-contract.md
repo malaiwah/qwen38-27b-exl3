@@ -1,5 +1,11 @@
 # Gilded Gnosis EXL3 loader: what a dense checkpoint must satisfy
 
+> **Stock-image contract.** This document describes the **stock** GG image. Blocker 2
+> (eager execution mandatory) was lifted by the graph-decode patch in
+> [19-cuda-graphs-patch.md](19-cuda-graphs-patch.md) (`VLLM_EXL3_GRAPH_DECODE`, baked into
+> `gg-r34-patched`); blocker 4 (TP1 unqualified) by the physical RTX 5090 qualification
+> ([`receipts/qualification-5090-context.json`](../receipts/qualification-5090-context.json)).
+
 Source of truth: `local-inference-lab/blackwell-llm-docker@76589eb` launchers,
 `local-inference-lab/vllm` PR #280 @ `8e7be4d` (`exl3.py`), `b12x@195e26c`.
 PR #280 is **not merged** into `dev/gilded-gnosis`; it exists in the r34 image as
@@ -20,6 +26,7 @@ published image, not to a source build of the branch.
    `rank_sliced_metadata` (the GLM-5.2 rank-sliced MoE format). A dense
    `tensor_storage` checkpoint must be served with `--enforce-eager`, i.e. no
    CUDA graphs. This is a throughput cost to state on the model card.
+   *(Lifted: see [19-cuda-graphs-patch.md](19-cuda-graphs-patch.md) — `VLLM_EXL3_GRAPH_DECODE`.)*
 3. **Auto-detection will not fire.** `override_quantization_method` returns
    `exl3` only for `r7_routed_experts` or `hybrid_tr3_tail`. A dense checkpoint
    must be served with an explicit `--quantization exl3`.
@@ -28,6 +35,8 @@ published image, not to a source build of the branch.
    includes `tp_world_size`/`tp_rank`, but every published EXL3 receipt is TP4 and
    `glm52-exl3` hard-defaults `TP=4 DCP=4 MTP=3`. TP1 is unqualified, not
    unimplemented.
+   *(Lifted: see the 5090 qualification receipt,
+   [`receipts/qualification-5090-context.json`](../receipts/qualification-5090-context.json).)*
 
 ## Required checkpoint metadata
 

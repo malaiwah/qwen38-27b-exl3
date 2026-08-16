@@ -93,6 +93,9 @@ the measurement in [05-kld-protocol.md](05-kld-protocol.md), not by arithmetic.
 
 ## MTP stays BF16
 
+*(K4 only — v2 and later quantized the MTP draft; see
+[22-results-iteration-2.md](22-results-iteration-2.md).)*
+
 Reversed after reading the serving guidance: both NVFP4 vendors deliberately
 exclude the MTP head (`ignore: ["mtp*"]` / `re:^mtp.*`), and
 [vLLM's own recipe](https://recipes.vllm.ai/Qwen/Qwen3.8-27B) enables it with

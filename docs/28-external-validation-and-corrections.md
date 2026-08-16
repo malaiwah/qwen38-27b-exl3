@@ -64,12 +64,15 @@ and returned `-0.000000` — the identical trap that produced a null result in i
 
 With asymmetric heads (reference through the true BF16 head, candidate through the
 dequantized K6 head): the K6 head costs **+0.000127**, 95 % CI [+0.000105, +0.000148],
-10/136 contexts favour it. That is 1.5 % of total divergence, and promoting the head to BF16
+10/136 contexts favour it ([`receipts/v3-paired-head-asym-v2.json`](../receipts/v3-paired-head-asym-v2.json)).
+That is 1.5 % of total divergence, and promoting the head to BF16
 would spend **1.589 GB** to recover it. Rejected on that basis.
 
 Consequence for the headline: 0.008157 is **body-only** (shared BF16 comparator head, the same
 treatment every comparator gets, since official FP8 serves a BF16 head). As served with the K6
-head the figure is **0.008284**. Both beat FP8's body-only 0.013126.
+head the figure is **0.008284**
+([`receipts/v3-report-v2-asym-k6head.json`](../receipts/v3-report-v2-asym-k6head.json)).
+Both beat FP8's body-only 0.013126.
 
 ## 3. The "held-out" suite was not post-selection
 

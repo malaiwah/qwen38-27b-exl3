@@ -1,5 +1,9 @@
 # How far we can extend, and how far we are from the reference protocol
 
+> **Historical.** The chunk-accumulation and strata items were closed by the v5 suite
+> ([42-kld-method.md](42-kld-method.md) / [33-evidence-volume-and-intervals.md](33-evidence-volume-and-intervals.md));
+> the long-context fidelity tier is still open and tracked in [29-plan-and-loose-ends.md](29-plan-and-loose-ends.md).
+
 ## Context length: what the current measurement covers and what it can
 
 Every number published so far is at **2048 tokens**. That is the reference protocol's

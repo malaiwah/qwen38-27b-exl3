@@ -80,3 +80,7 @@ Both corrections are subject to the resolution floor noted in
 [18](18-results-fidelity-v3.md): at 6.5e-04 replay error, a 6.8e-05 effect is below
 what the current storage format can resolve, so this ablation must be redone with
 fp32 captures before it is treated as settled.
+
+Resolved: [24-p0-results.md](24-p0-results.md) §P0.2 ran the fp32 rerun — storage
+precision moved the replay floor only −4.5 % (and candidate KLD −5.6 %), so it is not
+the cause, and the paired head result stands as a relative measurement.
