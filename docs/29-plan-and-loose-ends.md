@@ -797,9 +797,56 @@ Two rungs are required:
 
 Acceptance: a fresh-machine transcript contains no `/var/tmp/work` or unpublished artifact,
 the data-only values match at full stored precision, every fetched blob is content-identified,
-and build differences are either byte-identical or explicitly reduced to a measured numerical
-equivalence contract. The independent operator signs the receipt or publishes it from a
-separate account. A copy of this workstation is not an independent reproduction.
+and build differences are explicitly reduced to a measured numerical equivalence contract. The
+independent operator signs the receipt or publishes it from a separate account. A copy of this
+workstation is not an independent reproduction.
+
+**Amended 2026-08-16: the byte-identity branch of that acceptance clause is dead for a rebuilt
+checkpoint, because the converter is measurably nondeterministic.** A fresh conversion of the
+published hydrated recipe, same box, same flags, same source, returns 13 of 16 pinned payload
+files identical — every config, the tokenizer, the safetensors index,
+`quantization_config.json`, `quantization_manifest.json` — and three safetensors shards that
+differ. The difference reaches tensor bytes and stops there: byte-identical headers, the same
+2,426 physical tensors with the same names, dtypes, shapes and offsets, the same three-shard
+packing to the byte. **399 tensors differ, every one a `.trellis` payload — 399 of 409 quantized
+modules, 97.6 %, with 41-92 % of the bytes differing inside each, mean 82 %.** No scale, norm,
+embedding, vision or BF16 companion tensor moved, and everything the recipe fixes came out
+exact: all ten per-role byte totals, 21,586,964,548 B of payload, 1,199 logical tensors, 715
+`tensor_storage` entries, every assigned width. The mechanism was measured rather than inferred
+— a failed first attempt left one log holding the same conversion twice, minutes apart, with
+identical widths and identical global scales but different `proxy_err` for 6 of the 212 modules
+the comparison reaches, and two identical float computations round identically
+([`receipts/converter-determinism.json`](../receipts/converter-determinism.json)).
+
+So **the published bytes are the artifact and the recipe is not**: the recipe fixes composition,
+widths and byte budget exactly and does not fix the weights, making a rebuild a *sibling* of the
+published checkpoint — a different valid artifact of the same recipe, not a broken one. Every
+published fidelity number measures the bytes a downloader receives and is unaffected; what no
+longer holds is any "rebuild this and you get our numbers" reading, which is now an expectation
+to test rather than an identity. There is also a **floor under byte comparisons**: a diff against
+a published tree is not evidence of tampering, corruption or a changed recipe until it exceeds
+this floor, and the checkable claim is each repo's published `SHA256SUMS`, not the output of
+anyone's conversion. For rung 2 the only reachable acceptance is therefore the equivalence
+contract, and it needs a stated tolerance: identical composition, widths, per-role byte totals,
+tensor names, dtypes, shapes, offsets and shard sizes, with trellis payload differences
+permitted up to the measured floor. Nothing else about this item changes. None of it touches the
+runtime's weight-reconstruction path (`reconstruct_fp8_slice`, the reconstructed-prefill
+kernels); the two senses of "reconstruction" stay apart.
+
+Two loose ends follow from it. **(a) A build-time environment record that is sufficient on its
+own.** The same run found the published build environment is not reconstructible: this recipe
+reaches `import marisa_trie` twice on unconditional paths and the pinned image
+`release-evidence-hydrated.json` records has no `marisa_trie`, so that image provably cannot run
+the conversion to completion. Something in the published run supplied it and nothing recorded
+what. The conversion-capable image is now `gg-r34-convert`, which installs the same verified
+wheel the rebuild used; what is owed is an environment record captured at build time — image
+digest plus every dependency supplied beside it — so the next build is re-enterable rather than
+merely re-attemptable. **(b) Does a sibling rebuild land inside our interval?** Never run. The
+sibling built for this measurement was released with its working tree unscored. The test is now
+cheap on the scoring side because the shard-0 BF16 reference is published — one candidate
+capture plus one replay, about 6 minutes of GPU — but it needs a ~40-minute conversion first to
+have a sibling to score. Until then the published statement stands as written: a sibling should
+land within measurement resolution, and that has not been tested.
 
 ## P1 / rank 4 — public capability retention
 
