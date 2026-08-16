@@ -1122,8 +1122,23 @@ minutes apart, agreed on every width and every global scale and disagreed on the
 ([`receipts/converter-determinism.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/converter-determinism.json)).
 So what you get from the commands above is a **sibling**: a different valid artifact of the same
 recipe, not a broken one. Every fidelity number on this card measures the published bytes a
-downloader receives and is unaffected; "rebuild this and you get these numbers" is now an untested
-expectation rather than an identity. Check the digest of the published tree against `SHA256SUMS`
+downloader receives and is unaffected. And "rebuild this and you get these numbers" is no longer
+an untested expectation: a third conversion of that hydrated recipe — a sibling again, differing
+in 399 `.trellis` payloads and nothing else — was captured and replayed on the identical v5
+shard-0 protocol (512 contexts, 1,048,064 scored positions, same shared head, same comparator),
+and paired against the published checkpoint the difference is **−3.755e-06, 95 % source-cluster
+bootstrap interval [−2.854e-05, +2.062e-05]**, which **brackets zero**, on **257 contexts to 255
+with no ties**. Two controls make that attributable to the sibling's weights rather than to the
+harness — replaying the published checkpoint against the same reference capture returned its mean
+and all 512 per-context rows bitwise, and a fresh recapture reproduces that mean exactly — so the
+comparison's floor is zero rather than a tolerance. **97.6 % of the quantized modules come back
+with different bytes and the fidelity is the same to within our resolution**, which is what makes
+"the recipe is the reproducible thing, the bytes are the artifact" a measured claim rather than a
+hedge. It is one sibling, one recipe, one shard, at this protocol's resolution: it bounds the
+converter's fidelity variance, it does not estimate it, and it is not a finding that converter
+nondeterminism is fidelity-neutral in general
+([`receipts/sibling-rebuild-fidelity.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/sibling-rebuild-fidelity.json)).
+Check the digest of the published tree against `SHA256SUMS`
 rather than against your own conversion, and read a byte diff below this floor as the converter
 rather than as tampering, corruption or a changed recipe. The same run also showed the recorded
 build environment is incomplete: the pinned image has no `marisa_trie`, which the conversion

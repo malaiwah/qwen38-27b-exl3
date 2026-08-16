@@ -152,9 +152,28 @@ different valid artifact of the same recipe, not a broken one
 
 **What it changes, and what it does not.** Every fidelity number on this card measures the
 published bytes — the ones `SHA256SUMS` pins and a downloader actually receives — so none of them
-is affected. What no longer holds is the reading "rebuild this and you get these numbers": a
-sibling should land within measurement resolution, but that is now an expectation to test, and it
-has not been tested. The practical consequence is a floor: a byte diff against a published tree is
+is affected. And the reading "rebuild this and you get these numbers" is no longer an untested
+expectation — it was tested, once, and it held. A third conversion of this recipe on the same
+converter worktree came out a sibling in exactly the same way (399 `.trellis` payloads differing
+and nothing else, 39-92 % of the bytes inside each, mean 82.3 %), and was then captured and
+replayed on the **identical** protocol: v5 shard 0, 512 contexts, 1,048,064 scored positions, the
+same shared BF16 head, the same comparator. It scored **0.002704** against this checkpoint's
+**0.002700**, and paired per context the difference is **−3.755e-06, 95 % source-cluster bootstrap
+interval [−2.854e-05, +2.062e-05]** over 330 clusters — an interval that **brackets zero** — on
+**257 contexts to 255 with no ties**, a coin flip with no direction (top-1 97.80 % against
+97.78 %). Two controls put the floor of that comparison at exactly zero rather than at a
+tolerance: replaying *this* checkpoint against the same reference capture returned its published
+mean and all 512 per-context rows bitwise, and a fresh recapture of it reproduces that mean
+exactly, so the −3.755e-06 belongs to the sibling's weights and to nothing in the capture or
+replay path. So: **97.6 % of the quantized modules come back with different bytes and the fidelity
+is the same to within our resolution**, which is what makes "the recipe is the reproducible thing,
+the bytes are the artifact" a measured claim rather than a hedge. Read it for what it is — one
+sibling, one recipe, one shard, at this protocol's resolution: it bounds the converter's fidelity
+variance here, it does not estimate it, and it is not a finding that converter nondeterminism is
+fidelity-neutral in general. No published fidelity number acquires a converter-variance term and
+none needs amending
+([`receipts/sibling-rebuild-fidelity.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/sibling-rebuild-fidelity.json)).
+The consequence of the byte difference is still a floor: a byte diff against a published tree is
 **not** evidence of tampering, corruption or a changed recipe until it exceeds this floor, and the
 claim worth checking is the digest of the published tree — verify against `SHA256SUMS`, not
 against the output of your own conversion. One environment gap came with the same run: the pinned

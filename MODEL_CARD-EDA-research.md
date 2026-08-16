@@ -250,7 +250,24 @@ is the converter and not the toolchain
 Run the commands above and you get a **sibling** of this build — same composition, same widths,
 same byte budget, different trellis payloads, a different valid artifact of the same recipe rather
 than a broken one. The numbers on this card measure the bytes published here, so they stand;
-"rebuild it and you get this interval" is an untested expectation. Verify against this repo's
+"rebuild it and you get this interval" is no longer an untested expectation either. A third
+conversion of the hydrated recipe — a sibling again, 399 `.trellis` payloads differing and nothing
+else — was captured and replayed on the identical shard-0 protocol (512 contexts, 1,048,064 scored
+positions, one shared BF16 head, one shared BF16 reference), and paired against the published
+hydrated checkpoint the difference is **−0.0000038 (−3.755e-06), 95 % CI
+[−0.0000285, +0.0000206]** over the same 330 source clusters — the interval **brackets zero** — on
+**257 contexts to 255 with no ties**. Two controls make that the sibling's weights rather than the
+harness: replaying the published checkpoint against the same reference capture returned its mean
+and all 512 per-context rows bitwise, and a fresh recapture reproduces that mean exactly, so this
+comparison's floor is zero and not a tolerance. **Put that beside this card's headline.** A
+byte-budget-identical **reallocation** moved KLD by **+0.000366** and lost; a byte-different,
+**allocation-identical** rebuild moved it by **−0.0000038** — about 1 % of that margin — and did
+not. The allocation is what fidelity is made of, and the trellis bytes are not, which is a better
+statement of the thesis than either result alone. It is one sibling, one recipe, one shard, at
+this protocol's resolution: it bounds the converter's fidelity variance rather than estimating it,
+and it is not a finding that converter nondeterminism is fidelity-neutral in general
+([`receipts/sibling-rebuild-fidelity.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/sibling-rebuild-fidelity.json)).
+Verify against this repo's
 `SHA256SUMS` rather than against your own conversion, and read a byte diff below this floor as the
 converter, not as tampering or corruption. Two footnotes from the same measurement: the recorded
 build environment is incomplete — the pinned r34 image has no `marisa_trie`, which the conversion

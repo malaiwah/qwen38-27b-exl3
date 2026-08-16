@@ -81,6 +81,13 @@ captures/shard-0000/hidden-hyd-rematch/
                                      reference with the same harness, so the paired interval
                                      between it and hidden-eda uses one reference and one
                                      code version for both operands.
+captures/shard-0000/hidden-hyd-sibling/
+                                   512 captures + manifest.  A SIBLING of the published hydrated
+                                     checkpoint: a third conversion of the same recipe, differing
+                                     from it in 399 .trellis payloads and in nothing else.
+                                     Replaying it against the reference reproduces the paired
+                                     -3.755e-06 [-2.854e-05, +2.062e-05] that settled whether
+                                     converter nondeterminism is visible at this resolution.
 captures/shard-0000/error-driven-ladder.json
                                    the five-rung proxy-error ladder the error-driven build
                                      was solved from: 409 modules x up to five widths, with
@@ -234,8 +241,22 @@ inside their `.trellis` payloads at 41-92 % of the bytes
 ([`receipts/converter-determinism.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/converter-determinism.json)).
 Every published number here was measured on the published bytes, which is what a downloader
 receives and what each repo's `SHA256SUMS` pins, so those numbers are unaffected — but a report
-from your own rebuild is that sibling's number, not a reproduction of ours, and whether a sibling
-lands inside our interval is an open experiment rather than a settled one.
+from your own rebuild is that sibling's number and not a reproduction of ours. Whether a sibling
+lands inside our interval is no longer an open experiment. A third conversion of the published
+hydrated recipe was built and scored on the identical shard-0 protocol, and paired against the
+published checkpoint the difference is **−3.755e-06, 95 % source-cluster bootstrap interval
+[−2.854e-05, +2.062e-05]** over 330 clusters — it **brackets zero** — on **257 contexts to 255
+with no ties**. Two controls make that the sibling's weights rather than the harness: replaying
+the published checkpoint against the same reference capture returned its mean and all 512
+per-context rows bitwise, and a fresh recapture reproduces that mean exactly, so the comparison's
+floor is zero and not a tolerance. **97.6 % of the quantized modules came back with different
+bytes and the fidelity was the same to within this protocol's resolution** — the recipe is the
+reproducible thing and the bytes are the artifact, measured rather than asserted. Its capture is
+published here as `captures/shard-0000/hidden-hyd-sibling`, so that difference is re-derivable by
+`replay` alone. One sibling, one recipe, one shard, at this resolution: it bounds the converter's
+fidelity variance rather than estimating it, and it is not a finding that converter
+nondeterminism is fidelity-neutral in general
+([`receipts/sibling-rebuild-fidelity.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/sibling-rebuild-fidelity.json)).
 
 To weld per-shard reports into a cumulative number the way the published receipts do, run
 `tools/kld_aggregate.py` over `reports/kld5/shard-*/report-<name>.json`.
