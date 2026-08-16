@@ -95,7 +95,7 @@ def publish_one(repo, card, repo_type, message, dry_run):
             row["docs_sha256sums_had_readme_line"] = seen
             if not seen:
                 lines.append(f"{row['local_sha256']}  README.md")
-            lines.sort(key=lambda x: x.split("  ", 1)[1])
+            lines.sort(key=lambda x: x.split(None, 1)[1])  # tolerate a legacy one-space row
             new_sums = "\n".join(lines) + "\n"
         else:
             new_sums = None
