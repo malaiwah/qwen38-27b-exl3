@@ -895,12 +895,28 @@ unpatched arms) stayed dirty - **confirmed**, 38/38. Fresh L2 (596 files, 47.5 G
 *patched* arms) was **not** clean - **refuted**, 38/38 - because a poison-free L2 is unreachable here:
 every writer configuration is itself corrupt.
 
-**The five-check gate is blind to this.** `tb21_gate.py` returned **PASS on all five checks, 262k needle
-included**, against the same live server the probe had just scored 38/38 corrupted
-([`tb21-gate-2x-lmcache-l1.json`](../receipts/tb21-gate-2x-lmcache-l1.json)). No gate check reuses a
-prefix across a mamba block boundary, so none can see it. **A gate PASS must never be read as fidelity
-when a KV connector is attached**; the gate wants a sixth check that reuses a prefix across a block
-boundary and scores the answer, named here rather than changed mid-campaign.
+**The five-check gate is blind to this, so there is now a sixth check.** `tb21_gate.py` returned **PASS
+on all five checks, 262k needle included**, against the same live server the probe had just scored 38/38
+corrupted ([`tb21-gate-2x-lmcache-l1.json`](../receipts/tb21-gate-2x-lmcache-l1.json)). None of the five
+reuses a cached prefix across a mamba block boundary, so none of them can see this defect class. **A gate
+PASS must never be read as fidelity when a KV connector is attached.**
+
+`--check-connector-reuse` (check 6, `connector_prefix_reuse`) is now implemented and **validated in both
+directions on this host**. It issues request A at `4B + 500` tokens to publish cache blocks, then request
+B at `4B + 900` over the same document, and scores two needles: N1 far from any boundary, and N2 placed
+inside `[3B, 4B)` - the last block of B's hit, i.e. exactly the divergence window. Losing N2 while
+keeping N1 is the hybrid+connector signature. It reports **`NOT_EXERCISED`, never PASS**, if B did not
+reuse at least one block.
+
+| server (same host, same image, same overlay) | checks 1,2,3,5 | check 6 | request B's answer |
+|---|---|---|---|
+| LMCache **off** ([receipt](../receipts/tb21-gate-2x-check6-lmcache-off.json)) | PASS | **PASS**, 4,800-token hit, N2 measured at depth 6,192 inside [4800, 6400) | `N1=143937167 N2=651805269` |
+| LMCache **on**, gate patched ([receipt](../receipts/tb21-gate-2x-check6-lmcache-on.json)) | PASS | **FAIL** | `erein有意冲ityEngine匹awang联…` |
+
+Request A, which reuses nothing, answered `143937167` correctly on **both** servers. Five checks green
+and the sixth red on the same endpoint is the whole point. It defaults **off** so every previously
+published gate receipt stays comparable, and is **mandatory by policy whenever `--kv-transfer-config` is
+present**; the receipt now carries a `not_exercised_checks` list and a `verdict_scope` string saying so.
 
 **What the feature would have bought, and why it does not matter.** L1 is CPU *pinned* DRAM
 (`l1_memory_manager.py`: *"CPU pinned-DRAM L1 memory manager"*), configured at **160 GiB** of the host's
@@ -920,6 +936,19 @@ even discussed. We ran every arm at 2048, which is inside the band *and* the pre
 value, so the forced change removed a deviation instead of adding one. Note the irony: the code enforces
 *"every block boundary gets a state snapshot"* for prefill chunking, and violates the same invariant on
 the retrieve path.
+
+**And that band collides head-on with our best measured prefill win, which settles the trade.**
+[docs/47](47-kernel-gap-analysis.md) **F8** measures **+13-15 % on the linears** from moving the prefill
+chunk `2048 -> 6144`, and **F5.1** adds **2.67x less redundant reconstruct** at the same chunk; F8 calls
+`--max-num-batched-tokens 6144` *"the single largest prefill lever available"* (docs/47 recoverable table,
+row 7, est. **+15-25 % PP**). **6144 is outside `[1600, 3199]`. LMCache and our largest measured prefill
+lever are mutually exclusive on this model** - not a tuning tension, an admissibility one: the connector
+refuses to initialise above 3199.
+
+So the decision is not "corruption risk versus a 53x TTFT prize". It is **corruption risk, *plus* a 2.6x
+prefill-chunk cut, *plus* forfeiting a measured +13-15 % (est. +15-25 % PP), in exchange for a 53x TTFT
+prize that returns U+FFFD.** Every term except the prize is a cost, and the prize is unusable. There is no
+version of this trade that clears.
 
 **Disposition.** LMCache stays in the image and stays **disabled by default**, exactly as
 [`tb21-image-sr1.json`](../receipts/tb21-image-sr1.json) `patch_layers[D]` has it. The remaining defect

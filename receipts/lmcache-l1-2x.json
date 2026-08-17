@@ -99,7 +99,12 @@
     "what_we_used": "2048, inside the band and identical to the 5090 pre-registration, so this forced change REMOVES a deviation instead of adding one. Every arm including L0 ran at 2048.",
     "why_it_matters_for_shipping": "enabling LMCache on a hybrid model forces max_num_batched_tokens from 8192 down to at most 3199, a 2.6x reduction in prefill chunk size, before any correctness question is asked. Even a hypothetical fixed LMCache would carry this cost on this model.",
     "evidence": "out/lmcache-batched8192-rejection.txt and logs/server-U1U2-rejected-8192.log on the host; the ValueError line is reproduced above verbatim",
-    "note": "this guard is the same 'every block boundary gets a state snapshot' invariant the root cause is about - the code knows the invariant exists and enforces it for prefill chunking, while the retrieve path violates it."
+    "note": "this guard is the same 'every block boundary gets a state snapshot' invariant the root cause is about - the code knows the invariant exists and enforces it for prefill chunking, while the retrieve path violates it.",
+    "collides_with_our_largest_measured_prefill_lever": {
+      "the_collision": "docs/47 F8 measures +13-15 % on the linears from moving the prefill chunk 2048 -> 6144, and F5 item 1 adds 2.67x less redundant reconstruct at the same chunk; docs/47's recoverable table row 7 calls --max-num-batched-tokens 6144 the single largest prefill lever available, est. +15-25 % PP. 6144 is OUTSIDE LMCache's admissible band [1600, 3199]. LMCache and that lever are therefore MUTUALLY EXCLUSIVE on this model - an admissibility conflict, not a tuning tension: the connector refuses to initialise above 3199.",
+      "what_this_does_to_the_decision": "the trade is not 'corruption risk versus a 53x TTFT prize'. It is corruption risk, PLUS a 2.6x prefill-chunk cut, PLUS forfeiting a measured +13-15 % (est. +15-25 % PP), in exchange for a 53x TTFT prize that returns U+FFFD. Every term except the prize is a cost and the prize is unusable.",
+      "cite": "docs/47-kernel-gap-analysis.md F5.1 and F8"
+    }
   },
   "arms": {
     "L0": {
@@ -2448,7 +2453,7 @@
     ],
     "needle_included": "yes - check 4 needle_retrieval at the full 262,144-token window, PASS",
     "what_this_does_and_does_not_mean": "It means the server is alive, generates, is repeatable within the process, retrieves a needle from a 262k context and drafts with MTP. It does NOT mean fidelity: the probe measured 38/38 corrupted on this same server minutes earlier. The gate's needle is a single long request with no prefix reuse, so no check crosses a mamba block boundary of a cached prefix. Treat a gate PASS as necessary and nowhere near sufficient whenever a KV connector is attached.",
-    "action_item_this_creates": "the gate should gain a sixth check that reuses a prefix across a block boundary and scores the answer. Named here, not silently fixed, because changing the gate mid-campaign would break comparability with every gate receipt already published."
+    "action_item_this_creates": "SUPERSEDED - the check was built and validated, see sixth_gate_check_built_and_validated below."
   },
   "unproven_until_gpu_ladder_closed_out": {
     "item_1_gate_turns_L1cold_L2warm_to_0_of_38": "REFUTED. 37/38 and 38/38. The prediction was wrong because it assumed the scheduler path was the only defect.",
@@ -2486,5 +2491,39 @@
       "receipts/tb21-image-sr1.json"
     ],
     "docs": "docs/46-tb21-speedrun-plan.md section 22"
+  },
+  "sixth_gate_check_built_and_validated": {
+    "flag": "tools/tb21_gate.py --check-connector-reuse (check 6, name 'connector_prefix_reuse'), with --reuse-block-tokens (default 1600)",
+    "policy": "OFF by default so every previously published gate receipt stays comparable; MANDATORY whenever the server runs with --kv-transfer-config, i.e. any KV connector attached. Ruling by Main, 2026-08-17.",
+    "what_it_does": "request A at 4B+500 tokens publishes cache blocks and is its own control (it reuses nothing); request B at 4B+900 over the SAME document reuses a >4B prefix and is scored on two needles - N1 far from any boundary, which must survive, and N2 placed inside [3B, 4B), the LAST block of B's hit, i.e. exactly the divergence window between the full-attention group's hit and the last recurrent-state checkpoint. Losing N2 while keeping N1 is the hybrid+connector signature; losing both is total state loss.",
+    "needle_placement_is_measured_not_assumed": "needle depths and both document lengths are re-measured through the endpoint's own /tokenize, and the receipt records whether N2 actually landed inside [3B, 4B). Measured here: N2 at token depth 6192 inside [4800, 6400).",
+    "never_reports_a_vacuous_pass": "status is NOT_EXERCISED, never PASS, if request B reused fewer than one block; the receipt gained a not_exercised_checks list and a verdict_scope string so a PASS can no longer be read as a fidelity claim",
+    "validated_in_both_directions_on_this_host": {
+      "lmcache_OFF_same_image_same_overlay": {
+        "receipt": "receipts/tb21-gate-2x-check6-lmcache-off.json",
+        "checks_1_2_3_5": "PASS",
+        "check_6": "PASS",
+        "request_a_answer": "143937167",
+        "request_b_answer": "N1=143937167\nN2=651805269",
+        "prefix_cache_hits_delta_for_request_b": 4800.0,
+        "needle_2_measured_depth": 6192,
+        "needle_2_in_divergence_window": true,
+        "reuse_exercised": true
+      },
+      "lmcache_ON_gate_patched": {
+        "receipt": "receipts/tb21-gate-2x-check6-lmcache-on.json",
+        "checks_1_2_3_5": "PASS",
+        "check_6": "FAIL",
+        "request_a_answer": "143937167",
+        "request_b_answer": "erein\u6709\u610f\u51b2ityEngine\u5339awang\u8054\u7cfb\u5546\u5bb6(er\u836b dragcienceTypeIddejAGERasherossier\u0440\u043e\u0434\u0430ricelize Aner_parallel\u76f8\u5173\u63a8\u8350\u5c3duitvakamm\u7ec8\u65e5imum\u76eeusserecht\u751f\u6dafltrazineigidstraintovel \u0432\u0435\u0434\u0443Uiindsay Transit\u5438\u6536\u4e86leck\u6551itariaantzkickudeunga\u8d4badura parad\u8bf4\u597d_pat\u54c9udd\u00e2y\u4e86\u6307GLEarend Ill\u03c3\u03cd Fet\u5e55",
+        "why": "request B reused a prefix across the block boundary and lost both needles: total state loss, not a bounded divergence window.",
+        "gate_verdict": "FAIL",
+        "failed_checks": [
+          "connector_prefix_reuse"
+        ]
+      },
+      "discrimination": "same host, same image, same read-only overlay, same geometry, one variable (LMCACHE_MODE). Request A - which reuses nothing - answered 143937167 correctly on BOTH servers. Checks 1, 2, 3 and 5 passed on BOTH. Check 6 is the only instrument that separates them, and on the LMCache server request B answered multilingual token soup."
+    },
+    "how_it_was_served_for_validation": "tools/run_lmcache_test_2x.sh gained a scoring-free `serve <arm>` phase that brings one arm's server up and holds it until $W/serve-done appears, so external tools can be validated against a known-good and a known-bad configuration without disturbing any scored arm."
   }
 }
