@@ -993,6 +993,21 @@ near binding, but it lifts the native-262k concurrency line and the 1M exercise.
 full knob audit, verified item by item against the live endpoint, including why each disabled knob is
 correctly disabled.
 
+**What the 1x tier cannot answer, and why those items are blocked rather than dropped.** Four campaign
+items are **blocked on owner provisioning**, not on missing work: the **2x knob lab** (the smallest host
+that answers every transferable question - the EXL3-under-TP G0 gate, TP2-vs-DP2, the fp8-vs-BF16-vs-nvfp4
+KV smokes, and the LMCache 4-arm ladder), the **4x checkpoint** (whose skip-or-run rule is already fixed:
+mandatory if 2x-to-4x DP scaling deviates from linear by more than ~10 % on the synthetic ladder), the
+**8x window** (deliberately last and short, so the expensive box only runs configs already proven below
+it), and therefore the **multi-tier ladder** itself. Every executable prerequisite is done: the image is
+loaded, the five tools are mock-proven and committed, the gate and ladder have both run green against a
+live endpoint, and docs/46 is the self-contained executor brief. Three further items are **queued behind
+the single card** rather than blocked - re-deriving the MTP depth schedule for the *measured* knee
+(C4/C8, not the 5090's C16+ assumption), characterising `reasoning_effort` for the card (needs an idle
+card and a >=32k output budget; the first attempt was inconclusive because 4,096 tokens truncated the
+model mid-reasoning), and claiming the **+7.2 GiB of unclaimed KV** via `--kv-cache-memory-bytes` - and
+the card is currently scoring the community-quant shortlist, then running BF16 attribution.
+
 **TB2.1 speed-run plan written 2026-08-16, execution owned by a future session.** The owner asked for
 the ultimate API-hosted setup for the flagship quant on a 4x/8x RTX PRO 6000 Jarvis host with a separate
 load-driver VM, to produce a card-referenceable ladder - quick 1x / 2x / 4x and a full three-pass speed run
