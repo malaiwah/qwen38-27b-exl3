@@ -1,0 +1,40 @@
+{
+ "what": "torch-profiled decode of the hydrated model under the served profile on the LOCAL RTX PRO 6000 (graph decode ON, fp8 KV, MTP-3, FULL_DECODE_ONLY rows [4], max_model_len 8192, C1)",
+ "command": "/var/tmp/work/ggrun.sh python /work/kg_profile_decode.py  (LLM(model=/models/Qwen3.8-27B-EXL3-K5K6-hydrated, quantization=exl3, quantization_config={mxfp8 overlay, ignore visual/in_proj_a/b/ba/mtp/lm_head}, kv_cache_dtype=fp8, speculative_config={mtp,3}, compilation_config={FULL_DECODE_ONLY,[4]}))",
+ "steady_tok_s_unprofiled": 102.58,
+ "steady_note": "200 greedy tokens after warmup; ~30 tokens profiled separately. LOCAL number, not comparable 1:1 to the rental 129.5-135.8: this run is inside proot (ptrace on every eager cudaLaunch ioctl - the 3 MTP draft passes run EAGER under FULL_DECODE_ONLY, so their ~350 launches/step pay proot tax), max_model_len 8192, different prompt/acceptance. Per-kernel GPU times are unaffected by proot.",
+ "profiled_window": {
+  "tokens": 30,
+  "decode_steps_by_conv1d_update_count": 9,
+  "window_ms": 339.1,
+  "gpu_busy_ms": 260.95,
+  "gpu_idle_pct": 23.0
+ },
+ "category_table_stdout": "window_ms 339.10 busy_ms 260.95 idle_pct 23.0\n\ncategory count total_ms pct_of_busy\nexl3_gemm               4280    220.99  84.7\ncublas                   480     13.56   5.2\ncat_copy                4721      6.67   2.6\ngdn_gating_update        480      5.02   1.9\nrmsnorm_rope            1410      4.66   1.8\nflashinfer_attn          343      1.80   0.7\ntriton_other            1750      1.78   0.7\ngdn_conv                 480      1.68   0.6\nelementwise              660      1.53   0.6\nOTHER                    769      1.49   0.6\nkvcache_write            190      0.68   0.3\nmemcpy_memset            959      0.60   0.2\nreduce_argmax            107      0.42   0.2\ngdn_prep_misc             48      0.07   0.0\n\ntop 30 kernels by total time\n   2910    146.59ms  void exl3_gemm_kernel<6, false, 1, 16, 32, 128, 4, 3>(__half const*, unsigned short const*, void*, int, int, int, int*, __half con\n   1340     73.41ms  void exl3_gemm_kernel<5, false, 1, 16, 32, 256, 4, 3>(__half const*, unsigned short const*, void*, int, int, int, int*, __half con\n    432     13.41ms  void cutlass::Kernel2<cutlass_80_wmma_tensorop_bf16_s161616gemm_bf16_16x16_128x2_tn_align8>(cutlass_80_wmma_tensorop_bf16_s161616g\n    432      4.80ms  fused_sigmoid_gating_delta_rule_update_kernel\n   1296      2.45ms  void at::native::elementwise_kernel<128, 4, at::native::gpu_kernel_impl_nocast<at::native::direct_copy_kernel_cuda(at::TensorItera\n    480      1.91ms  triton_red_fused__to_copy_add_fused_add_rms_norm_2\n    432      1.46ms  _causal_conv1d_update_kernel\n    170      1.43ms  void flashinfer::BatchPrefillWithPagedKVCacheKernel<flashinfer::KernelTraits<(flashinfer::MaskMode)1, 64u, 1u, 4u, 16u, 16u, 4u, 1\n    480      1.34ms  triton_red_fused__to_copy_add_fused_add_rms_norm_4\n     30      0.99ms  void exl3_gemm_kernel<4, false, 1, 16, 32, 128, 4, 3>(__half const*, unsigned short const*, void*, int, int, int, int*, __half con\n    480      0.73ms  triton_poi_fused__to_copy__unsafe_view_add_clone_mean_mul_pow_rsqrt_silu_view_1\n    190      0.73ms  triton_red_fused__to_copy_add_fused_add_rms_norm_1\n    190      0.68ms  void vllm::reshape_and_cache_flash_kernel<__nv_bfloat16, unsigned char, (vllm::Fp8KVCacheDataType)1>(__nv_bfloat16 const*, __nv_bf\n    190      0.56ms  triton_red_fused__to_copy_add_fused_add_rms_norm_3\n    480      0.53ms  triton_poi_fused__to_copy_cat_mul_silu_slice_3\n    158      0.51ms  void at::native::index_elementwise_kernel<128, 4, at::native::gpu_index_kernel<at::native::index_kernel_impl<at::native::OpaqueTyp\n    480      0.48ms  triton_per_fused__to_copy_mean_pow_view_0\n    480      0.48ms  triton_poi_fused_5\n    432      0.44ms  void at::native::(anonymous namespace)::CatArrayBatchedCopy_vectorized<at::native::(anonymous namespace)::OpaqueType<2u>, unsigned\n    432      0.37ms  memcpy32_post\n    322      0.34ms  Memcpy DtoD (Device -> Device)\n    244      0.33ms  void at::native::unrolled_elementwise_kernel<at::native::direct_copy_kernel_cuda(at::TensorIteratorBase&)::{lambda()#3}::operator(\n     58      0.31ms  void at::native::index_elementwise_kernel<128, 4, at::native::gpu_index_kernel<at::native::index_put_kernel_impl<at::native::Opaqu\n    320      0.30ms  triton_poi_fused__to_copy_6\n    160      0.29ms  triton_poi_fused_clone_copy_index_select_slice_split_8\n     48      0.28ms  merge_16x16_to_64x64_inverse_kernel\n    160      0.26ms  triton_poi_fused_9\n    320      0.24ms  triton_poi_fused_zeros_7\n    153      0.24ms  void flashinfer::PersistentVariableLengthMergeStatesKernel<8u, 32u, 4u, 4u, __nv_bfloat16, __nv_bfloat16, int>(__nv_bfloat16*, flo\n     48      0.22ms  chunk_gated_delta_rule_fwd_kernel_h_blockdim64\n",
+ "key_counts_per_body_pass": {
+  "exl3_gemm_K5": 128,
+  "exl3_gemm_or_b12x_K6": 272,
+  "K4_mtp_fc_per_draft": 1,
+  "unquantized_cublas_in_proj_ba": 48,
+  "note": "b12x's vendored kernel IS exl3_gemm_kernel<6,...> (trellis_k6_small.cu) so K6 launches are indistinguishable by name in the trace"
+ },
+ "headline_shares_of_gpu_busy": {
+  "exl3_gemm_family_pct": 84.7,
+  "cublas_in_proj_ba_pct": 5.2,
+  "cat_copy_pct": 2.6,
+  "gdn_update_pct": 1.9,
+  "rmsnorm_rope_pct": 1.8,
+  "flashinfer_attn_pct": 0.7,
+  "gdn_conv_pct": 0.6
+ },
+ "in_proj_ba_detail": {
+  "kernel": "cutlass_80_wmma_tensorop_bf16_s161616gemm_bf16_16x16_128x2_tn_align8",
+  "calls_per_body_pass": 48,
+  "us_per_call": 28,
+  "ms_per_step": 1.34,
+  "effective_GBps": 33,
+  "why": "unquantized bf16 5120x96 linear (mxfp8 overlay ignores in_proj_a/b/ba), launch-bound"
+ },
+ "trace_file": "/var/tmp/work/kg-prof/rank0.1786939864508846466.pt.trace.json.gz (kept on workstation, 16677 gpu events)",
+ "gpu_idle_verified_before_run": true
+}

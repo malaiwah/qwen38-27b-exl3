@@ -266,3 +266,73 @@ carries **no** wider-M or fused path the fork lacks (all four `exl3_gemm` shapes
 `exl3_gemm_kernel.cuh:36-50` — this, not a missing tile, is why exl3_gemm loses 4–5× at prefill M).
 
 ---
+## F6. MEASURED: the anatomy of one decode step — and the head is streamed FOUR times per step
+
+**Claim.** A torch-profiled decode of the hydrated model under the served profile on the local card
+(`receipts/kernel-gap-profiled-decode.json`) shows the step is 85 % trellis-GEMM by GPU time, and the
+per-step weight traffic is **20.5 GB, not the ~17.4 GB the standing 55–65 % figure divided by** —
+because the 953.5 MB lm_head runs once for the target *and once per MTP depth* (4×/step = 3.81 GB,
+18.6 % of all weight bytes), and the 1.22 GB draft pass runs 3×. With the correct numerator the
+measured decode is **~85 % of the achievable (F2) bandwidth ceiling**; the remaining ~15 % decomposes
+below with an explicit residual.
+
+**Source anatomy** (full walk: `'/home/mbelleau/.omp/agent/sessions/-qwen38-27b/2026-08-14T14-52-00-820Z_01a000c2-2db4-7000-ba65-0c964868558d/KernelGap/KernelGap.DecodeWalk.md'`):
+- Head: `LogitsProcessor._apply_head` computes all 248,320 columns on the default stream, strictly
+  serialized after the body graph — target verify + each of 3 draft samplings; even the draft's
+  "local argmax" materializes full logits first (`logits_processor.py:139-185,205`;
+  `llm_base_proposer.py:481-495`). No overlap mechanism exists anywhere in the runner.
+- Per body pass: 336 exl3_gemm + 64 K6 cooperative launches + **48 unquantized cuBLAS calls for
+  `in_proj_ba`** (excluded from the mxfp8 overlay by the served config) + 128 `torch.cat` shard
+  merges (exl3.py:2710-2726). Weights are read exactly once per launch; codebook decode is pure
+  in-register ALU, zero LUT traffic (`codebook.cuh:26-108`); suh/svh ≈ 16.4 MB/step (0.08 %).
+- Under `FULL_DECODE_ONLY` the 3 draft passes run **fully eager** every step
+  (`llm_base_proposer.py:432-447`; mixed_mode()==NONE) — ~350 Python-dispatched launches/step.
+- fp8-KV dequant is fused in the FlashInfer fa2 kernel (no separate pass on SM120; head_dim 256
+  supported) — attention is only **0.7 % of GPU time** at short context. GDN decode state I/O ≈
+  372 MiB/req/step (state written once per spec token, `fused_sigmoid_gating.py:122,156-170`).
+
+**Measured shares of GPU busy time** (9 decode steps profiled, m≤4):
+
+| category | count/window | share |
+|---|--:|--:|
+| exl3_gemm/K6 trellis GEMMs | 4,280 | **84.7 %** |
+| cuBLAS `in_proj_ba` (5120×96 bf16, 28 µs/call, 33 GB/s!) | 480 | 5.2 % |
+| cat/copy shard merges | 4,721 | 2.6 % |
+| GDN state update + conv | 960 | 2.5 % |
+| RMSNorm/RoPE + elementwise + misc | ~4,300 | 3.7 % |
+| FlashInfer attention + KV write | 533 | 1.0 % |
+
+GPU idle within the window: 23 % — the CPU-side gaps of the eager draft passes and sampler syncs
+(gpu_model_runner.py:326-327, 2106-2107, 4949-4950). *Local caveat: this run executes under proot
+(ptrace), which taxes every eager launch ioctl; local steady decode measured 102.6 tok/s vs the
+rental's 129.5–135.8 — per-kernel GPU times are unaffected, the idle share is an upper bound.*
+
+**The decode roofline decomposition (per step, single stream, honest form):**
+
+| item | ms | basis |
+|---|--:|---|
+| pure streaming floor of 20.5 GB at the *achievable* 1500 GB/s | 13.7 | F2 baselines |
+| + GEMM launch/tail floors above streaming (small matrices, F2/F3) | +2.8 | per-matrix measurements summed |
+| + non-GEMM GPU work (ba-GEMMs 1.3, cats 0.7, GDN 0.65, norms 0.5, attn 0.25) | +3.5 | trace shares |
+| + CPU gaps (eager drafts, sampler D2H syncs) | +3–8 | trace idle; proot-inflated locally |
+| **= step** | **23–28 (local measured ≈26)** | |
+
+Restated against spec: 16–19 pts of the original 35–45-pt "gap" are unachievable spec (F2);
+~9 pts are the 4×-head + 3×-draft re-streaming *counted as if it were lost bandwidth* (it is real
+traffic the arithmetic missed); ~6 pts are launch floors; ~4 pts non-GEMM GPU; **residual: the
+CPU-gap term, 3–8 pts, which this local proot measurement bounds but cannot pin for the rental.**
+
+**Levers, ranked within this finding:**
+1. *`in_proj_ba` tiny-GEMM tax — 1.34 ms/step ≈ 5 % of the step for 45 MB of weights (33 GB/s
+   effective).* A batched/grouped GEMV over the 48 layers, or admitting ba into the quantized merged
+   projection, recovers ~1.2 ms/step. Fork patch, moderate.
+2. *Draft head re-streams (3× 953 MB/step).* A draft-only truncated-vocab head or head-on-side-stream
+   overlap with the next body replay would cut up to 2.1 ms/step; structural (vocab pruning changes
+   sampling semantics; overlap needs runner surgery).
+3. *Eager draft passes*: `FULL_AND_PIECEWISE` would replay drafts as piecewise graphs
+   (llm_base_proposer.py:432-447) — but docs/41 §5 already established EXL3 refuses piecewise prefill
+   capture; the decode-only piecewise question for the *drafter* is narrower and untested. Flag-level
+   A/B candidate.
+4. *Sampler/verify D2H syncs*: already minimal (3 events/step); not worth touching.
+
+---
