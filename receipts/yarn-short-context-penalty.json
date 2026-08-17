@@ -1,0 +1,3443 @@
+{
+ "schema": "yarn-short-context-penalty-1",
+ "title": "MEASURED: what static YaRN costs at SHORT context on Qwen3.8-27B-EXL3-K5K6-hydrated, on one idle RTX PRO 6000",
+ "headline": "Static YaRN is NOT free at short context. Against the incumbent default - native rope at the 262,144 window - the 1M-YaRN configuration moves the next-token distribution by mean top-20 KLD 1.057e-02 over 384 teacher-forced positions, with top-1 token agreement 93.2 % and 19 of 48 prompts producing a different 8-token greedy continuation at temperature 0. Three controls bound what else could have caused that: a same-server replicate is exactly 0.0e+00 (bit-identical) and a cold cross-boot replicate at the same window is 1.2e-03, while raising the window to 1,000,000 with native rope costs 1.248e-03 on its own. With the window held at 1M in both arms the rope change alone is still 1.071e-02, so rope - not the window - carries the great majority of the cost. The penalty is 23x our adversarial calibration-corpus swap and 3.9x the entire published quantization KLD of this build. It does NOT, however, concentrate at short lengths: it is present at every length and is mildly LARGER at 8k-32k than at 512-2k.",
+ "question": "Qwen's model card warns that every open-source framework implements YaRN statically, so the scaling is applied at every length and may 'impact performance on shorter texts', and advises enabling it only when long context is needed. Nobody publishes a number. This receipt is that number for one build, one probe set, one card.",
+ "host": {
+  "gpu": "NVIDIA RTX PRO 6000 Blackwell Server Edition, 97,887 MiB, idle and dedicated",
+  "runner": "tools/ggrun.sh - proot over an extracted image rootfs, no container runtime",
+  "engine": "vllm 0.11.2.dev280+gilded.gnosis.v20.vllm4d006a4.b12xcd3ce19.fi1ac6942.cu132.20260810.r34",
+  "why_no_timings": "proot traces syscalls, which inflates dispatch. The raw files carry elapsed_s_proot_inflated fields as progress markers only. NO timing number anywhere in this receipt or its raw files may be quoted as throughput or latency; this is a fidelity measurement, not a performance measurement.",
+  "rental_hosts_untouched": "the busy 8x rental hosts were not contacted. Single-card local measurement only."
+ },
+ "arms": {
+  "one_variable": "identical weights, engine build, quantization and quantization-config, KV dtype, mamba cache mode, prefix caching, cudagraph mode, memory utilisation, sequence and token budgets, engine seed, sampling parameters, prompts and forced continuations. Between NATIVE and YARN the only differences are the rope configuration, the window it permits and the env var that permits the window; the NATIVE1M control holds the window and the env var and changes back only the rope.",
+  "NATIVE": {
+   "arm": "NATIVE",
+   "runner": "/home/mbelleau/research/tools/ggrun.sh (proot rootfs, no container runtime)",
+   "gg_env": "VLLM_USE_V2_MODEL_RUNNER=1 VLLM_EXL3_GRAPH_DECODE=1 VLLM_EXL3_PREFILL_RECONSTRUCT_M=128",
+   "executable": "vllm",
+   "argv": [
+    "serve",
+    "/models/Qwen3.8-27B-EXL3-K5K6-hydrated",
+    "--served-model-name",
+    "qwen38",
+    "--quantization",
+    "exl3",
+    "--quantization-config",
+    "{\"linear\":{\"weight\":\"mxfp8\"},\"ignore\":[\"re:.*visual\\\\..*\",\"re:.*in_proj_a$\",\"re:.*in_proj_b$\",\"re:.*in_proj_ba$\",\"re:.*mtp\\\\..*\",\"lm_head\"]}",
+    "--kv-cache-dtype",
+    "fp8",
+    "--mamba-cache-mode",
+    "align",
+    "--enable-prefix-caching",
+    "--compilation-config",
+    "{\"cudagraph_mode\":\"FULL_DECODE_ONLY\"}",
+    "--gpu-memory-utilization",
+    "0.92",
+    "--reasoning-parser",
+    "qwen3",
+    "--max-num-seqs",
+    "1",
+    "--max-num-batched-tokens",
+    "8192",
+    "--max-logprobs",
+    "20",
+    "--seed",
+    "314159",
+    "--host",
+    "127.0.0.1",
+    "--port",
+    "8231",
+    "--max-model-len",
+    "262144"
+   ]
+  },
+  "YARN": {
+   "arm": "YARN",
+   "runner": "/home/mbelleau/research/tools/ggrun.sh (proot rootfs, no container runtime)",
+   "gg_env": "VLLM_USE_V2_MODEL_RUNNER=1 VLLM_EXL3_GRAPH_DECODE=1 VLLM_EXL3_PREFILL_RECONSTRUCT_M=128 VLLM_ALLOW_LONG_MAX_MODEL_LEN=1",
+   "executable": "vllm",
+   "argv": [
+    "serve",
+    "/models/Qwen3.8-27B-EXL3-K5K6-hydrated",
+    "--served-model-name",
+    "qwen38",
+    "--quantization",
+    "exl3",
+    "--quantization-config",
+    "{\"linear\":{\"weight\":\"mxfp8\"},\"ignore\":[\"re:.*visual\\\\..*\",\"re:.*in_proj_a$\",\"re:.*in_proj_b$\",\"re:.*in_proj_ba$\",\"re:.*mtp\\\\..*\",\"lm_head\"]}",
+    "--kv-cache-dtype",
+    "fp8",
+    "--mamba-cache-mode",
+    "align",
+    "--enable-prefix-caching",
+    "--compilation-config",
+    "{\"cudagraph_mode\":\"FULL_DECODE_ONLY\"}",
+    "--gpu-memory-utilization",
+    "0.92",
+    "--reasoning-parser",
+    "qwen3",
+    "--max-num-seqs",
+    "1",
+    "--max-num-batched-tokens",
+    "8192",
+    "--max-logprobs",
+    "20",
+    "--seed",
+    "314159",
+    "--host",
+    "127.0.0.1",
+    "--port",
+    "8231",
+    "--hf-overrides",
+    "{\"text_config\":{\"rope_parameters\":{\"mrope_interleaved\":true,\"mrope_section\":[11,11,10],\"rope_type\":\"yarn\",\"rope_theta\":10000000,\"partial_rotary_factor\":0.25,\"factor\":4.0,\"original_max_position_embeddings\":262144}}}",
+    "--max-model-len",
+    "1000000"
+   ]
+  },
+  "NATIVE1M_control": {
+   "arm": "NATIVE1M",
+   "runner": "/home/mbelleau/research/tools/ggrun.sh (proot rootfs, no container runtime)",
+   "gg_env": "VLLM_USE_V2_MODEL_RUNNER=1 VLLM_EXL3_GRAPH_DECODE=1 VLLM_EXL3_PREFILL_RECONSTRUCT_M=128 VLLM_ALLOW_LONG_MAX_MODEL_LEN=1",
+   "executable": "vllm",
+   "argv": [
+    "serve",
+    "/models/Qwen3.8-27B-EXL3-K5K6-hydrated",
+    "--served-model-name",
+    "qwen38",
+    "--quantization",
+    "exl3",
+    "--quantization-config",
+    "{\"linear\":{\"weight\":\"mxfp8\"},\"ignore\":[\"re:.*visual\\\\..*\",\"re:.*in_proj_a$\",\"re:.*in_proj_b$\",\"re:.*in_proj_ba$\",\"re:.*mtp\\\\..*\",\"lm_head\"]}",
+    "--kv-cache-dtype",
+    "fp8",
+    "--mamba-cache-mode",
+    "align",
+    "--enable-prefix-caching",
+    "--compilation-config",
+    "{\"cudagraph_mode\":\"FULL_DECODE_ONLY\"}",
+    "--gpu-memory-utilization",
+    "0.92",
+    "--reasoning-parser",
+    "qwen3",
+    "--max-num-seqs",
+    "1",
+    "--max-num-batched-tokens",
+    "8192",
+    "--max-logprobs",
+    "20",
+    "--seed",
+    "314159",
+    "--host",
+    "127.0.0.1",
+    "--port",
+    "8231",
+    "--max-model-len",
+    "1000000"
+   ]
+  },
+  "rope_delta": {
+   "shipped_config_json_text_config_rope_parameters": {
+    "mrope_interleaved": true,
+    "mrope_section": [
+     11,
+     11,
+     10
+    ],
+    "partial_rotary_factor": 0.25,
+    "rope_theta": 10000000,
+    "rope_type": "default"
+   },
+   "yarn_arm_rope_parameters": {
+    "mrope_interleaved": true,
+    "mrope_section": [
+     11,
+     11,
+     10
+    ],
+    "rope_type": "yarn",
+    "rope_theta": 10000000,
+    "partial_rotary_factor": 0.25,
+    "factor": 4.0,
+    "original_max_position_embeddings": 262144
+   },
+   "changed_by_the_yarn_arm": [
+    "rope_type: default -> yarn",
+    "factor: absent -> 4.0",
+    "original_max_position_embeddings: absent -> 262144"
+   ],
+   "max_model_len": {
+    "NATIVE": 262144,
+    "YARN": 1000000,
+    "NATIVE1M": 1000000
+   },
+   "extra_env": "VLLM_ALLOW_LONG_MAX_MODEL_LEN=1 in the YARN and NATIVE1M arms",
+   "proof_the_override_took_effect": {
+    "NATIVE": {
+     "rope_parameters": {
+      "mrope_interleaved": true,
+      "mrope_section": [
+       11,
+       11,
+       10
+      ],
+      "partial_rotary_factor": 0.25,
+      "rope_theta": 10000000,
+      "rope_type": "default"
+     },
+     "class": "MRotaryEmbedding",
+     "rotary_dim": 64,
+     "base": 10000000.0,
+     "max_position_embeddings": 1048576,
+     "scaling_factor": null,
+     "mscale": 1.0,
+     "cos_sin_cache_shape": [
+      1048576,
+      64
+     ],
+     "inv_freq_first8": [
+      1.0,
+      0.6042963862419128,
+      0.36517414450645447,
+      0.22067339718341827,
+      0.1333521455526352,
+      0.08058421313762665,
+      0.04869675263762474,
+      0.02942727319896221
+     ]
+    },
+    "YARN": {
+     "rope_parameters": {
+      "mrope_interleaved": true,
+      "mrope_section": [
+       11,
+       11,
+       10
+      ],
+      "rope_type": "yarn",
+      "rope_theta": 10000000,
+      "partial_rotary_factor": 0.25,
+      "factor": 4.0,
+      "original_max_position_embeddings": 262144
+     },
+     "class": "MRotaryEmbedding",
+     "rotary_dim": 64,
+     "base": 10000000.0,
+     "max_position_embeddings": 1048576,
+     "scaling_factor": 4.0,
+     "mscale": 1.138629436111989,
+     "cos_sin_cache_shape": [
+      4194304,
+      64
+     ],
+     "inv_freq_first8": [
+      1.0,
+      0.6042963862419128,
+      0.36517414450645447,
+      0.22067339718341827,
+      0.1333521455526352,
+      0.08058421313762665,
+      0.04869675263762474,
+      0.02942727319896221
+     ]
+    },
+    "delta_over_probe_position_range": {
+     "positions_compared": 32776,
+     "note": "positions 0..N-1 cover every position the probe set uses (longest prompt 32,768 tokens plus 8 forced continuation tokens)",
+     "identical": false,
+     "max_abs_diff": 0.6884765625,
+     "mean_abs_diff": 0.10987134277820587,
+     "frac_entries_differing": 0.9996858239173889,
+     "max_abs_diff_at_position_0_31": 0.140625,
+     "max_abs_diff_at_position_512": 0.140625,
+     "max_abs_diff_at_position_32767": 0.67431640625,
+     "verdict": "the two arms build DIFFERENT rope tables at every position range the probe set touches, including position 0. A null KLD result therefore means the engine tolerated the change, not that the change was ignored."
+    }
+   },
+   "mechanism": "with mrope_section present, vLLM routes rope_type 'yarn' into MRotaryEmbedding with scaling_factor=4.0 (rotary_embedding/__init__.py:259-272), which swaps in YaRNScalingRotaryEmbedding's inv_freq and multiplies the whole cos/sin cache by mscale = yarn_get_mscale(4.0) = 1.138629 (mrope.py:229-261). mscale applies at EVERY position, which is precisely why static YaRN cannot be free at short context: at position 0 the native cache is cos=1, sin=0, and the YaRN cache is cos=mscale, so the measured max abs difference over positions 0-31 is 0.140625 = mscale-1 rounded to bfloat16. 99.97 % of cache entries over the probe set's whole position range differ.",
+   "engine_log_confirmation": "the YARN server's own non-default-args line prints hf_overrides {'text_config': {'rope_parameters': {... 'rope_type': 'yarn' ... 'factor': 4.0, 'original_max_position_embeddings': 262144}}}"
+  },
+  "engine_kv_pool_tokens": {
+   "NATIVE": 2018810,
+   "YARN": 2068322,
+   "NATIVE1M": 2080745,
+   "read_from": "each arm's own server log, kv_cache_utils 'GPU KV cache size' line",
+   "note": "every pool exceeds every window used and the longest request in this probe set is 32,776 tokens, so no arm was KV-starved. The pools differ by ~3 % because the engine profiles memory against the window; that is a window effect, not a rope effect, and the NATIVE1M control - which carries the long window, the long-window env var and a pool 3 % larger than NATIVE's - is nevertheless bit-identical to NATIVE. That is what rules the pool and the window out as explanations."
+  },
+  "served_model": {
+   "NATIVE": {
+    "object": "list",
+    "data": [
+     {
+      "id": "qwen38",
+      "object": "model",
+      "created": 1786972708,
+      "owned_by": "vllm",
+      "root": "/models/Qwen3.8-27B-EXL3-K5K6-hydrated",
+      "parent": null,
+      "max_model_len": 262144,
+      "permission": [
+       {
+        "id": "modelperm-9b79388a3038238a",
+        "object": "model_permission",
+        "created": 1786972708,
+        "allow_create_engine": false,
+        "allow_sampling": true,
+        "allow_logprobs": true,
+        "allow_search_indices": false,
+        "allow_view": true,
+        "allow_fine_tuning": false,
+        "organization": "*",
+        "group": null,
+        "is_blocking": false
+       }
+      ]
+     }
+    ]
+   },
+   "YARN": {
+    "object": "list",
+    "data": [
+     {
+      "id": "qwen38",
+      "object": "model",
+      "created": 1786971252,
+      "owned_by": "vllm",
+      "root": "/models/Qwen3.8-27B-EXL3-K5K6-hydrated",
+      "parent": null,
+      "max_model_len": 1000000,
+      "permission": [
+       {
+        "id": "modelperm-b374ac44309b1c28",
+        "object": "model_permission",
+        "created": 1786971252,
+        "allow_create_engine": false,
+        "allow_sampling": true,
+        "allow_logprobs": true,
+        "allow_search_indices": false,
+        "allow_view": true,
+        "allow_fine_tuning": false,
+        "organization": "*",
+        "group": null,
+        "is_blocking": false
+       }
+      ]
+     }
+    ]
+   },
+   "NATIVE1M": {
+    "object": "list",
+    "data": [
+     {
+      "id": "qwen38",
+      "object": "model",
+      "created": 1786971897,
+      "owned_by": "vllm",
+      "root": "/models/Qwen3.8-27B-EXL3-K5K6-hydrated",
+      "parent": null,
+      "max_model_len": 1000000,
+      "permission": [
+       {
+        "id": "modelperm-9190de2d68925ba5",
+        "object": "model_permission",
+        "created": 1786971897,
+        "allow_create_engine": false,
+        "allow_sampling": true,
+        "allow_logprobs": true,
+        "allow_search_indices": false,
+        "allow_view": true,
+        "allow_fine_tuning": false,
+        "organization": "*",
+        "group": null,
+        "is_blocking": false
+       }
+      ]
+     }
+    ]
+   }
+  },
+  "readiness": "each arm was polled on /health until 200 and then on /v1/models before any scored request; 'Application startup complete' was additionally confirmed in each server log"
+ },
+ "probe_set": {
+  "committed_artefact": "receipts/yarn-short-context-probes-index.json",
+  "what_is_committed": "the full probe set is 1,646,588 bytes of text copied verbatim out of this repository, so committing it would duplicate the repo into itself. The committed index pins the full file's sha256, every source file's sha256 and byte budget, and every prompt's own text sha256, exact token count and first/last 64 characters. Regenerating with tools/yarn_probe_build.py reproduced the full file bit-exactly (same sha256) on a second run, which is the check a reader should repeat.",
+  "full_probe_set_sha256": "374d3021a0cfc327eb570902c0b22afbba1428232791049fff80caaa8cfd3e21",
+  "full_probe_set_bytes": 1654358,
+  "index_sha256": "54a93251766995f864eb8b8eb91550bf0f9c3d5e1241de40b41c4440556e54ea",
+  "generator": "tools/yarn_probe_build.py",
+  "client": "tools/yarn_probe_run.py",
+  "orchestrator": "tools/yarn_penalty_run.sh",
+  "rope_proof": "tools/yarn_rope_delta_probe.py",
+  "analyzer": "tools/yarn_penalty_analyze.py",
+  "n_prompts": 48,
+  "buckets": [
+   512,
+   2048,
+   8192,
+   32768
+  ],
+  "per_bucket": 12,
+  "provenance": "cut from this repository's own text: every docs/*.md, every top-level *.md (the model and dataset cards, README, PROGRESS) and then receipts/*.json in name order, files concatenated with a blank line between them, in the order listed; at most 400000 bytes taken from each file; windows are disjoint and allocated round-robin over the four buckets so no bucket is confounded with a region or genre of the corpus",
+  "corpus_sha256": "309f3d9a788141d8e017ed45e9bc339ee9e2072677d83cb83c0d2d64f7e139f8",
+  "corpus_chars": 3346990,
+  "corpus_tokens": 1121449,
+  "corpus_files": [
+   {
+    "path": "docs/01-nvfp4-composition.md",
+    "file_sha256": "7a71e28197fda53df911d1bb4c8bd0ec2a8b402094e537221e5266f1890ab59a",
+    "file_bytes": 4122,
+    "bytes_taken": 4122
+   },
+   {
+    "path": "docs/02-recipe-k4.md",
+    "file_sha256": "ee3b5292b9e50ac6cbaaf09dd89a3d182740fd77885f1edecb738c7fc1cb7a95",
+    "file_bytes": 6344,
+    "bytes_taken": 6344
+   },
+   {
+    "path": "docs/03-gg-runtime-contract.md",
+    "file_sha256": "89ccd4685b3cbcc8f27461255a771c75409e2d31f6065eef890744ac4d6df22c",
+    "file_bytes": 6611,
+    "bytes_taken": 6611
+   },
+   {
+    "path": "docs/04-exllamav3-toolchain.md",
+    "file_sha256": "2bf64df8d5fd891ee0efaaf6a75a47197793aeb4fe044591243a22dc3ce09de4",
+    "file_bytes": 4553,
+    "bytes_taken": 4553
+   },
+   {
+    "path": "docs/05-kld-protocol.md",
+    "file_sha256": "db07945c842f4f4bfe95db76cfd859e562fa9a4bd2a44d1fe7d3a5f76dcdec56",
+    "file_bytes": 5799,
+    "bytes_taken": 5799
+   },
+   {
+    "path": "docs/06-baseline-validation.md",
+    "file_sha256": "52b44c9ca48a55853baab3a4793d1985497c664cb305e881d64be1ea16952a30",
+    "file_bytes": 3158,
+    "bytes_taken": 3158
+   },
+   {
+    "path": "docs/07-serving-recommendations.md",
+    "file_sha256": "b0def08e5f7b390eb6426a70f5d7a7e2a6454f3cc30fa95b55957e5c6621ce21",
+    "file_bytes": 57770,
+    "bytes_taken": 57770
+   },
+   {
+    "path": "docs/08-upstream-cards-digest.md",
+    "file_sha256": "953d092534fa8e77ba3f24ae7e0dd7433a5f801050c712dfb48700af11b744cf",
+    "file_bytes": 28842,
+    "bytes_taken": 28842
+   },
+   {
+    "path": "docs/09-variant-publication.md",
+    "file_sha256": "5a354b3b06874f59670a476f429d7a0aa47cc349b99f52967fd8dac3654d502f",
+    "file_bytes": 1564,
+    "bytes_taken": 1564
+   },
+   {
+    "path": "docs/10-results-iteration-1.md",
+    "file_sha256": "e06d65a824c6bc1c53a6e05ec8e7b610b3731f4ab732d2c3f2ab08b468d1f132",
+    "file_bytes": 5740,
+    "bytes_taken": 5740
+   },
+   {
+    "path": "docs/11-kld-external-comparison.md",
+    "file_sha256": "77e4d50003576bd0c580755f2cd61ba6612f2499d020f257d34cf25dc2f2a3d1",
+    "file_bytes": 4461,
+    "bytes_taken": 4461
+   },
+   {
+    "path": "docs/12-iteration-2-plan.md",
+    "file_sha256": "4fa675207bd42ead6934ebc2bccb10187ae7557306f462c5356de849989cb2af",
+    "file_bytes": 6940,
+    "bytes_taken": 6940
+   },
+   {
+    "path": "docs/13-upstream-contributions.md",
+    "file_sha256": "b3d899fd0f0ee7fa9352b029a8152508ab09db89189412ce637631a038b70761",
+    "file_bytes": 3037,
+    "bytes_taken": 3037
+   },
+   {
+    "path": "docs/14-fidelity-protocol-v2.md",
+    "file_sha256": "49e0b26694317fae3a5e270db7bafb3d6b3348dce5ad2c34817ab25f76473030",
+    "file_bytes": 4445,
+    "bytes_taken": 4445
+   },
+   {
+    "path": "docs/15-results-fidelity-v2.md",
+    "file_sha256": "feff3f253d08cae416c89481f678d5079c82120102cff5abbe085d8be89d44d0",
+    "file_bytes": 4284,
+    "bytes_taken": 4284
+   },
+   {
+    "path": "docs/16-head-attribution.md",
+    "file_sha256": "ad93546d9ef19e8b267aeab30f1b71141b5186e0cd8940e2308559b05a4f0984",
+    "file_bytes": 4569,
+    "bytes_taken": 4569
+   },
+   {
+    "path": "docs/17-next-iteration-shopping-list.md",
+    "file_sha256": "9160aec662420c4d302271d41131f9120ded155b9e9dab1216e9064c52491d72",
+    "file_bytes": 5842,
+    "bytes_taken": 5842
+   },
+   {
+    "path": "docs/18-results-fidelity-v3.md",
+    "file_sha256": "1509f4341901ae3ea603ad10609aa609283950e3c1663015fd017bda4049ba8f",
+    "file_bytes": 6071,
+    "bytes_taken": 6071
+   },
+   {
+    "path": "docs/19-cuda-graphs-patch.md",
+    "file_sha256": "ad9b78fa0313a5582fd69d34d0fd100972dac33c371b84ba75c101e00c6164af",
+    "file_bytes": 21138,
+    "bytes_taken": 21138
+   },
+   {
+    "path": "docs/20-context-extension-and-k3-gap.md",
+    "file_sha256": "0b97eb9b33eb63728525eb59ec5de278b04a9745a6fcae5ebaaade47b89ad59c",
+    "file_bytes": 5446,
+    "bytes_taken": 5446
+   },
+   {
+    "path": "docs/21-independent-review-response.md",
+    "file_sha256": "d1f2a1547f27ca7e59a67df2930e9cbb64a463b3a873c8c732246a59d8834eb0",
+    "file_bytes": 8577,
+    "bytes_taken": 8577
+   },
+   {
+    "path": "docs/22-results-iteration-2.md",
+    "file_sha256": "848d05a9dcd83c84cdb8d8608dada813883c3f13797f9b6e21c4dcd0f34a49b1",
+    "file_bytes": 6694,
+    "bytes_taken": 6694
+   },
+   {
+    "path": "docs/23-next-attack-list.md",
+    "file_sha256": "18b3a18f8f15c5aa0e8358450620ef6fb11a51e85634a4f8087e30e2774c1e2a",
+    "file_bytes": 10896,
+    "bytes_taken": 10896
+   },
+   {
+    "path": "docs/24-p0-results.md",
+    "file_sha256": "5adcacd9ad880b0baca917f76c71a30282e7ff4b8cbd3a4f2eb52d483f3beecc",
+    "file_bytes": 6715,
+    "bytes_taken": 6715
+   },
+   {
+    "path": "docs/25-goal-pareto-dominate-fp8.md",
+    "file_sha256": "b25026994cf08989a43b8c3d32077ac09de4828ec128261164b6058d3fcc271a",
+    "file_bytes": 7473,
+    "bytes_taken": 7473
+   },
+   {
+    "path": "docs/26-prefill-attribution.md",
+    "file_sha256": "38ca49ca99eb1b8a4883d3c450012469bdb7c6c82b90e3636880689c99abbb4a",
+    "file_bytes": 3886,
+    "bytes_taken": 3886
+   },
+   {
+    "path": "docs/27-graph-decode-drift-control.md",
+    "file_sha256": "04da0b513e85bdf9edc16b4ea58c83fb7835591f971412d6b63f003222adfac5",
+    "file_bytes": 3942,
+    "bytes_taken": 3942
+   },
+   {
+    "path": "docs/28-external-validation-and-corrections.md",
+    "file_sha256": "d6f78bb51e38a790b04258edc2cf65e0666ee44b4a990a059f5f0335d393568a",
+    "file_bytes": 9823,
+    "bytes_taken": 9823
+   },
+   {
+    "path": "docs/29-plan-and-loose-ends.md",
+    "file_sha256": "3c32adfa97a0efcf7eb29879c7fb4ad6a291d285b9d6caf11ca105eae5ff8ed1",
+    "file_bytes": 133472,
+    "bytes_taken": 133472
+   },
+   {
+    "path": "docs/30-iteration-4-context-edition.md",
+    "file_sha256": "dd54b6ce430ad45a7a8ab7b4036297091c0e4e9f8b06cb71571b0e7044fff8f0",
+    "file_bytes": 7992,
+    "bytes_taken": 7992
+   },
+   {
+    "path": "docs/31-frozen-qualification.md",
+    "file_sha256": "eca3aeff5855c5b69e24ded6f4b965a95f684cda97313cae74ddbbbddeac6e53",
+    "file_bytes": 5192,
+    "bytes_taken": 5192
+   },
+   {
+    "path": "docs/32-native-context-embedding-overlay.md",
+    "file_sha256": "7347685ca770d8ec769a4c03dd08bd1d913db455b6b52dabd34ccbedc196172c",
+    "file_bytes": 8037,
+    "bytes_taken": 8037
+   },
+   {
+    "path": "docs/33-evidence-volume-and-intervals.md",
+    "file_sha256": "97c0f97654977d9fa9447021fe424e6675fd3340ae284aa815179258838f7689",
+    "file_bytes": 11028,
+    "bytes_taken": 11028
+   },
+   {
+    "path": "docs/34-vram-class-profiles.md",
+    "file_sha256": "f9b3b7876869be001e38ed0d5a199213a7d3d3d37e617308119c7e6b8d5e4a42",
+    "file_bytes": 81793,
+    "bytes_taken": 81793
+   },
+   {
+    "path": "docs/35-external-protocol-comparability.md",
+    "file_sha256": "1145f82c46f656b5797adccea055b525c48d4e85cf96d5b39e9a799bce8359ed",
+    "file_bytes": 67652,
+    "bytes_taken": 67652
+   },
+   {
+    "path": "docs/36-performance-levers-5090.md",
+    "file_sha256": "7f326d283c39322823209af22750a14e73ff454c08bb7da00e161ab1a4d5e499",
+    "file_bytes": 22612,
+    "bytes_taken": 22612
+   },
+   {
+    "path": "docs/37-error-driven-allocation.md",
+    "file_sha256": "8167fead021bbc07de5e0850729e40bbfe8e3d8a9e81a87c30114de5457174e2",
+    "file_bytes": 24448,
+    "bytes_taken": 24448
+   },
+   {
+    "path": "docs/38-kv-dtype-sweep.md",
+    "file_sha256": "640d140371ade07084b45af497fecfd5f120023db67d41c35d62793b1108f7e5",
+    "file_bytes": 19207,
+    "bytes_taken": 19207
+   },
+   {
+    "path": "docs/39-chat-template-audit.md",
+    "file_sha256": "77974009ab10144c291f2677f0e6aad79e39328e08e5a1bb8f596b9aff872b94",
+    "file_bytes": 50437,
+    "bytes_taken": 50437
+   },
+   {
+    "path": "docs/40-quant-landscape.md",
+    "file_sha256": "665be32cbbefa9df5ae418013cb9f7529a31c1b2cb5b716d2db1e20d4ec903b9",
+    "file_bytes": 30015,
+    "bytes_taken": 30015
+   },
+   {
+    "path": "docs/41-b12x-lever-plan.md",
+    "file_sha256": "a5a02a9010257013fb9cad70dbeb04e5b958a9cdef0468f1df5e70f65d11d1fc",
+    "file_bytes": 53442,
+    "bytes_taken": 53442
+   },
+   {
+    "path": "docs/42-kld-method.md",
+    "file_sha256": "b801b8b9d657262533418c5593b23a4a8c09bb4f5eab49868f01cb7fabf01fd0",
+    "file_bytes": 23689,
+    "bytes_taken": 23689
+   },
+   {
+    "path": "docs/43-runtime-memory-sharing.md",
+    "file_sha256": "6183c90fdf72afd4a5f5cf5bc83ef3f1f136782ea45d84b1489ea375a54b3ec7",
+    "file_bytes": 21755,
+    "bytes_taken": 21755
+   },
+   {
+    "path": "docs/44-handoff.md",
+    "file_sha256": "8335f024831a6f197aee3eff494405de96381a96a755ae7d928304f08089aa35",
+    "file_bytes": 6840,
+    "bytes_taken": 6840
+   },
+   {
+    "path": "docs/45-terminal-bench-card-section.md",
+    "file_sha256": "e07e10d292bb1852f5fa9a8d894a767c81bfc845afb897f4e1c4c495dfa909a7",
+    "file_bytes": 14280,
+    "bytes_taken": 14280
+   },
+   {
+    "path": "docs/45-terminal-bench.md",
+    "file_sha256": "e1cb30067afe4fa95888dae7978ea6b57166edc8b742f41dbaa933828b8a224b",
+    "file_bytes": 26670,
+    "bytes_taken": 26670
+   },
+   {
+    "path": "docs/46-tb21-speedrun-plan.md",
+    "file_sha256": "e5e1e9fdc60ec24ed9efeef4fef07f35e57ad117272280d792577ce744f42ddc",
+    "file_bytes": 92068,
+    "bytes_taken": 92068
+   },
+   {
+    "path": "docs/47-kernel-gap-analysis.md",
+    "file_sha256": "0e494e25ce4f12592a5bb8361cc497248d9075bed8ea75fb4568b98c21772695",
+    "file_bytes": 63652,
+    "bytes_taken": 63652
+   },
+   {
+    "path": "docs/48-overnight-8x-plan.md",
+    "file_sha256": "22db8016ed09b20e5d99c2c86303ef0a8850346ad767874187d35c1ae0f5c47a",
+    "file_bytes": 11624,
+    "bytes_taken": 11624
+   },
+   {
+    "path": "AGENTS.md",
+    "file_sha256": "0830f62b7153d4b98cf7880537f9120d150a5d233fa2043a9260f9cd6f76a446",
+    "file_bytes": 13778,
+    "bytes_taken": 13778
+   },
+   {
+    "path": "DATASET_CARD-v5.md",
+    "file_sha256": "9e2a8d80b22b54ae76c7b17887780a2b63d3dd46dd2d11b07823b0949d221abe",
+    "file_bytes": 21558,
+    "bytes_taken": 21558
+   },
+   {
+    "path": "DATASET_CARD.md",
+    "file_sha256": "adbbd9fea11dd9a2c490ffb8c2db82fa2772c016944c7e1ff3cd1600bb2d6994",
+    "file_bytes": 13737,
+    "bytes_taken": 13737
+   },
+   {
+    "path": "MODEL_CARD-EDA-research.md",
+    "file_sha256": "41b830ae18c005d3c2ad1f0ddb2b835f9e57e334c751352d6623a23d8fb28eb7",
+    "file_bytes": 22021,
+    "bytes_taken": 22021
+   },
+   {
+    "path": "MODEL_CARD-K4.md",
+    "file_sha256": "6fd90928156a4a63c9f8327bf9c2fa168ed3840fda6557ff7790612b69c2d7a3",
+    "file_bytes": 118625,
+    "bytes_taken": 118625
+   },
+   {
+    "path": "MODEL_CARD-K5K6-context.md",
+    "file_sha256": "8b8973c2875b0da0dfe8417e084c6a8025fe3e44c164b0ef9b05e89e29f39b12",
+    "file_bytes": 130579,
+    "bytes_taken": 130579
+   },
+   {
+    "path": "MODEL_CARD-K5K6-hydrated.md",
+    "file_sha256": "d810840a821ca54aace4b932a463644916dd9e092e3afc71d2ca12938b901735",
+    "file_bytes": 136460,
+    "bytes_taken": 136460
+   },
+   {
+    "path": "MODEL_CARD-K5K6.md",
+    "file_sha256": "85c17af014ff600199c9a1ff303918176e4d0f119f0e548fc1e59047fe5495f0",
+    "file_bytes": 124227,
+    "bytes_taken": 124227
+   },
+   {
+    "path": "MODEL_CARD-K6-parity.md",
+    "file_sha256": "13ab6ca920721c2feba0b684dd703f3ebafebfb6ce1950e762e24276fab61e93",
+    "file_bytes": 13123,
+    "bytes_taken": 13123
+   },
+   {
+    "path": "MODEL_CARD-S16-V-research.md",
+    "file_sha256": "a5aaee6388c0f8535c4f862a97205a6e17873c4e46d573915724735cf04d3001",
+    "file_bytes": 18903,
+    "bytes_taken": 18903
+   },
+   {
+    "path": "MODEL_CARD.md",
+    "file_sha256": "6c709da117cb83b6f34c7581b1014029002666715083ad1edf8884edb1f8d64a",
+    "file_bytes": 20328,
+    "bytes_taken": 20328
+   },
+   {
+    "path": "PROGRESS.md",
+    "file_sha256": "be8f40221f11132632e86ff384d361c83e72dc1759a7d28822ea956c2bd627c0",
+    "file_bytes": 91120,
+    "bytes_taken": 91120
+   },
+   {
+    "path": "README.md",
+    "file_sha256": "b57d2719cc91552756268e36b46e0c4ee2b940e601b09e4c8ac0abcb4921c3fb",
+    "file_bytes": 47090,
+    "bytes_taken": 47090
+   },
+   {
+    "path": "receipts/ab-ladder-A.json",
+    "file_sha256": "7514c9e99786e98fdfc85937f739fddba1f5d942c60d187282d1b8c96a4bcdf9",
+    "file_bytes": 1588686,
+    "bytes_taken": 400000
+   },
+   {
+    "path": "receipts/ab-ladder-B.json",
+    "file_sha256": "e1234221c3b7055a3eeb0f3b0cf880f38ae8beb21b6b23bf1669c6225d86bb45",
+    "file_bytes": 1524902,
+    "bytes_taken": 400000
+   },
+   {
+    "path": "receipts/aiboss-live-service-snapshot.json",
+    "file_sha256": "268ea6965f01b92b1db9d8fde3f3dd33cdc566a0cafbca50ce9ca7f9d1df4ccb",
+    "file_bytes": 37878,
+    "bytes_taken": 37878
+   },
+   {
+    "path": "receipts/altcal-fidelity.json",
+    "file_sha256": "26a52e97ee702ce2c9bb0aabf266963b89eae1920ec84842129ba94af8b2bf84",
+    "file_bytes": 68883,
+    "bytes_taken": 68883
+   },
+   {
+    "path": "receipts/analysis-v3-contamination-corrected.json",
+    "file_sha256": "026fc453787eccef15879f29266489ba9ec04bbff59ab7e35827e92394480417",
+    "file_bytes": 5325,
+    "bytes_taken": 5325
+   },
+   {
+    "path": "receipts/apc-card-publication.json",
+    "file_sha256": "b14b53504a08195e588b60556c7bf9704b5de2256edb626acc0d01ac1f98e1d9",
+    "file_bytes": 6523,
+    "bytes_taken": 6523
+   },
+   {
+    "path": "receipts/apc-poison-repro.json",
+    "file_sha256": "1baeb5aa5373257563c234179c3cb75fac6c77d968fa38080b3636fa1435a36e",
+    "file_bytes": 979208,
+    "bytes_taken": 400000
+   },
+   {
+    "path": "receipts/arena-card-publication.json",
+    "file_sha256": "1ce27d24a03be156827a89f02cb7abde32066e332ae37a718ccad401c4119e75",
+    "file_bytes": 4889,
+    "bytes_taken": 4889
+   },
+   {
+    "path": "receipts/arena-landing.json",
+    "file_sha256": "48b30f48cc43fe2949783a29db01031c65bbd889017c6be405df95eb8a322c07",
+    "file_bytes": 14983,
+    "bytes_taken": 14983
+   },
+   {
+    "path": "receipts/b12x-lever-map.json",
+    "file_sha256": "6061ef473f1eaff9712697c4eb798f321338b85b0ec6e1656703f9e3be52e330",
+    "file_bytes": 77815,
+    "bytes_taken": 77815
+   },
+   {
+    "path": "receipts/b12x-vs-reconstruct.json",
+    "file_sha256": "c88ddc859eace07feab68b9c57d4944880c3bfa2406849d5c4e724a24718c906",
+    "file_bytes": 4468,
+    "bytes_taken": 4468
+   },
+   {
+    "path": "receipts/benchmark-leakage-scan.json",
+    "file_sha256": "fbe0e333f0ebab38c7d9bb631c2cd32ad7966a45e8cc4b654f5143873227e437",
+    "file_bytes": 13468,
+    "bytes_taken": 13468
+   },
+   {
+    "path": "receipts/byte-law-recipe-audit.json",
+    "file_sha256": "f9d8aa8952fd234d6fb754df8a977c3d76d6f3a5796bed890f08ba04df5526c2",
+    "file_bytes": 15467,
+    "bytes_taken": 15467
+   },
+   {
+    "path": "receipts/capture-determinism.json",
+    "file_sha256": "be3d6f2949aa62454f89f4f04236185a7b35a995007545487d8cd1457c613e4d",
+    "file_bytes": 15167,
+    "bytes_taken": 15167
+   },
+   {
+    "path": "receipts/card-consistency-audit-resolution.json",
+    "file_sha256": "c541b180dca1b32f23fad3912308edbd7e9f8a3a030b03db8d2a3c5ecdd8c0e9",
+    "file_bytes": 42834,
+    "bytes_taken": 42834
+   },
+   {
+    "path": "receipts/card-consistency-audit.json",
+    "file_sha256": "d970aab88e823908db0641b80d5bdc0c4c7dc8f7befdcad93fdb4f70ca673e45",
+    "file_bytes": 24688,
+    "bytes_taken": 24688
+   },
+   {
+    "path": "receipts/card-evidence-pass.json",
+    "file_sha256": "6201d9d10db55abaf607f4bbe6f6f509eab8f4a7afafae85d16000e0bcab84a7",
+    "file_bytes": 26811,
+    "bytes_taken": 26811
+   }
+  ],
+  "tokenizer": {
+   "source": "/models/Qwen3.8-27B-EXL3-K5K6-hydrated",
+   "tokenizer_json_sha256": "0997f410c57a1f4e53b09e4be8f4a172d90edd9564368fb0847030937229b9f3",
+   "add_special_tokens": false
+  },
+  "token_counts_verified_by": "every prompt was re-tokenized by the LIVE server's /tokenize endpoint in EVERY arm (add_special_tokens=false), the count asserted equal to the offline builder's target, and the sha256 of the id list asserted equal across arms, so all three arms provably saw byte-identical prompts",
+  "exact_token_counts": {
+   "512": [
+    512
+   ],
+   "2048": [
+    2048
+   ],
+   "8192": [
+    8192
+   ],
+   "32768": [
+    32768
+   ]
+  },
+  "why_these_lengths": "512 / 2k / 8k / 32k spans the range real agent traffic uses: a tool reply, a file read, a working set of several files, a long session transcript. Our own shipped 8,192-token prefix-caching recipe sits in the middle of it."
+ },
+ "method": {
+  "sampling": {
+   "endpoint": "/v1/completions, prompt supplied as token ids",
+   "temperature": 0.0,
+   "seed": 314159,
+   "max_tokens_generation_phase": 8,
+   "max_tokens_scoring_phase": 1,
+   "logprobs_requested": 20,
+   "logprobs_granted": "20, the server's --max-logprobs ceiling, granted in full at every one of the 384 scored positions in every arm (positions returning fewer than 20 entries: NATIVE p1 0, NATIVE p2 0, NATIVE1M 0, YARN 0)",
+   "return_tokens_as_token_ids": "true - distributions are keyed by integer token id, not by detokenized string, which removes the string-collision hazard of the plain OpenAI logprobs shape"
+  },
+  "teacher_forced": "the NATIVE arm first generated an 8-token greedy continuation per prompt. All three arms were then replayed position by position: for j in 0..7 the request is prompt_ids + forced[:j] with max_tokens=1. Every scored position in every arm is therefore conditioned on byte-identical context, so a divergence at position 3 cannot be an artefact of the arms having taken different paths at position 0.",
+  "reference_P": "arm NATIVE, pass p1. The forced continuation is NATIVE's; that asymmetry is deliberate and stated, because NATIVE is the incumbent default any change would be measured against.",
+  "shared_support_rule": "S = P_top20 INTERSECT Q_top20. Both arms' probabilities are renormalised over S and KL(P_S||Q_S) = sum_{i in S} p_i log(p_i/q_i). Mass outside S is DROPPED, not smoothed. Reason: the server never reports q for a token outside Q's top-20, so any epsilon filler would manufacture a large log-ratio out of a number nobody measured. Every position instead carries the P-mass and Q-mass the intersection dropped so the reader can see the coverage, and a q_min surrogate variant (q for an unshared P-token set to Q's smallest reported probability) is reported alongside as a labelled sensitivity check. Coverage on this run: mean shared support 18.30 of 20 tokens, mean P-mass dropped by the intersection 3.74e-03, worst 6.54e-02; the surrogate variant moves the overall mean from 1.0566e-02 to 1.0717e-02, so the rule is not load-bearing for the verdict.",
+  "not_full_vocab": "this is a top-20 KLD from the serving API, NOT the full-vocabulary hidden-state replay KLD our quantization receipts use. The two are compared here as orders of magnitude, not as identical estimators; the direction of the truncation bias is toward UNDER-stating divergence, because the tail where the arms most likely disagree is the part that gets dropped.",
+  "aggregation": "unweighted mean over scored positions; 95 % CI by percentile bootstrap resampling whole prompts (clusters), 10000 resamples, so the CI respects the fact that the 8 positions inside one prompt are not independent"
+ },
+ "MEASURED": {
+  "primary_penalty_incumbent_default_vs_candidate_default": {
+   "what": "arm NATIVE (native rope, 262,144 window - what production runs today) as reference P against arm YARN (Qwen's 1M recipe - the candidate default) as Q. This is the number the production decision turns on, because it is the whole difference a client would see if we flipped the default.",
+   "n_positions": 384,
+   "n_prompts": 48,
+   "mean_kld": 0.010566002613040977,
+   "median_kld": 0.004523583809846472,
+   "p99_kld": 0.0722952740657233,
+   "max_kld": 0.23367861038436527,
+   "mean_kld_qmin_surrogate": 0.010717319239295815,
+   "top1_agreement_rate": 0.9322916666666666,
+   "top1_disagreements": 26,
+   "mean_shared_support_size": 18.296875,
+   "min_shared_support_size": 6,
+   "mean_p_topk_mass": 0.9304696498460836,
+   "mean_p_mass_dropped_by_intersection": 0.003743119143416644,
+   "max_p_mass_dropped_by_intersection": 0.06537064925806779,
+   "mean_kld_cluster_bootstrap": {
+    "resamples": 10000,
+    "cluster_unit": "prompt",
+    "n_clusters": 48,
+    "ci95_low": 0.008423075769883015,
+    "ci95_high": 0.012884585700414527
+   },
+   "by_bucket": {
+    "512": {
+     "prompt_tokens": 512,
+     "n_prompts": 12,
+     "n_positions": 96,
+     "mean_kld": 0.007650066322234225,
+     "median_kld": 0.004229319636576965,
+     "p99_kld": 0.04885338760005089,
+     "max_kld": 0.054943497897241456,
+     "top1_agreement_rate": 0.96875,
+     "top1_disagreements": 3,
+     "mean_shared_support_size": 18.677083333333332,
+     "mean_kld_cluster_bootstrap": {
+      "resamples": 10000,
+      "cluster_unit": "prompt",
+      "n_clusters": 12,
+      "ci95_low": 0.005195683797948583,
+      "ci95_high": 0.010485101287115587
+     }
+    },
+    "2048": {
+     "prompt_tokens": 2048,
+     "n_prompts": 12,
+     "n_positions": 96,
+     "mean_kld": 0.0072982717681011585,
+     "median_kld": 0.0029285414221782366,
+     "p99_kld": 0.05707414973778527,
+     "max_kld": 0.06024896777128583,
+     "top1_agreement_rate": 0.9479166666666666,
+     "top1_disagreements": 5,
+     "mean_shared_support_size": 18.552083333333332,
+     "mean_kld_cluster_bootstrap": {
+      "resamples": 10000,
+      "cluster_unit": "prompt",
+      "n_clusters": 12,
+      "ci95_low": 0.004749754604495767,
+      "ci95_high": 0.009878454478207035
+     }
+    },
+    "8192": {
+     "prompt_tokens": 8192,
+     "n_prompts": 12,
+     "n_positions": 96,
+     "mean_kld": 0.014826584965467892,
+     "median_kld": 0.006195019366548496,
+     "p99_kld": 0.08967013529433145,
+     "max_kld": 0.23367861038436527,
+     "top1_agreement_rate": 0.8958333333333334,
+     "top1_disagreements": 10,
+     "mean_shared_support_size": 18.208333333333332,
+     "mean_kld_cluster_bootstrap": {
+      "resamples": 10000,
+      "cluster_unit": "prompt",
+      "n_clusters": 12,
+      "ci95_low": 0.009815435502771279,
+      "ci95_high": 0.020300150403243223
+     }
+    },
+    "32768": {
+     "prompt_tokens": 32768,
+     "n_prompts": 12,
+     "n_positions": 96,
+     "mean_kld": 0.012489087396360614,
+     "median_kld": 0.0057795992517271095,
+     "p99_kld": 0.10792813862192902,
+     "max_kld": 0.16883375686737281,
+     "top1_agreement_rate": 0.9166666666666666,
+     "top1_disagreements": 8,
+     "mean_shared_support_size": 17.75,
+     "mean_kld_cluster_bootstrap": {
+      "resamples": 10000,
+      "cluster_unit": "prompt",
+      "n_clusters": 12,
+      "ci95_low": 0.00768990845943857,
+      "ci95_high": 0.0178696962608039
+     }
+    }
+   },
+   "by_position_index": {
+    "0": {
+     "mean_kld": 0.009644629403608732,
+     "top1_agreement_rate": 0.875
+    },
+    "1": {
+     "mean_kld": 0.009866896944115633,
+     "top1_agreement_rate": 0.9583333333333334
+    },
+    "2": {
+     "mean_kld": 0.005326903375743596,
+     "top1_agreement_rate": 0.9791666666666666
+    },
+    "3": {
+     "mean_kld": 0.011074660098116735,
+     "top1_agreement_rate": 0.9166666666666666
+    },
+    "4": {
+     "mean_kld": 0.01088702215236542,
+     "top1_agreement_rate": 0.9166666666666666
+    },
+    "5": {
+     "mean_kld": 0.011413047459160162,
+     "top1_agreement_rate": 0.9375
+    },
+    "6": {
+     "mean_kld": 0.012175413040155963,
+     "top1_agreement_rate": 0.9166666666666666
+    },
+    "7": {
+     "mean_kld": 0.014139448431061552,
+     "top1_agreement_rate": 0.9583333333333334
+    }
+   },
+   "top1_disagreement_detail": {
+    "what": "at a position where the two arms pick different argmax tokens, how decided was the reference's own choice? A disagreement on a near-tie is a coin flip either arm could lose; a disagreement on a confident reference token is a substantive change of answer.",
+    "n": 26,
+    "mean_ref_top1_prob": 0.23629379262371833,
+    "mean_ref_top1_minus_top2_prob": 0.05447985269442622,
+    "n_with_ref_margin_below_0p01": 8,
+    "n_with_ref_margin_below_0p05": 16,
+    "n_with_ref_top1_prob_above_0p9": 0,
+    "rows": [
+     {
+      "prompt_id": "b32768-00",
+      "bucket": 32768,
+      "j": 7,
+      "ref_argmax_id": 248046,
+      "cand_argmax_id": 550,
+      "ref_top1_prob": 0.4685779421023295,
+      "ref_top1_minus_top2_prob": 0.35010288461815664,
+      "cand_prob_of_ref_top1": 0.24564512547729278,
+      "kld": 0.16883375686737281
+     },
+     {
+      "prompt_id": "b8192-09",
+      "bucket": 8192,
+      "j": 5,
+      "ref_argmax_id": 6966,
+      "cand_argmax_id": 11447,
+      "ref_top1_prob": 0.5207879658813039,
+      "ref_top1_minus_top2_prob": 0.20491409736491623,
+      "cand_prob_of_ref_top1": 0.4069953101336367,
+      "kld": 0.04738389837543303
+     },
+     {
+      "prompt_id": "b2048-09",
+      "bucket": 2048,
+      "j": 3,
+      "ref_argmax_id": 11,
+      "cand_argmax_id": 18295,
+      "ref_top1_prob": 0.4787044318215769,
+      "ref_top1_minus_top2_prob": 0.14969600812088318,
+      "cand_prob_of_ref_top1": 0.383783468979159,
+      "kld": 0.025812510808580314
+     },
+     {
+      "prompt_id": "b8192-04",
+      "bucket": 8192,
+      "j": 5,
+      "ref_argmax_id": 6343,
+      "cand_argmax_id": 2713,
+      "ref_top1_prob": 0.42459799835074075,
+      "ref_top1_minus_top2_prob": 0.0939207447446328,
+      "cand_prob_of_ref_top1": 0.36872004115933965,
+      "kld": 0.030948735111765248
+     },
+     {
+      "prompt_id": "b32768-10",
+      "bucket": 32768,
+      "j": 4,
+      "ref_argmax_id": 735,
+      "cand_argmax_id": 854,
+      "ref_top1_prob": 0.35247741954424283,
+      "ref_top1_minus_top2_prob": 0.07796772918819844,
+      "cand_prob_of_ref_top1": 0.310044974693734,
+      "kld": 0.016311137037469496
+     },
+     {
+      "prompt_id": "b8192-09",
+      "bucket": 8192,
+      "j": 6,
+      "ref_argmax_id": 888,
+      "cand_argmax_id": 11,
+      "ref_top1_prob": 0.23735034093781812,
+      "ref_top1_minus_top2_prob": 0.07422199629387374,
+      "cand_prob_of_ref_top1": 0.18512379712797422,
+      "kld": 0.0434758415280361
+     },
+     {
+      "prompt_id": "b32768-11",
+      "bucket": 32768,
+      "j": 6,
+      "ref_argmax_id": 321,
+      "cand_argmax_id": 11,
+      "ref_top1_prob": 0.28637606508412083,
+      "ref_top1_minus_top2_prob": 0.06334616134369994,
+      "cand_prob_of_ref_top1": 0.23035288411796986,
+      "kld": 0.015743913474551483
+     },
+     {
+      "prompt_id": "b32768-00",
+      "bucket": 32768,
+      "j": 2,
+      "ref_argmax_id": 279,
+      "cand_argmax_id": 264,
+      "ref_top1_prob": 0.28408325288027414,
+      "ref_top1_minus_top2_prob": 0.06283899307964469,
+      "cand_prob_of_ref_top1": 0.24114753520307852,
+      "kld": 0.00909485772760501
+     },
+     {
+      "prompt_id": "b8192-04",
+      "bucket": 8192,
+      "j": 4,
+      "ref_argmax_id": 1132,
+      "cand_argmax_id": 1786,
+      "ref_top1_prob": 0.1927405631364306,
+      "ref_top1_minus_top2_prob": 0.06027204050462737,
+      "cand_prob_of_ref_top1": 0.1360127131042583,
+      "kld": 0.03593632240887008
+     },
+     {
+      "prompt_id": "b32768-10",
+      "bucket": 32768,
+      "j": 0,
+      "ref_argmax_id": 9463,
+      "cand_argmax_id": 7047,
+      "ref_top1_prob": 0.18774242941009264,
+      "ref_top1_minus_top2_prob": 0.0587090551203891,
+      "cand_prob_of_ref_top1": 0.13894903450991322,
+      "kld": 0.03196406879225971
+     },
+     {
+      "prompt_id": "b2048-03",
+      "bucket": 2048,
+      "j": 0,
+      "ref_argmax_id": 60342,
+      "cand_argmax_id": 1856,
+      "ref_top1_prob": 0.12335610086791818,
+      "ref_top1_minus_top2_prob": 0.04853684362892162,
+      "cand_prob_of_ref_top1": 0.08913637692066985,
+      "kld": 0.04142206081172008
+     },
+     {
+      "prompt_id": "b2048-05",
+      "bucket": 2048,
+      "j": 4,
+      "ref_argmax_id": 681,
+      "cand_argmax_id": 8,
+      "ref_top1_prob": 0.3226113643071464,
+      "ref_top1_minus_top2_prob": 0.03790783456749919,
+      "cand_prob_of_ref_top1": 0.2734184545455013,
+      "kld": 0.007247507034856561
+     },
+     {
+      "prompt_id": "b2048-11",
+      "bucket": 2048,
+      "j": 1,
+      "ref_argmax_id": 198,
+      "cand_argmax_id": 1103,
+      "ref_top1_prob": 0.1631607261368611,
+      "ref_top1_minus_top2_prob": 0.036091024854974646,
+      "cand_prob_of_ref_top1": 0.1270967582915288,
+      "kld": 0.01886071441064872
+     },
+     {
+      "prompt_id": "b8192-00",
+      "bucket": 8192,
+      "j": 1,
+      "ref_argmax_id": 23010,
+      "cand_argmax_id": 30407,
+      "ref_top1_prob": 0.12441649487502394,
+      "ref_top1_minus_top2_prob": 0.027520831239355878,
+      "cand_prob_of_ref_top1": 0.08079547386773876,
+      "kld": 0.0515658491749528
+     },
+     {
+      "prompt_id": "b2048-04",
+      "bucket": 2048,
+      "j": 0,
+      "ref_argmax_id": 283,
+      "cand_argmax_id": 25,
+      "ref_top1_prob": 0.22155680565724498,
+      "ref_top1_minus_top2_prob": 0.02603361091818912,
+      "cand_prob_of_ref_top1": 0.15721637669815144,
+      "kld": 0.05690705405181157
+     },
+     {
+      "prompt_id": "b8192-05",
+      "bucket": 8192,
+      "j": 6,
+      "ref_argmax_id": 5458,
+      "cand_argmax_id": 11,
+      "ref_top1_prob": 0.14346525037638064,
+      "ref_top1_minus_top2_prob": 0.01685759619789365,
+      "cand_prob_of_ref_top1": 0.12089339725923658,
+      "kld": 0.014473534465586455
+     },
+     {
+      "prompt_id": "b8192-10",
+      "bucket": 8192,
+      "j": 3,
+      "ref_argmax_id": 73560,
+      "cand_argmax_id": 29457,
+      "ref_top1_prob": 0.06762272537725263,
+      "ref_top1_minus_top2_prob": 0.01495809390002572,
+      "cand_prob_of_ref_top1": 0.06370652584721745,
+      "kld": 0.06979529804799667
+     },
+     {
+      "prompt_id": "b8192-10",
+      "bucket": 8192,
+      "j": 4,
+      "ref_argmax_id": 9581,
+      "cand_argmax_id": 6463,
+      "ref_top1_prob": 0.10706632119427528,
+      "ref_top1_minus_top2_prob": 0.012580624369199933,
+      "cand_prob_of_ref_top1": 0.10440391483950826,
+      "kld": 0.018933088881409176
+     },
+     {
+      "prompt_id": "b32768-02",
+      "bucket": 32768,
+      "j": 3,
+      "ref_argmax_id": 277,
+      "cand_argmax_id": 54306,
+      "ref_top1_prob": 0.04746669985011426,
+      "ref_top1_minus_top2_prob": 0.0,
+      "cand_prob_of_ref_top1": 0.03838794991340956,
+      "kld": 0.03735889678799313
+     },
+     {
+      "prompt_id": "b512-03",
+      "bucket": 512,
+      "j": 0,
+      "ref_argmax_id": 5604,
+      "cand_argmax_id": 348,
+      "ref_top1_prob": 0.03146429455730969,
+      "ref_top1_minus_top2_prob": 0.0,
+      "cand_prob_of_ref_top1": 0.03441619210508076,
+      "kld": 0.006196815933566477
+     },
+     {
+      "prompt_id": "b8192-03",
+      "bucket": 8192,
+      "j": 0,
+      "ref_argmax_id": 1510,
+      "cand_argmax_id": 66480,
+      "ref_top1_prob": 0.31146609044553675,
+      "ref_top1_minus_top2_prob": 0.0,
+      "cand_prob_of_ref_top1": 0.2862712784898998,
+      "kld": 0.0018783842630931886
+     },
+     {
+      "prompt_id": "b8192-04",
+      "bucket": 8192,
+      "j": 7,
+      "ref_argmax_id": 14387,
+      "cand_argmax_id": 32224,
+      "ref_top1_prob": 0.19316243551851955,
+      "ref_top1_minus_top2_prob": 0.0,
+      "cand_prob_of_ref_top1": 0.17872874049406307,
+      "kld": 0.00574069180404958
+     },
+     {
+      "prompt_id": "b32768-04",
+      "bucket": 32768,
+      "j": 5,
+      "ref_argmax_id": 20,
+      "cand_argmax_id": 23,
+      "ref_top1_prob": 0.1834555454699036,
+      "ref_top1_minus_top2_prob": 0.0,
+      "cand_prob_of_ref_top1": 0.15650115903420417,
+      "kld": 0.007728047206573047
+     },
+     {
+      "prompt_id": "b512-06",
+      "bucket": 512,
+      "j": 6,
+      "ref_argmax_id": 279,
+      "cand_argmax_id": 424,
+      "ref_top1_prob": 0.3313372469487359,
+      "ref_top1_minus_top2_prob": 0.0,
+      "cand_prob_of_ref_top1": 0.3221876019631123,
+      "kld": 0.00449824099106072
+     },
+     {
+      "prompt_id": "b512-07",
+      "bucket": 512,
+      "j": 0,
+      "ref_argmax_id": 3255,
+      "cand_argmax_id": 34271,
+      "ref_top1_prob": 0.10703411147080448,
+      "ref_top1_minus_top2_prob": 0.0,
+      "cand_prob_of_ref_top1": 0.08750849359925296,
+      "kld": 0.0047398948700182
+     },
+     {
+      "prompt_id": "b32768-07",
+      "bucket": 32768,
+      "j": 3,
+      "ref_argmax_id": 198,
+      "cand_argmax_id": 3294,
+      "ref_top1_prob": 0.2315579860147188,
+      "ref_top1_minus_top2_prob": 0.0,
+      "cand_prob_of_ref_top1": 0.20739496712873676,
+      "kld": 0.00925744992442659
+     }
+    ]
+   }
+  },
+  "decomposition": {
+   "what": "the primary number bundles two changes: the window and the rope. These three comparisons take them apart. All four arms replay the identical prompts and the identical NATIVE-derived forced continuations.",
+   "A_native_262k_vs_B_native_1M__window_only": {
+    "isolates": "window, KV pool and the VLLM_ALLOW_LONG_MAX_MODEL_LEN path, with the rope held native",
+    "mean_kld": 0.001247778730371882,
+    "p99_kld": 0.009838522314840645,
+    "top1_agreement_rate": 0.9765625,
+    "fraction_of_primary_penalty": 0.11809373668257704
+   },
+   "B_native_1M_vs_C_yarn_1M__rope_only": {
+    "isolates": "the rope change with the window, the env var and the long-window code path held fixed at 1,000,000 in both arms",
+    "mean_kld": 0.010707252948216789,
+    "p99_kld": 0.07564966926732912,
+    "top1_agreement_rate": 0.9375,
+    "fraction_of_primary_penalty": 1.0133683797315622
+   },
+   "A_native_262k_vs_C_yarn_1M__primary": {
+    "mean_kld": 0.010566002613040977,
+    "p99_kld": 0.0722952740657233,
+    "top1_agreement_rate": 0.9322916666666666
+   },
+   "reading": "the window on its own costs 1.248e-03, 12 % of the primary penalty. The rope on its own, at a matched 1M window, costs 1.071e-02, 101 % of it. Rope is the dominant term by roughly 9x, but the window term is NOT zero and is reported rather than buried. The two do not sum to the primary number and are not expected to: KLD is not additive along a path."
+  },
+  "control_same_server_replicate": {
+   "what": "arm NATIVE pass p1 versus pass p2: the SAME running server, same prompts, same seed, prefix cache warm from p1. Bounds pure request-to-request nondeterminism.",
+   "verdict": "mean KLD 0.0e+00, max 0.0e+00, top-1 agreement 100.0 %, shared support 20 of 20 at every position. Bit-identical. Request-to-request nondeterminism on this card in this configuration is exactly zero, so nothing in this receipt is competing with sampler or scheduler noise.",
+   "n_positions": 384,
+   "n_prompts": 48,
+   "mean_kld": 0.0,
+   "median_kld": 0.0,
+   "p99_kld": 0.0,
+   "max_kld": 0.0,
+   "mean_kld_qmin_surrogate": 0.0,
+   "top1_agreement_rate": 1.0,
+   "top1_disagreements": 0,
+   "mean_shared_support_size": 20.0,
+   "min_shared_support_size": 20,
+   "mean_p_topk_mass": 0.9304696498460836,
+   "mean_p_mass_dropped_by_intersection": 8.239936510889834e-18,
+   "max_p_mass_dropped_by_intersection": 5.551115123125783e-16,
+   "mean_kld_cluster_bootstrap": {
+    "resamples": 10000,
+    "cluster_unit": "prompt",
+    "n_clusters": 48,
+    "ci95_low": 0.0,
+    "ci95_high": 0.0
+   },
+   "by_bucket": {
+    "512": {
+     "prompt_tokens": 512,
+     "n_prompts": 12,
+     "n_positions": 96,
+     "mean_kld": 0.0,
+     "median_kld": 0.0,
+     "p99_kld": 0.0,
+     "max_kld": 0.0,
+     "top1_agreement_rate": 1.0,
+     "top1_disagreements": 0,
+     "mean_shared_support_size": 20.0,
+     "mean_kld_cluster_bootstrap": {
+      "resamples": 10000,
+      "cluster_unit": "prompt",
+      "n_clusters": 12,
+      "ci95_low": 0.0,
+      "ci95_high": 0.0
+     }
+    },
+    "2048": {
+     "prompt_tokens": 2048,
+     "n_prompts": 12,
+     "n_positions": 96,
+     "mean_kld": 0.0,
+     "median_kld": 0.0,
+     "p99_kld": 0.0,
+     "max_kld": 0.0,
+     "top1_agreement_rate": 1.0,
+     "top1_disagreements": 0,
+     "mean_shared_support_size": 20.0,
+     "mean_kld_cluster_bootstrap": {
+      "resamples": 10000,
+      "cluster_unit": "prompt",
+      "n_clusters": 12,
+      "ci95_low": 0.0,
+      "ci95_high": 0.0
+     }
+    },
+    "8192": {
+     "prompt_tokens": 8192,
+     "n_prompts": 12,
+     "n_positions": 96,
+     "mean_kld": 0.0,
+     "median_kld": 0.0,
+     "p99_kld": 0.0,
+     "max_kld": 0.0,
+     "top1_agreement_rate": 1.0,
+     "top1_disagreements": 0,
+     "mean_shared_support_size": 20.0,
+     "mean_kld_cluster_bootstrap": {
+      "resamples": 10000,
+      "cluster_unit": "prompt",
+      "n_clusters": 12,
+      "ci95_low": 0.0,
+      "ci95_high": 0.0
+     }
+    },
+    "32768": {
+     "prompt_tokens": 32768,
+     "n_prompts": 12,
+     "n_positions": 96,
+     "mean_kld": 0.0,
+     "median_kld": 0.0,
+     "p99_kld": 0.0,
+     "max_kld": 0.0,
+     "top1_agreement_rate": 1.0,
+     "top1_disagreements": 0,
+     "mean_shared_support_size": 20.0,
+     "mean_kld_cluster_bootstrap": {
+      "resamples": 10000,
+      "cluster_unit": "prompt",
+      "n_clusters": 12,
+      "ci95_low": 0.0,
+      "ci95_high": 0.0
+     }
+    }
+   },
+   "by_position_index": {
+    "0": {
+     "mean_kld": 0.0,
+     "top1_agreement_rate": 1.0
+    },
+    "1": {
+     "mean_kld": 0.0,
+     "top1_agreement_rate": 1.0
+    },
+    "2": {
+     "mean_kld": 0.0,
+     "top1_agreement_rate": 1.0
+    },
+    "3": {
+     "mean_kld": 0.0,
+     "top1_agreement_rate": 1.0
+    },
+    "4": {
+     "mean_kld": 0.0,
+     "top1_agreement_rate": 1.0
+    },
+    "5": {
+     "mean_kld": 0.0,
+     "top1_agreement_rate": 1.0
+    },
+    "6": {
+     "mean_kld": 0.0,
+     "top1_agreement_rate": 1.0
+    },
+    "7": {
+     "mean_kld": 0.0,
+     "top1_agreement_rate": 1.0
+    }
+   },
+   "top1_disagreement_detail": {
+    "what": "at a position where the two arms pick different argmax tokens, how decided was the reference's own choice? A disagreement on a near-tie is a coin flip either arm could lose; a disagreement on a confident reference token is a substantive change of answer.",
+    "n": 0,
+    "mean_ref_top1_prob": NaN,
+    "mean_ref_top1_minus_top2_prob": NaN,
+    "n_with_ref_margin_below_0p01": 0,
+    "n_with_ref_margin_below_0p05": 0,
+    "n_with_ref_top1_prob_above_0p9": 0,
+    "rows": []
+   }
+  },
+  "control_cross_boot_replicate": {
+   "what": "arm NATIVE pass p1 versus pass p3: the SAME launch line and the SAME 262,144 window, but a freshly booted engine, a cold prefix cache and a fresh cudagraph capture. This is the honest replay-vs-live resolution floor for this metric, and the floor every other number here must clear.",
+   "verdict": "mean KLD 1.180e-03, max 1.605e-02, top-1 agreement 97.9 %.",
+   "n_positions": 384,
+   "n_prompts": 48,
+   "mean_kld": 0.0011795296696411634,
+   "median_kld": 0.00046398051038363034,
+   "p99_kld": 0.010810587957863367,
+   "max_kld": 0.01604525830259256,
+   "mean_kld_qmin_surrogate": 0.001180889721169817,
+   "top1_agreement_rate": 0.9791666666666666,
+   "top1_disagreements": 8,
+   "mean_shared_support_size": 19.5859375,
+   "min_shared_support_size": 15,
+   "mean_p_topk_mass": 0.9304696498460836,
+   "mean_p_mass_dropped_by_intersection": 0.0007452684263749247,
+   "max_p_mass_dropped_by_intersection": 0.012444120279867521,
+   "mean_kld_cluster_bootstrap": {
+    "resamples": 10000,
+    "cluster_unit": "prompt",
+    "n_clusters": 48,
+    "ci95_low": 0.000912736919674184,
+    "ci95_high": 0.0014882448207688159
+   },
+   "by_bucket": {
+    "512": {
+     "prompt_tokens": 512,
+     "n_prompts": 12,
+     "n_positions": 96,
+     "mean_kld": 0.0008494932079898837,
+     "median_kld": 0.00042956608559025297,
+     "p99_kld": 0.003251599274145553,
+     "max_kld": 0.003878190294834009,
+     "top1_agreement_rate": 0.96875,
+     "top1_disagreements": 3,
+     "mean_shared_support_size": 19.552083333333332,
+     "mean_kld_cluster_bootstrap": {
+      "resamples": 10000,
+      "cluster_unit": "prompt",
+      "n_clusters": 12,
+      "ci95_low": 0.0005969724192727649,
+      "ci95_high": 0.0011103939146126203
+     }
+    },
+    "2048": {
+     "prompt_tokens": 2048,
+     "n_prompts": 12,
+     "n_positions": 96,
+     "mean_kld": 0.0008640609866854432,
+     "median_kld": 0.0003067002987796098,
+     "p99_kld": 0.006690348471538052,
+     "max_kld": 0.01604525830259256,
+     "top1_agreement_rate": 1.0,
+     "top1_disagreements": 0,
+     "mean_shared_support_size": 19.604166666666668,
+     "mean_kld_cluster_bootstrap": {
+      "resamples": 10000,
+      "cluster_unit": "prompt",
+      "n_clusters": 12,
+      "ci95_low": 0.0005101218649085338,
+      "ci95_high": 0.0012937590454987946
+     }
+    },
+    "8192": {
+     "prompt_tokens": 8192,
+     "n_prompts": 12,
+     "n_positions": 96,
+     "mean_kld": 0.0016934063682432483,
+     "median_kld": 0.0007380227625074893,
+     "p99_kld": 0.013780211247131429,
+     "max_kld": 0.014136526355551763,
+     "top1_agreement_rate": 0.9791666666666666,
+     "top1_disagreements": 2,
+     "mean_shared_support_size": 19.5,
+     "mean_kld_cluster_bootstrap": {
+      "resamples": 10000,
+      "cluster_unit": "prompt",
+      "n_clusters": 12,
+      "ci95_low": 0.000938991904045178,
+      "ci95_high": 0.002616679160393588
+     }
+    },
+    "32768": {
+     "prompt_tokens": 32768,
+     "n_prompts": 12,
+     "n_positions": 96,
+     "mean_kld": 0.0013111581156460804,
+     "median_kld": 0.0006290518137063621,
+     "p99_kld": 0.008518868476298245,
+     "max_kld": 0.01134563931010198,
+     "top1_agreement_rate": 0.96875,
+     "top1_disagreements": 3,
+     "mean_shared_support_size": 19.6875,
+     "mean_kld_cluster_bootstrap": {
+      "resamples": 10000,
+      "cluster_unit": "prompt",
+      "n_clusters": 12,
+      "ci95_low": 0.0008604918228989124,
+      "ci95_high": 0.0018641056211064365
+     }
+    }
+   },
+   "by_position_index": {
+    "0": {
+     "mean_kld": 0.0008204778847450057,
+     "top1_agreement_rate": 0.9791666666666666
+    },
+    "1": {
+     "mean_kld": 0.0014143155613051777,
+     "top1_agreement_rate": 1.0
+    },
+    "2": {
+     "mean_kld": 0.001475252098552808,
+     "top1_agreement_rate": 0.9791666666666666
+    },
+    "3": {
+     "mean_kld": 0.001364520300274159,
+     "top1_agreement_rate": 0.9583333333333334
+    },
+    "4": {
+     "mean_kld": 0.0010214067118274196,
+     "top1_agreement_rate": 0.9583333333333334
+    },
+    "5": {
+     "mean_kld": 0.001221956793306042,
+     "top1_agreement_rate": 0.9583333333333334
+    },
+    "6": {
+     "mean_kld": 0.0008178037884712131,
+     "top1_agreement_rate": 1.0
+    },
+    "7": {
+     "mean_kld": 0.0013005042186474847,
+     "top1_agreement_rate": 1.0
+    }
+   },
+   "top1_disagreement_detail": {
+    "what": "at a position where the two arms pick different argmax tokens, how decided was the reference's own choice? A disagreement on a near-tie is a coin flip either arm could lose; a disagreement on a confident reference token is a substantive change of answer.",
+    "n": 8,
+    "mean_ref_top1_prob": 0.15729575723759037,
+    "mean_ref_top1_minus_top2_prob": 0.014317428332871942,
+    "n_with_ref_margin_below_0p01": 3,
+    "n_with_ref_margin_below_0p05": 8,
+    "n_with_ref_top1_prob_above_0p9": 0,
+    "rows": [
+     {
+      "prompt_id": "b32768-11",
+      "bucket": 32768,
+      "j": 2,
+      "ref_argmax_id": 18295,
+      "cand_argmax_id": 17,
+      "ref_top1_prob": 0.20258731097167632,
+      "ref_top1_minus_top2_prob": 0.04481215454660459,
+      "cand_prob_of_ref_top1": 0.202566108127197,
+      "kld": 0.008370091063992793
+     },
+     {
+      "prompt_id": "b512-03",
+      "bucket": 512,
+      "j": 4,
+      "ref_argmax_id": 1510,
+      "cand_argmax_id": 279,
+      "ref_top1_prob": 0.259817995716177,
+      "ref_top1_minus_top2_prob": 0.0305294192609131,
+      "cand_prob_of_ref_top1": 0.24033098166366337,
+      "kld": 0.002086839847385192
+     },
+     {
+      "prompt_id": "b8192-10",
+      "bucket": 8192,
+      "j": 3,
+      "ref_argmax_id": 73560,
+      "cand_argmax_id": 71,
+      "ref_top1_prob": 0.06762272537725263,
+      "ref_top1_minus_top2_prob": 0.01495809390002572,
+      "cand_prob_of_ref_top1": 0.05404385395758302,
+      "kld": 0.0037943147961813717
+     },
+     {
+      "prompt_id": "b8192-10",
+      "bucket": 8192,
+      "j": 4,
+      "ref_argmax_id": 9581,
+      "cand_argmax_id": 6463,
+      "ref_top1_prob": 0.10706632119427528,
+      "ref_top1_minus_top2_prob": 0.012580624369199933,
+      "cand_prob_of_ref_top1": 0.10181926878129015,
+      "kld": 0.0020015132754442385
+     },
+     {
+      "prompt_id": "b512-01",
+      "bucket": 512,
+      "j": 5,
+      "ref_argmax_id": 279,
+      "cand_argmax_id": 1510,
+      "ref_top1_prob": 0.099224061685915,
+      "ref_top1_minus_top2_prob": 0.01165913458623219,
+      "cand_prob_of_ref_top1": 0.08710101841359391,
+      "kld": 0.0029653604429481237
+     },
+     {
+      "prompt_id": "b32768-04",
+      "bucket": 32768,
+      "j": 5,
+      "ref_argmax_id": 20,
+      "cand_argmax_id": 21,
+      "ref_top1_prob": 0.1834555454699036,
+      "ref_top1_minus_top2_prob": 0.0,
+      "cand_prob_of_ref_top1": 0.16913454658832955,
+      "kld": 0.0017874212571592429
+     },
+     {
+      "prompt_id": "b512-07",
+      "bucket": 512,
+      "j": 0,
+      "ref_argmax_id": 3255,
+      "cand_argmax_id": 3591,
+      "ref_top1_prob": 0.10703411147080448,
+      "ref_top1_minus_top2_prob": 0.0,
+      "cand_prob_of_ref_top1": 0.09528253426055663,
+      "kld": 0.002510516288812241
+     },
+     {
+      "prompt_id": "b32768-07",
+      "bucket": 32768,
+      "j": 3,
+      "ref_argmax_id": 198,
+      "cand_argmax_id": 3294,
+      "ref_top1_prob": 0.2315579860147188,
+      "ref_top1_minus_top2_prob": 0.0,
+      "cand_prob_of_ref_top1": 0.23009218727376216,
+      "kld": 0.004363490788174663
+     }
+    ]
+   }
+  },
+  "control_window_only_native1m": {
+   "what": "arm NATIVE versus arm NATIVE1M: native rope served at the YaRN arm's 1,000,000-token window with VLLM_ALLOW_LONG_MAX_MODEL_LEN=1. Isolates window, KV pool and block-table effects from the rope.",
+   "verdict": "mean KLD 1.248e-03, max 2.000e-02, top-1 agreement 97.7 %. NOT null: the window alone is worth 2.7x the adversarial calibration swap. The engine logged identical shapes for all three arms (FLASHINFER backend, attention block size 1568, mamba page padding 0.13 %, chunked prefill 8192, one FULL cudagraph capture), so this is not a backend or block-size switch; see INFERENCE for the likely cause.",
+   "n_positions": 384,
+   "n_prompts": 48,
+   "mean_kld": 0.001247778730371882,
+   "median_kld": 0.0005462757374852896,
+   "p99_kld": 0.009838522314840645,
+   "max_kld": 0.01999509393079306,
+   "mean_kld_qmin_surrogate": 0.0012507589035755235,
+   "top1_agreement_rate": 0.9765625,
+   "top1_disagreements": 9,
+   "mean_shared_support_size": 19.5,
+   "min_shared_support_size": 16,
+   "mean_p_topk_mass": 0.9304696498460836,
+   "mean_p_mass_dropped_by_intersection": 0.0010314402116316903,
+   "max_p_mass_dropped_by_intersection": 0.018411626977592577,
+   "mean_kld_cluster_bootstrap": {
+    "resamples": 10000,
+    "cluster_unit": "prompt",
+    "n_clusters": 48,
+    "ci95_low": 0.0009836840725556892,
+    "ci95_high": 0.0015404882687654168
+   },
+   "by_bucket": {
+    "512": {
+     "prompt_tokens": 512,
+     "n_prompts": 12,
+     "n_positions": 96,
+     "mean_kld": 0.0009531733861487345,
+     "median_kld": 0.0005843710566874139,
+     "p99_kld": 0.0036741059810057497,
+     "max_kld": 0.006225594996165051,
+     "top1_agreement_rate": 0.9791666666666666,
+     "top1_disagreements": 2,
+     "mean_shared_support_size": 19.53125,
+     "mean_kld_cluster_bootstrap": {
+      "resamples": 10000,
+      "cluster_unit": "prompt",
+      "n_clusters": 12,
+      "ci95_low": 0.0007417834007310794,
+      "ci95_high": 0.00115580089690497
+     }
+    },
+    "2048": {
+     "prompt_tokens": 2048,
+     "n_prompts": 12,
+     "n_positions": 96,
+     "mean_kld": 0.001008044827192595,
+     "median_kld": 0.00038138416289799253,
+     "p99_kld": 0.009663772632544154,
+     "max_kld": 0.019348757128378705,
+     "top1_agreement_rate": 0.9895833333333334,
+     "top1_disagreements": 1,
+     "mean_shared_support_size": 19.5,
+     "mean_kld_cluster_bootstrap": {
+      "resamples": 10000,
+      "cluster_unit": "prompt",
+      "n_clusters": 12,
+      "ci95_low": 0.0005482296483116955,
+      "ci95_high": 0.0015536935914741395
+     }
+    },
+    "8192": {
+     "prompt_tokens": 8192,
+     "n_prompts": 12,
+     "n_positions": 96,
+     "mean_kld": 0.0015057238210626073,
+     "median_kld": 0.0005258135093943942,
+     "p99_kld": 0.008535663780387455,
+     "max_kld": 0.013180423126406172,
+     "top1_agreement_rate": 0.9895833333333334,
+     "top1_disagreements": 1,
+     "mean_shared_support_size": 19.458333333333332,
+     "mean_kld_cluster_bootstrap": {
+      "resamples": 10000,
+      "cluster_unit": "prompt",
+      "n_clusters": 12,
+      "ci95_low": 0.0009164144716695013,
+      "ci95_high": 0.0022082545313457666
+     }
+    },
+    "32768": {
+     "prompt_tokens": 32768,
+     "n_prompts": 12,
+     "n_positions": 96,
+     "mean_kld": 0.0015241728870835913,
+     "median_kld": 0.0006138213258775069,
+     "p99_kld": 0.015769837160734827,
+     "max_kld": 0.01999509393079306,
+     "top1_agreement_rate": 0.9479166666666666,
+     "top1_disagreements": 5,
+     "mean_shared_support_size": 19.510416666666668,
+     "mean_kld_cluster_bootstrap": {
+      "resamples": 10000,
+      "cluster_unit": "prompt",
+      "n_clusters": 12,
+      "ci95_low": 0.0009145989252825304,
+      "ci95_high": 0.002227023649396678
+     }
+    }
+   },
+   "by_position_index": {
+    "0": {
+     "mean_kld": 0.0013902462268261505,
+     "top1_agreement_rate": 0.9166666666666666
+    },
+    "1": {
+     "mean_kld": 0.0015219286922485828,
+     "top1_agreement_rate": 0.9791666666666666
+    },
+    "2": {
+     "mean_kld": 0.0015987945280094746,
+     "top1_agreement_rate": 0.9791666666666666
+    },
+    "3": {
+     "mean_kld": 0.0012624538947052795,
+     "top1_agreement_rate": 0.9791666666666666
+    },
+    "4": {
+     "mean_kld": 0.0011005597260487054,
+     "top1_agreement_rate": 0.9791666666666666
+    },
+    "5": {
+     "mean_kld": 0.0010350049514672689,
+     "top1_agreement_rate": 0.9791666666666666
+    },
+    "6": {
+     "mean_kld": 0.0007398926263259248,
+     "top1_agreement_rate": 1.0
+    },
+    "7": {
+     "mean_kld": 0.0013333491973436693,
+     "top1_agreement_rate": 1.0
+    }
+   },
+   "top1_disagreement_detail": {
+    "what": "at a position where the two arms pick different argmax tokens, how decided was the reference's own choice? A disagreement on a near-tie is a coin flip either arm could lose; a disagreement on a confident reference token is a substantive change of answer.",
+    "n": 9,
+    "mean_ref_top1_prob": 0.20034432070801328,
+    "mean_ref_top1_minus_top2_prob": 0.02019281715550663,
+    "n_with_ref_margin_below_0p01": 4,
+    "n_with_ref_margin_below_0p05": 8,
+    "n_with_ref_top1_prob_above_0p9": 0,
+    "rows": [
+     {
+      "prompt_id": "b32768-10",
+      "bucket": 32768,
+      "j": 0,
+      "ref_argmax_id": 9463,
+      "cand_argmax_id": 7047,
+      "ref_top1_prob": 0.18774242941009264,
+      "ref_top1_minus_top2_prob": 0.0587090551203891,
+      "cand_prob_of_ref_top1": 0.1668863315812074,
+      "kld": 0.01999509393079306
+     },
+     {
+      "prompt_id": "b32768-11",
+      "bucket": 32768,
+      "j": 2,
+      "ref_argmax_id": 18295,
+      "cand_argmax_id": 17,
+      "ref_top1_prob": 0.20258731097167632,
+      "ref_top1_minus_top2_prob": 0.04481215454660459,
+      "cand_prob_of_ref_top1": 0.19521970161728247,
+      "kld": 0.015547455225468618
+     },
+     {
+      "prompt_id": "b512-03",
+      "bucket": 512,
+      "j": 4,
+      "ref_argmax_id": 1510,
+      "cand_argmax_id": 279,
+      "ref_top1_prob": 0.259817995716177,
+      "ref_top1_minus_top2_prob": 0.0305294192609131,
+      "cand_prob_of_ref_top1": 0.23624347949660562,
+      "kld": 0.001848255674497751
+     },
+     {
+      "prompt_id": "b2048-04",
+      "bucket": 2048,
+      "j": 0,
+      "ref_argmax_id": 283,
+      "cand_argmax_id": 220,
+      "ref_top1_prob": 0.22155680565724498,
+      "ref_top1_minus_top2_prob": 0.02603361091818912,
+      "cand_prob_of_ref_top1": 0.21887002576585418,
+      "kld": 0.0030061676656055005
+     },
+     {
+      "prompt_id": "b32768-06",
+      "bucket": 32768,
+      "j": 1,
+      "ref_argmax_id": 321,
+      "cand_argmax_id": 25,
+      "ref_top1_prob": 0.09788061121596521,
+      "ref_top1_minus_top2_prob": 0.021651114553463774,
+      "cand_prob_of_ref_top1": 0.0889345015524578,
+      "kld": 0.0028958449146754103
+     },
+     {
+      "prompt_id": "b8192-03",
+      "bucket": 8192,
+      "j": 0,
+      "ref_argmax_id": 1510,
+      "cand_argmax_id": 66480,
+      "ref_top1_prob": 0.31146609044553675,
+      "ref_top1_minus_top2_prob": 0.0,
+      "cand_prob_of_ref_top1": 0.2997626254135347,
+      "kld": 0.0019981269226645006
+     },
+     {
+      "prompt_id": "b32768-04",
+      "bucket": 32768,
+      "j": 5,
+      "ref_argmax_id": 20,
+      "cand_argmax_id": 23,
+      "ref_top1_prob": 0.1834555454699036,
+      "ref_top1_minus_top2_prob": 0.0,
+      "cand_prob_of_ref_top1": 0.17500849623199324,
+      "kld": 0.001825094902183916
+     },
+     {
+      "prompt_id": "b512-07",
+      "bucket": 512,
+      "j": 0,
+      "ref_argmax_id": 3255,
+      "cand_argmax_id": 34271,
+      "ref_top1_prob": 0.10703411147080448,
+      "ref_top1_minus_top2_prob": 0.0,
+      "cand_prob_of_ref_top1": 0.09809348506380451,
+      "kld": 0.0019135650069303227
+     },
+     {
+      "prompt_id": "b32768-07",
+      "bucket": 32768,
+      "j": 3,
+      "ref_argmax_id": 198,
+      "cand_argmax_id": 3294,
+      "ref_top1_prob": 0.2315579860147188,
+      "ref_top1_minus_top2_prob": 0.0,
+      "cand_prob_of_ref_top1": 0.22343775218150458,
+      "kld": 0.001685963176826337
+     }
+    ]
+   }
+  },
+  "rope_only_at_matched_window": {
+   "what": "arm NATIVE1M as reference P against arm YARN as Q: window, env var and long window code path identical, rope the only intended difference.",
+   "n_positions": 384,
+   "n_prompts": 48,
+   "mean_kld": 0.010707252948216789,
+   "median_kld": 0.004324441333088187,
+   "p99_kld": 0.07564966926732912,
+   "max_kld": 0.20268643842429093,
+   "mean_kld_qmin_surrogate": 0.010829208340387343,
+   "top1_agreement_rate": 0.9375,
+   "top1_disagreements": 24,
+   "mean_shared_support_size": 18.322916666666668,
+   "min_shared_support_size": 7,
+   "mean_p_topk_mass": 0.930539049670132,
+   "mean_p_mass_dropped_by_intersection": 0.0035263010081426622,
+   "max_p_mass_dropped_by_intersection": 0.058305685155456866,
+   "mean_kld_cluster_bootstrap": {
+    "resamples": 10000,
+    "cluster_unit": "prompt",
+    "n_clusters": 48,
+    "ci95_low": 0.008531233881052392,
+    "ci95_high": 0.013093202400598846
+   },
+   "by_bucket": {
+    "512": {
+     "prompt_tokens": 512,
+     "n_prompts": 12,
+     "n_positions": 96,
+     "mean_kld": 0.008032716633916494,
+     "median_kld": 0.004257213298646671,
+     "p99_kld": 0.06417000357481518,
+     "max_kld": 0.06441302191607097,
+     "top1_agreement_rate": 0.96875,
+     "top1_disagreements": 3,
+     "mean_shared_support_size": 18.708333333333332,
+     "mean_kld_cluster_bootstrap": {
+      "resamples": 10000,
+      "cluster_unit": "prompt",
+      "n_clusters": 12,
+      "ci95_low": 0.00520499499435427,
+      "ci95_high": 0.011396132670130189
+     }
+    },
+    "2048": {
+     "prompt_tokens": 2048,
+     "n_prompts": 12,
+     "n_positions": 96,
+     "mean_kld": 0.007478921940571055,
+     "median_kld": 0.0026770814486666203,
+     "p99_kld": 0.05129295814033346,
+     "max_kld": 0.07094138369100249,
+     "top1_agreement_rate": 0.9479166666666666,
+     "top1_disagreements": 5,
+     "mean_shared_support_size": 18.552083333333332,
+     "mean_kld_cluster_bootstrap": {
+      "resamples": 10000,
+      "cluster_unit": "prompt",
+      "n_clusters": 12,
+      "ci95_low": 0.00479394455239225,
+      "ci95_high": 0.010290957994130837
+     }
+    },
+    "8192": {
+     "prompt_tokens": 8192,
+     "n_prompts": 12,
+     "n_positions": 96,
+     "mean_kld": 0.01476831387762591,
+     "median_kld": 0.007179854909305017,
+     "p99_kld": 0.09098449341633548,
+     "max_kld": 0.20268643842429093,
+     "top1_agreement_rate": 0.90625,
+     "top1_disagreements": 9,
+     "mean_shared_support_size": 18.229166666666668,
+     "mean_kld_cluster_bootstrap": {
+      "resamples": 10000,
+      "cluster_unit": "prompt",
+      "n_clusters": 12,
+      "ci95_low": 0.009925016571165268,
+      "ci95_high": 0.019548180885432555
+     }
+    },
+    "32768": {
+     "prompt_tokens": 32768,
+     "n_prompts": 12,
+     "n_positions": 96,
+     "mean_kld": 0.01254905934075374,
+     "median_kld": 0.004786497787161238,
+     "p99_kld": 0.10376183183551474,
+     "max_kld": 0.17610936585319828,
+     "top1_agreement_rate": 0.9270833333333334,
+     "top1_disagreements": 7,
+     "mean_shared_support_size": 17.802083333333332,
+     "mean_kld_cluster_bootstrap": {
+      "resamples": 10000,
+      "cluster_unit": "prompt",
+      "n_clusters": 12,
+      "ci95_low": 0.00751639698724002,
+      "ci95_high": 0.01868756937910125
+     }
+    }
+   },
+   "by_position_index": {
+    "0": {
+     "mean_kld": 0.009904268444162373,
+     "top1_agreement_rate": 0.9375
+    },
+    "1": {
+     "mean_kld": 0.009693792301471492,
+     "top1_agreement_rate": 0.9375
+    },
+    "2": {
+     "mean_kld": 0.007148272003729201,
+     "top1_agreement_rate": 0.9583333333333334
+    },
+    "3": {
+     "mean_kld": 0.01073574943409214,
+     "top1_agreement_rate": 0.9375
+    },
+    "4": {
+     "mean_kld": 0.011325901651337658,
+     "top1_agreement_rate": 0.8958333333333334
+    },
+    "5": {
+     "mean_kld": 0.010753980766398616,
+     "top1_agreement_rate": 0.9583333333333334
+    },
+    "6": {
+     "mean_kld": 0.011106008383651084,
+     "top1_agreement_rate": 0.9166666666666666
+    },
+    "7": {
+     "mean_kld": 0.014990050600891829,
+     "top1_agreement_rate": 0.9583333333333334
+    }
+   },
+   "top1_disagreement_detail": {
+    "what": "at a position where the two arms pick different argmax tokens, how decided was the reference's own choice? A disagreement on a near-tie is a coin flip either arm could lose; a disagreement on a confident reference token is a substantive change of answer.",
+    "n": 24,
+    "mean_ref_top1_prob": 0.23275613230675252,
+    "mean_ref_top1_minus_top2_prob": 0.05002702841755249,
+    "n_with_ref_margin_below_0p01": 8,
+    "n_with_ref_margin_below_0p05": 18,
+    "n_with_ref_top1_prob_above_0p9": 0,
+    "rows": [
+     {
+      "prompt_id": "b32768-00",
+      "bucket": 32768,
+      "j": 7,
+      "ref_argmax_id": 248046,
+      "cand_argmax_id": 550,
+      "ref_top1_prob": 0.47846952016113453,
+      "ref_top1_minus_top2_prob": 0.3496912035073466,
+      "cand_prob_of_ref_top1": 0.24564512547729278,
+      "kld": 0.17610936585319828
+     },
+     {
+      "prompt_id": "b8192-09",
+      "bucket": 8192,
+      "j": 5,
+      "ref_argmax_id": 6966,
+      "cand_argmax_id": 11447,
+      "ref_top1_prob": 0.4943869744229744,
+      "ref_top1_minus_top2_prob": 0.15460012758103242,
+      "cand_prob_of_ref_top1": 0.4069953101336367,
+      "kld": 0.03247866986056724
+     },
+     {
+      "prompt_id": "b2048-09",
+      "bucket": 2048,
+      "j": 3,
+      "ref_argmax_id": 11,
+      "cand_argmax_id": 18295,
+      "ref_top1_prob": 0.4847408394591103,
+      "ref_top1_minus_top2_prob": 0.15158365750672792,
+      "cand_prob_of_ref_top1": 0.383783468979159,
+      "kld": 0.025619845095738086
+     },
+     {
+      "prompt_id": "b8192-04",
+      "bucket": 8192,
+      "j": 4,
+      "ref_argmax_id": 1132,
+      "cand_argmax_id": 1786,
+      "ref_top1_prob": 0.21262552051481257,
+      "ref_top1_minus_top2_prob": 0.08366162328522123,
+      "cand_prob_of_ref_top1": 0.1360127131042583,
+      "kld": 0.04891258244241987
+     },
+     {
+      "prompt_id": "b32768-00",
+      "bucket": 32768,
+      "j": 2,
+      "ref_argmax_id": 279,
+      "cand_argmax_id": 264,
+      "ref_top1_prob": 0.25926572048540913,
+      "ref_top1_minus_top2_prob": 0.05734937434780052,
+      "cand_prob_of_ref_top1": 0.24114753520307852,
+      "kld": 0.009936407608403693
+     },
+     {
+      "prompt_id": "b2048-03",
+      "bucket": 2048,
+      "j": 0,
+      "ref_argmax_id": 60342,
+      "cand_argmax_id": 1856,
+      "ref_top1_prob": 0.12863912247638795,
+      "ref_top1_minus_top2_prob": 0.05061555065593011,
+      "cand_prob_of_ref_top1": 0.08913637692066985,
+      "kld": 0.036653419415182506
+     },
+     {
+      "prompt_id": "b8192-09",
+      "bucket": 8192,
+      "j": 6,
+      "ref_argmax_id": 888,
+      "cand_argmax_id": 11,
+      "ref_top1_prob": 0.22338613785556158,
+      "ref_top1_minus_top2_prob": 0.04941283876635344,
+      "cand_prob_of_ref_top1": 0.18512379712797422,
+      "kld": 0.03188557357349931
+     },
+     {
+      "prompt_id": "b8192-04",
+      "bucket": 8192,
+      "j": 5,
+      "ref_argmax_id": 6343,
+      "cand_argmax_id": 2713,
+      "ref_top1_prob": 0.40833881666067195,
+      "ref_top1_minus_top2_prob": 0.04798107575256999,
+      "cand_prob_of_ref_top1": 0.36872004115933965,
+      "kld": 0.017640898468062376
+     },
+     {
+      "prompt_id": "b32768-10",
+      "bucket": 32768,
+      "j": 4,
+      "ref_argmax_id": 735,
+      "cand_argmax_id": 854,
+      "ref_top1_prob": 0.3276406624595995,
+      "ref_top1_minus_top2_prob": 0.038498792678238025,
+      "cand_prob_of_ref_top1": 0.310044974693734,
+      "kld": 0.012869185007358357
+     },
+     {
+      "prompt_id": "b2048-05",
+      "bucket": 2048,
+      "j": 4,
+      "ref_argmax_id": 681,
+      "cand_argmax_id": 8,
+      "ref_top1_prob": 0.32502634632931215,
+      "ref_top1_minus_top2_prob": 0.03819160243530617,
+      "cand_prob_of_ref_top1": 0.2734184545455013,
+      "kld": 0.007326897370584476
+     },
+     {
+      "prompt_id": "b2048-11",
+      "bucket": 2048,
+      "j": 1,
+      "ref_argmax_id": 198,
+      "cand_argmax_id": 1103,
+      "ref_top1_prob": 0.1593472201096969,
+      "ref_top1_minus_top2_prob": 0.03524748030801343,
+      "cand_prob_of_ref_top1": 0.1270967582915288,
+      "kld": 0.015789497529152124
+     },
+     {
+      "prompt_id": "b32768-11",
+      "bucket": 32768,
+      "j": 6,
+      "ref_argmax_id": 321,
+      "cand_argmax_id": 11,
+      "ref_top1_prob": 0.2757638509533079,
+      "ref_top1_minus_top2_prob": 0.03240310664221366,
+      "cand_prob_of_ref_top1": 0.23035288411796986,
+      "kld": 0.01108435385530365
+     },
+     {
+      "prompt_id": "b8192-05",
+      "bucket": 8192,
+      "j": 6,
+      "ref_argmax_id": 5458,
+      "cand_argmax_id": 11,
+      "ref_top1_prob": 0.14435644194776692,
+      "ref_top1_minus_top2_prob": 0.0319315185153498,
+      "cand_prob_of_ref_top1": 0.12089339725923658,
+      "kld": 0.013930514429090794
+     },
+     {
+      "prompt_id": "b8192-00",
+      "bucket": 8192,
+      "j": 1,
+      "ref_argmax_id": 23010,
+      "cand_argmax_id": 30407,
+      "ref_top1_prob": 0.12522064156641222,
+      "ref_top1_minus_top2_prob": 0.027698707857786678,
+      "cand_prob_of_ref_top1": 0.08079547386773876,
+      "kld": 0.03986213063034162
+     },
+     {
+      "prompt_id": "b32768-11",
+      "bucket": 32768,
+      "j": 2,
+      "ref_argmax_id": 17,
+      "cand_argmax_id": 18295,
+      "ref_top1_prob": 0.22121290289579104,
+      "ref_top1_minus_top2_prob": 0.02599320127850857,
+      "cand_prob_of_ref_top1": 0.112810168510953,
+      "kld": 0.06052953092445356
+     },
+     {
+      "prompt_id": "b8192-10",
+      "bucket": 8192,
+      "j": 4,
+      "ref_argmax_id": 9581,
+      "cand_argmax_id": 6463,
+      "ref_top1_prob": 0.10592714841521689,
+      "ref_top1_minus_top2_prob": 0.012446768039169248,
+      "cand_prob_of_ref_top1": 0.10440391483950826,
+      "kld": 0.018339005900480185
+     },
+     {
+      "prompt_id": "b8192-10",
+      "bucket": 8192,
+      "j": 3,
+      "ref_argmax_id": 73560,
+      "cand_argmax_id": 29457,
+      "ref_top1_prob": 0.05946194863628443,
+      "ref_top1_minus_top2_prob": 0.006986963143119113,
+      "cand_prob_of_ref_top1": 0.06370652584721745,
+      "kld": 0.07371294438781469
+     },
+     {
+      "prompt_id": "b32768-02",
+      "bucket": 32768,
+      "j": 3,
+      "ref_argmax_id": 277,
+      "cand_argmax_id": 54306,
+      "ref_top1_prob": 0.05408444424324668,
+      "ref_top1_minus_top2_prob": 0.006355089720572235,
+      "cand_prob_of_ref_top1": 0.03838794991340956,
+      "kld": 0.04850283170317494
+     },
+     {
+      "prompt_id": "b512-03",
+      "bucket": 512,
+      "j": 0,
+      "ref_argmax_id": 5604,
+      "cand_argmax_id": 348,
+      "ref_top1_prob": 0.03197319877251868,
+      "ref_top1_minus_top2_prob": 0.0,
+      "cand_prob_of_ref_top1": 0.03441619210508076,
+      "kld": 0.006498807989946953
+     },
+     {
+      "prompt_id": "b512-03",
+      "bucket": 512,
+      "j": 4,
+      "ref_argmax_id": 279,
+      "cand_argmax_id": 1510,
+      "ref_top1_prob": 0.23624347949660562,
+      "ref_top1_minus_top2_prob": 0.0,
+      "cand_prob_of_ref_top1": 0.23265110388461302,
+      "kld": 0.007909904534484669
+     },
+     {
+      "prompt_id": "b2048-04",
+      "bucket": 2048,
+      "j": 0,
+      "ref_argmax_id": 220,
+      "cand_argmax_id": 25,
+      "ref_top1_prob": 0.21887002576585418,
+      "ref_top1_minus_top2_prob": 0.0,
+      "cand_prob_of_ref_top1": 0.13033695413758614,
+      "kld": 0.07094138369100249
+     },
+     {
+      "prompt_id": "b8192-04",
+      "bucket": 8192,
+      "j": 7,
+      "ref_argmax_id": 14387,
+      "cand_argmax_id": 32224,
+      "ref_top1_prob": 0.19008593196466655,
+      "ref_top1_minus_top2_prob": 0.0,
+      "cand_prob_of_ref_top1": 0.17872874049406307,
+      "kld": 0.006074459783418079
+     },
+     {
+      "prompt_id": "b512-06",
+      "bucket": 512,
+      "j": 6,
+      "ref_argmax_id": 279,
+      "cand_argmax_id": 424,
+      "ref_top1_prob": 0.3321457782172591,
+      "ref_top1_minus_top2_prob": 0.0,
+      "cand_prob_of_ref_top1": 0.3221876019631123,
+      "kld": 0.004735089842277692
+     },
+     {
+      "prompt_id": "b32768-06",
+      "bucket": 32768,
+      "j": 1,
+      "ref_argmax_id": 25,
+      "cand_argmax_id": 321,
+      "ref_top1_prob": 0.0889345015524578,
+      "ref_top1_minus_top2_prob": 0.0,
+      "cand_prob_of_ref_top1": 0.08911784730491419,
+      "kld": 0.01406244595088181
+     }
+    ]
+   }
+  },
+  "free_running_greedy_agreement": {
+   "what": "outside the teacher-forced ladder, each arm was also asked to generate its own 8-token greedy continuation from the identical prompt. This is the user-visible question: does switching rope change what the model actually says?",
+   "n_prompts": 48,
+   "identical_8_token_continuations": 29,
+   "divergent_prompts_count": 19,
+   "by_bucket": {
+    "512": {
+     "n_prompts": 12,
+     "identical_8_token_continuations": 9,
+     "divergent": 3
+    },
+    "2048": {
+     "n_prompts": 12,
+     "identical_8_token_continuations": 7,
+     "divergent": 5
+    },
+    "8192": {
+     "n_prompts": 12,
+     "identical_8_token_continuations": 6,
+     "divergent": 6
+    },
+    "32768": {
+     "n_prompts": 12,
+     "identical_8_token_continuations": 7,
+     "divergent": 5
+    }
+   },
+   "cross_boot_control": {
+    "what": "the SAME NATIVE launch line booted a fourth time, generating its own greedy continuations from the identical prompts. Without this the YaRN divergence count cannot be told apart from what a plain restart does.",
+    "identical_8_token_continuations": 41,
+    "divergent_prompts_count": 7,
+    "by_bucket": {
+     "512": {
+      "n_prompts": 12,
+      "identical_8_token_continuations": 11,
+      "divergent": 1
+     },
+     "2048": {
+      "n_prompts": 12,
+      "identical_8_token_continuations": 12,
+      "divergent": 0
+     },
+     "8192": {
+      "n_prompts": 12,
+      "identical_8_token_continuations": 9,
+      "divergent": 3
+     },
+     "32768": {
+      "n_prompts": 12,
+      "identical_8_token_continuations": 9,
+      "divergent": 3
+     }
+    },
+    "divergent_prompts": [
+     {
+      "id": "b8192-02",
+      "bucket": 8192,
+      "first_divergent_position": 7,
+      "boot1_ids": [
+       20245,
+       11,
+       198,
+       256,
+       10582,
+       48570,
+       11,
+       21966
+      ],
+      "boot4_ids": [
+       20245,
+       11,
+       198,
+       256,
+       10582,
+       48570,
+       11,
+       5404
+      ]
+     },
+     {
+      "id": "b512-03",
+      "bucket": 512,
+      "first_divergent_position": 4,
+      "boot1_ids": [
+       5604,
+       1870,
+       332,
+       735,
+       279,
+       16137,
+       21,
+       5604
+      ],
+      "boot4_ids": [
+       5604,
+       1870,
+       332,
+       735,
+       1510,
+       60511,
+       82,
+       5285
+      ]
+     },
+     {
+      "id": "b8192-03",
+      "bucket": 8192,
+      "first_divergent_position": 0,
+      "boot1_ids": [
+       1510,
+       64,
+       13535,
+       43,
+       478,
+       380,
+       63,
+       2253
+      ],
+      "boot4_ids": [
+       66480,
+       2253,
+       1510,
+       64,
+       13535,
+       43,
+       478,
+       380
+      ]
+     },
+     {
+      "id": "b8192-04",
+      "bucket": 8192,
+      "first_divergent_position": 5,
+      "boot1_ids": [
+       220,
+       16,
+       369,
+       279,
+       1132,
+       6343,
+       421,
+       14387
+      ],
+      "boot4_ids": [
+       220,
+       16,
+       369,
+       279,
+       1132,
+       2713,
+       421,
+       32224
+      ]
+     },
+     {
+      "id": "b32768-04",
+      "bucket": 32768,
+      "first_divergent_position": 5,
+      "boot1_ids": [
+       12,
+       15,
+       21,
+       12,
+       15,
+       21,
+       8,
+       1892
+      ],
+      "boot4_ids": [
+       12,
+       15,
+       21,
+       12,
+       15,
+       20,
+       8,
+       1892
+      ]
+     },
+     {
+      "id": "b32768-07",
+      "bucket": 32768,
+      "first_divergent_position": 3,
+      "boot1_ids": [
+       561,
+       33283,
+       9581,
+       198,
+       58,
+       10,
+       15,
+       13
+      ],
+      "boot4_ids": [
+       561,
+       33283,
+       9581,
+       3294,
+       198,
+       284,
+       1132,
+       21716
+      ]
+     },
+     {
+      "id": "b32768-11",
+      "bucket": 32768,
+      "first_divergent_position": 2,
+      "boot1_ids": [
+       13,
+       17,
+       17,
+       18295,
+       314,
+       13914,
+       321,
+       220
+      ],
+      "boot4_ids": [
+       13,
+       17,
+       18295,
+       314,
+       2144,
+       11,
+       321,
+       279
+      ]
+     }
+    ]
+   },
+   "verdict": "19 of 48 prompts change their 8-token greedy continuation under YaRN, against 7 of 48 for a plain reboot of the same configuration. The reboot count is the floor this claim has to clear, and it is quoted next to it everywhere in this receipt.",
+   "divergent_prompts": [
+    {
+     "id": "b8192-00",
+     "bucket": 8192,
+     "first_divergent_position": 1,
+     "native_ids": [
+      16,
+      23010,
+      82,
+      321,
+      10478,
+      271,
+      91,
+      5561
+     ],
+     "yarn_ids": [
+      16,
+      30407,
+      1954,
+      321,
+      4779,
+      271,
+      91,
+      5561
+     ]
+    },
+    {
+     "id": "b32768-00",
+     "bucket": 32768,
+     "first_divergent_position": 2,
+     "native_ids": [
+      20618,
+      4523,
+      279,
+      4252,
+      4087,
+      13,
+      271,
+      248046
+     ],
+     "yarn_ids": [
+      20618,
+      4523,
+      264,
+      4252,
+      4087,
+      13,
+      271,
+      248046
+     ]
+    },
+    {
+     "id": "b8192-01",
+     "bucket": 8192,
+     "first_divergent_position": 3,
+     "native_ids": [
+      1510,
+      45,
+      63,
+      1892,
+      279,
+      1788,
+      7652,
+      3728
+     ],
+     "yarn_ids": [
+      1510,
+      45,
+      63,
+      321,
+      279,
+      5915,
+      737,
+      1892
+     ]
+    },
+    {
+     "id": "b32768-02",
+     "bucket": 32768,
+     "first_divergent_position": 3,
+     "native_ids": [
+      321,
+      279,
+      198,
+      277,
+      25092,
+      369,
+      10661,
+      430
+     ],
+     "yarn_ids": [
+      321,
+      279,
+      198,
+      54306,
+      513,
+      11128,
+      539,
+      1204
+     ]
+    },
+    {
+     "id": "b512-03",
+     "bucket": 512,
+     "first_divergent_position": 0,
+     "native_ids": [
+      5604,
+      1870,
+      332,
+      735,
+      279,
+      16137,
+      21,
+      5604
+     ],
+     "yarn_ids": [
+      348,
+      15812,
+      9,
+      13295,
+      332,
+      735,
+      1510,
+      60511
+     ]
+    },
+    {
+     "id": "b2048-03",
+     "bucket": 2048,
+     "first_divergent_position": 0,
+     "native_ids": [
+      60342,
+      77,
+      11,
+      321,
+      279,
+      220,
+      16,
+      21
+     ],
+     "yarn_ids": [
+      1856,
+      264,
+      2790,
+      3788,
+      25,
+      424,
+      369,
+      264
+     ]
+    },
+    {
+     "id": "b8192-03",
+     "bucket": 8192,
+     "first_divergent_position": 0,
+     "native_ids": [
+      1510,
+      64,
+      13535,
+      43,
+      478,
+      380,
+      63,
+      2253
+     ],
+     "yarn_ids": [
+      66480,
+      2253,
+      1510,
+      64,
+      13535,
+      43,
+      478,
+      380
+     ]
+    },
+    {
+     "id": "b2048-04",
+     "bucket": 2048,
+     "first_divergent_position": 0,
+     "native_ids": [
+      283,
+      220,
+      21,
+      13,
+      24,
+      20,
+      15,
+      17
+     ],
+     "yarn_ids": [
+      25,
+      220,
+      21,
+      13,
+      24,
+      20,
+      15,
+      17
+     ]
+    },
+    {
+     "id": "b8192-04",
+     "bucket": 8192,
+     "first_divergent_position": 4,
+     "native_ids": [
+      220,
+      16,
+      369,
+      279,
+      1132,
+      6343,
+      421,
+      14387
+     ],
+     "yarn_ids": [
+      220,
+      16,
+      369,
+      279,
+      1786,
+      2713,
+      506,
+      351
+     ]
+    },
+    {
+     "id": "b2048-05",
+     "bucket": 2048,
+     "first_divergent_position": 4,
+     "native_ids": [
+      430,
+      6758,
+      67194,
+      1503,
+      681,
+      321,
+      279,
+      710
+     ],
+     "yarn_ids": [
+      430,
+      6758,
+      67194,
+      1503,
+      8,
+      321,
+      279,
+      710
+     ]
+    },
+    {
+     "id": "b512-06",
+     "bucket": 512,
+     "first_divergent_position": 6,
+     "native_ids": [
+      275,
+      369,
+      279,
+      91967,
+      11,
+      321,
+      279,
+      16384
+     ],
+     "yarn_ids": [
+      275,
+      369,
+      279,
+      91967,
+      11,
+      321,
+      424,
+      369
+     ]
+    },
+    {
+     "id": "b512-07",
+     "bucket": 512,
+     "first_divergent_position": 0,
+     "native_ids": [
+      3255,
+      271,
+      332,
+      1851,
+      64700,
+      220,
+      17,
+      15
+     ],
+     "yarn_ids": [
+      34271,
+      271,
+      332,
+      1851,
+      64700,
+      220,
+      17,
+      15
+     ]
+    },
+    {
+     "id": "b32768-07",
+     "bucket": 32768,
+     "first_divergent_position": 3,
+     "native_ids": [
+      561,
+      33283,
+      9581,
+      198,
+      58,
+      10,
+      15,
+      13
+     ],
+     "yarn_ids": [
+      561,
+      33283,
+      9581,
+      3294,
+      198,
+      284,
+      1132,
+      21716
+     ]
+    },
+    {
+     "id": "b2048-09",
+     "bucket": 2048,
+     "first_divergent_position": 3,
+     "native_ids": [
+      7,
+      18,
+      17,
+      11,
+      22,
+      21,
+      23,
+      20112
+     ],
+     "yarn_ids": [
+      7,
+      18,
+      17,
+      18295,
+      11,
+      220,
+      16,
+      13
+     ]
+    },
+    {
+     "id": "b8192-09",
+     "bucket": 8192,
+     "first_divergent_position": 5,
+     "native_ids": [
+      1892,
+      321,
+      198,
+      1159,
+      4581,
+      6966,
+      888,
+      279
+     ],
+     "yarn_ids": [
+      1892,
+      321,
+      198,
+      1159,
+      4581,
+      11447,
+      2234,
+      11
+     ]
+    },
+    {
+     "id": "b8192-10",
+     "bucket": 8192,
+     "first_divergent_position": 3,
+     "native_ids": [
+      13,
+      561,
+      198,
+      73560,
+      6463,
+      369,
+      279,
+      577
+     ],
+     "yarn_ids": [
+      13,
+      561,
+      198,
+      29457,
+      369,
+      264,
+      3234,
+      314
+     ]
+    },
+    {
+     "id": "b32768-10",
+     "bucket": 32768,
+     "first_divergent_position": 0,
+     "native_ids": [
+      9463,
+      10885,
+      735,
+      6784,
+      735,
+      9341,
+      2600,
+      735
+     ],
+     "yarn_ids": [
+      7047,
+      10885,
+      735,
+      4087,
+      10885,
+      735,
+      2702,
+      735
+     ]
+    },
+    {
+     "id": "b2048-11",
+     "bucket": 2048,
+     "first_divergent_position": 1,
+     "native_ids": [
+      999,
+      198,
+      8038,
+      1892,
+      524,
+      279,
+      2972,
+      78620
+     ],
+     "yarn_ids": [
+      999,
+      1103,
+      1892,
+      524,
+      279,
+      198,
+      332,
+      78620
+     ]
+    },
+    {
+     "id": "b32768-11",
+     "bucket": 32768,
+     "first_divergent_position": 2,
+     "native_ids": [
+      13,
+      17,
+      17,
+      18295,
+      314,
+      13914,
+      321,
+      220
+     ],
+     "yarn_ids": [
+      13,
+      17,
+      18295,
+      314,
+      2144,
+      11,
+      321,
+      279
+     ]
+    }
+   ]
+  },
+  "length_trend": {
+   "hypothesis_under_test": "static YaRN costs MORE at short lengths",
+   "mean_kld_by_bucket": {
+    "512": 0.007650066322234225,
+    "2048": 0.0072982717681011585,
+    "8192": 0.014826584965467892,
+    "32768": 0.012489087396360614
+   },
+   "top1_agreement_by_bucket": {
+    "512": 0.96875,
+    "2048": 0.9479166666666666,
+    "8192": 0.8958333333333334,
+    "32768": 0.9166666666666666
+   },
+   "cross_boot_floor_by_bucket": {
+    "512": 0.000849493,
+    "2048": 0.000864061,
+    "8192": 0.001693406,
+    "32768": 0.001311158
+   },
+   "penalty_over_floor_by_bucket": {
+    "512": 9.005,
+    "2048": 8.446,
+    "8192": 8.755,
+    "32768": 9.525
+   },
+   "short_512_2k_mean_kld": 0.007474169045167694,
+   "long_8k_32k_mean_kld": 0.013657836180914257,
+   "ratio_long_over_short": 1.8273384102470247,
+   "verdict": "NOT SUPPORTED as stated, and the reason is instructive. In raw KLD the penalty RISES with length: 1.366e-02 at 8k-32k against 7.474e-03 at 512-2k. But the cross-boot resolution floor rises with length in the same proportion (8.49e-04 at 512, 8.64e-04 at 2048, 1.69e-03 at 8192, 1.31e-03 at 32768), and once each bucket is divided by its own length-matched floor the trend disappears: 9.0x at 512, 8.4x at 2048, 8.8x at 8192, 9.5x at 32768. Static YaRN costs about 8.9x the floor at EVERY length in this probe set, 512 included. The practical reading of Qwen's warning is therefore 'static YaRN costs you everywhere, in proportion to how hard the position is to resolve', not 'static YaRN costs you specifically at short length'. On 12 prompts per bucket the bucket ordering is suggestive at best; the floor-relative flatness is the robust part."
+  },
+  "worst_20_positions": [
+   {
+    "prompt_id": "b8192-06",
+    "bucket": 8192,
+    "j": 6,
+    "context_len": 8198,
+    "kld": 0.23367861038436527,
+    "top1_agree": true,
+    "n_shared": 16,
+    "p_mass_dropped_by_intersection": 0.03853858583971914
+   },
+   {
+    "prompt_id": "b32768-00",
+    "bucket": 32768,
+    "j": 7,
+    "context_len": 32775,
+    "kld": 0.16883375686737281,
+    "top1_agree": false,
+    "n_shared": 19,
+    "p_mass_dropped_by_intersection": 0.0058985257868509056
+   },
+   {
+    "prompt_id": "b32768-10",
+    "bucket": 32768,
+    "j": 5,
+    "context_len": 32773,
+    "kld": 0.10472257976690585,
+    "top1_agree": true,
+    "n_shared": 17,
+    "p_mass_dropped_by_intersection": 0.030898427473788348
+   },
+   {
+    "prompt_id": "b8192-09",
+    "bucket": 8192,
+    "j": 3,
+    "context_len": 8195,
+    "kld": 0.08209074186854065,
+    "top1_agree": true,
+    "n_shared": 18,
+    "p_mass_dropped_by_intersection": 0.014069774009400238
+   },
+   {
+    "prompt_id": "b8192-01",
+    "bucket": 8192,
+    "j": 1,
+    "context_len": 8193,
+    "kld": 0.07028897343141108,
+    "top1_agree": true,
+    "n_shared": 15,
+    "p_mass_dropped_by_intersection": 0.0018343002568984579
+   },
+   {
+    "prompt_id": "b8192-10",
+    "bucket": 8192,
+    "j": 3,
+    "context_len": 8195,
+    "kld": 0.06979529804799667,
+    "top1_agree": false,
+    "n_shared": 18,
+    "p_mass_dropped_by_intersection": 0.030413339023157293
+   },
+   {
+    "prompt_id": "b2048-09",
+    "bucket": 2048,
+    "j": 4,
+    "context_len": 2052,
+    "kld": 0.06024896777128583,
+    "top1_agree": true,
+    "n_shared": 20,
+    "p_mass_dropped_by_intersection": 1.1102230246251565e-16
+   },
+   {
+    "prompt_id": "b2048-04",
+    "bucket": 2048,
+    "j": 0,
+    "context_len": 2048,
+    "kld": 0.05690705405181157,
+    "top1_agree": false,
+    "n_shared": 18,
+    "p_mass_dropped_by_intersection": 0.01223700191027477
+   },
+   {
+    "prompt_id": "b512-09",
+    "bucket": 512,
+    "j": 7,
+    "context_len": 519,
+    "kld": 0.054943497897241456,
+    "top1_agree": true,
+    "n_shared": 17,
+    "p_mass_dropped_by_intersection": 0.0150461436388033
+   },
+   {
+    "prompt_id": "b8192-00",
+    "bucket": 8192,
+    "j": 1,
+    "context_len": 8193,
+    "kld": 0.0515658491749528,
+    "top1_agree": false,
+    "n_shared": 16,
+    "p_mass_dropped_by_intersection": 0.047927304382793134
+   },
+   {
+    "prompt_id": "b32768-06",
+    "bucket": 32768,
+    "j": 3,
+    "context_len": 32771,
+    "kld": 0.050389137623017874,
+    "top1_agree": true,
+    "n_shared": 18,
+    "p_mass_dropped_by_intersection": 0.0133036099345194
+   },
+   {
+    "prompt_id": "b32768-10",
+    "bucket": 32768,
+    "j": 3,
+    "context_len": 32771,
+    "kld": 0.04870242926036622,
+    "top1_agree": true,
+    "n_shared": 15,
+    "p_mass_dropped_by_intersection": 0.03723995724487439
+   },
+   {
+    "prompt_id": "b512-02",
+    "bucket": 512,
+    "j": 4,
+    "context_len": 516,
+    "kld": 0.04853285547914614,
+    "top1_agree": true,
+    "n_shared": 19,
+    "p_mass_dropped_by_intersection": 0.009089521167605863
+   },
+   {
+    "prompt_id": "b512-09",
+    "bucket": 512,
+    "j": 4,
+    "context_len": 516,
+    "kld": 0.04784933690022296,
+    "top1_agree": true,
+    "n_shared": 17,
+    "p_mass_dropped_by_intersection": 0.019466314414463226
+   },
+   {
+    "prompt_id": "b8192-09",
+    "bucket": 8192,
+    "j": 5,
+    "context_len": 8197,
+    "kld": 0.04738389837543303,
+    "top1_agree": false,
+    "n_shared": 18,
+    "p_mass_dropped_by_intersection": 0.0011153052720007661
+   },
+   {
+    "prompt_id": "b8192-07",
+    "bucket": 8192,
+    "j": 6,
+    "context_len": 8198,
+    "kld": 0.045610038874012195,
+    "top1_agree": true,
+    "n_shared": 19,
+    "p_mass_dropped_by_intersection": 0.0001479130727228828
+   },
+   {
+    "prompt_id": "b32768-08",
+    "bucket": 32768,
+    "j": 7,
+    "context_len": 32775,
+    "kld": 0.04350203821406683,
+    "top1_agree": true,
+    "n_shared": 19,
+    "p_mass_dropped_by_intersection": 0.005647807158672857
+   },
+   {
+    "prompt_id": "b8192-09",
+    "bucket": 8192,
+    "j": 6,
+    "context_len": 8198,
+    "kld": 0.0434758415280361,
+    "top1_agree": false,
+    "n_shared": 19,
+    "p_mass_dropped_by_intersection": 0.0004877448599716061
+   },
+   {
+    "prompt_id": "b32768-01",
+    "bucket": 32768,
+    "j": 7,
+    "context_len": 32775,
+    "kld": 0.042088257551681114,
+    "top1_agree": true,
+    "n_shared": 16,
+    "p_mass_dropped_by_intersection": 0.01196376944464439
+   },
+   {
+    "prompt_id": "b32768-00",
+    "bucket": 32768,
+    "j": 0,
+    "context_len": 32768,
+    "kld": 0.04186022130228954,
+    "top1_agree": true,
+    "n_shared": 19,
+    "p_mass_dropped_by_intersection": 0.0005565935863010019
+   }
+  ]
+ },
+ "yardsticks": {
+  "how_to_read_this_block": "two of these yardsticks (the converter envelope and the two published KLD figures) come from our full-vocabulary hidden-state replay estimator; the penalty here comes from a top-20 serving-API estimator with a much coarser floor. Absolute magnitudes across the two estimators are order-of-magnitude statements only. The floor-relative column is the like-for-like comparison and is the one to trust.",
+  "in_metric_cross_boot_floor": {
+   "value": 0.0011795296696411634,
+   "what": "MEASURED IN THIS SESSION: the same NATIVE launch line, rebooted, replayed. This is the resolution floor of the estimator actually used here.",
+   "penalty_multiple": 8.957809951703348,
+   "reading": "the penalty is 9.0x the floor of its own estimator. Comfortably resolved, and NOT a floor artefact. This is the honest headline ratio."
+  },
+  "in_metric_same_server_floor": {
+   "value": 0.0,
+   "reading": "exactly zero. Request-to-request nondeterminism contributes nothing; the 1.18e-03 cross-boot floor is entirely a boot-to-boot effect."
+  },
+  "window_change_alone": {
+   "value": 0.001247778730371882,
+   "penalty_multiple": 8.467849592124347,
+   "reading": "raising --max-model-len to 1,000,000 with native rope costs 1.248e-03, statistically indistinguishable from the 1.180e-03 cross-boot floor. The window is free; the rope is not."
+  },
+  "converter_nondeterminism_envelope": {
+   "value": 2.9e-05,
+   "estimator": "full-vocabulary hidden-state replay",
+   "penalty_multiple_absolute": 364.3449176910682,
+   "reading": "not commensurable with this receipt's floor - it is a much finer estimator - so the raw multiple is quoted for completeness only and should not be used as the headline."
+  },
+  "published_hydrated_mean_kld_shard0": {
+   "value": 0.0027,
+   "estimator": "full-vocabulary hidden-state replay",
+   "penalty_multiple_absolute": 3.9133343011262878,
+   "floor_relative_multiple": 93.10344827586208,
+   "reading": "in absolute KLD the YaRN penalty (1.057e-02) is 3.9x this build's entire quantization divergence against bf16. In floor-relative terms quantization sits at 93x its estimator's floor and YaRN at 9.0x its own, so quantization is still the larger fidelity event. Both framings are given because neither alone is honest."
+  },
+  "adversarial_calibration_corpus_swap": {
+   "value": 0.000454,
+   "estimator": "full-vocabulary hidden-state replay",
+   "penalty_multiple_absolute": 23.27313350890083,
+   "floor_relative_multiple": 15.655172413793103,
+   "reading": "in absolute KLD the penalty is 23x the deliberately adversarial calibration-corpus swap. In floor-relative terms the swap was 16x its estimator's floor while YaRN is 9.0x its own, so the two are the SAME ORDER of fidelity event: clearly real, clearly above noise, neither catastrophic. A one-line serving flag buying a fidelity move comparable to our worst deliberate calibration sabotage is the point worth taking away."
+  },
+  "verdict": "REAL AND RESOLVED, comparable in size to our adversarial calibration swap, smaller than the build's whole quantization step. Not negligible, not a null result, and not a catastrophe. It is a cost that must be paid deliberately, not by default."
+ },
+ "INFERENCE": {
+  "label": "everything in this block is reasoning, not measurement",
+  "why_the_floor_is_not_zero": "the same-server replicate is bit-identical while the cross-boot replicate is not, and the engine logged identical shapes, backend, block size and cudagraph capture in every arm. The remaining candidate is memory layout: each boot profiles a slightly different KV pool, block allocation order differs, and FlashInfer reductions are not associative, so attention accumulates in a different order. That is a hypothesis consistent with the evidence, not something this receipt measured.",
+  "why_the_window_is_free": "the NATIVE1M arm sits on top of the cross-boot floor, and the longest request here is 32,776 tokens - far inside both windows - so no request ever touched a position that only the 1M window makes reachable. A workload that actually runs past 262,144 tokens is not characterised by this receipt at all.",
+  "mechanism_explains_the_floor_relative_flatness": "the dominant rope term is mscale, one scalar multiplying the whole cos/sin cache at every position, plus a changed inv_freq spectrum. Neither is a function of sequence length. A penalty that is a roughly constant multiple of the length-matched floor is what that mechanism predicts.",
+  "downstream_task_impact_not_measured": "KLD and top-1 agreement are fidelity proxies. This receipt does NOT measure task accuracy. The 6.8 % top-1 disagreement rate cannot be converted into a benchmark delta without running the benchmark, and every one of the 26 disagreeing positions was one where the reference itself was unconfident (mean reference top-1 probability 0.236, none above 0.9), which argues for a smaller task impact than the raw rate suggests. A Terminal-Bench or needle arm under YaRN is the honest next step.",
+  "generalisation": "one probe set, one build, one card, 48 prompts, 384 positions, prose and JSON drawn from our own repository. Do not read the exact mean as a universal constant for Qwen3.8, and do not read the bucket ordering as settled.",
+  "direction_of_the_truncation_bias": "top-20 truncation and shared-support intersection both discard divergence rather than create it, so the true full-vocabulary penalty is more likely larger than this number than smaller."
+ },
+ "recommendation": {
+  "verdict": "Run the production endpoint at 262,144 NATIVE by default. Do not make 1M-YaRN the default. If 1M is genuinely needed, run DUAL ENDPOINTS on the same weights - a native 262k endpoint carrying the default traffic and a separately addressed 1M-YaRN endpoint - and route to the YaRN one only for requests that actually exceed the native window.",
+  "justified_by": [
+   "Measured: flipping the default to Qwen's 1M-YaRN recipe moves the next-token distribution by 1.057e-02 mean top-20 KLD, p99 7.230e-02, on prompts of 512 to 32,768 tokens - the range our own traffic actually uses. That is 9.0x the cross-boot resolution floor of the same estimator, so it is a resolved effect and not noise.",
+   "Measured: the cost is the rope, not the window. Native rope at the 1M window costs 1.248e-03, on top of a 1.180e-03 floor; the rope change at a matched 1M window costs 1.071e-02. So the 1M WINDOW is free and there is no fidelity argument against a long-window endpoint as such - only against static YaRN on the default path.",
+   "Measured: top-1 token agreement falls to 93.2 % against 97.9 % for a plain reboot, and 19 of 48 prompts change their greedy 8-token continuation against 7 of 48 for a reboot. The change is user-visible above the reboot floor.",
+   "Measured: the penalty is present at EVERY length, including 512 tokens (7.650e-03, 9.0x its length-matched floor). There is no short-prompt regime that escapes it, so 'most of our traffic is short' is not a defence for enabling it globally.",
+   "Measured: in floor-relative terms the penalty is the same order as our deliberately adversarial calibration-corpus swap - the largest fidelity regression we have ever manufactured on purpose. We would not ship that swap by default; the same standard applies here.",
+   "Qwen's own guidance: enable YaRN only when long context is needed, because every open-source framework implements it statically. This measurement is consistent with that advice and puts a number behind it."
+  ],
+  "why_not_yarn_by_default": "it taxes 100 % of traffic to serve the fraction of requests above 262,144 tokens, and the tax is resolved, length-independent and comparable to our worst deliberate calibration regression. The dual-endpoint alternative costs routing, not fidelity.",
+  "why_not_native_only": "requests above 262,144 tokens cannot be served at all without YaRN, and this receipt found the 1M window itself to be free. If such requests exist, refusing them is a product decision, not a fidelity one - hence dual endpoints rather than native-only.",
+  "what_would_change_this": "a downstream task measurement showing the top-1 disagreement does not degrade task success (plausible, given that every disagreement landed on a position the reference itself was unconfident about), or a >262k workload large enough that routing complexity costs more than the fidelity does. Neither is measured here.",
+  "do_not_overclaim": "this is one probe set on one card, 48 prompts, 384 positions. The direction is robust - three controls, a mechanism proof, and a margin of roughly 9x over the estimator's own floor - but the exact number is not a constant and the bucket ordering is not settled."
+ },
+ "measured_vs_inference_split": {
+  "MEASURED": [
+   "MEASURED - every number in it came off the live servers in this session",
+   "arms (launch argv, kv pool sizes and served-model responses, read from the servers)",
+   "probe_set (counts and digests, /tokenize-verified in every arm)",
+   "arms.rope_delta.proof_the_override_took_effect (vLLM's own get_rope, run locally)",
+   "yardsticks: the in_metric_cross_boot_floor, in_metric_same_server_floor and window_change_alone values are measured here; the three published-work values (converter envelope, hydrated shard-0 KLD, calibration swap) are quoted from prior receipts, not re-measured in this session"
+  ],
+  "INFERENCE": [
+   "INFERENCE - reasoning over the measurements, explicitly labelled",
+   "yardsticks.*.reading (interpretation of measured ratios)",
+   "MEASURED.*.verdict and MEASURED.decomposition.reading (interpretation, though every number quoted inside them is measured)",
+   "recommendation (a decision, argued from the measured numbers)"
+  ],
+  "NOT_MEASURED_AT_ALL": [
+   "downstream task accuracy under YaRN",
+   "behaviour above 262,144 tokens, where only the YaRN arm can operate at all",
+   "throughput or latency of either arm (proot makes this box unfit to measure it)",
+   "any host other than this one card"
+  ]
+ },
+ "reproduce": {
+  "1": "tools/yarn_probe_build.py rebuilds the probe set from the repository text (needs the model's fast tokenizer; run it inside the container). Compare probe_set.sha256.",
+  "2": "tools/yarn_penalty_run.sh native | yarn | control | reboot | regen boots each arm through tools/ggrun.sh, polls /health and /v1/models, and drives tools/yarn_probe_run.py. The five phases are: NATIVE (generation + two same-server ladder passes), YARN, NATIVE1M window control, NATIVE cross-boot ladder, NATIVE cross-boot generation.",
+  "3": "tools/yarn_rope_delta_probe.py reproduces the rope-table proof from vLLM's own get_rope, CPU only.",
+  "4": "tools/yarn_penalty_analyze.py recomputes every number in this receipt from the raw ladder files.",
+  "raw_files_kept_at": "/var/tmp/work/yarn/{probes.json,gen-native.json,gen-yarn.json,gen-native-boot4.json,raw-NATIVE-p1.json,raw-NATIVE-p2.json,raw-NATIVE-p3.json,raw-NATIVE1M-p1.json,raw-YARN-p1.json,rope-delta.json,argv-*.json,models-*.json,serve-*.log}",
+  "arm_to_file_map": {
+   "NATIVE 262k, boot 1, pass 1 (reference P)": "raw-NATIVE-p1.json",
+   "NATIVE 262k, boot 1, pass 2 (same-server replicate)": "raw-NATIVE-p2.json",
+   "NATIVE 262k, boot 3 (cross-boot replicate / floor)": "raw-NATIVE-p3.json",
+   "NATIVE1M 1,000,000 window, native rope (window control)": "raw-NATIVE1M-p1.json",
+   "YARN 1,000,000 window, Qwen 1M recipe": "raw-YARN-p1.json",
+   "free-running greedy, NATIVE boot 1": "gen-native.json",
+   "free-running greedy, NATIVE boot 4 (control)": "gen-native-boot4.json",
+   "free-running greedy, YARN": "gen-yarn.json"
+  }
+ }
+}

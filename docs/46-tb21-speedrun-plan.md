@@ -1397,3 +1397,137 @@ traffic by up to ~2.5×.
 endpoint, so absolute rates are depressed by contention, and the longer rungs span more wall clock and
 therefore more varied contention. **The monotone rise is robust; the exact k values are not good to three
 digits.** One needle position, one document generator — this is retrieval, not long-context reasoning.
+
+## §31 - MEASURED: what static YaRN costs at SHORT context, and why the window is fidelity-free but the rope is not
+
+**Receipt: [`yarn-short-context-penalty.json`](../receipts/yarn-short-context-penalty.json).** Probe-set
+index: [`yarn-short-context-probes-index.json`](../receipts/yarn-short-context-probes-index.json).
+Local RTX PRO 6000, idle and dedicated; the busy 8x rental hosts were not touched. **No timing number
+appears in this section or its receipt as a result: this box runs vLLM under proot, which traces syscalls
+and inflates dispatch, so it is fit to measure fidelity and unfit to measure speed.**
+
+Qwen's own card warns that every open-source framework implements YaRN **statically** - the scaling is
+applied at every length, not only past the native window - and advises enabling it only when long context is
+needed, because it "may impact performance on shorter texts". Nobody publishes a number for that. We needed
+one, because the production endpoint has to default to either 1M-YaRN or 262k-native. §30 measured what the
+1M window *buys* and what prefill *costs* at the top of it; this section measures what enabling it costs the
+other 99 % of traffic, the requests that never go near 262k.
+
+### The arms, and the one variable
+
+48 deterministic prompts, 12 each at **512 / 2,048 / 8,192 / 32,768 tokens**, cut from this repository's own
+`docs/*.md`, cards and `receipts/*.json` in a recorded order, windows disjoint and allocated round-robin so
+no length bucket is confounded with a region or genre of the corpus. Every prompt's token count was
+re-verified by the **live server's `/tokenize`** in every arm and the sha256 of the id list asserted equal
+across arms. Regenerating the probe set reproduced it **bit-exactly** (`sha256 374d3021...`).
+
+Scoring is **teacher-forced**: the native arm generated an 8-token greedy continuation per prompt, then every
+arm was replayed position by position (`prompt_ids + forced[:j]`, `max_tokens=1`, `temperature=0`, seed
+314159, `logprobs=20` with `return_tokens_as_token_ids` so distributions are keyed by integer token id and
+not by a detokenised string that can collide). 384 scored positions per arm, all conditioned on
+byte-identical context, so a divergence at position 3 cannot be an artefact of the arms having walked
+different paths at position 0. **Shared-support rule, stated once:** `S = P_top20 ∩ Q_top20`, both arms
+renormalised over `S`, mass outside `S` **dropped, not smoothed** - the server never reports `q` for a token
+outside `Q`'s top-20, and an epsilon filler would manufacture a large log-ratio out of a number nobody
+measured. Mean shared support was 18.3 of 20 and the dropped P-mass averaged 3.7e-03; a `q_min` surrogate
+variant moves the headline from 1.0566e-02 to 1.0717e-02, so the rule is not load-bearing.
+
+Four arms, everything else pinned identical (exl3 + mxfp8, fp8 KV, `--mamba-cache-mode align`,
+`--enable-prefix-caching`, `FULL_DECODE_ONLY`, util 0.92, `--max-num-seqs 1`,
+`--max-num-batched-tokens 8192`, seed 314159):
+
+| arm | rope | window | role |
+|---|---|---:|---|
+| **A** NATIVE | shipped `rope_type: default` | 262,144 | reference P, today's default |
+| **B** NATIVE1M | shipped rope | 1,000,000 | window control |
+| **C** YARN | Qwen's 1M recipe (`yarn`, factor 4.0, orig 262144) | 1,000,000 | candidate default |
+| A' / A'' | arm A again, same server / cold reboot | 262,144 | resolution floor |
+
+**The override provably took effect.** With `mrope_section` present, vLLM routes `rope_type: "yarn"` into
+`MRotaryEmbedding` with `scaling_factor=4.0`, which swaps YaRN's `inv_freq` in *and* multiplies the whole
+cos/sin cache by `mscale = 1.138629`. `mscale` applies at **every** position - that is exactly why static
+YaRN cannot be free at short context. Reproduced from vLLM's own `get_rope`: 99.97 % of cache entries differ
+over positions 0-32,775, and the max difference over positions 0-31 is **0.140625 = mscale-1 rounded to
+bfloat16**. So a null result here would have meant "tolerated", never "ignored".
+
+### The numbers
+
+| comparison | mean top-20 KLD | p99 | top-1 agreement |
+|---|---:|---:|---:|
+| A vs A' - same server, warm cache | **0.0** (bit-identical) | 0.0 | 100.0 % |
+| A vs A'' - **cold reboot, same launch line** | **1.180e-03** | 1.08e-02 | 97.9 % |
+| A vs B - **window only**, native rope at 1M | 1.248e-03 | 9.84e-03 | 97.7 % |
+| B vs C - **rope only**, matched 1M window | 1.071e-02 | 7.57e-02 | 93.8 % |
+| **A vs C - the production decision** | **1.057e-02** | 7.23e-02 | **93.2 %** |
+
+95 % CI on the headline, bootstrapping whole prompts (the 8 positions inside a prompt are not independent):
+**[8.42e-03, 1.29e-02]**, 10,000 resamples, 48 clusters.
+
+**Two things fall out immediately.** First, **request-to-request nondeterminism is exactly zero** at
+`--max-num-seqs 1` - 384 positions, bit-identical - which incidentally settles the open question §29 leaves
+hanging: engine nondeterminism at concurrency 1 is *not* a thing on this card, so divergence seen under
+production load is batch composition, not the engine. Second, **the 1M window is fidelity-free**: arm B sits at
+1.248e-03 against a 1.180e-03 cold-reboot floor, indistinguishable. Widening `--max-model-len` costs nothing
+measurable on requests that stay inside the native window - the whole fidelity cost is the rope. (Compute is
+a separate ledger: §30 measures prefill at 2.53x per token at 1M.)
+
+### Per-bucket, which is the point of the exercise
+
+| prompt tokens | mean KLD | cold-reboot floor | **penalty / floor** | top-1 agreement |
+|---:|---:|---:|---:|---:|
+| 512 | 7.650e-03 | 8.49e-04 | **9.0x** | 96.9 % |
+| 2,048 | 7.298e-03 | 8.64e-04 | **8.4x** | 94.8 % |
+| 8,192 | 1.483e-02 | 1.69e-03 | **8.8x** | 89.6 % |
+| 32,768 | 1.249e-02 | 1.31e-03 | **9.5x** | 91.7 % |
+
+**The hypothesis we set out to test - "static YaRN costs MORE at short lengths" - is NOT SUPPORTED, and the
+reason is the interesting part.** In raw KLD the penalty *rises* with length (1.37e-02 at 8k-32k against
+7.47e-03 at 512-2k). But the resolution floor rises in the same proportion, and dividing each bucket by its
+own length-matched floor flattens the trend completely: **9.0x, 8.4x, 8.8x, 9.5x**. Static YaRN costs about
+**9x the floor at every length in this probe set, 512 included**. That is what the mechanism predicts -
+`mscale` is one scalar applied at every position and is not a function of sequence length. The practical
+reading of Qwen's warning is *"static YaRN costs you everywhere"*, not *"static YaRN costs you specifically
+at short length"*. On 12 prompts per bucket the bucket *ordering* is suggestive at best; the floor-relative
+flatness is the robust part.
+
+### Against our own yardsticks - and this is where we decline to overclaim
+
+The published KLD work uses a **full-vocabulary hidden-state replay** estimator with a converter
+nondeterminism envelope of **±2.9e-05**; this receipt uses a **top-20 serving-API** estimator whose own
+cold-reboot floor we measured at **1.18e-03**. Absolute magnitudes across the two are order-of-magnitude
+statements only, so both framings are given:
+
+| | absolute KLD | vs its own estimator's floor |
+|---|---:|---:|
+| **static YaRN penalty (this receipt)** | **1.057e-02** | **9.0x** |
+| published hydrated build, shard 0 | 2.7e-03 | 93x |
+| adversarial calibration-corpus swap | 4.54e-04 | 16x |
+| converter nondeterminism envelope | 2.9e-05 | 1x |
+
+In absolute terms the YaRN penalty is **23x the calibration swap** and **3.9x this build's entire
+quantization divergence against bf16**. In floor-relative terms it is **9x its floor against the swap's 16x**
+- so the two are the **same order of fidelity event**, and quantization remains the larger one. **Verdict:
+real, comfortably resolved, comparable in size to the worst fidelity regression we have ever manufactured on
+purpose, and smaller than the quantization step itself. Not negligible, and not a null result - but not a
+catastrophe either.**
+
+The user-visible version: **19 of 48 prompts change their 8-token greedy continuation** under YaRN at
+temperature 0, against **7 of 48 for a plain reboot** of the identical configuration. And a caveat that cuts
+the other way: all 26 top-1 disagreements landed on positions where the *reference itself* was unconfident
+(mean reference top-1 probability 0.236; **none above 0.9**), which argues for a smaller task impact than the
+6.8 % disagreement rate suggests. Task accuracy is **not measured here**; a Terminal-Bench or needle arm
+under YaRN is the honest next step.
+
+### Production recommendation
+
+**Default to 262,144 native. Do not make 1M-YaRN the default. If 1M is genuinely needed, run dual endpoints
+on the same weights** - a native 262k endpoint carrying default traffic and a separately addressed 1M-YaRN
+endpoint - **and route to YaRN only for requests that actually exceed the native window.**
+
+The measured case, and nothing beyond it: the penalty is resolved at 9x its estimator's own floor; it is
+present at **every** length including 512 tokens, so "most of our traffic is short" is not a defence for
+enabling it globally; it is the **rope**, not the window, so there is no *fidelity* argument against a
+long-window endpoint as such - only the compute argument in §30; and Qwen's own guidance says to enable YaRN only when long context is needed.
+Flipping the default taxes 100 % of traffic to serve the fraction of requests above 262k, and the
+dual-endpoint alternative costs routing, not fidelity. One probe set, one card, 48 prompts, 384 positions -
+the direction is robust on three controls and a mechanism proof; the exact number is not a constant.
