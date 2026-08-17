@@ -1,0 +1,112 @@
+{
+ "schema": "qwen38-jarvis-p2p-override/1",
+ "generated_utc": "2026-08-17T03:18:55Z",
+ "title": "NVIDIA ForceP2P driver override on a Jarvis AI 2xGPU VM: measured, and it is worth 7-22% of real decode",
+ "host": {
+  "vm": "jl-vm-473393 (151.185.34.111, VPC 10.0.0.4)",
+  "gpus": "2x NVIDIA RTX PRO 6000 Blackwell Server Edition, 97,887 MiB each, driver 595.58.03",
+  "topology": "nvidia-smi topo -m reports PHB (same PCIe host bridge, single NUMA, CPU affinity 0-55 both) - NOT the NODE case the source doc names, so this is a datapoint the doc did not cover",
+  "os": "Ubuntu 24.04.4, kernel 6.8.0-106-generic, ext4"
+ },
+ "source": "https://github.com/local-inference-lab/rtx6kpro/blob/55323f94cd9d9ea98ccecef553791a63c3585816/hardware/pcie-bandwidth.md",
+ "what_was_already_correct_before_touching_anything": {
+  "uvm_disable_hmm": "Y - the doc's other critical fix was already active on the image",
+  "BAR1": "131,072 MiB per GPU, larger than the 97,887 MiB of VRAM, so the crippled-256MB BAR case does not apply",
+  "DmaRemapPeerMmio": 1,
+  "filesystem": "ext4, as the doc recommends over ZFS"
+ },
+ "what_was_missing": {
+  "RegistryDwords": "empty - the ForceP2P override was not set",
+  "EnableResizableBar_param": 0,
+  "GrdmaPciTopoCheckOverride": 0
+ },
+ "change_applied": {
+  "file": "/etc/modprobe.d/nvidia-p2p-override.conf",
+  "content": "options nvidia NVreg_RegistryDwords=\"ForceP2P=0x11;RMForceP2PType=1;RMPcieP2PType=2;GrdmaPciTopoCheckOverride=1;EnableResizableBar=1\"",
+  "reload": "stop every GPU user first - the vLLM container AND nvidia-dcgm's nv-hostengine both pin nvidia_uvm; docker rm -f the container, systemctl stop nvidia-dcgm, then modprobe -r nvidia_uvm nvidia_drm nvidia_modeset nvidia && modprobe nvidia && modprobe nvidia_uvm",
+  "verified_runtime": "RegistryDwords now reports the full string; EnableResizableBar 1, GrdmaPciTopoCheckOverride 1, DmaRemapPeerMmio 1 - matching the doc's expected signal exactly"
+ },
+ "p2p_capability_ab": {
+  "method": "same container image, same script, 64 MiB and 256 B cross-device torch copies, 20 and 2000 iterations",
+  "before": {
+   "can_device_access_peer_0_1": false,
+   "can_device_access_peer_1_0": false,
+   "copy_64MiB_GB_s": 35.48,
+   "copy_64MiB_ms": 1.761,
+   "copy_256B_us": 12.48
+  },
+  "after": {
+   "can_device_access_peer_0_1": true,
+   "can_device_access_peer_1_0": true,
+   "copy_64MiB_GB_s": 51.98,
+   "copy_64MiB_ms": 1.202,
+   "copy_256B_us": 8.34
+  },
+  "deltas": {
+   "bandwidth": "+46.5%",
+   "small_copy": "-33.2%",
+   "p2p": "disabled -> enabled"
+  },
+  "how_to_read_the_latency_number": "8.34 us is an end-to-end torch copy_ including kernel launch and sync, NOT the doc's 0.36-0.45 us P2P write latency from p2pBandwidthLatencyTest. The two are different quantities and must not be differenced. The 12.48 us BEFORE figure does sit in the doc's 'P2P disabled ~14 us' band, which is what identified the fault.",
+  "bandwidth_in_context": "51.98 GB/s is ~93% of the doc's ~54-56 GB/s same-NUMA bare-metal band, achieved inside a passthrough VM"
+ },
+ "what_it_did_NOT_fix": {
+  "symm_mem_communicator": "vLLM still logs 'SymmMemCommunicator: native P2P atomics are not supported between devices [0, 1], communicator is not available.' P2P memory access and native P2P atomics are separate capabilities; the override enables the former, not the latter, so vLLM's symmetric-memory all-reduce path stays unavailable. The measured gains below therefore come from the ordinary P2P data path, and there may be more left on the table for a host that also has atomics."
+ },
+ "decode_ab_on_tp2": {
+  "config": "identical sr1 image, TP=2, shipping depth schedule [[1,4,3],[5,64,1]], 262,144 window, seed 46, same shapes and rungs; only the driver's P2P state differs",
+  "fidelity": "five-check gate PASS on both arms, including the 262,144-token needle",
+  "512x256": {
+   "single_stream_tok_s": {
+    "no_p2p": 149.56,
+    "p2p": 159.58,
+    "delta_pct": 6.7
+   },
+   "C4_per_request": {
+    "no_p2p": 106.0,
+    "p2p": 124.0,
+    "delta_pct": 17.0
+   },
+   "C4_aggregate": {
+    "no_p2p": 314,
+    "p2p": 382,
+    "delta_pct": 21.7
+   },
+   "C8_aggregate": {
+    "no_p2p": 452,
+    "p2p": 516,
+    "delta_pct": 14.2
+   },
+   "C16_aggregate": {
+    "no_p2p": 557,
+    "p2p": 605,
+    "delta_pct": 8.6
+   }
+  },
+  "4kx1k": {
+   "single_stream_tok_s": {
+    "no_p2p": 102.1,
+    "p2p": 122.69,
+    "delta_pct": 20.2
+   },
+   "C8_aggregate": {
+    "no_p2p": 389,
+    "p2p": 438,
+    "delta_pct": 12.6
+   },
+   "C16_aggregate": {
+    "no_p2p": 456,
+    "p2p": 496,
+    "delta_pct": 8.8
+   }
+  }
+ },
+ "why_this_mattered_beyond_the_percentages": "Measured BEFORE the override, TP2 looked like a bad trade: +11% single-stream over one card and zero aggregate benefit, i.e. a whole second GPU spent on latency alone. With P2P enabled TP2 beats the single card on BOTH axes (+18.4% single-stream and +11.4% C8 aggregate on 512x256, +36.8% single-stream on 4kx1k). Publishing the pre-override numbers as a TP-versus-DP verdict would have recorded a conclusion about this VM's driver configuration as though it were a property of tensor parallelism or of EXL3.",
+ "not_applicable_in_a_guest": {
+  "grub_pcie_aspm_off_pcie_port_pm_off": "PCIe link power management lives on host root ports; the guest cmdline cannot reach them (ours is a bare cloud-image cmdline with no PCIe parameters)",
+  "iommu_off": "passthrough requires the HOST IOMMU; disabling it in the guest is not the same knob and was not attempted",
+  "bios_resizable_bar_above_4g_sriov": "host firmware, not reachable from the VM - and BAR1 already arrives at 128 GiB",
+  "NCCL_P2P_LEVEL_SYS": "aimed at cross-NUMA; both GPUs report NUMA 0 with identical CPU affinity, so there is no cross-NUMA hop to bridge here"
+ },
+ "action_for_every_future_jarvis_multi_gpu_rental": "Write the modprobe override and reload the driver BEFORE the first measurement, then verify /proc/driver/nvidia/params and can_device_access_peer. On this host it is worth 7-22% of decode throughput and costs one file plus a driver reload."
+}

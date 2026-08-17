@@ -691,3 +691,70 @@ the *per-replica* batch distribution the load balancer actually produces, and th
 to be stated per topology (1x, DP2, DP4, DP8) rather than once. The shard-list load balancer in
 `tb21_campaign.sh` pins each task to one replica by declared timeout budget, so the per-replica
 distribution is knowable in advance rather than emergent - which is what makes re-deriving it cheap.
+
+## 19. MEASURED: the Jarvis VM was serving TP with P2P switched off, and fixing it is worth 7-22 %
+
+The 2x host arrived and G0 passed immediately - **EXL3 shards under `--tensor-parallel-size 2`** with
+`Model loading took 10.61 GiB` on *each* rank against 20.78 GiB on one card, a **72.29 GiB** KV pool,
+**4,080,073 KV tokens** (2.32x the single card's 1,760,318) and **15.56x** max concurrency at the native
+window, with the five-check gate PASS including the 262k needle. That is the hard gate cleared: rank
+sliced EXL3 is exempt from piecewise capture, so sharding was never guaranteed.
+
+Then the first TP2 ladder said something suspicious: **+11 % single-stream over one card and zero
+aggregate benefit** - a whole second GPU buying latency only. The startup log had already named the
+cause: `SymmMemCommunicator: native P2P atomics are not supported between devices [0, 1]`.
+
+**Measured, not assumed: P2P was entirely off.** `torch.cuda.can_device_access_peer(0,1)` returned
+**False** both ways; a 64 MiB cross-GPU copy ran at **35.5 GB/s** and a 256 B copy took **12.48 us** -
+squarely in the "P2P disabled ~14 us" band of
+[`hardware/pcie-bandwidth.md`](https://github.com/local-inference-lab/rtx6kpro/blob/55323f94cd9d9ea98ccecef553791a63c3585816/hardware/pcie-bandwidth.md).
+
+**What that doc gets us on a Jarvis VM, item by item.** Already correct before we touched anything:
+`uvm_disable_hmm=Y`, **BAR1 131,072 MiB** per GPU (bigger than VRAM, so not the crippled-256 MB case),
+`DmaRemapPeerMmio: 1`, ext4. Missing: `RegistryDwords` was **empty**. Not reachable from a guest:
+`pcie_aspm=off`/`pcie_port_pm=off` (host root ports), `iommu=off` (passthrough needs the *host* IOMMU),
+BIOS ReBAR/Above-4G/SR-IOV. Not applicable: `NCCL_P2P_LEVEL=SYS` - both GPUs report NUMA 0 with
+identical affinity, so there is no cross-NUMA hop. And one honest divergence: the doc names the
+override as critical where `nvidia-smi topo -m` shows **NODE**; ours shows **PHB**, which its own table
+puts in the "often no" column. It was needed anyway - so **PHB is a new datapoint for that table.**
+
+**The fix is one file plus a driver reload**, and the reload is the fiddly part: both the vLLM container
+*and* `nvidia-dcgm`'s `nv-hostengine` pin `nvidia_uvm`, so `docker rm -f` the container and
+`systemctl stop nvidia-dcgm` first, or `modprobe -r` fails with "Module nvidia_uvm is in use" while
+appearing to succeed.
+
+| | before | after |
+|---|---:|---:|
+| `can_device_access_peer` | **false** | **true** |
+| 64 MiB P2P copy | 35.48 GB/s | **51.98 GB/s** (+46.5 %) |
+| 256 B cross-GPU copy | 12.48 us | **8.34 us** (-33.2 %) |
+
+51.98 GB/s is **~93 % of the doc's bare-metal same-NUMA band** (54-56 GB/s), inside a passthrough VM.
+The 8.34 us is an end-to-end `copy_` including launch and sync, **not** the doc's 0.36-0.45 us P2P
+write latency - different quantities, never to be differenced.
+
+**Real decode, single variable, both arms gated PASS:**
+
+| cell | TP2 no-P2P | TP2 +P2P | gain |
+|---|---:|---:|---:|
+| 512x256 single-stream | 149.6 | **159.6** | +6.7 % |
+| 512x256 C4 per-request | 106.0 | **124.0** | **+17.0 %** |
+| 512x256 C4 aggregate | 314 | **382** | **+21.7 %** |
+| 512x256 C8 aggregate | 452 | **516** | +14.2 % |
+| 512x256 C16 aggregate | 557 | **605** | +8.6 % |
+| 4kx1k single-stream | 102.1 | **122.7** | **+20.2 %** |
+| 4kx1k C8 aggregate | 389 | **438** | +12.6 % |
+| 4kx1k C16 aggregate | 456 | **496** | +8.8 % |
+
+**It also overturned a verdict I was one ladder away from publishing.** Pre-override, TP2 read as a bad
+trade. Post-override TP2 beats the single card on **both** axes: **+18.4 %** single-stream and
+**+11.4 %** C8 aggregate on 512x256, **+36.8 %** single-stream on 4kx1k. The earlier numbers were a
+measurement of this VM's driver configuration wearing the costume of a fact about tensor parallelism.
+
+**What it did not fix:** the SymmMem warning persists, because **P2P memory access and native P2P
+atomics are separate capabilities** - the override buys the first, not the second, so vLLM's
+symmetric-memory all-reduce stays unavailable and every gain above comes from the ordinary P2P data
+path. A host with atomics may have more to give.
+
+**Standing action for every future multi-GPU rental: write the override and reload the driver before the
+first measurement.** Receipt: [`jarvis-p2p-override.json`](../receipts/jarvis-p2p-override.json).
