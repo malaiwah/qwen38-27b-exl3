@@ -1,0 +1,52 @@
+{
+ "schema": "qwen38-upstream-refresh-final/1",
+ "generated_utc": "2026-08-17T18:33:26Z",
+ "what_this_is": "Final pre-teardown state of every upstream artefact we own, and what was done about it.",
+ "full_survey": "docs/52-upstream-refresh-final.md (529 lines, read-only scout pass)",
+ "headline": "Across every GitHub artefact we own, THIRD-PARTY HUMAN ENGAGEMENT IS EXACTLY ZERO. The only non-malaiwah actor anywhere is coderabbitai[bot]. That is worth stating plainly rather than hiding: seven issues, four PRs, and months of measurement have drawn no human upstream response.",
+ "artefacts": {
+  "issues_406_412": {
+   "state": "all open, no labels, no third-party comments",
+   "action_taken": "#406 and #407 received comments from the kernel-level work: the +3-15 % end-to-end bracket we published is WITHDRAWN because both of its endpoints exceed their own Amdahl ceiling, replaced by a measured kernel speedup plus a derived bound.",
+   "comment_urls": [
+    "https://github.com/local-inference-lab/vllm/issues/406#issuecomment-5318545141",
+    "https://github.com/local-inference-lab/vllm/issues/407#issuecomment-5318554907"
+   ],
+   "408_412": "no action needed; #411's body already self-corrects"
+  },
+  "issue_405": {
+   "state": "closed not_planned, confirmed still closed",
+   "action": "none - its single comment already says nothing else needs to happen, and no third party ever saw it"
+  },
+  "pr_403": {
+   "state": "open, LMCache divergent-hit gate",
+   "action": "none. The thread is already self-consistent: the title was re-labelled twice and the second comment supersedes our own store-side attribution with the fp8 finding, so it ends on the correct mechanism."
+  },
+  "issue_402": {
+   "state": "open, the root cause #403 patches",
+   "action": "none - superseded in practice by #403 which carries both corrections"
+  },
+  "pr_397": {
+   "state_before": "open, base codex/gg-exl3-r7-k345-20260810, ZERO reviews",
+   "problem": "MIS-TARGETED at a dated codex branch that last moved 2026-08-10. CodeRabbit's only comment is a SKIP: 'Auto reviews are disabled on base/target branches other than the default branch. Base branches to auto review (1): dev/*'. So our PR received no review at all for a purely mechanical reason, while #398 and #403 - which target dev/gilded-gnosis - both got full walkthroughs and 5/5 pre-merge checks.",
+   "ACTION_TAKEN": "RETARGETED the base to dev/gilded-gnosis via the REST API (the gh CLI path aborted on an unrelated projects-classic GraphQL deprecation). Verified: base now reads dev/gilded-gnosis. This is a base-branch correction to our own submission, not an argument, and it unblocks the automated review.",
+   "verification": "GET /repos/local-inference-lab/vllm/pulls/397 -> base.ref == dev/gilded-gnosis"
+  },
+  "pr_398": {
+   "state": "open, base dev/gilded-gnosis, CodeRabbit 5/5 checks, Merge Risk Minimal",
+   "note": "the bot surfaced possibly-related prior art, local-inference-lab/vllm#234, which extends FlashInfer decode-wrapper guards to exact (batch_size, q_len) tracking. That is a BOT claim about a PR that is NOT ours; if #234 genuinely does the same thing, #398 may be redundant. Flagged, not acted on - assessing someone else's PR against ours is exactly the kind of judgement that should not be made in a rush.",
+   "action": "none taken; recorded for whoever picks this up"
+  },
+  "fork_branches": {
+   "kernel-gap/tiny-n-mm-transpose": "3b35c04c6, no PR opened",
+   "kernel-gap/b12x-gate-n-range": "704d94e93, no PR opened",
+   "note": "both remain unopened on purpose - the kernel-level work found the transpose REGRESSES 33 % at m=1 for want of a row-count guard, so opening a PR before adding that guard would ship a known regression"
+  }
+ },
+ "open_question_left_for_the_owner": "whether #398 is redundant against local-inference-lab/vllm#234. Requires reading someone else's diff and forming a judgement about their work; deliberately not done under time pressure.",
+ "third_party_signal": {
+  "count": 0,
+  "only_non_malaiwah_actor": "coderabbitai[bot]",
+  "the_one_real_signal": "CodeRabbit's review-skip on #397, which is what exposed the mis-targeting"
+ }
+}
