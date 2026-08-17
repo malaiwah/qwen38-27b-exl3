@@ -723,3 +723,51 @@ body byte-identical, verified). The FP8-warning patch stays diff-only: its surro
 no public branch.
 
 ---
+## F12. LMCache/GDN corruption: the state pages were in the payload all along — the store path poisons them with the null page, and acceptance never checks state validity
+
+**Claim — correcting docs/46 §22's mechanism wording.** The GG lmcache build (`0.5.2+glm52dcp.4`)
+**does** ship full Mamba/GDN store+restore machinery for the MP connector: `_MambaPageViewEdit`
+re-views each state page as a fake attention tensor (`$SP/lmcache/integration/vllm/
+kv_cache_group_edits.py:206-259`), every 1600-token chunk object is **monolithic** — 16 attention
+pages + 48 GDN state pages (`$SP/lmcache/v1/kv_layer_groups.py:632-668`) — and the pack loop
+transfers all kernel groups both directions (`lmcache_driven_transfer.py:277-408`). The retrieve →
+`preprocess_mamba` → GDN `has_initial_state` chain is correct end-to-end in source
+(`mamba_utils.py:979-1016`; `gdn_attn.py:180-392`). "The MP retrieve path does not restore the
+state" is therefore the wrong mechanism. Full walk: `agent://KernelGap.LMCacheState`.
+
+**The two source-proven holes:**
+1. **Store-side null-page poisoning.** `GetStoreMetadata` counts vLLM-APC-hit spans as storable
+   (`lmcache_mp_connector.py:372-374`) and nothing anywhere filters null block ids
+   (`group_view.py:179-229`) — but in align mode the mamba block-table rows inside an APC-hit span
+   are the shared **null block (id 0)**, which is *never zeroed* (zeroing covers attention specs
+   only, `single_type_kv_cache_manager.py:94-100`). Whenever a request resumes from an APC hit that
+   LMCache no longer holds — **routine** under the measured 600/300 s TTLs — the store serializes
+   the null page's stale bytes as the boundary state *under a valid chunk key*. Every later
+   retrieve restores garbage recurrent state. This matches 38/38, and it explains §22's bleakest
+   line: "a poison-free L2 is unreachable — every writer configuration is itself corrupt."
+2. **Acceptance never checks state validity.** The scheduler's divergent hybrid path takes
+   `max(per_group_hits)` with a comment that literally assumes nixl ("the Mamba state … is
+   transferred unconditionally by _apply_prefix_caching in nixl/worker.py",
+   `scheduler.py:745-753`) — a nixl-only guarantee applied to every connector. #403 correctly
+   gates that on `supports_divergent_local_hybrid_hits` (necessary — it kills the 7/38 null-state
+   resume), but external-token accounting still marks state-covered tokens computed on
+   attention-chunk existence alone — so poisoned stores corrupt *despite* perfect accounting.
+   **#403 is necessary and insufficient, now with the mechanism named.**
+
+**The nixl contrast, precisely:** nixl's SSM branch always keeps the *last* remote mamba block —
+one full state snapshot per request per layer — even when attention groups are fully prefix-hit
+(`nixl/base_worker.py:2285-2302`). A nixl-parity "state-only unconditional push" is
+**inexpressible** in LMCache's data model today: `LoadStoreOp` carries a token range + per-group
+block ids over monolithic chunk objects; a state-only fetch needs per-group object keys
+(`ObjectKey.object_group_id`, deferred upstream as LMCache #3608, noted at
+`kv_cache_group_edits.py:16-31`).
+
+**The minimal fix is ~20 lines, store-side:** in `GetStoreMetadata`
+(`lmcache_mp_connector.py:345-425`), truncate the storable range at the first chunk whose mamba
+block id is null (+~10 optional lines of retrieve hygiene to stop scribbling the shared null
+page). No key/format/IPC change — the chunk format already carries exactly one state page per
+1600-token boundary. Live repro on the local card follows: (i) cold single-writer round-trip must
+be bit-clean (validates the clean chain); (ii) forced APC-hit-over-expired-lmcache store must
+poison; (iii) the clamp must convert (ii) to clean-or-miss.
+
+---
