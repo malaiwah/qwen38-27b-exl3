@@ -223,7 +223,7 @@ One receipt per tier x model x config: `receipts/tb21-speedrun-<tier>-<model>-<c
 identity (GPUs, driver, topo), image digest, full argv + env, synthetic ladder table, chosen -n + rule
 inputs, metric snapshot names + deltas, TB results (resolved/89, wall, timeout split, parser count),
 fidelity-guard outputs, and every deviation from `terminal-bench-2.1-pins.json` named. Plus one summary
-receipt `receipts/tb21-speedrun-ladder.json` feeding the card table:
+receipt `receipts/tb21-speedrun-ladder.json` feeding the card table (**SUPERSEDED — this single summary receipt was never created. It was replaced in practice by 15 per-tier `receipts/tb21-ladder-*.json` receipts plus the cross-arm `receipts/tb21-8x-topology-ladder.json`, which carry the same content at finer grain. Do not go looking for the file.**):
 
 ```
 | tier | config | resolved/89 | wall clock | agg tok/s | timeouts | notes |

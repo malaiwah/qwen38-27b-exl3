@@ -1069,7 +1069,7 @@ published was computed from both errors at once, and is superseded.
 one-clause b12x routing gate (send `lm_head` and the small k/v projections to `exl3_gemm`) is worth
 **+15.4 % single-stream** on the local card (96.19 -> 110.97 tok/s), and most of it is not the 57 us
 per-call GPU delta but **eliminated eager Python dispatch** on the four per-step head calls; the rental
-figure is bracketed **+3-15 %** pending a bare-metal A/B, because proot inflates the dispatch term.
+figure was bracketed **+3-15 %** pending a bare-metal A/B, because proot inflates the dispatch term. **That bracket is now WITHDRAWN.** The bare-metal A/B ran and could not resolve the effect (docs/46 §28: within-arm CV 2.84 % median against a median +1.44 % signal), and the kernel-level re-scope then showed **both endpoints of our own bracket exceed their Amdahl ceiling** — the transpose bounds at **+3.23 % wall-clock** and the gate at **+2.23 %**, i.e. below the +3 % floor we published. See `receipts/kernel-amdahl-bound.json` and docs/47.
 Beside it: an unquantized `in_proj_ba` 5120x96 GEMV running at **33 GB/s** and costing **1.34 ms/step
 (5.2 % of GPU time)** for an op worth ~3 us, with a concrete split-K recipe. Prefill's standing
 explanation is **refuted**: "trellis decode cost" is common-mode with the dense reference (upstream
