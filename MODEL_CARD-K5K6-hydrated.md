@@ -419,15 +419,19 @@ per-candidate reports
 | candidate | engine | measured mean KLD | net of engine floor | top-1 | p99.9 | serialized |
 |---|---|---:|---:|---:|---:|---:|
 | GGUF `Q8_0` | llama.cpp | 0.001087 | ~0.000579 | 98.53 % | 0.0351 | 27.05 GiB |
+| `turboderp/Qwen3.8-27B-exl3` 6.00bpw @ `d32ba0bb` | vLLM | 0.001583 | n/a, same engine | 98.28 % | 0.0668 | 21.37 GiB file / 17.05 body |
 | GGUF `Q6_K` | llama.cpp | 0.002035 | ~0.001528 | 97.98 % | 0.0794 | 21.31 GiB |
 | **this build** (hydrated) | vLLM | **0.002700** | n/a, same engine as the reference | **97.80 %** | **0.1313** | **20.12 GiB payload** |
 | online K5/K6 | vLLM | 0.003141 | n/a, same engine | 97.61 % | 0.1447 | — |
 | context edition | vLLM | 0.003409 | n/a, same engine | 97.55 % | 0.1632 | 19.27 GiB payload |
+| `turboderp/Qwen3.8-27B-exl3` 5.00bpw @ `a35e75a7` | vLLM | 0.004005 | n/a, same engine | 97.37 % | 0.2032 | 18.53 GiB file / 14.22 body |
 | GGUF `UD-Q5_K_XL` | llama.cpp | 0.004444 | ~0.003936 | 97.20 % | 0.2144 | 18.83 GiB |
 | official FP8 | vLLM | 0.005197 | n/a, same engine | 96.92 % | 0.2440 | 28.51 GiB resident |
 | K4 | vLLM | 0.010345 | n/a, same engine | 95.91 % | 0.5576 | — |
+| `cyankiwi/Qwen3.8-27B-AWQ-INT4` @ `63768c10` | vLLM | 0.022818 | n/a, same engine | 93.94 % | 1.13 | 19.57 GiB file |
 | `unsloth/Qwen3.8-27B-NVFP4` @ `9c73e2da` | vLLM | 0.030115 | n/a, same engine | 93.16 % | 1.6228 | — |
 | `gittensor-model-hub/Qwen3.8-27B-NVFP4-RTX5090` @ `69274a0d` | vLLM | 0.062163 | n/a, same engine | 89.85 % | 2.5911 | — |
+| `sakamakismile/Qwen3.8-27B-MTP-NVFP4` @ `6d98dc1f` | vLLM | 0.151280 | n/a, same engine | 84.74 % | 5.65 | 19.15 GiB file |
 
 **The engine floor, measured and not assumed.** A GGUF row carries llama.cpp-versus-vLLM numerics
 on top of quantization error, so that term was measured the same way: the unquantized **BF16
@@ -455,6 +459,41 @@ report's **exact** shard-0 p99.9 as the comparator receipt read them; the
 560-bin histogram, whose bins are about 5.6 % wide — this build reads 0.1319 there and 0.1313 here,
 and the exact value lies inside the bin the estimate names. The two differ by construction, not by
 measurement.
+
+**The stock uniform-bitrate control, which is the one comparison that can indict our allocation
+rather than the format — and at 6-bit it does.** `turboderp/Qwen3.8-27B-exl3` is EXL3 built at a
+*uniform* bitrate, same format and same engine as this build, so it isolates our role-aware
+allocation from EXL3 itself. The two points disagree, and both are published.
+
+At **5 bits** the allocation earns its keep: the context edition reads **0.003409** against uniform
+5.00bpw's **0.004005** on the same 512 contexts — paired **+0.000595** [+0.000533, +0.000665], the
+control losing **492/512** — and it wins while the control carries **0.664 GiB less** transformer
+body, so the bytes axis favours the control and the allocation still comes out ahead.
+
+At **6 bits** uniform bitrate wins. Stock 6.00bpw reads **0.001583** against this build's
+**0.002700** (paired −0.001117 [−0.001232, −0.001018], 511/512) — but it also carries **1.328 GiB
+more** body, so that comparison is confounded by size. Removing the confound is the point: against
+the equal-body **K6-parity** build, at **17.0537 GiB of body bytes on both sides**, uniform still
+edges us **0.001583 vs 0.001634** (paired **−5.07e-05** [−6.89e-05, −3.26e-05], **CI excludes
+zero**, 341/512). So the 6-bit deficit is **not the format, and not fully the bytes**: at matched
+bytes and matched engine our hand allocation gives up a small but statistically real margin to
+uniform. Whether that margin is allocation *shape* or calibration *content* is precisely what the
+alt-calibration condition was pre-registered to bound — the delta sits **above** the ±2.9e-05
+converter envelope but **inside** the registered 1e-05..2e-04 content range — and that attribution
+waits for that measurement rather than being guessed here.
+
+**One finding transfers beyond this model: fidelity tracks how gently the SSM path is treated.**
+Across the three community 4-bit-class builds measured on this shard, the ordering is **BF16 >
+FP8 > NVFP4** in the state-space/attention path, and it dominates everything else about them.
+`sakamakismile/Qwen3.8-27B-MTP-NVFP4` puts attention and SSM in NVFP4 W4A4 and pays **0.151280** —
+**5.02x** unsloth's NVFP4, losing **512/512** paired (+0.121164 [+0.113476, +0.130617], with zero
+nowhere near the interval) — which measures unsloth's 2.65 GiB FP8 block as **decisively
+load-bearing** rather than incidental. And `cyankiwi/Qwen3.8-27B-AWQ-INT4`, which **loaded cleanly**
+through `CompressedTensorsWNA16`/`MarlinLinearKernel` rather than refusing as the earlier
+architecture-gated sweep suggested, reads **0.022818** — it loses 512/512 to the context edition at
+near-equal file bytes (6.7x) yet **beats unsloth's NVFP4 499/512** (−0.007298 [−0.008410,
+−0.006318]) while carrying **2.99 GiB less file**. The lesson for anyone allocating bits in a hybrid
+model: spend them on the recurrent path first.
 
 **NVFP4 on the identical shard, and it carries no cross-engine term.**
 `unsloth/Qwen3.8-27B-NVFP4` at revision `9c73e2da` is served by **the same vLLM build as our

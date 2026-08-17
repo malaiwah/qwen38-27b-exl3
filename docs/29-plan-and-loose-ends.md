@@ -234,10 +234,21 @@ scoring floor explains at most about 5 % of any cross-protocol gap, and none of 
   **PPL does not reproduce the KLD ordering** — `Q6_K` has the smallest PPL delta (+0.00079) while
   `Q8_0` (+0.00467) is the better quant by every divergence statistic, which is a caution about
   perplexity as a quantization metric rather than about either artifact.
-- **Stock EXL3 uniform-bitrate controls**, at least `turboderp/Qwen3.8-27B-exl3` 5.00bpw
-  (`a35e75a7`) and 6.00bpw (`d32ba0bb`), to separate our role-aware allocation from EXL3 itself.
-  Not run — and after the GGUF result this is the more interesting of the two, because it is the
-  control that says whether the 6-bit loss is our allocation or the format.
+- ~~**Stock EXL3 uniform-bitrate controls.**~~ **Measured.** At the 5-bit point the role-aware
+  allocation earns its keep: the context edition reads **0.003409** against stock uniform 5.00bpw's
+  **0.004005** on the same 512 contexts (paired **+0.000595** [+0.000533, +0.000665], the control
+  loses 492/512) — won while the control carries **0.664 GiB less** transformer body, so the axis
+  favours the control and we still win. At the 6-bit point uniform bitrate wins: stock 6.00bpw reads
+  **0.001583** against hydrated's **0.002700** (−0.001117 [−0.001232, −0.001018], 511/512) while
+  carrying **+1.328 GiB more** body — and at **equal body bytes** (17.0537 GiB both) it still edges
+  the K6-parity build **0.001583 vs 0.001634** (paired −5.07e-05 [−6.89e-05, −3.26e-05], CI excludes
+  zero, 341/512). So the 6-bit loss was **never the format and is not fully the bytes either**: at
+  matched bytes and matched engine our hand allocation gives up a small, significant margin to
+  uniform — whether that margin is allocation shape or calibration content is exactly what the
+  alt-calibration condition bounds (the delta sits above the ±2.9e-05 converter envelope but inside
+  the registered 1e-05..2e-04 content range), and that attribution waits for it.
+  ([`shortlist-shard0.json`](../receipts/shortlist-shard0.json),
+  [`kld5-1M-paired-shortlist.json`](../receipts/kld5-1M-paired-shortlist.json))
 - **An ik_llama comparator.** Reader-suggested: `cHunter789/Qwen3.8-27B-i1-IQ4_KS_KT-GGUF` under
   `ik_llama.cpp` (r/LocalLLaMA megathread `1voojjz`, comment `p3uk494`, "Try this with
   ik-llama"). A name and a link only — no KLD, no top-1, no protocol. It is an **unmeasured
