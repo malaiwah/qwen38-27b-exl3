@@ -1517,7 +1517,7 @@ RTX PRO 6000 Blackwell, instead of two model loads. That is exactly how the NVFP
 ladder is a different bill — about 5 hours of GPU for the fifty candidate captures, plus about 54
 minutes for the nine BF16 shard references that were deleted once their reports verified.
 
-**Three archival mirrors keep the third-party citations resolvable.**
+**Seven archival mirrors keep the third-party citations resolvable** — the three explained below, plus the four quant-landscape shortlist mirrors cited elsewhere on this card, each pinned to the exact upstream revision measured and each now carrying a provenance banner that names its upstream author.
 [`malaiwah/Qwen3.8-27B-NVFP4-archival-9c73e2da`](https://huggingface.co/malaiwah/Qwen3.8-27B-NVFP4-archival-9c73e2da)
 is a **recovery** mirror: upstream super-squashed its history on 2026-08-15 and the Hub now answers
 `Invalid rev id` for `9c73e2da…`, the revision every NVFP4 number on this card was measured against,

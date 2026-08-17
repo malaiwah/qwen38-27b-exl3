@@ -85,11 +85,11 @@ through the uncalibrated fallback and report `rmse` (0.00238-0.00562) rather tha
 
 `docs/34` §6.2 published a serialized payload prediction for this recipe **before it was built**:
 **13,711,503,428 B**. The measured payload is **13,711,503,428 B** — **prediction error zero**, and
-the first test of the affine byte law below 4 bits. Whole tree: **13,735,527,028 B over 21 files**
+the first test of the affine byte law below 4 bits. Whole tree **as built**: **13,735,527,028 B over 21 files**
 (12.7922 GiB), against the `payload + 24.0 MB` disk rule's 13,735,474,746 B, i.e. **52,282 B** of
 tree-metadata slack on the disk figure and none on the payload. Every per-file digest is recorded in
 [`receipts/sixteen-flip-kld.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/sixteen-flip-kld.json)
-→ `build.tree` and in this repo's `SHA256SUMS`.
+→ `build.tree` and in this repo's `SHA256SUMS`. The **published** repository carries **23 files / 13,735,576,299 B**: publishing adds `README.md` and `DOCS-SHA256SUMS`, which is the whole **+49,271 B** difference. The build figure is the one the byte law is tested against, so both are stated rather than one silently standing for the other.
 
 ## The loader term, measured for the first time below 4 bits
 
