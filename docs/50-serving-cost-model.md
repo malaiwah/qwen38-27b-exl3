@@ -858,7 +858,7 @@ every replica is busy*; they diverge only through occupancy (§11.1), which is w
 | prompts ≥ 4k, 1 GPU **or** DP8 saturated (planning number) | 4740.3 | 0.05860 | **$0.1108** | **$0.0697** | *$0.0580* |
 | prompts ≥ 4k, best measured (DP8 C1 4kx1k) | 4887.7 | 0.05683 | $0.1074 | $0.0676 | *$0.0563* |
 | 512-token prompts (overhead-contaminated upper bound) | 3128.0 | 0.08880 | $0.1678 | $0.1057 | *$0.0879* |
-| **live production, 8× under real mixed load** (§11.6) | 3272.9 | 0.08484 | **$0.1604** | **$0.1010** | *$0.0840* |
+| **live production, 8× under real mixed load** (§11.6) | 3272.9 | 0.08487 | **$0.1604** | **$0.1010** | *$0.0840* |
 
 **OUTPUT — this is where GPU count and concurrency matter enormously.**
 
