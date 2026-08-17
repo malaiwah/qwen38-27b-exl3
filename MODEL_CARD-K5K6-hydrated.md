@@ -1487,6 +1487,43 @@ inefficiency remains (launch floors, non-GEMM work, CPU gaps), about half of whi
 back. Method, per-kernel numbers and the arithmetic:
 [`docs/47-kernel-gap-analysis.md`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/docs/47-kernel-gap-analysis.md).
 
+### Serving past 262k: the window is free, the rope is not
+
+Qwen document this checkpoint as **262,144 native, extensible to 1,000,000** via static YaRN, and warn that
+static YaRN "potentially impact[s] performance on shorter texts". **We measured that cost**, twice, on
+different hardware, with an identical 48-prompt / 384-position probe set and a four-arm decomposition.
+
+| arm | mean top-20 KLD | reading |
+|---|---:|---|
+| same-server replicate, concurrency 1 | **0.0e+00** | bit-identical — the engine is deterministic alone |
+| cross-boot replicate, same launch line | 1.180e-03 | the resolution floor of this instrument |
+| **1M window only** (native rope, `max-model-len` 1M) | **1.248e-03** | **indistinguishable from the floor — the window is free** |
+| **static YaRN rope**, matched 1M window | **1.071e-02** | **the rope carries essentially all of it** |
+| native-262k vs 1M-YaRN, one GPU | 1.057e-02 | ~9× floor; 19 of 48 prompts change their greedy output |
+| native-262k vs 1M-YaRN, **DP8, 8 GPUs** | **1.0265e-02** | **replicates within 3 %**, inside the 1-GPU 95 % CI |
+
+**Recommendation: serve 262,144 native by default.** Enabling YaRN to reach 1M taxes *every* request in the
+512–32k range — which is where real agent traffic lives — by roughly **1.0e-02 mean KLD, about nine times our
+own measurement floor**, to buy a window most requests never touch. If you genuinely need more than 262k, run a
+**second endpoint on these same weights** with the YaRN override and route to it explicitly. Retrieval itself
+works fine at 1M: a needle at **994,755 tokens — 99.5 % of the window — passes**.
+
+Two side results worth carrying:
+
+- **Concurrency does not cost fidelity.** Quiet versus real production load on DP8 measures **1.278e-03**,
+  only **1.08× the cross-boot floor**, with 59 of 384 positions bit-identical under load. Batch-composition
+  nondeterminism is real but fidelity-neutral at this resolution, so **none of the throughput numbers on this
+  card carry a hidden fidelity price.**
+- **Long context is not linearly priced.** Prefill wall-clock scales as `n^k` with **k rising: 1.506 → 1.744 →
+  2.144** across 262k → 1M, because only 16 of 64 layers run full attention while 48 run linear attention. A 1M
+  prompt therefore costs **2.53× more per token** to prefill than a 262k one.
+
+Method, controls and an override-took-effect proof (99.97 % of rope-cache entries differ, max abs diff
+0.140625 = `mscale − 1` in bf16):
+[`yarn-short-context-penalty.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/yarn-short-context-penalty.json),
+[`yarn-penalty-dp8-transfer.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/yarn-penalty-dp8-transfer.json),
+[`1m-context-effects.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/1m-context-effects.json).
+
 ### Under real multimodal load on eight cards: saturated, balanced, and the prefix cache pays
 
 The numbers above are ladder measurements. This one is **production traffic** — text, images and video driven
