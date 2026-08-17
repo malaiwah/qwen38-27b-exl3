@@ -1726,3 +1726,49 @@ A clean small set supports only “no regression observed on this set”, not ge
 - More online attention bits: K6 is already the measured best point and attention is not the
   prefill bottleneck.
 - FP8 prefill activations: fidelity failure is measured under both tensor and row-wise scales.
+
+
+## Planned: two fidelity measurements that need the production config-swap window
+
+**Registered because the owner asked the right question off a wrong premise, and the premise is worth
+correcting in writing.** The static-YaRN KLD result (docs/46 §31) was **not** measured under load: it ran on
+the single local card at `--max-num-seqs 1`, and its same-server replicate control came back **exactly
+0.0e+00 — bit-identical over 384 positions**. That control is precisely what makes the 1.057e-02 headline
+credible. What *was* measured under production load is different and separately labelled: the needle-ladder
+wall clock (§30), the repaired repeatability check (§29) and the multimodal counters (§32).
+
+So there is nothing to re-do for §31. But two things next to it are genuinely **unmeasured**, and both need
+the endpoint reconfigured, so they should be spent on the same swap window rather than bought twice.
+
+**P1 — does §31 transfer from one GPU to DP8?** §31 compared native-262k against 1M-YaRN on **one** card.
+Production serves **DP8 with fp8 KV and MTP**. Rope is per-layer arithmetic and should be
+topology-independent, so the expectation is that the penalty transfers unchanged — but *expectation* is not
+measurement, and the whole point of this project is not shipping those interchangeably. The probe set is
+already committed and reusable (`receipts/yarn-short-context-raw/`, 48 prompts, 384 positions), so the DP8
+run is **directly comparable to §31 rather than merely similar**, which is the only reason this is cheap.
+
+**P2 — does concurrency itself cost fidelity?** §29 proved divergence exists under load (7 of 8 frozen
+prompts reproduced; the 8th did not) and §31's concurrency-1 control proved the engine is bit-identical when
+alone. **Nobody has measured the size of the gap in KLD terms.** Continuous batching changes reduction order
+with batch composition, so the question is whether that shows up as a fidelity number or stays below the
+resolution floor. This one is genuinely open, and it is the more interesting of the two: if concurrency costs
+real KLD, every throughput number in this project has a fidelity price attached that we have never quoted.
+
+**Order of operations for the swap window** (one reconfiguration buys all three points):
+
+1. **Still at 1M-YaRN, endpoint quiet** (TB arm finished, omp idle) → probe. Gives `1M-YaRN @ DP8, quiet`.
+2. **Swap to 262k native** → probe again. Gives `262k-native @ DP8, quiet`. The difference is the YaRN
+   penalty at DP8, and it either reproduces §31's 1.057e-02 or it does not — a real cross-check, not a
+   restatement.
+3. **Drive concurrent load, re-probe at 262k native** → the load-versus-quiet delta at fixed config is P2,
+   with the rope held constant so the two effects cannot be confused.
+
+Commands: `tools/yarn_probe_run.py` against the DP8 base URL for each condition, then
+`tools/yarn_penalty_analyze.py --work <dir>` to rebuild the comparison. Reuse the committed probe set; do
+**not** regenerate prompts, because a new set would break comparability with §31 and waste the window.
+
+**Prerequisite and standing recommendation.** Production should move to **262k native** anyway — §31 measured
+the 1M window as fidelity-free (1.248e-03 against a 1.180e-03 floor) while the rope costs 1.057e-02 on the
+512-32k traffic our agents actually send, so serving YaRN by default taxes every real request to buy a window
+almost nothing uses. Step 2 above *is* that migration; these measurements are the instrumentation of a change
+we want regardless, not a reason to schedule one.
