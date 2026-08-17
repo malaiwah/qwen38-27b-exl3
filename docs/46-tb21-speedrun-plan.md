@@ -955,3 +955,39 @@ version of this trade that clears.
 is named: LMCache must store and restore the SSM/GDN state block alongside the attention KV it supplies
 (what nixl does unconditionally in `_apply_prefix_caching`), or refuse hybrid models. Neither exists in
 `0.5.2+glm52dcp.4`. A negative result, cleanly measured, on the box before it was released.
+
+## 23. DETERMINATION: the §12 scaling rule fires, so no 4x TB number may be interpolated
+
+§12 pre-registered the test: *if 2x-to-4x DP scaling deviates from linear by more than ~10 % on the
+synthetic ladder, the 4x TB pass is mandatory; otherwise it may be skipped and the interpolation stated
+on the card.* That test is now decidable, and it must be evaluated at **matched per-replica load** - DP2
+at client concurrency C and DP4 at 2C put the same number of requests on each replica, which is the only
+comparison in which "twice the GPUs" means "twice the work offered".
+
+| requests per replica | 512x256 DP2 -> DP4 aggregate | of linear | 4kx1k DP2 -> DP4 aggregate | of linear |
+|---:|---|---:|---|---:|
+| 2 | 371.7 -> 654.5 (1.76x) | 88.1 % | 323.9 -> 611.7 (1.89x) | 94.4 % |
+| 4 | 616.4 -> 1027.5 (1.67x) | **83.4 %** | 451.1 -> 858.9 (1.90x) | 95.2 % |
+| 8 | 850.3 -> 1455.9 (1.71x) | 85.6 % | 685.5 -> 1156.1 (1.69x) | 84.3 % |
+| 16 | 1072.0 -> 1958.3 (1.83x) | 91.3 % | 761.2 -> 1529.6 (2.01x) | 100.5 % |
+
+**Verdict: the rule fires.** Deviation exceeds 10 % at **four of the eight matched points**, worst case
+**16.6 %**. Scaling is not linear enough to interpolate through.
+
+**Consequence, and it is a restriction rather than a task.** The 4x host was released to fund the 8x, so
+the mandatory 4x TB pass will not be run. The rule existed to stop us publishing an interpolated tier
+when scaling is nonlinear - so the honest outcome is that **the 4x TB row is simply absent, and no 4x TB
+number may be inferred from the 1x and 8x rows.** The 4x *synthetic* ladder stands as measured
+(DP4/TP4/TP2xDP2, all gated PASS, §20); only the task-suite number is unavailable. Any card or chart
+showing tiers must leave 4x **blank rather than dashed-and-estimated**.
+
+**Why it is sub-linear is worth naming, because it predicts DP8.** At matched per-replica load DP
+replicas are nearly independent by construction - no shared weights, no shared KV, no collectives - so
+sub-linearity can only come from **what the host shares**: memory bandwidth across the socket, the PCIe
+root complex, and CPU-side scheduling for N engine processes plus N API servers. That the worst
+deviation sits at *low* per-replica load (83.4 % at 2-4 requests each), where per-replica decode is most
+bandwidth-hungry, is consistent with a shared-bandwidth ceiling rather than a collective cost - and it
+agrees with docs/47's independent finding that the trellis GEMMs already run at 88-100 % of the
+*measured* achievable bandwidth ceiling. The falsifiable prediction for the DP8 arm is therefore
+**further sub-linear scaling, worst at low per-replica concurrency**; if DP8 instead scales *better* than
+DP4 did, this explanation is wrong and must be replaced rather than patched.
