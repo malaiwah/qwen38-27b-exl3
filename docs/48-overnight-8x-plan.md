@@ -129,3 +129,32 @@ Charts land in `assets/` light+dark SVG+PNG, cited from the cards with the recei
 - Disk below 50 GB on any host: stop staging, prune, report.
 - **Nothing gets published to a card that has not passed its gate**, and no estimate is reported as a
   measurement. Every open question ends the night written down rather than guessed.
+
+## 9. Owner decision 2026-08-17: 2x timeouts, and why that makes it a better experiment
+
+The owner confirmed this run is **not an official submission**, and authorised **doubling the per-task
+timeouts** (`--timeout-multiplier 2.0`). This is more than a convenience, and it must be reported
+carefully.
+
+**Why it is the right experiment to run tonight.** The single strongest finding of the 1x passes is that
+this result is **timeout-bound, not quality-bound**: of 58 unresolved pass-1 tasks, **54 ended in
+`AgentTimeoutError`** and only 2 ran to completion and answered wrong (docs/45), and the BF16 control
+timed out on the same scale - 35 of 45 twice-failed tasks landed in `inconclusive-timeout` because
+*neither arm ever finished*. A 2x-timeout arm converts that observation into a measurement: it asks
+directly **how much of the 31/89 was the clock**. If the score rises materially, the published number is
+a serving-budget artefact as we argued; if it barely moves, our timeout explanation was wrong and the
+tasks are genuinely beyond the model. Either answer is worth more than another stock-timeout run.
+
+**How it will be reported, so it cannot be confused with the published score.** The 2x-timeout run is a
+**separate, explicitly labelled arm**. It does **not** revise 31/89, 44/89, or any attribution bucket -
+those stay exactly as published, measured at stock timeouts, because a benchmark number is only
+comparable against runs sharing its budget. Any card text will name the multiplier in the same sentence
+as the number, and the receipt records `timeout_multiplier: 2.0` as a first-class field. Terminal-Bench's
+own leaderboard rules are the reason this cannot be presented as a headline: **we are deliberately
+outside them**, and saying so is the whole point.
+
+**Second-order consequence worth stating up front:** doubling timeouts lengthens the tail, so the
+campaign's wall clock will not be comparable to the 3.3 h pass-1 baseline either. The speed-run number
+and the score number therefore come from different arms tonight: **wall clock from a stock-timeout arm,
+score-vs-clock from the 2x arm.** Mixing them would produce a figure that describes no real
+configuration.
