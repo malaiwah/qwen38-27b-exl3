@@ -605,8 +605,19 @@ Original plan text follows for the ladder definition.
   the flag gate and parity test contain it. *Dependency:* none, but do after P1.2 so the chunk-size
   baseline is settled.
 
-**P2.3 — double-buffered reconstruct + second stream (F5.2/F8, hides most of the 13 % reconstruct
-share at 2048 chunks; less relevant if P1.2 lands 6144).**
+**P2.3 — double-buffered reconstruct + second stream. DONE — MEASURED NULL; deleted.**
+Built exactly as designed (2-deep ring + side stream + events, bit-exact verified: torch.equal at
+M=2048 across 12 matrices). Microbench on the pure MLP sequence: +2.8 % (only ~21 % of reconstruct
+time hidden). Engine A/B at the 262k profile, chunk 2048: **PP32k −0.9 %, PP197k −0.2 % — null.**
+Mechanism, for the record: reconstruct is *store-bandwidth*-bound (~1.05 TB/s of the ~1.5 ceiling)
+and hgemm needs the remaining bandwidth for its own operands — overlap re-divides the same DRAM
+bytes and adds event overhead. F5.2/F8's "hides most of the 13 % share" premise is REFUTED on this
+card; the item moves to the structural list. Transferable lesson: in a bandwidth-contended regime
+only *removing* bytes pays, never re-scheduling them. Patch retained as
+`receipts/kernel-gap-recon-overlap.patch`; verdict + raw numbers in
+`receipts/kernel-gap-recon-overlap-null.json`; rootfs restored md5-verified.
+
+**P2.3 (original plan, superseded by the null above).**
 - *Change:* `_reconstruct_scratch` (exl3.py:785-795) becomes a 2-deep ring keyed the same way;
   issue `reconstruct[i+1]` on a side stream with an event wait on `hgemm[i]`'s completion of the
   *previous* buffer (WAR resolved by the ring). Bound extra memory: one more 170 MB buffer per

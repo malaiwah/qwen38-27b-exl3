@@ -1,0 +1,113 @@
+--- /var/tmp/work/exl3.py.r34.bak
++++ /var/tmp/gg-rootfs/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py
+@@ -795,6 +795,63 @@
+     return buf
+ 
+ 
++# KERNEL-GAP P2.3 (docs/47 F5.2/F8): reconstruct[j+1] never overlaps hgemm[j] on the
++# single-buffered scratch - the shared buffer is a WAR hazard and both kernels issue
++# on one stream. A 2-deep ring per geometry plus a side stream lets the (memory/int
++# pipe) reconstruct of the next matrix run under the (tensor pipe) cuBLAS of the
++# current one. Numerics are IDENTICAL: same kernels, same slice order, same buffers'
++# contents - only the issue stream and buffer identity change.
++#   VLLM_EXL3_RECONSTRUCT_OVERLAP: 0 = off (single buffer, one stream, old path);
++#   1 = ring for the two hot MLP geometries (gate/up 5120x17408 + down 17408x5120,
++#       68% of reconstruct bytes, +334 MB scratch); 2 = ring for every geometry.
++_EXL3_RECONSTRUCT_RING: dict[tuple[int, int, int], dict[str, Any]] = {}
++_EXL3_RECONSTRUCT_SIDE_STREAM: dict[int, Any] = {}
++_EXL3_RECONSTRUCT_HOT_KEYS = frozenset({(5120, 17408), (17408, 5120)})
++
++
++def _reconstruct_overlap_level() -> int:
++    raw = os.environ.get("VLLM_EXL3_RECONSTRUCT_OVERLAP")
++    if raw is None or not raw.strip():
++        return 0
++    try:
++        return max(0, int(raw.strip()))
++    except ValueError:
++        raise ValueError(
++            "VLLM_EXL3_RECONSTRUCT_OVERLAP must be 0, 1 or 2, got "
++            f"{raw!r}"
++        ) from None
++
++def _reconstruct_side_stream(device: torch.device) -> Any:
++    index = device.index if device.index is not None else torch.cuda.current_device()
++    stream = _EXL3_RECONSTRUCT_SIDE_STREAM.get(index)
++    if stream is None:
++        stream = torch.cuda.Stream(device=index)
++        _EXL3_RECONSTRUCT_SIDE_STREAM[index] = stream
++    return stream
++
++
++def _reconstruct_ring(device: torch.device, k: int, n: int) -> dict[str, Any] | None:
++    level = _reconstruct_overlap_level()
++    if level <= 0 or (level == 1 and (k, n) not in _EXL3_RECONSTRUCT_HOT_KEYS):
++        return None
++    index = device.index if device.index is not None else torch.cuda.current_device()
++    key = (index, k, n)
++    ring = _EXL3_RECONSTRUCT_RING.get(key)
++    if ring is None:
++        bufs = [
++            torch.empty((k, n), dtype=torch.float16, device=device) for _ in range(2)
++        ]
++        free = [torch.cuda.Event() for _ in range(2)]
++        ready = [torch.cuda.Event() for _ in range(2)]
++        current = torch.cuda.current_stream(device)
++        for ev in free:
++            # A wait on a never-recorded event is undefined; stamp both as free now.
++            ev.record(current)
++        ring = {"bufs": bufs, "free": free, "ready": ready, "idx": 0}
++        _EXL3_RECONSTRUCT_RING[key] = ring
++    return ring
++
++
+ _EXL3_FP8_SCRATCH: dict[tuple[int, int, int], torch.Tensor] = {}
+ _EXL3_FP8_WEIGHT_SCALE: dict[tuple[int, int], torch.Tensor] = {}
+ _E4M3_MAX = 448.0
+@@ -948,15 +1005,40 @@
+     x_had = torch.empty_like(x)
+     ext.had_r_128(x, x_had, suh, None, 1.0)
+     chunk = min(n, _EXL3_RECONSTRUCT_SLICE_N)
+-    weight = _reconstruct_scratch(x.device, k, chunk)
++    ring = _reconstruct_ring(x.device, k, chunk)
++    if ring is None:
++        weight = _reconstruct_scratch(x.device, k, chunk)
++        for start in range(0, n, chunk):
++            end = min(start + chunk, n)
++            view = weight[:, : end - start]
++            if n <= chunk:
++                ext.reconstruct(view, trellis, bits, mcg, mul1)
++            else:
++                ext.reconstruct_slice(view, trellis, bits, mcg, mul1, start)
++            ext.hgemm(x_had, view, output[:, start:end])
++        ext.had_r_128(output, output, None, svh, 1.0)
++        return
++    side = _reconstruct_side_stream(x.device)
++    main = torch.cuda.current_stream(x.device)
+     for start in range(0, n, chunk):
+         end = min(start + chunk, n)
+-        view = weight[:, : end - start]
+-        if n <= chunk:
+-            ext.reconstruct(view, trellis, bits, mcg, mul1)
+-        else:
+-            ext.reconstruct_slice(view, trellis, bits, mcg, mul1, start)
++        i = ring["idx"]
++        ring["idx"] = i ^ 1
++        buf = ring["bufs"][i]
++        view = buf[:, : end - start]
++        with torch.cuda.stream(side):
++            # The last hgemm that read this buffer may still be in flight on the
++            # main stream (possibly issued by a PREVIOUS custom-op call for another
++            # matrix of the same geometry - that cross-call pipelining is the win).
++            side.wait_event(ring["free"][i])
++            if n <= chunk:
++                ext.reconstruct(view, trellis, bits, mcg, mul1)
++            else:
++                ext.reconstruct_slice(view, trellis, bits, mcg, mul1, start)
++            ring["ready"][i].record(side)
++        main.wait_event(ring["ready"][i])
+         ext.hgemm(x_had, view, output[:, start:end])
++        ring["free"][i].record(main)
+     ext.had_r_128(output, output, None, svh, 1.0)
+ 
+ 

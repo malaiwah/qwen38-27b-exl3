@@ -1,0 +1,28 @@
+{
+ "what": "P2.3 reconstruct double-buffer + side-stream overlap: MEASURED NULL. Patch kept as receipts/kernel-gap-recon-overlap.patch (target sha256 2df9d0799fd3..., served r34 exl3.py); rootfs restored md5-verified.",
+ "design": "2-deep ring per (device,K,Nchunk) for the hot MLP geometries + side stream + free/ready events; reconstruct[j+1] issued under hgemm[j]. Bit-exact by construction (same kernels, same slice order) and verified: torch.equal across 12 matrices at M=2048, worst delta 0.0 (kg_test_overlap.py).",
+ "microbench": {
+  "sequence": "4 layers x (gate,up,down), M=2048, back-to-back",
+  "level0_ms": 15.45,
+  "level1_ms": 15.03,
+  "gain_pct": 2.8,
+  "note": "only ~21% of the 1.98ms of reconstruct in the pass was hidden"
+ },
+ "engine_ab": {
+  "profile": "262k qualified single-stream, chunk 2048, OVERLAP=1 vs P1.2 arm-A baseline (identical config)",
+  "pp_32k_tok_s": {
+   "baseline": 4361.7,
+   "overlap": 4322.8,
+   "delta_pct": -0.9
+  },
+  "pp_197k_tok_s": {
+   "baseline": 2469.2,
+   "overlap": 2464.5,
+   "delta_pct": -0.2
+  },
+  "needle_197k": "exact PASS (retrieval unaffected, as expected for a bit-exact change)"
+ },
+ "verdict": "DO NOT SHIP. The mechanism the plan assumed - reconstruct hiding behind the tensor-pipe hgemm - does not exist at these shapes because reconstruct is STORE-BANDWIDTH-bound (~1.05 TB/s of a ~1.5 TB/s ceiling) and hgemm needs the remainder for its own operands: overlap re-divides the same bandwidth and adds event overhead. The GDN/norm gaps between MLPs do not rescue it at engine level (measured negative-to-flat). F5.2/F8's 'hides most of the 13% reconstruct share' premise is REFUTED for this card; the finding downgrades to structural: reconstruct time is bandwidth, and bandwidth is already committed.",
+ "transferable_lesson": "in a bandwidth-contended regime, only removing bytes pays; re-scheduling them does not.",
+ "gpu_idle_verified_before_run": true
+}
