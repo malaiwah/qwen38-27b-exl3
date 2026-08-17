@@ -1,0 +1,14 @@
+--- /var/tmp/work/exl3.py.r34.bak
++++ /var/tmp/gg-rootfs/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py
+@@ -1207,6 +1207,11 @@
+ ) -> bool:
+     """Gate the native path to the exact K6/MCG contract it implements."""
+ 
++    # KERNEL-GAP A/B (docs/47 F3): route lm_head (N=248320) and the tiny k/v
++    # projections (N=1024) to exl3_gemm - measured faster per-call at decode m.
++    n_packed = int(trellis.shape[1]) * 16
++    if n_packed < 5120 or n_packed > 32768:
++        return False
+     return bool(
+         has_mcg
+         and not has_mul1

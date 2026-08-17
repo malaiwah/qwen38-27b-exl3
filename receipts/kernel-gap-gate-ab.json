@@ -1,0 +1,20 @@
+{
+ "what": "end-to-end A/B of the b12x-gate lever on the LOCAL card: route lm_head (N=248320) and k/v (N=1024) to exl3_gemm instead of b12x trellis_linear",
+ "patch": "receipts/kernel-gap-gate-ab.patch (applied to $SP/vllm/.../exl3.py _b12x_trellis_k6_supported, exl3.py:1202-1218; rootfs RESTORED to r34 bytes after the run, md5 verified)",
+ "command": "/var/tmp/work/ggrun.sh python /work/kg_ab_gate.py {baseline|gate-patched}  (same served profile as receipts/kernel-gap-profiled-decode.json, C1 greedy, 3x200 tokens after 64-token warmup)",
+ "baseline_tok_s": [
+  96.19,
+  96.15,
+  98.5
+ ],
+ "baseline_median": 96.19,
+ "patched_tok_s": [
+  111.34,
+  110.97,
+  110.5
+ ],
+ "patched_median": 110.97,
+ "gain_pct": 15.4,
+ "decomposition_note": "per-call GPU deltas explain only ~0.6 ms/step (head +57us x4, k/v +10us x38); the observed ~4.6 ms/step saving is dominated by ELIMINATED EAGER PYTHON DISPATCH of the b12x path on the 4 per-step lm_head calls and the draft k/v calls (b12x run_trellis256_dense validation stack vs the thin ext.exl3_gemm C++ binding). This dispatch component is proot-inflated locally; expect the rental gain to land between +3% (pure GPU delta) and +15% (this measurement). Body k/v inside the CUDA graph contribute only their GPU delta.",
+ "gpu_idle_verified_before_run": true
+}

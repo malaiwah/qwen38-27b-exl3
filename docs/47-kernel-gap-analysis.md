@@ -336,3 +336,26 @@ CPU-gap term, 3–8 pts, which this local proot measurement bounds but cannot pi
 4. *Sampler/verify D2H syncs*: already minimal (3 events/step); not worth touching.
 
 ---
+## F7. MEASURED A/B: the one-clause b12x gate change is worth +15.4 % single-stream on this card — 5× the per-call estimate, because b12x's eager Python dispatch was the hidden cost
+
+**Claim.** Patching `_b12x_trellis_k6_supported` (exl3.py:1202-1218) with one clause — reject
+`N < 5120` (k/v projections) and `N > 32768` (lm_head) so those shards take `ext.exl3_gemm` — moves
+end-to-end greedy decode on the local card from **96.19 → 110.97 tok/s (+15.4 %)** under the served
+profile (C1, MTP-3, graph decode, fp8 KV; 3×200 tokens, medians; `receipts/kernel-gap-gate-ab.json`,
+patch text in `receipts/kernel-gap-gate-ab.patch`; rootfs restored to r34 bytes afterwards,
+md5-verified).
+
+**Why 5× the F3 estimate:** the per-call GPU deltas (head +57 µs ×4, k/v +10 µs ×38) explain only
+~0.6 ms/step; the measured saving is ~4.6 ms/step. The remainder is **eager Python dispatch**: the
+4 per-step lm_head calls and the draft-pass k/v calls run *outside* the CUDA graph, and on the b12x
+route each one walks `run_trellis256_dense`'s validation stack (`$SP/b12x/moe/_shared/kernels/w4a16/
+kernel.py:11183-11380`) plus the vLLM custom-op wrapper, versus one thin C++ binding call for
+`ext.exl3_gemm`. F6's 23 % GPU-idle share was substantially this. *Honesty note: the dispatch
+component is proot-inflated on this workstation; the rental should land between +3 % (pure GPU
+delta) and +15 % (this measurement) — worth the 10-minute A/B there before shipping the clause.*
+
+Body-side k/v (inside the graph) contribute only their GPU delta; the patch is numerics-safe in kind
+(exl3_gemm is the bit-faithful reference path the fork itself documents, exl3.py:976), but the K6
+kernels differ in summation order, so a KLD spot-check belongs in the ship gate.
+
+---
