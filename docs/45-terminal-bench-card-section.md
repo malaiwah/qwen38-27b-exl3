@@ -48,23 +48,61 @@ that arm differs from this one **in the weights alone**.
 | 2 | pass-1 failures only | this checkpoint | Which failures were one-off, which persistent? |
 | 3 | twice-failed only | BF16 `Qwen/Qwen3.8-27B` | Which persistent failures are the quantisation's fault? |
 
-Pass 3 runs on the same card, same agent, same sampling, same eager mode, same endpoint — only the
-weights change. Each twice-failed task therefore lands in exactly one bucket: **`capability`** (BF16
-fails it too, so the quantisation is exonerated for that task) or **`quantization-suspect`** (BF16
-passes it, so the quantisation is implicated, with the BF16 transcript published as the evidence).
-The pass-2 filter matters: without it a single flaky failure would be promoted to a quantisation
-suspect and then spend a BF16 run being disproved.
+Pass 3 runs on the same card, same agent, same sampling, same eager mode, same endpoint, **and the same
+`-n 16` concurrency** — only the weights change. Each twice-failed task then lands in exactly one of
+**three** buckets, not two:
 
-<!-- RESULTS — fill from the pass receipts; do not place until measured.
-| Pass | Weights | Tasks attempted | Resolved | Score | MTP acceptance | output tok/s | -n |
-|---|---|---|---|---|---|---|---|
-| 1 | K5K6-hydrated | | | | | | |
-| 2 | K5K6-hydrated | | | | | | |
-| 3 | BF16 control | | | | | | |
+- **`quantization-suspect`** — BF16 resolves it, so the quantisation is implicated, with the BF16
+  transcript published as evidence.
+- **`capability`** — BF16 runs to completion and still fails it, so the quantisation is exonerated.
+- **`inconclusive-timeout`** — **neither arm finished inside the stock budget.** This bucket exists
+  because folding it into `capability` would exonerate the quantisation on tasks where *no arm ever
+  produced an answer*, which the evidence cannot support. Given that timeouts dominate this run (below),
+  this is not a refinement — it is load-bearing, and the three counts are reported separately and never
+  summed.
 
-| Twice-failed task | BF16 result | Classification |
-|---|---|---|
--->
+The pass-2 filter matters: without it a single flaky failure would be promoted to a quantisation suspect
+and then spend a BF16 run being disproved.
+
+### Results
+
+| Pass | Weights | Tasks attempted | Resolved | Score | MTP acceptance | -n |
+|---|---|---:|---:|---:|---:|---:|
+| 1 | K5K6-hydrated | 89 | **31** | **34.83 %** | 0.5707 | 16 |
+| 2 (healing) | K5K6-hydrated | 58 | **13** | — (cumulative **44/89**) | — | 16 |
+| 3 (attribution) | BF16 control | 45 twice-failed | *pending* | — | — | 16 |
+
+Wall clock for pass 1 was **~3.3 h** (18:19Z → ~21:39Z), the tail bounded by the single 12,000-second
+task (`build-pov-ray`), which was the only one outstanding from 88/89. Throughput and acceptance are
+**deltas between two named `/metrics` snapshots**, both quoted verbatim in the receipt, because the
+server's counters carry earlier calibration traffic: over pass 1, +3,330,706 generation tokens and
++3,683,358 draft tokens against +2,102,238 accepted, i.e. **0.5707 acceptance**. Server-side prompt
+tokens (+26.9 M) exceed the agent's own reported input tokens (12.8 M) because the server counts every
+scheduled prefill including speculative and retried work; both are reported rather than reconciled.
+
+### Three caveats that belong beside the score, not beneath it
+
+**1. This is a timeout-dominated result.** Of the 58 unresolved tasks in pass 1, **54 ended in
+`AgentTimeoutError`** and 2 in `RuntimeError` — leaving **only 2** that ran to completion and answered
+wrong. **93 % of the failures ran out of clock, not out of ability.** The mechanism is measured: turns
+spend up to **15,577 completion tokens** reasoning, and this system decodes at tens of tokens per second
+under concurrency, against minute-scale per-task budgets. Read this score as *an agent+model system on
+one card at stock timeouts*, which is what Terminal-Bench measures — not as a capability ceiling.
+
+**2. The concurrency was subsequently measured to be too high, so 31/89 is a floor for this system.**
+After this pass we ran a synthetic concurrency ladder on the same hardware and found the per-request
+**knee at C4** for this workload's shape, where per-request throughput still holds ≥50 % of
+single-stream. This pass ran **`-n 16`, four times past that knee**, at **26 %** of single-stream
+per-request throughput — which turns the measured 15,577-token burst into **~10.4 minutes of decode per
+turn instead of ~3.6**. `-n 16` was inherited from the harness pins and had never been measured. A
+re-run at `-n 4` is the obvious next measurement and **we have not done it**, so this number stands as
+published with its serving configuration named, not silently improved.
+
+**3. The score depends on the agent's parser tolerating prose before JSON.** **52 of 89 trials (58 %)**
+emit `Extra text detected before JSON object`; Terminus-2 tolerates it and dispatches the keystrokes
+anyway. **A stricter parser would have scored this model lower.** Within that subset 19 of 52 resolved
+(36.5 %) against 31 of 89 overall (34.8 %) — so emitting the warning does *not* predict failure; an
+earlier small-sample reading suggesting it did was noise, and is recorded as such rather than dropped.
 
 ### Why the harness can be trusted before the model was ever loaded
 
