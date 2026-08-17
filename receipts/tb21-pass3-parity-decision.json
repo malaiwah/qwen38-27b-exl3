@@ -1,0 +1,26 @@
+{
+  "schema": "qwen38-tb21-pass3-parity/1",
+  "generated_utc": "2026-08-17T00:10:04Z",
+  "issue": "pass 3 (BF16 attribution) first launched at the runner's default -n 4 while passes 1 and 2 ran at -n 16. Concurrency is part of the harness, so an -n mismatch is not neutral: at lower concurrency BF16 gets more per-request decode, fewer AgentTimeoutErrors, and therefore MORE tasks resolved - which under the three-way rule labels more failures 'quantization-suspect' (BF16 resolves what we failed). That biases the attribution AGAINST our own quant.",
+  "decision": "restarted pass 3 at -n 16 for parity, ~2.5 min in (1 trial completed, job dir removed, 0 orphan containers left). harbor bakes n_concurrent_trials into the job config and refuses a resume under a changed config, so a fresh dir was required rather than a resume.",
+  "verification": {
+    "config_n_concurrent_trials": 16,
+    "job": "tb21-pass3-bf16-attribution",
+    "task_set": "45 unique twice-failed task names (sort -u of twice-failures.txt = 45)"
+  },
+  "why_parity_was_achievable": {
+    "bf16_weights_gib": 51.89,
+    "hydrated_weights_gib": 20.78,
+    "bf16_kv_tokens": 583452,
+    "hydrated_kv_tokens": 1760318,
+    "bf16_engine_reported_max_concurrency_at_32k": "17.81x",
+    "bf16_kv_usage_observed_at_n4": "9.5 %",
+    "reading": "BF16 reports 17.81x max concurrency at the 32,768-token window, so -n 16 fits with headroom. Parity did not require compromising either arm."
+  },
+  "incidental_measurement": {
+    "bf16_aggregate_generation_tok_s_at_4_running": "151-177 tok/s (engine log; ~42 tok/s per request)",
+    "hydrated_per_request_at_C4_4kx1k": "71.78 tok/s (ladder, same card class)",
+    "reading": "BF16 is roughly 1.7x slower per request than the quant at comparable concurrency - independently consistent with the weight-streaming roofline (BF16 ~53.5 GB/step vs the quant's ~18.7 GB/step). NOT a controlled comparison (different shapes, different harness): recorded as incidental, not as a published ratio."
+  },
+  "cosmetic_bug_noted": "run_terminal_bench.sh's pass banner prints doubled task counts ('90 task(s)' for 45, '116' for 58) because it counts -i flag tokens rather than task names. The task SET is correct (verified against the file); only the printed number is wrong."
+}
