@@ -1,0 +1,59 @@
+{
+ "schema": "qwen38-vllm-gg-issues-filed/1",
+ "generated_utc": "2026-08-17T05:43:36Z",
+ "repo": "local-inference-lab/vllm",
+ "owner_approval": "granted 2026-08-17 by the owner in session; new upstream filings otherwise outside the agent's standing boundary",
+ "drafts_source": "receipts/issue-drafts/ (committed before filing)",
+ "count": 7,
+ "filed": [
+  {
+   "draft": "01-b12x-gate-lm-head-kv.md",
+   "number": 406,
+   "url": "https://github.com/local-inference-lab/vllm/issues/406",
+   "title": "b12x K6 gate routes lm_head and k/v projections to a slower path at decode m"
+  },
+  {
+   "draft": "02-in-proj-ba-33gbps.md",
+   "number": 407,
+   "url": "https://github.com/local-inference-lab/vllm/issues/407",
+   "title": "in_proj_ba (unquantized 5120\u00d796 bf16) runs at 33 GB/s and costs 5.2 % of decode GPU time"
+  },
+  {
+   "draft": "03-prefill-fp8-dead-flag.md",
+   "number": 408,
+   "url": "https://github.com/local-inference-lab/vllm/issues/408",
+   "title": "VLLM_EXL3_PREFILL_FP8=1 silently no-ops when the extension lacks reconstruct_fp8_slice"
+  },
+  {
+   "draft": "04-shard-cat-copies.md",
+   "number": 409,
+   "url": "https://github.com/local-inference-lab/vllm/issues/409",
+   "title": "per-shard apply + torch.cat moves 18\u201326 GB/chunk of pure copies at prefill; hgemm already supports strided C"
+  },
+  {
+   "draft": "05-reconstruct-single-buffer.md",
+   "number": 410,
+   "url": "https://github.com/local-inference-lab/vllm/issues/410",
+   "title": "reconstruct scratch is single-buffered: reconstruct[i+1] can never overlap hgemm[i]"
+  },
+  {
+   "draft": "06-chunk-6144.md",
+   "number": 411,
+   "url": "https://github.com/local-inference-lab/vllm/issues/411",
+   "title": "prefill chunking at 6144 instead of 2048: 2.67\u00d7 less redundant reconstruct, +13\u201315 % measured on the linears alone"
+  },
+  {
+   "draft": "07-mtp-head-traffic.md",
+   "number": 412,
+   "url": "https://github.com/local-inference-lab/vllm/issues/412",
+   "title": "MTP depth d costs d+1 full lm_head streams per step; 78 % of the marginal bytes per depth level are head traffic"
+  }
+ ],
+ "misfiled_and_closed": {
+  "number": 405,
+  "url": "https://github.com/local-inference-lab/vllm/issues/405",
+  "what": "the 00-INDEX.md page of the draft set, posted by a glob that should have excluded it",
+  "action": "closed as not_planned within minutes, with a comment pointing at the seven real issues",
+  "lesson": "the glob 0*.md matched the index; filing automation must select drafts explicitly, not by numeric prefix"
+ }
+}
