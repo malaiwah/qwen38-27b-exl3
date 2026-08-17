@@ -333,3 +333,85 @@ everything else here.
 **KV dtype arms:** fp8 is the headline (family default, qualified). One smoke each of BF16-KV and
 nvfp4-KV on the 2x lab for the comparison table — noting the prior sweep measured the nvfp4 KV variants
 as refusals on this architecture (SM100/MLA-gated); a refusal is re-recorded, not retried into existence.
+
+
+## 13. Knob audit, 2026-08-17: what is at 11, what is not, and what is deliberately off
+
+Asked directly whether every lever is maxed for the speed run. Audited against evidence, with each
+item's state verified on the live 1x endpoint (`jl-vm-473319`, sr1 image, native 262,144 window)
+rather than asserted from the plan.
+
+### Verified ON and at 11
+
+| knob | evidence it is actually active |
+|---|---|
+| CUDA-graph decode | `exl3.py:1868 EXL3 graph decode enabled by VLLM_EXL3_GRAPH_DECODE`, 48 decode graphs captured in 10 s. **129.5 tok/s single-stream** vs the 82.9 eager baseline. Required `--compilation-config '{"cudagraph_mode":"FULL_DECODE_ONLY"}'` - **not** `--enforce-eager`, which is what the EXL3 error message misleadingly suggests (`_graph_decode_refusal` permits graph decode only for a decode-only mode with capture sizes set). |
+| Scratch arena (PR #397) | `exl3.py:818 EXL3 reconstruct scratch arena grew to 170.0 MiB` - exactly the predicted size, so the +6.7 % KV is already inside the measured 1,760,318-token pool. |
+| MTP-3 speculation | 59.2 % acceptance measured live during the ladder (29,586 draft / 17,529 accepted over ~70 s). |
+| fp8 KV | family default, qualified; the whole KV-dtype sweep is already published. |
+| Prefix caching | on; 51.7 % hit rate measured on real agent traffic. |
+| Reconstructed prefill (`VLLM_EXL3_PREFILL_RECONSTRUCT_M=128`) | on; this is PR #316's dispatch, which already collected the MLP prefill win. |
+| Chunked prefill | `scheduler.py:252 Chunked prefill is enabled with max_num_batched_tokens=8192`. |
+| Async scheduling | `vllm.py:1162 Asynchronous scheduling is enabled`. |
+| `max_num_seqs` | raised 16 → 64 as a knee-search **ceiling**, so the search is not capped by an inherited value. |
+
+### Known-unclaimed, ranked by expected value
+
+1. **V2 runner + per-batch-size depth schedule — the largest known unclaimed win.** Measured
+   **+38.0 % aggregate decode at C8** on a 32 GB card; the fix that unblocks it (PR #398) is already an
+   audited layer in sr1. What stopped it there was a 32 GB constraint: V2 costs ~780-820 MiB more than
+   MRV1, and at util 0.97 that left 58.56 MiB free and OOM'd the prefill reconstruct, forcing
+   131,072/0.95 and −14.1 % KV. **On this card that cost is 0.8 % of 96 GB** (weights 20.78 GiB, KV
+   62.38 GiB, free 94.43/94.97 at util 0.92), so it should not bind. Two arms are staged
+   (`serve-hyd-v2base.sh` = V2 with static depth 3, isolating the runner; `serve-hyd-v2sched.sh` = V2 +
+   schedule). **Unverified combination, not a broken one:** V2 + hybrid mamba + MTP-3 + EXL3 + fp8 KV +
+   graph decode at the native window on 96 GB has never been run.
+2. **The depth schedule must be re-derived, not copy-pasted.** The measured `[[1,2,3],[3,8,1]]` covers
+   batch 1-8 only; the campaign sweeps to 64 and DP-K replicas each sit at their own knee, so batches
+   9-64 would be unscheduled. The staged arm uses `[[1,2,3],[3,64,1]]` as a starting hypothesis - it
+   needs measuring, not assuming.
+3. **~7.2 GiB of KV is sitting unused.** The engine itself reports
+   `--kv-cache-memory-bytes=74719122432` (69.59 GiB) "to fully utilize gpu memory" against the 62.38 GiB
+   actually in use at util 0.92 - **+11.6 % KV tokens, free, no fidelity cost**. Honest scope: this does
+   **not** help TB, where 1.76 M tokens already covers ~54 concurrent 32k sessions and KV is nowhere near
+   binding. It helps the native-262k concurrency line (6.72× → ~7.5×) and the 1M exercise.
+4. **`max_num_batched_tokens` 2048 vs 8192 and util 0.92 → 0.95** remain synthetic-sweep items, not yet
+   measured on this card.
+5. **Prefix-cache headroom.** The 51.7 % hit rate was measured on a 32 GB card; this one has 3× the KV
+   pool, so the achievable rate on identical agent traffic is probably higher and is worth measuring
+   rather than inheriting.
+
+### Deliberately OFF, and why that is the correct setting
+
+- **int8 embed overlay** (+1.8-2.1 % KV): **changes greedy output** (13/22 and 10/22 continuations
+  diverge). Off for a fidelity-sensitive benchmark.
+- **LMCache**: corruption reproduced 38/38 on restart-over-warm-L2; the real root cause turned out to be
+  our own scheduler (see docs/29), whose fix is CPU-proven only. Stays out until the 4-arm ladder reads
+  clean on the 2x lab.
+- **`reasoning_effort`**: the chat template exposes `low|medium|high|xhigh`, and lowering it would cut
+  the reasoning bursts that cause **93 % of our TB failures** - making it arguably the largest
+  TB-score lever available. **Owner's ruling: the speed run runs at DEFAULT** so results stay comparable
+  with passes 1-3; reasoning-effort behaviour is to be characterised separately for the card. A probe at
+  4096 max_tokens was inconclusive (truncated mid-reasoning; `high` returned null, matching the known
+  "upstream raises on high" note) - any real characterisation needs ≥32k output budget and an idle card.
+- **`VLLM_EXL3_PREFILL_FP8`** (+31 % prefill): costs **+0.0141 mean KLD**, 4.4× this artifact's entire
+  quantization error. Never for a fidelity-carrying run.
+- **`custom_ops:["all"]`** (2.2-5.2 % worse, not bit-exact), **`--attention-backend FLASHINFER`**
+  (measured no-op: auto-selected already), **adaptive/per-batch speculative decoding** (downgrades
+  `cudagraph_mode` to PIECEWISE, which EXL3 refuses), **PIECEWISE prefill** (never dispatched above
+  `max_cudagraph_capture_size`≈512 while our prefill batches are 2,048-8,192, and prefill is
+  kernel-bound at cuBLAS parity anyway), **`reconstruct_had_slice`** (predicted ~1.31× *cost*).
+
+### Buildable, not yet built
+
+- **b12x K5 support for the 208 attention projections.** Every one currently fails b12x's
+  `trellis.shape[2] == 96` clause (bits must be 6) because our attention is serialized at **K5**, so 208
+  matrices take a slower path. Widening `_b12x_trellis_k6_supported` beyond K6-only is docs/41's W2.
+- **The prefill residual.** Our 3,374 tok/s PP2k against 5,050-5,250 measured for a dense EXL3 on a
+  188-SM card: SM-count scaling explains only ~70 % of the gap, leaving hybrid geometry and head_dim 256
+  as the source-verified candidates.
+
+**Bottom line:** the fidelity, capacity and decode-graph knobs are maxed and verified; the single
+significant unclaimed decode win is the V2 runner (staged, A/B pending), the KV headroom is free but
+irrelevant to TB specifically, and the largest *TB-score* lever (reasoning effort) is deliberately left
+at default to protect comparability.
