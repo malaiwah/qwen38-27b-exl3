@@ -649,3 +649,45 @@ enabled` in both the API server and EngineCore on every arm above, because `Eagl
 `MTPModelTypes` (`config/speculative.py:66`, `39-55`), so vLLM's auto-enable path takes it rather than
 the spec-decode disable path at `config/vllm.py:1124-1135`. Every number in this document was measured
 with it active; there is no unclaimed gain here, and §13 records it under *Verified ON and at 11*.
+
+## 18. Ready for the 2x host: the exact order, and one new question today's result created
+
+Yes - the 1x tier is finished and the 2x lab is the next gate. Everything runs from the committed
+tools; nothing needs writing first.
+
+**Run order, each answering one question, cheapest-first.**
+
+1. **G0: does EXL3 shard under TP>1 at all?** This has never been run anywhere in this project, and it
+   is a hard gate rather than a measurement: rank-sliced EXL3 checkpoints are explicitly *exempt* from
+   the piecewise capture path (`exl3.py:1802-1805`), which is a hint that sharding is a distinct code
+   path, not a free flag. `--tensor-parallel-size 2` + the five-check fidelity gate, including the 262k
+   needle. If it fails, TP is off the table for this checkpoint and every later tier is DP-only - and
+   that is a publishable result on its own.
+2. **TP2 against DP2 on the same two cards**, same shapes/rungs/seed as §14 and §17 so the rows drop
+   straight into those tables. The prediction to falsify: **DP2 wins aggregate, TP2 wins latency.**
+   TP2 halves per-GPU weight bytes (20.78 -> ~10.4 GiB), and since decode here is weight-streaming
+   bound at 55-65 % of spec bandwidth, halving the bytes each step streams is the only lever that
+   attacks **single-stream** speed - which is the lever that matters for a benchmark where **93 % of
+   failures are timeouts**. DP2 instead buys two independent replicas and should scale aggregate
+   ~linearly while leaving per-request speed unchanged.
+3. **KV-dtype smokes** (fp8 vs BF16 vs nvfp4) on the 2x topology, to confirm the family default still
+   holds when the KV pool is split across cards.
+4. **LMCache 4-arm ladder**, the one arm that needs a GPU to close out the upstream MP-corruption work.
+
+**PP is declined, with a reason rather than an omission.** Pipeline parallelism pays bubbles and
+inter-stage latency to buy the ability to hold a model that does not fit. This one fits with room to
+spare - 20.78 GiB of weights and **94.43 of 94.97 GiB free** at util 0.92 on a single card - so PP
+would add latency to solve a problem we do not have. It is worth revisiting only if a future build
+stops fitting on one card.
+
+**The new question §17 created: the shipped schedule is topology-dependent, and DP changes which band
+you land in.** The depth schedule keys on `len(num_scheduled_tokens)` - **requests in flight per
+engine step, per replica** (`v1/core/sched/scheduler.py:1157-1160`). Under DP a router splits client
+concurrency across replicas, so 16 concurrent clients against DP2 present **8 requests per replica**,
+and against DP4 present **4** - which under `[[1,4,3],[5,64,1]]` moves a replica from the depth-1 band
+into the depth-3 band without anyone changing a flag. That is not a bug, it is a coupling: **client
+concurrency is not the quantity the schedule sees.** So the 2x lab must re-derive the boundary against
+the *per-replica* batch distribution the load balancer actually produces, and the shipped schedule has
+to be stated per topology (1x, DP2, DP4, DP8) rather than once. The shard-list load balancer in
+`tb21_campaign.sh` pins each task to one replica by declared timeout budget, so the per-replica
+distribution is knowable in advance rather than emergent - which is what makes re-deriving it cheap.
