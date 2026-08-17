@@ -87,7 +87,17 @@ REMOTE_ENV='export DOCKER_HOST=unix:///run/user/$(id -u)/podman/podman.sock PATH
 # must not be recorded as the model failing a task; a wrong answer must not be
 # silently retried. AgentTimeoutError is deliberately NOT here: running out of
 # task time is a real TB failure mode, and pass 2 retries it anyway.
-RETRY_INCLUDE=${TB_RETRY_INCLUDE:-APIConnectionError,APIError,InternalServerError,ServiceUnavailableError,Timeout,ConnectionError,RemoteProtocolError,EnvironmentStartError,EnvironmentStartTimeoutError,AgentSetupTimeoutError}
+#
+# NotFoundError was added after pass 2 measured one: the endpoint answered
+# `{"message":"The model 'qwen38' does not exist","code":404}` because the pass
+# overlapped a model swap, and the trial was scored as a task failure. That is a
+# server-side 404 before any prompt reaches a model, so it belongs here.
+# Deliberately still absent: bare RuntimeError. Two trials died on "Failed to
+# start tmux session", which is equally pre-model, but the *type* is too broad -
+# a RuntimeError can also be the model's own doing. Those are classified
+# post-hoc as pre_model_void by tb_rows.py and re-run explicitly, rather than
+# blanket-retried by type. See receipts/terminal-bench-2.1-pre-model-voids.json.
+RETRY_INCLUDE=${TB_RETRY_INCLUDE:-APIConnectionError,APIError,InternalServerError,ServiceUnavailableError,Timeout,ConnectionError,RemoteProtocolError,EnvironmentStartError,EnvironmentStartTimeoutError,AgentSetupTimeoutError,NotFoundError}
 MAX_RETRIES=${TB_MAX_RETRIES:-3}
 
 # The dataset publisher runs from this box; keep the shared cache/token store.

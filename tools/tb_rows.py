@@ -98,6 +98,24 @@ def load_rows(job_dir: pathlib.Path) -> list[dict]:
         except (TypeError, ValueError):
             reward_f = None
 
+        # Pre-model faults: the trial never reached a state where the model
+        # could answer, so counting it against the model would be wrong - and
+        # silently retrying every exception of the same *type* would be worse,
+        # because some RuntimeErrors are genuinely the model's doing. These are
+        # therefore neither retried nor scored: they are named, reported
+        # separately, and re-run explicitly.
+        #   - NotFoundError "model ... does not exist": a server-side 404,
+        #     observed when a pass overlapped a model swap on the endpoint.
+        #   - RuntimeError "Failed to start tmux session": the harness could not
+        #     open the agent's terminal; no prompt was ever sent.
+        exc_msg = exc.get("exception_message") or ""
+        void_reason = None
+        if exc.get("exception_type") == "NotFoundError" and "does not exist" in exc_msg:
+            void_reason = "endpoint served a different model (HTTP 404)"
+        elif ("Failed to start tmux session" in exc_msg
+              and agent_result.get("n_output_tokens") in (None, 0)):
+            void_reason = "harness could not start the agent terminal"
+
         rows.append(
             {
                 "task": task_name.split("/")[-1],
@@ -108,6 +126,7 @@ def load_rows(job_dir: pathlib.Path) -> list[dict]:
                 "reward": reward_f,
                 "resolved": reward_f == 1.0,
                 "exception_type": exc.get("exception_type"),
+                "pre_model_void": void_reason,
                 "agent": agent_info.get("name"),
                 "agent_version": agent_info.get("version"),
                 "model": _model_name(agent_info),
@@ -140,17 +159,30 @@ def summarize(rows: list[dict], label: str | None) -> dict:
     resolved = [t for t, v in best.items() if v == 1.0]
     unresolved = [t for t, v in best.items() if v != 1.0]
     attempted = [t for t, v in best.items() if v >= 0.0]
-    tok_in = sum(r["n_input_tokens"] or 0 for r in rows)
-    tok_out = sum(r["n_output_tokens"] or 0 for r in rows)
-    tok_cache = sum(r["n_cache_tokens"] or 0 for r in rows)
+    # Stub rows for incomplete/unreadable trials carry only the identifying
+    # keys, so every field here is fetched defensively: summarising a job that
+    # is still running must work (it is how a pass is monitored), not raise.
+    tok_in = sum(r.get("n_input_tokens") or 0 for r in rows)
+    tok_out = sum(r.get("n_output_tokens") or 0 for r in rows)
+    tok_cache = sum(r.get("n_cache_tokens") or 0 for r in rows)
     agent_s = sum(r.get("agent_exec_s") or 0 for r in rows)
     excs = collections.Counter(
-        r["exception_type"] for r in rows if r.get("exception_type")
+        r.get("exception_type") for r in rows if r.get("exception_type")
     )
     models = sorted({r["model"] for r in rows if r.get("model")})
     agents = sorted({
         f"{r['agent']}@{r['agent_version']}" for r in rows if r.get("agent")
     })
+    # A task is void only if *every* trial for it was a pre-model fault: one
+    # voided trial alongside a real attempt is not a void task.
+    by_task: dict[str, list[dict]] = collections.defaultdict(list)
+    for r in rows:
+        by_task[r["task"]].append(r)
+    void = {
+        t: sorted({x["pre_model_void"] for x in v if x.get("pre_model_void")})
+        for t, v in by_task.items()
+        if v and all(x.get("pre_model_void") for x in v)
+    }
     return {
         "label": label,
         "n_tasks": len(best),
@@ -174,6 +206,20 @@ def summarize(rows: list[dict], label: str | None) -> dict:
         ),
         "exception_types": dict(excs),
         "resolved_tasks": sorted(resolved),
+        "pre_model_void_tasks": void,
+        "n_pre_model_void": len(void),
+        "accuracy_excluding_pre_model_voids": (
+            round(len(resolved) / (len(best) - len(void)), 6)
+            if best and len(best) > len(void) else None
+        ),
+        "pre_model_void_note": (
+            "Tasks where every trial failed before the model could answer "
+            "(endpoint served the wrong model; harness could not open the "
+            "agent terminal). They are counted in n_unresolved above so the "
+            "headline stays conservative, and reported here so the denominator "
+            "is auditable. The honest resolution is to re-run them, not to "
+            "widen the retry allowlist by exception type."
+        ),
         "unresolved_tasks": sorted(unresolved),
     }
 

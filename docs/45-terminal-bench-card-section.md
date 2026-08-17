@@ -66,11 +66,11 @@ and then spend a BF16 run being disproved.
 
 ### Results
 
-| Pass | Weights | Tasks attempted | Resolved | Score | MTP acceptance | -n |
-|---|---|---:|---:|---:|---:|---:|
-| 1 | K5K6-hydrated | 89 | **31** | **34.83 %** | 0.5707 | 16 |
-| 2 (healing) | K5K6-hydrated | 58 | **13** | — (cumulative **44/89**) | — | 16 |
-| 3 (attribution) | BF16 control | 45 twice-failed | *pending* | — | — | 16 |
+| Pass | Weights | Tasks | Resolved | Score | Pre-model voids | MTP acceptance | -n |
+|---|---|---:|---:|---:|---:|---:|---:|
+| 1 | K5K6-hydrated | 89 | **31** | **34.83 %** (31/87 = 35.63 % excl. voids) | 2 | 0.5707 | 16 |
+| 2 (healing) | K5K6-hydrated | 58 | **13** | 22.41 % — cumulative best-of-2 **44/89 = 49.44 %** | 3 | — | 16 |
+| 3 (attribution) | BF16 control | 45 twice-failed | *pending* | — | 2 | — | 16 |
 
 Wall clock for pass 1 was **~3.3 h** (18:19Z → ~21:39Z), the tail bounded by the single 12,000-second
 task (`build-pov-ray`), which was the only one outstanding from 88/89. Throughput and acceptance are
@@ -80,7 +80,7 @@ server's counters carry earlier calibration traffic: over pass 1, +3,330,706 gen
 tokens (+26.9 M) exceed the agent's own reported input tokens (12.8 M) because the server counts every
 scheduled prefill including speculative and retried work; both are reported rather than reconciled.
 
-### Three caveats that belong beside the score, not beneath it
+### Four caveats that belong beside the score, not beneath it
 
 **1. This is a timeout-dominated result.** Of the 58 unresolved tasks in pass 1, **54 ended in
 `AgentTimeoutError`** and 2 in `RuntimeError` — leaving **only 2** that ran to completion and answered
@@ -103,6 +103,20 @@ emit `Extra text detected before JSON object`; Terminus-2 tolerates it and dispa
 anyway. **A stricter parser would have scored this model lower.** Within that subset 19 of 52 resolved
 (36.5 %) against 31 of 89 overall (34.8 %) — so emitting the warning does *not* predict failure; an
 earlier small-sample reading suggesting it did was noise, and is recorded as such rather than dropped.
+
+**4. Two of the 89 tasks never ran on this host, in either arm, and are counted as failures anyway.**
+`qemu-startup` and `qemu-alpine-ssh` die at `RuntimeError: Failed to start tmux session` before a single
+prompt is sent — in pass 1, in pass 2, and in the BF16 control alike. They are **environment-unsupported
+here, not failed**, so the honest denominator is **87**; the table reports both, and the headline keeps
+the conservative 89 rather than the flattering 87. Because both arms void identically, no task can move
+between the `quantization-suspect` and `capability` buckets on their account. A third task,
+`build-pov-ray`, lost its pass-2 attempt to a server-side `404 The model 'qwen38' does not exist` while
+the pass overlapped a model swap — an infrastructure fault that was scored as a task failure because
+`NotFoundError` was missing from the transport-retry allowlist. It has since been added; the trial is
+flagged `pre_model_void` and **owed one re-run**, which is why the cumulative 44/89 is published as a
+**lower bound**. All of this was found by auditing a `n_attempted=54` against `n_trials=58` mismatch in
+the pass-2 publication, and is itemised in
+[`terminal-bench-2.1-pre-model-voids.json`](../receipts/terminal-bench-2.1-pre-model-voids.json).
 
 ### Why the harness can be trusted before the model was ever loaded
 

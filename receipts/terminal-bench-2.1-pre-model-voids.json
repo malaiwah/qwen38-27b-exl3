@@ -1,0 +1,58 @@
+{
+ "schema": "qwen38-tb21-pre-model-voids/1",
+ "generated_utc": "2026-08-17T01:34:22Z",
+ "title": "Trials that failed before the model could answer, found by auditing the pass-2 publication",
+ "why_this_exists": "Publishing pass 2 surfaced n_attempted=54 against n_trials=58. Chasing the gap found four tasks with no verdict at all, three of which failed before any prompt reached a model. Two of those three also void identically in pass 1 and in the BF16 control, which means the published headline counts tasks this host cannot run - so the denominator is disclosed rather than quietly corrected.",
+ "classification_rule": "tb_rows.py marks a trial pre_model_void when the endpoint answered 404 for the served model name, or when the harness could not open the agent terminal and no output tokens were produced. A task is void only if every one of its trials is void.",
+ "found": {
+  "qemu-startup": {
+   "reason": "harness could not start the agent terminal",
+   "exception": "RuntimeError: Failed to start tmux session. Error: None",
+   "passes_affected": [
+    "pass1-hydrated",
+    "pass2-hydrated-healing",
+    "pass3-bf16-attribution"
+   ],
+   "verdict": "environment-unsupported on this host, in BOTH arms"
+  },
+  "qemu-alpine-ssh": {
+   "reason": "harness could not start the agent terminal",
+   "exception": "RuntimeError: Failed to start tmux session. Error: None",
+   "passes_affected": [
+    "pass1-hydrated",
+    "pass2-hydrated-healing",
+    "pass3-bf16-attribution"
+   ],
+   "verdict": "environment-unsupported on this host, in BOTH arms"
+  },
+  "build-pov-ray": {
+   "reason": "endpoint served a different model (HTTP 404)",
+   "exception": "litellm.NotFoundError: The model `qwen38` does not exist (code 404)",
+   "passes_affected": [
+    "pass2-hydrated-healing"
+   ],
+   "verdict": "recoverable: needs one re-run on the hydrated model to earn a real pass-2 verdict"
+  }
+ },
+ "not_void_deliberately": {
+  "train-fasttext": "AgentTimeoutError with no verifier verdict. Running out of task time is a real Terminal-Bench failure mode, not an infrastructure fault, so it stays counted against the model."
+ },
+ "effect_on_published_numbers": {
+  "pass1_as_published": "31/89 = 34.83 % (conservative: the two unrunnable tasks count as failures)",
+  "pass1_excluding_unrunnable": "31/87 = 35.63 %",
+  "pass2_as_published": "13/58 = 22.41 %",
+  "pass2_excluding_voids": "13/55 = 23.64 %",
+  "cumulative_best_of_2": "44/89 = 49.44 %, a lower bound until build-pov-ray gets its re-run",
+  "attribution_is_unaffected": "The two environment-void tasks void identically on BF16, so neither arm is advantaged and no task moves between the quantization-suspect and capability buckets because of them."
+ },
+ "fixes_applied": [
+  "run_terminal_bench.sh: NotFoundError added to the transport-retry allowlist (proven pre-model 404); bare RuntimeError deliberately NOT added, because the type is too broad to retry safely.",
+  "tb_rows.py: pre_model_void classification per trial, pre_model_void_tasks + n_pre_model_void + accuracy_excluding_pre_model_voids in every summary.",
+  "tb_rows.py: summarize() no longer raises KeyError on stub rows for incomplete trials, so a pass can be summarised while it is still running."
+ ],
+ "pass3_live_at_audit_time": {
+  "resolved_on_bf16_so_far": 6,
+  "agent_timeouts_so_far": 32,
+  "note": "The BF16 control is timing out on the same scale as the quantisation, which is the strongest evidence yet that this run is timeout-bound rather than quality-bound."
+ }
+}
