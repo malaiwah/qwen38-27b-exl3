@@ -484,3 +484,161 @@ matters); per-kernel GPU times are unaffected. Receipts: `receipts/kernel-gap-ge
 `receipts/kernel-gap-profiled-decode.json`, `receipts/kernel-gap-gate-ab.{json,patch}`,
 `receipts/kernel-gap-prefill-phases.json`, `receipts/kernel-gap-profiler-table.txt`. Source walks:
 `'/home/mbelleau/.omp/agent/sessions/-qwen38-27b/2026-08-14T14-52-00-820Z_01a000c2-2db4-7000-ba65-0c964868558d/KernelGap/KernelGap.DecodeWalk.md'`, `'/home/mbelleau/.omp/agent/sessions/-qwen38-27b/2026-08-14T14-52-00-820Z_01a000c2-2db4-7000-ba65-0c964868558d/KernelGap/KernelGap.PrefillWalk.md'`, `'/home/mbelleau/.omp/agent/sessions/-qwen38-27b/2026-08-14T14-52-00-820Z_01a000c2-2db4-7000-ba65-0c964868558d/KernelGap/KernelGap.TpTax.md'`.*
+## P. Execution plan for the findings
+
+Every F10 item, turned into work packages with exact edit sites, validation gates, kill switches,
+and sequencing. Phases are ordered so that each ships something measured before the next spends
+engineering; nothing below touches the fidelity budget without its own KLD gate.
+
+### P.0 Ground rules (apply to every item)
+
+1. **Measurement protocol** — same harness as F7: C1 greedy, 64-token warmup, 3×200 tokens, median;
+   plus the docs/46 §17 C4/C8 aggregate points for anything that could shift the knee. Receipts:
+   `receipts/kernel-gap-fix-<item>.json`, one per A/B, command included.
+2. **Fidelity gate** — any change that alters which kernel computes a matrix (P1.1, P2.1, P2.2,
+   P3.1) needs the standard KLD spot-check against the BF16 reference (docs/35 comparator, analysis
+   partition) before shipping; acceptance: within the checkpoint's published CI, same as prior
+   kernel swaps.
+3. **Kill switch** — every fork patch lands behind an env flag defaulting ON only after its A/B
+   (pattern: `_positive_env_int`/`_env_flag` conventions already in exl3.py:508-525). No silent
+   default flips.
+4. **One patch, one PR** — upstream target is `local-inference-lab/vllm` unless marked ext
+   (`turboderp-org/exllamav3`) or b12x. Cite docs/47 finding numbers in PR text.
+5. **Denominator hygiene** — all new numbers quoted against the measured 1.46–1.52 TB/s ceiling
+   (F2), never 1.792 spec; docs/cards carrying the old framing get the honest denominator beside it
+   (card side owned by Main).
+
+### Phase 1 — confirm and ship what is already measured (days; mostly flags)
+
+**P1.1 — b12x gate clause (F7, decode +3…15 %).**
+- *Change:* the two-line clause from `receipts/kernel-gap-gate-ab.patch` in
+  `_b12x_trellis_k6_supported` (exl3.py:1202-1218), expressed as a shape policy:
+  `n_packed = trellis.shape[1]*16; reject n_packed < 5120 or > 32768`, behind
+  `VLLM_EXL3_B12X_N_RANGE` (default `5120-32768`, `0` = old behaviour) so the rental A/B can flip it
+  without a rebuild.
+- *Blocked on:* Main's bare-metal single-stream A/B on the 4x (in flight). If the bare-metal gain is
+  ≥ +3 %, ship; below that, ship anyway for the k/v GPU delta but re-title the win honestly.
+- *Validation:* protocol A/B + KLD spot-check (kernel summation order differs).
+- *Effort:* hours. *Risk:* minimal — exl3_gemm is the fork's own bit-faithful reference path
+  (exl3.py:976).
+
+**P1.2 — prefill chunk size 6144 (F5.1 + F8, PP +15–25 % est).**
+- *Change:* none (serve flag `--max-num-batched-tokens 6144`). This is a *re-qualification*, not a
+  patch: the 2048 in the frozen profile interacts with KV budget, CUDA-graph rows, MTP slots
+  (`max_num_scheduled_tokens` warning observed in the F6 boot log), and the 262k needle gate.
+- *Validation ladder, in order:* (a) fits at the published `gpu_memory_utilization` with 262k
+  max-model-len; (b) PP2k/PP32k throughput A/B; (c) full-window needle (docs/46 §21 showed the
+  engine can pass 4/5 gates and then die at 262k — that gate is mandatory); (d) C1 decode
+  unchanged; (e) knee re-check at C4/C8 (bigger chunks steal decode slots under load).
+- *Effort:* one serving session on the rental or local card. *Risk:* scheduling regression at high
+  concurrency — the ladder catches it. *Decision point:* if (e) regresses, qualify 6144 as a
+  prefill-heavy profile variant instead of the default.
+
+**P1.3 — kill the dead flag (F5.6, hygiene).**
+- *Change:* in `_prefill_fp8_enabled` (exl3.py:803-811) or `_reconstruct_fp8_mm_into`
+  (exl3.py:877-878), log a one-time `logger.warning` when `VLLM_EXL3_PREFILL_FP8=1` but the ext
+  lacks `reconstruct_fp8_slice` — today it silently no-ops. docs/41 state (e) already records it.
+- *Effort:* 15 minutes + PR. *Risk:* none.
+
+**P1.4 — TP2 flag A/Bs (F4.5/F4.6, TP2 only).**
+- *Change:* none — two serve-time A/Bs on the 2x host (coordinate with its owner; it is not ours):
+  (a) `speculative_config.use_local_argmax_reduction=true` (greedy-equivalence check first — it
+  changes the logits-gather contract, `logits_processor.py:160-228`); (b)
+  `VLLM_ENABLE_PCIE_ALLREDUCE=1 VLLM_PCIE_ALLREDUCE_BACKEND=b12x` (decode ARs ≤84 KB all qualify).
+- *Expected:* (a) +0.15–0.3 ms/step; (b) unknown sign — measure, do not assume.
+- *Effort:* one session. *Risk:* none (flags, revertable).
+
+### Phase 2 — small fork patches, each behind a flag (week-scale)
+
+**P2.1 — `in_proj_ba` split-K GEMV (F10.2, decode +5–7 %).**
+- *Change:* a Triton split-K GEMV for `m ≤ 16, N ≤ 128, K ≥ 4096` bf16 shapes, dispatched from
+  `UnquantizedLinearMethod.apply` (`$SP/vllm/model_executor/layers/linear.py`) behind
+  `VLLM_TINY_N_GEMV=1`. Design: grid over (N, split_k); each block reduces a K-slice with vectorized
+  128-bit loads; fp32 accumulate; single atomic-free two-pass reduction (worth ~3 µs vs the
+  measured 28 µs `cutlass_80_wmma` pick). Must be CUDA-graph-capturable (no allocations in the hot
+  path — preallocate the split-K workspace per shape like `_EXL3_RECONSTRUCT_SCRATCH`).
+- *Validation:* unit parity vs `torch.nn.functional.linear` (fp32 ref, ≤1e-2 rel for bf16); graph
+  capture smoke (the op replays inside FULL_DECODE_ONLY); protocol A/B expecting −1.2 ms/step.
+- *Effort:* 1–2 days. *Risk:* low; kernel is trivial, blast radius is one dispatch branch.
+- *Note:* check first whether cuBLASLt already beats the observed pick — a 30-minute
+  `torch.matmul` vs `cublasLtMatmul` heuristic probe on 4×5120 @ 5120×96 may make the Triton kernel
+  unnecessary. Do the probe before writing any kernel.
+
+**P2.2 — strided-C shard writes, delete the merge cats (F5.3, PP +5–8 % est).**
+- *Change:* `hgemm` already takes strided C (`hgemm.cu:41-51,77`: ldc = `c.stride(-2)`, columns
+  contiguous). In `Exl3LinearMethod.apply` (exl3.py:2710-2726): allocate the merged output once,
+  pass `output[:, start:end]` views into an out-variant of the prefill path instead of cat-ing
+  per-shard results. Two sub-tasks: (a) an out-variant custom op (`_exl3_gemm_out`) so Dynamo keeps
+  the runtime branch opaque (same pattern as `_b12x_trellis_linear_out`, exl3.py:1258-1306);
+  (b) `had_r_128` on a strided row view — shard widths are all multiples of 128 so the transform is
+  group-aligned, but the ext kernel must take a row-stride argument (ext change,
+  `$EXT/hadamard.cu`) or the svh hadamard stays on a contiguous temp for the shard (halves the win,
+  still positive).
+- *Validation:* bitwise parity vs the cat path (same kernels, same order), then PP A/B.
+- *Effort:* 2–4 days incl. ext rebuild (b). *Risk:* moderate — touches the load-bearing apply path;
+  the flag gate and parity test contain it. *Dependency:* none, but do after P1.2 so the chunk-size
+  baseline is settled.
+
+**P2.3 — double-buffered reconstruct + second stream (F5.2/F8, hides most of the 13 % reconstruct
+share at 2048 chunks; less relevant if P1.2 lands 6144).**
+- *Change:* `_reconstruct_scratch` (exl3.py:785-795) becomes a 2-deep ring keyed the same way;
+  issue `reconstruct[i+1]` on a side stream with an event wait on `hgemm[i]`'s completion of the
+  *previous* buffer (WAR resolved by the ring). Bound extra memory: one more 170 MB buffer per
+  geometry class (three classes live → ~510 MB, fits the current profile's headroom — verify against
+  the §21 262k fit before defaulting ON).
+- *Validation:* nsys/torch-profiler confirming overlap; PP A/B; 262k fit re-check.
+- *Effort:* 1–2 days. *Risk:* moderate (stream discipline); *Decision point:* if P1.2 ships 6144 as
+  default, expected win drops to ~4–5 % — re-estimate before building.
+
+### Phase 3 — decision-gated structural work (only after Phase 1–2 numbers are in)
+
+**P3.1 — merged QKV serialization (F3/F10.3, decode +5 %).**
+- The blocker is the checkpoint, not the runtime: q/k/v are separate trellises with separate
+  suh/svh; the runtime already serves tuple-shard merged matrices (`in_proj_qkvz`,
+  exl3.py:2931-2932 — in-tree precedent). Two routes: (a) quantizer emits attention QKV as one
+  serialized matrix with per-component svh slices (checkpoint format change, next requant campaign);
+  (b) load-time online re-encode via the existing online-quantizer machinery
+  (exl3.py:238-283) — costs startup time and re-quantization error on 3×16 matrices. Route (a) is
+  clean and free at the next hydration; route (b) is not worth its KLD risk for +5 %.
+- *Plan:* file it as a requirement on the next quantization campaign; no runtime work now.
+
+**P3.2 — draft-head cost (F6/F9, ceiling +8–10 %).**
+- Research spike, 1 day, two candidates measured in isolation before any integration: (a) run the 3
+  draft-sampling head GEMMs on a side stream overlapped with the next body replay (legal: the body
+  graph does not consume logits; needs an event before the verify step consumes draft ids); (b) a
+  draft-only top-k head over a frozen shortlist vocabulary (changes acceptance distribution —
+  requires an acceptance-rate A/B, and F9 prediction 2 says any win here moves the depth-schedule
+  knee, so re-derive the schedule after).
+- *Decision point:* only proceed if P1.1's shipped form leaves the draft head >1.5 ms/step in the
+  bare-metal trace.
+
+**P3.3 — FP8 prefill (F5.6): stays declined.** The +31 % PP costs +0.0141 mean KLD (measured,
+docs/41 §3) — above this artifact's entire quantization budget. Do not rebuild the ext for it.
+Revisit only if the owner reopens the fidelity budget; the shipped-but-unused `reconstruct_fp8dg_nt`
+(+ DeepGEMM) is the implementation to evaluate then, not `reconstruct_fp8_slice`.
+
+### Sequencing and stop conditions
+
+```mermaid
+graph LR
+  A[P1.1 gate clause<br/>await Main bare-metal] --> C[P2.1 ba GEMV]
+  B[P1.2 chunk 6144<br/>requalify ladder] --> D[P2.2 strided-C cats]
+  B --> E{P2.3 still worth it?}
+  C --> F[P3.2 draft-head spike?]
+  A --> F
+  G[P1.3 dead flag warn] --> H[done]
+  I[P1.4 TP2 flag A/Bs] --> H
+```
+
+- **Decode stop condition:** stop after the phase in which measured C1 decode reaches **≥90 % of the
+  achievable ceiling** (i.e. ≥ ~1350 GB/s effective on the true 20.5 GB/step numerator, ≈ 118+ tok/s
+  rental-equivalent at current acceptance). F10's structural list says the last ~10 % costs new
+  kernels — not worth it on this fork.
+- **Prefill stop condition:** stop when the linears' measured ~5.9k tok/s bound is within 25 %
+  (≈4.7k end-to-end), or when the remaining delta is attributed to the GDN/Triton structural item.
+- **Standing rule from F2/F9:** no future work item may quote the 1.792 TB/s spec as headroom;
+  every new claim uses the measured ceiling and the 20.5 GB/step numerator.
+
+Expected stack if Phase 1+2 all land at midpoints: decode +12–20 % single-stream (on top of the
++15.4 % local gate measurement where its dispatch share survives bare metal), prefill +20–30 % —
+both without touching the fidelity budget.
