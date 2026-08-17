@@ -1,0 +1,84 @@
+{
+ "schema": "qwen38-tb21-1m-yarn-arm/1",
+ "generated_utc": "2026-08-17T16:22:04Z",
+ "what_this_is": "The task-level test of the static-YaRN penalty: a full Terminal-Bench 2.1 pass served at 1,000,000 tokens via Qwen's official static YaRN, against the otherwise-comparable 262k-native arm. Intended to corroborate the token-level result in docs/46 s31. It corroborates the DIRECTION but does NOT independently establish the effect.",
+ "arms": {
+  "1M_YaRN": {
+   "resolved": 48,
+   "of": 89,
+   "wall_clock_h": 3.6,
+   "concurrency": "C16 (8 shards x n=2)",
+   "timeout_multiplier": 2.0,
+   "context": 1000000,
+   "rope": "static YaRN factor 4.0",
+   "receipt": "receipts/tb21-8x1m-p1-merged.json"
+  },
+  "262k_native": {
+   "resolved": 56,
+   "of": 89,
+   "wall_clock_h": 2.35,
+   "concurrency": "C32 (8 shards x n=4)",
+   "timeout_multiplier": 2.0,
+   "context": 262144,
+   "rope": "native",
+   "receipt": "receipts/tb21-8x-p1-merged.json"
+  }
+ },
+ "result": {
+  "delta_resolved": -8,
+  "held": 43,
+  "lost": 13,
+  "gained": 5,
+  "lost_tasks": [
+   "build-pov-ray",
+   "compile-compcert",
+   "configure-git-webserver",
+   "largest-eigenval",
+   "overfull-hbox",
+   "pytorch-model-cli",
+   "rstan-to-pystan",
+   "sam-cell-seg",
+   "sanitize-git-repo",
+   "sparql-university",
+   "sqlite-db-truncate",
+   "torch-tensor-parallelism",
+   "tune-mjcf"
+  ],
+  "gained_tasks": [
+   "circuit-fibsqrt",
+   "model-extraction-relu-logits",
+   "polyglot-c-py",
+   "polyglot-rust-c",
+   "protein-assembly"
+  ]
+ },
+ "statistics": {
+  "discordant_pairs": 18,
+  "lost_vs_gained": "13 vs 5",
+  "sign_test_two_sided_p": 0.0963,
+  "non_timeout_only": {
+   "lost": 8,
+   "gained": 2,
+   "sign_test_two_sided_p": 0.1094
+  },
+  "VERDICT": "NOT statistically significant at either cut. The direction matches the token-level result and the magnitude is plausible, but with 18 discordant pairs a 13-5 split is p = 0.096, so this arm CORROBORATES s31 and does not independently prove anything. The recommendation rests on s31's token-level measurement, whose 95 % CI [8.42e-03, 1.29e-02] excludes zero by a wide margin against a bit-identical control."
+ },
+ "why_the_split_by_failure_mode_matters": {
+  "total_AgentTimeoutError": "22 in BOTH arms - identical",
+  "timeout_mode_churn": "5 lost / 3 gained, net -2",
+  "non_timeout": "8 lost / 2 gained, net -6",
+  "reading": "Because the total timeout count is identical, the clock budget did not change between arms; the timeouts merely landed on different tasks. The asymmetry lives in the NON-timeout failures, which is where a fidelity effect would show up rather than a scheduling one. That is the most YaRN-consistent feature of the data, and it is still only p = 0.11."
+ },
+ "confounds_stated": [
+  "CONCURRENCY DIFFERS: C16 here versus C32 in the reference arm. The direction of that confound FAVOURS this arm - less contention, so fewer contention-induced timeouts - which is why a -8 result is not explained by it and if anything is understated.",
+  "WALL CLOCK IS NOT COMPARABLE: 3.60 h against 2.35 h is 1.53x at HALF the concurrency, so it is a function of the shard width, not of the rope. No wall-clock claim is made.",
+  "Both arms are SINGLE pass, so both carry best-of-1 variance; the 262k arm alone showed 5 regressions against its own best-of-2 reference. Churn of this size is expected and is why the sign test, not the net, is quoted.",
+  "The 2 RuntimeErrors in both arms are the same two nested-virt qemu voids, unattemptable on this host."
+ ],
+ "conclusion": "Serving at 1M via static YaRN scored 48/89 against 262k-native's 56/89. Read together with s31 - where the same rope change moved the next-token distribution by 1.057e-02 with the window itself proven fidelity-free - the task-level and token-level results point the same way. The task-level arm is the weaker of the two pieces of evidence and should be cited as corroboration, never as the primary result.",
+ "does_not_revise": [
+  "31/89 single pass stock clock",
+  "44/89 best-of-2 stock clock (published lower bound)",
+  "56/89 single pass 2x clock at 262k native"
+ ]
+}

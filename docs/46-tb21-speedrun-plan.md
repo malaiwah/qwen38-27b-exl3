@@ -1612,3 +1612,48 @@ schedule `[[1,4,3],[5,64,1]]` needs no change for vision work.
 script-reproducible; counter deltas come from one poller against a DP8 endpoint whose `/metrics` aggregates
 across engines, so rates are host-wide; and the engine exposes no modality-split prompt tokens, so 29.8:1
 bundles text and vision tokens together.
+
+
+## §33 - The task-level YaRN test: 48/89, and why that is corroboration rather than proof
+
+**Receipt: [`tb21-1m-yarn-arm.json`](../receipts/tb21-1m-yarn-arm.json).** §31 measured the static-YaRN penalty
+at the token level on a quiet card. This is the same question asked at the task level, on the production
+endpoint, with a full Terminal-Bench 2.1 pass.
+
+| arm | resolved | wall | concurrency | rope |
+|---|---:|---:|---|---|
+| 262k native | **56/89** | 2.35 h | C32 | native |
+| 1M static YaRN | **48/89** | 3.60 h | C16 | YaRN factor 4.0 |
+
+**Net −8, decomposed: 43 held, 13 lost, 5 gained.**
+
+**The confound runs the wrong way for the sceptic, which is the useful part.** Concurrency differs — C16 here
+against C32 there — and *less* contention should mean *fewer* contention-induced timeouts. So the confound
+favours the 1M arm, and a −8 result is not explained by it. Wall clock, by contrast, is **not** comparable at
+all: 1.53× at half the shard width is a function of concurrency, not rope, and no wall-clock claim is made.
+
+### The honest statistics
+
+With **18 discordant pairs**, a 13–5 split is a **two-sided sign test p = 0.096**. Restricting to non-timeout
+failures — 8 lost against 2 gained — gives **p = 0.109**. **Neither reaches conventional significance.** Both
+arms are single-pass, and the 262k arm alone showed 5 regressions against its own best-of-2 reference, so churn
+of this magnitude is expected. **This arm corroborates §31; it does not independently prove anything.**
+
+### One feature of the data is genuinely YaRN-shaped
+
+**The total `AgentTimeoutError` count is identical at 22 in both arms.** The clock budget did not change; the
+timeouts simply landed on different tasks (5 lost, 3 gained, net −2). The asymmetry lives almost entirely in
+the **non-timeout** failures — **8 lost against 2 gained** — and non-timeout failures are where a *fidelity*
+effect shows up, whereas a scheduling effect would move the timeout count. That is the most YaRN-consistent
+structure in the result, and it is still only p = 0.11.
+
+### What this does and does not change
+
+**The recommendation is unchanged and still rests on §31**, whose 95 % CI of [8.42e-03, 1.29e-02] excludes zero
+by a wide margin against a **bit-identical** same-server control — a far stronger instrument than 89 binary task
+outcomes. Run **262k native by default**; add a separate 1M-YaRN endpoint only for requests that genuinely
+exceed the native window.
+
+**Nothing here revises a published number.** 31/89 (single pass, stock clock), 44/89 (best-of-2, stock clock,
+the permanent lower bound) and 56/89 (single pass, 2× clock, 262k) all stand exactly as they were, and 48/89 is
+likewise not a leaderboard figure — its agent timeout is non-stock.
