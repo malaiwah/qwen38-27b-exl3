@@ -393,3 +393,32 @@ improvable but small.)
   epilogue (cublasLt epilogue or a custom kernel) — structural.
 
 ---
+## F9. The head-traffic model mechanises the empirical MTP depth schedule — and the honest headline
+
+**The blunt restatement first.** Every published "decode = 55–65 % of roofline" figure was computed
+from a numerator that was too small (17.4 GB/step assumed; 20.5 GB/step actually streamed — F6) *and*
+a denominator that was too large (1.792 TB/s spec; 1.46–1.52 TB/s achievable — F2). With both fixed,
+**single-stream decode runs at ~85 % of the achievable ceiling. The gap was mostly arithmetic.**
+There is no large hidden decode inefficiency to chase; the recoverable items are the specific,
+bounded ones in F3/F6/F7 (~15 % total, half of it already measured as recovered in F7).
+
+**The depth-schedule mechanism (cross-ref docs/46 §17).** The shipping schedule
+`[[1,4,3],[5,64,1]]` — depth 3 at/below the C4 knee, depth 1 above — was derived empirically
+(+11–17 % aggregate) without a mechanism. F6 supplies it. From source, MTP depth *d* costs **d+1
+full lm_head streams per step** (target verify + one per draft sampling; `logits_processor.py:
+139-185`, `llm_base_proposer.py:481-495`), and each depth level adds 0.953 GB (head) + 0.27 GB
+(draft body) = **1.22 GB/step, of which 78 % is head traffic — head bytes, not draft compute, are
+the dominant cost of MTP depth.** Depth 3 → 3.81 GB/step of head; depth 1 → 1.91 GB. Head+draft
+bytes are per-*step* fixed costs that do not amortize with concurrency the way the 15.9 GB body does
+(one verify GEMM serves all C requests): above the knee, where aggregate throughput is
+bandwidth-bound, dropping to depth 1 removes 2.44 GB/step (~12 % of step traffic) at a shrinking
+marginal-acceptance price — exactly the crossover §17 measured.
+
+**Testable predictions** (either falsifies the model):
+1. Step time vs depth has slope ≈ 1.22 GB ÷ 1.3–1.5 TB/s ≈ **0.8–0.95 ms per depth level** (plus an
+   eager-dispatch constant, F7), independent of batch size.
+2. Any reduction of per-sampling head cost — the F7 gate patch, a draft-only truncated head, or
+   head/side-stream overlap — extends the depth-3 regime to higher concurrency, i.e. moves the
+   schedule's knee upward.
+
+---

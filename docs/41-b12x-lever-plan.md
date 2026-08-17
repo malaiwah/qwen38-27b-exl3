@@ -74,6 +74,14 @@ Full classified inventory is in the receipt (`knob_inventory`). The count that m
 | **(c) present but declined for our shapes** | 13 | `B12X_ATTN`, the generic CuTe trellis scheduler, `run_w4a8`, every `--linear-backend b12x` kernel, MHC / WO / MoE / sparse-indexer / MLA / PCIe / absorb-BMM, and 150-odd of the 158 env knobs |
 | **(d) absent from the build** | 3 | b12x's `mul1` codebook, the fused K6/MCG CuTe specialization (b12x PR #221), `gemm.bf16_gemv` (built but not wired) |
 
+> **ADDITION 2026-08-17 (docs/47 F5): a fifth state exists — (e) live-looking but INERT on the
+> shipped image.** `VLLM_EXL3_PREFILL_FP8=1` is dead code with the bundled extension: the fork
+> probes for `reconstruct_fp8_slice` (exl3.py:877-878), which the shipped
+> `exllamav3_ext.cpython-312*.so` does not export (`nm`-verified; `bindings.cpp:95-101` lists
+> `reconstruct_fp8dg_nt` but not `reconstruct_fp8_slice`). Setting the flag silently runs the fp16
+> path. The "+31 % prefill" measurement in §3 required the uncommitted rebuilt extension. Do not
+> tune this flag on r34.
+
 ### 1.1 The only b12x code we actually execute
 
 One path, and it is narrower than it looks.
