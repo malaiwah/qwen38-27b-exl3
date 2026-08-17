@@ -1,0 +1,97 @@
+{
+ "schema": "qwen38-tb21-512k-preregistration/1",
+ "generated_utc": "2026-08-17T17:30:54Z",
+ "what_this_is": "PRE-REGISTERED before the arm launches. A Terminal-Bench 2.1 arm served at 524,288 tokens via Qwen's official static YaRN at FACTOR 2.0 - the setting Qwen's own card prescribes for a 512k window, since they advise tuning factor to actual need rather than always using 4.0. The question: does the fidelity penalty measured at factor 4.0 (~1.03e-02 mean top-20 KLD, docs/46 s31/s34) scale DOWN with the factor?",
+ "why_a_subset": "Credits are being deliberately drained rather than protected, so the arm runs on the tasks that actually discriminate instead of all 89. Running the full set would cost ~2x the time for the same signal, because 43 tasks resolved in BOTH the 262k and 1M arms and carry no information about the rope.",
+ "selection_rule": "union of (a) the 45 twice-failed tasks in receipts/terminal-bench-2.1-attribution.json - every task that failed both stock-clock passes - and (b) the 13 tasks the 1M-YaRN arm LOST relative to 262k per receipts/tb21-1m-yarn-arm.json; then MINUS the 2 nested-virt qemu tasks, which are structurally unattemptable on a Jarvis VM; then MINUS one further exclusion below.",
+ "counts": {
+  "twice_failed": 45,
+  "lost_by_1M_arm": 13,
+  "overlap": 8,
+  "union": 48,
+  "qemu_voids_excluded": [
+   "qemu-alpine-ssh",
+   "qemu-startup"
+  ],
+  "further_exclusion": {
+   "task": "install-windows-3.11",
+   "reason": "Pre-registered exclusion on DISK-SAFETY grounds, decided before launch and not after seeing a result. In the 1M arm this single task emitted a 1.6 GB asciinema recording plus a 545 MB tmux pane dump - 2.1 GB from one task, and 95 percent of all job-directory bytes. It has never resolved in any arm. Risking the driver's disk for a task that carries no rope signal is a bad trade."
+  },
+  "final_task_count": 47
+ },
+ "tasks": [
+  "adaptive-rejection-sampler",
+  "break-filter-js-from-html",
+  "build-cython-ext",
+  "build-pov-ray",
+  "caffe-cifar-10",
+  "cancel-async-tasks",
+  "chess-best-move",
+  "circuit-fibsqrt",
+  "cobol-modernization",
+  "compile-compcert",
+  "configure-git-webserver",
+  "dna-assembly",
+  "extract-elf",
+  "extract-moves-from-video",
+  "feal-linear-cryptanalysis",
+  "gcode-to-text",
+  "gpt2-codegolf",
+  "headless-terminal",
+  "largest-eigenval",
+  "mailman",
+  "make-doom-for-mips",
+  "make-mips-interpreter",
+  "model-extraction-relu-logits",
+  "mteb-leaderboard",
+  "mteb-retrieve",
+  "overfull-hbox",
+  "path-tracing",
+  "path-tracing-reverse",
+  "polyglot-rust-c",
+  "protein-assembly",
+  "pytorch-model-cli",
+  "query-optimize",
+  "raman-fitting",
+  "regex-chess",
+  "rstan-to-pystan",
+  "sam-cell-seg",
+  "sanitize-git-repo",
+  "schemelike-metacircular-eval",
+  "sparql-university",
+  "sqlite-db-truncate",
+  "torch-pipeline-parallelism",
+  "torch-tensor-parallelism",
+  "train-fasttext",
+  "tune-mjcf",
+  "video-processing",
+  "winning-avg-corewars",
+  "write-compressor"
+ ],
+ "arm_config": {
+  "context": 524288,
+  "rope": "static YaRN, factor 2.0, original_max_position_embeddings 262144",
+  "topology": "DP8",
+  "concurrency": "C32 (8 shards x n=4, DP8's measured knee)",
+  "timeout_multiplier": 2.0,
+  "reasoning_effort": "default (xhigh, unset)",
+  "image": "vllm:gg-r34-tb21-sr1",
+  "serve_argv_shape": "docker run --rm --name qwen38-dp8-512k --gpus all --ipc host -p 10.0.0.5:8000:8000 -p 127.0.0.1:8000:8000 -v /home/ubuntu/models:/models:ro -e VLLM_USE_V2_MODEL_RUNNER=1 -e VLLM_EXL3_GRAPH_DECODE=1 -e VLLM_EXL3_PREFILL_RECONSTRUCT_M=128 -e VLLM_ALLOW_LONG_MAX_MODEL_LEN=1 --entrypoint /opt/venv/bin/vllm vllm:gg-r34-tb21-sr1 serve /models/qwen38-hyd --served-model-name qwen38 --data-parallel-size 8 --quantization exl3 --quantization-config <as production> --hf-overrides {\"text_config\":{\"rope_parameters\":{\"mrope_interleaved\":true,\"mrope_section\":[11,11,10],\"rope_type\":\"yarn\",\"rope_theta\":10000000,\"partial_rotary_factor\":0.25,\"factor\":2.0,\"original_max_position_embeddings\":262144}}} --kv-cache-dtype fp8 --mamba-cache-mode align --enable-prefix-caching --compilation-config {\"cudagraph_mode\":\"FULL_DECODE_ONLY\"} --max-model-len 524288 --gpu-memory-utilization 0.92 --max-num-seqs 64 --max-num-batched-tokens 8192"
+ },
+ "comparability": {
+  "comparable_to": "the 262k-native arm (56/89) and the 1M-YaRN arm (48/89) ON THE SHARED SUBSET ONLY - all three used C32-or-C16, 2x timeouts, the same image and the same default reasoning effort. The denominator here is the subset, never 89.",
+  "NOT_comparable_to": [
+   "31/89 single pass stock clock",
+   "44/89 best-of-2 stock clock (the published lower bound)",
+   "any leaderboard figure, because the agent timeout is non-stock"
+  ],
+  "note": "The 1M arm ran at C16 and this runs at C32, so contention differs; the 262k arm also ran C32. Where this arm is compared to 1M, the concurrency difference is stated."
+ },
+ "attempt_caps_binding": {
+  "serving_boot_attempts": 2,
+  "harbor_resumes": 1,
+  "abandon_if": "fewer than 30 % of the pre-registered tasks have results after 2.5x the expected wall clock",
+  "merge_interval_minutes": 30,
+  "rationale": "owner set no balance floor and asked for value even if interrupted, so partial merges are the deliverable"
+ }
+}
