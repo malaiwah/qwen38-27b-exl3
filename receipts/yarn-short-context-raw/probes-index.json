@@ -496,11 +496,12 @@
   ]
  },
  "full_probe_set": {
-  "filename": "probes-verify.json",
-  "bytes": 1646588,
+  "filename": "probes.json",
+  "bytes": 1654358,
   "sha256": "374d3021a0cfc327eb570902c0b22afbba1428232791049fff80caaa8cfd3e21",
   "regenerate_with": "tools/yarn_probe_build.py --repo <repo> --model <model dir> --out probes.json --per-bucket 12",
-  "verify": "the regenerated file's sha256 must equal the value above; per-prompt text_sha256 values below let a reader localise any mismatch"
+  "verify": "the regenerated file's sha256 must equal the value above; per-prompt text_sha256 values below let a reader localise any mismatch",
+  "bytes_correction": "The byte count recorded on first write was 1646588, which is inconsistent with the sha256 in the same record: a sha256 match with a byte mismatch is impossible for identical content, so the size field was wrong and the digest was right. Corrected to the measured 1654358 B against the same file whose sha256 is 374d3021a0cfc327eb570902c0b22afbba1428232791049fff80caaa8cfd3e21. The digest is the authoritative field and is what `verify` instructs a reader to check; comparability of the probe set is unaffected. Filename also corrected from probes-verify.json to probes.json, the file that was actually hashed and served."
  },
  "probes": [
   {
@@ -521,7 +522,7 @@
    "text_sha256": "cf756fa5e9efe18e846c2ee35929aa30ce2de764146e2b281a96f97ac107c0ea",
    "text_chars": 4729,
    "head_64_chars": "_qkv,in_proj_z,out_proj}` (48 L) | 144 | 5.5365 B | 11.07 GB |\n|",
-   "tail_64_chars": "−2.64 | −4.14 |\n| **B** = A + all 64 `down_proj` at K6 | 30.26 |"
+   "tail_64_chars": "\u22122.64 | \u22124.14 |\n| **B** = A + all 64 `down_proj` at K6 | 30.26 |"
   },
   {
    "id": "b8192-00",
@@ -530,7 +531,7 @@
    "n_tokens": 8192,
    "text_sha256": "e4f099ce6953a04ad34761e8d51378175dcb494a6a71ec670a7af4b8cde366ec",
    "text_chars": 25591,
-   "head_64_chars": " **20.71** | −1.21 | −2.71 |\n| **C** = B + last-8-layer MLP BF16",
+   "head_64_chars": " **20.71** | \u22121.21 | \u22122.71 |\n| **C** = B + last-8-layer MLP BF16",
    "tail_64_chars": "ferred silently.\n\n---\n\n## 1. Side-by-side serving matrix\n\n### 1."
   },
   {
@@ -580,7 +581,7 @@
    "n_tokens": 32768,
    "text_sha256": "37b1a7475968f3c320daa47932b8d933e58d90e33917c9a17e294f3583176a70",
    "text_chars": 99518,
-   "head_64_chars": " `N`, `bits` — startup fails **before** capture instead of\nfault",
+   "head_64_chars": " `N`, `bits` \u2014 startup fails **before** capture instead of\nfault",
    "tail_64_chars": "verter worktree, same code diff, same seeds, same protocol, same"
   },
   {
@@ -601,7 +602,7 @@
    "text_sha256": "8ce36b9a1c3b185ff972597159641bd13d89d5f014823da5220d9cb1d5c080ba",
    "text_chars": 5992,
    "head_64_chars": ": this is **one** adversarially-disjoint corpus\nswap on **one** ",
-   "tail_64_chars": "e padding sixteenth — the engine's own\n\"may waste at most 6.25 %"
+   "tail_64_chars": "e padding sixteenth \u2014 the engine's own\n\"may waste at most 6.25 %"
   },
   {
    "id": "b8192-02",
@@ -610,7 +611,7 @@
    "n_tokens": 8192,
    "text_sha256": "564bb6209e1d1253857f474d34309b2dfa59db74414f314eb2ab4079473168f8",
    "text_chars": 27162,
-   "head_64_chars": " KV cache memory\" line made numeric — and [34](34-vram-class-pro",
+   "head_64_chars": " KV cache memory\" line made numeric \u2014 and [34](34-vram-class-pro",
    "tail_64_chars": "onfig/release-evidence hashes, tokenizer revision, runtime image"
   },
   {
@@ -631,7 +632,7 @@
    "text_sha256": "257068f615f049c0911079922c660c9cb2218a16ca4eb79b0538edbcc6e39192",
    "text_chars": 1663,
    "head_64_chars": " and every\nnumber is either traced to a receipt or labelled **[P",
-   "tail_64_chars": "il-ctx.json`) |\n| **16 GB** | **NO-GO as a SKU — publish §6 as a"
+   "tail_64_chars": "il-ctx.json`) |\n| **16 GB** | **NO-GO as a SKU \u2014 publish \u00a76 as a"
   },
   {
    "id": "b2048-03",
@@ -660,7 +661,7 @@
    "n_tokens": 32768,
    "text_sha256": "c5b2ae8b1dfb067cd4338ca391367de2a29739b37893f8b921bb5a1b734739a8",
    "text_chars": 91751,
-   "head_64_chars": " `a·L + M` of §4.1, whose fixed\n> per-request term is **0.63 GiB",
+   "head_64_chars": " `a\u00b7L + M` of \u00a74.1, whose fixed\n> per-request term is **0.63 GiB",
    "tail_64_chars": "e [U-Q38] |\n| 24 GB-class size competitor | `Qwen3.8-27B-UD-Q4_K"
   },
   {
@@ -690,7 +691,7 @@
    "n_tokens": 8192,
    "text_sha256": "d4737303939beb27749f724d7b8674731da8b56d84c5ecde4a430d9b029eb2e0",
    "text_chars": 24187,
-   "head_64_chars": " = 6.9525 ± 0.04498` and the scoring runs' `Mean PPL(base)\n6.950",
+   "head_64_chars": " = 6.9525 \u00b1 0.04498` and the scoring runs' `Mean PPL(base)\n6.950",
    "tail_64_chars": "3,481** |\n\n* **Speculative depth is the only real lever.** Depth"
   },
   {
@@ -710,7 +711,7 @@
    "n_tokens": 512,
    "text_sha256": "9f7ac8ce9ef66ae2300393b043c589493c398f26e192ac727fe79588becdb0eb",
    "text_chars": 1795,
-   "head_64_chars": "-06-08) — a\n  template `ValueError` used to deadlock the whole `",
+   "head_64_chars": "-06-08) \u2014 a\n  template `ValueError` used to deadlock the whole `",
    "tail_64_chars": "hink></think>` in history | **real, live, measured** | K4+K5; `c"
   },
   {
@@ -721,7 +722,7 @@
    "text_sha256": "37d01bb03cdd8f2e95bfa2e1a1f9673cead2ab8963c6d6308bdeb432da50ffa6",
    "text_chars": 7279,
    "head_64_chars": "06` 82 vs 78 tokens, two think blocks in the diff |\n| Official 3",
-   "tail_64_chars": "th Qwen (alias `high`→`xhigh`, tolerate `minimal`/`max`, exactly"
+   "tail_64_chars": "th Qwen (alias `high`\u2192`xhigh`, tolerate `minimal`/`max`, exactly"
   },
   {
    "id": "b8192-05",
@@ -740,8 +741,8 @@
    "n_tokens": 32768,
    "text_sha256": "f834e6a4ee841de2b7fefbf009ee473e208a6f9f2531530756ad0d60d31d15e8",
    "text_chars": 97824,
-   "head_64_chars": "62,144, stock vLLM — at 2.65 GiB less. 19,932 downloads, through",
-   "tail_64_chars": "j) | 100.0 |\n| 10240×5120 (mtp.fc) | 100.0 |\n| 5120×6144 (GDN ba"
+   "head_64_chars": "62,144, stock vLLM \u2014 at 2.65 GiB less. 19,932 downloads, through",
+   "tail_64_chars": "j) | 100.0 |\n| 10240\u00d75120 (mtp.fc) | 100.0 |\n| 5120\u00d76144 (GDN ba"
   },
   {
    "id": "b512-06",
@@ -750,8 +751,8 @@
    "n_tokens": 512,
    "text_sha256": "2c5a49ffdd809c97ac18c16c93307e7bc5bd32a7e491d027c4dde01f884e2730",
    "text_chars": 1400,
-   "head_64_chars": ") | 60.0 |\n| 6144×5120 (o/out) | 60.0 |\n| 5120×1024 (k/v) | 10.0",
-   "tail_64_chars": "The \\[INFERENCE] figure is kept above rather than overwritten —\n"
+   "head_64_chars": ") | 60.0 |\n| 6144\u00d75120 (o/out) | 60.0 |\n| 5120\u00d71024 (k/v) | 10.0",
+   "tail_64_chars": "The \\[INFERENCE] figure is kept above rather than overwritten \u2014\n"
   },
   {
    "id": "b2048-06",
@@ -811,7 +812,7 @@
    "text_sha256": "473762aa2b3ef8abedcffd73e931a752965a8a8c0a741f130509a7005522f31b",
    "text_chars": 22244,
    "head_64_chars": "\n(PASS, 62 s, connector-reuse PASS too) and recorded the rule in",
-   "tail_64_chars": "chunks — 2.67× less redundant\n   decode; the qualified profile's"
+   "tail_64_chars": "chunks \u2014 2.67\u00d7 less redundant\n   decode; the qualified profile's"
   },
   {
    "id": "b32768-07",
@@ -850,7 +851,7 @@
    "n_tokens": 8192,
    "text_sha256": "3a6f731c249752da29e7f5a9fbd05829efef1999de7f20eb1d37e4e6330100e7",
    "text_chars": 25210,
-   "head_64_chars": " 04) | — | 100 % by definition | 21,586,964,548 |\n| one K5 rung ",
+   "head_64_chars": " 04) | \u2014 | 100 % by definition | 21,586,964,548 |\n| one K5 rung ",
    "tail_64_chars": "0, 0.003852] | 97.44 % | 5.557 |\n| `Qwen/Qwen3.8-27B-FP8` | 0.00"
   },
   {
@@ -871,7 +872,7 @@
    "text_sha256": "316284a476b4e338d32d08fff8b78ae31e01c1d68eefa3e1662f11c731ebc0df",
    "text_chars": 2050,
    "head_64_chars": " you get these numbers\" is no longer\nan untested expectation: a ",
-   "tail_64_chars": "se of\nreconstruction only — the runtime's `reconstruct_had_slice"
+   "tail_64_chars": "se of\nreconstruction only \u2014 the runtime's `reconstruct_had_slice"
   },
   {
    "id": "b2048-09",
@@ -900,7 +901,7 @@
    "n_tokens": 32768,
    "text_sha256": "fab859cdc4989230257787dcb1086b7f2dd6b580234a00bb282571030e2f8366",
    "text_chars": 98123,
-   "head_64_chars": " — and\n**0.2287 %** of positions exceed 0.1 against FP8's 0.3912",
+   "head_64_chars": " \u2014 and\n**0.2287 %** of positions exceed 0.1 against FP8's 0.3912",
    "tail_64_chars": "che\nhit: measured 100 % prefix reuse when the client returns it,"
   },
   {
@@ -930,7 +931,7 @@
    "n_tokens": 8192,
    "text_sha256": "c9f798d2a7132e6d8e23bf2a30ea9845e4923985f24b583b11eb42d3ab455fc7",
    "text_chars": 24741,
-   "head_64_chars": ") | 0.003210 | **0.002760** (−14 %, paired −0.000450 on 4,922/5,",
+   "head_64_chars": ") | 0.003210 | **0.002760** (\u221214 %, paired \u22120.000450 on 4,922/5,",
    "tail_64_chars": "in, not what it is worth in a live server relative to that floor"
   },
   {
@@ -961,7 +962,7 @@
    "text_sha256": "334e8cf87defc00223f3e406ab552a679a177d2684edd7d754e084ddab6838c5",
    "text_chars": 7233,
    "head_64_chars": "tool_reference` item on `/v1/messages`, 400s with\n  `Unexpected ",
-   "tail_64_chars": " preserves the **citation** — a resolvable repo id, revision and"
+   "tail_64_chars": " preserves the **citation** \u2014 a resolvable repo id, revision and"
   },
   {
    "id": "b8192-11",
@@ -970,7 +971,7 @@
    "n_tokens": 8192,
    "text_sha256": "019be162d7bb15adb0ca341e353c3493a5381f2c3e400fde6a3c110445361a07",
    "text_chars": 25316,
-   "head_64_chars": "\ndigest table that survive an upstream squash or delete — and is",
+   "head_64_chars": "\ndigest table that survive an upstream squash or delete \u2014 and is",
    "tail_64_chars": "thub.com/malaiwah/qwen38-27b-exl3/tree/main/receipts),\nschema `q"
   },
   {
