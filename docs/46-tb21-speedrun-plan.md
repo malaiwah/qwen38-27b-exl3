@@ -1225,3 +1225,55 @@ reroutes (`N=248320`), so all three threads of this investigation converge on on
 {1,2,4,8} 128-aligned. This is **verified arithmetically only - not measured** - and it changes published
 bytes, so it is a suggestion for a *future* build and never a retrofit of a shipped quant. We have not filed
 it upstream; new upstream filings need owner approval.
+
+
+## §28 - The bare-metal patch A/B, and the harness that could not see the answer
+
+**Receipt: [`kernel-gap-bare-metal-ab.json`](../receipts/kernel-gap-bare-metal-ab.json).** This was meant to
+turn KernelGap's predicted **+3-15%** bracket into a number. **It did not, and the reason is the interesting
+part: the effect is smaller than our own measurement noise.**
+
+Setup: real docker (no proot), single GPU on the 8x host, 5 repeats per cell, rungs C1-C8, three shapes.
+Before running anything the factorial design was verified at the byte level - `exl3.py` changes only in the
+gate arms, `linear.py` only in the transpose arms, both in the "both" arm - so no arm could silently be the
+baseline.
+
+| | valid cells | median delta | mean delta | range |
+|---|---:|---:|---:|---|
+| aggregate tok/s | 11 | **+0.98%** | +1.41% | -1.87% .. +8.94% |
+| per-request tok/s | 11 | **+1.44%** | +2.24% | -0.55% .. +8.94% |
+
+Now the number that governs all of those: **the median within-arm coefficient of variation is 2.84%, and in
+the short-prompt cells it reaches 13.9-18.0%.** The noise floor is *larger than the signal*. The headline
+"+8.94%" at 30kx2k C1 compares two overlapping samples whose baseline repeats alone span **70.5 to 93.6
+tok/s**. Nine of eleven cells favour the gate (sign test **p = 0.065**), which is weak evidence of a small
+positive effect and **nothing more**. **The +3-15% bracket is not confirmed, and no magnitude is supportable
+from this run.**
+
+One cell, `30kx2k/C8`, is void **and it is my fault**: I tore the server down to reclaim the host for
+production 1M serving while that cell was in flight, which is why it shows 24 refusals and aggregate 0.0. It
+stays in the receipt so the hole is visible. Arms **C** (transpose) and **D** (both) never ran for the same
+reason; their images are built and byte-verified, so they remain runnable.
+
+### Reconciling this with KernelGap's +8.0%
+
+These are not contradictory results, they are **one result seen at two scales**, and Amdahl is the bridge.
+KernelGap timed the *operation*; this timed the *whole server*. `in_proj_ba` is **5.2% of decode GPU time**
+by KernelGap's own instrumentation, so:
+
+| component share | 1.5x kernel | 2.0x | 3.0x | 4.4x |
+|---|---:|---:|---:|---:|
+| 5.2% (`in_proj_ba`) | +1.76% | +2.67% | +3.59% | **+4.19%** |
+| ~8% (gate target) | +2.74% | +4.17% | +5.63% | **+6.59%** |
+
+**Even a 4.4x kernel win on a 5.2% component caps the end-to-end gain at +4.19%.** So a genuine large kernel
+speedup and a ~1% unresolvable server-level delta are the same fact. The mistake was mine in framing: I
+expected a server-level ladder to confirm a kernel-level bracket it never had the resolution to see.
+
+### What would actually resolve it
+
+Resolving a 1.5% effect against a 2.84% CV needs on the order of **29 repeats per cell, not 5**. The cheaper
+and better answer is to stop trying: **measure at the kernel level, where the signal is 8-15% and the noise
+is far smaller, then use the Amdahl bound above to state the server-level consequence** rather than trying to
+observe it. That is now the standing method for this class of patch, and issue #406 should carry the Amdahl
+framing instead of an end-to-end promise.

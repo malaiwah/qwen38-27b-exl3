@@ -1,0 +1,432 @@
+{
+ "schema": "qwen38-kernel-gap-bare-metal-ab/1",
+ "generated_utc": "2026-08-17T12:38:26Z",
+ "what_this_is": "Bare-metal (real docker, NO proot) A/B of the KernelGap b12x gate patch against the shipped baseline, single GPU on the 8x host jl-vm-473501, 5 repeats per cell, rungs 1-8, three shapes. Intended to turn the predicted +3-15% bracket into a number. IT DID NOT: the effect is below this harness's resolution.",
+ "arms_run": {
+  "A": "baseline vllm:gg-r34-tb21-sr1",
+  "B": "ab-b-gate (b12x gate clause on exl3.py)"
+ },
+ "arms_NOT_run": {
+  "C": "in_proj_ba transpose (linear.py)",
+  "D": "both",
+  "why": "The 8x host was reclaimed for production 1M serving and a TB2.1 arm before C and D ran. Images were built and byte-verified (see image_md5_matrix) so C and D remain runnable later."
+ },
+ "image_md5_matrix": {
+  "note": "factorial design verified at the byte level before running",
+  "baseline": {
+   "exl3.py": "a865cc8d4d5e1cf7c9035b01388754a6",
+   "linear.py": "cf599aaea6976677a0efe1d01b85af87"
+  },
+  "ab-b-gate": {
+   "exl3.py": "252ba6dba6ebbfbe1c74fb0ccc657140",
+   "linear.py": "cf599aaea6976677a0efe1d01b85af87"
+  },
+  "ab-c-transpose": {
+   "exl3.py": "a865cc8d4d5e1cf7c9035b01388754a6",
+   "linear.py": "d6460960eddb00fd79cff6881e7e5840"
+  },
+  "ab-d-both": {
+   "exl3.py": "252ba6dba6ebbfbe1c74fb0ccc657140",
+   "linear.py": "d6460960eddb00fd79cff6881e7e5840"
+  }
+ },
+ "cells": {
+  "30kx2k/C1": {
+   "baseline_agg_tok_s": 74.7,
+   "gate_agg_tok_s": 81.4,
+   "baseline_per_req_tok_s": 74.8,
+   "gate_per_req_tok_s": 81.4,
+   "delta_agg_pct": 8.94,
+   "delta_per_req_pct": 8.94,
+   "baseline_repeats_agg": [
+    73.0,
+    70.5,
+    78.6,
+    74.7,
+    93.6
+   ],
+   "gate_repeats_agg": [
+    75.7,
+    81.4,
+    76.9,
+    89.2,
+    94.3
+   ],
+   "baseline_within_arm_cv_pct": 11.74,
+   "refusals_baseline_gate": [
+    0,
+    0
+   ],
+   "valid": true
+  },
+  "30kx2k/C2": {
+   "baseline_agg_tok_s": 129.4,
+   "gate_agg_tok_s": 128.0,
+   "baseline_per_req_tok_s": 67.9,
+   "gate_per_req_tok_s": 69.5,
+   "delta_agg_pct": -1.06,
+   "delta_per_req_pct": 2.47,
+   "baseline_repeats_agg": [
+    135.0,
+    114.3,
+    120.9,
+    136.4,
+    129.4
+   ],
+   "gate_repeats_agg": [
+    128.0,
+    117.9,
+    116.5,
+    137.4,
+    140.7
+   ],
+   "baseline_within_arm_cv_pct": 7.43,
+   "refusals_baseline_gate": [
+    0,
+    0
+   ],
+   "valid": true
+  },
+  "30kx2k/C4": {
+   "baseline_agg_tok_s": 166.9,
+   "gate_agg_tok_s": 167.4,
+   "baseline_per_req_tok_s": 43.8,
+   "gate_per_req_tok_s": 43.8,
+   "delta_agg_pct": 0.3,
+   "delta_per_req_pct": -0.07,
+   "baseline_repeats_agg": [
+    169.6,
+    163.4,
+    166.9,
+    167.8,
+    162.6
+   ],
+   "gate_repeats_agg": [
+    175.7,
+    167.4,
+    169.5,
+    161.5,
+    160.5
+   ],
+   "baseline_within_arm_cv_pct": 1.78,
+   "refusals_baseline_gate": [
+    0,
+    0
+   ],
+   "valid": true
+  },
+  "30kx2k/C8": {
+   "baseline_agg_tok_s": 188.0,
+   "gate_agg_tok_s": 0.0,
+   "baseline_per_req_tok_s": 23.8,
+   "gate_per_req_tok_s": 23.9,
+   "delta_agg_pct": -100.0,
+   "delta_per_req_pct": 0.33,
+   "baseline_repeats_agg": [
+    189.6,
+    188.0,
+    187.8,
+    189.5,
+    187.8
+   ],
+   "gate_repeats_agg": [
+    189.6,
+    189.6,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "baseline_within_arm_cv_pct": 0.49,
+   "refusals_baseline_gate": [
+    0,
+    24
+   ],
+   "valid": false
+  },
+  "4kx1k/C1": {
+   "baseline_agg_tok_s": 92.0,
+   "gate_agg_tok_s": 91.5,
+   "baseline_per_req_tok_s": 92.0,
+   "gate_per_req_tok_s": 91.5,
+   "delta_agg_pct": -0.54,
+   "delta_per_req_pct": -0.55,
+   "baseline_repeats_agg": [
+    89.1,
+    92.0,
+    90.2,
+    92.0,
+    93.6
+   ],
+   "gate_repeats_agg": [
+    91.5,
+    91.5,
+    94.0,
+    105.3,
+    90.8
+   ],
+   "baseline_within_arm_cv_pct": 1.92,
+   "refusals_baseline_gate": [
+    0,
+    0
+   ],
+   "valid": true
+  },
+  "4kx1k/C2": {
+   "baseline_agg_tok_s": 170.5,
+   "gate_agg_tok_s": 174.8,
+   "baseline_per_req_tok_s": 86.3,
+   "gate_per_req_tok_s": 88.5,
+   "delta_agg_pct": 2.52,
+   "delta_per_req_pct": 2.59,
+   "baseline_repeats_agg": [
+    166.7,
+    170.5,
+    172.6,
+    179.4,
+    169.0
+   ],
+   "gate_repeats_agg": [
+    176.5,
+    171.3,
+    173.4,
+    177.6,
+    174.8
+   ],
+   "baseline_within_arm_cv_pct": 2.8,
+   "refusals_baseline_gate": [
+    0,
+    0
+   ],
+   "valid": true
+  },
+  "4kx1k/C4": {
+   "baseline_agg_tok_s": 292.9,
+   "gate_agg_tok_s": 287.4,
+   "baseline_per_req_tok_s": 73.9,
+   "gate_per_req_tok_s": 77.3,
+   "delta_agg_pct": -1.87,
+   "delta_per_req_pct": 4.63,
+   "baseline_repeats_agg": [
+    292.9,
+    292.9,
+    285.3,
+    275.6,
+    296.2
+   ],
+   "gate_repeats_agg": [
+    280.1,
+    293.1,
+    286.8,
+    287.4,
+    300.2
+   ],
+   "baseline_within_arm_cv_pct": 2.87,
+   "refusals_baseline_gate": [
+    0,
+    0
+   ],
+   "valid": true
+  },
+  "4kx1k/C8": {
+   "baseline_agg_tok_s": 393.0,
+   "gate_agg_tok_s": 396.9,
+   "baseline_per_req_tok_s": 49.9,
+   "gate_per_req_tok_s": 50.6,
+   "delta_agg_pct": 0.98,
+   "delta_per_req_pct": 1.33,
+   "baseline_repeats_agg": [
+    390.9,
+    394.1,
+    393.0,
+    388.7,
+    396.4
+   ],
+   "gate_repeats_agg": [
+    397.9,
+    404.7,
+    394.4,
+    396.1,
+    396.9
+   ],
+   "baseline_within_arm_cv_pct": 0.76,
+   "refusals_baseline_gate": [
+    0,
+    0
+   ],
+   "valid": true
+  },
+  "512x256/C1": {
+   "baseline_agg_tok_s": 136.0,
+   "gate_agg_tok_s": 138.2,
+   "baseline_per_req_tok_s": 136.0,
+   "gate_per_req_tok_s": 138.2,
+   "delta_agg_pct": 1.6,
+   "delta_per_req_pct": 1.6,
+   "baseline_repeats_agg": [
+    135.9,
+    136.0,
+    137.9,
+    89.3,
+    138.2
+   ],
+   "gate_repeats_agg": [
+    138.0,
+    138.2,
+    138.3,
+    90.8,
+    140.6
+   ],
+   "baseline_within_arm_cv_pct": 16.78,
+   "refusals_baseline_gate": [
+    0,
+    0
+   ],
+   "valid": true
+  },
+  "512x256/C2": {
+   "baseline_agg_tok_s": 184.5,
+   "gate_agg_tok_s": 188.2,
+   "baseline_per_req_tok_s": 96.2,
+   "gate_per_req_tok_s": 97.5,
+   "delta_agg_pct": 2.0,
+   "delta_per_req_pct": 1.41,
+   "baseline_repeats_agg": [
+    161.9,
+    187.8,
+    252.9,
+    179.4,
+    184.5
+   ],
+   "gate_repeats_agg": [
+    163.5,
+    188.2,
+    258.0,
+    191.0,
+    177.9
+   ],
+   "baseline_within_arm_cv_pct": 18.01,
+   "refusals_baseline_gate": [
+    0,
+    0
+   ],
+   "valid": true
+  },
+  "512x256/C4": {
+   "baseline_agg_tok_s": 330.7,
+   "gate_agg_tok_s": 333.2,
+   "baseline_per_req_tok_s": 107.8,
+   "gate_per_req_tok_s": 108.8,
+   "delta_agg_pct": 0.76,
+   "delta_per_req_pct": 0.89,
+   "baseline_repeats_agg": [
+    330.7,
+    328.1,
+    433.8,
+    341.1,
+    311.7
+   ],
+   "gate_repeats_agg": [
+    319.6,
+    333.2,
+    440.5,
+    352.0,
+    326.8
+   ],
+   "baseline_within_arm_cv_pct": 13.91,
+   "refusals_baseline_gate": [
+    0,
+    0
+   ],
+   "valid": true
+  },
+  "512x256/C8": {
+   "baseline_agg_tok_s": 464.0,
+   "gate_agg_tok_s": 472.7,
+   "baseline_per_req_tok_s": 62.6,
+   "gate_per_req_tok_s": 63.5,
+   "delta_agg_pct": 1.89,
+   "delta_per_req_pct": 1.44,
+   "baseline_repeats_agg": [
+    457.5,
+    464.0,
+    473.3,
+    445.4,
+    477.5
+   ],
+   "gate_repeats_agg": [
+    467.3,
+    474.0,
+    472.7,
+    476.3,
+    462.8
+   ],
+   "baseline_within_arm_cv_pct": 2.76,
+   "refusals_baseline_gate": [
+    0,
+    0
+   ],
+   "valid": true
+  }
+ },
+ "invalidated_cell": {
+  "cell": "30kx2k/C8",
+  "reason": "EXPERIMENTER-INDUCED, not a patch effect: I tore the server down to reclaim the host for production serving while this cell was in flight. It shows 24 refusals and aggregate 0.0. Excluded from every statistic and left in the receipt so the hole is visible."
+ },
+ "result": {
+  "valid_cells": 11,
+  "delta_agg_pct": {
+   "mean": 1.41,
+   "median": 0.98,
+   "min": -1.87,
+   "max": 8.94
+  },
+  "delta_per_req_pct": {
+   "mean": 2.24,
+   "median": 1.44,
+   "min": -0.55,
+   "max": 8.94
+  },
+  "cells_favouring_gate": "9/11",
+  "sign_test_two_sided_p": 0.0654
+ },
+ "noise_floor": {
+  "within_arm_cv_pct_median": 2.84,
+  "within_arm_cv_pct_max": 18.01,
+  "worst_cells": "512x256 C1/C2/C4 at CV 16.8/18.0/13.9 %; 30kx2k C1 at 11.7 %",
+  "consequence": "THE NOISE FLOOR EXCEEDS THE EFFECT. Median within-arm CV 2.84 % against a median delta of +1.44 %, and the single largest delta (+8.94 % at 30kx2k C1) compares two overlapping samples whose baseline repeats alone span 70.5 to 93.6 tok/s. No magnitude is supportable from this run."
+ },
+ "verdict": "INCONCLUSIVE BY CONSTRUCTION, and the +3-15% bracket is NOT confirmed. 9 of 11 cells favour the gate (sign test p = 0.065), which is weak evidence of a small positive effect and nothing more. The honest statement is that this ladder cannot resolve a 1-5% end-to-end effect.",
+ "reconciliation_with_kernel_measurements": {
+  "question": "How can KernelGap have measured +8.0% on in_proj_ba and a +3-15% bracket, while end-to-end shows ~1%?",
+  "answer": "Amdahl, and the two measurements are compatible rather than contradictory. KernelGap timed the OP; this times the WHOLE SERVER. in_proj_ba is 5.2% of decode GPU time by KernelGap's own instrumentation, so even a 4.4x kernel win caps end-to-end at +4.19%. For an ~8% component a 3x win caps at +5.63%. A real kernel speedup and a ~1% unresolvable end-to-end delta are therefore the SAME result seen at two scales.",
+  "amdahl_table": {
+   "share_0.052": {
+    "1.5x": "+1.76%",
+    "2.0x": "+2.67%",
+    "3.0x": "+3.59%",
+    "4.4x": "+4.19%"
+   },
+   "share_0.080": {
+    "1.5x": "+2.74%",
+    "2.0x": "+4.17%",
+    "3.0x": "+5.63%",
+    "4.4x": "+6.59%"
+   }
+  }
+ },
+ "what_would_resolve_it": [
+  "Many more repeats: to resolve a 1.5% effect against a 2.84% CV needs roughly (2.84/1.5)^2 x 8 = ~29 repeats per cell, not 5.",
+  "Prefer the low-noise cells: C8 cells ran at CV 0.49-2.76%, the short-prompt C1-C4 cells at 13.9-18.0%.",
+  "Better: keep measuring at the KERNEL level where the signal is 8-15% and the noise is far smaller, and use Amdahl to bound the server-level consequence instead of trying to observe it.",
+  "Run arms C and D on a quiet host so the transpose and the interaction term get the same treatment."
+ ],
+ "honest_limits": [
+  "Single GPU, single host, one image pair, two of four planned arms.",
+  "Absolute tok/s here are bare-docker and comparable to the DP8 arms on the same host; they are NOT comparable to any proot-based local number.",
+  "The 30kx2k/C8 hole is my fault and is not a property of the patch."
+ ],
+ "inputs": {
+  "arm_A_ladder": "receipts/ab-ladder-A.json",
+  "arm_B_ladder": "receipts/ab-ladder-B.json"
+ }
+}
