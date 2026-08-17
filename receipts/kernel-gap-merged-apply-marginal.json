@@ -1,0 +1,32 @@
+{
+ "what": "P2.2 merged-destination apply (delete shard cats via strided hgemm + deferred merged svh hadamard): MEASURED MARGINAL - DO NOT SHIP. Patch archived: receipts/kernel-gap-merged-apply.patch; rootfs restored md5 11dd7de6.",
+ "design": "vllm::exl3_gemm_into (whole-tensor + offset args for functionalization safety; prefill branch = had_in + reconstruct + STRIDED hgemm into the merged destination with per-shard svh DEFERRED; decode branch = exl3_gemm to temp + slice copy, bytes equal to the old cat) + vllm::exl3_merged_epilogue (ONE had_r_128 over the merged tensor with concatenated svh - bit-identical because every shard width is a 128-multiple so hadamard blocks align with shard boundaries). Plan built in process_weights_after_loading; merged layers primed for exl3_gemm at all capture rows. Env: VLLM_EXL3_MERGED_APPLY.",
+ "bit_exactness": "torch.equal vs per-shard+cat on gate|up at M=2048 (prefill branch) and m=4 (decode branch): exact, delta 0.0 (kg_test_merged.py)",
+ "standalone_pair": {
+  "gate_up_old_ms": 2.7,
+  "gate_up_new_ms": 2.51,
+  "pair_gain_pct": 7.6
+ },
+ "engine_ab": {
+  "profile": "262k qualified single-stream, chunk 2048, vs P1.2 arm-A baseline",
+  "decode_median_tok_s": {
+   "baseline": 106.77,
+   "merged": 107.49,
+   "delta_pct": 0.7,
+   "note": "neutral as designed - decode copies the same bytes the cat moved"
+  },
+  "pp_32k_tok_s": {
+   "baseline": 4361.7,
+   "merged": 4445.9,
+   "delta_pct": 1.9
+  },
+  "pp_197k_tok_s": {
+   "baseline": 2469.2,
+   "merged": 2489.1,
+   "delta_pct": 0.8
+  },
+  "needle_32k_197k": "exact PASS both"
+ },
+ "verdict": "Below the pre-registered >=2% bar, and weakest exactly where the campaign is bound (long-context latency: +0.8%). The 25.7 GB/chunk cat-byte arithmetic over-credited: qkvz-tuple layers appear not to have taken the merged plan (eligibility conservative on tuple shards) and the linears-own-60% dilution does the rest - pair-level +7.6% became engine +1.9%. ~120 lines of opacity-sensitive change on a file with no public ancestor (F11) is not worth +0.8-1.9%. If a future campaign is short-prompt PP-bound, re-evaluate with qkvz-tuple eligibility fixed; the patch and its bit-exactness proof are archived.",
+ "gpu_idle_verified_before_run": true
+}

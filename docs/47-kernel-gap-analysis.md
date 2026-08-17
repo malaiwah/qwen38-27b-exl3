@@ -590,7 +590,18 @@ Original plan text follows for the ladder definition.
 - *Status:* **PR branch ready** — `malaiwah/vllm-voipmonitor` @ `kernel-gap/tiny-n-mm-transpose`
   (3b35c04c6, based on `dev/gilded-gnosis`; method body verified identical to served bytes).
 
-**P2.2 — strided-C shard writes, delete the merge cats (F5.3, PP +5–8 % est).**
+**P2.2 — strided-C shard writes, delete the merge cats. DONE — MEASURED MARGINAL (+1.9 % PP at
+32k, +0.8 % at 197k, decode neutral); below the pre-registered 2 % bar — NOT shipped.**
+Built ext-free and Dynamo-safe (`vllm::exl3_gemm_into` with whole-tensor+offset args; deferred svh
+hadamard as ONE `had_r_128` over the merged tensor with concatenated svh — bit-identical because
+shard widths are 128-multiples, verified `torch.equal` on both branches). Pair-level gain +7.6 %
+(gate|up 2.70→2.51 ms) diluted to +1.9 % at engine level; the campaign-relevant long-context number
+is +0.8 %. ~120 opacity-sensitive lines on a file with no public ancestor (F11) is not worth that.
+Patch + proof archived: `receipts/kernel-gap-merged-apply.patch`,
+`receipts/kernel-gap-merged-apply-marginal.json`. Rootfs restored md5-verified. Re-evaluate only for
+a short-prompt PP-bound workload, with qkvz-tuple eligibility extended.
+
+**P2.2 (original plan, superseded by the measured-marginal verdict above).**
 - *Change:* `hgemm` already takes strided C (`hgemm.cu:41-51,77`: ldc = `c.stride(-2)`, columns
   contiguous). In `Exl3LinearMethod.apply` (exl3.py:2710-2726): allocate the merged output once,
   pass `output[:, start:end]` views into an out-variant of the prefill path instead of cat-ing

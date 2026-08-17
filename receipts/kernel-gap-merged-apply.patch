@@ -1,0 +1,207 @@
+# Target: $SP/vllm/model_executor/layers/quantization/exl3.py (served r34 bytes, 5536 lines)
+# sha256: 2df9d0799fd323798cead1edb773cab556c94798eec263ee03ded35408c6e4ee
+# VERDICT: MEASURED MARGINAL - DO NOT SHIP (docs/47 P2.2: +1.9% PP at 32k, +0.8% at 197k, below the 2% bar)
+--- /var/tmp/work/exl3.py.r34.bak
++++ /var/tmp/gg-rootfs/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py
+@@ -1024,6 +1024,102 @@
+     )
+ 
+ 
++# KERNEL-GAP P2.2 (docs/47 F5.3): merged-destination apply for multi-shard layers.
++# At prefill the per-shard outputs were materialised and then torch.cat-ed - about
++# 25.7 GB of pure copy traffic per 2048-token chunk (gate|up 17.4 + GDN qkvz|z 6.4 +
++# attn qkv 1.9). hgemm accepts a strided C (ldc = stride(-2), hgemm.cu:41-51), so each
++# shard can write straight into its slice of the merged destination. The per-shard
++# svh hadamard is DEFERRED and replaced by ONE had_r_128 over the merged tensor with
++# the concatenated svh: every shard width is a multiple of 128, so each 128-column
++# hadamard block lies entirely inside one shard and the result is bit-identical to
++# the per-shard transforms. At decode rows the exl3_gemm kernel needs contiguous C,
++# so that branch computes into a temp and copies into the slice - the same bytes the
++# torch.cat moved before, inside the same CUDA graph. Both row-count branches live
++# inside custom ops so the choice stays opaque to Dynamo (same reasoning as
++# vllm::exl3_gemm above).
++
++
++@torch.library.custom_op(
++    "vllm::exl3_gemm_into",
++    mutates_args=("out",),
++    device_types="cuda",
++)
++def _exl3_gemm_into(
++    x: torch.Tensor,
++    trellis: torch.Tensor,
++    suh: torch.Tensor,
++    svh: torch.Tensor,
++    mcg: bool,
++    mul1: bool,
++    out: torch.Tensor,
++    offset: int,
++) -> None:
++    ext = _load_exl3_ext()
++    n = trellis.shape[1] * 16
++    dest = out[:, offset : offset + n]
++    threshold = _prefill_reconstruct_rows()
++    if threshold and x.shape[0] >= threshold:
++        # Deferred-svh prefill: input hadamard + reconstruct + strided hgemm; the
++        # output hadamard runs once over the merged tensor in exl3_merged_epilogue.
++        bits = trellis.shape[2] // 16
++        k = trellis.shape[0] * 16
++        x_had = torch.empty_like(x)
++        ext.had_r_128(x, x_had, suh, None, 1.0)
++        chunk = min(n, _EXL3_RECONSTRUCT_SLICE_N)
++        weight = _reconstruct_scratch(x.device, k, chunk)
++        for start in range(0, n, chunk):
++            end = min(start + chunk, n)
++            view = weight[:, : end - start]
++            if n <= chunk:
++                ext.reconstruct(view, trellis, bits, mcg, mul1)
++            else:
++                ext.reconstruct_slice(view, trellis, bits, mcg, mul1, start)
++            ext.hgemm(x_had, view, dest[:, start:end])
++        return
++    tmp = torch.empty((x.shape[0], n), dtype=torch.float16, device=x.device)
++    x_had = torch.empty_like(x)
++    ext.exl3_gemm(x, trellis, tmp, suh, x_had, svh, -1, mcg, mul1, 0)
++    dest.copy_(tmp)
++
++
++@_exl3_gemm_into.register_fake
++def _exl3_gemm_into_fake(
++    x: torch.Tensor,
++    trellis: torch.Tensor,
++    suh: torch.Tensor,
++    svh: torch.Tensor,
++    mcg: bool,
++    mul1: bool,
++    out: torch.Tensor,
++    offset: int,
++) -> None:
++    del x, trellis, suh, svh, mcg, mul1, out, offset
++
++
++@torch.library.custom_op(
++    "vllm::exl3_merged_epilogue",
++    mutates_args=("out",),
++    device_types="cuda",
++)
++def _exl3_merged_epilogue(out: torch.Tensor, svh_cat: torch.Tensor) -> None:
++    """Apply the deferred svh hadamard - prefill rows only, mirroring the branch
++    taken inside vllm::exl3_gemm_into for the same row count."""
++
++    threshold = _prefill_reconstruct_rows()
++    if threshold and out.shape[0] >= threshold:
++        ext = _load_exl3_ext()
++        ext.had_r_128(out, out, None, svh_cat, 1.0)
++
++
++@_exl3_merged_epilogue.register_fake
++def _exl3_merged_epilogue_fake(out: torch.Tensor, svh_cat: torch.Tensor) -> None:
++    del out, svh_cat
++
++
++def _merged_apply_enabled() -> bool:
++    return os.environ.get("VLLM_EXL3_MERGED_APPLY", "0") == "1"
++
++
+ def _graph_decode_enabled() -> bool:
+     """Return whether serialized dense EXL3 may run under CUDA graphs.
+ 
+@@ -2669,8 +2765,39 @@
+             )
+             _warm_b12x_trellis_device(trellis, suh, svh)
+ 
++        self._prepare_merged_apply(layer)
+         self._prime_graph_decode_shapes(layer)
+ 
++    def _prepare_merged_apply(self, layer: torch.nn.Module) -> None:
++        """Build the merged-destination plan (docs/47 P2.2), or None if ineligible."""
++
++        layer._exl3_merged_plan = None
++        if not _merged_apply_enabled() or _prefill_fp8_enabled():
++            return
++        shard_ids = list(layer.exl3_shard_ids)
++        if len(shard_ids) < 2:
++            return
++        packed_k = {layer.trellis.exl3_tensors[s].shape[0] * 16 for s in shard_ids}
++        if len(packed_k) != 1:
++            return
++        offsets: list[int] = []
++        total = 0
++        for s in shard_ids:
++            n_packed = layer.trellis.exl3_tensors[s].shape[1] * 16
++            if n_packed % 128 or n_packed != self._output_shard_size(layer, s):
++                return
++            offsets.append(total)
++            total += n_packed
++        svh_cat = torch.cat(
++            [layer.svh.exl3_tensors[s] for s in shard_ids]
++        ).contiguous()
++        layer._exl3_merged_plan = {
++            "packed_k": next(iter(packed_k)),
++            "n_total": total,
++            "offsets": offsets,
++            "svh_cat": svh_cat,
++        }
++
+     def _prime_graph_decode_shapes(self, layer: torch.nn.Module) -> None:
+         """Autotune every capturable decode shape while still executing eagerly.
+ 
+@@ -2689,13 +2816,17 @@
+             trellis = layer.trellis.exl3_tensors[shard_id]
+             has_mcg = shard_id in layer.mcg.exl3_tensors
+             has_mul1 = shard_id in layer.mul1.exl3_tensors
+-            if _b12x_trellis_k6_supported(
+-                trellis,
+-                has_mcg=has_mcg,
+-                has_mul1=has_mul1,
++            if (
++                getattr(layer, "_exl3_merged_plan", None) is None
++                and _b12x_trellis_k6_supported(
++                    trellis,
++                    has_mcg=has_mcg,
++                    has_mul1=has_mul1,
++                )
+             ):
+                 # The native K6 path picks its kernel from the shape alone and
+-                # is already prepared and warmed above.
++                # is already prepared and warmed above. Merged-apply layers route
++                # every shard through exl3_gemm at decode, so they must be primed.
+                 continue
+             _prime_exl3_gemm_rows(
+                 trellis,
+@@ -2716,10 +2847,31 @@
+         original_shape = x.shape[:-1]
+         original_dtype = x.dtype
+         x_2d = x.reshape(-1, x.shape[-1]).to(torch.float16).contiguous()
+-        outputs = [
+-            self._apply_one(layer, x_2d, shard_id) for shard_id in layer.exl3_shard_ids
+-        ]
+-        output = outputs[0] if len(outputs) == 1 else torch.cat(outputs, dim=-1)
++        plan = getattr(layer, "_exl3_merged_plan", None)
++        if plan is not None and x_2d.shape[-1] == plan["packed_k"]:
++            output = torch.empty(
++                (x_2d.shape[0], plan["n_total"]),
++                dtype=torch.float16,
++                device=x_2d.device,
++            )
++            for shard_id, offset in zip(layer.exl3_shard_ids, plan["offsets"]):
++                _exl3_gemm_into(
++                    x_2d,
++                    layer.trellis.exl3_tensors[shard_id],
++                    layer.suh.exl3_tensors[shard_id],
++                    layer.svh.exl3_tensors[shard_id],
++                    shard_id in layer.mcg.exl3_tensors,
++                    shard_id in layer.mul1.exl3_tensors,
++                    output,
++                    offset,
++                )
++            _exl3_merged_epilogue(output, plan["svh_cat"])
++        else:
++            outputs = [
++                self._apply_one(layer, x_2d, shard_id)
++                for shard_id in layer.exl3_shard_ids
++            ]
++            output = outputs[0] if len(outputs) == 1 else torch.cat(outputs, dim=-1)
+         if bias is not None:
+             output = output + bias.to(dtype=output.dtype)
+         output = output.reshape(*original_shape, output.shape[-1])
