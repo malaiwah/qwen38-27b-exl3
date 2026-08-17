@@ -1048,3 +1048,44 @@ scaling law to interpolate with**. Cards and charts must show measured tiers onl
 **The rule this project should carry forward:** a cross-tier ratio is only evidence if both arms ran on
 the same host through the same harness path. Ours did not, and saying so is cheaper than publishing a
 scaling law we cannot support.
+
+## 25. CORRECTION to §22: the dominant LMCache defect is fp8-KV transfer, not GDN state restoration
+
+§22 attributed the 37-38/38 corruption to the connector not restoring Mamba/GDN state, and a later source
+walk moved the blame to a store-side null-block hole. **A live three-arm repro on a single card has now
+superseded both.** The verdict is unchanged - **do not enable LMCache** - but the mechanism matters,
+because it changes what a fix must touch and it changes what we tell upstream.
+
+| arm (with #403 applied) | KV dtype | outcome |
+|---|---|---|
+| cold single-writer store -> APC-evict -> retrieve | **fp8** | **catastrophic corruption, garbage from token 1**, divergence 3.52 - the 2x host's 4.4 class - with **no poisoning precondition at all** |
+| same sequence | **bf16** | **bit-clean**, divergence **0.0000** - the 48 GDN state pages round-trip exactly |
+| one partial-APC-hit request interleaved between store and retrieve | bf16 | plausible-but-wrong text, divergence 0.71, **reproduced twice** |
+
+**Three consequences, in order of importance.**
+
+1. **Our serving profile runs fp8 KV, so LMCache could never have produced clean reuse on this stack -
+   with or without #403.** That explains the 2x ladder's 38/38 far more directly than state restoration
+   ever did. Candidate root causes are the fake-view byte arithmetic for 1-byte dtypes and unregistered
+   fp8 scale surfaces; neither is fixed by anything we wrote.
+2. **The GDN state machinery is now measured to work**, not assumed to. The bf16 arm's bitwise-clean
+   round-trip is the direct refutation of §22's original claim, and it is a stronger form of evidence than
+   the source reading that replaced it.
+3. **A third, separate defect exists in the partial-retrieve path.** At bf16 an interleaved partial-APC-hit
+   request still corrupts, and the store-side null clamp did **not** fix it - the server ledger proves the
+   store-under-miss precondition never even fired, because a read TTL is not a since-write expiry. So the
+   store-side hole remains source-true but was **not** what bit us; the clamp is archived as hygiene and
+   labelled insufficient rather than shipped as a fix.
+
+**Three operational facts nobody had written down**, each of which would have cost someone a day:
+restarting the MP server **kills the live engine with no reconnect**; the connector **requires APC+align**
+and refuses `mamba_cache_mode=none`, so the poisoning regime is mandatory rather than an edge case; and at
+bf16 the align block is **800**, which forces `--max-num-batched-tokens` into **[800, 1599]** - a
+different and tighter band than the 1600-block `[1600, 3199]` recorded in §22.
+
+**Why this section exists rather than an edit in place.** Three mechanisms were proposed tonight and two
+were withdrawn: retrieve-side state (measured false), store-side null blocks (source-true, did not fire),
+fp8 transfer (measured, dominant). Overwriting §22 would hide that sequence, and the sequence is the
+useful part - **each story was replaced because we kept testing it, not because we argued about it.**
+Receipt: [`kernel-gap-lmcache-repro.json`](../receipts/kernel-gap-lmcache-repro.json), five arms with
+server ledgers.
