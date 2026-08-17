@@ -646,3 +646,36 @@ graph LR
 Expected stack if Phase 1+2 all land at midpoints: decode +12–20 % single-stream (on top of the
 +15.4 % local gate measurement where its dispatch share survives bare metal), prefill +20–30 % —
 both without touching the fidelity budget.
+## F11. Provenance: the served EXL3 source is not publicly reachable — bytes are reproducible, this layer's source is not reviewable
+
+**Claim.** The EXL3 integration actually serving requests in the r34 image cannot be audited or
+rebuilt from the public repository. Checked exhaustively on 2026-08-17:
+
+- Clone: `git clone --filter=blob:none https://github.com/local-inference-lab/vllm` +
+  `git fetch origin '+refs/heads/*:refs/remotes/origin/*'` — every public head, **22,886 commits**
+  (`git rev-list --all | grep -c .`).
+- The version-string commit `4d006a4` (from
+  `0.11.2.dev280+gilded.gnosis.v20.vllm4d006a4...`, $SP/vllm/_version.py:21) **does not exist** in
+  any of them (`git rev-list --all | grep '^4d006a4'` → empty).
+- No public branch carries the served `exl3.py` (5,536 lines, sha256 `2df9d0799fd323798cead1edb773cab556c94798eec263ee03ded35408c6e4ee`):
+  `dev/gilded-gnosis` (the integration branch) has **2,447 lines — no `_b12x_trellis_k6_supported`
+  gate, no FP8-prefill code at all**; the closest is `codex/gg-exl3-r7-k345-20260810` at **4,866
+  lines** (its `_b12x_trellis_k6_supported` function body IS byte-identical to the served one;
+  the rest of the file is not). Branch sweep: every head tested for
+  `vllm/model_executor/layers/quantization/exl3.py` existence and line count.
+
+**The consequence, stated precisely — both halves together.** Our published reproducibility claim
+was always **image-level**: a digest-pinned container plus sha256-verified read-only overlay mounts.
+That claim **still holds exactly as written** — a third party can reproduce our *bytes* and every
+receipt in this repo. What this finding adds is the missing half: the base image's own EXL3 source
+layer is not publicly reachable, so that third party **cannot review or rebuild that layer from
+source**. Nothing in our receipts was wrong; the boundary of what they certify is now explicit.
+
+**Operational consequence for the docs/47 patches** (per Main's ruling): diffs against the served
+bytes are the normative artifact, each carrying the target file's sha256; branch PRs are opened only
+where the changed code is verifiably identical to what we measured — `linear.py` (upstream-shaped
+everywhere) on `dev/gilded-gnosis`, and the b12x gate on `codex/gg-exl3-r7-k345-20260810` (function
+body byte-identical, verified). The FP8-warning patch stays diff-only: its surrounding code exists in
+no public branch.
+
+---
