@@ -1050,6 +1050,57 @@ which is why dropping to depth 1 above the knee wins aggregate. An empirical sch
 traffic model agreeing is stronger than either alone, and it yields a testable prediction: **any
 head-cost reduction should move the knee up.**
 
+**The serving question is answered from 1 GPU to 8, and the answer is not "use all of it the same way"
+([docs/46](46-tb21-speedrun-plan.md) §19-24, all arms gated PASS including the 262,144-token needle).**
+**Data parallel wins throughput; tensor parallel wins latency; the crossover sits near C8-C16.** DP8
+peaks at **3,553 tok/s at C128** while TP2xDP4 takes the best single-stream on the same eight cards
+(**153.2** against DP8's 135.2) and wins every rung to C8. Two results were counterintuitive enough to
+be worth carrying forward: **tensor-parallel latency peaks at TP2 and then reverses** - TP4 measures
+151.0 single-stream against TP2's 159.6, because the PCIe all-reduce cost grows faster than the
+weight-streaming saving - and **the knee scales linearly with replica count**, C4/C8/C16/C32 at N =
+1/2/4/8, which is the one capacity-planning number a reader actually needs (*a DP-N deployment holds its
+per-request floor to about 4N concurrent requests*).
+
+**One host prerequisite outranked every flag: P2P was silently off.** On the rented multi-GPU boxes
+`can_device_access_peer` returned **false**, a 64 MiB cross-GPU copy ran at 35.5 GB/s and a 256 B copy
+took 12.48 us. The NVIDIA `ForceP2P` registry override plus a driver reload enabled it (**51.9 GB/s,
++46.5 %**) and was worth **+7 % to +22 % on real tensor-parallel decode** - large enough that our first
+TP2 verdict was wrong before it, and it is now a standing pre-measurement action for every new rental
+([`jarvis-p2p-override.json`](../receipts/jarvis-p2p-override.json)). Also recorded: our topology is
+**PHB**, which the source doc puts in its "often no" column, so PHB is a new datapoint for that table.
+
+**LMCache is measured and declined, and our own fix was refuted by our own ladder.** A seven-arm ladder
+(same frozen probe, same thresholds, one variable per arm) reproduced the 5090 baseline **exactly** -
+7/38 twice, unpatched, on different silicon, driver, runtime and window - and then showed that applying
+our fork's #403 divergent-hit gate moves corruption to **37/38 and 38/38**. The mechanism, now traced to
+a line rather than guessed: unpatched, LMCache supplied **zero** tokens across 88,760 lookups, so the
+bounded 7/38 was entirely scheduler-side; closing that path is what finally lets the connector load, and
+the **store side** then writes null mamba block ids as boundary state under valid keys. So a poison-free
+L2 is unreachable on this stack. **The prize was measured honestly and declined anyway**: L1 CPU-DRAM
+gives 26.5x and 53.2x TTFT wins at 0.93/0.98 hit rates, and the corruption detector fired on three of
+four warm variants. A 53x prefill win that returns U+FFFD is not a win. PR #403 has been publicly
+re-labelled rather than left standing ([docs/46](46-tb21-speedrun-plan.md) §22).
+
+**Two methodology defects were found by running, not by review.** First, **a gate PASS is not fidelity
+whenever a KV connector is attached** - five checks passed against a server simultaneously scoring 38/38
+corrupted, because no check reused a prefix across a mamba block boundary. There is now a sixth check,
+off by default and **mandatory with `--kv-transfer-config`**, validated in both directions (PASS with
+LMCache off, FAIL with it on, same endpoint). Second, **docker's default address pool caps
+Terminal-Bench at ~31 concurrent task networks**; the 8x campaign asks for 32 and the daemon answered
+*all predefined address pools have been fully subnetted*, failing 10 of 11 trials in the first finished
+shard as `RuntimeError` with the model never asked. Caught 15 minutes in, fixed with a 512-network pool,
+verified by creating 40 concurrent networks where 32 had failed
+([`tb21-docker-pool-defect.json`](../receipts/tb21-docker-pool-defect.json)).
+
+**Seven measured findings are now filed upstream as
+[#406-#412](https://github.com/local-inference-lab/vllm/issues/406)**, each with its receipt path, its
+patch where one exists, and a what-would-falsify-this line; two PR branches sit on our own fork. And one
+finding bounds what any of that can achieve: **the served `exl3.py` has no public ancestor** - 5,536
+lines against 4,866 on the closest public branch, with the version-string commit present in none of the
+22,886 public commits. Our reproducibility claim was always image-level and still holds exactly as
+published; what is new is that a third party can reproduce our **bytes** but cannot review or rebuild
+that layer's **source**.
+
 **TB2.1 speed-run plan written 2026-08-16, execution owned by a future session.** The owner asked for
 the ultimate API-hosted setup for the flagship quant on a 4x/8x RTX PRO 6000 Jarvis host with a separate
 load-driver VM, to produce a card-referenceable ladder - quick 1x / 2x / 4x and a full three-pass speed run
