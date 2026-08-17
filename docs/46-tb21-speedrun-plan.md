@@ -1089,3 +1089,59 @@ fp8 transfer (measured, dominant). Overwriting §22 would hide that sequence, an
 useful part - **each story was replaced because we kept testing it, not because we argued about it.**
 Receipt: [`kernel-gap-lmcache-repro.json`](../receipts/kernel-gap-lmcache-repro.json), five arms with
 server ledgers.
+
+
+## §26 - The 8x campaign arm, and why we withdrew our own "quantization-suspect" bucket
+
+**Headline: the overnight campaign resolved 56/89, and in doing so it destroyed the most
+quant-unfavourable finding we had ever published about ourselves.** Receipt:
+[`tb21-8x-2xclock-arm.json`](../receipts/tb21-8x-2xclock-arm.json), merged pass
+[`tb21-8x-p1-merged.json`](../receipts/tb21-8x-p1-merged.json).
+
+The arm: **single** pass, **doubled** agent timeout, 8x DP8, 8 shards x n=4 (C32, DP8's measured knee),
+`vllm:gg-r34-tb21-sr1`, default reasoning effort. Wall clock **2h20.9m**. Exceptions: 22
+`AgentTimeoutError`, 2 `RuntimeError`.
+
+**First, the two RuntimeErrors are not a defect.** They are exactly `qemu-startup` and `qemu-alpine-ssh`,
+the two tasks already classified `harness-void`. Nested-virtualisation qemu does not exist on a Jarvis VM,
+so these two are **structurally unattemptable** here. After the Docker address-pool fix the RuntimeError
+count is fully accounted for; nothing new broke.
+
+### The correction
+
+Pass 3 had re-run every twice-failed task on BF16 at stock clock, and 7 tasks resolved there but not on the
+quant. We labelled those **`quantization-suspect`** - the honest reading at the time, and the only bucket
+that pointed at our own weights.
+
+**At 2x clock, all 7 of them resolve on the quantized model.** 7/7.
+
+| bucket | was | resolved at 2x clock | remaining |
+|---|---:|---:|---:|
+| `quantization-suspect` | 7 | **7** | **0** |
+| `inconclusive-timeout` | 35 | 10 | 25 |
+| `capability` | 1 | 0 | 1 |
+| `harness-void` | 2 | 0 | 2 |
+
+So *"BF16 passes it and the quant does not, at equal timeout"* **does not establish a fidelity deficit** if
+the quant passes the same task given more clock. Those seven failures were **budget-bound, not
+fidelity-bound**, and the inference we drew from them was wrong. **Zero tasks in this suite now remain
+attributable to quantization.** The single remaining genuine capability failure is `query-optimize`, which
+neither clock nor tier moves.
+
+### What this arm is not
+
+**56/89 is not a Terminal-Bench score and must never be quoted as one** - the agent timeout is non-stock.
+The published numbers stand exactly as they were: **31/89** single pass at stock clock, **44/89** best-of-2
+at stock clock as the permanent lower bound. The clean one-variable pair is **31 -> 56**, both single pass;
+the +25 comes from the doubled clock **and** the 8x tier together. We do not split it, because both act
+through the *same* channel - tokens available before the deadline - and, decisively for the argument above,
+**neither channel is a fidelity channel.**
+
+### Five regressions, reported not netted out
+
+Against best-of-2 this arm **gained 17 and lost 5** for +12 net. The five - `db-wal-recovery`, `dna-insert`,
+`filter-js-from-html`, `mcmc-sampling-stan`, `polyglot-c-py` - had each succeeded on *one of two* stock-clock
+attempts and failed on this **single** attempt. That is ordinary best-of-1 versus best-of-2 variance, and it
+is the reason the unresolved set decomposes as **33 = 25 inconclusive-still + 1 capability + 2 harness-void +
+5 single-pass regressions** rather than the 28 a naive subtraction would predict. Any future arm that quotes
+a gain against 44/89 owes the same decomposition.

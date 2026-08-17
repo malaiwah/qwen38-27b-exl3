@@ -1,0 +1,114 @@
+{
+ "schema": "qwen38-tb21-8x-2xclock-arm/1",
+ "generated_utc": "2026-08-17T09:16:47Z",
+ "what_this_is": "One labelled Terminal-Bench 2.1 arm: SINGLE pass, DOUBLED agent timeout, on the 8x DP8 tier. It exists to separate budget-bound failures from fidelity-bound failures. It is NOT leaderboard-comparable because the agent timeout is non-stock, and it does NOT revise the published 31/89 (single pass, stock clock) or 44/89 (best-of-2, stock clock) numbers.",
+ "arm": {
+  "tier": "8x RTX PRO 6000 / DP8",
+  "host": "jl-vm-473501 (VPC 10.0.0.5)",
+  "shards": 8,
+  "n_per_shard": 4,
+  "concurrency": "C32 (DP8 measured knee)",
+  "timeout_multiplier": 2.0,
+  "passes": 1,
+  "reasoning_effort": "default (unset/xhigh)",
+  "image": "vllm:gg-r34-tb21-sr1 sha256:237a5025",
+  "model": "malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated"
+ },
+ "result": {
+  "resolved": 56,
+  "of": 89,
+  "headline": "56/89 resolved (single pass, 2x clock, 8x DP8)",
+  "wall_clock_s": 8454.1,
+  "wall_clock_h": 2.35,
+  "exception_histogram": {
+   "AgentTimeoutError": 22,
+   "RuntimeError": 2
+  }
+ },
+ "comparison_ladder": {
+  "single_pass_stock_clock_1x": 31,
+  "best_of_2_stock_clock_1x": 44,
+  "single_pass_2x_clock_8x": 56,
+  "note": "The clean one-variable pair is 31 -> 56, both single pass. The +25 comes from doubled clock AND the 8x tier together; both act through the SAME channel (tokens available before the deadline) and neither is a fidelity channel, so the pair bounds budget-bound failure without being a scaling claim."
+ },
+ "attribution_update": {
+  "quantization_suspect": {
+   "was": 7,
+   "resolved_at_2x_clock": 7,
+   "remaining": 0,
+   "verdict": "WITHDRAWN. All seven tasks previously labelled quantization-suspect resolve ON THE QUANTIZED MODEL once the clock is doubled. BF16 passing them at stock clock was therefore not evidence of a fidelity deficit; those failures were budget-bound. Zero tasks in the suite remain attributable to quantization.",
+   "tasks": [
+    "break-filter-js-from-html",
+    "configure-git-webserver",
+    "feal-linear-cryptanalysis",
+    "headless-terminal",
+    "mteb-retrieve",
+    "overfull-hbox",
+    "sqlite-db-truncate"
+   ]
+  },
+  "inconclusive_timeout": {
+   "was": 35,
+   "resolved_at_2x_clock": 10,
+   "remaining": 25,
+   "tasks_resolved": [
+    "build-cython-ext",
+    "build-pov-ray",
+    "caffe-cifar-10",
+    "cobol-modernization",
+    "compile-compcert",
+    "largest-eigenval",
+    "mailman",
+    "mteb-leaderboard",
+    "rstan-to-pystan",
+    "tune-mjcf"
+   ]
+  },
+  "capability": {
+   "was": 1,
+   "resolved_at_2x_clock": 0,
+   "remaining": 1,
+   "tasks": [
+    "query-optimize"
+   ],
+   "verdict": "The only genuine capability failure in the suite; unchanged by clock or tier."
+  },
+  "harness_void": {
+   "was": 2,
+   "resolved_at_2x_clock": 0,
+   "remaining": 2,
+   "tasks": [
+    "qemu-startup",
+    "qemu-alpine-ssh"
+   ],
+   "verdict": "Both RuntimeErrors in this arm are exactly these two tasks. Nested-virtualisation qemu is unavailable on the Jarvis VM, so they are structurally unattemptable here, not failures."
+  }
+ },
+ "regressions_vs_best_of_2": {
+  "count": 5,
+  "tasks": [
+   "db-wal-recovery",
+   "dna-insert",
+   "filter-js-from-html",
+   "mcmc-sampling-stan",
+   "polyglot-c-py"
+  ],
+  "explanation": "This arm is SINGLE pass; 44/89 was BEST-OF-2. Five tasks that succeeded on one of two stock-clock attempts failed on this single attempt. That is ordinary best-of-1 vs best-of-2 variance, reported rather than netted out: the arm gained 17 and lost 5 for +12 net against 44."
+ },
+ "bookkeeping": {
+  "held_from_best_of_2": 39,
+  "gained": 17,
+  "regressed": 5,
+  "unresolved_decomposition": "33 = 25 inconclusive-still + 1 capability + 2 harness-void + 5 single-pass regressions"
+ },
+ "honest_limits": [
+  "Non-stock timeout: never quote 56/89 as a Terminal-Bench score.",
+  "Tier and timeout co-varied; no per-variable split is claimed.",
+  "Single pass, so its own unresolved set carries best-of-1 variance.",
+  "The two qemu tasks are environment-void here and would need a nested-virt host to attempt."
+ ],
+ "inputs": {
+  "merged_pass_receipt": "receipts/tb21-8x-p1-merged.json",
+  "prior_attribution": "receipts/terminal-bench-2.1-attribution.json"
+ }
+}
