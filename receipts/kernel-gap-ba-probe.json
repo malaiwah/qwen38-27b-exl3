@@ -1,0 +1,17 @@
+{
+ "shape": "4x5120 @ 5120x96 bf16 (in_proj_ba decode shape)",
+ "command": "/var/tmp/work/ggrun.sh python /work/kg_probe_ba.py",
+ "graph_replayed_us": {
+  "F.linear (served path)": 20.08,
+  "F.linear fp16": 13.58,
+  "matmul pre-transposed KxN": 5.61,
+  "mm out=": 5.61,
+  "mul+sum reduction": 10.2,
+  "torch.compile max-autotune": 4.23,
+  "triton split-K": "compile failed (static_range misuse); moot - stock paths already win"
+ },
+ "verdict": "NO custom kernel needed: pre-transposed NN mm is 3.6x faster than the served TN F.linear; the in-model pick (28us cutlass wmma) is even worse than the 20us seen here. Dispatch/layout fix only.",
+ "relerr_check": {
+  "F.linear vs fp32 ref": 0.00224
+ }
+}

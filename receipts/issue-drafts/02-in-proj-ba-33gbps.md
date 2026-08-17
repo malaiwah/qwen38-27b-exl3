@@ -10,14 +10,22 @@ effective for a 983 KB weight, 48 calls per decode forward = **1.34 ms/step = 5.
 time** (torch-profiler receipt: `receipts/kernel-gap-profiled-decode.json`, category table + top-30
 kernels). At 1.4 TB/s this op is worth ~3 µs, not 28.
 
-## Proposed fix (probe first)
-1. 30-minute probe: does cublasLt heuristic selection / torch.compile already beat the observed
-   pick at (m≤16, K=5120, N=96)? If yes: dispatch fix only.
-2. Else: a split-K GEMV (Triton) for `m≤16, N≤128, K≥4096` bf16 in `UnquantizedLinearMethod.apply`,
-   graph-capturable (preallocated split-K workspace), behind `VLLM_TINY_N_GEMV`.
-Expected recovery ~1.25 ms/step ≈ +5–7 % single-stream decode.
+## Probe result (2026-08-17): dispatch fix only — NO custom kernel needed
+Measured on the same card (`receipts/kernel-gap-ba-probe.json`, graph-replayed):
+`F.linear` (served TN path) 20.08 µs; **pre-transposed K×N `mm` 5.61 µs (3.6×)**;
+`torch.compile` max-autotune 4.23 µs. cuBLAS simply picks a bad TN kernel at this shape.
+
+## Proposed fix — measured end-to-end
+~15-line patch (`receipts/kernel-gap-ba-transpose.patch`): in `UnquantizedLinearMethod`,
+`process_weights_after_loading` registers a `weight_kn = weight.t().contiguous()` buffer for
+`N≤128, K≥4096` CUDA weights (behind `VLLM_TINY_N_MM_TRANSPOSE`, ~1 MB/layer extra), and `apply`
+uses `torch.mm(x, weight_kn)`. Graph-capturable (pure mm, no allocation).
+**Measured: +8.0 % single-stream decode alone (96.19 → 103.91 tok/s median,
+`receipts/kernel-gap-ba-ab.json`).** Caveat: stacked with the draft-01 gate patch the local gain
+saturates at the gate-alone level because the post-gate step is CPU-dispatch-bound under proot —
+the two fixes need a bare-metal stacked measurement before summing their gains.
 
 ## What would falsify this
-A probe showing the 28 µs is not kernel-bound (e.g. unavoidable launch+sync floor at this grid on
-SM120): if a bare split-K kernel cannot beat ~15 µs at this shape, the finding downgrades from
-"wrong kernel" to "launch floor" and belongs with the structural list (docs/47 F10).
+The probe already settled the kernel question (5.6 µs achievable). Remaining falsifier: a
+bare-metal A/B showing the end-to-end gain <1 % (would mean the GPU stretch is never the critical
+path at C1 on production hosts — unlikely given the F6 trace, but that is the check).

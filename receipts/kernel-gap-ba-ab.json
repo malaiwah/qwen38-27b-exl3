@@ -1,0 +1,22 @@
+{
+ "what": "end-to-end A/B of the P2.1 in_proj_ba fix (pre-transposed weight_kn buffer + mm in UnquantizedLinearMethod, patch: receipts/kernel-gap-ba-transpose.patch) and its stack with the F7 gate patch, LOCAL card, served profile C1",
+ "command": "/var/tmp/work/ggrun.sh python /work/kg_ab_gate.py {ba-transpose|stacked}",
+ "baseline_median_tok_s": 96.19,
+ "ba_transpose_tok_s": [
+  103.55,
+  103.91,
+  104.51
+ ],
+ "ba_transpose_median": 103.91,
+ "ba_gain_pct": 8.0,
+ "gate_alone_median": 110.97,
+ "stacked_tok_s": [
+  109.58,
+  110.56,
+  110.74
+ ],
+ "stacked_median": 110.56,
+ "stacking_note": "Locally the two wins DO NOT stack: after the gate patch the step is CPU-dispatch-bound under proot (F6 measured 23 pct GPU idle), so the ba fix's ~1.1 ms/step GPU saving is hidden behind CPU gaps. Both are individually real (+8.0 pct and +15.4 pct); expect partial-to-full stacking on bare metal where the GPU stretch is the critical path. Do not sum them in any claim until a bare-metal stacked number exists.",
+ "restored": "linear.py and exl3.py restored to r34 bytes, md5-verified",
+ "gpu_idle_verified_before_run": true
+}

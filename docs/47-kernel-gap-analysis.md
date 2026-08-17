@@ -552,19 +552,21 @@ engineering; nothing below touches the fidelity budget without its own KLD gate.
 
 ### Phase 2 — small fork patches, each behind a flag (week-scale)
 
-**P2.1 — `in_proj_ba` split-K GEMV (F10.2, decode +5–7 %).**
-- *Change:* a Triton split-K GEMV for `m ≤ 16, N ≤ 128, K ≥ 4096` bf16 shapes, dispatched from
-  `UnquantizedLinearMethod.apply` (`$SP/vllm/model_executor/layers/linear.py`) behind
-  `VLLM_TINY_N_GEMV=1`. Design: grid over (N, split_k); each block reduces a K-slice with vectorized
-  128-bit loads; fp32 accumulate; single atomic-free two-pass reduction (worth ~3 µs vs the
-  measured 28 µs `cutlass_80_wmma` pick). Must be CUDA-graph-capturable (no allocations in the hot
-  path — preallocate the split-K workspace per shape like `_EXL3_RECONSTRUCT_SCRATCH`).
-- *Validation:* unit parity vs `torch.nn.functional.linear` (fp32 ref, ≤1e-2 rel for bf16); graph
-  capture smoke (the op replays inside FULL_DECODE_ONLY); protocol A/B expecting −1.2 ms/step.
-- *Effort:* 1–2 days. *Risk:* low; kernel is trivial, blast radius is one dispatch branch.
-- *Note:* check first whether cuBLASLt already beats the observed pick — a 30-minute
-  `torch.matmul` vs `cublasLtMatmul` heuristic probe on 4×5120 @ 5120×96 may make the Triton kernel
-  unnecessary. Do the probe before writing any kernel.
+**P2.1 — `in_proj_ba` fix (F10.2). DONE — MEASURED +8.0 %; probe made the kernel unnecessary.**
+- *Probe (done first, as required):* `receipts/kernel-gap-ba-probe.json` — graph-replayed at
+  4×5120 @ 5120×96 bf16: `F.linear` (served TN path) 20.08 µs; **pre-transposed K×N `mm` 5.61 µs
+  (3.6×)**; `torch.compile` max-autotune 4.23 µs. cuBLAS picks a bad TN kernel at this shape;
+  no Triton kernel written — the cheapest outcome held.
+- *Change (shipped form):* ~15 lines in `UnquantizedLinearMethod`
+  (`receipts/kernel-gap-ba-transpose.patch`): `process_weights_after_loading` registers
+  `weight_kn = weight.t().contiguous()` for `N≤128, K≥4096` CUDA weights behind
+  `VLLM_TINY_N_MM_TRANSPOSE` (~1 MB/layer extra); `apply` routes to `torch.mm(x, weight_kn)`.
+  Graph-capturable (pure mm).
+- *Measured:* **+8.0 % single-stream alone (96.19 → 103.91 tok/s median,
+  `receipts/kernel-gap-ba-ab.json`)**. Stacked with the P1.1 gate patch: 110.56 vs gate-alone
+  110.97 — locally the wins do NOT stack because the post-gate step is CPU-dispatch-bound under
+  proot (F6's 23 % idle); do not sum the gains until Main's bare-metal stacked number exists.
+  Rootfs restored to r34 bytes after the A/B (md5-verified).
 
 **P2.2 — strided-C shard writes, delete the merge cats (F5.3, PP +5–8 % est).**
 - *Change:* `hgemm` already takes strided C (`hgemm.cu:41-51,77`: ldc = `c.stride(-2)`, columns
