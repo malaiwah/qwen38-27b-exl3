@@ -387,13 +387,24 @@ def check_needle(ep: Endpoint, model: str, args, is_mock: bool) -> dict:
         cpt = 4.0
         cpt_method = "chars/4 heuristic (/tokenize unavailable)"
 
-    doc, needle, code = build_needle_doc(args.seed,
-                                         int(doc_target_tokens * cpt))
+    # Deliberately UNDERSHOOT the first probe. A short-sample chars/token ratio
+    # underestimates tokens on a 1.2M-char document by ~0.4 %, so a first probe
+    # aimed straight at the budget tokenizes ~1,100 tokens OVER the window -
+    # harmless (a /tokenize call runs no forward pass and the send is trimmed
+    # before it happens) but it makes transformers emit "Token indices sequence
+    # length is longer than the specified maximum ... will result in indexing
+    # errors" into the serving log of a qualified run, where it reads like a
+    # correctness problem and is not one. Starting 1.5 % low and growing into
+    # the budget keeps the log clean and still lands within ~0.5 % of the
+    # window. Measured: probe0 263,243 > 262,144 before this, under it after.
+    UNDERSHOOT = 0.985
+    doc, needle, code = build_needle_doc(
+        args.seed, int(doc_target_tokens * cpt * UNDERSHOOT))
 
-    # Trim-to-fit: /tokenize the ACTUAL doc and shrink proportionally until
-    # it is under budget, rather than trusting the char/token estimate. Bound
-    # at 6 tries; each retokenizes a smaller doc so it converges fast (a
-    # ~0.4 % initial miscalibration on a 260k-token doc needs one pass).
+    # Fit-to-budget: /tokenize the ACTUAL doc and correct against the real
+    # tokenizer rather than trusting the char/token estimate. Bounded at 6
+    # tries; each re-tokenizes using the doc's OWN measured ratio, so it
+    # converges in one or two passes from either direction.
     measured_tokens = None
     trims = []
     for attempt in range(6):
@@ -405,17 +416,24 @@ def check_needle(ep: Endpoint, model: str, args, is_mock: bool) -> dict:
         measured_tokens = int(tk2["json"]["count"])
         trims.append({"attempt": attempt, "doc_chars": len(doc),
                       "measured_tokens": measured_tokens})
-        if measured_tokens <= doc_target_tokens:
-            break
-        overshoot = measured_tokens - doc_target_tokens
-        # Shrink by the measured overshoot in tokens, converted back to
-        # chars via the doc's OWN just-measured ratio (not the stale
-        # sample estimate), plus 0.5% margin so it doesn't hover at the edge.
         doc_cpt = len(doc) / measured_tokens
-        cut_chars = int(overshoot * doc_cpt * 1.005)
-        doc, needle, code = build_needle_doc(
-            args.seed, max(1000, len(doc) - cut_chars))
-        trims[-1]["cut_chars"] = cut_chars
+        if measured_tokens > doc_target_tokens:
+            # Shrink by the measured overshoot, converted back to chars via the
+            # doc's own just-measured ratio, plus 0.5 % so it does not hover at
+            # the edge.
+            cut_chars = int((measured_tokens - doc_target_tokens) * doc_cpt * 1.005)
+            doc, needle, code = build_needle_doc(
+                args.seed, max(1000, len(doc) - cut_chars))
+            trims[-1]["cut_chars"] = cut_chars
+            continue
+        # Under budget: grow into it only while the gap is worth another round
+        # trip, and aim 0.3 % short so growth can never cross the window.
+        gap = doc_target_tokens - measured_tokens
+        if gap <= doc_target_tokens * 0.005 or attempt == 5:
+            break
+        add_chars = int(gap * doc_cpt * 0.997)
+        doc, needle, code = build_needle_doc(args.seed, len(doc) + add_chars)
+        trims[-1]["add_chars"] = add_chars
 
     prompt = (
         f"{doc}\n\nQuestion: what is the vault access code stated in the "
