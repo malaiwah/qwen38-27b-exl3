@@ -584,7 +584,9 @@ Original plan text follows for the ladder definition.
 
 ### Phase 2 — small fork patches, each behind a flag (week-scale)
 
-**P2.1 — `in_proj_ba` fix (F10.2). DONE — MEASURED +8.0 %; probe made the kernel unnecessary.**
+**P2.1 — `in_proj_ba` fix (F10.2). DONE — kernel win 3.58–4.58× MEASURED (F13); end-to-end stated as
+an Amdahl BOUND of +3.89…+4.24 %, superseding the old "+8.0 %" headline. Probe made the kernel
+unnecessary.**
 - *Probe (done first, as required):* `receipts/kernel-gap-ba-probe.json` — graph-replayed at
   4×5120 @ 5120×96 bf16: `F.linear` (served TN path) 20.08 µs; **pre-transposed K×N `mm` 5.61 µs
   (3.6×)**; `torch.compile` max-autotune 4.23 µs. cuBLAS picks a bad TN kernel at this shape;
@@ -594,13 +596,22 @@ Original plan text follows for the ladder definition.
   `weight_kn = weight.t().contiguous()` for `N≤128, K≥4096` CUDA weights behind
   `VLLM_TINY_N_MM_TRANSPOSE` (~1 MB/layer extra); `apply` routes to `torch.mm(x, weight_kn)`.
   Graph-capturable (pure mm).
-- *Measured:* **+8.0 % single-stream alone (96.19 → 103.91 tok/s median,
-  `receipts/kernel-gap-ba-ab.json`)**. Stacked with the P1.1 gate patch: 110.56 vs gate-alone
-  110.97 — locally the wins do NOT stack because the post-gate step is CPU-dispatch-bound under
-  proot (F6's 23 % idle); do not sum the gains until Main's bare-metal stacked number exists.
-  Rootfs restored to r34 bytes after the A/B (md5-verified).
+- *End-to-end:* the local single-stream A/B recorded **96.19 → 103.91 tok/s median (+8.0 %,
+  `receipts/kernel-gap-ba-ab.json`)**, but that is a proot-box end-to-end number and **F13 retires it
+  as a performance claim**: the Amdahl ceiling for a 4.58× win on a 5.2 % component is **+4.24 %** of
+  decode GPU time (+3.23 % on a wall-clock basis), so the +8.0 % cannot be the effect of this patch
+  alone — it is dispatch-shadow on a ptrace-taxed box. §28's bare-metal ladder saw +1.44 % median
+  against a 2.84 % CV. **Quote the bound, not either observation.** Stacked with the P1.1 gate patch:
+  110.56 vs gate-alone 110.97 — locally the wins do NOT stack because the post-gate step is
+  CPU-dispatch-bound under proot (F6's 23 % idle). Rootfs restored to r34 bytes after the A/B
+  (md5-verified).
 - *Status:* **PR branch ready** — `malaiwah/vllm-voipmonitor` @ `kernel-gap/tiny-n-mm-transpose`
   (3b35c04c6, based on `dev/gilded-gnosis`; method body verified identical to served bytes).
+- *Outstanding before merge (F13):* add an `m≥2` condition — the patch **regresses 33 % per call at
+  m=1** (6.30 vs 4.72 µs), because at m=1 cuBLAS runs a GEMV and a GEMV wants the served layout. Also
+  the in-source comment on commit `3b35c04c6` still asserts "+8.0 % end-to-end"; that line needs the
+  bound instead. And the KLD spot-check is still owed: the patch is the **less** accurate arm
+  (F13.4).
 
 **P2.2 — strided-C shard writes, delete the merge cats. DONE — MEASURED MARGINAL (+1.9 % PP at
 32k, +0.8 % at 197k, decode neutral); below the pre-registered 2 % bar — NOT shipped.**
@@ -818,5 +829,179 @@ a **KV-dtype-dependent band** — the align block halves when the KV dtype doubl
 1600 → batched-tokens ∈ [1600, 3199]; bf16/auto KV → block 800 → [800, 1599]** (and the LMCache
 server's `--chunk-size` must equal the block). A serving-profile constraint nobody had written
 down; quote it only with its dtype or the two bands will be mixed up.
+
+---
+
+## F13. MEASURED at the kernel level, as docs/29 and §28 mandate: the `in_proj_ba` transpose is worth 3.58× (hot L2) to 4.58× (cold weight) at the served shape — which BOUNDS end-to-end decode at **+3.89…+4.24 %**, and the cliff turns out to live only at m ∈ {2,3,4}
+
+**Receipt: [`kernel-amdahl-bound.json`](../receipts/kernel-amdahl-bound.json)** (raw:
+[`kernel-amdahl-ba-raw.json`](../receipts/kernel-amdahl-ba-raw.json),
+[`kernel-amdahl-kernel-names.json`](../receipts/kernel-amdahl-kernel-names.json); harness
+`tools/kernel-amdahl-ba.py`, `tools/kernel-name-probe.py`).
+
+docs/46 §28 ran a bare-metal server A/B of the gate and transpose patches and found it
+**inconclusive by construction**: median +1.44 % per-request against a 2.84 % median within-arm CV,
+against an effect Amdahl caps at +4.19 %. Its own closing instruction was to stop trying to observe
+the effect and instead *measure the kernel and publish the bound*. This finding does that.
+
+**Method.** `torch.cuda.Event` pairs around `CUDAGraph.replay()`. One replay contains **48 calls —
+one decode step's worth of GDN `in_proj_ba` — each against its own weight tensor** (48 × 983 KB =
+47.2 MB, so no single weight can sit hot for the whole measurement). **200 timed samples per arm per
+shape**, arms **interleaved sample-by-sample** so clock drift is common-mode. Warmup: 50 eager
+iterations of *both* arms, 3 pre-capture iterations on a side stream, then 20 untimed replays of
+every arm; and because this card idles at **180 MHz SM / 405 MHz mem**, 300 8192² bf16 matmuls are
+run before any timing so nothing is measured on a cold clock (2295 MHz at timing start, 2347 MHz at
+the end). The two arms are the literal code paths: `F.linear(x, weight[96,5120])` for the served
+path, `torch.mm(x, weight_kn[5120,96])` for the patch.
+
+Graph replay is what makes this box usable at all: **proot inflates host dispatch, but CUDA events
+time device execution, which proot does not touch** — the standing rule that end-to-end throughput
+from this box is not a performance result is respected, because no end-to-end number is reported.
+
+**Resolution achieved: relative SEM 0.012 % (served arm, m=4) and 0.044 % (patch arm).** That is a
+ruler roughly **200× finer** than the 2.84 % CV that defeated §28.
+
+### The measurement
+
+Per-call microseconds, mean over 200 samples of 48 calls (hot L2), and the L2-flushed cold bracket:
+
+| m | served TN | patch NN | **k** | cold TN | cold NN | **k cold** |
+|--:|--:|--:|--:|--:|--:|--:|
+| 1 | **4.72** | 6.30 | **0.75** ← regression | 4.33 | 6.18 | 0.70 |
+| 2 | 20.08 | 5.59 | **3.60** | 30.63 | 6.63 | 4.62 |
+| 3 | 20.08 | 5.58 | **3.60** | 30.60 | 6.64 | 4.61 |
+| **4 (served)** | **20.08** | **5.61** | **3.58** | **30.59** | **6.68** | **4.58** |
+| 5 | 2.99 | 2.71 | 1.10 | 4.05 | 3.61 | 1.12 |
+| 6 | 3.03 | 2.62 | 1.16 | 4.06 | 3.51 | 1.16 |
+| 8 | 2.66 | 2.63 | 1.01 | 4.06 | 3.67 | 1.10 |
+| 16 | 2.88 | 2.82 | 1.02 | 4.08 | 4.01 | 1.02 |
+
+At m=4: served mean **20.0826 µs**, median 20.084, stdev 0.0344, SEM 0.0024; patch mean **5.6127 µs**,
+median 5.6147, stdev 0.0352, SEM 0.0025. m=4 is the served width — F6 profiled 48 calls/step at
+m≤4, and the target body pass verifies 1 target + 3 MTP draft tokens.
+
+**Two independent cross-checks land.** The hot m=4 served figure **20.08 µs reproduces
+`kernel-gap-ba-probe.json`'s 20.08 µs to three significant figures** on a different day with a
+different harness. And the cold bracket's **30.59 µs brackets F6's in-model 28 µs/call** — the figure
+the 5.2 % share was computed from — so the share and the speedup are being read off the same regime.
+
+### F13.1 The cliff is m ∈ {2,3,4} only, not "tiny N" generally
+
+The standing story was "tiny-N tall-K linears hand cuBLAS a bad TN problem". The sweep says
+something sharper: **the pathology exists at m = 2, 3, 4 and nowhere else.** At m=1 the served path
+is *faster* than the patch; from m=5 up, both arms are within 2–16 % of each other at 2.6–3.0 µs.
+The 4× penalty occupies a three-wide window — and that window is exactly the MTP verify width the
+served profile runs in. The patch is well aimed; it is just aimed at a much narrower target than we
+described.
+
+### F13.2 The mechanism, named from the profiler rather than inferred: a declined split-K
+
+| shape / arm | kernels selected | µs |
+|---|---|--:|
+| m=1, TN | `dot_kernel` + `reduce_1Block_kernel` (cuBLAS **GEMV**) | 3.66 + 1.35 |
+| m=1, NN | same GEMV pair | 5.26 + 1.36 |
+| m=2/4, TN | `cutlass_80_wmma_tensorop_bf16_s161616gemm_bf16_16x16_128x2_`**`tn`**`_align8` — **and nothing else** | 20.3 / 20.1 |
+| m=2/4, NN | same family, `nn_align8` variant | 4.47 / 4.49 |
+| m=2/4, NN | **+ `cublasLt::splitKreduce_kernel`** | 1.21 / 1.21 |
+| m=8, TN/NN | `nvjet_sm120_tst_mma_32x16x128_..._splitK_TNNN` / `_NNNN` | 2.24 / 2.33 |
+
+This confirms F6's attribution (`cutlass_80_wmma…16x16`) independently, and it identifies the cause:
+**the fast arm has a split-K reduction kernel and the slow arm does not.** cuBLASLt declines to split
+K for the *TN* layout at N=96/K=5120, so a single 16×16 tile walks all 5120 of K serially on what is
+effectively one SM's worth of work; the NN layout gets K split and reduced. It is **not a missing
+kernel** — the same CUTLASS template, one letter different in the layout tag, is 4.5× faster. That is
+why the probe correctly concluded no custom kernel was needed. It also explains m=8: the modern
+`nvjet_sm120` TMA kernel splits K for *both* layouts, so the heuristic gap closes on its own.
+
+### F13.3 The patch regresses 33 % per call at m=1, and it has no guard
+
+`weight_kn` is registered for any `N≤128, K≥4096` CUDA weight and `apply` uses it unconditionally.
+At m=1 that costs **6.30 µs instead of 4.72 µs (k=0.75)** — because at m=1 cuBLAS is running a GEMV,
+and a GEMV wants the reduction dimension contiguous, which is the *served* layout. The shipped
+profile is m=4 so nothing currently regresses, but **the condition should be `m≥2`** (or the layout
+chosen per row count, keeping both copies — the memory is already spent). Any configuration that
+disables speculative decoding hits the regression today.
+
+### F13.4 The patch is measurably the less accurate arm, and not bit-identical
+
+Not free. Because the NN layout is the one cuBLASLt splits K for, the patch reduces **bf16** partials
+through `splitKreduce`. Relative error against an fp32 reference at m=4: **2.366e-03 for the patch vs
+1.658e-03 for the served path**, with max abs Δ of 1.0 on outputs of magnitude ≈72. Both are ~0.2 %
+and neither is alarming, but the patch is the worse of the two and the outputs are **not
+bit-identical**, so the pre-registered KLD spot-check is still required before shipping. Reported here
+because a speedup receipt that omits its own accuracy cost is not a receipt.
+
+### F13.5 The Amdahl bound, arithmetic shown
+
+For component share $s$ and kernel speedup $k$, the new total is $(1-s) + s/k = 1 - s(1-1/k)$, so
+
+$$\text{gain} \;=\; \frac{1}{1 - s(1 - 1/k)} - 1 \;=\; \frac{s\,(1 - 1/k)}{1 - s\,(1 - 1/k)}$$
+
+With $s = 0.052$ (F6: `in_proj_ba` = 5.2 % of decode GPU **busy** time, 1.34 ms of a 23–28 ms step):
+
+- **hot L2, $k = 3.5781$:** $1 - 1/k = 0.720527$; $x = 0.052 \times 0.720527 = 0.037467$;
+  gain $= 0.037467 / 0.962533 = 0.038925 =$ **+3.893 %**
+- **cold weight, $k = 4.5828$:** $1 - 1/k = 0.781774$; $x = 0.052 \times 0.781774 = 0.040652$;
+  gain $= 0.040652 / 0.959348 = 0.042374 =$ **+4.238 %**
+
+The ceiling as a function of $k$, with $s$ held at 5.2 % — this **reproduces §28's table exactly**,
+which is the point: the two analyses agree to the third decimal and disagree only about which number
+was worth measuring.
+
+| $k$ | $1 - 1/k$ | $s(1-1/k)$ | **bound** |
+|--:|--:|--:|--:|
+| 1.5 | 0.333333 | 0.017333 | **+1.764 %** |
+| 2.0 | 0.500000 | 0.026000 | **+2.669 %** |
+| 3.0 | 0.666667 | 0.034667 | **+3.591 %** |
+| 4.4 | 0.772727 | 0.040182 | **+4.186 %** |
+
+**On a wall-clock basis the ceiling is lower still.** Amdahl only accelerates GPU-busy time, and the
+same profiled window is **23 % GPU-idle** (F6: eager draft passes, sampler D2H syncs). So the
+component's share of the *step* is $0.052 \times 0.77 = 0.040040$, giving
+$x = 0.031305$ and a bound of **+3.231 %**. That local idle share is itself proot-inflated, so treat
++3.23 % as the lower bracket and +4.24 % as the upper.
+
+Per-step saving, as an independent route to the same place: $48 \times (20.0826 - 5.6127) =
+\mathbf{694.6\ \mu s}$ hot, $48 \times (30.59 - 6.675) = \mathbf{1147.9\ \mu s}$ cold. **The cold
+1.15 ms/step matches F10.2's independently derived "~1.2 ms/step recovered" prediction.**
+
+**Every percentage in this subsection is a BOUND. None of them was observed as a throughput delta and
+none may be quoted as one.**
+
+### F13.6 Reconciling with §28: one result at two scales
+
+§28 measured **+1.44 % median / +2.24 % mean** per-request over 11 valid cells, with a **2.84 %**
+median within-arm CV (13.9–18.0 % in short-prompt cells) and a sign test at p = 0.065.
+
+A ceiling of ~+4.2 % on GPU time — ~+3.2 % on wall clock — and an observation of +1.4…2.2 % **± 2.8 %**
+are not in conflict. The observation's own noise band spans the entire interval between zero and the
+ceiling. §28 did not fail to find the effect because the effect is absent; **it failed because a
+≥2.84 % ruler cannot resolve a ≤4.24 % quantity.** The kernel says the component got 4.58× faster;
+Amdahl says that can only ever be worth ~4 % of the step; the ladder says "somewhere in ±2.8 % of
++1.4 %". All three statements are the same fact.
+
+**How many repeats §28 would have needed.** Paired design (each cell is its own control),
+$n = (z_{1-\alpha/2} + z_{1-\beta})^2 (\sigma/\delta)^2$ with $\alpha = 0.05$ two-sided, power 0.80,
+$\sigma = 2.84$ %, so $(1.959964 + 0.841621)^2 = 7.8489$:
+
+| target effect $\delta$ | arithmetic | repeats/cell |
+|---|---|--:|
+| 1.50 % | $7.8489 \times (2.84/1.50)^2 = 28.14$ | **29** ← reproduces §28's own estimate |
+| 1.44 % (observed median) | $7.8489 \times (2.84/1.44)^2 = 30.53$ | **31** |
+| 4.24 % (the Amdahl ceiling) | $7.8489 \times (2.84/4.24)^2 = 3.52$ | **4** |
+
+§28 ran **5**. That is *just* enough to resolve an effect sitting exactly at the ceiling and nowhere
+near enough for the magnitude actually observed — **the design was marginal by construction**, which
+is exactly why the standing method is now: measure the kernel, publish the bound, and do not spend
+ladder time trying to observe an effect smaller than the harness CV.
+
+### F13.7 Provenance of the code under test
+
+The transpose diff timed here is byte-identical to `git diff 3b35c04c6~1..3b35c04c6` regenerated from
+the fork clone at `/var/tmp/vllm-gg`, **sha256
+`ef70bad524ad20eefe9b739de6234b81cb02efb3e3ed6e36ed9aa9ff38bed062`** (archived as
+`receipts/kernel-gap-transpose.patch`). The gate patch is
+`receipts/kernel-gap-gate-ab.patch`, sha256
+`fa2fe268f86bc8f60d3f8bdfea3fc7ae2bf75f4b9bae85ddce769dcb40bfe554`.
 
 ---
