@@ -288,7 +288,7 @@ write-through).
 | FidelityContract | S3.1–S3.7, CROSS-A, CROSS-B | No NEW-VIOLATION; S3.1–S3.7 re-verified at tip (fidelity.py anchors byte-identical: :490 final-norm hook, :842-844/:891-893 single shared BF16 head, :853-858 full-vocab KL/JS/top-1, subcommands :1250/1259/1281/1329, zero module-level torch imports, :153-156 require_local_model, :622 fixed-prompt capture + docs/42:15-17/:154 "Nothing is sampled"; suite3.py :26/:458/:542/:670 unchanged); no PARTIALs in this slice; CROSS-A (suite/contamination shingles) and CROSS-B (CI notation rounding) re-confirmed |
 | KldWorkflow | S4.1–S4.6, FIND-S4.1a/S4.3a, FIND-YARN-STYLE | No NEW-VIOLATION; the 3 KLD tools byte-stable (no upstream commit touched the slice); S4.1–S4.6 re-spot-checked at tip (set -euo pipefail :51/:41, shard bound :319-320, DRY echo-only :668-671, schema /3 :91, atomic write :988); FIND-S4.1a (dry-run wording vs :635 rm -rf) and FIND-S4.3a (header pin imprecision) STILL-OPEN; FIND-YARN-STYLE STILL-OPEN (intentional separate schema family, stylistic) |
 | GgrunRootfs | S5.1–S5.8, X-a, X-b, X-c | No NEW-VIOLATION; ggrun.sh (44L), pull_rootfs.py (231L), docs/06 (66L), docs/03:17-23 all byte-identical at tip; S5.1–S5.8 re-verified (exec proot -R :32, defaults :16-19 + guest /models,/work,/cache, offline env :38, driver-lib binds :26-30/:36, pass-through :32-44, Baseline-2 docs/06:55-57, README grep vllm serve/ggrun → no match); X-a RESOLVED (third full re-read; reflog rebase picks were only the 3 findings commits); X-b STILL-OPEN (rationale-location fact, not a defect); X-c CONFIRMED (no --host/VLLM_HOST/bind-address in the env -i block). Cited tip 0c3dffa3 was a stale pre-rebase SHA — actual tip at read time 53a4eb0 |
-| DocsMap | — | pending |
+| DocsMap | S6 anchors, P3, P4, P7-adj, P8-adj, S15.1 | No NEW-VIOLATION; all anchors intact (docs/42:1/:153, docs/03:23, docs/06:25 digest, README :65/:284/:355, PROGRESS :1132, docs/05:3 banner). **P3 RESOLVED** — docs/04:86-91 now carries step 5 finalize_checkpoint.py "the publication gate, and the step that must not be skipped"; sequence complete in order. **P4 RESOLVED** — docs/04:67-70 new "Where these commands run" paragraph (turboderp-org/exllamav3@5f3c537 1.4.2 external env for steps 1+3; steps 2+5 in-repo). P7/P8 STILL-OPEN (below). S15.1 LMCache §22/:841 + §25-correction/:1052 still CONFIRMED |
 | ReqsRuntime | — | pending |
 | DockerStages | — | pending |
 | ReceiptsAudit | — | pending |
@@ -320,12 +320,12 @@ write-through).
 |---|---|---|---|
 | P1 | S2.4 subcommand prevalence (10/94) | RESOLVED | AGENTS.md:33 rewritten at 3e60f03: "Most CLIs are flat argparse (55 of 88); only 9 use subparsers, and 11 parse sys.argv directly… Read the help rather than assuming a subcommand exists." New minor note: those counts now lag the tree (95 executables / 62 argparse / 10 subcommand CLIs after the yarn + mirror-pull additions) |
 | P2 | S13.1/S13.2 convention non-users | PENDING | |
-| P3 | S6.4 docs/04 lacks finalize step | PENDING | |
-| P4 | S12.5/S12.6 docs/04 lacks external-env statement | PENDING | |
+| P3 | S6.4 docs/04 lacks finalize step | RESOLVED | docs/04:86-91 now carries step 5 `tools/finalize_checkpoint.py` "the publication gate, and the step that must not be skipped" (emits quantization_manifest.json, SHA256SUMS, DOCS-SHA256SUMS, build-receipt.json); full ordered sequence present (added by the other session in the latest upstream batch, confirmed at 9853839) |
+| P4 | S12.5/S12.6 docs/04 lacks external-env statement | RESOLVED | docs/04:67-70 new "Where these commands run" paragraph: steps 1 and 3 are the external exllamav3 toolchain at turboderp-org/exllamav3@5f3c537 (1.4.2) in that checkout's own environment; steps 2 and 5 run in the repo environment (confirmed at 9853839) |
 | P5 | S9.5 non-atomic finalize_checkpoint.py writes | PENDING | |
 | P6 | S8.3 bash preflight gate | PENDING | |
-| P7 | S10.7 "packed" phrasing | PENDING | |
-| P8 | S11.2 .omp input declaration over-attribution | PENDING | |
+| P7 | S10.7 "packed" phrasing | STILL-OPEN | grep 'packed' (any case) docs/04 → no match at current tip; "packed EXL3 tensors" remains AGENTS.md's own summary (DocsMap) |
+| P8 | S11.2 .omp input declaration over-attribution | STILL-OPEN | grep '\.omp|config\.yml' README.md → no match at current tip; README still never references .omp/config.yml, sole source remains AGENTS.md:98 (DocsMap) |
 | P9 | S16.8 per-run image-digest pin precision | STILL-OPEN | Re-confirmed at 3e60f03 (KldWorkflow): kld_ladder.sh:19-20 header wording unchanged; per-candidate identity pin :554-564 still carries no runtime field; pin_run :289-292 unchanged (die, gates GPU work) |
 | C1 | S16-V stale whole-tree sentence (:88-90) | PENDING | |
 | C2 | three-mirrors sections predate shortlist mirrors (no cross-links) | PENDING | |
