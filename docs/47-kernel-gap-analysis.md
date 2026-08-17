@@ -195,3 +195,71 @@ no third mechanism is needed.
    risk budget.
 
 ---
+## F5. Prefill: "trellis decode cost" is the WRONG standing explanation — reconstruct is common-mode with the dense reference; the gap is chunking redundancy, vLLM shard plumbing, and 528 GDN launches
+
+**Claim.** At the served M=128 reconstruct threshold, prefill compute is dominated by cuBLAS
+(`hgemm` = `cublasGemmEx`, fp16-accumulate tensor-op, `$EXT/hgemm.cu:54-84`), and the trellis
+*reconstruct* is only ~8–11 % of chunk time at 2048-token chunks — and the dense EXL3 5.0–5.2k
+reference **pays the same reconstruct** (upstream `LinearEXL3` switches to reconstruct+hgemm above
+144 rows, `/var/tmp/gg-rootfs/opt/exllamav3-python/exllamav3/modules/quant/exl3.py:9,117-125`). So
+"trellis decode cost" mostly cancels out of the 3.3–3.7k vs 5.0–5.2k comparison; "hybrid geometry"
+survives but is only part of the story. Full walk: `'/home/mbelleau/.omp/agent/sessions/-qwen38-27b/2026-08-14T14-52-00-820Z_01a000c2-2db4-7000-ba65-0c964868558d/KernelGap/KernelGap.PrefillWalk.md'`.
+
+**The arithmetic** (per 2048-token chunk; 24.33 B weight elements per body pass = 48.65 GB fp16
+reconstruct writes + 15.92 GB trellis reads):
+- hgemm: 2·2048·24.33e9 ≈ 99.6 TFLOP per 32k prompt's worth of chunks at cuBLAS-typical rates;
+- reconstruct: ~64.6 GB of traffic per chunk pass, memory-bound (the kernel is an unrolled
+  store-bandwidth machine: one 16×128 tile per 256-thread block, coalesced int4 stores,
+  `$EXT/quant/reconstruct.cu:12-90`), ≈ 8–11 % of the linear-pair time at M=2048, 3–4 % at 6144.
+
+**What is genuinely being left on the table, with owners:**
+
+1. **Reconstruct output is discarded per matrix, per chunk — by construction.** The scratch is one
+   buffer keyed `(device, K, N_chunk)` shared by *every layer of the same geometry*
+   (exl3.py:785-795); each `_reconstruct_hgemm_into` call overwrites it (:951-958). A 32k prompt at
+   2048-chunks decodes all 24.33 B weights **16×** (1.03 TB of redundant reconstruct traffic); at
+   6144-chunks 6×. Upstream is no better (fresh `torch.empty` per call, upstream exl3.py:152-168).
+   *Lever (flag-class): serve prefill-heavy workloads at 6144-token chunks — 2.67× less redundant
+   decode; the qualified profile's `--max-num-batched-tokens 2048` is a fidelity-frozen choice, so
+   this is an A/B, not a default flip.*
+2. **reconstruct[i+1] never overlaps hgemm[i].** Same stream (`reconstruct.cu:110`,
+   `hgemm.cu:101-104`) and the shared single buffer is a WAR hazard that forecloses two-stream
+   overlap. *Lever (fork patch, moderate): double-buffer the scratch + events; hides most of the
+   8–11 % reconstruct share.*
+3. **The merged-linear shard plumbing costs ~18–26 GB of pure copies per chunk.** Every merged layer
+   runs `_apply_one` per shard then `torch.cat` (exl3.py:2719-2722): gate|up cat alone re-reads and
+   re-writes 285 MB × 64 layers ≈ 18 GB/chunk; q/k/v run as three GEMMs (N=1024 twice — terrible
+   cuBLAS shapes) then cat. *Lever (fork patch): hgemm supports strided C — write each shard
+   directly into its slice of the destination and delete the cat.*
+4. **GDN prefill = ~528 Triton launches per chunk on this card.** SM120 fails both FlashInfer-GDN
+   capability gates, so prefill uses the Triton FLA chain — 6 kernels + conv1d + prep + state
+   gather/zero/scatter ≈ 11 kernels × 48 layers (`$SP/vllm/model_executor/layers/mamba/gdn/
+   qwen_gdn_linear_attn.py:119-134,1329-1496`; `$SP/vllm/third_party/flash_linear_attention/ops/
+   chunk.py:37-88`). Core math is only ~0.35 GFLOP/token (0.7 % of linear FLOPs) but at Triton MFU
+   plus launch overhead it is ~3–5 % of chunk time, and prefill is never CUDA-graphed. *Structural
+   at this fork's risk budget.*
+5. **The mamba 1600-token alignment CLIPS, never pads** (`$SP/vllm/v1/core/sched/scheduler.py:
+   364-434` rounds the chunk end *down*) and only fires in `mamba_cache_mode='align'`, i.e. with
+   prefix caching on. No dead FLOPs — but chunk count rises +31 % (32k: 21 chunks of ≤1600 vs 16 of
+   2048), multiplying item 1 and the per-chunk fixed overheads. *Cost of the APC feature, not a bug;
+   book ~3–4 pts of prefill only when APC is on.*
+6. **`VLLM_EXL3_PREFILL_FP8=1` is dead code with the bundled extension.** The fork probes for
+   `reconstruct_fp8_slice` (exl3.py:877-878) which `bindings.cpp:95-101` does not export (confirmed
+   also by `nm` on the shipped `.so`: `reconstruct_fp8dg_nt` present, `reconstruct_fp8_slice`
+   absent). The measured "+31 % prefill" from docs/41 §3 required the uncommitted rebuilt extension.
+   The ext *does* ship an unused fused FP8 reconstruct (`reconstruct_fp8dg_nt` → DeepGEMM NT layout,
+   `reconstruct.cu:144-326`) that nobody calls. *Lever exists but was measured at +0.0141 mean KLD —
+   declined on fidelity, unchanged verdict; the flag should either bind a kernel or be removed.*
+
+**Attribution of the −31 % (3.3–3.7k vs 5.0–5.2k):** ~9.6 pts SM count (170/188); ~0 pts trellis
+reconstruct at equal chunking (common-mode, contra the standing explanation); ~3–5 pts GDN hybrid
+kernels/launches; 0–4 pts alignment clipping (config-dependent); the residual ~12–18 pts is vLLM-stack
+plumbing (shard cats, 2.5–3k eager launches/chunk, activation converts) that the flat dense-EXL3
+runtime on the 188-SM card does not pay — an honest residual: bounded by source census, not yet
+apportioned kernel-by-kernel. "Hybrid geometry" is confirmed as a *minority* contributor; "trellis
+decode cost" is refuted as a *delta* explanation at equal chunk size. Upstream exllamav3 0.0.43
+carries **no** wider-M or fused path the fork lacks (all four `exl3_gemm` shapes are TILESIZE_M=16,
+`$EXT/quant/exl3_kernel_map.cuh:55-57`; M>16 loops in-kernel re-decoding the trellis every 16 rows,
+`exl3_gemm_kernel.cuh:36-50` — this, not a missing tile, is why exl3_gemm loses 4–5× at prefill M).
+
+---
