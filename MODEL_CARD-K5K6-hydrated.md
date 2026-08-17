@@ -1402,9 +1402,19 @@ measurements are consistent.
 
 Every arm below served **this checkpoint** at its native 262,144-token window on RTX PRO 6000 Blackwell
 cards (driver 595.58.03), with CUDA-graph decode and prefix caching on, and **every arm passed the same
-five-check fidelity gate — including a full 262,144-token needle retrieval — before any throughput number
-from it was kept.** Numbers come from `tb21_ladder.py` receipts, not from a benchmark harness's own
-reporting.
+fidelity gate — including a full 262,144-token needle retrieval — before any throughput number from it was
+kept.** Numbers come from `tb21_ladder.py` receipts, not from a benchmark harness's own reporting.
+
+**One correction to what that gate actually proved.** The gate runs five checks, and we later found that
+one of them — frozen-prompt repeatability — was **vacuous on this model**: it hashed the OpenAI `content`
+field, but this model thinks by default and the probe's 64-token cap sent the whole budget to
+`reasoning_content`, so it was comparing empty strings and passing. Liveness, generation, **needle
+retrieval** and MTP sanity were all substantive and are unaffected, so every throughput number here still
+stands behind a real 262k needle pass — but we do **not** claim to have verified determinism, and the
+repaired check (now hashing reasoning too, with a guard that fails if nothing was emitted) finds 7-of-8
+reproducibility under concurrent load, most likely ordinary continuous-batching nondeterminism.
+Method and receipts:
+[`gate-check3-vacuous.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/gate-check3-vacuous.json).
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="assets/tb21-topology-dark.svg">
