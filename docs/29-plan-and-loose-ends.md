@@ -1801,3 +1801,35 @@ genuinely needs more than 262k, run a **second** endpoint on the same weights an
 **Corroborating task-level evidence, weaker and labelled as such**: a full TB2.1 pass at 1M-YaRN scored
 **48/89** against 262k-native's **56/89** (docs/46 §33). Direction agrees; the sign test over 18 discordant
 pairs is p = 0.096, so it corroborates and does not prove.
+
+
+## BLOCKED: the bare-metal four-arm patch A/B, and why blocking it is the right call
+
+**Status: blocked, not abandoned, and blocked for a methodological reason rather than a resource one.**
+Arms **A** (shipped baseline) and **B** (b12x gate clause) ran and are published
+([`kernel-gap-bare-metal-ab.json`](../receipts/kernel-gap-bare-metal-ab.json), docs/46 §28). Arms **C**
+(`in_proj_ba` transpose) and **D** (both patches) did not.
+
+**Reason 1 — no suitable host.** The 8× was committed to production serving, and the only other GPU is
+instance `471041`, which has **no bare docker**: vLLM runs there under proot, and proot inflates dispatch,
+which is the entire reason the A/B needed bare metal in the first place. Running C and D there would measure
+the harness, not the patch.
+
+**Reason 2, which is the decisive one — the method cannot answer the question.** §28 measured this ladder's
+**within-arm coefficient of variation at 2.84 % median, reaching 18 % in the short-prompt cells**, against an
+effect that Amdahl bounds at **+4.19 %** end-to-end for a 4.4× kernel win on a 5.2 %-of-decode component. The
+noise floor exceeds the signal. Nine of eleven valid cells favoured the gate at **sign-test p = 0.065**, which
+is weak evidence of a small positive effect and nothing more. **Re-running C and D with the same instrument
+would burn GPU hours to produce another unresolvable number**, and doing so knowingly would be worse than not
+doing it.
+
+**The re-scope, for whoever picks this up.** Measure at the **kernel level**, where the signal is 8–15 % and
+the noise is far smaller, then state the server-level consequence via the Amdahl bound rather than trying to
+observe it. Resolving a 1.5 % end-to-end effect against a 2.84 % CV would need roughly **29 repeats per cell,
+not 5**, and the C8 cells (CV 0.49–2.76 %) are the only ones worth using. Issue #406 should carry the Amdahl
+framing instead of an end-to-end promise.
+
+**Resume, only if both conditions hold** — a quiet bare-docker host exists *and* the method has been
+re-scoped: the images `ab-c-transpose` and `ab-d-both` are already built and **byte-verified** on the 8×
+(`exl3.py` / `linear.py` md5 matrix in the receipt), so it is `bash /tmp/run_ab.sh` with `run_arm C` and
+`run_arm D` uncommented.
