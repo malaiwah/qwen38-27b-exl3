@@ -475,3 +475,69 @@ audience.
   matters for every number we publish about this model as an agent.
 - The 50 %-of-single-stream rule is the owner's, fixed before the sweep; both it and
   max-aggregate-among-eligible are computed in the receipt so a reader can apply a different floor.
+
+
+## 15. MEASURED: the V2-runner A/B at 96 GB, and a schedule crossover that does not transfer
+
+Three serving arms, one variable each, same endpoint / image / window / seed / repeats, run 2026-08-17.
+**All three gated PASS on all five fidelity checks including the 262,144-token needle**
+(`tb21-gate-1x-{hyd,v2base,v2sched}.json`). Ladders:
+`tb21-ladder-1x-{hyd,v2base,v2sched}.json`.
+
+Arms: **MRV1** = the campaign baseline (§4.1). **V2base** = `VLLM_USE_V2_MODEL_RUNNER=1`, static depth 3
+(isolates the runner). **V2sched** = V2 + `num_speculative_tokens_per_batch_size=[[1,2,3],[3,64,1]]`
+(depth 3 at batch 1-2, depth 1 at batch 3+).
+
+| shape / rung | MRV1 per-req / agg | V2base per-req / agg | V2sched per-req / agg |
+|---|---:|---:|---:|
+| **512-in** C1 | 129.57 / 129.55 | 134.87 / 134.84 | **134.94 / 134.91** |
+| C4 | **104.25 / 311.79** | 108.00 / **329.50** | 74.84 / 282.58 |
+| C8 | 65.97 / 413.98 | 66.98 / 431.69 | 62.47 / **451.84** |
+| C16 | 36.95 / 485.00 | 37.20 / 497.07 | 36.90 / **555.79** |
+| **4k-in** C1 | 95.29 / 95.28 | 89.73 / 89.72 | **98.33 / 98.32** |
+| C4 | 71.78 / 279.63 | **74.16 / 282.60** | 62.14 / 245.51 |
+| C8 | 46.98 / 344.70 | 46.67 / 348.25 | **49.70 / 389.67** |
+| C16 | 24.87 / 381.55 | 24.67 / 380.71 | **28.23 / 446.63** |
+
+### 1. The 32 GB OOM constraint does not transfer - V2 is free here
+
+V2 started cleanly at the **native 262,144 window** with graph decode, **zero OOM**, and its KV pool came
+out **1,776,428 tokens against MRV1's 1,760,318 - slightly *more***. On the 32 GB card V2 cost ~780-820
+MiB and forced 131,072/0.95 with **−14.1 % KV**; on 96 GB that cost is 0.8 % of the card and the
+concession disappears. **The blocker recorded in docs/41 W1 is card-specific and is now closed for this
+tier.**
+
+### 2. The V2 runner alone is neutral; the schedule is what pays
+
+V2base vs MRV1 is within noise (512-in single-stream +4.1 %, 4k-in −5.8 %, mid-rungs ±3 %) - matching the
+earlier 5090 finding that the runner alone is neutral-to-slightly-positive. **V2sched is where the win
+is, and only above the crossover:** +**9.1 %** aggregate at 512-in C8, +**14.6 %** at C16; +**13.0 %** at
+4k-in C8, +**17.1 %** at C16.
+
+### 3. The schedule's crossover is wrong for this card, and fixing it should beat every arm
+
+`[[1,2,3],[3,64,1]]` switches to depth 1 at batch **3**, and that is measurably too early here: at **C4
+V2sched loses badly** - 512-in per-request 104.25 → 74.84 (**−28 %**), 4k-in aggregate 279.63 → 245.51
+(**−12.2 %**) - because depth 1 gives up speculation before the batch is large enough for its lower
+verification overhead to pay. Above C8 the same setting wins by 9-17 %.
+
+**So the optimum is neither arm: keep depth 3 through the knee, switch to depth 1 above it.** Concretely,
+a schedule with the crossover at ~5-8 rather than 3 (e.g. `[[1,4,3],[5,64,1]]`) should hold MRV1/V2base's
+C4 numbers *and* capture V2sched's C8-C16 aggregate. That is an unrun, well-specified experiment, and it
+is why the 5090's `[[1,2,3],[3,8,1]]` must not be copy-pasted: **the crossover is a per-card, per-window
+property, not a constant.**
+
+### 4. What this means for the campaign, given the knee
+
+The knee (§14) puts TB at **n=4**, which sits *below* the crossover - so **for TB itself the depth
+schedule is not the lever; depth 3 is already correct at C4** and V2base's small gain is the honest
+expectation. The schedule matters for the **aggregate** story: a DP-K speed run whose replicas each run
+at C8-C16 gains 9-17 % from it. Two different operating points, two different right answers, and the
+receipts now separate them.
+
+### 5. Methodological caveat on the knee metric
+
+The knee is defined against single-stream, so a few percent of C1 noise moves the floor and can move the
+reported knee a rung (512-in: C8 under MRV1, C4 under both V2 arms, driven by C1 shifting 129.57 → 134.9).
+The **per-rung table is the durable artifact**; the single knee integer is a summary that inherits C1's
+noise. Cite the table.
