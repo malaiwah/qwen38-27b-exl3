@@ -1772,3 +1772,32 @@ the 1M window as fidelity-free (1.248e-03 against a 1.180e-03 floor) while the r
 512-32k traffic our agents actually send, so serving YaRN by default taxes every real request to buy a window
 almost nothing uses. Step 2 above *is* that migration; these measurements are the instrumentation of a change
 we want regardless, not a reason to schedule one.
+
+
+### ANSWERED — both of the above, on the production topology
+
+**P1 is answered: the penalty transfers, within 3 %.** DP8 measures **1.0265e-02** mean top-20 KLD against
+§31's **1.057e-02** on one GPU — ratio **0.971×**, **inside §31's 95 % CI** [8.42e-03, 1.29e-02], top-1
+agreement 93.75 % against 93.23 %, and the counter-intuitive worst-in-the-middle bucket shape reproduces. §31
+is no longer a single-machine result.
+Receipt: [`yarn-penalty-dp8-transfer.json`](../receipts/yarn-penalty-dp8-transfer.json), docs/46 §34.
+
+**P2 is answered, and it is the more valuable of the two because it is a negative.** Concurrency costs
+**1.278e-03** — **1.08× the cross-boot floor** of 1.180e-03, and **8.4× smaller** than the rope change.
+Top-1 agreement 98.70 %, with **59 of 384 positions bit-identical under real production load**. Serving under
+load is indistinguishable from rebooting the same configuration.
+
+**So the worry §29 raised is retired: no throughput or topology number in this project carries an unquoted
+fidelity price.** Had this gone the other way, every tok/s figure we publish would have needed a caveat. It is
+an upper bound rather than a point estimate — sitting on the floor means the true value could be zero.
+Receipt: [`concurrency-fidelity-dp8.json`](../receipts/concurrency-fidelity-dp8.json).
+
+**The migration happened as part of the measurement.** The production endpoint now serves **262,144 native**,
+and `omp` on the driver was repointed to match (`contextWindow: 262144`, verified via `omp models`). The
+justification is the pair of numbers, not a preference: the 1M **window** is fidelity-free (1.248e-03 against a
+1.180e-03 floor) while the **rope** costs ~1.03e-02 on the 512–32k traffic agents actually send. If something
+genuinely needs more than 262k, run a **second** endpoint on the same weights and route to it explicitly.
+
+**Corroborating task-level evidence, weaker and labelled as such**: a full TB2.1 pass at 1M-YaRN scored
+**48/89** against 262k-native's **56/89** (docs/46 §33). Direction agrees; the sign test over 18 discordant
+pairs is p = 0.096, so it corroborates and does not prove.
