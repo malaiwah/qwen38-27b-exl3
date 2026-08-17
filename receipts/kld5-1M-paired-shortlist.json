@@ -1,0 +1,147 @@
+{
+  "schema": "qwen38-kld-ladder-paired/1",
+  "generated_utc": "2026-08-17T01:43:18Z",
+  "scope": "paired per-context comparison at the 1M ladder checkpoint of the v5 held-out suite",
+  "suite": {
+    "manifest": "receipts/kld5-suite-manifest.json",
+    "manifest_sha256": "c79dfad3767ca5b3015129077f20dbb9282a2e51ca8bca9ed09be8c7a9c73019",
+    "suite_token_sha256": "510541f6861b589d44932db253ec25d96d6daaeeee4ea2ab9b65329209482b88",
+    "contexts": 512,
+    "context_length": 2048,
+    "scored_positions": 1048064,
+    "source_clusters": 330
+  },
+  "inputs": {
+    "turbo5": {
+      "path": "receipts/kld5-1M-turbo5.json",
+      "sha256": "7a3164055fa9ba465d7dad55f2d270e7c79de284589a8433eeb96f0a04af91da",
+      "content_sha256": "053304c51dff63bc1325f88ae24d37cc923658375efb0db303972a067f457e2a"
+    },
+    "turbo6": {
+      "path": "receipts/kld5-1M-turbo6.json",
+      "sha256": "793be2033a5aa4df03673eca34da1c58d58cf0d8751bc50440ba5e627fcd50c9",
+      "content_sha256": "c597a07e0148bee29fc1a6f064b21266a9b19d321e2ce0855fa5f5b03a5234dc"
+    },
+    "saka": {
+      "path": "receipts/kld5-1M-saka.json",
+      "sha256": "eca1a0dadf3267fe8ce3a51ed83e92ee17298fd6c628d821ed6e5a3daa2e4e51",
+      "content_sha256": "50be90e70d552d47ca6170989f904ee80d67b650d12e0dbaaa23c725f0f6c438"
+    },
+    "awq": {
+      "path": "receipts/kld5-1M-awq.json",
+      "sha256": "9304335b7283f964be39bb679d88e6a3e8a0b7f96406d32885ebf6c25d1c4738",
+      "content_sha256": "6a2359197953e22308f31f9def2e4417fdc1ba95d1d77c2c576c1fa4fe944a6a"
+    },
+    "ctx": {
+      "path": "receipts/kld5-1M-tail-ctx.json",
+      "sha256": "ed5c09e9414e2c0c418dffbe82f20ca1398550dcf1cf74772bda44057269f28f",
+      "content_sha256": "0543a0d48d3c140ad2a26085ebb7ff45e383278e85752fddf7fcd77038916797"
+    },
+    "hyd": {
+      "path": "receipts/kld5-1M-tail-hyd.json",
+      "sha256": "7298b7aeb1b4b5f7fac24485f4da6fb07007870fbb289c5f333f2f04e0a08995",
+      "content_sha256": "01f579d710543abc1b2136a8ec580226b56186289b60f86fec5e9535203d4b08"
+    },
+    "k5k6": {
+      "path": "receipts/kld5-1M-tail-k5k6.json",
+      "sha256": "42fef9468e4a3fa40f675e1ff8d2d1eeeab9538cf626d830927971dfd25f9471",
+      "content_sha256": "68e9f2ca01c23fe1ad58138913138eba0f58959fcaa7eb3674c3f9e8fbb485fa"
+    },
+    "k6parity": {
+      "path": "receipts/kld5-1M-k6parity.json",
+      "sha256": "f83647b2df38c5d2f9e6fde97bac50ac0e53dab203b2181a390bcc9d1779b6eb",
+      "content_sha256": "0aec1683f79364112e351660c42593799362fc61f2537b07def5a506e81997a7"
+    },
+    "nvfp4": {
+      "path": "receipts/kld5-1M-nvfp4.json",
+      "sha256": "02ce3f336d2ca3d93f2fbeebf4f003adf026df2862ff4e862ce0a2cb0dd43865",
+      "content_sha256": "f01ddc78c142bb88733c10fd4e9dfd05d74bca2236df9044b72fc5f3e548139b"
+    }
+  },
+  "method": {
+    "unit": "one 2,048-token context, 2,047 scored positions",
+    "statistic": "mean over contexts of (candidate A mean KLD - candidate B mean KLD)",
+    "interval": "source-cluster bootstrap, 10,000 resamples, seed 1, 330 clusters resampled with replacement",
+    "operands": "both candidates replayed through the same shared BF16 LM head; body-only, no candidate head quantization counted"
+  },
+  "comparisons": {
+    "turbo5_vs_ctx": {
+      "a": "turbo5",
+      "b": "ctx",
+      "contexts": 512,
+      "difference_a_minus_b": 0.0005952181681694929,
+      "ci95_low": 0.0005331752715463897,
+      "ci95_high": 0.0006650827776557665,
+      "a_wins": 20,
+      "b_wins": 492,
+      "clusters": 330
+    },
+    "turbo6_vs_hyd": {
+      "a": "turbo6",
+      "b": "hyd",
+      "contexts": 512,
+      "difference_a_minus_b": -0.0011167237644226916,
+      "ci95_low": -0.0012318243010904172,
+      "ci95_high": -0.001018438703232752,
+      "a_wins": 511,
+      "b_wins": 1,
+      "clusters": 330
+    },
+    "turbo6_vs_k5k6": {
+      "a": "turbo6",
+      "b": "k5k6",
+      "contexts": 512,
+      "difference_a_minus_b": -0.0015582009598719636,
+      "ci95_low": -0.0016873657498207588,
+      "ci95_high": -0.001448112769429312,
+      "a_wins": 512,
+      "b_wins": 0,
+      "clusters": 330
+    },
+    "turbo6_vs_k6parity": {
+      "a": "turbo6",
+      "b": "k6parity",
+      "contexts": 512,
+      "difference_a_minus_b": -5.065941937773125e-05,
+      "ci95_low": -6.885741865332628e-05,
+      "ci95_high": -3.258899371237663e-05,
+      "a_wins": 341,
+      "b_wins": 171,
+      "clusters": 330
+    },
+    "saka_vs_nvfp4": {
+      "a": "saka",
+      "b": "nvfp4",
+      "contexts": 512,
+      "difference_a_minus_b": 0.12116442282002832,
+      "ci95_low": 0.11347555266371621,
+      "ci95_high": 0.13061707442830794,
+      "a_wins": 0,
+      "b_wins": 512,
+      "clusters": 330
+    },
+    "awq_vs_ctx": {
+      "a": "awq",
+      "b": "ctx",
+      "contexts": 512,
+      "difference_a_minus_b": 0.019408459529223446,
+      "ci95_low": 0.018068830111935098,
+      "ci95_high": 0.020940569739102972,
+      "a_wins": 0,
+      "b_wins": 512,
+      "clusters": 330
+    },
+    "awq_vs_nvfp4": {
+      "a": "awq",
+      "b": "nvfp4",
+      "contexts": 512,
+      "difference_a_minus_b": -0.007297538074504207,
+      "ci95_low": -0.00841035760139751,
+      "ci95_high": -0.006317911648788778,
+      "a_wins": 499,
+      "b_wins": 13,
+      "clusters": 330
+    }
+  },
+  "content_sha256": "3e1aebe6b28d15aaadeb7e35173c7fb9a6c9072bff5b3c43ce24bde94eaa219c"
+}
