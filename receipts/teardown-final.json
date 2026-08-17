@@ -1,0 +1,73 @@
+{
+ "schema": "qwen38-teardown-final/1",
+ "generated_utc": "2026-08-17T19:10:42Z",
+ "what_this_is": "The teardown record. Captured as late as possible, with this workstation (471041) still alive because destroying it ends execution and therefore must be last.",
+ "api": {
+  "base": "https://backendc.jarvislabs.net",
+  "auth": "Authorization: Bearer <JARVIS_API_KEY>",
+  "endpoints_that_worked": {
+   "pause": "POST /templates/vm/pause?machine_id=<id>",
+   "destroy": "POST /templates/vm/destroy?machine_id=<id>"
+  },
+  "endpoints_that_did_not": [
+   "POST /instances/<id>/destroy -> 404",
+   "DELETE /management/<id> -> 404",
+   "POST /instances/<id>/pause -> 404",
+   "DELETE /instances/<id> -> 404",
+   "POST /machines/<id>/pause -> 404"
+  ],
+  "discovery_note": "the working family was found because POST /templates/vm/pause answered with a FastAPI validation error naming machine_id as a required QUERY parameter - a 422 was more informative than any of the 404s. Also: /templates/vm/destroy returned a generic 'Something Went wrong' message for the driver and yet the destroy DID take effect, so its error text cannot be trusted as a failure signal."
+ },
+ "sequence_and_why": [
+  {
+   "step": 1,
+   "action": "paused 473501 (8x) mid-arm",
+   "utc_balance_at_the_time": 4.88,
+   "why": "the 512k arm was at 43 of 47 with roughly 16 minutes of runway at the full $18.13/hr. Pausing the expensive host cut burn to about $3/hr and converted 16 minutes into ~1.4 hours of closeout time. Four more tasks were worth far less than the ability to finish the receipts, the gap review and the teardown properly."
+  },
+  {
+   "step": 2,
+   "action": "destroyed 473501 (8x)",
+   "result": "gone from the account listing"
+  },
+  {
+   "step": 3,
+   "action": "destroyed 473296 (driver)",
+   "result": "status Destroying",
+   "why": "its artifacts had already been swept twice and the second sweep was verified against the manifest"
+  },
+  {
+   "step": 4,
+   "action": "destroy 471041 (this workstation)",
+   "status": "LAST - ends execution, so it follows this receipt being pushed"
+  }
+ ],
+ "final_state_before_self_termination": {
+  "balance_usd": 3.77474,
+  "instances": [
+   {
+    "machine_id": 473296,
+    "status": "Destroying",
+    "gpu": "CPU"
+   },
+   {
+    "machine_id": 471041,
+    "status": "Running",
+    "gpu": "RTX-PRO6000 x1",
+    "uptime": "3 days, 15 hours 40 minutes"
+   }
+  ],
+  "8x_473501": "absent from the listing - destroyed"
+ },
+ "persistence": {
+  "manifest": "receipts/teardown-persistence-manifest.json",
+  "verified_twice": "once before the 512k arm and once after it, so the invariant held AT teardown rather than only at first sweep",
+  "secret_filter": "the second sweep was rejected by GitHub push protection for a Hugging Face token inside the sanitize-git-repo task's transcript; 767 files were scanned across seven patterns, 121 fixture matches were found in 2 files, ZERO matches for our own credentials, and both files were deleted rather than allow-listed"
+ },
+ "what_survives": {
+  "git": "github.com/malaiwah/qwen38-27b-exl3 at HEAD - all docs, receipts and cards",
+  "hugging_face": "8 cards + 7 archival mirrors + the v5 dataset, including the two teardown archives",
+  "not_surviving": "the three rentals and everything on them that the manifest lists as deliberately not persisted"
+ },
+ "origin_remote": "gitea at gitea.svc.home.malaiwah.com has been returning HTTP 502 throughout; the mirror is therefore behind. github is authoritative and at HEAD. Re-push when the host returns."
+}
