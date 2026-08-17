@@ -1,0 +1,33 @@
+{
+ "schema": "qwen38-tb21-docker-pool-defect/1",
+ "generated_utc": "2026-08-17T06:55:50Z",
+ "title": "Docker's default address pool caps Terminal-Bench concurrency at ~31 tasks and fails the rest as RuntimeError",
+ "why_this_receipt_exists": "Caught 15 minutes into the 8x campaign, not after it. Ten of eleven trials in the first finished shard had exception_type RuntimeError with reward null - the pre_model_void signature. Had it gone unnoticed the published headline would have counted ~30 percent of the suite as model failures when the model was never asked.",
+ "symptom": {
+  "trial_exception": "RuntimeError",
+  "message": "Docker compose command failed for environment <task>. ... Return code: 1. Stdout: Network <task>__env_default Error Error response from daemon: all predefined address pools have been fully subnetted",
+  "observed_rate": "10 of 11 trials in shard 7 of 8; 33 of 89 tasks had completed when the run was aborted"
+ },
+ "root_cause": "Terminal-Bench creates one docker compose network per task. Docker's default address pool (base 172.17.0.0/12, size 16) yields only ~31 usable networks. The campaign runs 8 shards x --n 4 = 32 concurrent task environments, which is one past the ceiling - so the failure appears only at multi-GPU concurrency and never in the single-endpoint passes that used one harbor job.",
+ "why_it_was_easy_to_miss": "The pool recovers as tasks finish, so a manual `docker network create` probe minutes later SUCCEEDS and looks like a clean system. Only the trial's own exception_message names the daemon error. Diagnosing from live state rather than from the recorded message would have concluded 'no problem here'.",
+ "fix": {
+  "file": "/etc/docker/daemon.json on the load-driver VM",
+  "content": {
+   "default-address-pools": [
+    {
+     "base": "10.201.0.0/16",
+     "size": 24
+    },
+    {
+     "base": "10.202.0.0/16",
+     "size": 24
+    }
+   ]
+  },
+  "capacity_after": "512 networks (2 x /16 carved into /24s) against ~31 before",
+  "requires": "systemctl restart docker - which kills running task containers, so apply it before a campaign, never during",
+  "verified": "created 40 concurrent networks successfully where 32 had failed, then removed them; after relaunch the campaign holds 32 containers with RuntimeError down from 10-of-11 to 1"
+ },
+ "the_one_remaining_runtime_error_is_expected": "qemu-startup, 'Failed to start tmux session' - the environment-unsupported task already published as a pre-model void in docs/45 caveat 4. It voids identically on the 1x rental, the 2x host, the BF16 control and now the 8x host, which is a useful cross-hardware consistency check rather than a new fault.",
+ "generalisation": "Any harness that creates a docker network per unit of work has a concurrency ceiling set by the daemon's address pool, not by CPU, RAM or GPU. Raise the pool before scaling out task-level parallelism, and treat container-orchestration errors as infrastructure voids rather than task failures - the same rule this project adopted for the tmux and model-404 classes."
+}
