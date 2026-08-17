@@ -540,8 +540,10 @@ engineering; nothing below touches the fidelity budget without its own KLD gate.
   lacks `reconstruct_fp8_slice` — today it silently no-ops. docs/41 state (e) already records it.
 - *Effort:* 15 minutes + PR. *Risk:* none.
 
-**P1.4 — TP2 flag A/Bs (F4.5/F4.6, TP2 only).**
-- *Change:* none — two serve-time A/Bs on the 2x host (coordinate with its owner; it is not ours):
+**P1.4 — TP flag A/Bs (F4.5/F4.6, TP only). OWNER: Main, on the 4x.**
+- *Change:* none — two serve-time A/Bs, folded into Main's 4x topology-ladder work (TP4 and
+  TP2×DP2 arms already built there). NOT the 2x host: LMCacheL1 holds it exclusively for a clocked
+  corruption ladder, and the 4x is VPC-isolated from it. The A/Bs:
   (a) `speculative_config.use_local_argmax_reduction=true` (greedy-equivalence check first — it
   changes the logits-gather contract, `logits_processor.py:160-228`); (b)
   `VLLM_ENABLE_PCIE_ALLREDUCE=1 VLLM_PCIE_ALLREDUCE_BACKEND=b12x` (decode ARs ≤84 KB all qualify).
