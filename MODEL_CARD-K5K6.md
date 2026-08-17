@@ -378,15 +378,19 @@ per-candidate reports
 | candidate | engine | measured mean KLD | net of engine floor | top-1 | p99.9 | serialized |
 |---|---|---:|---:|---:|---:|---:|
 | GGUF `Q8_0` | llama.cpp | 0.001087 | ~0.000579 | 98.53 % | 0.0351 | 27.05 GiB |
+| `turboderp/Qwen3.8-27B-exl3` 6.00bpw @ `d32ba0bb` | vLLM | 0.001583 | n/a, same engine | 98.28 % | 0.0668 | 21.37 GiB file / 17.05 body |
 | GGUF `Q6_K` | llama.cpp | 0.002035 | ~0.001528 | 97.98 % | 0.0794 | 21.31 GiB |
 | hydrated | vLLM | 0.002700 | n/a, same engine | 97.80 % | 0.1313 | 20.12 GiB payload |
 | **this build** (online K5/K6, attention K6) | vLLM | **0.003141** | n/a, same engine as the reference | **97.61 %** | **0.1447** | **—** |
 | context edition | vLLM | 0.003409 | n/a, same engine | 97.55 % | 0.1632 | 19.27 GiB payload |
+| `turboderp/Qwen3.8-27B-exl3` 5.00bpw @ `a35e75a7` | vLLM | 0.004005 | n/a, same engine | 97.37 % | 0.2032 | 18.53 GiB file / 14.22 body |
 | GGUF `UD-Q5_K_XL` | llama.cpp | 0.004444 | ~0.003936 | 97.20 % | 0.2144 | 18.83 GiB |
 | official FP8 | vLLM | 0.005197 | n/a, same engine | 96.92 % | 0.2440 | 28.51 GiB resident |
 | K4 | vLLM | 0.010345 | n/a, same engine | 95.91 % | 0.5576 | — |
+| `cyankiwi/Qwen3.8-27B-AWQ-INT4` @ `63768c10` | vLLM | 0.022818 | n/a, same engine | 93.94 % | 1.13 | 19.57 GiB file |
 | `unsloth/Qwen3.8-27B-NVFP4` @ `9c73e2da` | vLLM | 0.030115 | n/a, same engine | 93.16 % | 1.6228 | — |
 | `gittensor-model-hub/Qwen3.8-27B-NVFP4-RTX5090` @ `69274a0d` | vLLM | 0.062163 | n/a, same engine | 89.85 % | 2.5911 | — |
+| `sakamakismile/Qwen3.8-27B-MTP-NVFP4` @ `6d98dc1f` | vLLM | 0.151280 | n/a, same engine | 84.74 % | 5.65 | 19.15 GiB file |
 
 **The engine floor, measured and not assumed.** A GGUF row carries llama.cpp-versus-vLLM numerics
 on top of quantization error, so that term was measured the same way: the unquantized **BF16
