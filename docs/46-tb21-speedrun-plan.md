@@ -1468,31 +1468,48 @@ bfloat16**. So a null result here would have meant "tolerated", never "ignored".
 **[8.42e-03, 1.29e-02]**, 10,000 resamples, 48 clusters.
 
 **Two things fall out immediately.** First, **request-to-request nondeterminism is exactly zero** at
-`--max-num-seqs 1` - 384 positions, bit-identical - which incidentally settles the open question §29 leaves
-hanging: engine nondeterminism at concurrency 1 is *not* a thing on this card, so divergence seen under
-production load is batch composition, not the engine. Second, **the 1M window is fidelity-free**: arm B sits at
+`--max-num-seqs 1` - 384 positions, bit-identical, 20-of-20 shared support at every one - which settles the
+question §29 leaves hanging: engine nondeterminism at concurrency 1 is *not* a thing on this card, so the
+7-of-8 divergence §29 found under production load is **batch composition**, not the engine. The raw
+per-position data for that claim is committed at
+[`raw-NATIVE-p1.json`](../receipts/yarn-short-context-raw/raw-NATIVE-p1.json) and
+[`raw-NATIVE-p2.json`](../receipts/yarn-short-context-raw/raw-NATIVE-p2.json) - full top-20 distributions,
+384 positions each. **Its scope, stated so §29 does not overdraw on it:** same server, same process,
+concurrency 1, greedy, 262,144 window, prefix cache warm. It says nothing about concurrency > 1, which is
+exactly the variable §29 is left holding; what it removes is the *alternative* explanation, not the need to
+measure that variable. Second, **the 1M window is fidelity-free**: arm B sits at
 1.248e-03 against a 1.180e-03 cold-reboot floor, indistinguishable. Widening `--max-model-len` costs nothing
 measurable on requests that stay inside the native window - the whole fidelity cost is the rope. (Compute is
 a separate ledger: §30 measures prefill at 2.53x per token at 1M.)
 
-### Per-bucket, which is the point of the exercise
+### Per-bucket: the registered hypothesis is REFUTED
 
 | prompt tokens | mean KLD | cold-reboot floor | **penalty / floor** | top-1 agreement |
 |---:|---:|---:|---:|---:|
-| 512 | 7.650e-03 | 8.49e-04 | **9.0x** | 96.9 % |
-| 2,048 | 7.298e-03 | 8.64e-04 | **8.4x** | 94.8 % |
-| 8,192 | 1.483e-02 | 1.69e-03 | **8.8x** | 89.6 % |
-| 32,768 | 1.249e-02 | 1.31e-03 | **9.5x** | 91.7 % |
+| 512 | **7.650e-03** | 8.49e-04 | 9.0x | 96.9 % |
+| 2,048 | **7.298e-03** | 8.64e-04 | 8.4x | 94.8 % |
+| 8,192 | **1.483e-02** | 1.69e-03 | 8.8x | 89.6 % |
+| 32,768 | **1.249e-02** | 1.31e-03 | 9.5x | 91.7 % |
 
-**The hypothesis we set out to test - "static YaRN costs MORE at short lengths" - is NOT SUPPORTED, and the
-reason is the interesting part.** In raw KLD the penalty *rises* with length (1.37e-02 at 8k-32k against
-7.47e-03 at 512-2k). But the resolution floor rises in the same proportion, and dividing each bucket by its
-own length-matched floor flattens the trend completely: **9.0x, 8.4x, 8.8x, 9.5x**. Static YaRN costs about
-**9x the floor at every length in this probe set, 512 included**. That is what the mechanism predicts -
-`mscale` is one scalar applied at every position and is not a function of sequence length. The practical
-reading of Qwen's warning is *"static YaRN costs you everywhere"*, not *"static YaRN costs you specifically
-at short length"*. On 12 prompts per bucket the bucket *ordering* is suggestive at best; the floor-relative
-flatness is the robust part.
+**We set out to test "static YaRN costs MORE at short lengths". It does not. The hypothesis is REFUTED.**
+The two *short* buckets are the two *cheapest* measured - 7.65e-03 at 512 and 7.30e-03 at 2k against
+1.48e-02 at 8k - so **the penalty is worst in the MIDDLE**, and the long half of the set is 1.83x worse than
+the short half (1.37e-02 against 7.47e-03). It is not a near miss: the 8k bucket carries about **twice** the
+2k bucket's mean KLD, and **top-1 agreement moves the same way** (96.9 % at 512 down to 89.6 % at 8k), so
+both metrics refute it independently.
+
+A separate observation explains the *shape* but does **not** rescue the hypothesis: the cold-reboot floor
+rises with length in nearly the same proportion (8.49e-04, 8.64e-04, 1.69e-03, 1.31e-03), so dividing each
+bucket by its own length-matched floor flattens the curve to **9.0x, 8.4x, 8.8x, 9.5x** - about 9x the floor
+everywhere. Read that as *"static YaRN's cost tracks how hard the position already is to resolve"*, which is
+also what the mechanism predicts (`mscale` is one scalar applied at every position, with no length
+dependence). Do **not** read it as support for a short-length penalty.
+
+**The production decision never depended on the hypothesis being true.** It depends on the penalty being
+present and resolved at *every* length, which it is: the cheapest bucket measured is 2k at 7.30e-03, still
+8.4x its own floor and 16x the adversarial calibration swap in absolute terms. On 12 prompts per bucket the
+exact bucket *ordering* is suggestive at best; what is solid is the refutation and the fact that **no length
+escapes the penalty**.
 
 ### Against our own yardsticks - and this is where we decline to overclaim
 

@@ -376,8 +376,11 @@ def main() -> None:
         f"at 1M in both arms the rope change alone is still {rope_only['mean_kld']:.3e}, so rope - not "
         f"the window - carries the great majority of the cost. The penalty is {m / altcal:.0f}x our "
         f"adversarial calibration-corpus swap and {m / hyd:.1f}x the entire published quantization KLD "
-        f"of this build. It does NOT, however, concentrate at short lengths: it is present at every "
-        f"length and is mildly LARGER at 8k-32k than at 512-2k.",
+        f"of this build. The registered hypothesis - that static YaRN costs MORE at short lengths - is "
+        f"REFUTED: the two short buckets are the two cheapest measured "
+        f"({bb['512']['mean_kld']:.3e} at 512 and {bb['2048']['mean_kld']:.3e} at 2k against "
+        f"{bb['8192']['mean_kld']:.3e} at 8k), so the penalty is worst in the MIDDLE, not at short "
+        f"length. What matters for the decision is that no length escapes it.",
         "question": "Qwen's model card warns that every open-source framework implements YaRN "
         "statically, so the scaling is applied at every length and may 'impact performance on shorter "
         "texts', and advises enabling it only when long context is needed. Nobody publishes a number. "
@@ -591,6 +594,14 @@ def main() -> None:
                 "every position. Bit-identical. Request-to-request nondeterminism on this card in this "
                 "configuration is exactly zero, so nothing in this receipt is competing with sampler or "
                 "scheduler noise.",
+                "raw_per_position_data": "receipts/yarn-short-context-raw/raw-NATIVE-p1.json and "
+                "raw-NATIVE-p2.json - the two passes compared here, full top-20 distribution at all 384 "
+                "positions each. Cited by docs/46 §29: this result is what attributes the 7-of-8 "
+                "reproducibility that section found under production load to BATCH COMPOSITION rather "
+                "than engine nondeterminism, because at --max-num-seqs 1 on this card there is no "
+                "engine nondeterminism to attribute it to. Note the scope: same server, same process, "
+                "concurrency 1, greedy, 262,144 window, prefix cache warm. It says nothing about "
+                "concurrency >1, which is precisely the variable §29 is left holding.",
                 **replicate,
             },
             "control_cross_boot_replicate": {
@@ -653,6 +664,14 @@ def main() -> None:
             },
             "length_trend": {
                 "hypothesis_under_test": "static YaRN costs MORE at short lengths",
+                "hypothesis_verdict": "REFUTED",
+                "refutation_in_one_line": f"the buckets read {bb['512']['mean_kld']:.3e} at 512, "
+                f"{bb['2048']['mean_kld']:.3e} at 2k, {bb['8192']['mean_kld']:.3e} at 8k and "
+                f"{bb['32768']['mean_kld']:.3e} at 32k. The penalty is WORST IN THE MIDDLE and the two "
+                "SHORT buckets are the two CHEAPEST. That is the opposite of the registered hypothesis, "
+                "and it is not a near miss: the 8k bucket carries about twice the 2k bucket's mean KLD. "
+                "Top-1 agreement moves the same way (96.9 % at 512, 89.6 % at 8k), so both metrics "
+                "refute it independently.",
                 "mean_kld_by_bucket": trend,
                 "top1_agreement_by_bucket": {b: bb[b]["top1_agreement_rate"] for b in bb},
                 "cross_boot_floor_by_bucket": floor_by_bucket,
@@ -660,16 +679,27 @@ def main() -> None:
                 "short_512_2k_mean_kld": short_mean,
                 "long_8k_32k_mean_kld": long_mean,
                 "ratio_long_over_short": long_mean / short_mean if short_mean else None,
-                "verdict": "NOT SUPPORTED as stated, and the reason is instructive. In raw KLD the "
-                f"penalty RISES with length: {long_mean:.3e} at 8k-32k against {short_mean:.3e} at "
-                "512-2k. But the cross-boot resolution floor rises with length in the same proportion "
-                f"({floor_phrase}), and once each bucket is divided by its own length-matched floor "
-                f"the trend disappears: {ratio_phrase}. Static YaRN costs about "
-                f"{mean(list(ratio_by_bucket.values())):.1f}x the floor at EVERY length in this probe "
-                "set, 512 included. The practical reading of Qwen's warning is therefore 'static YaRN "
-                "costs you everywhere, in proportion to how hard the position is to resolve', not "
-                "'static YaRN costs you specifically at short length'. On 12 prompts per bucket the "
-                "bucket ordering is suggestive at best; the floor-relative flatness is the robust part.",
+                "verdict": "REFUTED, and the refutation comes first because it is the stronger result. "
+                "The registered hypothesis was that static YaRN costs MORE at short lengths. It does "
+                f"not: raw mean KLD is {short_mean:.3e} across 512-2k against {long_mean:.3e} across "
+                f"8k-32k, i.e. {long_mean / short_mean:.2f}x WORSE at long length, with the 8k bucket "
+                "the worst of the four. The short buckets are the cheapest ones measured.\n\n"
+                "A separate observation, which explains the shape but does NOT rescue the hypothesis: "
+                f"the cross-boot resolution floor rises with length in nearly the same proportion "
+                f"({floor_phrase}), so dividing each bucket by its own length-matched floor flattens the "
+                f"curve to {ratio_phrase} - about "
+                f"{mean(list(ratio_by_bucket.values())):.1f}x the floor at every length. Read that as "
+                "'static YaRN's cost tracks how hard the position already is to resolve', not as support "
+                "for a short-length penalty. On 12 prompts per bucket the exact bucket ordering is "
+                "suggestive at best; what is solid is the refutation of the short-length claim and the "
+                "fact that no bucket escapes the penalty.",
+                "what_survives_for_the_production_decision": "the decision never depended on the "
+                "hypothesis being true. It depends on the penalty being present and resolved at EVERY "
+                f"length, which it is: the cheapest bucket measured is 2k at "
+                f"{bb['2048']['mean_kld']:.3e}, still {ratio_by_bucket['2048']:.1f}x its floor and "
+                f"{bb['2048']['mean_kld'] / altcal:.0f}x the adversarial calibration swap in absolute "
+                "terms. 'Most of our traffic is short' would not have been a defence even if the "
+                "hypothesis had held in reverse.",
             },
             "worst_20_positions": worst_rows(pen_pos, 20),
         },

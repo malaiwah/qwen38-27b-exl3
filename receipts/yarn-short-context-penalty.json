@@ -1,7 +1,7 @@
 {
  "schema": "yarn-short-context-penalty-1",
  "title": "MEASURED: what static YaRN costs at SHORT context on Qwen3.8-27B-EXL3-K5K6-hydrated, on one idle RTX PRO 6000",
- "headline": "Static YaRN is NOT free at short context. Against the incumbent default - native rope at the 262,144 window - the 1M-YaRN configuration moves the next-token distribution by mean top-20 KLD 1.057e-02 over 384 teacher-forced positions, with top-1 token agreement 93.2 % and 19 of 48 prompts producing a different 8-token greedy continuation at temperature 0. Three controls bound what else could have caused that: a same-server replicate is exactly 0.0e+00 (bit-identical) and a cold cross-boot replicate at the same window is 1.2e-03, while raising the window to 1,000,000 with native rope costs 1.248e-03 on its own. With the window held at 1M in both arms the rope change alone is still 1.071e-02, so rope - not the window - carries the great majority of the cost. The penalty is 23x our adversarial calibration-corpus swap and 3.9x the entire published quantization KLD of this build. It does NOT, however, concentrate at short lengths: it is present at every length and is mildly LARGER at 8k-32k than at 512-2k.",
+ "headline": "Static YaRN is NOT free at short context. Against the incumbent default - native rope at the 262,144 window - the 1M-YaRN configuration moves the next-token distribution by mean top-20 KLD 1.057e-02 over 384 teacher-forced positions, with top-1 token agreement 93.2 % and 19 of 48 prompts producing a different 8-token greedy continuation at temperature 0. Three controls bound what else could have caused that: a same-server replicate is exactly 0.0e+00 (bit-identical) and a cold cross-boot replicate at the same window is 1.2e-03, while raising the window to 1,000,000 with native rope costs 1.248e-03 on its own. With the window held at 1M in both arms the rope change alone is still 1.071e-02, so rope - not the window - carries the great majority of the cost. The penalty is 23x our adversarial calibration-corpus swap and 3.9x the entire published quantization KLD of this build. The registered hypothesis - that static YaRN costs MORE at short lengths - is REFUTED: the two short buckets are the two cheapest measured (7.650e-03 at 512 and 7.298e-03 at 2k against 1.483e-02 at 8k), so the penalty is worst in the MIDDLE, not at short length. What matters for the decision is that no length escapes it.",
  "question": "Qwen's model card warns that every open-source framework implements YaRN statically, so the scaling is applied at every length and may 'impact performance on shorter texts', and advises enabling it only when long context is needed. Nobody publishes a number. This receipt is that number for one build, one probe set, one card.",
  "host": {
   "gpu": "NVIDIA RTX PRO 6000 Blackwell Server Edition, 97,887 MiB, idle and dedicated",
@@ -902,34 +902,34 @@
    "what": "arm NATIVE (native rope, 262,144 window - what production runs today) as reference P against arm YARN (Qwen's 1M recipe - the candidate default) as Q. This is the number the production decision turns on, because it is the whole difference a client would see if we flipped the default.",
    "n_positions": 384,
    "n_prompts": 48,
-   "mean_kld": 0.010566002613040942,
-   "median_kld": 0.00452358380984589,
-   "p99_kld": 0.07229527406572321,
-   "max_kld": 0.2336786103843652,
-   "mean_kld_qmin_surrogate": 0.010717319239295801,
+   "mean_kld": 0.010566002613040963,
+   "median_kld": 0.004523583809845879,
+   "p99_kld": 0.07229527406572328,
+   "max_kld": 0.23367861038436538,
+   "mean_kld_qmin_surrogate": 0.01071731923929583,
    "top1_agreement_rate": 0.9322916666666666,
    "top1_disagreements": 26,
    "mean_shared_support_size": 18.296875,
    "min_shared_support_size": 6,
    "mean_p_topk_mass": 0.9304696498460836,
-   "mean_p_mass_dropped_by_intersection": 0.003743119143416629,
-   "max_p_mass_dropped_by_intersection": 0.0653706492580679,
+   "mean_p_mass_dropped_by_intersection": 0.003743119143416637,
+   "max_p_mass_dropped_by_intersection": 0.06537064925806779,
    "mean_kld_cluster_bootstrap": {
     "resamples": 10000,
     "cluster_unit": "prompt",
     "n_clusters": 48,
-    "ci95_low": 0.008423075769882974,
-    "ci95_high": 0.012884585700414493
+    "ci95_low": 0.008423075769883008,
+    "ci95_high": 0.01288458570041452
    },
    "by_bucket": {
     "512": {
      "prompt_tokens": 512,
      "n_prompts": 12,
      "n_positions": 96,
-     "mean_kld": 0.007650066322234187,
-     "median_kld": 0.004229319636577012,
-     "p99_kld": 0.04885338760005074,
-     "max_kld": 0.054943497897241456,
+     "mean_kld": 0.007650066322234211,
+     "median_kld": 0.004229319636576919,
+     "p99_kld": 0.04885338760005094,
+     "max_kld": 0.054943497897241615,
      "top1_agreement_rate": 0.96875,
      "top1_disagreements": 3,
      "mean_shared_support_size": 18.677083333333332,
@@ -937,18 +937,18 @@
       "resamples": 10000,
       "cluster_unit": "prompt",
       "n_clusters": 12,
-      "ci95_low": 0.005195683797948557,
-      "ci95_high": 0.010485101287115557
+      "ci95_low": 0.005195683797948553,
+      "ci95_high": 0.01048510128711555
      }
     },
     "2048": {
      "prompt_tokens": 2048,
      "n_prompts": 12,
      "n_positions": 96,
-     "mean_kld": 0.007298271768101103,
-     "median_kld": 0.002928541422178187,
-     "p99_kld": 0.05707414973778515,
-     "max_kld": 0.06024896777128548,
+     "mean_kld": 0.007298271768101141,
+     "median_kld": 0.002928541422178234,
+     "p99_kld": 0.057074149737785435,
+     "max_kld": 0.06024896777128563,
      "top1_agreement_rate": 0.9479166666666666,
      "top1_disagreements": 5,
      "mean_shared_support_size": 18.552083333333332,
@@ -956,18 +956,18 @@
       "resamples": 10000,
       "cluster_unit": "prompt",
       "n_clusters": 12,
-      "ci95_low": 0.0047497546044957435,
-      "ci95_high": 0.009878454478206964
+      "ci95_low": 0.004749754604495772,
+      "ci95_high": 0.009878454478206983
      }
     },
     "8192": {
      "prompt_tokens": 8192,
      "n_prompts": 12,
      "n_positions": 96,
-     "mean_kld": 0.01482658496546785,
-     "median_kld": 0.006195019366548576,
-     "p99_kld": 0.08967013529433143,
-     "max_kld": 0.2336786103843652,
+     "mean_kld": 0.014826584965467885,
+     "median_kld": 0.006195019366548509,
+     "p99_kld": 0.08967013529433145,
+     "max_kld": 0.23367861038436538,
      "top1_agreement_rate": 0.8958333333333334,
      "top1_disagreements": 10,
      "mean_shared_support_size": 18.208333333333332,
@@ -975,18 +975,18 @@
       "resamples": 10000,
       "cluster_unit": "prompt",
       "n_clusters": 12,
-      "ci95_low": 0.009815435502771289,
-      "ci95_high": 0.020300150403243147
+      "ci95_low": 0.00981543550277133,
+      "ci95_high": 0.020300150403243195
      }
     },
     "32768": {
      "prompt_tokens": 32768,
      "n_prompts": 12,
      "n_positions": 96,
-     "mean_kld": 0.01248908739636063,
+     "mean_kld": 0.012489087396360623,
      "median_kld": 0.005779599251727101,
-     "p99_kld": 0.10792813862192917,
-     "max_kld": 0.16883375686737215,
+     "p99_kld": 0.10792813862192932,
+     "max_kld": 0.1688337568673729,
      "top1_agreement_rate": 0.9166666666666666,
      "top1_disagreements": 8,
      "mean_shared_support_size": 17.75,
@@ -994,42 +994,42 @@
       "resamples": 10000,
       "cluster_unit": "prompt",
       "n_clusters": 12,
-      "ci95_low": 0.007689908459438587,
-      "ci95_high": 0.017869696260803883
+      "ci95_low": 0.00768990845943856,
+      "ci95_high": 0.01786969626080391
      }
     }
    },
    "by_position_index": {
     "0": {
-     "mean_kld": 0.009644629403608674,
+     "mean_kld": 0.009644629403608732,
      "top1_agreement_rate": 0.875
     },
     "1": {
-     "mean_kld": 0.009866896944115605,
+     "mean_kld": 0.009866896944115635,
      "top1_agreement_rate": 0.9583333333333334
     },
     "2": {
-     "mean_kld": 0.005326903375743541,
+     "mean_kld": 0.005326903375743547,
      "top1_agreement_rate": 0.9791666666666666
     },
     "3": {
-     "mean_kld": 0.011074660098116735,
+     "mean_kld": 0.011074660098116711,
      "top1_agreement_rate": 0.9166666666666666
     },
     "4": {
-     "mean_kld": 0.010887022152365394,
+     "mean_kld": 0.010887022152365436,
      "top1_agreement_rate": 0.9166666666666666
     },
     "5": {
-     "mean_kld": 0.01141304745916013,
+     "mean_kld": 0.011413047459160134,
      "top1_agreement_rate": 0.9375
     },
     "6": {
-     "mean_kld": 0.012175413040155942,
+     "mean_kld": 0.012175413040156005,
      "top1_agreement_rate": 0.9166666666666666
     },
     "7": {
-     "mean_kld": 0.014139448431061505,
+     "mean_kld": 0.014139448431061524,
      "top1_agreement_rate": 0.9583333333333334
     }
    },
@@ -1051,7 +1051,7 @@
       "ref_top1_prob": 0.4685779421023295,
       "ref_top1_minus_top2_prob": 0.35010288461815664,
       "cand_prob_of_ref_top1": 0.24564512547729278,
-      "kld": 0.16883375686737215
+      "kld": 0.1688337568673729
      },
      {
       "prompt_id": "b8192-09",
@@ -1062,7 +1062,7 @@
       "ref_top1_prob": 0.5207879658813039,
       "ref_top1_minus_top2_prob": 0.20491409736491623,
       "cand_prob_of_ref_top1": 0.4069953101336367,
-      "kld": 0.047383898375432984
+      "kld": 0.04738389837543283
      },
      {
       "prompt_id": "b2048-09",
@@ -1073,7 +1073,7 @@
       "ref_top1_prob": 0.4787044318215769,
       "ref_top1_minus_top2_prob": 0.14969600812088318,
       "cand_prob_of_ref_top1": 0.383783468979159,
-      "kld": 0.025812510808580325
+      "kld": 0.02581251080857984
      },
      {
       "prompt_id": "b8192-04",
@@ -1084,7 +1084,7 @@
       "ref_top1_prob": 0.42459799835074075,
       "ref_top1_minus_top2_prob": 0.0939207447446328,
       "cand_prob_of_ref_top1": 0.36872004115933965,
-      "kld": 0.03094873511176509
+      "kld": 0.03094873511176525
      },
      {
       "prompt_id": "b32768-10",
@@ -1095,7 +1095,7 @@
       "ref_top1_prob": 0.35247741954424283,
       "ref_top1_minus_top2_prob": 0.07796772918819844,
       "cand_prob_of_ref_top1": 0.310044974693734,
-      "kld": 0.016311137037469534
+      "kld": 0.01631113703746921
      },
      {
       "prompt_id": "b8192-09",
@@ -1106,7 +1106,7 @@
       "ref_top1_prob": 0.23735034093781812,
       "ref_top1_minus_top2_prob": 0.07422199629387374,
       "cand_prob_of_ref_top1": 0.18512379712797422,
-      "kld": 0.04347584152803578
+      "kld": 0.043475841528035936
      },
      {
       "prompt_id": "b32768-11",
@@ -1128,7 +1128,7 @@
       "ref_top1_prob": 0.28408325288027414,
       "ref_top1_minus_top2_prob": 0.06283899307964469,
       "cand_prob_of_ref_top1": 0.24114753520307852,
-      "kld": 0.009094857727604867
+      "kld": 0.009094857727605078
      },
      {
       "prompt_id": "b8192-04",
@@ -1139,7 +1139,7 @@
       "ref_top1_prob": 0.1927405631364306,
       "ref_top1_minus_top2_prob": 0.06027204050462737,
       "cand_prob_of_ref_top1": 0.1360127131042583,
-      "kld": 0.035936322408870076
+      "kld": 0.03593632240886993
      },
      {
       "prompt_id": "b32768-10",
@@ -1150,7 +1150,7 @@
       "ref_top1_prob": 0.18774242941009264,
       "ref_top1_minus_top2_prob": 0.0587090551203891,
       "cand_prob_of_ref_top1": 0.13894903450991322,
-      "kld": 0.03196406879225939
+      "kld": 0.0319640687922597
      },
      {
       "prompt_id": "b2048-03",
@@ -1161,7 +1161,7 @@
       "ref_top1_prob": 0.12335610086791818,
       "ref_top1_minus_top2_prob": 0.04853684362892162,
       "cand_prob_of_ref_top1": 0.08913637692066985,
-      "kld": 0.04142206081172008
+      "kld": 0.0414220608117199
      },
      {
       "prompt_id": "b2048-05",
@@ -1172,7 +1172,7 @@
       "ref_top1_prob": 0.3226113643071464,
       "ref_top1_minus_top2_prob": 0.03790783456749919,
       "cand_prob_of_ref_top1": 0.2734184545455013,
-      "kld": 0.007247507034856617
+      "kld": 0.007247507034856433
      },
      {
       "prompt_id": "b2048-11",
@@ -1183,7 +1183,7 @@
       "ref_top1_prob": 0.1631607261368611,
       "ref_top1_minus_top2_prob": 0.036091024854974646,
       "cand_prob_of_ref_top1": 0.1270967582915288,
-      "kld": 0.018860714410648863
+      "kld": 0.018860714410648648
      },
      {
       "prompt_id": "b8192-00",
@@ -1194,7 +1194,7 @@
       "ref_top1_prob": 0.12441649487502394,
       "ref_top1_minus_top2_prob": 0.027520831239355878,
       "cand_prob_of_ref_top1": 0.08079547386773876,
-      "kld": 0.051565849174953084
+      "kld": 0.051565849174952945
      },
      {
       "prompt_id": "b2048-04",
@@ -1205,7 +1205,7 @@
       "ref_top1_prob": 0.22155680565724498,
       "ref_top1_minus_top2_prob": 0.02603361091818912,
       "cand_prob_of_ref_top1": 0.15721637669815144,
-      "kld": 0.056907054051811456
+      "kld": 0.05690705405181175
      },
      {
       "prompt_id": "b8192-05",
@@ -1216,7 +1216,7 @@
       "ref_top1_prob": 0.14346525037638064,
       "ref_top1_minus_top2_prob": 0.01685759619789365,
       "cand_prob_of_ref_top1": 0.12089339725923658,
-      "kld": 0.014473534465586517
+      "kld": 0.014473534465586779
      },
      {
       "prompt_id": "b8192-10",
@@ -1227,7 +1227,7 @@
       "ref_top1_prob": 0.06762272537725263,
       "ref_top1_minus_top2_prob": 0.01495809390002572,
       "cand_prob_of_ref_top1": 0.06370652584721745,
-      "kld": 0.06979529804799678
+      "kld": 0.06979529804799658
      },
      {
       "prompt_id": "b8192-10",
@@ -1238,7 +1238,7 @@
       "ref_top1_prob": 0.10706632119427528,
       "ref_top1_minus_top2_prob": 0.012580624369199933,
       "cand_prob_of_ref_top1": 0.10440391483950826,
-      "kld": 0.0189330888814097
+      "kld": 0.01893308888140952
      },
      {
       "prompt_id": "b32768-02",
@@ -1249,7 +1249,7 @@
       "ref_top1_prob": 0.04746669985011426,
       "ref_top1_minus_top2_prob": 0.0,
       "cand_prob_of_ref_top1": 0.03838794991340956,
-      "kld": 0.03735889678799298
+      "kld": 0.03735889678799325
      },
      {
       "prompt_id": "b512-03",
@@ -1260,7 +1260,7 @@
       "ref_top1_prob": 0.03146429455730969,
       "ref_top1_minus_top2_prob": 0.0,
       "cand_prob_of_ref_top1": 0.03441619210508076,
-      "kld": 0.0061968159335661094
+      "kld": 0.006196815933566283
      },
      {
       "prompt_id": "b8192-03",
@@ -1271,7 +1271,7 @@
       "ref_top1_prob": 0.31146609044553675,
       "ref_top1_minus_top2_prob": 0.0,
       "cand_prob_of_ref_top1": 0.2862712784898998,
-      "kld": 0.0018783842630931847
+      "kld": 0.0018783842630931888
      },
      {
       "prompt_id": "b8192-04",
@@ -1293,7 +1293,7 @@
       "ref_top1_prob": 0.1834555454699036,
       "ref_top1_minus_top2_prob": 0.0,
       "cand_prob_of_ref_top1": 0.15650115903420417,
-      "kld": 0.007728047206572906
+      "kld": 0.007728047206573105
      },
      {
       "prompt_id": "b512-06",
@@ -1304,7 +1304,7 @@
       "ref_top1_prob": 0.3313372469487359,
       "ref_top1_minus_top2_prob": 0.0,
       "cand_prob_of_ref_top1": 0.3221876019631123,
-      "kld": 0.004498240991060863
+      "kld": 0.004498240991060865
      },
      {
       "prompt_id": "b512-07",
@@ -1315,7 +1315,7 @@
       "ref_top1_prob": 0.10703411147080448,
       "ref_top1_minus_top2_prob": 0.0,
       "cand_prob_of_ref_top1": 0.08750849359925296,
-      "kld": 0.004739894870018326
+      "kld": 0.004739894870018486
      },
      {
       "prompt_id": "b32768-07",
@@ -1326,7 +1326,7 @@
       "ref_top1_prob": 0.2315579860147188,
       "ref_top1_minus_top2_prob": 0.0,
       "cand_prob_of_ref_top1": 0.20739496712873676,
-      "kld": 0.009257449924426456
+      "kld": 0.009257449924426618
      }
     ]
    }
@@ -1335,21 +1335,21 @@
    "what": "the primary number bundles two changes: the window and the rope. These three comparisons take them apart. All four arms replay the identical prompts and the identical NATIVE-derived forced continuations.",
    "A_native_262k_vs_B_native_1M__window_only": {
     "isolates": "window, KV pool and the VLLM_ALLOW_LONG_MAX_MODEL_LEN path, with the rope held native",
-    "mean_kld": 0.0012477787303718636,
-    "p99_kld": 0.009838522314840729,
+    "mean_kld": 0.001247778730371862,
+    "p99_kld": 0.009838522314840692,
     "top1_agreement_rate": 0.9765625,
-    "fraction_of_primary_penalty": 0.11809373668257568
+    "fraction_of_primary_penalty": 0.11809373668257528
    },
    "B_native_1M_vs_C_yarn_1M__rope_only": {
     "isolates": "the rope change with the window, the env var and the long-window code path held fixed at 1,000,000 in both arms",
-    "mean_kld": 0.010707252948216789,
-    "p99_kld": 0.07564966926732927,
+    "mean_kld": 0.010707252948216799,
+    "p99_kld": 0.07564966926732902,
     "top1_agreement_rate": 0.9375,
-    "fraction_of_primary_penalty": 1.0133683797315656
+    "fraction_of_primary_penalty": 1.0133683797315647
    },
    "A_native_262k_vs_C_yarn_1M__primary": {
-    "mean_kld": 0.010566002613040942,
-    "p99_kld": 0.07229527406572321,
+    "mean_kld": 0.010566002613040963,
+    "p99_kld": 0.07229527406572328,
     "top1_agreement_rate": 0.9322916666666666
    },
    "reading": "the window on its own costs 1.248e-03, 12 % of the primary penalty. The rope on its own, at a matched 1M window, costs 1.071e-02, 101 % of it. Rope is the dominant term by roughly 9x, but the window term is NOT zero and is reported rather than buried. The two do not sum to the primary number and are not expected to: KLD is not additive along a path."
@@ -1357,6 +1357,7 @@
   "control_same_server_replicate": {
    "what": "arm NATIVE pass p1 versus pass p2: the SAME running server, same prompts, same seed, prefix cache warm from p1. Bounds pure request-to-request nondeterminism.",
    "verdict": "mean KLD 0.0e+00, max 0.0e+00, top-1 agreement 100.0 %, shared support 20 of 20 at every position. Bit-identical. Request-to-request nondeterminism on this card in this configuration is exactly zero, so nothing in this receipt is competing with sampler or scheduler noise.",
+   "raw_per_position_data": "receipts/yarn-short-context-raw/raw-NATIVE-p1.json and raw-NATIVE-p2.json - the two passes compared here, full top-20 distribution at all 384 positions each. Cited by docs/46 \u00a729: this result is what attributes the 7-of-8 reproducibility that section found under production load to BATCH COMPOSITION rather than engine nondeterminism, because at --max-num-seqs 1 on this card there is no engine nondeterminism to attribute it to. Note the scope: same server, same process, concurrency 1, greedy, 262,144 window, prefix cache warm. It says nothing about concurrency >1, which is precisely the variable \u00a729 is left holding.",
    "n_positions": 384,
    "n_prompts": 48,
    "mean_kld": 0.0,
@@ -1369,8 +1370,8 @@
    "mean_shared_support_size": 20.0,
    "min_shared_support_size": 20,
    "mean_p_topk_mass": 0.9304696498460836,
-   "mean_p_mass_dropped_by_intersection": -2.3129646346357427e-18,
-   "max_p_mass_dropped_by_intersection": 3.3306690738754696e-16,
+   "mean_p_mass_dropped_by_intersection": -2.457524924300477e-18,
+   "max_p_mass_dropped_by_intersection": 4.440892098500626e-16,
    "mean_kld_cluster_bootstrap": {
     "resamples": 10000,
     "cluster_unit": "prompt",
@@ -1506,34 +1507,34 @@
    "verdict": "mean KLD 1.180e-03, max 1.605e-02, top-1 agreement 97.9 %.",
    "n_positions": 384,
    "n_prompts": 48,
-   "mean_kld": 0.0011795296696411632,
-   "median_kld": 0.0004639805103838755,
-   "p99_kld": 0.010810587957863332,
+   "mean_kld": 0.0011795296696411534,
+   "median_kld": 0.0004639805103837501,
+   "p99_kld": 0.010810587957863499,
    "max_kld": 0.016045258302592492,
-   "mean_kld_qmin_surrogate": 0.0011808897211698047,
+   "mean_kld_qmin_surrogate": 0.0011808897211698188,
    "top1_agreement_rate": 0.9791666666666666,
    "top1_disagreements": 8,
    "mean_shared_support_size": 19.5859375,
    "min_shared_support_size": 15,
    "mean_p_topk_mass": 0.9304696498460836,
-   "mean_p_mass_dropped_by_intersection": 0.000745268426374916,
-   "max_p_mass_dropped_by_intersection": 0.012444120279867632,
+   "mean_p_mass_dropped_by_intersection": 0.0007452684263749187,
+   "max_p_mass_dropped_by_intersection": 0.012444120279867521,
    "mean_kld_cluster_bootstrap": {
     "resamples": 10000,
     "cluster_unit": "prompt",
     "n_clusters": 48,
-    "ci95_low": 0.0009127369196741989,
-    "ci95_high": 0.0014882448207688094
+    "ci95_low": 0.0009127369196741854,
+    "ci95_high": 0.0014882448207687925
    },
    "by_bucket": {
     "512": {
      "prompt_tokens": 512,
      "n_prompts": 12,
      "n_positions": 96,
-     "mean_kld": 0.000849493207989883,
-     "median_kld": 0.000429566085590165,
-     "p99_kld": 0.0032515992741455517,
-     "max_kld": 0.003878190294833961,
+     "mean_kld": 0.0008494932079898729,
+     "median_kld": 0.00042956608559034236,
+     "p99_kld": 0.0032515992741453774,
+     "max_kld": 0.0038781902948342105,
      "top1_agreement_rate": 0.96875,
      "top1_disagreements": 3,
      "mean_shared_support_size": 19.552083333333332,
@@ -1541,17 +1542,17 @@
       "resamples": 10000,
       "cluster_unit": "prompt",
       "n_clusters": 12,
-      "ci95_low": 0.0005969724192728003,
-      "ci95_high": 0.0011103939146126297
+      "ci95_low": 0.0005969724192727686,
+      "ci95_high": 0.001110393914612615
      }
     },
     "2048": {
      "prompt_tokens": 2048,
      "n_prompts": 12,
      "n_positions": 96,
-     "mean_kld": 0.0008640609866854172,
-     "median_kld": 0.0003067002987797683,
-     "p99_kld": 0.006690348471537939,
+     "mean_kld": 0.000864060986685422,
+     "median_kld": 0.0003067002987797714,
+     "p99_kld": 0.006690348471537652,
      "max_kld": 0.016045258302592492,
      "top1_agreement_rate": 1.0,
      "top1_disagreements": 0,
@@ -1560,18 +1561,18 @@
       "resamples": 10000,
       "cluster_unit": "prompt",
       "n_clusters": 12,
-      "ci95_low": 0.0005101218649085374,
-      "ci95_high": 0.0012937590454987539
+      "ci95_low": 0.0005101218649085471,
+      "ci95_high": 0.0012937590454987593
      }
     },
     "8192": {
      "prompt_tokens": 8192,
      "n_prompts": 12,
      "n_positions": 96,
-     "mean_kld": 0.0016934063682432698,
-     "median_kld": 0.0007380227625076672,
-     "p99_kld": 0.013780211247131541,
-     "max_kld": 0.014136526355551645,
+     "mean_kld": 0.0016934063682432718,
+     "median_kld": 0.0007380227625075858,
+     "p99_kld": 0.013780211247131694,
+     "max_kld": 0.014136526355551633,
      "top1_agreement_rate": 0.9791666666666666,
      "top1_disagreements": 2,
      "mean_shared_support_size": 19.5,
@@ -1579,18 +1580,18 @@
       "resamples": 10000,
       "cluster_unit": "prompt",
       "n_clusters": 12,
-      "ci95_low": 0.0009389919040451955,
-      "ci95_high": 0.0026166791603936244
+      "ci95_low": 0.0009389919040451763,
+      "ci95_high": 0.002616679160393621
      }
     },
     "32768": {
      "prompt_tokens": 32768,
      "n_prompts": 12,
      "n_positions": 96,
-     "mean_kld": 0.0013111581156460819,
-     "median_kld": 0.0006290518137065174,
-     "p99_kld": 0.008518868476298354,
-     "max_kld": 0.011345639310101976,
+     "mean_kld": 0.0013111581156460513,
+     "median_kld": 0.0006290518137062956,
+     "p99_kld": 0.008518868476298642,
+     "max_kld": 0.011345639310102103,
      "top1_agreement_rate": 0.96875,
      "top1_disagreements": 3,
      "mean_shared_support_size": 19.6875,
@@ -1598,42 +1599,42 @@
       "resamples": 10000,
       "cluster_unit": "prompt",
       "n_clusters": 12,
-      "ci95_low": 0.0008604918228988953,
-      "ci95_high": 0.0018641056211064527
+      "ci95_low": 0.0008604918228988493,
+      "ci95_high": 0.0018641056211064241
      }
     }
    },
    "by_position_index": {
     "0": {
-     "mean_kld": 0.000820477884745042,
+     "mean_kld": 0.0008204778847450232,
      "top1_agreement_rate": 0.9791666666666666
     },
     "1": {
-     "mean_kld": 0.001414315561305179,
+     "mean_kld": 0.0014143155613051677,
      "top1_agreement_rate": 1.0
     },
     "2": {
-     "mean_kld": 0.0014752520985527528,
+     "mean_kld": 0.0014752520985527589,
      "top1_agreement_rate": 0.9791666666666666
     },
     "3": {
-     "mean_kld": 0.0013645203002741757,
+     "mean_kld": 0.0013645203002741598,
      "top1_agreement_rate": 0.9583333333333334
     },
     "4": {
-     "mean_kld": 0.001021406711827407,
+     "mean_kld": 0.0010214067118274046,
      "top1_agreement_rate": 0.9583333333333334
     },
     "5": {
-     "mean_kld": 0.0012219567933060204,
+     "mean_kld": 0.0012219567933060163,
      "top1_agreement_rate": 0.9583333333333334
     },
     "6": {
-     "mean_kld": 0.0008178037884712412,
+     "mean_kld": 0.0008178037884712741,
      "top1_agreement_rate": 1.0
     },
     "7": {
-     "mean_kld": 0.0013005042186474858,
+     "mean_kld": 0.0013005042186474305,
      "top1_agreement_rate": 1.0
     }
    },
@@ -1655,7 +1656,7 @@
       "ref_top1_prob": 0.20258731097167632,
       "ref_top1_minus_top2_prob": 0.04481215454660459,
       "cand_prob_of_ref_top1": 0.202566108127197,
-      "kld": 0.00837009106399291
+      "kld": 0.008370091063993204
      },
      {
       "prompt_id": "b512-03",
@@ -1666,7 +1667,7 @@
       "ref_top1_prob": 0.259817995716177,
       "ref_top1_minus_top2_prob": 0.0305294192609131,
       "cand_prob_of_ref_top1": 0.24033098166366337,
-      "kld": 0.0020868398473850996
+      "kld": 0.002086839847385065
      },
      {
       "prompt_id": "b8192-10",
@@ -1677,7 +1678,7 @@
       "ref_top1_prob": 0.06762272537725263,
       "ref_top1_minus_top2_prob": 0.01495809390002572,
       "cand_prob_of_ref_top1": 0.05404385395758302,
-      "kld": 0.003794314796181376
+      "kld": 0.0037943147961811323
      },
      {
       "prompt_id": "b8192-10",
@@ -1688,7 +1689,7 @@
       "ref_top1_prob": 0.10706632119427528,
       "ref_top1_minus_top2_prob": 0.012580624369199933,
       "cand_prob_of_ref_top1": 0.10181926878129015,
-      "kld": 0.0020015132754447524
+      "kld": 0.0020015132754447494
      },
      {
       "prompt_id": "b512-01",
@@ -1699,7 +1700,7 @@
       "ref_top1_prob": 0.099224061685915,
       "ref_top1_minus_top2_prob": 0.01165913458623219,
       "cand_prob_of_ref_top1": 0.08710101841359391,
-      "kld": 0.002965360442948125
+      "kld": 0.0029653604429484923
      },
      {
       "prompt_id": "b32768-04",
@@ -1710,7 +1711,7 @@
       "ref_top1_prob": 0.1834555454699036,
       "ref_top1_minus_top2_prob": 0.0,
       "cand_prob_of_ref_top1": 0.16913454658832955,
-      "kld": 0.0017874212571587964
+      "kld": 0.0017874212571588348
      },
      {
       "prompt_id": "b512-07",
@@ -1721,7 +1722,7 @@
       "ref_top1_prob": 0.10703411147080448,
       "ref_top1_minus_top2_prob": 0.0,
       "cand_prob_of_ref_top1": 0.09528253426055663,
-      "kld": 0.0025105162888126235
+      "kld": 0.00251051628881251
      },
      {
       "prompt_id": "b32768-07",
@@ -1732,7 +1733,7 @@
       "ref_top1_prob": 0.2315579860147188,
       "ref_top1_minus_top2_prob": 0.0,
       "cand_prob_of_ref_top1": 0.23009218727376216,
-      "kld": 0.004363490788174981
+      "kld": 0.004363490788175216
      }
     ]
    }
@@ -1742,34 +1743,34 @@
    "verdict": "mean KLD 1.248e-03, max 2.000e-02, top-1 agreement 97.7 %. NOT null: the window alone is worth 2.7x the adversarial calibration swap. The engine logged identical shapes for all three arms (FLASHINFER backend, attention block size 1568, mamba page padding 0.13 %, chunked prefill 8192, one FULL cudagraph capture), so this is not a backend or block-size switch; see INFERENCE for the likely cause.",
    "n_positions": 384,
    "n_prompts": 48,
-   "mean_kld": 0.0012477787303718636,
-   "median_kld": 0.0005462757374852362,
-   "p99_kld": 0.009838522314840729,
-   "max_kld": 0.01999509393079332,
-   "mean_kld_qmin_surrogate": 0.00125075890357551,
+   "mean_kld": 0.001247778730371862,
+   "median_kld": 0.0005462757374852358,
+   "p99_kld": 0.009838522314840692,
+   "max_kld": 0.019995093930793073,
+   "mean_kld_qmin_surrogate": 0.0012507589035755295,
    "top1_agreement_rate": 0.9765625,
    "top1_disagreements": 9,
    "mean_shared_support_size": 19.5,
    "min_shared_support_size": 16,
    "mean_p_topk_mass": 0.9304696498460836,
-   "mean_p_mass_dropped_by_intersection": 0.001031440211631679,
+   "mean_p_mass_dropped_by_intersection": 0.00103144021163168,
    "max_p_mass_dropped_by_intersection": 0.018411626977592577,
    "mean_kld_cluster_bootstrap": {
     "resamples": 10000,
     "cluster_unit": "prompt",
     "n_clusters": 48,
-    "ci95_low": 0.0009836840725556742,
-    "ci95_high": 0.0015404882687654008
+    "ci95_low": 0.000983684072555681,
+    "ci95_high": 0.0015404882687653858
    },
    "by_bucket": {
     "512": {
      "prompt_tokens": 512,
      "n_prompts": 12,
      "n_positions": 96,
-     "mean_kld": 0.0009531733861487058,
-     "median_kld": 0.0005843710566873581,
-     "p99_kld": 0.003674105981005671,
-     "max_kld": 0.006225594996165083,
+     "mean_kld": 0.0009531733861487176,
+     "median_kld": 0.0005843710566874652,
+     "p99_kld": 0.0036741059810057484,
+     "max_kld": 0.00622559499616504,
      "top1_agreement_rate": 0.9791666666666666,
      "top1_disagreements": 2,
      "mean_shared_support_size": 19.53125,
@@ -1777,18 +1778,18 @@
       "resamples": 10000,
       "cluster_unit": "prompt",
       "n_clusters": 12,
-      "ci95_low": 0.000741783400731008,
-      "ci95_high": 0.0011558008969049416
+      "ci95_low": 0.0007417834007310697,
+      "ci95_high": 0.0011558008969049303
      }
     },
     "2048": {
      "prompt_tokens": 2048,
      "n_prompts": 12,
      "n_positions": 96,
-     "mean_kld": 0.0010080448271925807,
-     "median_kld": 0.00038138416289805693,
-     "p99_kld": 0.009663772632544282,
-     "max_kld": 0.019348757128378875,
+     "mean_kld": 0.0010080448271925643,
+     "median_kld": 0.00038138416289804447,
+     "p99_kld": 0.009663772632544157,
+     "max_kld": 0.01934875712837888,
      "top1_agreement_rate": 0.9895833333333334,
      "top1_disagreements": 1,
      "mean_shared_support_size": 19.5,
@@ -1796,18 +1797,18 @@
       "resamples": 10000,
       "cluster_unit": "prompt",
       "n_clusters": 12,
-      "ci95_low": 0.0005482296483117112,
-      "ci95_high": 0.0015536935914741018
+      "ci95_low": 0.000548229648311674,
+      "ci95_high": 0.0015536935914741035
      }
     },
     "8192": {
      "prompt_tokens": 8192,
      "n_prompts": 12,
      "n_positions": 96,
-     "mean_kld": 0.0015057238210626001,
-     "median_kld": 0.0005258135093943364,
-     "p99_kld": 0.00853566378038762,
-     "max_kld": 0.013180423126406056,
+     "mean_kld": 0.0015057238210626003,
+     "median_kld": 0.0005258135093944557,
+     "p99_kld": 0.008535663780387646,
+     "max_kld": 0.013180423126406477,
      "top1_agreement_rate": 0.9895833333333334,
      "top1_disagreements": 1,
      "mean_shared_support_size": 19.458333333333332,
@@ -1815,18 +1816,18 @@
       "resamples": 10000,
       "cluster_unit": "prompt",
       "n_clusters": 12,
-      "ci95_low": 0.0009164144716695146,
-      "ci95_high": 0.00220825453134578
+      "ci95_low": 0.000916414471669466,
+      "ci95_high": 0.002208254531345808
      }
     },
     "32768": {
      "prompt_tokens": 32768,
      "n_prompts": 12,
      "n_positions": 96,
-     "mean_kld": 0.001524172887083569,
-     "median_kld": 0.0006138213258774375,
-     "p99_kld": 0.0157698371607348,
-     "max_kld": 0.01999509393079332,
+     "mean_kld": 0.0015241728870835664,
+     "median_kld": 0.0006138213258775045,
+     "p99_kld": 0.015769837160734972,
+     "max_kld": 0.019995093930793073,
      "top1_agreement_rate": 0.9479166666666666,
      "top1_disagreements": 5,
      "mean_shared_support_size": 19.510416666666668,
@@ -1834,42 +1835,42 @@
       "resamples": 10000,
       "cluster_unit": "prompt",
       "n_clusters": 12,
-      "ci95_low": 0.0009145989252825129,
-      "ci95_high": 0.0022270236493966756
+      "ci95_low": 0.0009145989252825022,
+      "ci95_high": 0.002227023649396681
      }
     }
    },
    "by_position_index": {
     "0": {
-     "mean_kld": 0.0013902462268261435,
+     "mean_kld": 0.0013902462268260806,
      "top1_agreement_rate": 0.9166666666666666
     },
     "1": {
-     "mean_kld": 0.0015219286922485765,
+     "mean_kld": 0.0015219286922485663,
      "top1_agreement_rate": 0.9791666666666666
     },
     "2": {
-     "mean_kld": 0.0015987945280094293,
+     "mean_kld": 0.0015987945280094508,
      "top1_agreement_rate": 0.9791666666666666
     },
     "3": {
-     "mean_kld": 0.00126245389470528,
+     "mean_kld": 0.00126245389470529,
      "top1_agreement_rate": 0.9791666666666666
     },
     "4": {
-     "mean_kld": 0.001100559726048641,
+     "mean_kld": 0.0011005597260486453,
      "top1_agreement_rate": 0.9791666666666666
     },
     "5": {
-     "mean_kld": 0.0010350049514672274,
+     "mean_kld": 0.0010350049514672559,
      "top1_agreement_rate": 0.9791666666666666
     },
     "6": {
-     "mean_kld": 0.0007398926263259437,
+     "mean_kld": 0.0007398926263259584,
      "top1_agreement_rate": 1.0
     },
     "7": {
-     "mean_kld": 0.0013333491973436667,
+     "mean_kld": 0.00133334919734365,
      "top1_agreement_rate": 1.0
     }
    },
@@ -1891,7 +1892,7 @@
       "ref_top1_prob": 0.18774242941009264,
       "ref_top1_minus_top2_prob": 0.0587090551203891,
       "cand_prob_of_ref_top1": 0.1668863315812074,
-      "kld": 0.01999509393079332
+      "kld": 0.019995093930793073
      },
      {
       "prompt_id": "b32768-11",
@@ -1902,7 +1903,7 @@
       "ref_top1_prob": 0.20258731097167632,
       "ref_top1_minus_top2_prob": 0.04481215454660459,
       "cand_prob_of_ref_top1": 0.19521970161728247,
-      "kld": 0.015547455225468574
+      "kld": 0.015547455225468769
      },
      {
       "prompt_id": "b512-03",
@@ -1913,7 +1914,7 @@
       "ref_top1_prob": 0.259817995716177,
       "ref_top1_minus_top2_prob": 0.0305294192609131,
       "cand_prob_of_ref_top1": 0.23624347949660562,
-      "kld": 0.0018482556744976247
+      "kld": 0.0018482556744975611
      },
      {
       "prompt_id": "b2048-04",
@@ -1924,7 +1925,7 @@
       "ref_top1_prob": 0.22155680565724498,
       "ref_top1_minus_top2_prob": 0.02603361091818912,
       "cand_prob_of_ref_top1": 0.21887002576585418,
-      "kld": 0.003006167665605718
+      "kld": 0.003006167665605479
      },
      {
       "prompt_id": "b32768-06",
@@ -1935,7 +1936,7 @@
       "ref_top1_prob": 0.09788061121596521,
       "ref_top1_minus_top2_prob": 0.021651114553463774,
       "cand_prob_of_ref_top1": 0.0889345015524578,
-      "kld": 0.0028958449146752317
+      "kld": 0.002895844914675223
      },
      {
       "prompt_id": "b8192-03",
@@ -1946,7 +1947,7 @@
       "ref_top1_prob": 0.31146609044553675,
       "ref_top1_minus_top2_prob": 0.0,
       "cand_prob_of_ref_top1": 0.2997626254135347,
-      "kld": 0.001998126922664716
+      "kld": 0.001998126922664366
      },
      {
       "prompt_id": "b32768-04",
@@ -1957,7 +1958,7 @@
       "ref_top1_prob": 0.1834555454699036,
       "ref_top1_minus_top2_prob": 0.0,
       "cand_prob_of_ref_top1": 0.17500849623199324,
-      "kld": 0.0018250949021838153
+      "kld": 0.001825094902183778
      },
      {
       "prompt_id": "b512-07",
@@ -1968,7 +1969,7 @@
       "ref_top1_prob": 0.10703411147080448,
       "ref_top1_minus_top2_prob": 0.0,
       "cand_prob_of_ref_top1": 0.09809348506380451,
-      "kld": 0.0019135650069305975
+      "kld": 0.0019135650069304873
      },
      {
       "prompt_id": "b32768-07",
@@ -1979,7 +1980,7 @@
       "ref_top1_prob": 0.2315579860147188,
       "ref_top1_minus_top2_prob": 0.0,
       "cand_prob_of_ref_top1": 0.22343775218150458,
-      "kld": 0.0016859631768265848
+      "kld": 0.0016859631768265768
      }
     ]
    }
@@ -1988,34 +1989,34 @@
    "what": "arm NATIVE1M as reference P against arm YARN as Q: window, env var and long window code path identical, rope the only intended difference.",
    "n_positions": 384,
    "n_prompts": 48,
-   "mean_kld": 0.010707252948216789,
-   "median_kld": 0.004324441333088073,
-   "p99_kld": 0.07564966926732927,
-   "max_kld": 0.20268643842429088,
-   "mean_kld_qmin_surrogate": 0.010829208340387348,
+   "mean_kld": 0.010707252948216799,
+   "median_kld": 0.004324441333088059,
+   "p99_kld": 0.07564966926732902,
+   "max_kld": 0.20268643842429115,
+   "mean_kld_qmin_surrogate": 0.010829208340387338,
    "top1_agreement_rate": 0.9375,
    "top1_disagreements": 24,
    "mean_shared_support_size": 18.322916666666668,
    "min_shared_support_size": 7,
    "mean_p_topk_mass": 0.930539049670132,
-   "mean_p_mass_dropped_by_intersection": 0.0035263010081426536,
-   "max_p_mass_dropped_by_intersection": 0.058305685155456755,
+   "mean_p_mass_dropped_by_intersection": 0.0035263010081426544,
+   "max_p_mass_dropped_by_intersection": 0.05830568515545698,
    "mean_kld_cluster_bootstrap": {
     "resamples": 10000,
     "cluster_unit": "prompt",
     "n_clusters": 48,
-    "ci95_low": 0.008531233881052407,
-    "ci95_high": 0.013093202400598834
+    "ci95_low": 0.008531233881052402,
+    "ci95_high": 0.013093202400598846
    },
    "by_bucket": {
     "512": {
      "prompt_tokens": 512,
      "n_prompts": 12,
      "n_positions": 96,
-     "mean_kld": 0.008032716633916503,
-     "median_kld": 0.004257213298646674,
-     "p99_kld": 0.06417000357481535,
-     "max_kld": 0.0644130219160708,
+     "mean_kld": 0.00803271663391649,
+     "median_kld": 0.00425721329864648,
+     "p99_kld": 0.06417000357481532,
+     "max_kld": 0.06441302191607048,
      "top1_agreement_rate": 0.96875,
      "top1_disagreements": 3,
      "mean_shared_support_size": 18.708333333333332,
@@ -2023,18 +2024,18 @@
       "resamples": 10000,
       "cluster_unit": "prompt",
       "n_clusters": 12,
-      "ci95_low": 0.005204994994354257,
-      "ci95_high": 0.011396132670130172
+      "ci95_low": 0.005204994994354235,
+      "ci95_high": 0.011396132670130132
      }
     },
     "2048": {
      "prompt_tokens": 2048,
      "n_prompts": 12,
      "n_positions": 96,
-     "mean_kld": 0.007478921940571021,
-     "median_kld": 0.0026770814486666203,
-     "p99_kld": 0.0512929581403336,
-     "max_kld": 0.07094138369100253,
+     "mean_kld": 0.007478921940571043,
+     "median_kld": 0.0026770814486668897,
+     "p99_kld": 0.05129295814033367,
+     "max_kld": 0.07094138369100228,
      "top1_agreement_rate": 0.9479166666666666,
      "top1_disagreements": 5,
      "mean_shared_support_size": 18.552083333333332,
@@ -2042,18 +2043,18 @@
       "resamples": 10000,
       "cluster_unit": "prompt",
       "n_clusters": 12,
-      "ci95_low": 0.0047939445523922375,
-      "ci95_high": 0.01029095799413083
+      "ci95_low": 0.004793944552392283,
+      "ci95_high": 0.01029095799413084
      }
     },
     "8192": {
      "prompt_tokens": 8192,
      "n_prompts": 12,
      "n_positions": 96,
-     "mean_kld": 0.014768313877625887,
-     "median_kld": 0.007179854909305009,
+     "mean_kld": 0.014768313877625895,
+     "median_kld": 0.007179854909304855,
      "p99_kld": 0.09098449341633535,
-     "max_kld": 0.20268643842429088,
+     "max_kld": 0.20268643842429115,
      "top1_agreement_rate": 0.90625,
      "top1_disagreements": 9,
      "mean_shared_support_size": 18.229166666666668,
@@ -2061,18 +2062,18 @@
       "resamples": 10000,
       "cluster_unit": "prompt",
       "n_clusters": 12,
-      "ci95_low": 0.009925016571165223,
-      "ci95_high": 0.019548180885432524
+      "ci95_low": 0.009925016571165261,
+      "ci95_high": 0.01954818088543253
      }
     },
     "32768": {
      "prompt_tokens": 32768,
      "n_prompts": 12,
      "n_positions": 96,
-     "mean_kld": 0.012549059340753782,
-     "median_kld": 0.004786497787161444,
-     "p99_kld": 0.10376183183551463,
-     "max_kld": 0.17610936585319828,
+     "mean_kld": 0.012549059340753762,
+     "median_kld": 0.004786497787161247,
+     "p99_kld": 0.10376183183551485,
+     "max_kld": 0.17610936585319864,
      "top1_agreement_rate": 0.9270833333333334,
      "top1_disagreements": 7,
      "mean_shared_support_size": 17.802083333333332,
@@ -2080,42 +2081,42 @@
       "resamples": 10000,
       "cluster_unit": "prompt",
       "n_clusters": 12,
-      "ci95_low": 0.007516396987240078,
-      "ci95_high": 0.0186875693791013
+      "ci95_low": 0.0075163969872400534,
+      "ci95_high": 0.018687569379101272
      }
     }
    },
    "by_position_index": {
     "0": {
-     "mean_kld": 0.009904268444162345,
+     "mean_kld": 0.00990426844416234,
      "top1_agreement_rate": 0.9375
     },
     "1": {
-     "mean_kld": 0.009693792301471528,
+     "mean_kld": 0.009693792301471502,
      "top1_agreement_rate": 0.9375
     },
     "2": {
-     "mean_kld": 0.007148272003729202,
+     "mean_kld": 0.007148272003729173,
      "top1_agreement_rate": 0.9583333333333334
     },
     "3": {
-     "mean_kld": 0.01073574943409216,
+     "mean_kld": 0.010735749434092149,
      "top1_agreement_rate": 0.9375
     },
     "4": {
-     "mean_kld": 0.011325901651337655,
+     "mean_kld": 0.011325901651337662,
      "top1_agreement_rate": 0.8958333333333334
     },
     "5": {
-     "mean_kld": 0.01075398076639864,
+     "mean_kld": 0.010753980766398634,
      "top1_agreement_rate": 0.9583333333333334
     },
     "6": {
-     "mean_kld": 0.011106008383651049,
+     "mean_kld": 0.01110600838365111,
      "top1_agreement_rate": 0.9166666666666666
     },
     "7": {
-     "mean_kld": 0.014990050600891792,
+     "mean_kld": 0.0149900506008918,
      "top1_agreement_rate": 0.9583333333333334
     }
    },
@@ -2137,7 +2138,7 @@
       "ref_top1_prob": 0.47846952016113453,
       "ref_top1_minus_top2_prob": 0.3496912035073466,
       "cand_prob_of_ref_top1": 0.24564512547729278,
-      "kld": 0.17610936585319828
+      "kld": 0.17610936585319864
      },
      {
       "prompt_id": "b8192-09",
@@ -2148,7 +2149,7 @@
       "ref_top1_prob": 0.4943869744229744,
       "ref_top1_minus_top2_prob": 0.15460012758103242,
       "cand_prob_of_ref_top1": 0.4069953101336367,
-      "kld": 0.03247866986056736
+      "kld": 0.03247866986056719
      },
      {
       "prompt_id": "b2048-09",
@@ -2159,7 +2160,7 @@
       "ref_top1_prob": 0.4847408394591103,
       "ref_top1_minus_top2_prob": 0.15158365750672792,
       "cand_prob_of_ref_top1": 0.383783468979159,
-      "kld": 0.02561984509573792
+      "kld": 0.025619845095737948
      },
      {
       "prompt_id": "b8192-04",
@@ -2170,7 +2171,7 @@
       "ref_top1_prob": 0.21262552051481257,
       "ref_top1_minus_top2_prob": 0.08366162328522123,
       "cand_prob_of_ref_top1": 0.1360127131042583,
-      "kld": 0.04891258244242005
+      "kld": 0.048912582442419555
      },
      {
       "prompt_id": "b32768-00",
@@ -2181,7 +2182,7 @@
       "ref_top1_prob": 0.25926572048540913,
       "ref_top1_minus_top2_prob": 0.05734937434780052,
       "cand_prob_of_ref_top1": 0.24114753520307852,
-      "kld": 0.009936407608403445
+      "kld": 0.00993640760840355
      },
      {
       "prompt_id": "b2048-03",
@@ -2192,7 +2193,7 @@
       "ref_top1_prob": 0.12863912247638795,
       "ref_top1_minus_top2_prob": 0.05061555065593011,
       "cand_prob_of_ref_top1": 0.08913637692066985,
-      "kld": 0.03665341941518251
+      "kld": 0.03665341941518252
      },
      {
       "prompt_id": "b8192-09",
@@ -2203,7 +2204,7 @@
       "ref_top1_prob": 0.22338613785556158,
       "ref_top1_minus_top2_prob": 0.04941283876635344,
       "cand_prob_of_ref_top1": 0.18512379712797422,
-      "kld": 0.03188557357349916
+      "kld": 0.03188557357349915
      },
      {
       "prompt_id": "b8192-04",
@@ -2214,7 +2215,7 @@
       "ref_top1_prob": 0.40833881666067195,
       "ref_top1_minus_top2_prob": 0.04798107575256999,
       "cand_prob_of_ref_top1": 0.36872004115933965,
-      "kld": 0.017640898468062233
+      "kld": 0.017640898468062386
      },
      {
       "prompt_id": "b32768-10",
@@ -2225,7 +2226,7 @@
       "ref_top1_prob": 0.3276406624595995,
       "ref_top1_minus_top2_prob": 0.038498792678238025,
       "cand_prob_of_ref_top1": 0.310044974693734,
-      "kld": 0.012869185007358605
+      "kld": 0.012869185007358466
      },
      {
       "prompt_id": "b2048-05",
@@ -2236,7 +2237,7 @@
       "ref_top1_prob": 0.32502634632931215,
       "ref_top1_minus_top2_prob": 0.03819160243530617,
       "cand_prob_of_ref_top1": 0.2734184545455013,
-      "kld": 0.007326897370584529
+      "kld": 0.007326897370584482
      },
      {
       "prompt_id": "b2048-11",
@@ -2247,7 +2248,7 @@
       "ref_top1_prob": 0.1593472201096969,
       "ref_top1_minus_top2_prob": 0.03524748030801343,
       "cand_prob_of_ref_top1": 0.1270967582915288,
-      "kld": 0.01578949752915192
+      "kld": 0.01578949752915183
      },
      {
       "prompt_id": "b32768-11",
@@ -2258,7 +2259,7 @@
       "ref_top1_prob": 0.2757638509533079,
       "ref_top1_minus_top2_prob": 0.03240310664221366,
       "cand_prob_of_ref_top1": 0.23035288411796986,
-      "kld": 0.011084353855303443
+      "kld": 0.011084353855303623
      },
      {
       "prompt_id": "b8192-05",
@@ -2269,7 +2270,7 @@
       "ref_top1_prob": 0.14435644194776692,
       "ref_top1_minus_top2_prob": 0.0319315185153498,
       "cand_prob_of_ref_top1": 0.12089339725923658,
-      "kld": 0.013930514429090626
+      "kld": 0.013930514429090974
      },
      {
       "prompt_id": "b8192-00",
@@ -2280,7 +2281,7 @@
       "ref_top1_prob": 0.12522064156641222,
       "ref_top1_minus_top2_prob": 0.027698707857786678,
       "cand_prob_of_ref_top1": 0.08079547386773876,
-      "kld": 0.039862130630341594
+      "kld": 0.039862130630341455
      },
      {
       "prompt_id": "b32768-11",
@@ -2291,7 +2292,7 @@
       "ref_top1_prob": 0.22121290289579104,
       "ref_top1_minus_top2_prob": 0.02599320127850857,
       "cand_prob_of_ref_top1": 0.112810168510953,
-      "kld": 0.06052953092445362
+      "kld": 0.06052953092445347
      },
      {
       "prompt_id": "b8192-10",
@@ -2302,7 +2303,7 @@
       "ref_top1_prob": 0.10592714841521689,
       "ref_top1_minus_top2_prob": 0.012446768039169248,
       "cand_prob_of_ref_top1": 0.10440391483950826,
-      "kld": 0.01833900590048052
+      "kld": 0.018339005900480036
      },
      {
       "prompt_id": "b8192-10",
@@ -2313,7 +2314,7 @@
       "ref_top1_prob": 0.05946194863628443,
       "ref_top1_minus_top2_prob": 0.006986963143119113,
       "cand_prob_of_ref_top1": 0.06370652584721745,
-      "kld": 0.0737129443878149
+      "kld": 0.07371294438781459
      },
      {
       "prompt_id": "b32768-02",
@@ -2335,7 +2336,7 @@
       "ref_top1_prob": 0.03197319877251868,
       "ref_top1_minus_top2_prob": 0.0,
       "cand_prob_of_ref_top1": 0.03441619210508076,
-      "kld": 0.006498807989946943
+      "kld": 0.006498807989946952
      },
      {
       "prompt_id": "b512-03",
@@ -2346,7 +2347,7 @@
       "ref_top1_prob": 0.23624347949660562,
       "ref_top1_minus_top2_prob": 0.0,
       "cand_prob_of_ref_top1": 0.23265110388461302,
-      "kld": 0.007909904534484308
+      "kld": 0.007909904534484492
      },
      {
       "prompt_id": "b2048-04",
@@ -2357,7 +2358,7 @@
       "ref_top1_prob": 0.21887002576585418,
       "ref_top1_minus_top2_prob": 0.0,
       "cand_prob_of_ref_top1": 0.13033695413758614,
-      "kld": 0.07094138369100253
+      "kld": 0.07094138369100228
      },
      {
       "prompt_id": "b8192-04",
@@ -2368,7 +2369,7 @@
       "ref_top1_prob": 0.19008593196466655,
       "ref_top1_minus_top2_prob": 0.0,
       "cand_prob_of_ref_top1": 0.17872874049406307,
-      "kld": 0.006074459783418079
+      "kld": 0.0060744597834180795
      },
      {
       "prompt_id": "b512-06",
@@ -2379,7 +2380,7 @@
       "ref_top1_prob": 0.3321457782172591,
       "ref_top1_minus_top2_prob": 0.0,
       "cand_prob_of_ref_top1": 0.3221876019631123,
-      "kld": 0.004735089842277747
+      "kld": 0.004735089842277752
      },
      {
       "prompt_id": "b32768-06",
@@ -2390,7 +2391,7 @@
       "ref_top1_prob": 0.0889345015524578,
       "ref_top1_minus_top2_prob": 0.0,
       "cand_prob_of_ref_top1": 0.08911784730491419,
-      "kld": 0.014062445950881991
+      "kld": 0.014062445950881682
      }
     ]
    }
@@ -3107,11 +3108,13 @@
   },
   "length_trend": {
    "hypothesis_under_test": "static YaRN costs MORE at short lengths",
+   "hypothesis_verdict": "REFUTED",
+   "refutation_in_one_line": "the buckets read 7.650e-03 at 512, 7.298e-03 at 2k, 1.483e-02 at 8k and 1.249e-02 at 32k. The penalty is WORST IN THE MIDDLE and the two SHORT buckets are the two CHEAPEST. That is the opposite of the registered hypothesis, and it is not a near miss: the 8k bucket carries about twice the 2k bucket's mean KLD. Top-1 agreement moves the same way (96.9 % at 512, 89.6 % at 8k), so both metrics refute it independently.",
    "mean_kld_by_bucket": {
-    "512": 0.007650066322234187,
-    "2048": 0.007298271768101103,
-    "8192": 0.01482658496546785,
-    "32768": 0.01248908739636063
+    "512": 0.007650066322234211,
+    "2048": 0.007298271768101141,
+    "8192": 0.014826584965467885,
+    "32768": 0.012489087396360623
    },
    "top1_agreement_by_bucket": {
     "512": 0.96875,
@@ -3131,10 +3134,11 @@
     "8192": 8.755,
     "32768": 9.525
    },
-   "short_512_2k_mean_kld": 0.00747416904516765,
-   "long_8k_32k_mean_kld": 0.013657836180914228,
-   "ratio_long_over_short": 1.8273384102470316,
-   "verdict": "NOT SUPPORTED as stated, and the reason is instructive. In raw KLD the penalty RISES with length: 1.366e-02 at 8k-32k against 7.474e-03 at 512-2k. But the cross-boot resolution floor rises with length in the same proportion (8.49e-04 at 512, 8.64e-04 at 2048, 1.69e-03 at 8192, 1.31e-03 at 32768), and once each bucket is divided by its own length-matched floor the trend disappears: 9.0x at 512, 8.4x at 2048, 8.8x at 8192, 9.5x at 32768. Static YaRN costs about 8.9x the floor at EVERY length in this probe set, 512 included. The practical reading of Qwen's warning is therefore 'static YaRN costs you everywhere, in proportion to how hard the position is to resolve', not 'static YaRN costs you specifically at short length'. On 12 prompts per bucket the bucket ordering is suggestive at best; the floor-relative flatness is the robust part."
+   "short_512_2k_mean_kld": 0.007474169045167677,
+   "long_8k_32k_mean_kld": 0.01365783618091426,
+   "ratio_long_over_short": 1.8273384102470294,
+   "verdict": "REFUTED, and the refutation comes first because it is the stronger result. The registered hypothesis was that static YaRN costs MORE at short lengths. It does not: raw mean KLD is 7.474e-03 across 512-2k against 1.366e-02 across 8k-32k, i.e. 1.83x WORSE at long length, with the 8k bucket the worst of the four. The short buckets are the cheapest ones measured.\n\nA separate observation, which explains the shape but does NOT rescue the hypothesis: the cross-boot resolution floor rises with length in nearly the same proportion (8.49e-04 at 512, 8.64e-04 at 2048, 1.69e-03 at 8192, 1.31e-03 at 32768), so dividing each bucket by its own length-matched floor flattens the curve to 9.0x at 512, 8.4x at 2048, 8.8x at 8192, 9.5x at 32768 - about 8.9x the floor at every length. Read that as 'static YaRN's cost tracks how hard the position already is to resolve', not as support for a short-length penalty. On 12 prompts per bucket the exact bucket ordering is suggestive at best; what is solid is the refutation of the short-length claim and the fact that no bucket escapes the penalty.",
+   "what_survives_for_the_production_decision": "the decision never depended on the hypothesis being true. It depends on the penalty being present and resolved at EVERY length, which it is: the cheapest bucket measured is 2k at 7.298e-03, still 8.4x its floor and 16x the adversarial calibration swap in absolute terms. 'Most of our traffic is short' would not have been a defence even if the hypothesis had held in reverse."
   },
   "worst_20_positions": [
    {
@@ -3142,27 +3146,27 @@
     "bucket": 8192,
     "j": 6,
     "context_len": 8198,
-    "kld": 0.2336786103843652,
+    "kld": 0.23367861038436538,
     "top1_agree": true,
     "n_shared": 16,
-    "p_mass_dropped_by_intersection": 0.03853858583971914
+    "p_mass_dropped_by_intersection": 0.03853858583971925
    },
    {
     "prompt_id": "b32768-00",
     "bucket": 32768,
     "j": 7,
     "context_len": 32775,
-    "kld": 0.16883375686737215,
+    "kld": 0.1688337568673729,
     "top1_agree": false,
     "n_shared": 19,
-    "p_mass_dropped_by_intersection": 0.0058985257868506835
+    "p_mass_dropped_by_intersection": 0.0058985257868509056
    },
    {
     "prompt_id": "b32768-10",
     "bucket": 32768,
     "j": 5,
     "context_len": 32773,
-    "kld": 0.10472257976690605,
+    "kld": 0.10472257976690616,
     "top1_agree": true,
     "n_shared": 17,
     "p_mass_dropped_by_intersection": 0.03089842747378846
@@ -3182,7 +3186,7 @@
     "bucket": 8192,
     "j": 1,
     "context_len": 8193,
-    "kld": 0.07028897343141098,
+    "kld": 0.07028897343141106,
     "top1_agree": true,
     "n_shared": 15,
     "p_mass_dropped_by_intersection": 0.0018343002568984579
@@ -3192,7 +3196,7 @@
     "bucket": 8192,
     "j": 3,
     "context_len": 8195,
-    "kld": 0.06979529804799678,
+    "kld": 0.06979529804799658,
     "top1_agree": false,
     "n_shared": 18,
     "p_mass_dropped_by_intersection": 0.030413339023157238
@@ -3202,7 +3206,7 @@
     "bucket": 2048,
     "j": 4,
     "context_len": 2052,
-    "kld": 0.06024896777128548,
+    "kld": 0.06024896777128563,
     "top1_agree": true,
     "n_shared": 20,
     "p_mass_dropped_by_intersection": 0.0
@@ -3212,27 +3216,27 @@
     "bucket": 2048,
     "j": 0,
     "context_len": 2048,
-    "kld": 0.056907054051811456,
+    "kld": 0.05690705405181175,
     "top1_agree": false,
     "n_shared": 18,
-    "p_mass_dropped_by_intersection": 0.012237001910274659
+    "p_mass_dropped_by_intersection": 0.01223700191027488
    },
    {
     "prompt_id": "b512-09",
     "bucket": 512,
     "j": 7,
     "context_len": 519,
-    "kld": 0.054943497897241456,
+    "kld": 0.054943497897241615,
     "top1_agree": true,
     "n_shared": 17,
-    "p_mass_dropped_by_intersection": 0.0150461436388033
+    "p_mass_dropped_by_intersection": 0.015046143638803411
    },
    {
     "prompt_id": "b8192-00",
     "bucket": 8192,
     "j": 1,
     "context_len": 8193,
-    "kld": 0.051565849174953084,
+    "kld": 0.051565849174952945,
     "top1_agree": false,
     "n_shared": 16,
     "p_mass_dropped_by_intersection": 0.047927304382793245
@@ -3242,17 +3246,17 @@
     "bucket": 32768,
     "j": 3,
     "context_len": 32771,
-    "kld": 0.05038913762301795,
+    "kld": 0.05038913762301774,
     "top1_agree": true,
     "n_shared": 18,
-    "p_mass_dropped_by_intersection": 0.0133036099345194
+    "p_mass_dropped_by_intersection": 0.01330360993451929
    },
    {
     "prompt_id": "b32768-10",
     "bucket": 32768,
     "j": 3,
     "context_len": 32771,
-    "kld": 0.04870242926036632,
+    "kld": 0.04870242926036608,
     "top1_agree": true,
     "n_shared": 15,
     "p_mass_dropped_by_intersection": 0.03723995724487428
@@ -3262,27 +3266,27 @@
     "bucket": 512,
     "j": 4,
     "context_len": 516,
-    "kld": 0.048532855479145987,
+    "kld": 0.04853285547914619,
     "top1_agree": true,
     "n_shared": 19,
-    "p_mass_dropped_by_intersection": 0.009089521167605863
+    "p_mass_dropped_by_intersection": 0.009089521167605974
    },
    {
     "prompt_id": "b512-09",
     "bucket": 512,
     "j": 4,
     "context_len": 516,
-    "kld": 0.04784933690022297,
+    "kld": 0.04784933690022269,
     "top1_agree": true,
     "n_shared": 17,
-    "p_mass_dropped_by_intersection": 0.019466314414463226
+    "p_mass_dropped_by_intersection": 0.019466314414463115
    },
    {
     "prompt_id": "b8192-09",
     "bucket": 8192,
     "j": 5,
     "context_len": 8197,
-    "kld": 0.047383898375432984,
+    "kld": 0.04738389837543283,
     "top1_agree": false,
     "n_shared": 18,
     "p_mass_dropped_by_intersection": 0.001115305272000655
@@ -3292,59 +3296,59 @@
     "bucket": 8192,
     "j": 6,
     "context_len": 8198,
-    "kld": 0.04561003887401219,
+    "kld": 0.045610038874012354,
     "top1_agree": true,
     "n_shared": 19,
-    "p_mass_dropped_by_intersection": 0.0001479130727228828
+    "p_mass_dropped_by_intersection": 0.0001479130727229938
    },
    {
     "prompt_id": "b32768-08",
     "bucket": 32768,
     "j": 7,
     "context_len": 32775,
-    "kld": 0.04350203821406727,
+    "kld": 0.04350203821406695,
     "top1_agree": true,
     "n_shared": 19,
-    "p_mass_dropped_by_intersection": 0.005647807158673079
+    "p_mass_dropped_by_intersection": 0.005647807158672968
    },
    {
     "prompt_id": "b8192-09",
     "bucket": 8192,
     "j": 6,
     "context_len": 8198,
-    "kld": 0.04347584152803578,
+    "kld": 0.043475841528035936,
     "top1_agree": false,
     "n_shared": 19,
-    "p_mass_dropped_by_intersection": 0.0004877448599714951
+    "p_mass_dropped_by_intersection": 0.0004877448599716061
    },
    {
     "prompt_id": "b32768-01",
     "bucket": 32768,
     "j": 7,
     "context_len": 32775,
-    "kld": 0.04208825755168109,
+    "kld": 0.04208825755168125,
     "top1_agree": true,
     "n_shared": 16,
-    "p_mass_dropped_by_intersection": 0.01196376944464439
+    "p_mass_dropped_by_intersection": 0.011963769444644501
    },
    {
     "prompt_id": "b32768-00",
     "bucket": 32768,
     "j": 0,
     "context_len": 32768,
-    "kld": 0.041860221302289266,
+    "kld": 0.04186022130228961,
     "top1_agree": true,
     "n_shared": 19,
-    "p_mass_dropped_by_intersection": 0.0005565935863007798
+    "p_mass_dropped_by_intersection": 0.0005565935863010019
    }
   ]
  },
  "yardsticks": {
   "how_to_read_this_block": "two of these yardsticks (the converter envelope and the two published KLD figures) come from our full-vocabulary hidden-state replay estimator; the penalty here comes from a top-20 serving-API estimator with a much coarser floor. Absolute magnitudes across the two estimators are order-of-magnitude statements only. The floor-relative column is the like-for-like comparison and is the one to trust.",
   "in_metric_cross_boot_floor": {
-   "value": 0.0011795296696411632,
+   "value": 0.0011795296696411534,
    "what": "MEASURED IN THIS SESSION: the same NATIVE launch line, rebooted, replayed. This is the resolution floor of the estimator actually used here.",
-   "penalty_multiple": 8.957809951703322,
+   "penalty_multiple": 8.957809951703412,
    "reading": "the penalty is 9.0x the floor of its own estimator. Comfortably resolved, and NOT a floor artefact. This is the honest headline ratio."
   },
   "in_metric_same_server_floor": {
@@ -3352,27 +3356,27 @@
    "reading": "exactly zero. Request-to-request nondeterminism contributes nothing; the 1.18e-03 cross-boot floor is entirely a boot-to-boot effect."
   },
   "window_change_alone": {
-   "value": 0.0012477787303718636,
-   "penalty_multiple": 8.467849592124445,
+   "value": 0.001247778730371862,
+   "penalty_multiple": 8.467849592124473,
    "reading": "raising --max-model-len to 1,000,000 with native rope costs 1.248e-03, statistically indistinguishable from the 1.180e-03 cross-boot floor. The window is free; the rope is not."
   },
   "converter_nondeterminism_envelope": {
    "value": 2.9e-05,
    "estimator": "full-vocabulary hidden-state replay",
-   "penalty_multiple_absolute": 364.344917691067,
+   "penalty_multiple_absolute": 364.3449176910677,
    "reading": "not commensurable with this receipt's floor - it is a much finer estimator - so the raw multiple is quoted for completeness only and should not be used as the headline."
   },
   "published_hydrated_mean_kld_shard0": {
    "value": 0.0027,
    "estimator": "full-vocabulary hidden-state replay",
-   "penalty_multiple_absolute": 3.913334301126275,
+   "penalty_multiple_absolute": 3.9133343011262824,
    "floor_relative_multiple": 93.10344827586208,
    "reading": "in absolute KLD the YaRN penalty (1.057e-02) is 3.9x this build's entire quantization divergence against bf16. In floor-relative terms quantization sits at 93x its estimator's floor and YaRN at 9.0x its own, so quantization is still the larger fidelity event. Both framings are given because neither alone is honest."
   },
   "adversarial_calibration_corpus_swap": {
    "value": 0.000454,
    "estimator": "full-vocabulary hidden-state replay",
-   "penalty_multiple_absolute": 23.273133508900756,
+   "penalty_multiple_absolute": 23.273133508900802,
    "floor_relative_multiple": 15.655172413793103,
    "reading": "in absolute KLD the penalty is 23x the deliberately adversarial calibration-corpus swap. In floor-relative terms the swap was 16x its estimator's floor while YaRN is 9.0x its own, so the two are the SAME ORDER of fidelity event: clearly real, clearly above noise, neither catastrophic. A one-line serving flag buying a fidelity move comparable to our worst deliberate calibration sabotage is the point worth taking away."
   },
@@ -3438,7 +3442,6 @@
    "free-running greedy, NATIVE boot 1": "gen-native.json",
    "free-running greedy, NATIVE boot 4 (control)": "gen-native-boot4.json",
    "free-running greedy, YARN": "gen-yarn.json"
-  },
-  "raw_files_committed_at": "receipts/yarn-short-context-raw/ - every ladder pass, both generation controls, the rope-delta proof, all three launch argv files, all three /v1/models responses, all four server logs and the probe-set index. `python3 tools/yarn_penalty_analyze.py --work receipts/yarn-short-context-raw --out /tmp/check.json` rebuilds this receipt from the committed bytes alone, with no GPU: verified to reproduce the headline mean to machine precision. The 1.6 MB full probe set is NOT committed (it is verbatim repo text); the index pins its digest and tools/yarn_probe_build.py regenerates it bit-exactly."
+  }
  }
 }
