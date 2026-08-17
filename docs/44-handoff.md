@@ -1,8 +1,8 @@
 # 44. Handoff: state, running work, and the exact resume command per open item
 
-**Refreshed 2026-08-17 during the overnight 8x campaign.** Written so that whoever picks this up - the
-owner in the morning, or a fresh agent after a rental dies - can resume every open thread without
-reading the transcript. Every claim here is checkable from a committed receipt.
+**Refreshed 2026-08-17 ~13:40Z, mid production-serving window.** Written so whoever picks this up — the
+owner, or a fresh agent after a rental dies — can resume every open thread without reading the transcript.
+Every claim here is checkable from a committed receipt.
 
 ---
 
@@ -10,69 +10,106 @@ reading the transcript. Every claim here is checkable from a committed receipt.
 
 | host | role | state |
 |---|---|---|
-| **8x RTX PRO 6000** `151.185.34.106` / VPC `10.0.0.5` | topology ladder + TB2.1 campaign | live. 224 vCPU, 1,259 GB RAM, 887 GB free. Kernel `6.8.0-137` after a planned reboot, driver **595.58.03**, ForceP2P override applied and **functionally verified** (P2P on, 51.85 GB/s). sr1 image loaded, weights sha256-verified (0 mismatches), harness + 4 arm scripts in `~/bin` |
-| **load driver** `151.185.34.98` / VPC `10.0.0.2` | harness, receipts | live. Reaches the 8x at **ping, ssh, arbitrary TCP (1.39 ms connect) and the vLLM endpoint (`health=200`, `/v1/models`)** |
-| **local 1x RTX PRO 6000** (this container) | kernel/perf + LMCache work | busy: agent `KernelGap` |
-| 4x `151.185.34.17`, 2x `151.185.34.111` | — | **released** 2026-08-17 after verifying every receipt was committed |
+| `jl-vm-473501` (id 473501), 8× RTX PRO 6000, VPC `10.0.0.5`, ssh `ubuntu@151.185.34.106` | **production serving** | `qwen38-dp8-1m` container, DP8, **1,000,000-token window via static YaRN**, ForceP2P on. `/health` 200. Serving real omp traffic + a TB2.1 arm. |
+| `jl-vm-473296` (id 473296), CPU-only, VPC `10.0.0.2`, ssh `ubuntu@151.185.34.98` | load driver | `omp` live in **tmux session `qwen38`** (attach: `tmux attach -t qwen38`). Runs the TB2.1 1M arm (8 harbor jobs) + 8 metrics pollers + a metrics puller. |
+| `main-omp-session` (id 471041), 1× RTX PRO 6000 | this workstation | GPU **idle, 0 MiB**, torn down cleanly by agent YarnPenalty. **Not free — bills $1.904/hr.** |
 
-**Standing action for any new multi-GPU rental:** write `/etc/modprobe.d/nvidia-p2p-override.conf` and
-reload the driver **before the first measurement** - worth 7-22 % of decode (docs/46 §19). Both the vLLM
-container and `nvidia-dcgm`'s `nv-hostengine` pin `nvidia_uvm`, so stop both or `modprobe -r` fails while
-appearing to succeed.
+**Billing.** Balance was topped to **$114.42** after nearly running dry (it hit $19.88 against $18.13/hr =
+~66 min, and JarvisLabs' FAQ deletes data at zero balance). Burn: 473501 **$15.29/hr**, 471041 $1.90/hr,
+473296 $0.94/hr. Multi-GPU is **strictly linear at $1.89/GPU-hr, no volume discount** —
+see `docs/49-jarvislabs-pricing-and-inventory.md`.
 
-## 2. What is measured and settled (do not redo)
+## 2. Running work
 
-- **Serving topology, 1x through 8x**, all gated PASS incl. the 262k needle: docs/46 §14-24. Headlines:
-  DP wins throughput (**DP8 peak 3,553 tok/s at C128**, knee **C32** - a DP-N deployment holds its
-  per-request floor to about **4N** concurrent requests); **TP2 is the TP latency optimum** and TP4 is
-  *worse* than TP2 single-stream; **TP2xDP2 took the best single-stream of the 4-GPU arms** (156.7).
-- **MTP depth schedule `[[1,4,3],[5,64,1]]`** shipped (docs/46 §17), and docs/47 F9 mechanises it: each
-  depth level costs 1.22 GB/step, **78 % of it `lm_head`**.
-- **The decode "roofline gap" was mostly arithmetic** (docs/47): numerator 20.5 GB/step not ~17.4,
-  denominator 1462-1525 GB/s measured not 1792 spec -> decode runs at **~85 % of achievable**. The
-  1.792 TB/s figure is **banned as headroom** in future claims.
-- **LMCache: DO NOT ENABLE** (docs/46 §22, and docs/47 F12 for the corrected mechanism). Our own #403
-  gate patch moves corruption 7/38 -> **37-38/38**; the real defect is **store-side** (null mamba block
-  ids stored as boundary state under valid keys). PR #403 has been publicly re-labelled.
-- **`--kv-cache-memory-bytes`: leave unset** (docs/46 §21) - the engine's own suggestion won't boot, and
-  66 GiB boots, passes 4/5 gates, then kills the engine on the first full-window request.
-- **`reasoning_effort` accepts only `xhigh`/`medium`/`low`** - `none` is rejected; cards corrected. xhigh
-  costs **5.3x the tokens** of medium for the same answer.
-- **TB2.1 published**: 31/89 pass 1 (both denominators disclosed), 44/89 best-of-2 as a **permanent**
-  lower bound, and a three-way attribution where only **8 of 45** persistent failures are attributable.
-- **Seven vLLM-GG issues filed: #406-#412.** One index page was mis-filed as #405 and closed within
-  minutes; recorded in `receipts/vllm-gg-issues-filed.json`.
+| what | where | state / how to check |
+|---|---|---|
+| **TB2.1 1M arm** — measures task-level YaRN degradation | driver VM, 8 shards × n=2 (C16), `TB21_MAXLEN=1000000`, `TB21_TIMEOUT_MULT=2.0` | ~38/89 results, 15 resolved at 13:38Z. `find ~/tb21/jobs/tb21c-8x1m-hyd-p1-s*/ -name result.json \| wc -l` |
+| **TokenPricing** subagent | local | appending USD/Mtok (input/output/cached) + break-even utilisation to `docs/50-serving-cost-model.md` |
+| GPU telemetry + metrics archival | 8× → driver | `~/metrics/gpu-telemetry.csv` (5 s), rsync'd to driver `~/metrics/8x/`, 8 vLLM pollers at 5 s |
 
-## 3. Open items and the exact resume command
+## 3. The serving answer, settled
 
-| item | resume |
-|---|---|
-| **8x topology ladder** (DP8 done; TP2xDP4 running; TP4xDP2, TP8 to go) | on the 8x: `docker rm -f <prev>; setsid nohup ~/bin/serve-<arm>.sh vllm:gg-r34-tb21-sr1 > ~/logs/serve-<arm>.log 2>&1 &` then from the driver VM `cd ~/research && python3 tools/tb21_gate.py --base-url http://10.0.0.5:8000 --out ~/tb21/receipts/tb21-gate-8x-<arm>.json && python3 tools/tb21_ladder.py --base-url http://10.0.0.5:8000 --shapes 512x256,4kx1k --rungs 1,2,4,8,16,32,64,128 --out ~/tb21/receipts/tb21-ladder-8x-<arm>.json` |
-| **TB2.1 campaign on the 8x** | pick the winning arm by the §3 rule in docs/48, serve it, gate it, then `tools/tb21_campaign.sh` from the driver VM with `TB_TIMEOUT_MULT=2.0`; poller: `tools/tb21_metrics_poll.py --base-url http://10.0.0.5:8000 --out receipts/tb21-metrics-8x.jsonl --interval 5` |
-| **Bare-metal 4-arm patch A/B** (baseline / b12x-gate / in_proj_ba / both) | on the 8x, single GPU, bare docker: mount `receipts/kernel-gap-gate-ab.patch` and the ba patch as read-only overlays over `exl3.py` / `linear.py`, `--gpus '"device=0"'`, then measure single-stream greedy decode. Turns KernelGap's **+3-15 %** bracket into a number |
-| **Four card charts** | `tools/make_knee_chart.py` conventions; sources are `receipts/tb21-ladder-{1x,2x,4x,8x}-*.json`. Tiers must show **measured only - 4x TB stays blank** (docs/46 §23-24) |
-| **Alt-calibration experiment** (blocked by owner directive until the serving investigation closes) | packet at `/var/tmp/work/kld9` on this box: `tools/ggrun.sh bash /work/kld9/chain_kld9.sh altcal` then `tools/kld9_receipt.py --cond altcal`. Gates the docs/29 F2 attribution (6-bit deficit at equal body bytes: allocation shape or calibration content?) |
+**DP8 for a fleet, TP2×DP4 for a solo stream, and TP8 does not exist.**
 
-## 4. Running agents
+| topology | GPUs | single-stream | peak agg | knee |
+|---|---:|---:|---:|---:|
+| 1× | 1 | 136.0 | 464 @C8 | C4 |
+| TP4xDP2 | 8 | 146.5 | 2,206 @C128 | C8 |
+| TP2xDP4 | 8 | **153.2** | 2,438 @C128 | C16 |
+| **DP8** | 8 | 135.2 | **3,553 @C128** | **C32** |
+| ~~TP8~~ | 8 | **refused at load** | — | — |
 
-- **`KernelGap`** (local card, all night). Track A adjudicated: **shipped-class** = b12x gate clause
-  (+3-15 % bracket) and `in_proj_ba` transpose (+8.0 %) and chunk-6144 (+8-9 % PP at 197k+);
-  **nulled** = reconstruct double-buffer (store-bandwidth-bound, overlap re-divides the same bytes);
-  **marginal-archived** = shard-cat deletion (+0.8-1.9 %, below its own 2 % bar). Track B: LMCache
-  store-side defect traced to `lmcache_mp_connector.py:372-374`, **~20-line fix identified**, live
-  three-step repro in progress.
-- Message any agent with `hub send`; transcripts at `history://<id>`.
+- **Knee = 4 × data-parallel degree**, proven on one host across three arms (C32/C16/C8). TP width *lowers*
+  the knee, it does not raise it.
+- **TP8 is architecturally impossible**: EXL3 shards trellis tensors on 128-element boundaries and `lm_head`
+  is the padded vocab 248,320 = 128 × 1940 with 1940 = 2²×5×97. **Max TP width is 4 on any GPU count.**
+- **Cheapest tokens are ONE GPU** (0.707–0.840 GPU-h/Mtok vs DP8's 1.141–1.383): price is linear, scaling is
+  sub-linear (5.889× on 8 GPUs at 512×256). Multi-GPU is a **latency-and-concurrency purchase**.
+- **Largest cost lever is not topology**: `reasoning_effort` xhigh vs medium is **6.44× $/task**.
 
-## 5. Rules that cost something to learn
+## 4. The 1M verdict, and the standing recommendation
 
-1. **A gate PASS is not fidelity when a KV connector is attached.** Five checks passed against a server
-   simultaneously scoring 38/38 corrupted. Check 6 (`--check-connector-reuse`) exists now, off by
-   default, **mandatory whenever `--kv-transfer-config` is present**.
-2. **With DP>1, "Application startup complete" is not readiness** - it comes from the API servers before
-   engines finish loading. Poll `/health` plus `/v1/models`.
-3. **Foreground `docker run` over ssh dies with its session** (and with a daemon restart). Launch
-   `setsid nohup ... &`.
-4. **A cross-tier ratio is only evidence if both arms ran on the same host through the same harness
-   path.** Ours did not; that is why no scaling law is published.
-5. **Only removing bytes pays in a bandwidth-contended regime**, never re-scheduling them (docs/47 P2.3).
-6. **We share one working tree with subagents** - use `git add <paths>`, never `git add -A`.
+**1M works.** Needle retrieval PASSES at 262k / 524k / 786k / **994,755 tokens (99.5 % of a 1M window)**.
+KV is not the constraint — only 16 of 64 layers carry KV, so fp8 KV is 32 KiB/token and the engine reports
+**1,879,687 KV tokens (62.45 GiB) per GPU**; raising the window did not shrink the pool.
+
+**But serving YaRN by default taxes every real request.** `docs/46 §31` decomposed it on a quiet card:
+
+| arm | mean top-20 KLD | reading |
+|---|---:|---|
+| same-server replicate | **0.0e+00** | bit-identical at concurrency 1 |
+| cross-boot replicate | 1.180e-03 | the resolution floor |
+| **window only** (native rope @ 1M) | **1.248e-03** | **the window is fidelity-free** |
+| **rope only** (matched 1M window) | **1.071e-02** | **the rope costs all of it** |
+| native-262k vs 1M-YaRN | **1.057e-02** | ~9× floor; 19/48 prompts change their greedy output |
+
+**RECOMMENDATION: run 262k native by default; add a separate 1M-YaRN endpoint only for requests that
+exceed the native window.** Not yet actioned because the TB2.1 1M arm needs the current config to finish.
+
+## 5. Open items and the exact resume command
+
+1. **Run TB2.1 at 1M to measure YaRN degradation** — *running*. On completion:
+   `cd ~/research && tools/tb21_campaign.sh merge /tmp/tb21-8x1m-p1.json ~/tb21/jobs/tb21c-8x1m-hyd-p1-s{0..7}`
+   then compare against the 262k arm's **56/89** (`receipts/tb21-8x-2xclock-arm.json`). Note the confound:
+   this arm is C16 where that one was C32, and *less* contention should help, so a lower score is real signal.
+2. **Measure KLD on DP8 at 262k native during the config swap** — needs the swap window. Design is in
+   `docs/29` ("two fidelity measurements"). Reuse the **committed** 48-prompt probe set
+   (`receipts/yarn-short-context-raw/`); do not regenerate it or comparability with §31 is lost.
+   `tools/yarn_probe_run.py` per condition, then `tools/yarn_penalty_analyze.py --work <dir>`.
+3. **Quantify whether concurrency itself costs fidelity** — same window, step 3 of that plan: probe quiet,
+   then under load, at fixed 262k-native rope. **Open and consequential**: if concurrency costs real KLD,
+   every throughput number in this project has an unquoted fidelity price.
+4. **Recommend the most cost-effective serving config** — TokenPricing agent is finishing it into `docs/50`.
+5. **Refresh plan and push all evidence** — this document plus `docs/29`; final verification is
+   `git status --porcelain` empty, both remotes at HEAD, `tools/publish_cards.py` `all_byte_identical: true`,
+   and `tools/sync_card_assets.py` exit 0.
+
+**Blocked (1):** *Bare-metal 4-arm A/B of gate and in_proj_ba patches.* Arms A and B ran
+(`receipts/kernel-gap-bare-metal-ab.json`); C and D did not. Two reasons: no quiet bare-docker host (the 8×
+is production, and 471041 has no bare docker — proot inflates dispatch, which is why bare metal was required),
+and **the method is superseded** — §28 measured within-arm CV at 2.84 % median (up to 18 %) against an effect
+Amdahl bounds at +4.19 %, so the ladder cannot resolve it. Re-scope to kernel-level timing + an Amdahl bound
+before spending GPU time. Images `ab-c-transpose` / `ab-d-both` are built and byte-verified on the 8×.
+
+## 6. Rules learned the hard way (do not re-derive these)
+
+1. **`publish_cards.py` uploads only README.md.** Card byte-identity does *not* imply the figures exist on
+   the Hub — six referenced assets were missing and rendered broken. Run `tools/sync_card_assets.py` after any
+   figure change. (`receipts/card-asset-publication-defect.json`)
+2. **A hash-equality check must assert it hashed something.** Our repeatability gate compared eight *empty
+   strings* and reported PASS on every published run, because this model thinks by default and the 64-token
+   probe cap sent everything to `reasoning_content`. (`receipts/gate-check3-vacuous.json`)
+3. **`--tp-smoke` silently downgrades the gate needle from 262,144 to 32,768.** Never compare a tp-smoke gate
+   against a full-needle gate.
+4. **One instantaneous `nvidia-smi` sample cannot distinguish a load-balance defect from workload shape.** An
+   idle GPU under the needle ladder looked exactly like DP imbalance; time-segmenting the telemetry showed the
+   ladder issues one giant request at a time. (§32)
+5. **Prefill is super-linear with a *rising* exponent** (k = 1.506 → 1.744 → 2.144). A single global exponent
+   under-predicts the tail — mine missed the 1M point by 15.5 %. A 1M prompt costs **2.53× more per token**.
+6. **ForceP2P ships OFF** on these hosts (35.5 → 51.9 GB/s, +46.5 %). Standing pre-measurement action on every
+   new multi-GPU rental.
+7. **LMCache stays disabled**: the dominant defect is fp8-KV transfer (bit-clean at bf16), and our qualified
+   default *is* fp8 KV, so it could never have produced clean reuse.
+8. `pkill -f` self-matches over ssh — use bracket patterns `"[h]arbor"`. Foreground `docker run` over ssh dies
+   with the session — use `setsid nohup … &`. With DP>1, "Application startup complete" is **not** readiness —
+   poll `/health` **and** `/v1/models`.
