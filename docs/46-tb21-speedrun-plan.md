@@ -1326,3 +1326,74 @@ engine nondeterminism at concurrency 1, so **no attribution is claimed**. Resume
 **The transferable rule: a hash-equality check must assert that it hashed something.** An empty-vs-empty
 comparison is the most confident-looking false pass available, and it survived every review we did because
 the digest was constant and the status was green.
+
+
+## §30 - What 1M context actually costs, measured
+
+**Receipt: [`1m-context-effects.json`](../receipts/1m-context-effects.json).** The 8x host now serves this
+checkpoint at **1,000,000 tokens** using Qwen's official static-YaRN recipe. Relative to the shipped
+`config.json` that override changes exactly three things — `rope_type` from `default` to `yarn`, plus
+`factor: 4.0` and `original_max_position_embeddings: 262144` — because `mrope_section`, `mrope_interleaved`,
+`partial_rotary_factor` and `rope_theta: 10000000` are already what Qwen prescribe.
+
+### Retrieval works, all the way up
+
+| window | doc tokens | needle | wall |
+|---:|---:|---|---:|
+| 262,144 | 259,303 | **PASS** | 125 s |
+| 524,288 | 520,528 | **PASS** | 355 s |
+| 786,432 | 781,653 | **PASS** | 720 s |
+| **1,000,000** | **994,755** | **PASS** | 1,205 s |
+
+That top row is retrieval at **99.5 % of a one-million-token window**. (The 1M gate's *overall* verdict reads
+FAIL, and that is not retrieval: one probe in check 3 timed out under production load, and check 3 was
+independently found vacuous — §29.)
+
+### KV is not the problem, and the reason is architectural
+
+Only **16 of the 64 layers carry KV** — the other 48 are linear-attention GDN with O(1) state. At fp8 that is
+`2 × 4 kv-heads × 256 head_dim × 1 B × 16 layers` = **32 KiB per token**. The engine reports **1,879,687 KV
+tokens per GPU (62.45 GiB)**, and 1,879,687 × 32 KiB = 61.6 GiB, so the arithmetic closes. It also closes
+against an outside source: the vLLM recipe page quotes 6.6M KV tokens at 1M context on a 288 GB GB300, and
+6.6M × 32 KiB = 206 GiB, which fits that card.
+
+So a full 1M sequence costs **32 GiB** of KV against a 62.45 GiB pool — **1.88 per GPU, ~15 host-wide**.
+**Raising the window did not shrink the pool** (262k config: 1,776,428 tokens; 1M config: 1,879,687).
+
+**The caveat that matters more than the numbers:** paged KV allocates per token *used*, not per
+`--max-model-len`. Setting the window to 1M **reserves nothing**. Real agent traffic at 10-100k tokens is
+untouched by the 1.88 figure, which binds only for sequences that actually fill the window.
+
+### Prefill is super-linear, and the exponent is still climbing
+
+Fit `wall ~ n^k` across the four rungs:
+
+| segment | tokens × | time × | **k** |
+|---|---:|---:|---:|
+| 262k → 524k | 2.000 | 2.840 | **1.506** |
+| 524k → 786k | 1.500 | 2.028 | **1.744** |
+| 786k → 1M | 1.272 | 1.674 | **2.144** |
+
+**k rises monotonically and crosses 2 at the top of the window**, and that is the hybrid architecture
+becoming visible: with 48 linear layers at O(n) and 16 full-attention layers at O(n²), the linear majority
+sets the cost at short n while the quadratic minority takes over by 1M.
+
+I registered a prediction before the last point landed — **1,043 s**, from a single global k = 1.584 fitted on
+the first three rungs. The actual was **1,205 s**, so I **under-shot by 15.5 %**, for the instructive reason
+that *k is not a constant*: any single exponent under-predicts the tail.
+
+**The consequence for pricing long context:**
+
+| window | wall vs 262k | tokens vs 262k | **cost per token** |
+|---:|---:|---:|---:|
+| 262,144 | 1.00× | 1.00× | 1.00× |
+| 1,000,000 | 9.64× | 3.81× | **2.53×** |
+
+**A 1M prompt costs 2.53× more per token to prefill than a 262k prompt.** Long context is not linearly
+priced on this architecture, and any per-token cost model that ignores window size understates long-context
+traffic by up to ~2.5×.
+
+**Limits, stated plainly.** Every wall-clock figure was measured while a TB2.1 arm ran at C16 on the same
+endpoint, so absolute rates are depressed by contention, and the longer rungs span more wall clock and
+therefore more varied contention. **The monotone rise is robust; the exact k values are not good to three
+digits.** One needle position, one document generator — this is retrieval, not long-context reasoning.

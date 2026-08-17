@@ -1,0 +1,123 @@
+{
+ "schema": "qwen38-1m-context-effects/1",
+ "generated_utc": "2026-08-17T13:26:16Z",
+ "what_this_is": "Measured effects of serving this checkpoint at 1,000,000 tokens via Qwen's official static YaRN recipe on the 8x DP8 host: KV capacity, needle retrieval up to 99.5 % of the window, and a prefill cost law fitted across four window sizes.",
+ "config": {
+  "context": 1000000,
+  "method": "official Qwen static YaRN, factor 4.0, original_max_position_embeddings 262144",
+  "override_delta_vs_shipped_config": [
+   "rope_type default -> yarn",
+   "+ factor 4.0",
+   "+ original_max_position_embeddings 262144"
+  ],
+  "unchanged_in_shipped_config": [
+   "mrope_interleaved true",
+   "mrope_section [11,11,10]",
+   "partial_rotary_factor 0.25",
+   "rope_theta 10000000"
+  ],
+  "env": "VLLM_ALLOW_LONG_MAX_MODEL_LEN=1",
+  "topology": "DP8",
+  "served_max_model_len_confirmed": 1000000
+ },
+ "kv_capacity": {
+  "engine_reported_kv_tokens_per_gpu": 1879687,
+  "engine_reported_kv_gib_per_gpu": 62.45,
+  "derivation": "only 16 of 64 layers carry KV (48 are linear-attention GDN with O(1) state); at fp8 that is 2 x 4 kv-heads x 256 head_dim x 1 B x 16 layers = 32768 B = 32 KiB per token",
+  "cross_check": "1,879,687 x 32 KiB = 61.6 GiB against the engine's reported 62.45 GiB",
+  "independent_corroboration": "the vLLM recipe page states 6.6M KV tokens at 1M context on a 288 GB GB300; 6.6M x 32 KiB = 206 GiB, which fits that card and confirms 32 KiB/token from an outside source",
+  "per_sequence_cost": {
+   "262144": "8.00 GiB",
+   "1000000": "32.00 GiB"
+  },
+  "concurrent_full_length_sequences": {
+   "per_gpu_at_1M": 1.88,
+   "host_wide_at_1M": 15.0
+  },
+  "IMPORTANT_CAVEAT": "paged KV allocates per token USED, not per max-model-len. Setting --max-model-len 1000000 reserves nothing. Real agent traffic at 10-100k tokens is unaffected by these full-length figures; the 1.88-per-GPU number only binds for sequences that actually fill the window.",
+  "effect_of_raising_the_window_on_pool_size": "essentially none - the 262k config measured 1,776,428 KV tokens and the 1M config measures 1,879,687. The pool is whatever remains after weights and activations, so the window setting does not shrink it."
+ },
+ "needle_retrieval": {
+  "verdict": "retrieval PASS at every rung, up to 99.5 % of a 1M window",
+  "rungs": [
+   {
+    "window": 262144,
+    "doc_tokens": 259303,
+    "needle": "PASS",
+    "wall_s": 125
+   },
+   {
+    "window": 524288,
+    "doc_tokens": 520528,
+    "needle": "PASS",
+    "wall_s": 355
+   },
+   {
+    "window": 786432,
+    "doc_tokens": 781653,
+    "needle": "PASS",
+    "wall_s": 720
+   },
+   {
+    "window": 1000000,
+    "doc_tokens": 994755,
+    "needle": "PASS",
+    "wall_s": 1205
+   }
+  ],
+  "gate_verdict_note": "the 1M gate's OVERALL verdict was FAIL, but not for retrieval: check 3 timed out on one probe under production load, and check 3 was separately found vacuous (receipts/gate-check3-vacuous.json). needle_retrieval itself PASSED at 994,755 tokens."
+ },
+ "prefill_cost_law": {
+  "fit": "wall ~ n^k",
+  "global_log_log_k": 1.67,
+  "segment_exponents": [
+   {
+    "from": 262144,
+    "to": 524288,
+    "k": 1.506
+   },
+   {
+    "from": 524288,
+    "to": 786432,
+    "k": 1.744
+   },
+   {
+    "from": 786432,
+    "to": 1000000,
+    "k": 2.144
+   }
+  ],
+  "headline": "k rises monotonically and CROSSES 2 at the top of the window",
+  "mechanism": "this is a hybrid model: 48 of 64 layers are linear attention, cost O(n), and 16 of 64 are full attention, cost O(n^2). At short n the linear majority dominates and k sits near 1.5; by 1M the quadratic minority owns the cost and k passes 2. The rising exponent IS the architecture becoming visible.",
+  "registered_prediction": {
+   "predicted_1M_wall_s": 1043,
+   "basis": "k=1.584 fitted on the first three rungs only",
+   "actual_1M_wall_s": 1205,
+   "error_pct": 15.5,
+   "lesson": "the prediction under-shot because k is not constant; a single global exponent under-predicts the tail"
+  },
+  "cost_per_token_relative_to_262k": {
+   "262144": 1.0,
+   "524288": 1.42,
+   "786432": 1.92,
+   "1000000": 2.53
+  },
+  "practical_consequence": "a 1M-token prompt costs 2.53x MORE PER TOKEN to prefill than a 262k prompt. Long context is not linearly priced on this architecture, and any per-token cost model that ignores window size will understate long-context traffic by up to 2.5x."
+ },
+ "honest_limits": [
+  "Every wall-clock number here was measured while a TB2.1 arm ran at C16 on the same endpoint, so absolute tok/s are depressed by contention.",
+  "The longer rungs span more wall clock and therefore more varied contention, so the exponent carries that noise; the MONOTONE RISE is robust but the exact k values are not to three digits.",
+  "One needle position (mid-document, char-depth 0.5) and one document generator; this is retrieval, not long-context reasoning.",
+  "Static YaRN is applied at all lengths, so short-context behaviour under this config is a separate question (measured elsewhere)."
+ ],
+ "receipts": {
+  "needles": [
+   "receipts/rescue-1m/needle-1m-262144.json",
+   "receipts/rescue-1m/needle-1m-524288.json",
+   "receipts/rescue-1m/needle-1m-786432.json",
+   "receipts/rescue-1m/needle-1m-1000000.json"
+  ],
+  "log": "receipts/rescue-1m/needle-ladder.log",
+  "telemetry": "receipts/rescue-1m/gpu-telemetry-8x.csv"
+ }
+}
