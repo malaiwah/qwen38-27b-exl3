@@ -541,3 +541,49 @@ The knee is defined against single-stream, so a few percent of C1 noise moves th
 reported knee a rung (512-in: C8 under MRV1, C4 under both V2 arms, driven by C1 shifting 129.57 → 134.9).
 The **per-rung table is the durable artifact**; the single knee integer is a summary that inherits C1's
 noise. Cite the table.
+
+
+## 16. The continuous metrics timeline, rehearsed - and what it independently confirmed
+
+Owner requirement: capture `/metrics` at a regular interval for post-analysis, published for
+transparency. Built as `tools/tb21_metrics_poll.py` and **wired into `tb21_campaign.sh pass1`**, so every
+pass records one timeline per replica automatically (soft teardown; poller failure can never fail a pass).
+
+**Rehearsed live for 77 minutes across the entire ladder and all three V2 arms**: 929 samples at 5.01 s,
+published as [`tb21-metrics-1x-hyd-rehearsal.jsonl`](../receipts/tb21-metrics-1x-hyd-rehearsal.jsonl) +
+`.summary.json`.
+
+### Two defects the rehearsal found in the tooling itself
+
+1. **An unclean kill loses the summary but never the data.** The summary is written by the SIGTERM
+   handler; the rehearsal's poller died with its SSH transport instead (exit 255), leaving the stream
+   complete and the summary missing. The streaming design held exactly as intended, and the tool now has
+   `--summarize-only` so a summary is always reconstructible from the stream rather than depending on
+   process teardown. (The campaign path was never exposed to this: `tb21_campaign.sh` runs the poller
+   locally on the driver and signals its PID directly.)
+2. **A naive first-to-last delta is meaningless across a restart, and would have been published.**
+   vLLM's counters are per-process, so each arm swap resets them; the first version of the summary
+   reported **negative** token deltas (−7.2 M prompt tokens). The summary is now reset-aware: it detects
+   counter resets, splits the stream into monotonic segments, reports per-segment deltas, and **refuses**
+   the single delta when a reset exists, with the reason stated in the receipt.
+
+### What the timeline then confirmed, from server-side counters rather than client timing
+
+Three monotonic segments, one per arm, with the two V2 arms doing **identical work** (same ladder subset
+under `ignore_eos`, hence identical 120,080 generation tokens - which is itself a check that the arms
+were comparable):
+
+| segment | arm | generation tokens | **MTP acceptance** |
+|---|---|---:|---:|
+| 0 (526 samples) | MRV1 baseline | 451,730 | 0.6480 |
+| 1 (119 samples) | V2, static depth 3 | 120,080 | 0.6122 |
+| 2 (136 samples) | V2 + depth schedule | 120,080 | **0.7854** |
+
+**The depth schedule raises MTP acceptance from 0.61 to 0.79 (+28 % relative)** - independent, server-side
+corroboration of §15's throughput result, and the mechanism behind it: at depth 1 the single drafted
+token is far likelier to be accepted than the third token of a depth-3 draft. Two independent measurement
+paths (client-side timing, server-side counters) agreeing on the same conclusion is the strongest form
+this result could take.
+
+**Prefix-cache hit rate is 0.0000 in every segment** - confirming the ladder's unique-seeded-prompt design
+did what it was built to do: no cache reuse inflating any throughput number in §14 or §15.

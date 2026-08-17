@@ -97,8 +97,59 @@ def install_signal_handlers(stop: Stop) -> None:
 def write_summary(out_jsonl: str, samples: list[dict], started: str,
                   finished: str, interval: float, base_url: str) -> str:
     ok = [s for s in samples if s["http_status"] == 200]
+
+    # vLLM's counters are per-process: a server restart resets them to zero.
+    # A stream that spans a restart (an A/B arm swap, a crash, a redeploy)
+    # therefore has NO meaningful first-to-last delta - naively subtracting
+    # gives a NEGATIVE token count, which is either absurd on its face or,
+    # worse, quietly misread. Observed in the 2026-08-17 rehearsal, which
+    # spanned three arm swaps. So: detect resets, segment into monotonic
+    # runs, report per-segment deltas, and refuse the single naive delta
+    # whenever a reset exists.
+    MONOTONIC = ("prompt_tokens", "generation_tokens", "draft_tokens",
+                 "accepted_tokens", "prefix_cache_queries", "prefix_cache_hits")
+    segments: list[list[dict]] = []
+    current: list[dict] = []
+    for s in ok:
+        if current:
+            prev = current[-1]["parsed"]
+            cur = s["parsed"]
+            reset = any(k in prev and k in cur and cur[k] < prev[k]
+                        for k in MONOTONIC)
+            if reset:
+                segments.append(current)
+                current = []
+        current.append(s)
+    if current:
+        segments.append(current)
+
+    def seg_delta(seg: list[dict]) -> dict | None:
+        if len(seg) < 2:
+            return None
+        a, b = seg[0]["parsed"], seg[-1]["parsed"]
+        return {k: round(b.get(k, 0) - a.get(k, 0), 3)
+                for k in METRIC_FAMILIES if k in a and k in b}
+
+    seg_reports = []
+    for i, seg in enumerate(segments):
+        d = seg_delta(seg)
+        rep = {
+            "segment": i,
+            "samples": len(seg),
+            "first_utc": seg[0].get("utc"),
+            "last_utc": seg[-1].get("utc"),
+            "deltas": d,
+        }
+        if d and d.get("draft_tokens"):
+            rep["mtp_acceptance"] = round(
+                d.get("accepted_tokens", 0) / d["draft_tokens"], 4)
+        if d and d.get("prefix_cache_queries"):
+            rep["prefix_cache_hit_rate"] = round(
+                d.get("prefix_cache_hits", 0) / d["prefix_cache_queries"], 4)
+        seg_reports.append(rep)
+
     summary = {
-        "schema": "qwen38-tb21-metrics-poll-summary/1",
+        "schema": "qwen38-tb21-metrics-poll-summary/2",
         "base_url": base_url,
         "started_utc": started,
         "finished_utc": finished,
@@ -106,13 +157,23 @@ def write_summary(out_jsonl: str, samples: list[dict], started: str,
         "samples_total": len(samples),
         "samples_ok": len(ok),
         "samples_failed": len(samples) - len(ok),
+        "samples_failed_note": "failed scrapes are expected while a server is "
+                               "down (arm swap, restart); they are recorded, "
+                               "not discarded",
         "jsonl_path": out_jsonl,
+        "counter_resets_detected": len(segments) - 1,
+        "monotonic_segments": seg_reports,
         "first_ok_parsed": ok[0]["parsed"] if ok else None,
         "last_ok_parsed": ok[-1]["parsed"] if ok else None,
         "deltas_first_to_last": (
-            {k: round(ok[-1]["parsed"].get(k, 0) - ok[0]["parsed"].get(k, 0), 3)
-             for k in METRIC_FAMILIES if k in (ok[0]["parsed"] if ok else {})}
-            if len(ok) >= 2 else None
+            seg_delta(ok) if len(segments) == 1 else None
+        ),
+        "deltas_first_to_last_note": (
+            "single monotonic run: first-to-last delta is valid"
+            if len(segments) == 1 else
+            f"REFUSED: {len(segments) - 1} counter reset(s) detected "
+            "(server restarted mid-stream), so a first-to-last delta is "
+            "meaningless - use monotonic_segments instead"
         ),
     }
     summary_path = out_jsonl.rsplit(".jsonl", 1)[0] + ".summary.json"
@@ -168,9 +229,49 @@ def amain(args) -> int:
     return 0
 
 
+def summarize_only(path: str) -> int:
+    """Rebuild a summary from an existing JSONL stream.
+
+    The live summary is written by the SIGTERM/SIGINT handler, so an unclean
+    kill (SIGKILL, or a dropped SSH transport that never forwards the signal)
+    leaves the stream complete but the summary missing - observed exactly
+    once, in the 2026-08-17 rehearsal. The stream is the source of truth by
+    design, so a summary must always be reconstructible from it rather than
+    depending on process teardown.
+    """
+    samples = []
+    with open(path) as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                samples.append(json.loads(line))
+            except json.JSONDecodeError:
+                # A kill mid-write can truncate the final line; the design
+                # tolerates losing that one sample rather than the file.
+                print(f"[metrics-poll] skipped one unparseable trailing line",
+                      flush=True)
+    if not samples:
+        print(f"[metrics-poll] no samples in {path}", flush=True)
+        return 1
+    started = samples[0].get("utc", "unknown")
+    finished = samples[-1].get("utc", "unknown")
+    # interval inferred from the stream rather than assumed
+    interval = 0.0
+    if len(samples) >= 2:
+        span = samples[-1].get("elapsed_s", 0) - samples[0].get("elapsed_s", 0)
+        interval = round(span / max(1, len(samples) - 1), 3)
+    summary_path = write_summary(path, samples, started, finished, interval,
+                                 "(rebuilt from stream; base_url not recorded per-sample)")
+    print(f"[metrics-poll] rebuilt summary from {len(samples)} samples "
+          f"(inferred interval {interval}s) -> {summary_path}", flush=True)
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    ap.add_argument("--base-url", required=True)
+    ap.add_argument("--base-url", help="required unless --summarize-only")
     ap.add_argument("--out", required=True, help="JSONL path, appended to")
     ap.add_argument("--interval", type=float, default=5.0,
                     help="seconds between samples (default 5)")
@@ -186,7 +287,14 @@ def main() -> int:
                          "default so a long rehearsal/pass stays a "
                          "reasonable size - the parsed families cover the "
                          "documented counter-delta discipline)")
+    ap.add_argument("--summarize-only", action="store_true",
+                    help="do not poll; rebuild the summary from an existing "
+                         "--out JSONL (use after an unclean kill)")
     args = ap.parse_args()
+    if args.summarize_only:
+        return summarize_only(args.out)
+    if not args.base_url:
+        ap.error("--base-url is required unless --summarize-only")
     return amain(args)
 
 
