@@ -1,0 +1,181 @@
+{
+    "id": "0d04ebaa-5c03-4f35-a58e-ca56fa5c5235",
+    "task_name": "terminal-bench/extract-moves-from-video",
+    "trial_name": "extract-moves-from-video__L9xzNHX",
+    "trial_uri": "file:///home/ubuntu/tb21/jobs/tb21c-8x1m-hyd-p1-s6/extract-moves-from-video__L9xzNHX",
+    "task_id": {
+        "path": "/home/ubuntu/tb21/tasks/extract-moves-from-video"
+    },
+    "source": "tasks",
+    "task_checksum": "5d0d37ba5e80cba32a14cf34d1252fff3ca9483d967b4ca6c96a7f4230f63c7b",
+    "config": {
+        "task": {
+            "path": "/home/ubuntu/tb21/tasks/extract-moves-from-video",
+            "git_url": null,
+            "git_commit_id": null,
+            "name": null,
+            "ref": null,
+            "overwrite": false,
+            "download_dir": null,
+            "source": "tasks"
+        },
+        "trial_name": "extract-moves-from-video__L9xzNHX",
+        "trials_dir": "/home/ubuntu/tb21/jobs/tb21c-8x1m-hyd-p1-s6",
+        "install_only": false,
+        "timeout_multiplier": 2.0,
+        "agent_timeout_multiplier": null,
+        "verifier_timeout_multiplier": null,
+        "agent_setup_timeout_multiplier": null,
+        "environment_build_timeout_multiplier": null,
+        "agent": {
+            "name": "terminus-2",
+            "import_path": null,
+            "model_name": "hosted_vllm/qwen38",
+            "n_concurrent": null,
+            "concurrency_group": null,
+            "skills": [],
+            "override_timeout_sec": null,
+            "override_setup_timeout_sec": null,
+            "max_timeout_sec": null,
+            "resume_trajectory": false,
+            "load_trajectory": null,
+            "extra_allowed_hosts": [],
+            "kwargs": {
+                "api_base": "http://10.0.0.5:8000/v1",
+                "model_info": {
+                    "max_input_tokens": 1000000,
+                    "max_output_tokens": 8192,
+                    "input_cost_per_token": 0,
+                    "output_cost_per_token": 0,
+                    "cache_creation_input_token_cost": 0,
+                    "cache_read_input_token_cost": 0
+                }
+            },
+            "env": {
+                "HOSTED_VLLM_API_KEY": "****"
+            },
+            "mcp_servers": []
+        },
+        "environment": {
+            "type": "docker",
+            "import_path": null,
+            "force_build": false,
+            "delete": true,
+            "cpu_enforcement_policy": "auto",
+            "memory_enforcement_policy": "auto",
+            "override_cpus": null,
+            "override_memory_mb": null,
+            "override_storage_mb": null,
+            "override_gpus": null,
+            "override_tpu": null,
+            "mounts": null,
+            "extra_docker_compose": [],
+            "kwargs": {},
+            "extra_allowed_hosts": []
+        },
+        "verifier": {
+            "override_timeout_sec": null,
+            "max_timeout_sec": null,
+            "disable": false
+        },
+        "artifacts": [],
+        "extra_instruction_paths": [],
+        "job_id": "18da05d8-4898-4a59-bd94-8ba9103befd1",
+        "source_trial": null
+    },
+    "agent_info": {
+        "name": "terminus-2",
+        "version": "2.0.0",
+        "model_info": {
+            "name": "qwen38",
+            "provider": "hosted_vllm"
+        }
+    },
+    "agent_result": {
+        "n_input_tokens": 445669,
+        "n_cache_tokens": 0,
+        "n_output_tokens": 38986,
+        "cost_usd": null,
+        "rollout_details": [],
+        "metadata": {
+            "n_episodes": 43,
+            "api_request_times_msec": [
+                3126.0061264038086,
+                2921.7004776000977,
+                2800.0543117523193,
+                2549.8452186584473,
+                4484.26079750061,
+                1862.4393939971924,
+                1914.0849113464355,
+                4330.155849456787,
+                50479.67219352722,
+                56094.894886016846,
+                19226.027011871338,
+                9874.51195716858,
+                1092884.3190670013,
+                78434.64136123657,
+                183365.51785469055,
+                10687.01696395874,
+                2322.3021030426025,
+                92706.87627792358,
+                2776.733636856079,
+                2497.4758625030518,
+                9742.384910583496,
+                3406.1076641082764,
+                8205.560445785522,
+                22785.308122634888,
+                7057.059764862061,
+                32993.02554130554,
+                18354.27761077881,
+                2173.990488052368,
+                3451.5042304992676,
+                3178.539514541626,
+                3848.850727081299,
+                2689.423084259033,
+                1715.1944637298584,
+                9638.603448867798,
+                7569.373607635498,
+                3859.376907348633,
+                14357.968091964722,
+                39274.685859680176,
+                29426.46098136902,
+                4100.034952163696,
+                3492.109775543213,
+                7066.719055175781,
+                185022.19557762146
+            ],
+            "summarization_count": 0
+        }
+    },
+    "verifier_result": {
+        "rewards": {
+            "reward": 0.0
+        }
+    },
+    "verifier_environment_mode": "shared",
+    "exception_info": {
+        "exception_type": "AgentTimeoutError",
+        "exception_message": "Agent execution timed out after 3600.0 seconds",
+        "exception_traceback": "Traceback (most recent call last):\n  File \"/usr/lib/python3.12/asyncio/tasks.py\", line 520, in wait_for\n    return await fut\n           ^^^^^^^^^\n  File \"/home/ubuntu/.[REDACTED]/share/uv/tools/harbor/lib/python3.12/site-packages/harbor/agents/terminus_2/terminus_2.py\", line 1607, in run\n    await self._run_agent_loop(\n  File \"/home/ubuntu/.[REDACTED]/share/uv/tools/harbor/lib/python3.12/site-packages/harbor/agents/terminus_2/terminus_2.py\", line 1399, in _run_agent_loop\n    timeout_occurred, terminal_output = await self._execute_commands(\n                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/ubuntu/.[REDACTED]/share/uv/tools/harbor/lib/python3.12/site-packages/harbor/agents/terminus_2/terminus_2.py\", line 1215, in _execute_commands\n    await session.send_keys(\n  File \"/home/ubuntu/.[REDACTED]/share/uv/tools/harbor/lib/python3.12/site-packages/harbor/agents/terminus_2/tmux_session.py\", line 817, in send_keys\n    await self._send_non_blocking_keys(\n  File \"/home/ubuntu/.[REDACTED]/share/uv/tools/harbor/lib/python3.12/site-packages/harbor/agents/terminus_2/tmux_session.py\", line 777, in _send_non_blocking_keys\n    await asyncio.sleep(min_timeout_sec - elapsed_time_sec)\n  File \"/usr/lib/python3.12/asyncio/tasks.py\", line 665, in sleep\n    return await future\n           ^^^^^^^^^^^^\nasyncio.exceptions.CancelledError\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/home/ubuntu/.[REDACTED]/share/uv/tools/harbor/lib/python3.12/site-packages/harbor/trial/trial.py\", line 480, in _run_agent_phase\n    await asyncio.wait_for(\n  File \"/usr/lib/python3.12/asyncio/tasks.py\", line 519, in wait_for\n    async with timeouts.timeout(timeout):\n  File \"/usr/lib/python3.12/asyncio/timeouts.py\", line 115, in __aexit__\n    raise TimeoutError from exc_val\nTimeoutError\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/home/ubuntu/.[REDACTED]/share/uv/tools/harbor/lib/python3.12/site-packages/harbor/trial/single_step.py\", line 77, in _run_agent\n    await self._run_agent_phase(\n  File \"/home/ubuntu/.[REDACTED]/share/uv/tools/harbor/lib/python3.12/site-packages/harbor/trial/trial.py\", line 489, in _run_agent_phase\n    raise AgentTimeoutError(\nharbor.trial.errors.AgentTimeoutError: Agent execution timed out after 3600.0 seconds\n",
+        "occurred_at": "2026-08-17T13:51:26.888695Z"
+    },
+    "started_at": "2026-08-17T12:51:07.650362Z",
+    "finished_at": "2026-08-17T13:51:45.541877Z",
+    "environment_setup": {
+        "started_at": "2026-08-17T12:51:07.659691Z",
+        "finished_at": "2026-08-17T12:51:08.869351Z"
+    },
+    "agent_setup": {
+        "started_at": "2026-08-17T12:51:08.869391Z",
+        "finished_at": "2026-08-17T12:51:26.879531Z"
+    },
+    "agent_execution": {
+        "started_at": "2026-08-17T12:51:26.879679Z",
+        "finished_at": "2026-08-17T13:51:26.886806Z"
+    },
+    "verifier": {
+        "started_at": "2026-08-17T13:51:27.208517Z",
+        "finished_at": "2026-08-17T13:51:33.990323Z"
+    },
+    "step_results": null
+}

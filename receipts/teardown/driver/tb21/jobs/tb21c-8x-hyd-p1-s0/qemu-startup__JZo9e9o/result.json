@@ -1,0 +1,116 @@
+{
+    "id": "17c0e2e1-2648-45c7-8e7e-39cd65f933ff",
+    "task_name": "terminal-bench/qemu-startup",
+    "trial_name": "qemu-startup__JZo9e9o",
+    "trial_uri": "file:///home/ubuntu/tb21/jobs/tb21c-8x-hyd-p1-s0/qemu-startup__JZo9e9o",
+    "task_id": {
+        "path": "/home/ubuntu/tb21/tasks/qemu-startup"
+    },
+    "source": "tasks",
+    "task_checksum": "bd03967ee678917f663b6e6b6957432d5cc136a01693275ba26519e38b7821dc",
+    "config": {
+        "task": {
+            "path": "/home/ubuntu/tb21/tasks/qemu-startup",
+            "git_url": null,
+            "git_commit_id": null,
+            "name": null,
+            "ref": null,
+            "overwrite": false,
+            "download_dir": null,
+            "source": "tasks"
+        },
+        "trial_name": "qemu-startup__JZo9e9o",
+        "trials_dir": "/home/ubuntu/tb21/jobs/tb21c-8x-hyd-p1-s0",
+        "install_only": false,
+        "timeout_multiplier": 2.0,
+        "agent_timeout_multiplier": null,
+        "verifier_timeout_multiplier": null,
+        "agent_setup_timeout_multiplier": null,
+        "environment_build_timeout_multiplier": null,
+        "agent": {
+            "name": "terminus-2",
+            "import_path": null,
+            "model_name": "hosted_vllm/qwen38",
+            "n_concurrent": null,
+            "concurrency_group": null,
+            "skills": [],
+            "override_timeout_sec": null,
+            "override_setup_timeout_sec": null,
+            "max_timeout_sec": null,
+            "resume_trajectory": false,
+            "load_trajectory": null,
+            "extra_allowed_hosts": [],
+            "kwargs": {
+                "api_base": "http://10.0.0.5:8000/v1",
+                "model_info": {
+                    "max_input_tokens": 262144,
+                    "max_output_tokens": 8192,
+                    "input_cost_per_token": 0,
+                    "output_cost_per_token": 0,
+                    "cache_creation_input_token_cost": 0,
+                    "cache_read_input_token_cost": 0
+                }
+            },
+            "env": {
+                "HOSTED_VLLM_API_KEY": "****"
+            },
+            "mcp_servers": []
+        },
+        "environment": {
+            "type": "docker",
+            "import_path": null,
+            "force_build": false,
+            "delete": true,
+            "cpu_enforcement_policy": "auto",
+            "memory_enforcement_policy": "auto",
+            "override_cpus": null,
+            "override_memory_mb": null,
+            "override_storage_mb": null,
+            "override_gpus": null,
+            "override_tpu": null,
+            "mounts": null,
+            "extra_docker_compose": [],
+            "kwargs": {},
+            "extra_allowed_hosts": []
+        },
+        "verifier": {
+            "override_timeout_sec": null,
+            "max_timeout_sec": null,
+            "disable": false
+        },
+        "artifacts": [],
+        "extra_instruction_paths": [],
+        "job_id": "a50c0233-5fce-4794-bcf3-dc56f0b31f63",
+        "source_trial": null
+    },
+    "agent_info": {
+        "name": "terminus-2",
+        "version": "2.0.0",
+        "model_info": {
+            "name": "qwen38",
+            "provider": "hosted_vllm"
+        }
+    },
+    "agent_result": null,
+    "verifier_result": null,
+    "verifier_environment_mode": "shared",
+    "exception_info": {
+        "exception_type": "RuntimeError",
+        "exception_message": "Failed to start tmux session. Error: None",
+        "exception_traceback": "Traceback (most recent call last):\n  File \"/home/ubuntu/.[REDACTED]/share/uv/tools/harbor/lib/python3.12/site-packages/harbor/trial/trial.py\", line 375, in run\n    await self._prepare()\n  File \"/home/ubuntu/.[REDACTED]/share/uv/tools/harbor/lib/python3.12/site-packages/harbor/trial/trial.py\", line 413, in _prepare\n    await self._setup_agent()\n  File \"/home/ubuntu/.[REDACTED]/share/uv/tools/harbor/lib/python3.12/site-packages/harbor/trial/trial.py\", line 1242, in _setup_agent\n    await asyncio.wait_for(\n  File \"/usr/lib/python3.12/asyncio/tasks.py\", line 520, in wait_for\n    return await fut\n           ^^^^^^^^^\n  File \"/home/ubuntu/.[REDACTED]/share/uv/tools/harbor/lib/python3.12/site-packages/harbor/agents/terminus_2/terminus_2.py\", line 389, in setup\n    await self._session.start()\n  File \"/home/ubuntu/.[REDACTED]/share/uv/tools/harbor/lib/python3.12/site-packages/harbor/agents/terminus_2/tmux_session.py\", line 503, in start\n    raise RuntimeError(\nRuntimeError: Failed to start tmux session. Error: None\n",
+        "occurred_at": "2026-08-17T06:44:46.981607Z"
+    },
+    "started_at": "2026-08-17T06:44:45.113146Z",
+    "finished_at": "2026-08-17T06:44:58.808980Z",
+    "environment_setup": {
+        "started_at": "2026-08-17T06:44:45.218526Z",
+        "finished_at": "2026-08-17T06:44:46.559912Z"
+    },
+    "agent_setup": {
+        "started_at": "2026-08-17T06:44:46.559957Z",
+        "finished_at": "2026-08-17T06:44:46.980382Z"
+    },
+    "agent_execution": null,
+    "verifier": null,
+    "step_results": null
+}

@@ -1,0 +1,1772 @@
+{
+ "schema": "qwen38-teardown-persistence-manifest/1",
+ "generated_utc": "2026-08-17T18:01:43Z",
+ "what_this_is": "The persistence invariant for teardown. The owner set NO balance floor and instructed that credits be drained, which inverts the safety model: instead of protecting spend, every artifact must already be durable at every moment, so an instance dying at zero balance costs compute only and never evidence. This manifest is the proof of that invariant.",
+ "hosts_swept": {
+  "jl-vm-473501 (8x)": [
+   "~/logs (serve logs, gate receipts, needle receipts, A/B ladders)",
+   "~/metrics (gpu-telemetry.csv, 5 s cadence)"
+  ],
+  "jl-vm-473296 (driver)": [
+   "~/tb21/jobs (TB2.1 job dirs, all arms)",
+   "~/tb21/receipts (merged receipts + 17 metrics JSONLs)",
+   "~/metrics/8x (pulled telemetry)",
+   "~/.omp/agent/models.yml (the omp provider config)"
+  ],
+  "main-omp-session (471041)": [
+   "nothing host-only: this box IS the repo working tree, already committed and pushed"
+  ]
+ },
+ "three_destinations": {
+  "git (small, load-bearing)": {
+   "count": 329,
+   "mib": 26.0,
+   "contents": "every result.json, every metrics JSONL, the GPU telemetry CSVs, the 8x serve/gate/needle logs, models.yml",
+   "why": "these are the files a future reader needs to re-derive or audit any published number"
+  },
+  "already-committed duplicates": {
+   "count": 71,
+   "why": "71 pulled files were byte-identical to files already committed in the repo - chiefly the ladder receipts, which were authored here and copied to the driver. Re-storing them would inflate the repo for zero durability gain, so the manifest PROVES the match and the copy was dropped.",
+   "sample": [
+    {
+     "host_path": "receipts/teardown/8x/logs/ab-ladder-A.json",
+     "sha256": "7514c9e99786e98fdfc85937f739fddba1f5d942c60d187282d1b8c96a4bcdf9",
+     "already_committed_as": "receipts/ab-ladder-A.json"
+    },
+    {
+     "host_path": "receipts/teardown/8x/logs/ab-ladder-B.json",
+     "sha256": "e1234221c3b7055a3eeb0f3b0cf880f38ae8beb21b6b23bf1669c6225d86bb45",
+     "already_committed_as": "receipts/ab-ladder-B.json"
+    },
+    {
+     "host_path": "receipts/teardown/8x/logs/gate-repeat-fixed.json",
+     "sha256": "6b4efddd2b9c1fc7e57d1fc306cf8ad9e9b925078bda7a11d27ae9039a1d5762",
+     "already_committed_as": "receipts/rescue-1m/gate-repeat-fixed.json"
+    },
+    {
+     "host_path": "receipts/teardown/8x/logs/needle-1m-1000000.json",
+     "sha256": "857fc091b964e109eec839590ab51e70c4eecaba18091ea0e6d37e2d807673a1",
+     "already_committed_as": "receipts/rescue-1m/needle-1m-1000000.json"
+    },
+    {
+     "host_path": "receipts/teardown/8x/logs/needle-1m-262144.json",
+     "sha256": "870bd04c6aa088bd53a390d43eda7716d0d6c0f2c047801e2798434fe3e2cda7",
+     "already_committed_as": "receipts/rescue-1m/needle-1m-262144.json"
+    }
+   ]
+  },
+  "HF dataset (bulky, forensic)": {
+   "repo": "malaiwah/qwen38-27b-fidelity-suite-v5",
+   "files": [
+    {
+     "path": "tb21-teardown/tb21-job-artifacts.tgz",
+     "bytes": 18063801,
+     "contents": "per-task agent transcripts, oracle outputs, per-trial logs across all TB2.1 arms"
+    },
+    {
+     "path": "tb21-teardown/tb21-terminal-recordings.tgz",
+     "bytes": 25241803,
+     "contents": "184 asciinema .cast recordings and 184 tmux .pane dumps"
+    }
+   ],
+   "why": "forensically valuable but not load-bearing; a dataset repo is the correct home for tens of MiB of blobs"
+  }
+ },
+ "deliberately_NOT_persisted": [
+  {
+   "item": "tb21c-8x1m-hyd-p1-s6/install-windows-3.11__o5q8n2U/agent/recording.cast",
+   "bytes": 1638588088,
+   "reason": "1.6 GB asciinema capture from a single task that has never resolved in any arm. It is 74 % of all job-directory bytes on the driver. The task emulates a Windows 3.11 install and spews unbounded terminal output; the recording carries no measurement and no rope signal. Excluding it also motivated the pre-registered exclusion of that task from the 512k arm on disk-safety grounds."
+  },
+  {
+   "item": "tb21c-8x1m-hyd-p1-s6/install-windows-3.11__o5q8n2U/agent/terminus_2.pane",
+   "bytes": 545390351,
+   "reason": "545 MB tmux pane dump from the same runaway task, same reasoning."
+  },
+  {
+   "item": "20 *.pid files",
+   "reason": "process IDs of dead processes on hosts about to be destroyed; meaningless once the host is gone."
+  },
+  {
+   "item": "docker images (vllm:gg-r34-tb21-sr1 and the four ab-* variants) on the 8x host",
+   "bytes": "~50 GB each",
+   "reason": "Reproducible from committed inputs: the base digest is pinned in receipts/production-image.json (sha256:820181fbbc...) and every patch layer is a committed .patch file, with the byte-level md5 matrix of all four A/B variants recorded in receipts/kernel-gap-bare-metal-ab.json. Re-buildable, so not worth 50 GB of transfer against a draining balance."
+  },
+  {
+   "item": "model weights on both hosts (/home/ubuntu/models/qwen38-hyd, 21 GB)",
+   "reason": "published on the Hub as malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated and sha-verified on arrival; the Hub copy IS the canonical one."
+  },
+  {
+   "item": "the omp tmux session state on the driver",
+   "reason": "an interactive session, not an artifact; its transcripts live under ~/.omp/agent/sessions which is not a measurement source."
+  }
+ ],
+ "invariant_statement": "At the time of writing, every file on every rental is in exactly one of four states: committed to git, proven byte-identical to something already committed, uploaded to the HF dataset, or listed above with a reason. There is no unexplained residue. An instance dying now costs compute only.",
+ "verification": {
+  "how": "re-run the sweep and diff against this manifest; every git-bound entry's sha256 must match the committed file, and the HF archives are addressed by repo path",
+  "spot_checks": [
+   {
+    "path": "receipts/teardown/8x/logs/ab-A.log",
+    "sha256": "1a9199392fbc2bb82233c6c8dc8f18123c20d49020f2ac4cb2272b45c128e44e",
+    "bytes": 137474
+   },
+   {
+    "path": "receipts/teardown/8x/logs/ab-B.log",
+    "sha256": "a100bde684896a5308697494d3f67f3c17b520a18bced684c304aed57d169926",
+    "bytes": 123111
+   },
+   {
+    "path": "receipts/teardown/8x/logs/ab-all.log",
+    "sha256": "867b4c1c236e587be4eabb4cf4adcff7effc4e92ce034098cda636ffcbfbf716",
+    "bytes": 2383
+   }
+  ]
+ },
+ "files_in_git": [
+  {
+   "path": "receipts/teardown/8x/logs/ab-A.log",
+   "sha256": "1a9199392fbc2bb82233c6c8dc8f18123c20d49020f2ac4cb2272b45c128e44e",
+   "bytes": 137474
+  },
+  {
+   "path": "receipts/teardown/8x/logs/ab-B.log",
+   "sha256": "a100bde684896a5308697494d3f67f3c17b520a18bced684c304aed57d169926",
+   "bytes": 123111
+  },
+  {
+   "path": "receipts/teardown/8x/logs/ab-all.log",
+   "sha256": "867b4c1c236e587be4eabb4cf4adcff7effc4e92ce034098cda636ffcbfbf716",
+   "bytes": 2383
+  },
+  {
+   "path": "receipts/teardown/8x/logs/ab-gate-A.json",
+   "sha256": "0918c15db6f9e1f298cde34bef554238a556defc2f49a88f7c07836d6e84b984",
+   "bytes": 130129
+  },
+  {
+   "path": "receipts/teardown/8x/logs/ab-gate-B.json",
+   "sha256": "21a16ace4ef872152bd69cedf9c11652d87ede370e8fbd1e66efafd9a34e10e1",
+   "bytes": 130098
+  },
+  {
+   "path": "receipts/teardown/8x/logs/serve-dp8-1m.log",
+   "sha256": "703b7636b35a15d46f8368c293fa86f5cc77f7778e7bbaa23280829dcc5893e0",
+   "bytes": 2252068
+  },
+  {
+   "path": "receipts/teardown/8x/logs/serve-dp8-262k.log",
+   "sha256": "251d480ea679ee4e9aa3082ed9d8a5c2928af3116aebe756616d020f91d3cf16",
+   "bytes": 267086
+  },
+  {
+   "path": "receipts/teardown/8x/logs/serve-dp8-campaign.log",
+   "sha256": "db3315cfc3a3e0395e250ccd5c27e1fbcfa9d98e6d31696e5851e7c6c9ab314d",
+   "bytes": 1716013
+  },
+  {
+   "path": "receipts/teardown/8x/logs/serve-dp8.log",
+   "sha256": "8f8212717aca1406c23059084202741dcb83982193a07a289a6a84d7c53500ae",
+   "bytes": 376484
+  },
+  {
+   "path": "receipts/teardown/8x/logs/serve-tp2dp4.log",
+   "sha256": "b9caf273d03fae895d308f2046cf455a4d7977718932d2aef0b5bf95b1be40e4",
+   "bytes": 300938
+  },
+  {
+   "path": "receipts/teardown/8x/metrics/gpu-telemetry.csv",
+   "sha256": "e759e69827b73a51be43eaf55de066a646521198d3af60326effa52e99d59702",
+   "bytes": 3386890
+  },
+  {
+   "path": "receipts/teardown/driver/.omp/agent/models.yml",
+   "sha256": "e506b035b281f3e1eef4a242db7e70a0bc1790d0d412b6fd02b71d9a0b2c48f3",
+   "bytes": 2413
+  },
+  {
+   "path": "receipts/teardown/driver/metrics/8x/gpu-telemetry.csv",
+   "sha256": "668188b65e064717126e223b868f4d1e3f0650226489731c72a2b99c8380f0f6",
+   "bytes": 3378413
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/adaptive-rejection-sampler__rD5Pu5x/result.json",
+   "sha256": "f6fb1bb1cb82490f476a23207213f2964555aa56219a342c468638302f16de90",
+   "bytes": 3725
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/bn-fit-modify__wH3ofyz/result.json",
+   "sha256": "c5e36e23a76e8b1b613230378dbda2df23b29a84f09ac0f5644575e550bcbb25",
+   "bytes": 3647
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/break-filter-js-from-html__2HncqEM/result.json",
+   "sha256": "1419d756bd7095a92d5ca6aada41f4535cda7d5087c79f301c198f032ed3b365",
+   "bytes": 3719
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/build-cython-ext__tvsRfoR/result.json",
+   "sha256": "e7247cba5532d5450ed824889a21537b410502e9950bddc8ccb306689b188977",
+   "bytes": 3665
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/build-pmars__rmA6aAj/result.json",
+   "sha256": "cd92e406919e1a4f507353ac890b392b95b69e6d96fb18df3618e1153bdd5db2",
+   "bytes": 3635
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/build-pov-ray__ZiywmWT/result.json",
+   "sha256": "3019ec6f2161001b78c206d4f50805f8f7e4a78036c4184a0d33c34981dba977",
+   "bytes": 3647
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/caffe-cifar-10__jzLxSDf/result.json",
+   "sha256": "8cfce9381ef35c675aab7d6bcd2ff2cf4e999f45b75464a81f6d133773db0bfc",
+   "bytes": 3653
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/cancel-async-tasks__vdwHXGL/result.json",
+   "sha256": "2bc1cc0f2f8f302b2b6cd70195a7ef9d89f0582b2d8d66edb35cb7d82d03d49b",
+   "bytes": 3677
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/chess-best-move__EYJLVtv/result.json",
+   "sha256": "5fa4423bbbdf800834e8d2c14c3c54127eef7a83549c5908854f5803d26c3718",
+   "bytes": 3659
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/circuit-fibsqrt__AyBpDXb/result.json",
+   "sha256": "9488a1f1bd83805b6b7b0b909874fc19fa99c43a48f103953916c082da71d794",
+   "bytes": 3659
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/cobol-modernization__wxnwf4L/result.json",
+   "sha256": "9fddb64837669874bd086f0043c544afecde474da8e6a66cc2816588d55d69bb",
+   "bytes": 3683
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/code-from-image__hQqyrSL/result.json",
+   "sha256": "46787905023eccc1ff6923b68e5fd6db4a7ca3703850ad5308be67a6f28cf78a",
+   "bytes": 3659
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/compile-compcert__ufTaTCH/result.json",
+   "sha256": "434ec53fce6164d206a87348db6b9cd6ae921d641368975bd5ae10cd50dc6add",
+   "bytes": 3665
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/configure-git-webserver__3VWmnUg/result.json",
+   "sha256": "5faf0748f560dd344c558f640b4251eaf82af7324e510b93b0f3f647ee93fce3",
+   "bytes": 3707
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/constraints-scheduling__TEyhgQA/result.json",
+   "sha256": "fd6dea139ecab1903e879db4a08a434b5a66cdadccd94b7cd7b7e32cfe4ec80a",
+   "bytes": 3701
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/count-dataset-tokens__RApM9kc/result.json",
+   "sha256": "a6cb2d20e8e02cc796956bce78167b748ba52fc727c3b23141f366963e67c4bb",
+   "bytes": 3689
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/crack-7z-hash__4LPgEQ5/result.json",
+   "sha256": "7efa76f9e9eb3501a8c9a36f6fc05939e305e79a858d0a96720092ff19f016aa",
+   "bytes": 3647
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/custom-memory-heap-crash__kxifXVB/result.json",
+   "sha256": "15f5685e42ed31d10567f8c3efec3ae1273cc1052017218ef0b0364189b8e4ab",
+   "bytes": 3713
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/db-wal-recovery__ifAJBnx/result.json",
+   "sha256": "1fac4336506b172c82944f76c9040747083df23f5e080315d3a537c13a744cf3",
+   "bytes": 3659
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/distribution-search__HaqErYP/result.json",
+   "sha256": "db4dec9e9796540e02246236195d25cab8fddbda1f34360d8a3aed7590cde6fa",
+   "bytes": 3683
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/dna-assembly__ELsmhK5/result.json",
+   "sha256": "563085b71ccf85f72c225729ee07de4958d763756b32bde89a3514d42247af97",
+   "bytes": 3641
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/dna-insert__Gz3LFqQ/result.json",
+   "sha256": "81bdaf73cccc2bfeb89edff62d27f0fe9d657c2f5420ba64e79a397be3bf23cd",
+   "bytes": 3629
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/extract-elf__tiRKxCJ/result.json",
+   "sha256": "3e643602e8ae356a60b24706e1535679e1e3d0c2ebaa1910292bfca080eef1ea",
+   "bytes": 3635
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/extract-moves-from-video__YLoqJUK/result.json",
+   "sha256": "214acefa9047332cd41910dd7ef67a63882e51fb104feb7c0f9441de2e7cf0af",
+   "bytes": 3713
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/feal-differential-cryptanalysis__EgE62xL/result.json",
+   "sha256": "de8f5bbad11c1093322246490dab8dc055f5347befdad1f458854a97ef88b982",
+   "bytes": 3755
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/feal-linear-cryptanalysis__u2stxWP/result.json",
+   "sha256": "0df63f5fca11247376fb93914c3a67c1abf1aa7440626749463e3290697d1353",
+   "bytes": 3719
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/filter-js-from-html__RF2H5at/result.json",
+   "sha256": "3cd545ac52725dda0d59adbf4dad0e668414ce4dfe5e5fa95bcb4e96343ebe71",
+   "bytes": 3683
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/financial-document-processor__JHhSdNm/result.json",
+   "sha256": "d0ee966dc0248d4b725ecc53570133b45f211383b55c6fcead94d56e445a4064",
+   "bytes": 3737
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/fix-code-vulnerability__Hr9PCHv/result.json",
+   "sha256": "ff8f053083a6eb0f7493d02bb0888c3941ca612aa1bb32a245dd329947ef2e44",
+   "bytes": 3701
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/fix-git__H4asG5W/result.json",
+   "sha256": "d55b921fc05725ff4ec49edcae84fb5ff72817bc4ae06a49802feed01cc202d3",
+   "bytes": 3611
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/fix-ocaml-gc__awxrGRT/result.json",
+   "sha256": "fcb5ec7bb4e5bc2eb3fa1eb522b5d503d025a1f87d855e3622802cc4c3267870",
+   "bytes": 3641
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/gcode-to-text__aeL77FP/result.json",
+   "sha256": "142f327268cf574830200f5d6b08bda531f5bcca776407e2ad93bde45584a8a7",
+   "bytes": 3647
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/git-leak-recovery__6WmgEVz/result.json",
+   "sha256": "1384566d145158126e2cfc980ac060c2fdd56436bfef8eae88bc45d4a462fc5c",
+   "bytes": 3671
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/git-multibranch__vvtJYqg/result.json",
+   "sha256": "f10edb47a625fa0cfed2760f5c1d600562883602d33e7f0793d78685bcb0c409",
+   "bytes": 3659
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/gpt2-codegolf__bM9zkut/result.json",
+   "sha256": "c89e056185193711993c6888d8e97acc2a75d4172b0817dedc5a4142017d692e",
+   "bytes": 3647
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/headless-terminal__s3BN8y4/result.json",
+   "sha256": "3d2f909b2d6c211be591fd2accc2e3858e3ff67e4ae8cfa891f0c84e22fa99c1",
+   "bytes": 3671
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/hf-model-inference__gk5tMLB/result.json",
+   "sha256": "c90c5a3b204ba3a6ca812445f41fcb58882b0ae22eea3971ba11d7605edfe052",
+   "bytes": 3677
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/install-windows-3.11__Q2EgLeE/result.json",
+   "sha256": "50e457718fb249fad91d6cfee94bf514ac1550453e84df40a12eaca7920f16d9",
+   "bytes": 3689
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/kv-store-grpc__aKcY9rg/result.json",
+   "sha256": "85fcdaf82f630777d574c1fd0268e0e8c96aed58cdd1b82b683f5df63b5467ed",
+   "bytes": 3647
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/large-scale-text-editing__jajUf87/result.json",
+   "sha256": "757cb941b51ebd9fc5e302f68d5b2d3382490e78d5446f859b5dc6d39e287fc3",
+   "bytes": 3713
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/largest-eigenval__hsNv66U/result.json",
+   "sha256": "0024e8d2f6a05fed3446571644640d9d3fa0c41bab04c61185a12472f8d52444",
+   "bytes": 3665
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/llm-inference-batching-scheduler__Bu8QErf/result.json",
+   "sha256": "421ee427d7a7a41ae74040dddf71cf59536b3a37da5aa1822bbcf76583528294",
+   "bytes": 3761
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/log-summary-date-ranges__dsjyGkd/result.json",
+   "sha256": "83310318fe102d33df9f015de22b6eebda630927ff9203de5e35ef121534f126",
+   "bytes": 3707
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/mailman__DphpCsS/result.json",
+   "sha256": "006080cb44eebef37f888e40fa7c8aeff073b8015d7e46de8e47e8eff79cae73",
+   "bytes": 3611
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/make-doom-for-mips__2wUEtBf/result.json",
+   "sha256": "7db4e8744f523b602f3446f0cb55370ec4c790d76180ba274a65c4319c68403d",
+   "bytes": 3677
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/make-mips-interpreter__t2S9Ywb/result.json",
+   "sha256": "af4ee47908de69159de670143bbbe5cff52f41ee8dc1db65c616c2a175a07e3f",
+   "bytes": 3695
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/mcmc-sampling-stan__aTBV9uz/result.json",
+   "sha256": "0a6fa1e8b1bbde1f7eeaf3447db7d1018a5f10ddb99046ea730236f7960efb0a",
+   "bytes": 3677
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/merge-diff-arc-agi-task__4W2VB9X/result.json",
+   "sha256": "3137e67a1754212dedfc46c2e4be4023d65e433d559a9f1da6d8107b60f8e323",
+   "bytes": 3707
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/model-extraction-relu-logits__BmcdRCr/result.json",
+   "sha256": "7018a5c1d03ce1d7053e39e6b263180ef15afa700c1b8b2dd2bdc2ea2cfd5a78",
+   "bytes": 3737
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/modernize-scientific-stack__2M85VRz/result.json",
+   "sha256": "42ca6fbfd470d7bf8bba2200a95533708a01256b575c42b55899333fd7867980",
+   "bytes": 3725
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/mteb-leaderboard__W64zzKy/result.json",
+   "sha256": "e0d79be29b5c99d9ea132d1357f7a72a9d868f29d6b9715f0499ffee3d200c1b",
+   "bytes": 3665
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/mteb-retrieve__5wJJ6wC/result.json",
+   "sha256": "2b00ea74a42df4d990c7894e5d0857a1b2a9a1e599178606945e7b4967e53a27",
+   "bytes": 3647
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/multi-source-data-merger__V9Dv6Gh/result.json",
+   "sha256": "6993b199d0c4e565d541af223ff1e2845dcad134f8277d02b940087970f2a00e",
+   "bytes": 3713
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/nginx-request-logging__hhaaihW/result.json",
+   "sha256": "094096c0a38345ae9a73c4a9fae4193aabb78fe4f89971aa1a8aec79163ddd76",
+   "bytes": 3695
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/openssl-selfsigned-cert__d35aSSC/result.json",
+   "sha256": "232809875fb3ff978ba61eb6b047513e51b637ec6e636bd6f5252d2c07c2ed58",
+   "bytes": 3707
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/overfull-hbox__YCzjff4/result.json",
+   "sha256": "79d43af87258f403fa54c6cbdd3d1fc5efd1608a3033a0c765d60e3f588ff6b0",
+   "bytes": 3647
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/password-recovery__hgCDx2a/result.json",
+   "sha256": "543935d1bb2e82aeb45e9669619dd583e6859bd482ae611cba24ecbd58588274",
+   "bytes": 3671
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/path-tracing-reverse__UqB7Hj2/result.json",
+   "sha256": "e055874f8fc06ec4b94cdbad3604df3dd04c2688efe4b0e75fe39a30a7913790",
+   "bytes": 3689
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/path-tracing__mLD6Nyr/result.json",
+   "sha256": "1ebc563c6d0d1e4b30b08253cedfc7c0dfb8804744d87d923596eb35226a8cb6",
+   "bytes": 3641
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/polyglot-c-py__jSQbXCg/result.json",
+   "sha256": "2d611f71304f85eb6358d7ab5ec86e4c6f4b613e7fde31213b379b7e9e3f102a",
+   "bytes": 3647
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/polyglot-rust-c__GWTethF/result.json",
+   "sha256": "2055dd1857951de9530ec85d507df0ed670e4ecce7751b1a2066ce9bd2d07ed2",
+   "bytes": 3659
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/portfolio-optimization__GXYWoHj/result.json",
+   "sha256": "a56719532223c80347e9bd9ac7694c4921e5455a9d2b18aedb9d07a29333ccab",
+   "bytes": 3701
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/protein-assembly__xWQtG5R/result.json",
+   "sha256": "264005bd3b896b81768a77093c6042e2426b2bea28f57094b63034b15dcefba4",
+   "bytes": 3665
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/prove-plus-comm__mZLZ4ny/result.json",
+   "sha256": "e4c7ebce18a32cda57e8c4c0545d3178cdc04aa5745f44e4b85731c8e8b843bb",
+   "bytes": 3659
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/pypi-server__BNLgdpA/result.json",
+   "sha256": "334af8fc01a7c241bd7abcc6c6dd5219be13ebc144c94b1945092c526c3ac126",
+   "bytes": 3635
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/pytorch-model-cli__JwPgA6C/result.json",
+   "sha256": "aa09b01123bb22910a07001f85c6c0082e767a049581bed0eb69c6e6bdc87f74",
+   "bytes": 3671
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/pytorch-model-recovery__FQwt6HM/result.json",
+   "sha256": "8be13171a9a665ec020d986a16c1e15afee5c4c9a99c50d9b512c8cb9b9488b8",
+   "bytes": 3701
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/qemu-alpine-ssh__AzXa5do/result.json",
+   "sha256": "0efef143ebfcd11df9ef01f421d3ca4648a2b9133c11bbade56c53e0a5089b32",
+   "bytes": 3659
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/qemu-startup__GT7mAox/result.json",
+   "sha256": "8e91b8ee46f6a7e4bf0c09c99be44aa536352349bcc152de5bb27b1fea5d0821",
+   "bytes": 3641
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/query-optimize__LE6s3Sg/result.json",
+   "sha256": "9b8151293cf76f0de90b944f8a9280d0b621805f09e874e10a21730705d2e2b2",
+   "bytes": 3653
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/raman-fitting__TfbHHFR/result.json",
+   "sha256": "14b285c5d2eae18cbcccf796f20b284760b7143c655ad980a101d9e45a9a02b6",
+   "bytes": 3647
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/regex-chess__QE7hXWW/result.json",
+   "sha256": "c2602ea97a28fb0191691860693d5e37e232bd5866362380a7089b9cb5b51327",
+   "bytes": 3635
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/regex-log__dmLvYJt/result.json",
+   "sha256": "89658a42d66fea18c2267de3eb99141ea058a9ab5675de827528c26d9552d794",
+   "bytes": 3623
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/reshard-c4-data__tjQN7GT/result.json",
+   "sha256": "4a5e3c202485998ad367c3e9b936e4da632f18845c5f32a1184077c87bace2c5",
+   "bytes": 3659
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/result.json",
+   "sha256": "a9ff8c3908f27dcd003cced83fc4fbd524460bfe5fd19cc05cc8c498e81ed99e",
+   "bytes": 6415
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/rstan-to-pystan__sW9WQkG/result.json",
+   "sha256": "04b72e3f59508206495f0c6d38c9dcc549306be9dc8f514dcdc395479c9a6018",
+   "bytes": 3659
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/sam-cell-seg__QcwbCw5/result.json",
+   "sha256": "6dc4f4c3473da2cf6b4c7c4357983ed52f9351f420d23c064d7fbb1eefc5d6eb",
+   "bytes": 3641
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/sanitize-git-repo__6bCuxqp/result.json",
+   "sha256": "0d40215f72ca2664b7791edcacf855384c95ba39ebc87b9f6de5a57cd687f2a5",
+   "bytes": 3671
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/schemelike-metacircular-eval__sfKteHw/result.json",
+   "sha256": "9a2ceac43c042ae57f63279de0a5b07d08d38eeb9bdbbe731115b67da6a82d3c",
+   "bytes": 3737
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/sparql-university__2a85ik2/result.json",
+   "sha256": "2f912794644779a0d4191b4a58eafe0b909ef79f5ce1ccad86e42fce45054abe",
+   "bytes": 3671
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/sqlite-db-truncate__ZQiXQtK/result.json",
+   "sha256": "e43e7774df23b4cc068602316f4b066ebbfe0ecb6bdbd1e13b8bd1d9033e0630",
+   "bytes": 3677
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/sqlite-with-gcov__9P8pyJe/result.json",
+   "sha256": "1399adbf8d3e1966b7f8a0567aab995e9f4c033523ce913ca95503e881f07f9e",
+   "bytes": 3665
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/torch-pipeline-parallelism__oj3ebLs/result.json",
+   "sha256": "48aea0ae2e8b93e39e933ae998561648d318f4badd6b57ebbfe75dd58cf7f2ce",
+   "bytes": 7546
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/torch-tensor-parallelism__3h6BsVQ/result.json",
+   "sha256": "593aa17b10df540cfbc0fa6b563738fa5c3692b710c281e27b538f8b872bff36",
+   "bytes": 3713
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/train-fasttext__WLKHEZM/result.json",
+   "sha256": "260d6737199aa670f349b0f2f4b5bf36d077ef6f88da8d21dbcafe03d5dae026",
+   "bytes": 3653
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/tune-mjcf__dXJ6Z7j/result.json",
+   "sha256": "82cc95f36e801795e765ff8ed564182a303bf6016a54216ea0146e5b3e6b5840",
+   "bytes": 3623
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/video-processing__29c2qha/result.json",
+   "sha256": "f19be2638404f64670d4861f75e8e41f31ab0a34d99caae226275e1519896b1e",
+   "bytes": 3665
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/vulnerable-secret__QtVXu2a/result.json",
+   "sha256": "844afa2448489fa83aa76dad780e88758e2e10b1cb7954ed8b7dbb5caa302096",
+   "bytes": 3671
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/winning-avg-corewars__RNmK5c6/result.json",
+   "sha256": "da8643f3ccee010542c95def4bae41655d38f9596cd05e1719d1393160adda48",
+   "bytes": 3689
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-oracle-213639/2026-08-16__21-36-40/write-compressor__eUG8ZXg/result.json",
+   "sha256": "90226fb35189c2adc2e26ae252b10aa2af1a9fc6b502d470bf71cafba895949f",
+   "bytes": 3665
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-t2/2026-08-16__21-55-15/regex-log__gS5J5Sp/result.json",
+   "sha256": "c3f9b49f739aa43d8e773eecfadcd70956b34ef661a31b1427a0685cddfb9562",
+   "bytes": 4362
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/smoke-t2/2026-08-16__21-55-15/result.json",
+   "sha256": "150cec21d72efeedd4fa271ed9deff79c2090d3208e6c21604926846447e2718",
+   "bytes": 1116
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s0/build-pov-ray__tS5kMvE/result.json",
+   "sha256": "6752bae08d5804e7928f6a40f993133825e0498e5ccb692ae60e8ba548782176",
+   "bytes": 8676
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s0/chess-best-move__CcJu8bG/result.json",
+   "sha256": "a93e0d1b15e503ab4b0ebb2c43c8e34f7ba554ecee6e8994c10d7f6b3244646d",
+   "bytes": 16103
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s0/code-from-image__RLgSC2e/result.json",
+   "sha256": "e3d02f5317b7e0c41fd4ef563017fd8f101d2b7e1ec5a4bb5d55fdf4a6c511ca",
+   "bytes": 4851
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s0/fix-git__wMGhMQu/result.json",
+   "sha256": "22869ce4a6b1e2a8e3d87dd0566b41c7caaab6c586d49c395e9a4cb702092f2e",
+   "bytes": 4626
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s0/largest-eigenval__tpsekmt/result.json",
+   "sha256": "5e4cd12676cba2a97ffaa47b2db9d6f5396f081f18a176523d20cb33f6177569",
+   "bytes": 15404
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s0/password-recovery__36LVj9Y/result.json",
+   "sha256": "d1f7a9e93fdce3514c229dea477d020c569f99beaf62d6e556ac59c4985c10ad",
+   "bytes": 4795
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s0/qemu-startup__JZo9e9o/result.json",
+   "sha256": "f1146301513879d3531afa3ce7c36f27652e71d87e50842d6ebd440141f28ed8",
+   "bytes": 5045
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s0/result.json",
+   "sha256": "b1ead9100ab15d18f085c0198561291aa37fc4c7d3082a46593265c9a38b0fc7",
+   "bytes": 1814
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s0/torch-tensor-parallelism__G8hoBmh/result.json",
+   "sha256": "9e55361aa24938530c138d6897e0bd2fa46409e05431bb6b92d1ac84bc830c48",
+   "bytes": 4840
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s1/break-filter-js-from-html__eJVMJcb/result.json",
+   "sha256": "4059e5600d71122a2841987f8806715b299e8e0773b0d7459795aa905157b5ab",
+   "bytes": 4843
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s1/compile-compcert__XQ67jmX/result.json",
+   "sha256": "a4a702032e22941fecbd432cc280c4eaf847e810c52d1f0147c9d30cc9aeee8a",
+   "bytes": 7905
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s1/constraints-scheduling__QPzGuPH/result.json",
+   "sha256": "4f3de2c6b363898cbc6a936dacc14e696353295996205fe4414df3f2490d8b60",
+   "bytes": 4576
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s1/db-wal-recovery__Lwy4ggQ/result.json",
+   "sha256": "a29326689f776e9cbcff64f2dcf99eff3cb8db0142ff3460f476e5c0218d12f8",
+   "bytes": 5102
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s1/headless-terminal__LYyctRf/result.json",
+   "sha256": "409c9f13d5f22b5703d8aa4bbafd366bbcf07a38f77e9c1cab8e307051b6f129",
+   "bytes": 5013
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s1/mcmc-sampling-stan__JsVUASy/result.json",
+   "sha256": "1aeb4a30242dd4da80dcc20ed9471b9395ac81f5edc3d61f0c789dc9c945c87d",
+   "bytes": 6003
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s1/multi-source-data-merger__JYNpZUy/result.json",
+   "sha256": "37d4e5cedecafb5a2bd4f0e69de39bb3019694c13e5cbf22e4bf158b1a98c9a1",
+   "bytes": 4762
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s1/overfull-hbox__WqvUin9/result.json",
+   "sha256": "a0297f751a705f3329ffd18ecf7b58cb9f30f1accb4919c22e2dc6c1c9348890",
+   "bytes": 5089
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s1/pytorch-model-cli__LPh2Qvu/result.json",
+   "sha256": "c74df3b4f059e2c55ff72b67578246e0d8994dda9a8629ff125ac90a914291db",
+   "bytes": 4863
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s1/result.json",
+   "sha256": "6b219f7ac3e1eb5845441ea7d09fe972f143b07f77d44e7f331727ab294fb34e",
+   "bytes": 1790
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s1/sam-cell-seg__9FchV69/result.json",
+   "sha256": "bca95a6f939d72102d8963445391af402b4354959b3541bb82cb6735dba95675",
+   "bytes": 8028
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s1/sqlite-db-truncate__w9EwS86/result.json",
+   "sha256": "2f8069e228de6992cabafd08837aa08e01f69ff304645b5220d2865b4d6f1cba",
+   "bytes": 4726
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s2/bn-fit-modify__qS6a8dj/result.json",
+   "sha256": "166bd38259829b014b9ea9f65b4387a2a325ce03749c31a1eff81fa8f7c0a466",
+   "bytes": 5373
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s2/caffe-cifar-10__GRGXTG7/result.json",
+   "sha256": "65375da0b20eebae85b63df52e8f0e3e58d6f03ca71c943d0a4d1892853c1f1b",
+   "bytes": 6610
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s2/extract-elf__bf5DeiA/result.json",
+   "sha256": "3024b81dba93515e267839e2838fed949b84bb96c9ccf891d9ff2e88a74116cc",
+   "bytes": 4722
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s2/financial-document-processor__enJU5XB/result.json",
+   "sha256": "5c461666b663134e79643882781a32df4b16fbf0c958aa3f1ec5de8c4f256371",
+   "bytes": 5036
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s2/hf-model-inference__gRhYwFR/result.json",
+   "sha256": "c2703ec49b6f01c9d846e87f20edcd3b9195f33a50c7b9dfc3bedae875972e81",
+   "bytes": 4837
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s2/mteb-retrieve__D9qvxPh/result.json",
+   "sha256": "4e92a05450037bd70e7a73ca03473f7d809954d52ac9a3ee14613cf38868c429",
+   "bytes": 4985
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s2/nginx-request-logging__neFUH56/result.json",
+   "sha256": "760cd7177ac899d51375d6d6305b019196ab0b12398d2c499acc05c54bc317cd",
+   "bytes": 4533
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s2/portfolio-optimization__skA3gSQ/result.json",
+   "sha256": "3ec5050984ffe76de03e45b1b529118b50fddf1435f028fa9ede31962f404792",
+   "bytes": 4898
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s2/pytorch-model-recovery__mqfwQrU/result.json",
+   "sha256": "dd888e4820b9340bc7b4c0478ba779acfa23ef67a26da1220ee8bd4ff929fe6c",
+   "bytes": 5322
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s2/result.json",
+   "sha256": "16a898870b75635701455b7114ac08e9a8801f87b35e6d847238e2d479ce4021",
+   "bytes": 1944
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s2/schemelike-metacircular-eval__szHa5QP/result.json",
+   "sha256": "35bf2ea05d08aa0017b1584ded0af562b41d7b437009c1e7df80ccd39682435f",
+   "bytes": 16255
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s2/sqlite-with-gcov__hK94qJE/result.json",
+   "sha256": "0994a388ab90be5457476f97bbd2fad54f87090681eb36497b1a9a692ba6fee5",
+   "bytes": 4966
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s3/circuit-fibsqrt__FCt6tuq/result.json",
+   "sha256": "f81e8672959f53bc6143d75feef6487dacf303966f98ac55c2d11ed212a6510e",
+   "bytes": 15719
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s3/custom-memory-heap-crash__UDGNTqr/result.json",
+   "sha256": "a8354a70ded11e072b5ae35e0143d64fb156a14c54062df73c615b51b24662c3",
+   "bytes": 5365
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s3/feal-linear-cryptanalysis__uFSR3xU/result.json",
+   "sha256": "b44c6907a9ea87f2ebacd694c5c2b2e921fa483611e688b38a660a254ae3e945",
+   "bytes": 5662
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s3/fix-code-vulnerability__VfK3ydd/result.json",
+   "sha256": "015b9eb497bca8c158b23e4d1f92426e9d41d6cb1926de84ca94eda8adb43191",
+   "bytes": 4893
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s3/kv-store-grpc__xgf5Y9t/result.json",
+   "sha256": "eb9f35f8f3f8c4ab3d7e4ebf6359755c4539cee4efba74d064f52ae68a402735",
+   "bytes": 4734
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s3/large-scale-text-editing__pVxBpim/result.json",
+   "sha256": "c47680186d4270ac81ebaa8d3e1e6435021b82086bab7adfde5c68984c1272ee",
+   "bytes": 4836
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s3/openssl-selfsigned-cert__dYUGa6B/result.json",
+   "sha256": "c8c753c18ad02f8fbb17284d2ca2e7aca38e52373963ee393e5d6a05785bfd34",
+   "bytes": 4509
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s3/path-tracing__z7HRTwz/result.json",
+   "sha256": "74f17fa94b226338797e09df11df0b3f87a9de16191ec8b71ea551d25f67bdf0",
+   "bytes": 9560
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s3/qemu-alpine-ssh__zs2MrdJ/result.json",
+   "sha256": "ebdf29a5ac3246f7744633ed1dbd1e284e830db0976d57f2ac5fcc41e9c0fd36",
+   "bytes": 5063
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s3/regex-chess__6oyUTvY/result.json",
+   "sha256": "3138a161b7457151da3677aac117179047481091b17f95a9496910389419228a",
+   "bytes": 14914
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s3/result.json",
+   "sha256": "e3101312bbebef80d3ee5411f8068c509e33d003e6ab7e3f0fcd9d5e1a296757",
+   "bytes": 2152
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s3/torch-pipeline-parallelism__c2JjprU/result.json",
+   "sha256": "42f0ff6957d602d9d7f1deb6eaeb122a324bf3841fd73eb79db28974e60d3e9f",
+   "bytes": 8088
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s4/adaptive-rejection-sampler__im8XEex/result.json",
+   "sha256": "af1b605eb3bf7e4aa0fb4e5be77eefc3ceee4cb57a2f72031d1028bdf51f4546",
+   "bytes": 14864
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s4/cobol-modernization__seAggAj/result.json",
+   "sha256": "9d4f7cdd9011365e819721a0af5ecc3720ed50b3e92faad74dfc39d0440dcb17",
+   "bytes": 5336
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s4/distribution-search__dukHuFf/result.json",
+   "sha256": "1901379519d2b7afe8de2dd45e66b6f782f419e34891bf37b309a70b53591f28",
+   "bytes": 4559
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s4/dna-assembly__JVpabVx/result.json",
+   "sha256": "dda81496448a2e586a5c7b13e314ec0c58886dade70130e8e76fba7eaadbc205",
+   "bytes": 4911
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s4/filter-js-from-html__4gGsHSt/result.json",
+   "sha256": "e01f3b1601c0141725f810bdb18ad2dd4f759fa1c7954aa9df48790a6e31d21f",
+   "bytes": 4806
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s4/gcode-to-text__Bi59fDM/result.json",
+   "sha256": "de9c71eb3d3870f31a339649d086f5080e9cbaf19fa852351fba981ec44ccd75",
+   "bytes": 15991
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s4/log-summary-date-ranges__eh9pjGL/result.json",
+   "sha256": "9038fcd409c2c86b01adc5ad2f8bb87595219c62caa12d12e9a0db2bdc653e3e",
+   "bytes": 4761
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s4/path-tracing-reverse__cQfcumK/result.json",
+   "sha256": "9ba509a23f82f2a74bef0569c9e26bd33c1d00fe1efc0118d509bb355d44c127",
+   "bytes": 16426
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s4/polyglot-c-py__CW3VWsc/result.json",
+   "sha256": "e7974905c58257bcd23ed37306ada12b5d0dbb73cbf25a1ada76d6d3f82edffc",
+   "bytes": 14786
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s4/raman-fitting__kgFv66b/result.json",
+   "sha256": "6cae319c54e7b71ad1041504ac82151855e9af6d121f453ecfa98bd1218017de",
+   "bytes": 4876
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s4/reshard-c4-data__WYgNpTN/result.json",
+   "sha256": "af37db8b30a53dd421eebcdee15718f84cf7d9cef066b81638b770ca1caac1db",
+   "bytes": 4923
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s4/result.json",
+   "sha256": "fc943355d47bfc146530572c3e0ae6458958ec584f4caf9381640ce2691e48b6",
+   "bytes": 2135
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s4/tune-mjcf__zyAzKw4/result.json",
+   "sha256": "f5e8616c8ef42683f17f57c9ab00641cfd319f0aad18928db2888809a28c8705",
+   "bytes": 5206
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s5/build-cython-ext__u35eb6z/result.json",
+   "sha256": "3b30e9654fd7e8d152e0481bbc7cbece05f0508b4de4cec1bb49636714384de5",
+   "bytes": 8312
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s5/configure-git-webserver__yJTtdeB/result.json",
+   "sha256": "b6d601f9b5971431711926f5fedab0d6cd6d22c1ad29a619ee1d8a7c17a5aa95",
+   "bytes": 4831
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s5/dna-insert__TzoUabQ/result.json",
+   "sha256": "a4eeb67b74243343758347586bde94863e90f7024146e105903708b6982b7fb7",
+   "bytes": 4826
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s5/fix-ocaml-gc__g2T7PFB/result.json",
+   "sha256": "5b8e16d8fedc768aea9dc4f029d9ae5828c7864f2a6018e1c996ae9caf65f2fb",
+   "bytes": 5290
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s5/git-leak-recovery__xhEjRni/result.json",
+   "sha256": "24a6d46edfacfe3c48a2c1b3d06385eb53b5e363eebc6885b81f4e4568460325",
+   "bytes": 4761
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s5/llm-inference-batching-scheduler__wC6hw2s/result.json",
+   "sha256": "5080801c926474f81b3427ee0434a815dd62fb3c56b44947e29b1b7487ac1387",
+   "bytes": 5552
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s5/make-doom-for-mips__ErrEJsE/result.json",
+   "sha256": "9b35572a32e321486c68943d87d0a3c77df149b98091092702d47410832b2559",
+   "bytes": 16865
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s5/polyglot-rust-c__eQeRiUK/result.json",
+   "sha256": "9f6f48379bcd1b18727753a8a93f01239c6c7680dbbe8ba58eef6cfc8fc3dbad",
+   "bytes": 14653
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s5/protein-assembly__KKqwFoe/result.json",
+   "sha256": "0ff0dceca83cf8a3182ee8ea1c05fe1fd8a287b6238b29d2766b4c0c314b0f84",
+   "bytes": 5322
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s5/regex-log__ZQppCaj/result.json",
+   "sha256": "e6e82dfbc11ec207f35a82a7a29818be6a72aa55d9ec0a2b93f65ba0fa8578a0",
+   "bytes": 4569
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s5/result.json",
+   "sha256": "d9ecd97e935340f15847f592aa943d795389550ee81add54ea6320d013070d20",
+   "bytes": 2124
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s5/train-fasttext__qEzzPxv/result.json",
+   "sha256": "d0701a0cb2467bbc7285cb1f28635bea8ff94c3d10e3d91c0694129354ba5776",
+   "bytes": 11163
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s5/vulnerable-secret__MykdnsZ/result.json",
+   "sha256": "4b56db6bec4aa3e89352a5ee7be12811d688d53669a36282f14cdf45099086f0",
+   "bytes": 4722
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s6/build-pmars__zUsq5PR/result.json",
+   "sha256": "d7895f0b4e2d6cacf89853839250e7d16e930f72305ff38f2f951df05e13735b",
+   "bytes": 5010
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s6/count-dataset-tokens__TZDRRif/result.json",
+   "sha256": "8b84a063a8eb70310b56da14aaa979a9c2fadf008d1f671b777bc7c36e0baf3d",
+   "bytes": 4952
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s6/extract-moves-from-video__iGxESZP/result.json",
+   "sha256": "8ef3efe7675063846cbb9abbb97d7e1617d6d67ef3117d0aa7eac25ff9a3f5ee",
+   "bytes": 16865
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s6/git-multibranch__mFh22PD/result.json",
+   "sha256": "3e7e56b0ae7f3b07d493a51ac9ba5e6a6173e74e227c7e3bb406f8f52f49807c",
+   "bytes": 5171
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s6/install-windows-3.11__DWH69du/result.json",
+   "sha256": "8da9df06a8d819f6586e85f5c58eeab6279fc9eafc3428f1bd4b885656a2268c",
+   "bytes": 9228
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s6/mailman__WtqTC7k/result.json",
+   "sha256": "08ddbd2014073412fa6ddb8398155be6ff91b59677fd31a572719da4bafad9ae",
+   "bytes": 6857
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s6/merge-diff-arc-agi-task__ci2L9AU/result.json",
+   "sha256": "acec81b0325dd8333fd994abe58fb18eaa4ad8e1321fa0320ef5e796a77a915f",
+   "bytes": 4829
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s6/prove-plus-comm__PKN7kqy/result.json",
+   "sha256": "e0dc46a5061cfd19826a48b43930132205d6e939b19fdf3c93f5010febfe0710",
+   "bytes": 4604
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s6/query-optimize__nh7qDKL/result.json",
+   "sha256": "44eae1569cbfdf054bd3340e37e9792309fbd2357ddb0c0b7c225dd8edac2af3",
+   "bytes": 4953
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s6/result.json",
+   "sha256": "e0b0f4bcc7249af1e4ecf9de09fbf5741ee033a1019a43bd695d179e6c3dc029",
+   "bytes": 2083
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s6/sanitize-git-repo__DPDeJRQ/result.json",
+   "sha256": "9d2f1aa10f7759ce11238e735c7d8a729ef1b22e87401b9e5a9745a0f5621d66",
+   "bytes": 4795
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s6/video-processing__sDzZCBn/result.json",
+   "sha256": "627243398a5cd6df275a2c96f9da459decc9073331ab2850e78f3d6f82b974de",
+   "bytes": 5959
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s6/write-compressor__Sqy474a/result.json",
+   "sha256": "281a00a1ca261834d8decbf38fb06e0388808c6f121cadcee5e95586533e7e3a",
+   "bytes": 14658
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s7/cancel-async-tasks__h8CWQEQ/result.json",
+   "sha256": "6d1ce5850b591419f4d47c62c65e101bf42b417e6266f044ecbacf6da58cd53a",
+   "bytes": 4553
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s7/crack-7z-hash__QQhxPvh/result.json",
+   "sha256": "291ef0802ec2e6bba4d40c7f8ff5b45deceb8908bf17d283eb12a1373a30b28d",
+   "bytes": 7106
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s7/feal-differential-cryptanalysis__NUddqS8/result.json",
+   "sha256": "3fbe1eb25ddc5c180e18d98e87d044a5a614c33dd0b4d10184c6f0b4790054cc",
+   "bytes": 7524
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s7/gpt2-codegolf__hDPA5PL/result.json",
+   "sha256": "77c23d26ca075798dd350319120ad2e7069c48f93a72ed2a3db8965775150cc9",
+   "bytes": 7659
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s7/make-mips-interpreter__8tsfBX3/result.json",
+   "sha256": "b4fdd2eac307518c9131fd9864109f4ff945bdebd21271df8ba5a0f312dc1cea",
+   "bytes": 15868
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s7/model-extraction-relu-logits__drxoJmq/result.json",
+   "sha256": "90a70ff8d6fe25936953b55279808df1f38f9ab5c33bc28d803435f92f1950c2",
+   "bytes": 5148
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s7/modernize-scientific-stack__pKWjTwo/result.json",
+   "sha256": "9ef3e344380e9269e6b8d79fbed85e310083dfb8aa4f8d7dab58eea44b6b06ce",
+   "bytes": 4668
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s7/mteb-leaderboard__r8GtJUP/result.json",
+   "sha256": "fcfb5dc09b3cdab2e97d7d402c511614061c910491145cd0e03b92dd96771cc4",
+   "bytes": 6168
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s7/pypi-server__jQdAzqe/result.json",
+   "sha256": "445d00008d2588b99276efaf9cbce5caae586b534254f9c3e990dc48c74ee252",
+   "bytes": 4582
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s7/result.json",
+   "sha256": "d56d30e24a5ada5f4ffdffa6a117d187831247bdfb5d7260f46e799c0b832f5b",
+   "bytes": 2177
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s7/rstan-to-pystan__w4ozhDx/result.json",
+   "sha256": "dd70400452d02901f54848dd8452f7f9ab4d5b7516328798f14b31e77038f2f5",
+   "bytes": 6124
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s7/sparql-university__iJ8S7sA/result.json",
+   "sha256": "862531323591ab926935093385792a890da3fedadc97a8b8e03e611babc9d8a3",
+   "bytes": 4830
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x-hyd-p1-s7/winning-avg-corewars__2zEb4QR/result.json",
+   "sha256": "95fab14ab62925873f211bba435f8e56dab1228dab69b09949416022e15f16a0",
+   "bytes": 9688
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s0/build-pov-ray__2PJkxNF/result.json",
+   "sha256": "4ce54a46da04c6f3798b02e3488e609ef1d033b278a72d493e28d2bbb905addf",
+   "bytes": 7046
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s0/chess-best-move__3FWNUGL/result.json",
+   "sha256": "d9520a08e7c22becb298b704e387ccf3d2a26cc0edcd34dd879bd8500a9b02c6",
+   "bytes": 15615
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s0/code-from-image__XaXcpmf/result.json",
+   "sha256": "242e5943862ca1d551fd91219e1a5b18a2ee670c8ead0958dd58d7b93730c434",
+   "bytes": 5037
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s0/fix-git__Jm8nrSQ/result.json",
+   "sha256": "e0a9d763fb8471d22c1d9abd0209d460d97d5a5b7d2d463e96e4c6b525c42714",
+   "bytes": 4631
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s0/largest-eigenval__XvSGYu6/result.json",
+   "sha256": "119cc3a345336215ad8b506903cf575966b0afa11e4556515b14c13a33e8d807",
+   "bytes": 15409
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s0/password-recovery__Si6NYS2/result.json",
+   "sha256": "ef93de26d9747725f4c18bc4bf4648cd13f31966a128ab83b714ff428a8d730d",
+   "bytes": 4835
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s0/qemu-startup__J5phPZP/result.json",
+   "sha256": "78a0177f3b7efa776eaa4bdb2af70a3a4c667ffe8f6d7163b10763c3b7ef7344",
+   "bytes": 5050
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s0/result.json",
+   "sha256": "1f7615525899d16da5a7af6366e0221947aa5be7015c6027f1183c9c080c5098",
+   "bytes": 1814
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s0/torch-tensor-parallelism__BeGmevL/result.json",
+   "sha256": "8a2491e8939df271a3e12ca72259f9c6ff45ed76b9ac5551a3a0994ee30598fc",
+   "bytes": 4911
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s1/break-filter-js-from-html__64iVduj/result.json",
+   "sha256": "f2dd4a2f6c94a1e46d69367362ada55623fc869244078aaec4926a2bef2042fe",
+   "bytes": 4883
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s1/compile-compcert__Dkwz7LF/result.json",
+   "sha256": "12803c9834a2b585d95edac29f843300cfb4934935910408234731957e615c59",
+   "bytes": 9568
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s1/constraints-scheduling__snuaiFv/result.json",
+   "sha256": "ff7fd2020207ace3f186fe18aea44197f2804d6ba528fcc779578716c15317ae",
+   "bytes": 4617
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s1/db-wal-recovery__trcS5Bp/result.json",
+   "sha256": "ab805c1a630fadc4d9e67c8e8f6c28fdfb973a9847a5841f7e3b173da0822d73",
+   "bytes": 5143
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s1/headless-terminal__pXsKMNZ/result.json",
+   "sha256": "7620eb1f523096406a9ff72d91a54da8d64877d00770771e0efb88e4925269c1",
+   "bytes": 5045
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s1/mcmc-sampling-stan__A86GWvC/result.json",
+   "sha256": "151f9c1f4e8ab10a75848b01c9bbc88e609d947d1ec79fd4de3369e1330891ea",
+   "bytes": 15959
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s1/multi-source-data-merger__9uLQZiJ/result.json",
+   "sha256": "d7475d556045640ab88b8be9f2ff9d81520fe8fea35fba143dd3463cad7d29d1",
+   "bytes": 4770
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s1/overfull-hbox__KM2oJwx/result.json",
+   "sha256": "db11935b787ff9592a8e24c22200052390dcbc7ffe812c68923fa6f680359e4d",
+   "bytes": 15288
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s1/pytorch-model-cli__3LvRrc8/result.json",
+   "sha256": "1cdaff6064b575d3f38adf41eb295fba7324bfb011e025c0baf76e04137bbf56",
+   "bytes": 4799
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s1/result.json",
+   "sha256": "510a02b2cb2dbabeec971426a39934b06891474a044ab2b9559998d02ba85e10",
+   "bytes": 2029
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s1/sam-cell-seg__noeVnW2/result.json",
+   "sha256": "fc2e395cfc94ab626937f3fe7ddd6d1b55e97064d60f9d1053c36024cc2268d1",
+   "bytes": 6816
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s1/sqlite-db-truncate__oc82DRt/result.json",
+   "sha256": "42844b186f9f99ec3862787a214c8a7309e887adc3725f51b33bfc5915e13f17",
+   "bytes": 4662
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s2/bn-fit-modify__mrFSCXx/result.json",
+   "sha256": "6dc1d3320b60d0e85092daee51802474a5aebd7b12d67d55bd3dc7b38268f1bb",
+   "bytes": 4919
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s2/caffe-cifar-10__cuNHQRU/result.json",
+   "sha256": "aa4e4212a83a60fe42d864c957a2228631e172444648d28289ad5c0c61872596",
+   "bytes": 6837
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s2/extract-elf__2kyLcWP/result.json",
+   "sha256": "e049a9a8e274026e64001e381d6a68a315350f3f291cf2fff6495fe405829661",
+   "bytes": 5118
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s2/financial-document-processor__K2RBh5g/result.json",
+   "sha256": "551b02463224c3ba675d643127bf5b642e85e5734e995194eb4aabf271f30592",
+   "bytes": 5467
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s2/hf-model-inference__iNWR7dj/result.json",
+   "sha256": "60061e2e4f5517c5ccc70793b0b1a17120d791008716fa5533ff29fb1c2a4df9",
+   "bytes": 5230
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s2/mteb-retrieve__5EDSG5m/result.json",
+   "sha256": "31ba0ffc79a9c9344184f4a789e72bd47237a9cafa2d1dc62f0b8ea212c64afc",
+   "bytes": 5943
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s2/nginx-request-logging__tm4VLXf/result.json",
+   "sha256": "cfdfea8196c0d5393f4ea035ce193fcfc03b8db6b1f5814b9d6e21b17d83bb7e",
+   "bytes": 4573
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s2/portfolio-optimization__gxxhRLN/result.json",
+   "sha256": "92d4b836869f02ffb7ce698bd11d0d70571862bd89baf47ff667247afda55e55",
+   "bytes": 4723
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s2/pytorch-model-recovery__VqGLF6K/result.json",
+   "sha256": "2e1f597a837cb90caa48f16697fa1c3fcf124da7368348075b5f180cb717ab69",
+   "bytes": 4792
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s2/result.json",
+   "sha256": "e974d5be120eb50d2fcfee9096ae814990ae9ae94ab4bf5b98409b39e0e12ad0",
+   "bytes": 1944
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s2/schemelike-metacircular-eval__wdNZ4a2/result.json",
+   "sha256": "4568348b457488496d5a0bdfaf9e5d22fa6100aceb22e2c535b48f4f937221c7",
+   "bytes": 9621
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s2/sqlite-with-gcov__RV9jfu6/result.json",
+   "sha256": "bdd03b8ae8a87b0af453d16cc28f1de58dafd68dd038177d23b3eb474bf28281",
+   "bytes": 5286
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s3/circuit-fibsqrt__MesFk36/result.json",
+   "sha256": "84d87d634f04c5c566be36372b12de199ed6893aa8dbd3c1f1df0d9cea43ac19",
+   "bytes": 5070
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s3/custom-memory-heap-crash__Bnf6FqL/result.json",
+   "sha256": "e3162d3cc84aeacaabae8ac70d7559efd6cdcdb8a999e549807c10f86075223a",
+   "bytes": 5092
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s3/feal-linear-cryptanalysis__wCofZcz/result.json",
+   "sha256": "de6325af4cf2274e6e30d92810d6ee76a4d1305499f7d074dbac7d098425803e",
+   "bytes": 5386
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s3/fix-code-vulnerability__wTxMwkf/result.json",
+   "sha256": "8ba4d90ab5cea041cda55ada6b38bdf69edbeb6599a059287ad5c4ae48a1deba",
+   "bytes": 4829
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s3/kv-store-grpc__EpGm6Ng/result.json",
+   "sha256": "8b72a0c18cdf749b7025226c56402718f276d6c804c80c79eb29505e5fb9f56f",
+   "bytes": 4597
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s3/large-scale-text-editing__y4hwSJt/result.json",
+   "sha256": "bce1110c3b8cb7c99961e83a5a29e7f15946ed42884b1dcec33ec220cc785e52",
+   "bytes": 4770
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s3/openssl-selfsigned-cert__Zmxp3qo/result.json",
+   "sha256": "02488b9bbf36b96d9af2bbe260a1417870885424246b190a19ce0e874a622e96",
+   "bytes": 4550
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s3/path-tracing__qMPFhmc/result.json",
+   "sha256": "ce7df5a7fc89ef6833a6dbe050dc892ee0004ed17c1bf7de72646986e879a95e",
+   "bytes": 16379
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s3/qemu-alpine-ssh__FBQuPYJ/result.json",
+   "sha256": "471e3f5e287b94afea55305f0a540913cae50d86ba6e52c21924d2f567a7eabb",
+   "bytes": 5068
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s3/regex-chess__aKH4WQy/result.json",
+   "sha256": "7953d4ddaeb853fcb1666926cee2b6e8953e84a7cc60184f6d77db15b7bb3756",
+   "bytes": 15099
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s3/result.json",
+   "sha256": "2764fd5ed167e7954c1bb9018167f9892b078071ba3194cdb3d24ae42a681e60",
+   "bytes": 2099
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s3/torch-pipeline-parallelism__yTDuZrA/result.json",
+   "sha256": "d6ea021ae48bb912d282a0a5c93da2d2a92480b78404a8f41a3502b04d23c0a3",
+   "bytes": 7994
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s4/adaptive-rejection-sampler__XDkMutR/result.json",
+   "sha256": "e257b9e5734c2f4052519744ef79eaf28574668520e399194efda4318c071259",
+   "bytes": 7248
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s4/cobol-modernization__V5r65Ue/result.json",
+   "sha256": "3bcc1cb187822c257d60dcdc87bc61e40eb19625d5d63859b407a3f2c8cdb552",
+   "bytes": 5028
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s4/distribution-search__spLX3Ds/result.json",
+   "sha256": "1d306679b37cdb645fa9a4b92fba0a00142ce2b58973aa580a35e25e283516bd",
+   "bytes": 4563
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s4/dna-assembly__ere8JjL/result.json",
+   "sha256": "6d0751da971aefa85c5f8056a2cf935085d103d0f4baca78137f2e48e4c6bbee",
+   "bytes": 15177
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s4/filter-js-from-html__kwURCdV/result.json",
+   "sha256": "739fac7fc0d22598a8084dc3717ee4fbebba7230f0a73ef297521a10e9b16bcb",
+   "bytes": 4702
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s4/gcode-to-text__Bs8TgYi/result.json",
+   "sha256": "11a31b997e12b89bc7bea2ba4f90f7a30558114095342e681c61ad7ae226bde5",
+   "bytes": 5169
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s4/log-summary-date-ranges__DqRsP3C/result.json",
+   "sha256": "c436f4f9a09980dce94fcb2caa7fca4d38ba623a2ea5f9a78b08ccb8b016723d",
+   "bytes": 4730
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s4/path-tracing-reverse__FYaT9pm/result.json",
+   "sha256": "9d37b1b62c796594f8d39d18c8ed3c4cfc722a1b1d5ea2797721621b30e590b6",
+   "bytes": 8316
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s4/polyglot-c-py__cmzg3XT/result.json",
+   "sha256": "0e9c7cf7c9cc012b0cc19b13339b5a5e8b1aa7544adf7dfe5ba4099e0f0106a3",
+   "bytes": 4455
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s4/raman-fitting__FXvMo88/result.json",
+   "sha256": "9a8914e9154f46c0f50e0433d2d77d446352449a007374c02bf34081d13f37c4",
+   "bytes": 4814
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s4/reshard-c4-data__e99z8TG/result.json",
+   "sha256": "801e4cc6a169b970d4f34b43d3ea1b86dcc446c71199d531fceeba9222deaaee",
+   "bytes": 5177
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s4/result.json",
+   "sha256": "03b8f91c946d8f747483645881dadba77530cb4e8f1a687ec818026b61814e77",
+   "bytes": 2130
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s4/tune-mjcf__BCvs3G6/result.json",
+   "sha256": "8afac5a20f507d62f73d3aee071407f6d2e5a548bde36f4d717e47d3a1a6c1d8",
+   "bytes": 15443
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s5/build-cython-ext__H2wXjMN/result.json",
+   "sha256": "bc1e6e1f2042ff898aae8c54400320fe52213f407c0855742472f421c2a60619",
+   "bytes": 5500
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s5/configure-git-webserver__QDourAP/result.json",
+   "sha256": "41dd7311dcb5310a6e75bd5882b63e349bc5162613163c98053bf9d496d1d0f4",
+   "bytes": 5078
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s5/dna-insert__Kd9KQ38/result.json",
+   "sha256": "023e07dd897bad2abaf9e20c2ac2afb176f250bdd1a0438b62687430d7d0e5be",
+   "bytes": 4970
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s5/fix-ocaml-gc__jHB6Gb5/result.json",
+   "sha256": "775dd464811fc92099f090a1285b8b88c800947cd405d4e93b61160c837055f1",
+   "bytes": 5443
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s5/git-leak-recovery__FGpLxaL/result.json",
+   "sha256": "231430430e7f84a74f2cb9df1b0941ed960b30e0ba0f323f9b5a24ec9aa8f874",
+   "bytes": 4622
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s5/llm-inference-batching-scheduler__qcX6TdG/result.json",
+   "sha256": "9ff598fc0805cc9803a44fa0a7a38fef2e04f17c30d7a1661c6af74803408716",
+   "bytes": 4995
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s5/make-doom-for-mips__BUMHCqg/result.json",
+   "sha256": "1ca48f38a4659c370af8be403ff0f44130b2d861f8dae138fd472285fafe0dea",
+   "bytes": 15456
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s5/polyglot-rust-c__YCfpCaR/result.json",
+   "sha256": "1f13e99e1bb57daaa67991cf0305eede8afa4fc8467192ef6931ef245419a74b",
+   "bytes": 4716
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s5/protein-assembly__GxgyC8n/result.json",
+   "sha256": "10a769bf1655e6aa26bdcc2330b4eef74b2dcc22349cb08a66edea7cb864ad39",
+   "bytes": 15696
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s5/regex-log__rdEaBuy/result.json",
+   "sha256": "b4fc171d065144a5033b1ecbaa3c7191ffd92c4870df318551cca3c1d44e6909",
+   "bytes": 4608
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s5/result.json",
+   "sha256": "487b72b746a63d1262d804428cf6242a29fd33aa1425a2e4d30e5bec83a0d848",
+   "bytes": 2072
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s5/train-fasttext__8B9LeLA/result.json",
+   "sha256": "33f349a037855fa5aa2915e1e4f0701f2c3161bbb1ffcc1e9e22603903a726dd",
+   "bytes": 10021
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s5/vulnerable-secret__BM4ETxH/result.json",
+   "sha256": "b37611cb36dd90c196458435fb253df2f6cb6cd8514ef0f8e52e17a882bf68fc",
+   "bytes": 4690
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s6/build-pmars__ZqN5zG5/result.json",
+   "sha256": "f3f56fd5acdd24264772c8cf21c3823f00b0c97bbc9d095e60b17da8869518ca",
+   "bytes": 5228
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s6/count-dataset-tokens__kzHLTtZ/result.json",
+   "sha256": "5b166294c6a15840232db8fee0d1b06defd12a0aaab8f10bde59aa1b9248cc3b",
+   "bytes": 4960
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s6/extract-moves-from-video__L9xzNHX/result.json",
+   "sha256": "0e55f4a234ba04001c82c3f64f1aee9b1660b607cb141f5e1fd81a628af9c49e",
+   "bytes": 8654
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s6/git-multibranch__XSa4k6r/result.json",
+   "sha256": "82535115d4b0225f613b809d6366a0415667ae84bec59a98ca2b58a4b2a39ec5",
+   "bytes": 4931
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s6/install-windows-3.11__o5q8n2U/result.json",
+   "sha256": "c688ca3622bef2dbc0c2f3b7b0c6ea2da8670b7689d5992c1fa2cb722dcb9d92",
+   "bytes": 6014
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s6/mailman__hzbFPhW/result.json",
+   "sha256": "9d5aefe1b55b7c7d6ae64cf756a23484348a100b90c264c29b505c28073d7cdb",
+   "bytes": 6653
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s6/merge-diff-arc-agi-task__4w2oHgB/result.json",
+   "sha256": "bf2affec2745d6c04a0f303ca4fc66c3cdb2de6a93883cee043a758c52bc19db",
+   "bytes": 5119
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s6/prove-plus-comm__icrYWFG/result.json",
+   "sha256": "c8864472e2e33890f2197230098d7d85994534fa130dbb5704044afe645cf90a",
+   "bytes": 4647
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s6/query-optimize__W8fk8C2/result.json",
+   "sha256": "c64815dbc3a509328a0dd6850068ec8d8188640ef0da3ce411b30c85240510d3",
+   "bytes": 4707
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s6/result.json",
+   "sha256": "8da4b2dcc819d52423c6792262eb7b7ad7542e500a1d6a8136758410b1dd4b54",
+   "bytes": 2011
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s6/sanitize-git-repo__gca2GHN/result.json",
+   "sha256": "8bb7d51b0d25f107906803efd71a3741776eed313e35a1a44d34490757a0da35",
+   "bytes": 5082
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s6/video-processing__VBhmzd7/result.json",
+   "sha256": "9e21d849e7c85434938eb07027b8cb302daca48857171af46b0bc0334b5a6f62",
+   "bytes": 5046
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s6/write-compressor__7LADNSj/result.json",
+   "sha256": "4e60197e147af99e9f0ac92d1da0a8080378647f45f2fae5e415ba555a5ebfc2",
+   "bytes": 14738
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s7/cancel-async-tasks__EfrEtAr/result.json",
+   "sha256": "73ef003c3eff7c94d289ba573cdb32b8b75c3fd8c28811f7ba468667434b710a",
+   "bytes": 4664
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s7/crack-7z-hash__wWe9Hr8/result.json",
+   "sha256": "c3d93ac3c13c0ffdf8a130ac58c95f3b10cf62eaa3a7fa703a7b9086330f5b44",
+   "bytes": 5063
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s7/feal-differential-cryptanalysis__ZcKUZMD/result.json",
+   "sha256": "3109839a31c2d02f67379fd563879b4732c53fc9f4f64f23215803ffc4377e82",
+   "bytes": 4958
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s7/gpt2-codegolf__AinJ6Xv/result.json",
+   "sha256": "d91ba0f82b55711ec529b1dfc587b6f2a27b684de502ff4571a464ce67f9d778",
+   "bytes": 7848
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s7/make-mips-interpreter__T8px9wu/result.json",
+   "sha256": "af1a139b6c94b5d782ab3b1c2face8b6144b42ccd603a853a43ac0c1cad8263f",
+   "bytes": 16461
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s7/model-extraction-relu-logits__hsghZW6/result.json",
+   "sha256": "7dfbe83bd51d9462c0b581d7a8937eec740834b65833d7cbad7766f2520f4b33",
+   "bytes": 5394
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s7/modernize-scientific-stack__hyNvzCJ/result.json",
+   "sha256": "b4f60fe4ec6f5aaedea0eec82102cb46ae9f9fb6470a4f19663a93fc240cf17b",
+   "bytes": 4709
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s7/mteb-leaderboard__wZraD6c/result.json",
+   "sha256": "4428ce0d82223ecf763be44b1b4caa4a0854e93d85c6c95e544fe9eec85918be",
+   "bytes": 6462
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s7/pypi-server__XXBedaN/result.json",
+   "sha256": "59907dfb6f4a527eef92f53e1c29e39704ac2e7b03c757a56f76775592310bee",
+   "bytes": 4656
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s7/result.json",
+   "sha256": "f6011754da93e43c63d9fb3acca15ee12818b02111352e8d61d20b363f69edbb",
+   "bytes": 2146
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s7/rstan-to-pystan__A49Hbqb/result.json",
+   "sha256": "0d35a841b524d7b8842e03d08e364719d5bb710e1174423eb87c968c18726c7d",
+   "bytes": 8430
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s7/sparql-university__tqucqLF/result.json",
+   "sha256": "381ebceb314f36c793c070633cdb67c41cabcc9ee85133e963115eb86751f0dd",
+   "bytes": 5014
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-8x1m-hyd-p1-s7/winning-avg-corewars__CMgtbkt/result.json",
+   "sha256": "725048d06a925219c866800008b738f86e9ed118a961446d523a21aa58f4705d",
+   "bytes": 16004
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-mock-hyd-p1-s0/dna-assembly__xvki4TL/result.json",
+   "sha256": "99d43942968213c44cf0582a7764e62ad0f8c945fef0f6cebc989d0b64d04ffd",
+   "bytes": 4481
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-mock-hyd-p1-s0/regex-log__jjd9tdA/result.json",
+   "sha256": "3152d868342608af61218ec32a36f077fe4374949ae302f75a5c8385eb5bb466",
+   "bytes": 4432
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-mock-hyd-p1-s0/result.json",
+   "sha256": "add005be866dbec22b3451c8d0c72424f32692b17d12137cb4c9281c079ec0c4",
+   "bytes": 1161
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-mock-hyd-p1-s1/adaptive-rejection-sampler__rvKQ9Dc/result.json",
+   "sha256": "03564fd3cc9bcf7391217f78e431156255803a839ee9c29885ce3d3da85251cf",
+   "bytes": 4570
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-mock-hyd-p1-s1/openssl-selfsigned-cert__u6ozido/result.json",
+   "sha256": "4cab99ca9df8174e3317a5d9792fdd4bd16f724fdc4cdf9b21bba53d838d4fab",
+   "bytes": 4515
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-mock-hyd-p1-s1/result.json",
+   "sha256": "97a5e66aed5edabe9582cf4dc335fc27f51dd34d4baa557c1df78767bff78fe5",
+   "bytes": 1247
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-mock-hyd-p1-s1/sparql-university__hN6Aq6P/result.json",
+   "sha256": "005303788a59797c5987fce9938ebeb38cb600b0afe8b9c2fae7f5339792a094",
+   "bytes": 4479
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-mockr-hyd-p1-s0/dna-assembly__aDjkgiK/result.json",
+   "sha256": "b60234a2024af8bdd996d82ff33ed667b9bda4665d0bfde3cd7d7060fe01376d",
+   "bytes": 4492
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-mockr-hyd-p1-s0/regex-log__ccs7Ew9/result.json",
+   "sha256": "7e43d06f169fa34d6ab618579510cb72b1959e3afef7cf9dc57778af0980ccd5",
+   "bytes": 4435
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-mockr-hyd-p1-s0/result.json",
+   "sha256": "baad73293c7193e91f7e6a72d918a4fae5d4a90fe44d71d045d124f756a04899",
+   "bytes": 1161
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-mockr-hyd-p1-s1/adaptive-rejection-sampler__Zja3v6x/result.json",
+   "sha256": "a91b3f7d2997e32acd6c0109c102f358738bf3f1fbe65011391b6cc57863aa65",
+   "bytes": 4709
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-mockr-hyd-p1-s1/openssl-selfsigned-cert__NKYXoeB/result.json",
+   "sha256": "20e56cd561fe05a205fe085eb11e50d059b69c9028e427feb18fc0a91ae552e9",
+   "bytes": 4517
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-mockr-hyd-p1-s1/result.json",
+   "sha256": "d8781494287e0b8640ed6b0c619e3e0077727fb0d2246910764164745499eb98",
+   "bytes": 1249
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/jobs/tb21c-mockr-hyd-p1-s1/sparql-university__ZRWZfYU/result.json",
+   "sha256": "8a0125f678eb98db1887d9f57e89ae28b5f8f25f4dc857319ff3a671cf420c1b",
+   "bytes": 4482
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/receipts/tb21-metrics-8x-hyd-p1-s0.jsonl",
+   "sha256": "35005b9849035e6793f1df4257519eab961f7d4a721ce916f348d2b6a29d56e2",
+   "bytes": 657523
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/receipts/tb21-metrics-8x-hyd-p1-s1.jsonl",
+   "sha256": "ea43e65b79396a74ff60bbb1fdf2eaa33681b88c3a05e01cd869b527cb1b83d5",
+   "bytes": 657518
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/receipts/tb21-metrics-8x-hyd-p1-s2.jsonl",
+   "sha256": "ab4b2face5046a072796c798ae71979c8f00aa9dba0747cd1b0bbbce5a8f6ad9",
+   "bytes": 657445
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/receipts/tb21-metrics-8x-hyd-p1-s3.jsonl",
+   "sha256": "f2e9dd7ee144a1558ac06d95bc67bc558e5b1f9fef2e5b49e6bc033c0d753095",
+   "bytes": 657468
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/receipts/tb21-metrics-8x-hyd-p1-s4.jsonl",
+   "sha256": "4792def0ebd70dd03f998d457354b099800546f6c6adb58d7091c46d7287a192",
+   "bytes": 657450
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/receipts/tb21-metrics-8x-hyd-p1-s5.jsonl",
+   "sha256": "126715329fdd8b1578cd82d70decf271cb504d288fd43dc7fba8060477fdf116",
+   "bytes": 657499
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/receipts/tb21-metrics-8x-hyd-p1-s6.jsonl",
+   "sha256": "a3e89a193f0cd95726b49146dfe63b6a25a6bc0d068edfaa61aa0ec22d2340f3",
+   "bytes": 657478
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/receipts/tb21-metrics-8x-hyd-p1-s7.jsonl",
+   "sha256": "ccbaba087d1b31b560923b070f4ba7f650fd236a68482a4ea12bc3e41d9125b4",
+   "bytes": 657455
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/receipts/tb21-metrics-8x1m-hyd-p1-s0.jsonl",
+   "sha256": "536ab1f7d5c62dc090f9817cbe25c0907db91e8dbc41bce77315d09f0331f02d",
+   "bytes": 1007559
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/receipts/tb21-metrics-8x1m-hyd-p1-s1.jsonl",
+   "sha256": "e78c83a3afb40dff8f332917f78cf1108eafe6fb4d161b224afb92adfa934b06",
+   "bytes": 1007605
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/receipts/tb21-metrics-8x1m-hyd-p1-s2.jsonl",
+   "sha256": "9cdda789f0ecfc55b579963e6e166729edc116be33fbd26d54984cce66aff2a9",
+   "bytes": 1007554
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/receipts/tb21-metrics-8x1m-hyd-p1-s3.jsonl",
+   "sha256": "7ecb7e90330bedf2b213b492e3b9a2554e0dca2883e6006c39068ac866b6ab57",
+   "bytes": 1007568
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/receipts/tb21-metrics-8x1m-hyd-p1-s4.jsonl",
+   "sha256": "f4adc33f774d0976b66bcec6e2644486c1eb8c95ccf11e067424634636005bf0",
+   "bytes": 1007603
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/receipts/tb21-metrics-8x1m-hyd-p1-s5.jsonl",
+   "sha256": "3af9a0f3818c19db1c5d597a90d339b42b4786ba2b6f27fc616854dd472a4e87",
+   "bytes": 1007600
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/receipts/tb21-metrics-8x1m-hyd-p1-s6.jsonl",
+   "sha256": "4411d6fdd7d6c760d668b7d47df652f59077e4d77b6ca2fd4480dbbce328a4f0",
+   "bytes": 1007563
+  },
+  {
+   "path": "receipts/teardown/driver/tb21/receipts/tb21-metrics-8x1m-hyd-p1-s7.jsonl",
+   "sha256": "d59c485478d4a61a572947611d7cde12d7f2e1d20f1997d61639a42cd9b7d2c5",
+   "bytes": 1007512
+  }
+ ]
+}
