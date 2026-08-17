@@ -948,6 +948,51 @@ venue. The failure *family* is publicly known and cited rather than claimed as n
 that `plan()` cannot be captured by CUDA graph, and `flashinfer-ai/flashinfer#1832` documents non-uniform
 `q_len` in speculative decode - but no existing report matches this gate.
 
+**Speed-run campaign: infrastructure built and the 1x tier measured 2026-08-17.** Both Jarvis boxes are
+receipted ([`tb21-driver-vm.json`](../receipts/tb21-driver-vm.json),
+[`tb21-1x-endpoint.json`](../receipts/tb21-1x-endpoint.json)): the IN1 driver (32 vCPU, harbor 0.21.0,
+task tree sha-verified byte-identical) and a 1x RTX PRO 6000 endpoint on **driver 595.58.03, the same as
+the qualification card**, VPC-linked at **0.17-0.83 ms**. The reproducible campaign image
+**`vllm:gg-r34-tb21-sr1`** is built, digest-pinned, and loaded on the endpoint
+([`tb21-image-sr1.json`](../receipts/tb21-image-sr1.json)): the promoted apc base plus three audited
+fail-closed patch layers (PR #397 arena, PR #398 FlashInfer decode-shape, a port of
+vllm-project/vllm#52530), each asserting its patch sha, post-patch file sha and a sentinel symbol, with
+LMCache untouched and disabled. Five campaign tools are committed and mock-proven: `tb21_gate.py`,
+`tb21_ladder.py`, `tb21_shard.py`, `tb21_campaign.sh`, `tb21_metrics_poll.py`, plus
+`make_knee_chart.py`.
+
+**Three measured results, all on sr1 at the native 262,144-token window, all gated PASS on five fidelity
+checks including a 262k needle** (docs/46 §14-16):
+
+1. **The knee, and a correction to pass 1.** Knees are **C8 / C4 / C4** for 512-in / 4k-in / 30k-in;
+   zero refused or errored requests across 21 cells. TB's real shape (~4.6k prompt, bursts to 15,577
+   output tokens) knees at **C4** - and pass 1 ran **n=16, four times past it**, where per-request
+   throughput is 26 % of single-stream. That measured burst costs **10.4 min/turn at C16 versus 3.6 at
+   C4** against minute-scale task budgets, so **n=16 very likely produced much of pass 1's 54-of-58
+   timeout failures**. Baseline `-n` is now **4**, and DP-K should multiply replicas at n=4 rather than
+   raise n. Also measured: on 30k prompts aggregate throughput has a **hard ceiling** (peaks C16, then
+   falls), and TTFT binds before decode (456 s to first token at C64).
+2. **The V2 runner is unblocked, and the 32 GB constraint does not transfer.** V2 starts clean at the
+   native window with graph decode, **zero OOM**, KV **1,776,428 tokens vs 1,760,318** - slightly *more*
+   than the baseline, where on the 32 GB card it cost ~800 MiB and forced −14.1 % KV. docs/41's W1
+   blocker is card-specific and closed for this tier. The runner **alone** is neutral (±5 %); the depth
+   schedule gives **+9-17 % aggregate above C8** but **loses 12-28 % at C4**, because its crossover to
+   depth 1 at batch 3 is too early for this card. **The 5090's schedule must not be copy-pasted - the
+   crossover is a per-card, per-window property.** Since TB sits at n=4, below the crossover, the
+   schedule is an aggregate-throughput lever for the DP-K run, not a TB lever.
+3. **A continuous `/metrics` timeline is now recorded for every pass** (owner requirement), rehearsed
+   77 minutes / 929 samples and published. It found two defects in its own tooling (a summary lost to an
+   unclean kill, now regenerable; reset-blind deltas that would have published **negative** token counts
+   across an arm swap, now segmented and refused) and then **independently corroborated** the V2 result
+   from server-side counters: the depth schedule raises MTP acceptance **0.6122 → 0.7854** between two
+   arms doing byte-identical work.
+
+Also measured and unclaimed: the engine reports **~7.2 GiB of spare KV** (`--kv-cache-memory-bytes`
+69.59 GiB vs 62.38 in use at util 0.92, **+11.6 % tokens free**) - irrelevant to TB, where KV is nowhere
+near binding, but it lifts the native-262k concurrency line and the 1M exercise. docs/46 §13 carries the
+full knob audit, verified item by item against the live endpoint, including why each disabled knob is
+correctly disabled.
+
 **TB2.1 speed-run plan written 2026-08-16, execution owned by a future session.** The owner asked for
 the ultimate API-hosted setup for the flagship quant on a 4x/8x RTX PRO 6000 Jarvis host with a separate
 load-driver VM, to produce a card-referenceable ladder - quick 1x / 2x / 4x and a full three-pass speed run
