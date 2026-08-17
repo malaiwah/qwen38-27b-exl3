@@ -26,9 +26,13 @@ of the b12x path on the 4 per-step lm_head calls (they run outside the CUDA grap
 component is proot-inflated. A bare-docker confirmation on a rental 1×RTX6000 is queued; expect the
 true gain between +3 % (pure kernel delta) and +15 % (this measurement).
 
-## Proposed fix
-Shape-policy clause in the gate behind `VLLM_EXL3_B12X_N_RANGE` (default `5120-32768`, `0` restores
-old behaviour). PR to follow on this issue.
+## Proposed fix — PR branch ready
+Shape-policy window behind `VLLM_EXL3_B12X_N_RANGE` (default `5120-32768`, `0` restores old
+behaviour). **Branch: `malaiwah/vllm-voipmonitor` @ `kernel-gap/b12x-gate-n-range` (commit
+704d94e93)**, based on `codex/gg-exl3-r7-k345-20260810` — chosen because its
+`_b12x_trellis_k6_supported` body is byte-identical to the served r34 bytes (the served exl3.py,
+5,536 lines sha256 2df9d0799fd3…, exists on no public branch — docs/47 F11). The normative diff
+against the served file is `receipts/kernel-gap-gate-ab.patch`.
 
 ## What would falsify this
 A bare-metal A/B (no proot) showing patched ≤ baseline single-stream at C1, or a KLD spot-check

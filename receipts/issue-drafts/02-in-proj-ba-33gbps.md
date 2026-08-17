@@ -20,6 +20,10 @@ Measured on the same card (`receipts/kernel-gap-ba-probe.json`, graph-replayed):
 `process_weights_after_loading` registers a `weight_kn = weight.t().contiguous()` buffer for
 `N≤128, K≥4096` CUDA weights (behind `VLLM_TINY_N_MM_TRANSPOSE`, ~1 MB/layer extra), and `apply`
 uses `torch.mm(x, weight_kn)`. Graph-capturable (pure mm, no allocation).
+**Branch: `malaiwah/vllm-voipmonitor` @ `kernel-gap/tiny-n-mm-transpose` (commit 3b35c04c6)**,
+based on `dev/gilded-gnosis` — `UnquantizedLinearMethod` verified byte-identical to the served
+bytes at the patch site. Root cause for the record: TRANSPOSED LAYOUT (TN at tiny N), not a
+missing kernel.
 **Measured: +8.0 % single-stream decode alone (96.19 → 103.91 tok/s median,
 `receipts/kernel-gap-ba-ab.json`).** Caveat: stacked with the draft-01 gate patch the local gain
 saturates at the gate-alone level because the post-gate step is CPU-dispatch-bound under proot —

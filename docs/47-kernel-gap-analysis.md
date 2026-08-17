@@ -518,6 +518,9 @@ engineering; nothing below touches the fidelity budget without its own KLD gate.
   without a rebuild.
 - *Blocked on:* Main's bare-metal single-stream A/B on the 4x (in flight). If the bare-metal gain is
   ≥ +3 %, ship; below that, ship anyway for the k/v GPU delta but re-title the win honestly.
+- *Status:* **PR branch ready** — `malaiwah/vllm-voipmonitor` @ `kernel-gap/b12x-gate-n-range`
+  (704d94e93, based on `codex/gg-exl3-r7-k345-20260810`; base choice justified in F11). Normative
+  diff vs served bytes: `receipts/kernel-gap-gate-ab.patch` (sha256 inside).
 - *Validation:* protocol A/B + KLD spot-check (kernel summation order differs).
 - *Effort:* hours. *Risk:* minimal — exl3_gemm is the fork's own bit-faithful reference path
   (exl3.py:976).
@@ -539,6 +542,8 @@ engineering; nothing below touches the fidelity budget without its own KLD gate.
   (exl3.py:877-878), log a one-time `logger.warning` when `VLLM_EXL3_PREFILL_FP8=1` but the ext
   lacks `reconstruct_fp8_slice` — today it silently no-ops. docs/41 state (e) already records it.
 - *Effort:* 15 minutes + PR. *Risk:* none.
+- *Status:* **diff-only by F11 ruling** (the FP8 code exists on no public branch):
+  `receipts/kernel-gap-fp8-deadflag-warn.patch`.
 
 **P1.4 — TP flag A/Bs (F4.5/F4.6, TP only). OWNER: Main, on the 4x.**
 - *Change:* none — two serve-time A/Bs, folded into Main's 4x topology-ladder work (TP4 and
@@ -567,6 +572,8 @@ engineering; nothing below touches the fidelity budget without its own KLD gate.
   110.97 — locally the wins do NOT stack because the post-gate step is CPU-dispatch-bound under
   proot (F6's 23 % idle); do not sum the gains until Main's bare-metal stacked number exists.
   Rootfs restored to r34 bytes after the A/B (md5-verified).
+- *Status:* **PR branch ready** — `malaiwah/vllm-voipmonitor` @ `kernel-gap/tiny-n-mm-transpose`
+  (3b35c04c6, based on `dev/gilded-gnosis`; method body verified identical to served bytes).
 
 **P2.2 — strided-C shard writes, delete the merge cats (F5.3, PP +5–8 % est).**
 - *Change:* `hgemm` already takes strided C (`hgemm.cu:41-51,77`: ldc = `c.stride(-2)`, columns
