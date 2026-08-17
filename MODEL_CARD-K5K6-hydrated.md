@@ -1419,8 +1419,10 @@ reporting.
 | TP4 | 4 | 151.0 | 1,359 @C64 | C4 | **8,769,375** |
 | TP2xDP2 | 4 | 156.7 | 1,808 @C64 | C8 | — |
 | DP4 | 4 | 134.1 | 1,958 @C64 | C16 | — |
+| TP4xDP2 | 8 | 146.5 | 2,206 @C128 | C8 | — |
 | TP2xDP4 | 8 | 153.2 | 2,438 @C128 | C16 | — |
 | **DP8** | 8 | 135.2 | **3,553 @C128** | **C32** | — |
+| ~~TP8~~ | 8 | refused at load — **architecturally impossible**, see rule 2 | — | — | — |
 
 **Three rules fall out of this, and they are not the obvious ones.**
 
@@ -1428,13 +1430,29 @@ reporting.
    TP2xDP4 takes the best single-stream on eight cards (**153.2**, +13.3 % over DP8) and wins every rung
    up to C8; DP8 wins from C16 upward and by C128 leads on aggregate by 46 %. Pick by the concurrency you
    actually serve, not by which sounds more parallel.
-2. **Tensor-parallel latency peaks at TP2 and then goes backwards.** TP4 measures **151.0** single-stream
-   against TP2's **159.6**, despite halving per-GPU weight bytes again — the PCIe all-reduce cost grows
-   faster than the weight-streaming saving. On a host without NVLink, TP2 is the latency sweet spot and
-   TP8 is for capacity only.
-3. **The knee scales linearly with replica count: a DP-N deployment holds its per-request floor to about
-   4N concurrent requests** (C4, C8, C16, C32 at N = 1, 2, 4, 8). That single line is the capacity-planning
-   number, and it is why the campaign runs `-n 4` per shard across 8 shards.
+2. **Tensor-parallel latency peaks at TP2, reverses at TP4, and TP8 does not exist.** TP4 measures
+   **151.0** single-stream against TP2's **159.6**, despite halving per-GPU weight bytes again — the PCIe
+   all-reduce cost grows faster than the weight-streaming saving, so on a host without NVLink TP2 is the
+   latency sweet spot. **TP8 is not a capacity option, because the engine refuses to load it.** EXL3
+   shards trellis tensors on 128-element boundaries, and `lm_head` carries the padded vocab
+   **248,320 = 128 × 1940** where **1940 = 2² × 5 × 97** — divisible by 4 but not by 8 — so the TP8 slice
+   of 31,040 = 128 × 242.5 is rejected with `EXL3 TP output slice must be 128-aligned`. **The maximum
+   tensor-parallel width for this checkpoint is 4, on any GPU count**, which is why an eight-GPU host must
+   spend at least a factor of two on data parallelism. *An earlier version of this card said "TP8 is for
+   capacity only"; that was wrong, and this is the correction.*
+3. **The knee tracks the DATA-PARALLEL degree, not the GPU count: knee ≈ 4 × DP.** One host, three
+   eight-GPU arms, and every knee lands where DP degree predicts — DP8 → C32, TP2xDP4 → C16, TP4xDP2 →
+   **C8** — on both request shapes. All three use the same eight cards, so GPU count cannot be the
+   variable. Adding TP width *inside* a replica does not raise the knee, it **lowers it in proportion**,
+   because it buys single-stream speed with the very parallelism the knee counts. That single line is the
+   capacity-planning number, and it is why the campaign runs `-n 4` per shard across 8 shards.
+
+The three eight-GPU arms on one host, each knee marked against the 4 × DP law:
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/tb21-8x-topology-dark.svg">
+  <img alt="Four panels comparing three eight-GPU topologies measured on one host: DP8, TP2xDP4 and TP4xDP2. The top row is per-request tokens per second, what a single agent feels; the bottom row is aggregate tokens per second, what a fleet feels. The left column is a 512-in/256-out short turn and the right column a 4,096-in/1,024-out typical turn, both on logarithmic axes. In the top row the tensor-parallel arms lead at low concurrency while DP8 overtakes them from sixteen concurrent requests upward, and at a single request the leader swaps between shapes: TP2xDP4 on the short turn, TP4xDP2 on the 4k turn. In the bottom row a star marks each arm's knee, landing at C32 for DP8, C16 for TP2xDP4 and C8 for TP4xDP2, which is four times each arm's data-parallel degree. Markers in the short-turn low-concurrency cells are hollow because their measured within-arm variation is 14 to 18 percent, so crossings there are noise rather than signal. A footnote carries the arithmetic for why TP8 cannot load at all." src="assets/tb21-8x-topology-light.svg">
+</picture>
 
 **One host-level prerequisite is worth more than any flag here.** On direct-attach RTX PRO 6000 systems
 P2P can be silently **off** — we measured `can_device_access_peer` false, a 64 MiB cross-GPU copy at
