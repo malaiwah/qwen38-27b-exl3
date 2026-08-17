@@ -1015,9 +1015,14 @@ the conservative 89 rather than the flattering 87. Because both arms void identi
 between the `quantization-suspect` and `capability` buckets on their account. A third task,
 `build-pov-ray`, lost its pass-2 attempt to a server-side `404 The model 'qwen38' does not exist` while
 the pass overlapped a model swap — an infrastructure fault that was scored as a task failure because
-`NotFoundError` was missing from the transport-retry allowlist. It has since been added; the trial is
-flagged `pre_model_void` and **owed one re-run**, which is why the cumulative 44/89 is published as a
-**lower bound**. All of this was found by auditing a `n_attempted=54` against `n_trials=58` mismatch in
+`NotFoundError` was missing from the transport-retry allowlist. It has since been added, and the trial
+is flagged `pre_model_void`. **That re-run was deliberately not performed**, so the cumulative 44/89
+stands as a **permanent lower bound rather than a pending one**: the task carries a 12,000-second
+budget — it was the single item bounding pass 1's whole 3.3-hour wall clock — and it had already failed
+pass 1 on its own merits, so spending another 3+ hours of a rented card to move a cumulative figure by
+at most one task was judged a poor trade. The bound is stated rather than closed, which is the honest
+form: 44/89 could be 45/89, and no run will tell you which.
+All of this was found by auditing an `n_attempted=54` against `n_trials=58` mismatch in
 the pass-2 publication, and is itemised in
 [`terminal-bench-2.1-pre-model-voids.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/terminal-bench-2.1-pre-model-voids.json).
 
