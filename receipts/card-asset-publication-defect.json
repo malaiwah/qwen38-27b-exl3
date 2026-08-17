@@ -1,0 +1,29 @@
+{
+ "schema": "qwen38-card-asset-defect/1",
+ "generated_utc": "2026-08-17T13:18:11Z",
+ "what_this_is": "A publication defect found while adding a figure: the hydrated model card referenced six image assets that had NEVER been uploaded to its Hub repo, so the multi-GPU serving section rendered broken images on huggingface.co while every automated check we had reported success.",
+ "defect": {
+  "symptom": "6 of 12 assets referenced by MODEL_CARD-K5K6-hydrated.md were absent from the model repo",
+  "missing_at_discovery": [
+   "assets/tb21-topology-light.svg",
+   "assets/tb21-topology-dark.svg",
+   "assets/tb21-scaling-light.svg",
+   "assets/tb21-scaling-dark.svg",
+   "assets/tb21-8x-topology-light.svg",
+   "assets/tb21-8x-topology-dark.svg"
+  ],
+  "root_cause": "publish_cards.py uploads README.md and the DOCS-SHA256SUMS row and NOTHING ELSE. Card byte-identity and asset presence are independent invariants, and only the first was ever checked. A card can therefore pass publish_cards with all_byte_identical true and still ship broken images.",
+  "why_it_went_unnoticed": "The topology and scaling figures were committed to git in the same commit that created them, so they looked published. git and the Hub are separate stores; nothing reconciled them.",
+  "blast_radius": "Hydrated card only. The audit run across all eight repos found context (6/6), K5K6 (10/10) and K4 (8/8) complete, and the four remaining cards reference no assets."
+ },
+ "fix": {
+  "immediate": "uploaded 12 files (the 6 referenced svgs plus their 6 sibling pngs) via the authenticated hf CLI",
+  "durable": "new tool tools/sync_card_assets.py - audits every repo in publish_cards.CARDS for assets its card references, exits non-zero when any are missing, and uploads them with --upload. It imports publish_cards directly so CARDS and HF_HOME cannot drift between the two tools.",
+  "gotcha_encoded": "the tool sets HF_HOME to publish_cards.HF_HOME before constructing HfApi. Without it the default cache is unauthenticated, uploads 401, and the read-only audit still appears to work - the worst possible failure mode, and one I hit while writing this."
+ },
+ "verification": {
+  "audit_after_fix": "all 8 repos report OK or 'no asset references'; exit code 0",
+  "command": "tools/sync_card_assets.py"
+ },
+ "standing_rule": "Run tools/sync_card_assets.py after any commit that adds or renames a card figure. publish_cards' all_byte_identical is necessary but NOT sufficient for a correctly published card."
+}
