@@ -359,3 +359,37 @@ Body-side k/v (inside the graph) contribute only their GPU delta; the patch is n
 kernels differ in summation order, so a KLD spot-check belongs in the ship gate.
 
 ---
+## F8. MEASURED: the prefill phase split — reconstruct is 13 % at 2048-chunks, 4–5 % at 6144; hgemm itself runs at cuBLAS-reference speed; the hadamards cost more than the reconstruct
+
+**Claim.** Phase-timed on the real hydrated weights (`receipts/kernel-gap-prefill-phases.json`,
+mirrors `_reconstruct_hgemm_into` exactly): at M=2048 the EXL3 wrapper costs **~29 % of prefill
+linear time over a bare GEMM** — reconstruct 12.9–13.2 % + input/output hadamards ~16 % — and both
+shrink to ~13 % total at M=6144. The hgemm itself is *not* a suspect: 391–421 TFLOPS fp16-accumulate
+vs 417–429 for a bare cuBLAS BF16 GEMM on the same shape.
+
+| matrix | M | had_in | reconstruct | hgemm | had_out | full | recon share | eff. TFLOPS |
+|---|--:|--:|--:|--:|--:|--:|--:|--:|
+| gate 5120×17408 K5 | 2048 | 46.8 µs | 162.7 µs | 898.8 µs | 156.7 µs | 1259.5 µs | 12.9 % | 289.8 |
+| gate 5120×17408 K5 | 6144 | 138.7 | 162.7 | 2601.8 | 468.6 | 3305.0 | 4.9 % | 331.4 |
+| down 17408×5120 K6 | 2048 | 157.1 | 170.1 | 934.3 | 43.3 | 1285.4 | 13.2 % | 284.0 |
+| q 5120×12288 K6 | 2048 | 43.4 | 119.9 | 636.3 | 102.9 | 927.0 | 12.9 % | 278.0 |
+
+(The F5 static estimate said 8–11 % — measured is 12.9–13.2 %; the reconstruct kernel achieves
+~1.05–1.10 TB/s of store+read traffic, ~70 % of the F2 streaming ceiling — itself slightly
+improvable but small.)
+
+**Consequences.**
+- Linear-stack bound: at the measured 278–290 effective TFLOPS and 48.66 GFLOP/token of linear work,
+  the linears alone bound prefill at ≈5.9k tok/s; measured end-to-end is 3.3–3.7k — i.e. linears are
+  ~60 % of chunk time and the F5 plumbing/GDN/launch items are the rest. This *measured* split
+  replaces the F5 static bound; the residual attribution inside that 40 % remains bounded-not-
+  apportioned (honest residual).
+- **The chunk-size lever is measured now:** at M=6144 effective linear throughput is +13–15 %
+  (289.8→331.4 on gate) *before* counting 2.67× fewer chunk passes and fixed overheads. Combined
+  with F5 item 1, `--max-num-batched-tokens 6144` is the single largest prefill lever available
+  without touching a kernel — expect +15–25 % PP, gated by the KV/fidelity profile freeze.
+- The output hadamard on wide-N matrices (gate had_out 156.7 µs = 12 % of full path) is a pure
+  M×N fp16 read+write at ~1.8 TB/s — already at roofline; recoverable only by fusing into the GEMM
+  epilogue (cublasLt epilogue or a custom kernel) — structural.
+
+---

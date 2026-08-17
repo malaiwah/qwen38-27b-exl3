@@ -1,0 +1,94 @@
+{
+ "what": "prefill reconstruct-vs-hgemm phase split at served chunk sizes on the exact hydrated shapes, mirroring _reconstruct_hgemm_into (exl3.py:929-960) phase by phase, LOCAL RTX PRO 6000",
+ "command": "/var/tmp/work/ggrun.sh python /work/kg_bench_prefill.py",
+ "method": "CUDA events, 50 iters per phase (30 for full path), real hydrated weights; GPU verified idle",
+ "results": {
+  "gate_proj K5 5120x17408": {
+   "K": 5120,
+   "N": 17408,
+   "bits": 5,
+   "M": {
+    "2048": {
+     "had_in_us": 46.8,
+     "hgemm_us": 898.8,
+     "had_out_us": 156.7,
+     "full_path_us": 1259.5,
+     "reconstruct_share_pct": 12.9,
+     "hgemm_TFLOPS": 406.2,
+     "full_path_TFLOPS_effective": 289.8
+    },
+    "6144": {
+     "had_in_us": 138.7,
+     "hgemm_us": 2601.8,
+     "had_out_us": 468.6,
+     "full_path_us": 3305.0,
+     "reconstruct_share_pct": 4.9,
+     "hgemm_TFLOPS": 420.9,
+     "full_path_TFLOPS_effective": 331.4
+    }
+   },
+   "reconstruct_us": 162.7,
+   "reconstruct_GBout_ps": 1095.7,
+   "reconstruct_Gelem_ps": 547.8
+  },
+  "down_proj K6 17408x5120": {
+   "K": 17408,
+   "N": 5120,
+   "bits": 6,
+   "M": {
+    "2048": {
+     "had_in_us": 157.1,
+     "hgemm_us": 934.3,
+     "had_out_us": 43.3,
+     "full_path_us": 1285.4,
+     "reconstruct_share_pct": 13.2,
+     "hgemm_TFLOPS": 390.7,
+     "full_path_TFLOPS_effective": 284.0
+    },
+    "6144": {
+     "had_in_us": 468.7,
+     "hgemm_us": 3253.3,
+     "had_out_us": 128.5,
+     "full_path_us": 3972.7,
+     "reconstruct_share_pct": 4.3,
+     "hgemm_TFLOPS": 336.6,
+     "full_path_TFLOPS_effective": 275.7
+    }
+   },
+   "reconstruct_us": 170.1,
+   "reconstruct_GBout_ps": 1048.0,
+   "reconstruct_Gelem_ps": 524.0
+  },
+  "q_proj K6 5120x12288": {
+   "K": 5120,
+   "N": 12288,
+   "bits": 6,
+   "M": {
+    "2048": {
+     "had_in_us": 43.4,
+     "hgemm_us": 636.3,
+     "had_out_us": 102.9,
+     "full_path_us": 927.0,
+     "reconstruct_share_pct": 12.9,
+     "hgemm_TFLOPS": 405.0,
+     "full_path_TFLOPS_effective": 278.0
+    },
+    "6144": {
+     "had_in_us": 128.9,
+     "hgemm_us": 1864.1,
+     "had_out_us": 307.4,
+     "full_path_us": 2420.3,
+     "reconstruct_share_pct": 5.0,
+     "hgemm_TFLOPS": 414.7,
+     "full_path_TFLOPS_effective": 319.4
+    }
+   },
+   "reconstruct_us": 119.9,
+   "reconstruct_GBout_ps": 1049.4,
+   "reconstruct_Gelem_ps": 524.7
+  },
+  "ref_cublas_bf16_2048x5120x17408_TFLOPS": 417.5,
+  "ref_cublas_bf16_6144x5120x17408_TFLOPS": 428.8
+ },
+ "gpu_idle_verified_before_run": true
+}
