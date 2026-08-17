@@ -13,5 +13,6 @@
  "verdict": "NO custom kernel needed: pre-transposed NN mm is 3.6x faster than the served TN F.linear; the in-model pick (28us cutlass wmma) is even worse than the 20us seen here. Dispatch/layout fix only.",
  "relerr_check": {
   "F.linear vs fp32 ref": 0.00224
- }
+ },
+ "why_it_was_slow": "layout (TN at tiny N), not a missing kernel"
 }

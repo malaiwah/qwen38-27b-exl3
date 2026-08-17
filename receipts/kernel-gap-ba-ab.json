@@ -18,5 +18,7 @@
  "stacked_median": 110.56,
  "stacking_note": "Locally the two wins DO NOT stack: after the gate patch the step is CPU-dispatch-bound under proot (F6 measured 23 pct GPU idle), so the ba fix's ~1.1 ms/step GPU saving is hidden behind CPU gaps. Both are individually real (+8.0 pct and +15.4 pct); expect partial-to-full stacking on bare metal where the GPU stretch is the critical path. Do not sum them in any claim until a bare-metal stacked number exists.",
  "restored": "linear.py and exl3.py restored to r34 bytes, md5-verified",
- "gpu_idle_verified_before_run": true
+ "gpu_idle_verified_before_run": true,
+ "target_file_sha256_linear_py": "c5dbca41b1c9bd79fbf0fb26dd557efc94f0ec11b844227004139169e6a37a0c",
+ "why_it_was_slow": "TRANSPOSED LAYOUT, NOT A MISSING KERNEL: cuBLAS is handed the TN problem (weight stored N x K, row-major) at m<=4, N=96 and picks a 16x16 wmma tile kernel; the same product with the weight pre-transposed to K x N (NN layout) uses a fast reduction path at 5.6us. The transferable lesson: tiny-N tall-K linears should store both layouts and let decode use NN."
 }

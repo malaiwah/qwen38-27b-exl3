@@ -16,5 +16,7 @@
  "patched_median": 110.97,
  "gain_pct": 15.4,
  "decomposition_note": "per-call GPU deltas explain only ~0.6 ms/step (head +57us x4, k/v +10us x38); the observed ~4.6 ms/step saving is dominated by ELIMINATED EAGER PYTHON DISPATCH of the b12x path on the 4 per-step lm_head calls and the draft k/v calls (b12x run_trellis256_dense validation stack vs the thin ext.exl3_gemm C++ binding). This dispatch component is proot-inflated locally; expect the rental gain to land between +3% (pure GPU delta) and +15% (this measurement). Body k/v inside the CUDA graph contribute only their GPU delta.",
- "gpu_idle_verified_before_run": true
+ "gpu_idle_verified_before_run": true,
+ "target_file_sha256": "2df9d0799fd323798cead1edb773cab556c94798eec263ee03ded35408c6e4ee",
+ "target": "$SP/vllm/model_executor/layers/quantization/exl3.py (served r34 bytes, 5536 lines)"
 }
