@@ -1,0 +1,64 @@
+{
+ "schema": "qwen38-yarn-penalty-dp8-transfer/1",
+ "generated_utc": "2026-08-17T16:47:41Z",
+ "question": "Does the static-YaRN fidelity penalty measured on ONE GPU at concurrency 1 (docs/46 s31) transfer to the production topology - DP8, eight GPUs, fp8 KV, MTP? Rope is per-layer arithmetic and should be topology-independent, but expectation is not measurement.",
+ "answer": "YES, it replicates to within 3 %. DP8 measures 1.0265e-02 mean top-20 KLD against s31's 1.057e-02 on one GPU - a ratio of 0.971 - and the DP8 value falls INSIDE s31's 95 % CI of [8.42e-03, 1.29e-02]. Top-1 agreement 93.75 % against 93.23 %. The per-bucket shape also reproduces, including the counter-intuitive feature that the penalty is worst in the MIDDLE of the length range rather than at short lengths.",
+ "design": {
+  "host": "jl-vm-473501, 8x RTX PRO 6000, DP8, ForceP2P on",
+  "both_arms": "QUIET (endpoint idle)",
+  "reference": "262k native rope - the production default this measurement then justified",
+  "candidate": "1,000,000-token window via Qwen official static YaRN factor 4.0",
+  "probe_set_sha256": "374d3021a0cfc327eb570902c0b22afbba1428232791049fff80caaa8cfd3e21",
+  "identical_to_s31": true,
+  "n_prompts": 48,
+  "n_positions": 384,
+  "method": "tools/yarn_penalty_analyze.py compare() reused verbatim so the shared-support rule matches s31 exactly"
+ },
+ "measured_dp8": {
+  "mean_kld": 0.010264596374553464,
+  "median_kld": 0.004511919471210519,
+  "p99_kld": 0.07432226600016754,
+  "top1_agreement": 0.9375,
+  "by_bucket_mean_kld": {
+   "512": 0.00843470090940147,
+   "2048": 0.008550943042060164,
+   "8192": 0.013136792149734379,
+   "32768": 0.01093594939701784
+  }
+ },
+ "comparison_to_s31_one_gpu": {
+  "s31_mean_kld": 0.010566,
+  "s31_top1": 0.93229,
+  "s31_ci95": [
+   0.00842,
+   0.012885
+  ],
+  "dp8_over_1gpu_ratio": 0.9715,
+  "dp8_inside_s31_ci": true,
+  "s31_buckets": {
+   "512": 0.00765,
+   "2048": 0.007298,
+   "8192": 0.01483,
+   "32768": 0.01249
+  },
+  "verdict": "An independent replication on different topology, different GPU count and a different concurrency regime, using the identical probe set and identical analysis code, agreeing to 3 %. This substantially strengthens s31 - it is no longer a single-machine result."
+ },
+ "companion_result_concurrency": {
+  "receipt": "receipts/concurrency-fidelity-dp8.json",
+  "mean_kld": 0.0012782307442817619,
+  "over_cross_boot_floor": 1.083,
+  "summary": "Concurrency itself costs 1.278e-03, which is 1.08x the cross-boot floor and 8.4x SMALLER than the rope change. Serving under real load is indistinguishable from rebooting the same config, so no throughput or topology number in this project carries a hidden fidelity price."
+ },
+ "decision_taken": "The production endpoint was migrated to 262k native as part of this measurement, because the two results together settle it: the 1M WINDOW is fidelity-free (s31: 1.248e-03 against a 1.180e-03 floor) while the ROPE costs ~1.03e-02 on the 512-32k traffic our agents actually send. Serving YaRN by default taxed every real request to buy a window almost nothing used.",
+ "honest_limits": [
+  "Both DP8 arms are quiet; the loaded condition was measured separately and is fidelity-neutral, so the two do not need combining.",
+  "384 positions, 48 prompts, four buckets, greedy, top-20 - same instrument and same ~1.2e-03 resolution as s31.",
+  "The DP8 262k arm is the reference here, so this measures the DIFFERENCE, not the absolute fidelity of either config against BF16.",
+  "One host. Topology-independence of rope is now measured on DP8 specifically, not proven in general."
+ ],
+ "raw": [
+  "receipts/yarn-dp8-raw/raw-NATIVEDP8-quiet.json",
+  "receipts/yarn-dp8-raw/raw-YARNDP8-quiet.json",
+  "receipts/yarn-dp8-raw/raw-YARNDP8-loaded.json"
+ ]
+}

@@ -1657,3 +1657,54 @@ exceed the native window.
 **Nothing here revises a published number.** 31/89 (single pass, stock clock), 44/89 (best-of-2, stock clock,
 the permanent lower bound) and 56/89 (single pass, 2× clock, 262k) all stand exactly as they were, and 48/89 is
 likewise not a leaderboard figure — its agent timeout is non-stock.
+
+
+## §34 - Closing both open fidelity questions on the production topology
+
+Two questions were registered in docs/29 as needing the config-swap window. Both are now answered on the 8x
+host, using the **identical 48-prompt probe set** as §31 (sha `374d3021…`) and §31's **own** `compare()` code,
+so these are replications rather than similar-looking measurements.
+
+### P1 — the YaRN penalty transfers to DP8, within 3 %
+
+| | mean top-20 KLD | top-1 agreement |
+|---|---:|---:|
+| one GPU, concurrency 1 (§31) | 1.057e-02 | 93.23 % |
+| **DP8, eight GPUs (this)** | **1.0265e-02** | **93.75 %** |
+
+Ratio **0.971×**, and the DP8 value falls **inside §31's 95 % CI** of [8.42e-03, 1.29e-02]. The per-bucket
+shape reproduces too, including the counter-intuitive part — worst in the **middle** of the length range
+(8k: 1.314e-02 on DP8 against 1.483e-02 on one GPU), not at short lengths.
+
+Rope is per-layer arithmetic, so topology-independence was the *expectation*; the point of measuring was that
+this project does not ship expectations as results. §31 is now a two-machine, two-topology result.
+
+### P2 — concurrency does NOT cost fidelity, and that retires a worry
+
+Same config (1M-YaRN), same probe set, **quiet versus real production load** (a TB2.1 arm at C16 plus
+interactive traffic):
+
+| | mean top-20 KLD | reading |
+|---|---:|---|
+| same-server replicate, concurrency 1 (§31) | 0.0e+00 | bit-identical |
+| cross-boot replicate (resolution floor) | 1.180e-03 | the floor |
+| **quiet vs LOADED on DP8** | **1.278e-03** | **1.08× the floor** |
+| the static-YaRN rope change | 1.071e-02 | 8.4× larger |
+
+**Concurrency's fidelity cost sits on the floor.** Top-1 agreement **98.70 %**, and **59 of 384 positions were
+bit-identical even under load**. This is an *upper bound*, not a point estimate — sitting at the floor means
+the true value could be zero.
+
+**Why this mattered enough to measure.** §29 found real divergence under load (7 of 8 frozen prompts
+reproduced) and I could not then attribute it. The answer is that batch-composition nondeterminism is real but
+**fidelity-neutral at this resolution**, so **no throughput or topology recommendation in this project needs a
+fidelity caveat attached to it.** That is a load-bearing negative result: had it gone the other way, every
+tok/s number here would have carried an unquoted price.
+
+### The decision this justified
+
+**The production endpoint was migrated to 262k native.** The two results settle it: the 1M **window** is
+fidelity-free (§31: 1.248e-03 against a 1.180e-03 floor) while the **rope** costs ~1.03e-02 on the 512–32k
+traffic agents actually send. Serving YaRN by default taxed every real request to buy a window almost nothing
+used. If a request genuinely needs more than 262k, run a **second** endpoint on the same weights and route to
+it explicitly.

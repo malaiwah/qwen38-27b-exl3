@@ -1,0 +1,63 @@
+{
+ "schema": "qwen38-concurrency-fidelity/1",
+ "generated_utc": "2026-08-17T16:24:46Z",
+ "question": "Does serving under real concurrent load cost measurable FIDELITY? docs/46 s29 proved divergence EXISTS under load (7 of 8 frozen prompts reproduced, the 8th did not) and s31 proved the engine is bit-identical at concurrency 1. Nobody had measured the size of the gap in KLD terms. If concurrency costs real fidelity, every throughput number in this project carries a price we have never quoted.",
+ "answer": "NO. Concurrency costs 1.278e-03 mean top-20 KLD, which is 1.08x the cross-boot resolution floor of 1.180e-03 - statistically indistinguishable from simply rebooting the same configuration. It is 8.4x SMALLER than the static-YaRN rope change measured on the same probe set. No throughput or topology recommendation in this project needs a fidelity caveat attached.",
+ "design": {
+  "host": "jl-vm-473501, 8x RTX PRO 6000, DP8",
+  "config_held_constant": "1M static YaRN, fp8 KV, MTP, APC",
+  "reference": "DP8 QUIET - endpoint idle, all 8 GPUs at 0 % before the run",
+  "candidate": "DP8 LOADED - a Terminal-Bench 2.1 arm running at C16 plus interactive omp traffic, i.e. real production concurrency, not a synthetic batch",
+  "one_variable": "concurrency. Same weights, same rope, same topology, same engine, same process family.",
+  "probe_set": {
+   "sha256": "374d3021a0cfc327eb570902c0b22afbba1428232791049fff80caaa8cfd3e21",
+   "n_prompts": 48,
+   "n_positions": 384,
+   "buckets": [
+    512,
+    2048,
+    8192,
+    32768
+   ],
+   "identical_to_s31": true,
+   "forced_continuations_from": "gen-native.json (the same NATIVE-derived continuations)"
+  },
+  "method": "tools/yarn_penalty_analyze.py compare() reused verbatim, so the shared-support rule, the renormalisation and the dropped-mass accounting are byte-for-byte the same as s31 rather than merely similar"
+ },
+ "measured": {
+  "mean_kld": 0.0012782307442817619,
+  "median_kld": 0.0003658293776460452,
+  "p99_kld": 0.012433395406163287,
+  "max_kld": 0.08216384920120981,
+  "top1_agreement": 0.9869791666666666,
+  "positions_exactly_zero": 59,
+  "n_positions": 384,
+  "mean_shared_support": 19.518229166666668,
+  "mean_p_mass_dropped": 0.000985276510118235,
+  "by_bucket_mean_kld": {
+   "512": 0.0008095335638007082,
+   "2048": 0.0009487711714672605,
+   "8192": 0.0021891129798214852,
+   "32768": 0.0011655052620375935
+  }
+ },
+ "yardsticks": {
+  "same_server_replicate_concurrency_1": 0.0,
+  "cross_boot_replicate_floor": 0.00118,
+  "window_only_native_rope_at_1M": 0.001248,
+  "rope_only_the_yarn_penalty": 0.01071,
+  "this_result_over_floor": 1.083,
+  "this_result_over_rope": 0.1193
+ },
+ "reading": "The result sits ON the floor, so the honest statement is an upper bound: concurrency's fidelity cost is no larger than the run-to-run variation of rebooting the server. 59 of 384 positions were bit-identical even under load, and top-1 agreement was 98.70 %. This RETIRES the concern raised in s29 - the 7-of-8 repeatability result under load is real batch-composition nondeterminism, but it is fidelity-neutral at this resolution.",
+ "honest_limits": [
+  "The load was the owner's real traffic, so its composition is not reproducible from a script; a scripted constant-concurrency version would bound this more tightly.",
+  "Measured at 1M-YaRN because that was the production config at the time; the concurrency term is not expected to interact with rope, but that interaction was not tested.",
+  "384 positions over 48 prompts in four length buckets, greedy, top-20 - the same instrument as s31 and with the same resolution, so effects below ~1.2e-03 are invisible to it.",
+  "An upper bound, not a point estimate: sitting at the floor means the true value could be zero."
+ ],
+ "raw": [
+  "receipts/yarn-dp8-raw/raw-YARNDP8-quiet.json",
+  "receipts/yarn-dp8-raw/raw-YARNDP8-loaded.json"
+ ]
+}
