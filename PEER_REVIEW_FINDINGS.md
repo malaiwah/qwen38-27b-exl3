@@ -8,7 +8,9 @@
   Hugging Face page in headless Chromium (screenshots + per-image inline decode) and
   cross-checked each page against the local cards and receipts.
 - **Status column** reflects the initial review; the re-review against `ad00364` (17 commits
-  landed after the initial pass) is complete — results in Section 5.
+  landed after the initial pass) is complete — results in Section 5; the cross-collaboration
+  round (all 30 subagents peer-checking each other's low-confidence items) is complete —
+  results in Section 6.
 
 ## 1. AGENTS.md claim verification: 109 claims — 98 VERIFIED, 11 PARTIAL, 0 VIOLATED
 
@@ -68,11 +70,11 @@ Actionable findings (initial review):
 | # | Finding | Status |
 |---|---|---|
 | C1 | `MODEL_CARD-S16-V-research.md:88-90` "Whole tree: **13,735,527,028 B over 21 files**" is stale — the live tree at review time was 23 files / 13,735,576,299 B (post-publication `flip/` + re-digested README). Payload digests unchanged and verified | OPEN |
-| C2 | "Three archival mirrors" sections (K4:1473, K5K6:1520, context:1645, hydrated:1681) predate the shortlist mirrors — `receipts/shortlist-shard0.json` documents `exl3-a35e75a7`, `exl3-d32ba0bb`, `AWQ-63768c10`, `MTP-NVFP4-6d98dc1f`, which the same cards' landscape tables cite, but the sections do not cross-link them | OPEN |
+| C2 | "Three archival mirrors" sections (K4:1473, K5K6:1520-1535, context:1645-1660, hydrated:1747-1762) predate the shortlist mirrors — `receipts/shortlist-shard0.json` documents `exl3-a35e75a7`, `exl3-d32ba0bb`, `AWQ-63768c10`, `MTP-NVFP4-6d98dc1f` (blocks at :36-150, :250-363, :485-587, :692-801, each problems:[]), which the same cards' landscape tables cite, but the sections do not cross-link them | OPEN (cross-confirmed both directions) |
 | C3 | Hydrated Hub page was live-ahead of the repo: `assets/tb21-8x-topology-light.svg` was published ~13 min before inspection, absent locally | CLOSED — asset sync added the 4 `assets/tb21-8x-*` files; re-review confirmed the Hub README now matches the NEW local card byte-for-byte (sha256 `3d251467…16a2d8`, 142,156 B) with the multimodal-load section and tb21-8x figure published and rendering |
-| C4 | `exl3-archival-d32ba0bb` Hub README is the upstream README verbatim with **no mirror/provenance note** — mirror status visible only via repo name + commit message (unlike the other mirrors) | OPEN |
+| C4 | `exl3-archival-d32ba0bb` Hub README is the upstream README verbatim with **no mirror/provenance note** — mirror status visible only via repo name + commit message | ADJUSTED (cross-collab) — family pattern resolved: full-tree content mirrors (exl3×2, AWQ) keep the upstream README verbatim with provenance in repo name + commit message; the partial mirror (GGUF, 5 files) carries an explicit "Archival mirror" banner + digest table. Intra-family inconsistency; severity downgraded to observation for full mirrors (residual gap: exl3-mirror provenance is commit-message-only) |
 | C5 | HF sidebar auto-chips ("10–15B params") are config-derived and unreliable on the packed EXL3 tree; no card claims a param count | N/A (no action) |
-| C6 | (new, re-review) `MODEL_CARD-K5K6-hydrated.md`'s exact whole-tree figure (21,610,933,884 B) is now stale vs the current Hub tree (21,621,872,867 B over 54 files) — +10,938,983 B from post-receipt figure/README commits; the rounded "21.6 GB" banner and the three-shard payload claim still match | OPEN |
+| C6 | (new, re-review) `MODEL_CARD-K5K6-hydrated.md`'s exact whole-tree figure (21,610,933,884 B) is now stale vs the current Hub tree (21,621,872,867 B over 54 files) — +10,938,983 B from post-receipt figure/README commits; the rounded "21.6 GB" banner and the three-shard payload claim still match | OPEN (cross-adjusted: canonical pin is `receipts/release-evidence-hydrated.json` artifact.disk_bytes :15; no receipt lineage carries a whole-tree file count — "54 files" is live observation; disk_bytes − immutable_payload (16 files) = 17,761 B of docs at release) |
 
 Operational note (docs/44-handoff, post-review): `publish_cards` uploads **README only**, so
 card byte-identity does not imply the figures exist on the Hub — `tools/sync_card_assets.py`
@@ -89,6 +91,9 @@ Touched reviewed files:
   YaRN 1M verdict, the publish_cards README-only rule.
 - New tools: `tools/sync_card_assets.py`, `tools/make_topology_chart.py`, `tools/yarn_*`.
 - New receipts: `receipts/yarn-short-context-raw/`, YaRN penalty and multimodal-load receipts.
+- Full stat (Main, with shell): 61 files = 55 additions + 6 modifications (hydrated card,
+  docs/29, docs/44, docs/46, receipts/apc-card-publication.json, tools/tb21_gate.py) —
+  consistent with every content-based "no change" determination below.
 
 **Untouched:** `AGENTS.md`, `docs/04-exllamav3-toolchain.md`, `tools/finalize_checkpoint.py`,
 `tools/kld_aggregate.py`, `docker/build-image.sh`, `.omp/`, `MODEL_CARD-S16-V-research.md`,
@@ -142,3 +147,111 @@ explicitly retracted earlier shell-execution claims. Main cross-checked the scop
 with `git diff c0d8fb2..HEAD --stat`: among the evidence files cited by the PARTIAL findings,
 only the hydrated card, `assets/tb21-8x-*`, and `docs/44-handoff.md` changed across the 17
 commits, consistent with the content-based "no change" determinations.
+
+## 6. Cross-collaboration round (30/30 reports)
+
+All 30 subagents were given the full roster of their peers; each picked 1-3 of its own
+lowest-confidence items and sent targeted questions to the peers who owned the answering
+evidence (parked peers wake on the message). Unowned files (docs/35, docs/40,
+DATASET_CARD-v5) were declined by DocsMap (slice discipline) and answered directly by Main.
+**No finding was REFUTED.** All 98 VERIFIEDs hold; P1-P9 and C1/C2/C4 remain OPEN; C3's
+CLOSED was strengthened. What the round produced: every PARTIAL cross-confirmed by at least
+two independent agents, several evidence-line corrections, two severity downgrades, and one
+pre-existing bug disclosed by the pulled diff.
+
+**Cross-confirmed PARTIALs**
+- P1/P2 (S2.4, S13.1/S13.2): denominators reconciled both ways (ToolsInventory ↔
+  PyConventions): 94 executable = 61 argparse + 11 sys.argv + 22 no-arg; the 10/94
+  subcommand roster (including new `yarn_probe_run.py:224`) matches on both sides; the
+  5 future-import and 8 pathlib non-users (now incl. `yarn_rope_delta_probe.py`) confirmed
+  unchanged.
+- P3/P4 (S6.4/S12.5/S12.6): DocsMap ↔ FinalizeAudit independently confirm both docs/04 gaps;
+  refinement: the nearest repo statement is PROGRESS.md 2026-08-14 ("exllamav3 1.4.2
+  installed inside the image rootfs (5f3c537), because the image's bundled copy is 0.0.43
+  and has no converter") — AGENTS.md's wording is a synthesis of that + the docs/04 revision
+  pin, not a quote from any doc.
+- P5 (S9.5): two independent full reads (FinalizeAudit, ReceiptsAudit) — bare `write_text`
+  at :270/:312/:326/:341/:373, no `os` import anywhere in the file.
+- P6 (S8.3): severity downgraded — "header declaration + fail-on-first-use" is the accepted
+  bash convention (the only `command -v` in any bash tool is build-image.sh:558's optional
+  syft; ggrun.sh does not even check $PROOT); the explicit pre-checks that exist are
+  phase-scoped artifact gates. PARTIAL stands only on the literal "preflight" hint.
+- P7 (S10.7): confirmed — "packed" has zero matches (case-insensitive) in docs/04; the
+  phrase is AGENTS.md's own.
+- P8 (S11.2): confirmed as over-attribution — the README never references `.omp/` (zero
+  grep matches); the attribution to config.yml exists only in the AGENTS.md sentence.
+- P9 (S16.8): sharpened to the exact enforcement point — `pin_run()` (kld_ladder.sh:289-292)
+  runs before shard compute/loop; any pin drift incl. runtime_image → die; the per-candidate
+  identity pin (:554-564) carries NO image field, and the header comment's "…and runtime
+  are pinned" is imprecise about per-shard pinning.
+
+**Evidence-line corrections (verdicts unchanged)**
+- S7.2: "no version string is pinned anywhere in repo evidence" was over-broad — the
+  serving image's exllamav3 IS pinned at 0.0.43 (brandonmmusic-max fork @704aefd, branch
+  a1-retile-sm120) in receipts/b12x-lever-map.json:15, docs/41:351-352, docs/47:29,
+  receipts/error-driven-allocation.json:2781, and image labels (qualification-5090-apc.json:
+  108-110, aiboss-live-service-snapshot.json:157-159); `receipts/production-image.json`
+  itself remains presence-only. S7.2 stays VERIFIED.
+- ArchAWQ unit arithmetic: 21,041,255,795 B = 19.596 GiB (not 19.608 as first reported);
+  docs/40:126's 19.60 is consistent.
+- ArchNVFP4 citation: the verbatim Invalid-rev-id probe (HTTP 404 + 500) lives in
+  receipts/quant-landscape-scan.json:67; nvfp4-v5-measurement.json:107 is the abbreviated
+  form.
+- Exl3Config corpus: the +5 yarn carriers are exactly the files named; of the 6 modified
+  existing files, the only config carrier is the hydrated card, whose two 6-entry lines
+  (:1147, :1314) are byte-identical after the update (Main, with shell, closed the last
+  airtightness item).
+- S4.1 note: the dry-run deletion (`release_hidden` rm -rf on the resume branch) is
+  defensible — artifact-gated, deliberate shared release point (l.628 "cannot disagree");
+  the usage line "No … deletion" is the outlier (wording nit, not a violation).
+
+**Card-side outcomes**
+- C2: confirmed both directions — ReceiptsAudit verified all four shortlist mirror blocks
+  (line refs above); all four card sections name only the original three.
+- C1: rationale strengthened — `sixteen-flip-kld.json` build.tree (:187-190) pins the
+  publication-time figure (independently re-summed); the :89-90 slack derives from the
+  docs/34 "payload + 24.0 MB" disk rule (:178-179), not the finalize scope split.
+- CardEDA sub-finding: LICENSE is INSIDE the 16-file payload (SHA256SUMS line 1); three
+  files (SHA256SUMS, DOCS-SHA256SUMS, build-receipt.json) escape both checksum lists —
+  card :285 "every other file in the tree" slightly overstates (:286's enumeration is
+  exact). CI notation across receipt/commit/card is rounding of the same interval
+  (sibling-rebuild-fidelity.json:9-10 full precision) — no drift.
+- tb21-8x provenance: all four files sha256 byte-identical Hub ↔ local (39763e62… /
+  174ebc9f… / febfd267… / f27921d2…); README references the SVGs, the PNGs are published
+  but unreferenced.
+- K6-parity pin: 13ab6ca9… is pinned in FOUR receipt places (:178/:180/:208/:245); live
+  raw re-fetch matched twice.
+- Context-card discussion #1 identity: `apc-poison-repro.json` reported_by matches the
+  thread verbatim (five acceptance windows 261/663, 0/450, 335/519, 134/657, 0/201 →
+  39.4/0.0/64.5/20.4/0.0 %); the only in-repo thread artifact is the owner-reply snapshot;
+  "frogerric" = qwen3.8-froggeric-v22 per docs/39 audit. Caveat: the reporter post is not
+  snapshotted; the verbatim flag list's provenance is the receipt field itself.
+- ArchGGUF caveat: triangulation (DATASET_CARD-v5 + docs/35 + 3 receipts) holds, but all
+  local sources descend from the same upstream fetch — independence is at artifact level,
+  not fetch level.
+
+**New observations from the round**
+- `tools/tb21_gate.py` (modified in the pull): the TB2.1 repeatability check hashed `content`
+  only, which is empty on every published run (Qwen3.8 xhigh thinking spends the 64-token
+  budget in reasoning_content) — per the commit comment, the check "compared eight empty
+  strings and report[ed] PASS - vacuously - on every run we have ever published"; the fix
+  hashes content+reasoning. Affects the standing of published TB2.1 repeatability gates;
+  the fix is in the tree.
+- RES=/home/mbelleau/research is unique among the 7 new scripts of the pull (grep /home/ →
+  zero in the others); precedent exists in the historical host-bound wrapper
+  run_decode_parity.sh (/home/mbelleau/qwen38-27b/.venv/bin/python) — the old host-bound
+  family deviating from the portable $HERE convention.
+- The yarn probes' missing machine-checkable gate field is confirmed as a deviation from the
+  six-probe pattern (verdict lives in MEASURED prose in the receipt); the exit-0 /
+  receipt-as-artifact pattern holds.
+- The yarn schema naming deviation is confirmed (name-1 vs qwen38-name/N), versioned.
+
+**Coordination notes**
+- Routing worked as designed: three unowned-file requests (docs/35, docs/40,
+  DATASET_CARD-v5) were declined on slice grounds by DocsMap and answered directly by Main.
+- Two unresponsive peers (ReceiptsAudit vs CardK6Parity; CardHydrated vs
+  SkeletonNegatives/CardK5K6) were both resolved — CardK6Parity self-verified against the
+  receipt directly (stronger than hearsay); SkeletonNegatives fell back to the repo record
+  and was later upgraded to live-peer confirmation.
+- Two scouts (GgrunRootfs, ReqsRuntime) retracted earlier shell-execution claims; both
+  conclusions survived on content-based re-verification.
