@@ -257,3 +257,77 @@ pre-existing bug disclosed by the pulled diff.
   and was later upgraded to live-peer confirmation.
 - Two scouts (GgrunRootfs, ReqsRuntime) retracted earlier shell-execution claims; both
   conclusions survived on content-based re-verification.
+
+## 7. Resolution re-review (base 3e60f03, 2026-08-17)
+
+The other session landed 13 commits after the cross-collaboration round (ad00364 → 9bd2460).
+All 30 original subagents are polled two at a time (15 waves); each owner re-reads the current
+tree and renders a terminal verdict on its own findings. Rule: **RESOLVED** = the specific gap
+is gone in the current tree (file:line or commit evidence required); **STILL-OPEN** = gap
+remains (one-line note); owner judgment only where the binary rule is indeterminate, evidence
+required either way.
+
+**Upstream commits in scope (ad00364..9bd2460):** 679e6d1 (hydrated card TP4xDP2 arm +
+TP8-impossibility proof + tb21-8x topology assets), a721c8f (publication defect: six card
+figures never uploaded to the Hub; sync_card_assets.py added), 147d562 (tb21 vacuous-gate
+SELF-AUDIT + fix + vacuity guard), 1dfa503 (hydrated card: determinism claim withdrawn,
+repaired check 7/8 under concurrent load), 39138b5 (docs/46 s30: 1M-context effects),
+381980e (docs/46 s31: static-YaRN penalty 1.057e-02, four-arm decomposition), dbee9e1
+(docs/46 s29: batch-composition attribution closed), f8cfa4e (receipts/yarn-short-context-raw
+raw evidence), 879e1af (docs/46 s29: refutation stated plainly), b6d092a (docs/46 s32 +
+8-GPU multimodal-load receipt), c5133c2 (docs/29: two fidelity measurements registered),
+120edb2 (hydrated card: 8-GPU multimodal load at 1M), 9bd2460 (apc-card-publication
+write-through).
+
+**Per-agent outcomes (filled per wave):**
+
+| Agent | Findings re-checked | Verdict |
+|---|---|---|
+| SkeletonNegatives | — | pending |
+| ToolsInventory | — | pending |
+| FidelityContract | — | pending |
+| KldWorkflow | — | pending |
+| GgrunRootfs | — | pending |
+| DocsMap | — | pending |
+| ReqsRuntime | — | pending |
+| DockerStages | — | pending |
+| ReceiptsAudit | — | pending |
+| Exl3Config | — | pending |
+| OmpConfigs | — | pending |
+| FinalizeAudit | — | pending |
+| PyConventions | — | pending |
+| ServingConstraints | — | pending |
+| ProtocolIdentity | — | pending |
+| ProbesExits | — | pending |
+| CardK4 | — | pending |
+| CardK5K6 | — | pending |
+| CardHydrated | — | pending |
+| CardContext | — | pending |
+| CardS16V | — | pending |
+| CardEDA | — | pending |
+| CardK6Parity | — | pending |
+| ArchGGUF | — | pending |
+| ArchNVFP4 | — | pending |
+| ArchMTPNVFP4 | — | pending |
+| ArchNVFP4RTX5090 | — | pending |
+| ArchEXL3A | — | pending |
+| ArchEXL3B | — | pending |
+| ArchAWQ | — | pending |
+
+**Per-finding terminal statuses:**
+
+| # | Finding (see sections 1/3) | Terminal status | Evidence |
+|---|---|---|---|
+| P1 | S2.4 subcommand prevalence (10/94) | PENDING | |
+| P2 | S13.1/S13.2 convention non-users | PENDING | |
+| P3 | S6.4 docs/04 lacks finalize step | PENDING | |
+| P4 | S12.5/S12.6 docs/04 lacks external-env statement | PENDING | |
+| P5 | S9.5 non-atomic finalize_checkpoint.py writes | PENDING | |
+| P6 | S8.3 bash preflight gate | PENDING | |
+| P7 | S10.7 "packed" phrasing | PENDING | |
+| P8 | S11.2 .omp input declaration over-attribution | PENDING | |
+| P9 | S16.8 per-run image-digest pin precision | PENDING | |
+| C1 | S16-V stale whole-tree sentence (:88-90) | PENDING | |
+| C2 | three-mirrors sections predate shortlist mirrors (no cross-links) | PENDING | |
+| C4 | exl3-d32ba0bb mirror lacks provenance note | PENDING | |
+| C6 | hydrated stale whole-tree figure (21,610,933,884 B) | PENDING | |
