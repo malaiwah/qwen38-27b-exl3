@@ -1487,6 +1487,44 @@ inefficiency remains (launch floors, non-GEMM work, CPU gaps), about half of whi
 back. Method, per-kernel numbers and the arithmetic:
 [`docs/47-kernel-gap-analysis.md`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/docs/47-kernel-gap-analysis.md).
 
+### Under real multimodal load on eight cards: saturated, balanced, and the prefix cache pays
+
+The numbers above are ladder measurements. This one is **production traffic** — text, images and video driven
+through an agent harness at a DP8 endpoint serving a **1,000,000-token** window, with a Terminal-Bench arm
+running underneath at 16 concurrent. Mixed traffic, which is the realistic case.
+
+| | measured |
+|---|---|
+| mean GPU utilisation, 8 cards | **92.9 %** (median **97-100 %** on every card) |
+| cross-GPU spread | **14.7 points** |
+| idle samples | **5.6 %** |
+| power / SM clock | 382-575 W against a 600 W limit / 2,347-2,407 MHz |
+| uncorrected ECC | **0** |
+| requests waiting, all 8 engines | **0** — no queueing, no capacity stalls while saturated |
+| prefill | **26,183 tok/s** aggregate (3,273/GPU) |
+| decode | 878 tok/s aggregate (110/GPU) |
+| input : output | **29.8 : 1** |
+| MTP acceptance | **61.7 %** (58.9 % on text-only in the same period) |
+
+**Two things here matter more than the utilisation figure.**
+
+**Multimodal is a prefill workload, and that changes how you price it.** Prefill ran **2.72×** the
+text-agent rate while decode rose only 1.41×, because images and video expand into very large token counts.
+At **29.8:1** input:output — three times the 9.94:1 measured on our text-only Terminal-Bench campaign — the
+cost of vision traffic is almost entirely **input-side**, so any price sheet that leads with output tokens
+will misprice it badly.
+
+**The prefix cache measurably pays for agent fleets.** The block-level prefix-cache hit rate rose from
+**26.9 % to 48.0 %, +21 points**, when subagent traffic arrived — because subagents share system prompts and
+tool schemas, so their prefixes collide. This is the first *measured* evidence for a benefit this family's
+docs had previously only asserted. **Unit caveat, because it is easy to over-claim:** vLLM's
+`prefix_cache_queries` counts **block lookups, not tokens**, so 48.0 % is a block-level rate and is **not**
+the fraction of prompt tokens skipped.
+
+MTP acceptance held at **61.7 %** under vision load, so the shipped depth schedule `[[1,4,3],[5,64,1]]` needs
+no change for multimodal serving. Full method, telemetry at 5 s cadence and the limits:
+[`multimodal-load-8x.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/multimodal-load-8x.json).
+
 ### KV-cache dtype: fp8 is the family's measured default
 
 The recipe on this card leaves `--kv-cache-dtype` unset; the family's qualified long-context
