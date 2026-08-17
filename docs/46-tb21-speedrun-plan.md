@@ -1317,11 +1317,15 @@ Re-run on the live 1M endpoint it reports **substantive 8/8** (reasoning 261-310
 identical, with prompt 1 diverging** (299 vs 261 reasoning chars). The fixed check found real nondeterminism
 in its first execution.
 
-**And now the honest limit on that result.** It was measured *under concurrent production load*, so the
-likely cause is **continuous-batching nondeterminism** - batch composition changes reduction order, which
-changes logits - a known vLLM property and **not** a quantisation defect. That is not yet separated from
-engine nondeterminism at concurrency 1, so **no attribution is claimed**. Resume when the host is quiet:
-`tb21_gate.py --skip-needle`, expecting 8/8 if the divergence is purely batching.
+**And the limit on that result has since been closed, from an unexpected direction.** The divergence was
+measured *under concurrent production load*, so the candidate causes were continuous-batching
+nondeterminism (batch composition changes reduction order, which changes logits) versus engine
+nondeterminism that would be present even at concurrency 1. §31's controls settle it: on a quiet card at
+`--max-num-seqs 1`, a same-server replicate over **384 positions** is **exactly 0.0e+00 — bit-identical,
+top-1 agreement 100 %**. **Engine nondeterminism at concurrency 1 does not exist on this card**, so the
+7-of-8 seen under load is **batch composition**, which is a known vLLM property and **not** a
+quantisation defect. That attribution is now made, on evidence, and the quiet-host re-run it was waiting
+for is no longer needed.
 
 **The transferable rule: a hash-equality check must assert that it hashed something.** An empty-vs-empty
 comparison is the most confident-looking false pass available, and it survived every review we did because
