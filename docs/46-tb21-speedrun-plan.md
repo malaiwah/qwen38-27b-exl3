@@ -1206,3 +1206,22 @@ The TP4xDP2 arm was first gated with `--tp-smoke`, which **silently downgrades t
 gates, both of which used the full needle. We caught it on the wall-clock smell, re-gated at the full 262k
 (PASS, 62 s, connector-reuse PASS too) and recorded the rule in the receipt: **never compare a `--tp-smoke`
 gate against a full-needle gate.**
+
+### Which tensor forbids TP8, measured
+
+The traceback does not name the module, so we read the safetensors headers on the host rather than guess.
+`config.vocab_size = 248320`; `lm_head.trellis` has shape **[320, 15520, 96]** and `15520 x 16 = 248320`;
+`lm_head.svh` is [248320] and `embed_tokens.weight` is [248320, 5120]. Those are the only three tensors in
+the checkpoint carrying that dimension. **The blocking tensor is `lm_head`, and the offending dimension is
+simply the vocab size.**
+
+That lands on something docs/47 already measured from the other direction: `lm_head` **streams 4x per decode
+step** and is the largest single term in the 20.5 GB/step decode numerator. **The tensor that dominates
+decode bandwidth is the same tensor that forbids TP8.** It is also exactly the tensor the b12x gate patch
+reroutes (`N=248320`), so all three threads of this investigation converge on one weight.
+
+**An arithmetic remedy exists, is not filed, and is not for this build.** Padding the head from 248,320 to
+**248,832** rows (+512, **+0.21 %**) gives `248832 = 128 x 1944` with `1944 = 8 x 243`, making every TP in
+{1,2,4,8} 128-aligned. This is **verified arithmetically only - not measured** - and it changes published
+bytes, so it is a suggestion for a *future* build and never a retrofit of a shipped quant. We have not filed
+it upstream; new upstream filings need owner approval.

@@ -331,7 +331,35 @@
    },
    "conclusion": "EXL3 trellis tensors shard only on 128-element boundaries. The projection's output dim is 248320 = 128 x 1940 and 1940 = 4 x 485 with 485 odd, so the tile count divides by 4 but not by 8. MAX TENSOR-PARALLEL WIDTH FOR THIS MODEL IS EXACTLY 4, on any GPU count."
   },
-  "consequence": "An 8-GPU host cannot be driven as one tensor-parallel replica. Every 8x configuration must use data parallelism for at least a factor of 2, which is why the ladder's four planned arms are really three."
+  "consequence": "An 8-GPU host cannot be driven as one tensor-parallel replica. Every 8x configuration must use data parallelism for at least a factor of 2, which is why the ladder's four planned arms are really three.",
+  "blocking_tensor": {
+   "module": "lm_head",
+   "identified_by": "measurement, not inference",
+   "evidence": {
+    "config_vocab_size": 248320,
+    "lm_head_trellis_shape": [
+     320,
+     15520,
+     96
+    ],
+    "arithmetic": "15520 x 16 = 248320 = the trellis packing factor times the packed width",
+    "lm_head_svh_shape": [
+     248320
+    ],
+    "embed_tokens_shape": [
+     248320,
+     5120
+    ],
+    "probe": "safetensors headers read directly on the host; only these three tensors carry 248320/15520/31040"
+   },
+   "why_it_matters": "The output dim that caps tensor parallelism IS THE VOCAB SIZE, and lm_head is also the single largest contributor to the decode byte budget - docs/47 found it streams 4x per step inside the 20.5 GB/step numerator. The same tensor that dominates decode bandwidth is the one that forbids TP8."
+  },
+  "remedy_not_yet_filed": {
+   "change": "pad vocab/lm_head output dim from 248320 to 248832 (+512 rows, +0.21 %)",
+   "arithmetic": "248832 = 128 x 1944 and 1944 = 8 x 243, so every TP in {1,2,4,8} yields a 128-aligned slice",
+   "verified": "arithmetically verified only; NOT measured, and NOT filed upstream (new filings need owner approval)",
+   "caveat": "padding the vocab changes published bytes, so it is a suggestion for a future build, never a retrofit"
+  }
  },
  "findings": [
   {
