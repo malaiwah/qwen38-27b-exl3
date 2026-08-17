@@ -236,7 +236,9 @@ pre-existing bug disclosed by the pulled diff.
   budget in reasoning_content) — per the commit comment, the check "compared eight empty
   strings and report[ed] PASS - vacuously - on every run we have ever published"; the fix
   hashes content+reasoning. Affects the standing of published TB2.1 repeatability gates;
-  the fix is in the tree.
+  the fix is in the tree. Upstream subsequently documented this (147d562 "SELF-AUDIT: our
+  frozen_prompt_repeatability gate was VACUOUS" + 1dfa503), withdrew the determinism claim,
+  and the first substantive run of the fixed check is 7/8 under concurrent load.
 - RES=/home/mbelleau/research is unique among the 7 new scripts of the pull (grep /home/ →
   zero in the others); precedent exists in the historical host-bound wrapper
   run_decode_parity.sh (/home/mbelleau/qwen38-27b/.venv/bin/python) — the old host-bound
