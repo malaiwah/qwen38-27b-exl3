@@ -70,7 +70,7 @@ and then spend a BF16 run being disproved.
 |---|---|---:|---:|---:|---:|---:|---:|
 | 1 | K5K6-hydrated | 89 | **31** | **34.83 %** (31/87 = 35.63 % excl. voids) | 2 | 0.5707 | 16 |
 | 2 (healing) | K5K6-hydrated | 58 | **13** | 22.41 % — cumulative best-of-2 **44/89 = 49.44 %** | 3 | — | 16 |
-| 3 (attribution) | BF16 control | 45 twice-failed | *pending* | — | 2 | — | 16 |
+| 3 (attribution) | BF16 control | 45 twice-failed | **7** | — (attribution, not a score) | 2 | — | 16 |
 
 Wall clock for pass 1 was **~3.3 h** (18:19Z → ~21:39Z), the tail bounded by the single 12,000-second
 task (`build-pov-ray`), which was the only one outstanding from 88/89. Throughput and acceptance are
@@ -79,6 +79,41 @@ server's counters carry earlier calibration traffic: over pass 1, +3,330,706 gen
 +3,683,358 draft tokens against +2,102,238 accepted, i.e. **0.5707 acceptance**. Server-side prompt
 tokens (+26.9 M) exceed the agent's own reported input tokens (12.8 M) because the server counts every
 scheduled prefill including speculative and retried work; both are reported rather than reconciled.
+
+### The attribution, measured — and what it refuses to claim
+
+BF16 ran the 45 twice-failed tasks under otherwise identical conditions and resolved **7** of them.
+Filed into the three buckets
+([`terminal-bench-2.1-attribution.json`](../receipts/terminal-bench-2.1-attribution.json)):
+
+| bucket | count | what it means |
+|---|---:|---|
+| **`quantization-suspect`** | **7** | BF16 resolved it; the quantisation did not. Implicated, with the BF16 transcript published. |
+| **`capability`** | **1** | BF16 ran to a verdict **without timing out** and still failed. The quantisation is exonerated. |
+| **`inconclusive-timeout`** | **35** | **Neither arm ever finished.** Not evidence either way. |
+| `harness-void` | 2 | The qemu pair; no arm could start a terminal. Not attributable. |
+| *of which provisional* | 3 | `owed-rerun`: their pass-2 attempt was itself a pre-model void. |
+
+**So only 8 of 45 persistent failures are attributable at all**, and the honest headline is the middle
+column, not the first: **on 78 % of them this benchmark, at stock timeouts on this hardware, cannot
+separate quantisation from capability, because BF16 runs out of clock too.** That is the same finding as
+caveat 1 arriving from the other direction — and it is why `inconclusive-timeout` exists as a bucket
+rather than being folded into `capability`, which is where a two-way split would have put all 35 and
+thereby "exonerated" the quantisation on tasks no arm ever answered.
+
+**One correction worth stating, because it changed the answer.** The first run of the classifier
+returned `capability: 36, inconclusive-timeout: 0`, which looked like a clean exoneration. It was a bug
+in our tool, not a result: Terminal-Bench **runs the verifier even after the agent times out**, so a
+timed-out trial still carries `reward: 0.0`, and a rule that tested "is there a reward" counted 35
+timeouts as graded verdicts. The corrected rule requires a verdict reached **without** an
+`AgentTimeoutError`. The 7 suspects were unchanged by the fix; the 35 moved from a bucket that flattered
+this build to one that says nothing about it.
+
+The seven implicated tasks are `break-filter-js-from-html`, `configure-git-webserver`,
+`feal-linear-cryptanalysis`, `headless-terminal`, `mteb-retrieve`, `overfull-hbox` and
+`sqlite-db-truncate`; the single `capability` task is `query-optimize`. **A `quantization-suspect`
+verdict is not a claim about which tensor** — it says BF16 finished a task this build did not, under the
+same agent, sampling, eager mode, endpoint and concurrency.
 
 ### Four caveats that belong beside the score, not beneath it
 
