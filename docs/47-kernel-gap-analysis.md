@@ -41,3 +41,105 @@ The `/opt/vllm` tree inside the image is **not** byte-identical to `$SP/vllm` (`
 differs) — `$SP` is what Python imports, so every citation below is `$SP` or `$EXT`.
 
 ---
+## F2. MEASURED: the trellis GEMMs are already at the memory roofline — but the roofline is 1.46–1.52 TB/s, not 1.792
+
+**Claim.** The single biggest "gap" in the 55–65 %-of-spec figure is the spec itself. On this card no
+kernel of any kind reaches 1.792 TB/s; the measured pure-streaming ceiling is **1462–1525 GB/s
+(81.6–85.1 % of spec)**, and the big trellis GEMMs run at **92–100 % of that ceiling** at decode row
+counts. There is no large per-byte decode-ALU tax to recover on the bulk matrices.
+
+**Evidence** (`receipts/kernel-gap-gemm-bandwidth.json`; graph-replayed CUDA-event timing, 20
+calls/graph, real hydrated weights, GPU idle-verified):
+
+| baseline (no quant, pure stream) | GB/s | % spec |
+|---|--:|--:|
+| device-to-device `copy_` (8 GiB) | 1462.6 | 81.6 |
+| read-only `sum` (8 GiB fp16) | 1524.9 | 85.1 |
+| cuBLAS BF16 GEMV m=1, 5120×17408 | 1502.0 | 83.8 |
+| cuBLAS BF16 GEMV m=1, 5120×248320 | 1456.5 | 81.3 |
+
+| served matrix (served path bolded) | MiB | m=1 µs | GB/s | % spec | % of sum-ceiling |
+|---|--:|--:|--:|--:|--:|
+| mlp.down_proj K6 17408×5120 (**b12x** 44.06 / exl3 44.26) | 63.8 | 44.1 | **1517** | 84.7 | 99.5 |
+| mlp.gate_proj, up_proj K5 5120×17408 (**exl3**) | 53.1 | 38.6 | **1442** | 80.5 | 94.6 |
+| attn.q_proj K6 5120×12288 (**b12x** 32.13 / exl3 30.90) | 45.0 | 32.1 | **1468** | 81.9 | 96.3 |
+| lm_head K6 5120×248320 (**b12x** 705.1 / exl3 647.8) | 909.4 | 705.1 | **1352** | 75.5 | 88.7 |
+| gdn.in_proj_qkv K6 5120×10240 (**b12x**) | 37.5 | 28.6 | 1377 | 76.9 | 90.3 |
+| gdn.in_proj_z K6 5120×6144 (**b12x**) | 22.5 | 20.8 | 1136 | 63.4 | 74.5 |
+| gdn.out_proj / attn.o_proj K6 6144×5120 (**b12x**) | 22.5 | 21.7 | 1088 | 60.7 | 71.4 |
+| attn.k_proj / v_proj K6 5120×1024 (**b12x** 27.8 / exl3 17.5) | 3.8 | 27.8 | **142** | 7.9 | 9.3 |
+| mtp.fc K4 10240×5120 (**exl3**) | 25.0 | 28.2 | 929 | 51.8 | 60.9 |
+
+Three structure facts from the kernel source explain the shape of this table:
+
+1. **One launch per matrix, weights read exactly once.** `exl3_gemm` is a single cooperative kernel
+   (`cudaLaunchCooperativeKernel`, `$EXT/quant/exl3_gemm.cu:267-275`) that fuses the input hadamard
+   (`exl3_gemm_kernel.cuh:14-31`), the trellis MMA, and the output transform. The k×n tile grid is
+   sliced across ≤num_SMs persistent CTAs (`exl3_gemm_inner.cuh:93-101`), each trellis byte is
+   `cp.async`-streamed to shared memory once (`:254-264`). Nothing here re-reads weights.
+2. **The M-tile is 16 rows for every kernel shape** (`exl3_gemm_kernel.cuh:37-50` processes A in
+   `MIN(size_m_,16)` slabs; tile table `exl3_kernel_map.cuh:55-57` has no M dimension), so m=1, 2, 3, 4
+   decode rows cost the *same* time (measured: within 1 %). MTP's extra verify rows are free in GEMM
+   time, exactly as the depth-schedule arithmetic assumed.
+3. **Small matrices are launch/tail-bound, not bandwidth-bound.** Every launch on this 188-SM-class
+   part costs a ~17–21 µs floor at these K×N (out_proj-class 22.5 MiB → 60 % of spec; the 3.8 MiB
+   k/v projections → 8–12 %). The cost is the cooperative-launch + grid.sync + epilogue tail, not
+   DRAM.
+
+**Gap share.** Restating the decode roofline against the *achievable* 1500 GB/s ceiling: the measured
+129.5–135.8 tok/s at 2.1–2.7 tok/step implies ~985–1165 GB/s effective, i.e. **66–78 % of achievable**,
+not 55–65 % of anything reachable. 16–19 points of the alleged 35–45-point gap are vendor-spec fiction
+and are **structural — not recoverable**.
+
+**Lever.** None for the big matrices — they are done. The recoverable levers are in F3.
+
+---
+
+## F3. The hydrated checkpoint flipped most of the model to K6 — b12x now serves 59.7 % of trellis bytes, and it is the WRONG kernel for two of those shapes
+
+**Claim.** docs/41 §1.1's "b12x runs 66 of 409 matrices (16.1 %)" was true for the ctx ship checkpoint
+(K5 attention). The **hydrated** K5/K6 tree serialized attention and GDN projections at K6, so the
+b12x gate (`exl3.py:1202-1218`) now passes **261 of 409 matrices = 10.05 of 16.82 GiB (59.7 %)**
+(header census in `receipts/kernel-gap-gemm-bandwidth.json` run context; per-family table below). And
+`_apply_one` (exl3.py:2965-2976) prefers b12x *unconditionally* when the gate passes — which is a
+measured pessimization on two shape classes:
+
+| shape | b12x µs | exl3_gemm µs | delta/call | calls/step | cost/step |
+|---|--:|--:|--:|--:|--:|
+| lm_head 5120×248320 | 705.1 | 647.8 | **+57.3 µs** | 1 (+1 per accepted draft pass if logits per depth) | ≥57 µs |
+| attn k/v_proj 5120×1024 | 27.8 | 17.5 | **+10.3 µs** | 32 body + 2×3 draft | ~390 µs |
+
+Both numbers are graph-replayed on the served weights. b12x wins nothing at m≤4 on any measured shape
+(down_proj ties at ±0.5 %, q_proj loses 4 %, in_proj_qkv loses 1–2 %).
+
+**Second, independent structural cost in the same table: the fork splits QKV into three launches.**
+`Exl3LinearMethod._shard_ids_for_layer` returns `["q","k","v"]` for `QKVParallelLinear`
+(exl3.py:2929-2930) and `_apply_one` runs one GEMM per shard — three cooperative launches of
+32.1 + 27.8 + 28.1 = 88 µs where the GDN path proves the alternative exists: `in_proj_qkvz` is served
+as ONE tuple-shard GEMM (exl3.py:2931-2932). A merged 5120×14336 attention QKV at the measured big-
+matrix rate (~1450 GB/s) would take ~36 µs — **−52 µs × 16 layers = −0.83 ms/step**, and the draft
+layer pays the same 3× per step (−0.16 ms). The K/V matrices are so small (3.8 MiB) that as separate
+launches they will never exceed ~10 % of spec BW; merged, their bytes ride a big launch for free.
+
+**Sum-of-parts check (GEMM-only step, served paths, m≤4):**
+64×(38.63+38.52+44.06) + 48×(28.55+20.76+21.75) + 16×(32.13+27.77+28.06+21.68) + 705(head)
+= 7.75 + 3.41 + 1.75 + 0.71 = **13.63 ms**; plus 3 draft passes ×(259 µs layer + fc) ≈ 0.84 ms.
+Body weight bytes / body GEMM time = 16.6 GiB / 13.6 ms ≈ **1305 GB/s = 73 % spec = 87 % of
+achievable** — the GEMM-side dilution below the F2 per-matrix numbers is exactly the small-matrix
+launch floors quantified above. The remainder of the measured 15.4–20.8 ms step (attention, GDN state
+update, norms, sampler, MTP orchestration, graph-replay gaps) is quantified in F5 from a profiled
+run.
+
+**Levers.**
+1. *Flag-level patch:* route lm_head and the ≤4 MiB k/v projections to `exl3_gemm` instead of b12x —
+   a one-clause change in `_b12x_trellis_k6_supported` (exl3.py:1202-1218, e.g. require
+   `trellis.shape[1]*16 >= 5120` and `!= 248320`) worth **~0.45 ms/step ≈ +2.5–3 % decode** for free.
+2. *Fork patch (moderate):* tuple-shard QKV like `in_proj_qkvz` — worth **~1.0 ms/step ≈ +5–6 %
+   decode**. Requires the checkpoint's q/k/v to share one trellis serialization or an online repack;
+   the loader already has the machinery (`_expand_tuple_output_shards`, exl3.py:2873-2919, works in
+   the *splitting* direction today).
+3. *Structural:* the ~17–21 µs cooperative-launch floor on 22.5 MiB-class matrices (out_proj,
+   in_proj_z, o_proj: 128 launches/step counting drafts) — fusing those into neighbours needs new
+   kernels, not flags.
+
+---

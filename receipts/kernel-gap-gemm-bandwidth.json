@@ -1,0 +1,549 @@
+{
+ "what": "exl3_gemm / b12x trellis_linear achieved GB/s at decode m on the exact hydrated K5/K6 shapes, vs pure-HBM streaming baselines, local RTX PRO 6000 Blackwell SE",
+ "command": [
+  "/var/tmp/work/ggrun.sh python /work/kg_bench_gemm.py",
+  "/var/tmp/work/ggrun.sh python /work/kg_bench_gemm2.py"
+ ],
+ "method": "CUDA events; graph numbers capture 20 back-to-back calls in one CUDA graph and replay 100x (matches served graph-decode launch regime); eager numbers 200 iters. autotune warmed before timing. b12x rows use the caller-owned-storage path vllm uses (exl3.py:1263-1305). GPU verified idle (0 compute procs) before runs.",
+ "spec_bw_GBps": 1792,
+ "gpu_idle_verified": true,
+ "run1": {
+  "device": "NVIDIA RTX PRO 6000 Blackwell Server Edition",
+  "matrices": {
+   "mlp.gate_proj K5 5120x17408": {
+    "K": 5120,
+    "N": 17408,
+    "bits": 5,
+    "trellis_MiB": 53.1,
+    "suh_svh_KiB": 44.0,
+    "m": {
+     "1": {
+      "exl3_eager_us": 41.0,
+      "exl3_graph_us": 38.63,
+      "exl3_graph_GBps": 1442.2,
+      "pct_spec_1792": 80.5
+     },
+     "2": {
+      "exl3_eager_us": 40.94,
+      "exl3_graph_us": 38.74,
+      "exl3_graph_GBps": 1438.1,
+      "pct_spec_1792": 80.2
+     },
+     "3": {
+      "exl3_eager_us": 40.96,
+      "exl3_graph_us": 38.27,
+      "exl3_graph_GBps": 1455.6,
+      "pct_spec_1792": 81.2
+     },
+     "4": {
+      "exl3_eager_us": 39.74,
+      "exl3_graph_us": 38.15,
+      "exl3_graph_GBps": 1460.2,
+      "pct_spec_1792": 81.5
+     },
+     "8": {
+      "exl3_eager_us": 40.69,
+      "exl3_graph_us": 38.88,
+      "exl3_graph_GBps": 1432.8,
+      "pct_spec_1792": 80.0
+     },
+     "16": {
+      "exl3_eager_us": 41.0,
+      "exl3_graph_us": 40.39,
+      "exl3_graph_GBps": 1379.3,
+      "pct_spec_1792": 77.0
+     },
+     "32": {
+      "exl3_eager_us": 77.96,
+      "exl3_graph_us": 76.88,
+      "exl3_graph_GBps": 724.6,
+      "pct_spec_1792": 40.4
+     },
+     "64": {
+      "exl3_eager_us": 151.7,
+      "exl3_graph_us": 150.54,
+      "exl3_graph_GBps": 370.0,
+      "pct_spec_1792": 20.6
+     },
+     "127": {
+      "exl3_eager_us": 300.72,
+      "exl3_graph_us": 298.37,
+      "exl3_graph_GBps": 186.7,
+      "pct_spec_1792": 10.4
+     }
+    }
+   },
+   "gdn.in_proj_qkv K5 5120x10240": {
+    "K": 5120,
+    "N": 10240,
+    "bits": 6,
+    "trellis_MiB": 37.5,
+    "suh_svh_KiB": 30.0,
+    "m": {
+     "1": {
+      "exl3_eager_us": 30.75,
+      "exl3_graph_us": 28.28,
+      "exl3_graph_GBps": 1390.2,
+      "pct_spec_1792": 77.6,
+      "b12x_eager_us": 30.82,
+      "b12x_graph_us": 28.55,
+      "b12x_graph_GBps": 1377.2,
+      "b12x_pct_spec": 76.9
+     },
+     "2": {
+      "exl3_eager_us": 30.16,
+      "exl3_graph_us": 27.62,
+      "exl3_graph_GBps": 1423.5,
+      "pct_spec_1792": 79.4,
+      "b12x_eager_us": 30.78,
+      "b12x_graph_us": 28.48,
+      "b12x_graph_GBps": 1380.4,
+      "b12x_pct_spec": 77.0
+     },
+     "3": {
+      "exl3_eager_us": 28.68,
+      "exl3_graph_us": 27.88,
+      "exl3_graph_GBps": 1410.3,
+      "pct_spec_1792": 78.7,
+      "b12x_eager_us": 30.78,
+      "b12x_graph_us": 28.2,
+      "b12x_graph_GBps": 1394.5,
+      "b12x_pct_spec": 77.8
+     },
+     "4": {
+      "exl3_eager_us": 28.7,
+      "exl3_graph_us": 28.02,
+      "exl3_graph_GBps": 1403.4,
+      "pct_spec_1792": 78.3,
+      "b12x_eager_us": 28.77,
+      "b12x_graph_us": 28.16,
+      "b12x_graph_GBps": 1396.5,
+      "b12x_pct_spec": 77.9
+     },
+     "8": {
+      "exl3_eager_us": 28.81,
+      "exl3_graph_us": 28.0,
+      "exl3_graph_GBps": 1404.1,
+      "pct_spec_1792": 78.4
+     },
+     "16": {
+      "exl3_eager_us": 31.18,
+      "exl3_graph_us": 29.19,
+      "exl3_graph_GBps": 1347.2,
+      "pct_spec_1792": 75.2
+     },
+     "32": {
+      "exl3_eager_us": 55.34,
+      "exl3_graph_us": 54.39,
+      "exl3_graph_GBps": 723.0,
+      "pct_spec_1792": 40.3
+     },
+     "64": {
+      "exl3_eager_us": 106.63,
+      "exl3_graph_us": 105.78,
+      "exl3_graph_GBps": 371.7,
+      "pct_spec_1792": 20.7
+     },
+     "127": {
+      "exl3_eager_us": 210.79,
+      "exl3_graph_us": 208.65,
+      "exl3_graph_GBps": 188.5,
+      "pct_spec_1792": 10.5
+     }
+    }
+   },
+   "gdn.out_proj K5 6144x5120": {
+    "K": 6144,
+    "N": 5120,
+    "bits": 6,
+    "trellis_MiB": 22.5,
+    "suh_svh_KiB": 22.0,
+    "m": {
+     "1": {
+      "exl3_eager_us": 23.14,
+      "exl3_graph_us": 21.82,
+      "exl3_graph_GBps": 1081.3,
+      "pct_spec_1792": 60.3,
+      "b12x_eager_us": 22.62,
+      "b12x_graph_us": 21.75,
+      "b12x_graph_GBps": 1084.5,
+      "b12x_pct_spec": 60.5
+     },
+     "2": {
+      "exl3_eager_us": 22.62,
+      "exl3_graph_us": 21.82,
+      "exl3_graph_GBps": 1081.2,
+      "pct_spec_1792": 60.3,
+      "b12x_eager_us": 22.61,
+      "b12x_graph_us": 21.37,
+      "b12x_graph_GBps": 1104.1,
+      "b12x_pct_spec": 61.6
+     },
+     "3": {
+      "exl3_eager_us": 23.45,
+      "exl3_graph_us": 21.94,
+      "exl3_graph_GBps": 1075.5,
+      "pct_spec_1792": 60.0,
+      "b12x_eager_us": 22.86,
+      "b12x_graph_us": 21.58,
+      "b12x_graph_GBps": 1093.1,
+      "b12x_pct_spec": 61.0
+     },
+     "4": {
+      "exl3_eager_us": 23.82,
+      "exl3_graph_us": 22.01,
+      "exl3_graph_GBps": 1072.0,
+      "pct_spec_1792": 59.8,
+      "b12x_eager_us": 22.59,
+      "b12x_graph_us": 21.65,
+      "b12x_graph_GBps": 1089.8,
+      "b12x_pct_spec": 60.8
+     },
+     "8": {
+      "exl3_eager_us": 24.57,
+      "exl3_graph_us": 22.25,
+      "exl3_graph_GBps": 1060.2,
+      "pct_spec_1792": 59.2
+     },
+     "16": {
+      "exl3_eager_us": 24.59,
+      "exl3_graph_us": 23.35,
+      "exl3_graph_GBps": 1010.6,
+      "pct_spec_1792": 56.4
+     },
+     "32": {
+      "exl3_eager_us": 45.06,
+      "exl3_graph_us": 42.95,
+      "exl3_graph_GBps": 549.3,
+      "pct_spec_1792": 30.7
+     },
+     "64": {
+      "exl3_eager_us": 85.39,
+      "exl3_graph_us": 82.6,
+      "exl3_graph_GBps": 285.6,
+      "pct_spec_1792": 15.9
+     },
+     "127": {
+      "exl3_eager_us": 163.25,
+      "exl3_graph_us": 162.38,
+      "exl3_graph_GBps": 145.3,
+      "pct_spec_1792": 8.1
+     }
+    }
+   },
+   "mlp.down_proj K6 17408x5120": {
+    "K": 17408,
+    "N": 5120,
+    "bits": 6,
+    "trellis_MiB": 63.8,
+    "suh_svh_KiB": 44.0,
+    "m": {
+     "1": {
+      "exl3_eager_us": 47.34,
+      "exl3_graph_us": 44.26,
+      "exl3_graph_GBps": 1510.5,
+      "pct_spec_1792": 84.3,
+      "b12x_eager_us": 45.17,
+      "b12x_graph_us": 44.06,
+      "b12x_graph_GBps": 1517.2,
+      "b12x_pct_spec": 84.7
+     },
+     "2": {
+      "exl3_eager_us": 45.21,
+      "exl3_graph_us": 44.29,
+      "exl3_graph_GBps": 1509.3,
+      "pct_spec_1792": 84.2,
+      "b12x_eager_us": 45.18,
+      "b12x_graph_us": 44.11,
+      "b12x_graph_GBps": 1515.6,
+      "b12x_pct_spec": 84.6
+     },
+     "3": {
+      "exl3_eager_us": 45.39,
+      "exl3_graph_us": 44.29,
+      "exl3_graph_GBps": 1509.4,
+      "pct_spec_1792": 84.2,
+      "b12x_eager_us": 45.16,
+      "b12x_graph_us": 44.2,
+      "b12x_graph_GBps": 1512.3,
+      "b12x_pct_spec": 84.4
+     },
+     "4": {
+      "exl3_eager_us": 45.11,
+      "exl3_graph_us": 44.28,
+      "exl3_graph_GBps": 1509.6,
+      "pct_spec_1792": 84.2,
+      "b12x_eager_us": 45.17,
+      "b12x_graph_us": 44.27,
+      "b12x_graph_GBps": 1510.1,
+      "b12x_pct_spec": 84.3
+     },
+     "8": {
+      "exl3_eager_us": 46.11,
+      "exl3_graph_us": 44.54,
+      "exl3_graph_GBps": 1500.9,
+      "pct_spec_1792": 83.8
+     },
+     "16": {
+      "exl3_eager_us": 47.1,
+      "exl3_graph_us": 45.19,
+      "exl3_graph_GBps": 1479.3,
+      "pct_spec_1792": 82.5
+     },
+     "32": {
+      "exl3_eager_us": 90.15,
+      "exl3_graph_us": 88.56,
+      "exl3_graph_GBps": 754.8,
+      "pct_spec_1792": 42.1
+     },
+     "64": {
+      "exl3_eager_us": 175.91,
+      "exl3_graph_us": 173.83,
+      "exl3_graph_GBps": 384.6,
+      "pct_spec_1792": 21.5
+     },
+     "127": {
+      "exl3_eager_us": 346.7,
+      "exl3_graph_us": 345.39,
+      "exl3_graph_GBps": 193.5,
+      "pct_spec_1792": 10.8
+     }
+    }
+   },
+   "lm_head K6 5120x248320": {
+    "K": 5120,
+    "N": 248320,
+    "bits": 6,
+    "trellis_MiB": 909.4,
+    "suh_svh_KiB": 495.0,
+    "m": {
+     "1": {
+      "exl3_eager_us": 650.83,
+      "exl3_graph_us": 647.83,
+      "exl3_graph_GBps": 1471.9,
+      "pct_spec_1792": 82.1,
+      "b12x_eager_us": 707.17,
+      "b12x_graph_us": 705.05,
+      "b12x_graph_GBps": 1352.5,
+      "b12x_pct_spec": 75.5
+     },
+     "2": {
+      "exl3_eager_us": 652.02,
+      "exl3_graph_us": 649.73,
+      "exl3_graph_GBps": 1467.6,
+      "pct_spec_1792": 81.9,
+      "b12x_eager_us": 709.4,
+      "b12x_graph_us": 707.3,
+      "b12x_graph_GBps": 1348.1,
+      "b12x_pct_spec": 75.2
+     },
+     "3": {
+      "exl3_eager_us": 652.75,
+      "exl3_graph_us": 650.59,
+      "exl3_graph_GBps": 1465.7,
+      "pct_spec_1792": 81.8,
+      "b12x_eager_us": 710.25,
+      "b12x_graph_us": 708.45,
+      "b12x_graph_GBps": 1346.0,
+      "b12x_pct_spec": 75.1
+     },
+     "4": {
+      "exl3_eager_us": 654.06,
+      "exl3_graph_us": 652.06,
+      "exl3_graph_GBps": 1462.4,
+      "pct_spec_1792": 81.6,
+      "b12x_eager_us": 711.66,
+      "b12x_graph_us": 710.07,
+      "b12x_graph_GBps": 1342.9,
+      "b12x_pct_spec": 74.9
+     },
+     "8": {
+      "exl3_eager_us": 659.74,
+      "exl3_graph_us": 657.77,
+      "exl3_graph_GBps": 1449.7,
+      "pct_spec_1792": 80.9
+     },
+     "16": {
+      "exl3_eager_us": 668.34,
+      "exl3_graph_us": 666.6,
+      "exl3_graph_GBps": 1430.5,
+      "pct_spec_1792": 79.8
+     },
+     "32": {
+      "exl3_eager_us": 1334.88,
+      "exl3_graph_us": 1333.19,
+      "exl3_graph_GBps": 715.2,
+      "pct_spec_1792": 39.9
+     },
+     "64": {
+      "exl3_eager_us": 2668.49,
+      "exl3_graph_us": 2665.99,
+      "exl3_graph_GBps": 357.7,
+      "pct_spec_1792": 20.0
+     },
+     "127": {
+      "exl3_eager_us": 5330.33,
+      "exl3_graph_us": 5328.49,
+      "exl3_graph_GBps": 179.0,
+      "pct_spec_1792": 10.0
+     }
+    }
+   }
+  },
+  "baseline_d2d_copy_GBps": 1462.6,
+  "baseline_readonly_sum_GBps": 1524.9,
+  "baseline_cublas_bf16_m1_5120x17408": {
+   "us": 118.68,
+   "GBps": 1502.0
+  },
+  "baseline_cublas_bf16_m1_17408x5120": {
+   "us": 121.08,
+   "GBps": 1472.2
+  },
+  "baseline_cublas_bf16_m1_5120x248320": {
+   "us": 1745.87,
+   "GBps": 1456.5
+  }
+ },
+ "run2": {
+  "mlp.up_proj K5 5120x17408": {
+   "K": 5120,
+   "N": 17408,
+   "bits": 5,
+   "trellis_MiB": 53.1,
+   "b12x_gate": false,
+   "m": {
+    "1": {
+     "exl3_graph_us": 38.52,
+     "exl3_GBps": 1446.2
+    },
+    "4": {
+     "exl3_graph_us": 38.75,
+     "exl3_GBps": 1437.6
+    }
+   }
+  },
+  "gdn.in_proj_z 5120x6144": {
+   "K": 5120,
+   "N": 6144,
+   "bits": 6,
+   "trellis_MiB": 22.5,
+   "b12x_gate": true,
+   "m": {
+    "1": {
+     "exl3_graph_us": 20.88,
+     "exl3_GBps": 1129.8,
+     "b12x_graph_us": 20.76,
+     "b12x_GBps": 1136.3
+    },
+    "4": {
+     "exl3_graph_us": 20.93,
+     "exl3_GBps": 1127.1,
+     "b12x_graph_us": 20.95,
+     "b12x_GBps": 1126.1
+    }
+   }
+  },
+  "attn.q_proj 5120x12288": {
+   "K": 5120,
+   "N": 12288,
+   "bits": 6,
+   "trellis_MiB": 45.0,
+   "b12x_gate": true,
+   "m": {
+    "1": {
+     "exl3_graph_us": 30.9,
+     "exl3_GBps": 1527.3,
+     "b12x_graph_us": 32.13,
+     "b12x_GBps": 1468.4
+    },
+    "4": {
+     "exl3_graph_us": 31.13,
+     "exl3_GBps": 1515.7,
+     "b12x_graph_us": 32.31,
+     "b12x_GBps": 1460.4
+    }
+   }
+  },
+  "attn.k_proj 5120x1024": {
+   "K": 5120,
+   "N": 1024,
+   "bits": 6,
+   "trellis_MiB": 3.8,
+   "b12x_gate": true,
+   "m": {
+    "1": {
+     "exl3_graph_us": 17.46,
+     "exl3_GBps": 225.2,
+     "b12x_graph_us": 27.77,
+     "b12x_GBps": 141.6
+    },
+    "4": {
+     "exl3_graph_us": 17.69,
+     "exl3_GBps": 222.3,
+     "b12x_graph_us": 28.2,
+     "b12x_GBps": 139.4
+    }
+   }
+  },
+  "attn.v_proj 5120x1024": {
+   "K": 5120,
+   "N": 1024,
+   "bits": 6,
+   "trellis_MiB": 3.8,
+   "b12x_gate": true,
+   "m": {
+    "1": {
+     "exl3_graph_us": 17.53,
+     "exl3_GBps": 224.3,
+     "b12x_graph_us": 28.06,
+     "b12x_GBps": 140.1
+    },
+    "4": {
+     "exl3_graph_us": 17.71,
+     "exl3_GBps": 222.0,
+     "b12x_graph_us": 28.07,
+     "b12x_GBps": 140.1
+    }
+   }
+  },
+  "attn.o_proj 6144x5120": {
+   "K": 6144,
+   "N": 5120,
+   "bits": 6,
+   "trellis_MiB": 22.5,
+   "b12x_gate": true,
+   "m": {
+    "1": {
+     "exl3_graph_us": 21.73,
+     "exl3_GBps": 1085.7,
+     "b12x_graph_us": 21.68,
+     "b12x_GBps": 1088.1
+    },
+    "4": {
+     "exl3_graph_us": 21.89,
+     "exl3_GBps": 1078.0,
+     "b12x_graph_us": 21.94,
+     "b12x_GBps": 1075.5
+    }
+   }
+  },
+  "mtp.fc K4 10240x5120": {
+   "K": 10240,
+   "N": 5120,
+   "bits": 4,
+   "trellis_MiB": 25.0,
+   "b12x_gate": false,
+   "m": {
+    "1": {
+     "exl3_graph_us": 28.23,
+     "exl3_GBps": 928.6
+    },
+    "4": {
+     "exl3_graph_us": 28.41,
+     "exl3_GBps": 922.6
+    }
+   }
+  }
+ }
+}
