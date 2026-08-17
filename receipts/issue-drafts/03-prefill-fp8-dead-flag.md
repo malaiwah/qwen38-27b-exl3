@@ -11,6 +11,9 @@ silently runs the fp16 path — an operator tuning this flag measures noise. The
 "+31 % prefill" required a rebuilt extension.
 
 ## Proposed fix
+Patch ready: `receipts/kernel-gap-fp8-deadflag-warn.patch` (diff against the served r34 bytes —
+the FP8-prefill code exists only in the private r34 lineage, not on any public branch of
+local-inference-lab/vllm, so the maintainers must rebase it onto their build tree).
 One-time `logger.warning` when the flag is set but the symbol is missing (in
 `_prefill_fp8_enabled` or at the hasattr probe). Optionally: evaluate the shipped-but-unused
 `reconstruct_fp8dg_nt` (DeepGEMM NT fp8, reconstruct.cu:144-326) as the binding-complete

@@ -1,0 +1,20 @@
+# P1.3 / issue draft 03 (docs/47 F5.6): warn once when VLLM_EXL3_PREFILL_FP8=1 is
+# inert because the loaded exllamav3 extension lacks reconstruct_fp8_slice.
+# Diff against the served r34 bytes ($SP/vllm/model_executor/layers/quantization/exl3.py,
+# 5536 lines, md5 11dd7de622f0697e7d558d4752e58cab). The FP8-prefill code exists only in
+# the private r34 lineage, not on any public branch - rebase accordingly.
+--- a/vllm/model_executor/layers/quantization/exl3.py
++++ b/vllm/model_executor/layers/quantization/exl3.py
+@@ -874,8 +874,15 @@
+     it cost +0.0139 mean KLD, more than the whole quantization budget of this checkpoint.
+     """
+     ext = _load_exl3_ext()
+     if not hasattr(ext, "reconstruct_fp8_slice"):
++        logger.warning_once(
++            "VLLM_EXL3_PREFILL_FP8=1 but the loaded exllamav3 extension does not "
++            "export reconstruct_fp8_slice; prefill continues on the fp16 path. "
++            "Rebuild the extension with the FP8 reconstruct kernel (or unset the "
++            "flag) - as shipped, this flag changes nothing."
++        )
+         return False
+     bits = trellis.shape[2] // 16
