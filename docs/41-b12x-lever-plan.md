@@ -78,6 +78,13 @@ Full classified inventory is in the receipt (`knob_inventory`). The count that m
 
 One path, and it is narrower than it looks.
 
+> **CORRECTION 2026-08-17 (docs/47 F3): the 16.1 % figure below is a property of the `qwen38-ctx`
+> checkpoint only — its attention/GDN projections are K5.** The **hydrated** K5/K6 tree
+> (`Qwen3.8-27B-EXL3-K5K6-hydrated`) serialized those families at K6, so on the checkpoint we now
+> ship, this same gate passes **261 of 409 matrices = 59.7 % of trellis bytes**. "b12x is a minor
+> path" does not transfer to hydrated. Per-checkpoint census and measured consequences (b12x loses
+> to exl3_gemm on lm_head and k/v at decode m): docs/47 §F3.
+
 `Exl3LinearMethod._apply_one` (`$SP/vllm/model_executor/layers/quantization/exl3.py:2951-2990`) asks
 `_b12x_trellis_k6_supported` (`:1202-1218`) and routes to `vllm::b12x_trellis_linear_out` or
 `vllm::exl3_gemm`. The gate is:

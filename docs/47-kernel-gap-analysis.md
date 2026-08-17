@@ -97,10 +97,13 @@ and are **structural — not recoverable**.
 
 ## F3. The hydrated checkpoint flipped most of the model to K6 — b12x now serves 59.7 % of trellis bytes, and it is the WRONG kernel for two of those shapes
 
-**Claim.** docs/41 §1.1's "b12x runs 66 of 409 matrices (16.1 %)" was true for the ctx ship checkpoint
-(K5 attention). The **hydrated** K5/K6 tree serialized attention and GDN projections at K6, so the
-b12x gate (`exl3.py:1202-1218`) now passes **261 of 409 matrices = 10.05 of 16.82 GiB (59.7 %)**
-(header census in `receipts/kernel-gap-gemm-bandwidth.json` run context; per-family table below). And
+**Claim — and a formal correction to docs/41.** docs/41 §1.1's "b12x runs 66 of 409 matrices
+(16.1 %)" is a property of the **`qwen38-ctx` checkpoint** (K5 attention/GDN) and was silently
+inherited as if it described the model family. On the **`Qwen3.8-27B-EXL3-K5K6-hydrated`**
+checkpoint — the one now shipped — attention and GDN projections are K6, so the same b12x gate
+(`exl3.py:1202-1218`) passes **261 of 409 matrices = 10.05 of 16.82 GiB (59.7 %)**. A per-checkpoint
+fact was generalised to the family; docs/41 §1.1 now carries a correction banner pointing here.
+(Header census in `receipts/kernel-gap-gemm-bandwidth.json` run context; per-family table below.) And
 `_apply_one` (exl3.py:2965-2976) prefers b12x *unconditionally* when the gate passes — which is a
 measured pessimization on two shape classes:
 
