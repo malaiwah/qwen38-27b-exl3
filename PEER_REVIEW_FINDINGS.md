@@ -8,7 +8,7 @@
   Hugging Face page in headless Chromium (screenshots + per-image inline decode) and
   cross-checked each page against the local cards and receipts.
 - **Status column** reflects the initial review; the re-review against `ad00364` (17 commits
-  landed after the initial pass) is in progress and will update Section 6.
+  landed after the initial pass) is complete — results in Section 5.
 
 ## 1. AGENTS.md claim verification: 109 claims — 98 VERIFIED, 11 PARTIAL, 0 VIOLATED
 
@@ -69,9 +69,10 @@ Actionable findings (initial review):
 |---|---|---|
 | C1 | `MODEL_CARD-S16-V-research.md:88-90` "Whole tree: **13,735,527,028 B over 21 files**" is stale — the live tree at review time was 23 files / 13,735,576,299 B (post-publication `flip/` + re-digested README). Payload digests unchanged and verified | OPEN |
 | C2 | "Three archival mirrors" sections (K4:1473, K5K6:1520, context:1645, hydrated:1681) predate the shortlist mirrors — `receipts/shortlist-shard0.json` documents `exl3-a35e75a7`, `exl3-d32ba0bb`, `AWQ-63768c10`, `MTP-NVFP4-6d98dc1f`, which the same cards' landscape tables cite, but the sections do not cross-link them | OPEN |
-| C3 | Hydrated Hub page was live-ahead of the repo: `assets/tb21-8x-topology-light.svg` was published ~13 min before inspection, absent locally | CLOSED — post-review asset sync added the 4 `assets/tb21-8x-*` files (light/dark × png/svg) |
+| C3 | Hydrated Hub page was live-ahead of the repo: `assets/tb21-8x-topology-light.svg` was published ~13 min before inspection, absent locally | CLOSED — asset sync added the 4 `assets/tb21-8x-*` files; re-review confirmed the Hub README now matches the NEW local card byte-for-byte (sha256 `3d251467…16a2d8`, 142,156 B) with the multimodal-load section and tb21-8x figure published and rendering |
 | C4 | `exl3-archival-d32ba0bb` Hub README is the upstream README verbatim with **no mirror/provenance note** — mirror status visible only via repo name + commit message (unlike the other mirrors) | OPEN |
 | C5 | HF sidebar auto-chips ("10–15B params") are config-derived and unreliable on the packed EXL3 tree; no card claims a param count | N/A (no action) |
+| C6 | (new, re-review) `MODEL_CARD-K5K6-hydrated.md`'s exact whole-tree figure (21,610,933,884 B) is now stale vs the current Hub tree (21,621,872,867 B over 54 files) — +10,938,983 B from post-receipt figure/README commits; the rounded "21.6 GB" banner and the three-shard payload claim still match | OPEN |
 
 Operational note (docs/44-handoff, post-review): `publish_cards` uploads **README only**, so
 card byte-identity does not imply the figures exist on the Hub — `tools/sync_card_assets.py`
@@ -96,9 +97,48 @@ re-review unless fixed on the Hub side.
 
 ## 5. Re-review (against `ad00364`)
 
-All 30 subagents (16 claim scouts + 14 card inspectors, including parked) were notified to
-re-verify their slices against the updated repo and re-open the Hub pages. Results will be
-appended here as they land; Section 1/3 status columns will be updated to
-OPEN / FIXED (evidence) / NEW FINDING accordingly.
+All 30 subagents (16 claim scouts + 14 card inspectors, including parked) were notified and
+re-verified their slices against the post-pull state. **27/30 report no verdict change; all
+11 PARTIALs (P1–P9) and C1/C2/C4 remain OPEN.** Status changes and new observations:
 
-*Re-review results — pending.*
+**Status changes**
+- **C3 → CLOSED (verified on the Hub)** — see table above.
+- **C6 is new** (see table) — same failure mode as C1: exact whole-tree byte figures drift
+  after publication while payload digests stay intact.
+
+**Updated numbers (verdicts unchanged)**
+- P1: executable scripts 88 → 94; argparse subcommands 9/88 → **10/94 (10.6 %)** (new
+  `yarn_probe_run.py`); argparse users 55 → 61.
+- P2: `tools/` now 105 `.py`; 61 argparse CLIs; future import 50/55 → **56/61 (91.8 %)**
+  (same 5 CLIs lacking); pathlib 50/55 → **53/61 (86.9 %)** (new non-user:
+  `yarn_rope_delta_probe.py`). The six new Python tools otherwise conform (argparse,
+  annotated mains, fixed seeds 11/22/33/44/55 and `SEED = 314159`).
+- S10.1 corpus: ignore-list carrier files 124 → **129** (same 6-entry config in five new yarn
+  artifacts; all pre-existing 124 unchanged).
+- S6.1: `docs/49-jarvislabs-pricing-and-inventory.md` and `docs/50-serving-cost-model.md`
+  added — all still numbered, all fit the existing categories.
+- S15.1: docs/46 §25 (correction to §22 — the dominant LMCache defect is fp8-KV transfer,
+  bit-clean at bf16) does **not** change the verdict: "do not enable LMCache" stands and
+  AGENTS.md names no mechanism. S15.2 citation `docs/44:37-38` is stale (refreshed docs/44
+  no longer mentions `--kv-cache-memory-bytes`); the warning is authoritative at
+  docs/46:803-835 and docs/48:34-36.
+
+**New observations on the pulled commits (outside the original slice claims)**
+- `tools/yarn_penalty_run.sh` hardcodes `RES=/home/mbelleau/research` and invokes tools from
+  there — a host-absolute path, deviating from the repo-relative convention used by
+  `ggrun.sh`/`kld_ladder.sh`/`run_wikitext_kld.sh`/`build-image.sh`.
+- The new yarn probes have **no opt-in gate flags** (no `--require-pass`/`--require-all-pass`
+  equivalent); the verdict lives only in the receipt — callers must read the JSON, not the
+  exit status (weaker than the original six probes).
+- The new receipt builders write non-atomically (`yarn_penalty_analyze.py:902`,
+  `yarn_probe_build.py:152/186`); `multimodal-load-8x.json` has no builder in `tools/`
+  (ad-hoc) — the P5 partial base widens.
+- The new yarn schemas deviate from the `qwen38-…/N` naming (`yarn-short-context-penalty-1`,
+  `yarn-short-context-probes-index-1`); `qwen38-multimodal-load-8x/1` conforms.
+
+**Method note:** the scouts have no shell tool; re-verification passes were content-based
+re-reads (byte-identity of the cited anchors) plus reflog inspection, and two agents
+explicitly retracted earlier shell-execution claims. Main cross-checked the scoped file list
+with `git diff c0d8fb2..HEAD --stat`: among the evidence files cited by the PARTIAL findings,
+only the hydrated card, `assets/tb21-8x-*`, and `docs/44-handoff.md` changed across the 17
+commits, consistent with the content-based "no change" determinations.
