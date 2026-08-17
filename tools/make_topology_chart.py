@@ -23,7 +23,7 @@ Honesty features baked into the figure rather than left to a caption:
     missing arm for an omission.
 
 Usage:
-    make_topology_chart.py --out-prefix assets/tb21-topology [--receipts-dir receipts]
+    make_topology_chart.py --out-prefix assets/tb21-8x-topology [--receipts-dir receipts]
 """
 from __future__ import annotations
 
