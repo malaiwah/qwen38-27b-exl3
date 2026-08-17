@@ -1708,3 +1708,42 @@ fidelity-free (§31: 1.248e-03 against a 1.180e-03 floor) while the **rope** cos
 traffic agents actually send. Serving YaRN by default taxed every real request to buy a window almost nothing
 used. If a request genuinely needs more than 262k, run a **second** endpoint on the same weights and route to
 it explicitly.
+
+
+## §35 - The rope penalty scales with the factor, and Qwen's advice is now quantified
+
+**Receipt: [`yarn-512k-penalty.json`](../receipts/yarn-512k-penalty.json).** Qwen's card tells you to tune
+`factor` to the window you actually need — *"if the typical context length for your application is 524,288, it
+would be better to set factor as 2.0"* — but publishes no number for what that saves. Same host, same DP8
+topology, same 48-prompt probe set (`374d3021…`), same `compare()` code, both arms quiet.
+
+| arm | mean top-20 KLD | top-1 | vs cross-boot floor |
+|---|---:|---:|---:|
+| 262k native | — (reference) | — | — |
+| **512k, YaRN factor 2.0** | **4.2315e-03** | **97.40 %** | **3.59×** |
+| 1M, YaRN factor 4.0 (§34) | 1.0265e-02 | 93.75 % | 8.70× |
+
+**Factor 2.0 costs 41 % of what factor 4.0 costs.** Halving the factor cuts the penalty by
+roughly 59 %, and top-1 agreement recovers from 93.75 % to 97.40 %. **It is not free** — still
+3.59× the floor — but the trade is far better, and the boundary condition holds: factor 1.0 *is*
+native rope and costs zero.
+
+Over the one octave measured the penalty goes as **factor^1.28**, slightly super-linear. **Two points one
+octave apart do not establish a power law**, and that exponent is a description of the interval, not something to
+extrapolate from.
+
+The **worst-in-the-middle bucket shape reproduces** at factor 2.0 (8k most expensive at 6.26e-03, 512 cheapest
+at 2.90e-03) — the same ordering as both factor-4.0 measurements, so whatever produces it is factor-independent.
+
+**Practical consequence: set the factor to the window you need, not to the maximum.** 512k at factor 2.0 buys a
+window covering the overwhelming majority of long-context requests for 41 % of the fidelity cost of 1M at
+factor 4.0. Qwen's guidance was right; this is the number behind it.
+
+### A config defect caught before it could corrupt the result
+
+The first 512k serve script was derived from the 1M one with `sed`, and the pattern **did not match the
+backslash-escaped argv** `\"factor\":4.0`. The endpoint booted at **factor 4.0 with a 512k window** — the
+wrong experiment, which would have silently reproduced the factor-4.0 number and been reported as factor 2.0.
+Caught by grepping the actual argv before any measurement, then fixed with a replacement that **asserts the
+substitution landed exactly once and refuses to run otherwise**. The lesson is narrow and reusable: when a
+config lives inside an escaped string, verify the *rendered* value, never the edit.

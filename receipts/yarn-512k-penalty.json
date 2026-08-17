@@ -1,0 +1,56 @@
+{
+ "schema": "qwen38-yarn-512k-factor2-penalty/1",
+ "generated_utc": "2026-08-17T17:59:37Z",
+ "question": "Does the static-YaRN fidelity penalty scale DOWN with the rope factor? Qwen's card advises tuning `factor` to the window actually needed - 'if the typical context length for your application is 524,288, it would be better to set factor as 2.0' - but publishes no number for what that saves. We measured it.",
+ "answer": "YES, and following Qwen's advice saves most of the cost. Factor 2.0 at a 524,288 window measures 4.2315e-03 mean top-20 KLD against native-262k, versus 1.0265e-02 for factor 4.0 at 1M on the SAME topology and the SAME probe set - a ratio of 0.412, i.e. factor 2.0 costs about 41 % of factor 4.0. Top-1 agreement improves from 93.75 % to 97.40 %. It is NOT free: still 3.59x the cross-boot floor.",
+ "design": {
+  "host": "jl-vm-473501, 8x RTX PRO 6000, DP8, ForceP2P on",
+  "both_arms": "QUIET (endpoint idle)",
+  "reference": "262k native rope (production default)",
+  "candidate": "524,288 window, static YaRN factor 2.0",
+  "override_delta_vs_shipped": [
+   "rope_type default -> yarn",
+   "+ factor 2.0",
+   "+ original_max_position_embeddings 262144"
+  ],
+  "probe_set_sha256": "374d3021a0cfc327eb570902c0b22afbba1428232791049fff80caaa8cfd3e21",
+  "identical_probe_set_to": "docs/46 s31 (1 GPU) and s34 (DP8 factor 4.0)",
+  "n_prompts": 48,
+  "n_positions": 384,
+  "method": "tools/yarn_penalty_analyze.py compare() reused verbatim",
+  "config_defect_caught_pre_measurement": "the first serve script was produced by sed from the 1M variant and the backslash-escaped argv \\\"factor\\\":4.0 did NOT match, so the endpoint booted at factor 4.0 with a 512k window. Caught by grepping the argv before any measurement, fixed with an asserting python replacement that refuses to proceed unless the substitution lands exactly once, and the container was destroyed and rebuilt. Had this gone unnoticed the arm would have silently measured factor 4.0 again."
+ },
+ "measured": {
+  "mean_kld": 0.004231482484100578,
+  "median_kld": 0.0018073857593310949,
+  "p99_kld": 0.03221255925744672,
+  "top1_agreement": 0.9739583333333334,
+  "by_bucket_mean_kld": {
+   "512": 0.002904486500136252,
+   "2048": 0.0031187451435509216,
+   "8192": 0.006262067195171709,
+   "32768": 0.00464063109754343
+  },
+  "n_positions": 384
+ },
+ "comparison": {
+  "factor_4_0_same_topology_s34": 0.010265,
+  "factor_4_0_top1": 0.9375,
+  "ratio_f2_over_f4": 0.4122,
+  "over_cross_boot_floor": 3.586,
+  "implied_exponent": 1.278,
+  "exponent_reading": "penalty ~ factor^1.28 over the one octave measured (2.0 -> 4.0). Slightly super-linear in the factor, and consistent with the boundary condition that factor 1.0 is native rope and therefore costs zero. TWO POINTS ONE OCTAPE APART DO NOT ESTABLISH A POWER LAW - this exponent is a description of the interval measured, not a law to extrapolate from."
+ },
+ "bucket_shape": {
+  "preserved": true,
+  "note": "the counter-intuitive worst-in-the-middle shape reproduces at factor 2.0 as well: 8192 is the most expensive bucket (6.26e-03) and 512 the cheapest (2.90e-03), the same ordering as both factor-4.0 measurements. Whatever mechanism produces it is factor-independent."
+ },
+ "practical_consequence": "If you need a window past 262k, set the factor to the window you actually need rather than to the maximum. Serving 512k at factor 2.0 costs 41 % of the fidelity that serving 1M at factor 4.0 costs, and buys a window that covers the overwhelming majority of long-context requests. Qwen's guidance was right and is now quantified.",
+ "honest_limits": [
+  "Two factors, one octave apart, on one host - enough to establish the DIRECTION and the ratio, not a law.",
+  "384 positions over 48 prompts in four length buckets, greedy, top-20; the instrument's floor is ~1.2e-03, so factor 2.0 at 3.59x the floor is comfortably resolved but a factor much below 2.0 would not be.",
+  "Measures the difference against native-262k, not absolute fidelity against BF16.",
+  "The 512k window itself was not separately isolated the way s31 isolated the 1M window; by analogy with s31 (window free, rope costly) the effect is attributed to rope, but that decomposition was not repeated here."
+ ],
+ "raw": "receipts/yarn-dp8-raw/raw-YARN512K-quiet.json"
+}
