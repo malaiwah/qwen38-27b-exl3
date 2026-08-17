@@ -86,10 +86,17 @@ Three structure facts from the kernel source explain the shape of this table:
    k/v projections → 8–12 %). The cost is the cooperative-launch + grid.sync + epilogue tail, not
    DRAM.
 
-**Gap share.** Restating the decode roofline against the *achievable* 1500 GB/s ceiling: the measured
-129.5–135.8 tok/s at 2.1–2.7 tok/step implies ~985–1165 GB/s effective, i.e. **66–78 % of achievable**,
-not 55–65 % of anything reachable. 16–19 points of the alleged 35–45-point gap are vendor-spec fiction
-and are **structural — not recoverable**.
+**Gap share** *(reconciled 2026-08-17 — an earlier revision of this paragraph re-expressed the
+brief's own 55–65 %-of-spec arithmetic (985–1165 GB/s) instead of recomputing; and F6/F9/F10
+originally quoted the favorable endpoint "~85 %" unlabelled. The honest computation, wall-clock
+denominator, corrected 20.5 GB/step numerator:* effective weight-streaming bandwidth =
+20.5 GB ÷ (accepted/rate). Across the published operating points: (135.8 tok/s, 2.7 acc) →
+1033 GB/s = **69 %** of the 1494 GB/s achievable midpoint; (129.5, 2.1) → 1267 GB/s = **85 %**;
+midpoint pairing (135.8, 2.4) → 1162 GB/s = **78 %**. So decode runs at **69–85 % of achievable
+depending on operating point (~78 % typical)** — note the inversion: the *lower*-acceptance point
+implies the *higher* bandwidth share, because per-step traffic is fixed while tokens/step vary.
+16–19 points of the alleged 35–45-point gap are vendor-spec fiction and are **structural — not
+recoverable**.
 
 **Lever.** None for the big matrices — they are done. The recoverable levers are in F3.
 
@@ -273,8 +280,9 @@ carries **no** wider-M or fused path the fork lacks (all four `exl3_gemm` shapes
 per-step weight traffic is **20.5 GB, not the ~17.4 GB the standing 55–65 % figure divided by** —
 because the 953.5 MB lm_head runs once for the target *and once per MTP depth* (4×/step = 3.81 GB,
 18.6 % of all weight bytes), and the 1.22 GB draft pass runs 3×. With the correct numerator the
-measured decode is **~85 % of the achievable (F2) bandwidth ceiling**; the remaining ~15 % decomposes
-below with an explicit residual.
+measured decode is **69–85 % of the achievable (F2) ceiling depending on operating point, ~78 % at
+the midpoint pairing (135.8 tok/s, 2.4 accepted/step); wall-clock denominator** — see the reconciled
+F2 gap-share paragraph. The remaining 15–31 points decompose below with an explicit residual.
 
 **Source anatomy** (full walk: `'/home/mbelleau/.omp/agent/sessions/-qwen38-27b/2026-08-14T14-52-00-820Z_01a000c2-2db4-7000-ba65-0c964868558d/KernelGap/KernelGap.DecodeWalk.md'`):
 - Head: `LogitsProcessor._apply_head` computes all 248,320 columns on the default stream, strictly
@@ -398,9 +406,12 @@ improvable but small.)
 **The blunt restatement first.** Every published "decode = 55–65 % of roofline" figure was computed
 from a numerator that was too small (17.4 GB/step assumed; 20.5 GB/step actually streamed — F6) *and*
 a denominator that was too large (1.792 TB/s spec; 1.46–1.52 TB/s achievable — F2). With both fixed,
-**single-stream decode runs at ~85 % of the achievable ceiling. The gap was mostly arithmetic.**
-There is no large hidden decode inefficiency to chase; the recoverable items are the specific,
-bounded ones in F3/F6/F7 (~15 % total, half of it already measured as recovered in F7).
+**single-stream decode runs at 69–85 % of the achievable ceiling (78 % at the midpoint pairing;
+wall-clock denominator). The *majority* of the alleged 35–45-point gap was arithmetic** — 16–19
+points spec fiction plus ~9 points of numerator undercount — **but a real 15–31-point inefficiency
+remains**, and it is the specific, bounded set in F3/F6/F7 (launch floors ~6 pts, non-GEMM GPU
+~4 pts, CPU gaps 3–8 pts), of which roughly half is already measured as recovered by the F7 gate
+patch on this card.
 
 **The depth-schedule mechanism (cross-ref docs/46 §17).** The shipping schedule
 `[[1,4,3],[5,64,1]]` — depth 3 at/below the C4 knee, depth 1 above — was derived empirically
@@ -468,8 +479,9 @@ cost on this fork; gains are single-stream unless marked.
 ### The two corrected headline numbers, restated once
 
 - **Decode:** 20.5 GB/step (not 17.4) at the measured 1.46–1.52 TB/s ceiling (not 1.792) →
-  **~85 % of achievable**. Recoverable stack on top: items 1–4 ≈ +13–25 % single-stream, of which
-  +15.4 % is already measured end-to-end locally.
+  **69–85 % of achievable depending on operating point, ~78 % at the midpoint pairing** (wall-clock
+  denominator; arithmetic in the reconciled F2 gap-share paragraph). Recoverable stack on top:
+  items 1–4 ≈ +13–25 % single-stream, of which +15.4 % is already measured end-to-end locally.
 - **Prefill:** linears run at cuBLAS-reference speed and bound PP at ≈5.9k tok/s; the 3.3–3.7k
   measurement means ~40 % of chunk time is stack plumbing + hybrid kernels, attributed (with an
   explicit residual) in F5/F8. Items 7–9 ≈ +20–30 % PP without touching a kernel or the fidelity
@@ -679,9 +691,11 @@ graph LR
 ```
 
 - **Decode stop condition:** stop after the phase in which measured C1 decode reaches **≥90 % of the
-  achievable ceiling** (i.e. ≥ ~1350 GB/s effective on the true 20.5 GB/step numerator, ≈ 118+ tok/s
-  rental-equivalent at current acceptance). F10's structural list says the last ~10 % costs new
-  kernels — not worth it on this fork.
+  achievable ceiling** = ≥ ~1345 GB/s on the 20.5 GB/step numerator, wall-clock. In tok/s that is
+  acceptance-dependent: ≈ 157 tok/s at 2.4 accepted/step, ≈ 176 at 2.7 (20.5 GB ÷ 1345 GB/s =
+  15.3 ms/step). From the reconciled ~78 % typical operating point, the F7+P2.1 stack (bare-metal
+  bracket pending) is expected to land in the 85–90 % band; F10's structural list says the last
+  ~10 % costs new kernels — not worth it on this fork.
 - **Prefill stop condition:** stop when the linears' measured ~5.9k tok/s bound is within 25 %
   (≈4.7k end-to-end), or when the remaining delta is attributed to the GDN/Triton structural item.
 - **Standing rule from F2/F9:** no future work item may quote the 1.792 TB/s spec as headroom;
