@@ -1128,3 +1128,23 @@ fork's equivalent guard (wheel == fork fix/lmcache-mp-retrieve-recovery-20260729
 patches/gg-vllm-hybrid-divergent-hit-gate.patch (sha 5f9ad10b…, applies+compiles; routed to Main,
 vLLM-side). GPU ladder re-run remains the gate for any LMCache default-config decision. No GPU used.
 Receipt: receipts/lmcache-fix.json (+ receipts/lmcache-fix-raw/).
+
+## ShortlistScore — quant-landscape shortlist scored on v5 shard 0 (2026-08-17)
+
+All four shortlist artifacts scored capture→replay against the published BF16 reference on the
+dedicated endpoint (same GPU model + driver 595.58.03 + pinned rootfs as the rental; per-card
+comparability by construction). Mirror-before-cite satisfied in advance for every number: all four
+pinned to verified archival mirrors. turboderp exl3 5.00bpw@a35e75a7 0.004005 — ctx wins 492/512
+(+0.000595 [+0.000533, +0.000665]) while the control carries 0.664 GiB less body. 6.00bpw@d32ba0bb
+0.001583 — beats hydrated 511/512 at +1.33 GiB body, and at EQUAL body bytes (17.0537 GiB) edges
+K6-parity 341/512 (−5.07e-05 [−6.89e-05, −3.26e-05], CI excludes zero); allocation-vs-calibration
+attribution of that margin is held for the alt-cal condition, as pre-registered.
+sakamakismile MTP-NVFP4@6d98dc1f 0.151280 — loses 512/512 to unsloth (+0.121164 [+0.113476,
++0.130617]): the 2.65 GiB FP8 block is load-bearing, 5.02x. cyankiwi AWQ-INT4@63768c10 0.022818 —
+loaded via MarlinLinearKernel (pre-stated refusal did not occur), loses 512/512 to ctx, BEATS
+unsloth NVFP4 499/512 at 2.99 GiB less file. Transferable finding: fidelity tracks how gently the
+SSM path is treated (BF16 > FP8 > NVFP4). Both turbo captures preserved to the v5 dataset
+(replay-only re-derivation); saka/awq captures released with cost stated; both boxes cleaned, disk
+accounted. Receipts: shortlist-shard0.json, shortlist-report-{turbo5,turbo6,saka,awq}.json,
+kld5-1M-{turbo5,turbo6,saka,awq,k6parity}.json, kld5-1M-paired-shortlist.json. F2 sentence + four
+axis-named rows handed to Main. Unrun remainder + exact resume commands in the master receipt.

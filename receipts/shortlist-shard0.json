@@ -909,10 +909,18 @@
   }
  },
  "unrun": {
-  "what": "all four captures/replays (GPU window not yet open) and everything below the four in the docs/40 ranking (amd Quark pair, kaitchup ladder ends, chriswritescode MXFP8 on v5, empero-ai Ridge GGUF)",
-  "resume_commands": "# ShortlistScore GPU window runbook \u2014 v5 shard 0, run root /var/tmp/work/kld5-short\n\nQueue position: last on the rental RTX PRO 6000, after SixteenFlipCalib hands over by name.\nRestore nothing; leave the box clean and disk accounted.\n\nPrep already done (no GPU): turbo5/turbo6 downloaded + digest-verified + mirrored\n(malaiwah/Qwen3.8-27B-exl3-archival-a35e75a7@10607aca, -d32ba0bb@825e79d4);\nupstream identity + composition in identity/; ladder map extended (commit 13451e6);\nshard-0 BF16 reference symlinked at hidden/shard-0000/hidden-bf16 -> ../../../gguf/hidden-bf16.\n\n## Phase 1 \u2014 turboderp uniform-bitrate controls (highest value, docs/29 F2)\n    cd /home/mbelleau/research\n    KLD_ROOT=/var/tmp/work/kld5-short KLD_SUITE=/var/tmp/work/kld5/suite \\\n      KLD_KEEP_HIDDEN=1 tools/kld_ladder.sh --candidates \"turbo5 turbo6\" 0\n(bf16 capture is skipped: the symlinked reference verifies. KEEP_HIDDEN so the two\nF2-control captures can be preserved to the suite dataset like nvfp4's shard-0 was;\nif disk or window forbids, release them and state the ~6 min/capture recompute cost.)\n\n## Phase 2 \u2014 aggregate + pair turbos\n    tools/kld_aggregate.py aggregate --suite /var/tmp/work/kld5/suite --shard-size 512 \\\n      --candidate turbo5 --out receipts/kld5-1M-turbo5.json \\\n      /var/tmp/work/kld5-short/reports/shard-0000/report-turbo5.json\n    tools/kld_aggregate.py aggregate --suite /var/tmp/work/kld5/suite --shard-size 512 \\\n      --candidate turbo6 --out receipts/kld5-1M-turbo6.json \\\n      /var/tmp/work/kld5-short/reports/shard-0000/report-turbo6.json\n    tools/kld_aggregate.py paired \\\n      --input turbo5=receipts/kld5-1M-turbo5.json --input turbo6=receipts/kld5-1M-turbo6.json \\\n      --input ctx=receipts/kld5-1M-tail-ctx.json --input hyd=receipts/kld5-1M-tail-hyd.json \\\n      --input k5k6=receipts/kld5-1M-tail-k5k6.json \\\n      --compare turbo5:ctx --compare turbo6:hyd --compare turbo6:k5k6 \\\n      --out receipts/kld5-1M-paired-shortlist-exl3.json\n(match a_wins/b_wins orientation to kld5-1M-paired-nvfp4.json before writing prose)\n\n## Phase 3 \u2014 sakamakismile + cyankiwi\nALREADY DONE off-GPU: both downloaded, digest-verified against identity/upstream-identity.json,\nmirrored and remote-verified (saka -> malaiwah/Qwen3.8-27B-MTP-NVFP4-archival-6d98dc1f@21bb8beb,\nawq -> malaiwah/Qwen3.8-27B-AWQ-INT4-archival-63768c10@139c2876), composition recorded, then the\nlocal copies were DELETED to keep 35G of capture scratch. At their slot: re-download (below),\nre-verify digests, capture. Do NOT re-mirror.\n    export HF_HOME=/var/tmp/hf-home-3\n    hf download sakamakismile/Qwen3.8-27B-MTP-NVFP4 \\\n      --revision 6d98dc1f1d5259c9582794014b73852baf20f805 \\\n      --local-dir /var/tmp/models/Qwen3.8-27B-MTP-NVFP4\n    hf download cyankiwi/Qwen3.8-27B-AWQ-INT4 \\\n      --revision 63768c10df38c0395e12ef49edac1bd539eaeeea \\\n      --local-dir /var/tmp/models/Qwen3.8-27B-AWQ-INT4\n    # verify against identity/upstream-identity.json, then mirror BEFORE citing:\n    HFPY=/home/mbelleau/.local/share/uv/tools/huggingface-hub/bin/python\n    \"$HFPY\" /var/tmp/work/kld5-short/mirror_artifact.py /var/tmp/models/Qwen3.8-27B-MTP-NVFP4 \\\n      malaiwah/Qwen3.8-27B-MTP-NVFP4-archival-6d98dc1f \\\n      sakamakismile/Qwen3.8-27B-MTP-NVFP4 6d98dc1f1d5259c9582794014b73852baf20f805 \\\n      /var/tmp/work/kld5-short/identity/mirror-saka.json\n    \"$HFPY\" /var/tmp/work/kld5-short/mirror_artifact.py /var/tmp/models/Qwen3.8-27B-AWQ-INT4 \\\n      malaiwah/Qwen3.8-27B-AWQ-INT4-archival-63768c10 \\\n      cyankiwi/Qwen3.8-27B-AWQ-INT4 63768c10df38c0395e12ef49edac1bd539eaeeea \\\n      /var/tmp/work/kld5-short/identity/mirror-awq.json\n    # free space first if needed: rm -rf /var/tmp/models/Qwen3.8-27B-exl3-{5,6}.00bpw\n    # (safe: digest-verified mirrors above + upstream still resolves)\n    ln -sfn ../../../gguf/hidden-bf16 /var/tmp/work/kld5-short/hidden/shard-0000/hidden-bf16\n    KLD_ROOT=/var/tmp/work/kld5-short KLD_SUITE=/var/tmp/work/kld5/suite \\\n      tools/kld_ladder.sh --candidates \"saka awq\" 0\n(an AWQ load refusal is a result: capture the exact error, record it in the receipt)\n\n## Phase 4 \u2014 aggregate + pair the rest\n    tools/kld_aggregate.py aggregate ... --candidate saka --out receipts/kld5-1M-saka-nvfp4.json ...\n    tools/kld_aggregate.py aggregate ... --candidate awq --out receipts/kld5-1M-cyankiwi-awq.json ...\n    paired: saka:nvfp4 (receipts/kld5-1M-nvfp4.json), awq:ctx, awq:nvfp4\n\n## Phase 5 \u2014 receipts, cleanup, push\n    receipts/shortlist-shard0.json (master) + per-artifact sub-receipts\n    preserve turbo captures to malaiwah/qwen38-27b-fidelity-suite-v5 captures/shard-0000/\n      via tools/preserve_artifacts.sh --deep (window permitting), then release hidden\n    delete downloaded weights (mirrors verified), account disk in the receipt\n    git rebase, add ONLY receipts/shortlist-* receipts/kld5-1M-* + tools edits, push both remotes\n    F2 sentence to Main over hub (cards/docs are not mine to edit)\n"
+  "what": [
+   "ten-shard (10.48M-position) extensions of all four candidates: shard-0-only numbers published here, ordering historically stable at 1.9-2.9% shard-0-to-10-shard drift",
+   "the docs/40 section-4 remainder below my four: amd Quark AWQ-MXFP4 + Qronos-INT4 pair, kaitchup hum ladder ends (13.12 / 17.90 GiB), chriswritescode MXFP8 re-run on v5, empero-ai Ridge GGUF (needs the GGUF harness), rdtand PrismaAQUA cross-protocol offset",
+   "the alt-calibration condition: never handed to me (rental stayed occupied); packet remains staged at /var/tmp/work/kld9 with local://altcal-handover.md; it now also gates the ATTRIBUTION of the turbo6-vs-k6parity margin recorded here"
+  ],
+  "resume_commands": {
+   "ten_shard_extension": "stage shards 1-9 suites (present under /var/tmp/work/kld5 on the rental); on either box: KLD_ROOT=<root> KLD_SUITE=/var/tmp/work/kld5/suite tools/kld_ladder.sh --candidates '<name>' 1-9 -- BF16 must be recaptured per shard (only shard 0's reference survives); then kld_aggregate over shard-*/report-<name>.json",
+   "next_artifact": "follow the identity->mirror->capture->replay->aggregate->pair sequence in this receipt's runbook (unrun.resume_commands of revision a7524e6 carries the verbatim commands); add the candidate to tools/kld_ladder.sh's model map first",
+   "alt_calibration": "/home/mbelleau/research/tools/ggrun.sh bash /work/kld9/chain_kld9.sh altcal (on the rental), then tools/kld9_receipt.py --cond altcal per local://altcal-handover.md"
+  }
  },
- "content_sha256": "bf4852f81908e8332bbdba0196e4d53cd8149c256ef039e2e68ccf45aa609926",
+ "content_sha256": "6bc5dcb0f014dd904d7226eb4aadf1efad3b0930b01b87dd693bafecc3b139f4",
  "run_order_rationale": "turbo5+turbo6 run first: they are the only shortlist item that closes a PUBLISHED open question (docs/29 F2's uniform-bitrate control arm), so they earn the front of the queue over the more eye-catching community artifacts. Then the alt-calibration conversion if SixteenFlipCalib2 hands it over (owner-priority work), then saka, then awq.",
  "byte_accounting_notes": {
   "basis": "same four-axis basis as receipts/cross-candidate-byte-accounting.json (file bytes / tensor bytes / transformer body / deployed multimodal); body = payload minus embedding, head, vision tower and MTP draft. Computed from safetensors headers: local digest-verified snapshots for the turbo rungs, HTTP Range reads at the pinned revisions for saka and awq (tensor payloads never re-downloaded).",
@@ -941,5 +949,37 @@
   "gpu_handover": "named handover from Main after the V2-runner A/B; container qwen38-hyd-v2sched stopped at slot start (0 MiB used / 97252 MiB free before captures), card left idle at 0 MiB used at slot end, nothing restarted",
   "inputs_verified_on_endpoint": "every weight file of all four candidates re-verified against upstream paths-info digests AFTER the cross-box move; BF16 shard-0 reference symlink resolves to the rsynced capture; ladder dry-run passed before the slot",
   "wall_clock": "turbos 17 min (2 captures + 2 replays, BF16 capture reused), saka 6 min, awq 7 min; 2026-08-17T01:11:47Z to 01:42:15Z"
+ },
+ "artifacts_released": {
+  "policy": "cost-based preserve-before-delete, same taxonomy as receipts/nvfp4-v5-measurement.json",
+  "preserved": {
+   "captures/shard-0000/hidden-turbo5": {
+    "repo": "malaiwah/qwen38-27b-fidelity-suite-v5",
+    "repo_type": "dataset",
+    "revision": "d65b24cc379b0824212afac312f8ee9e3991f48c",
+    "files": 513,
+    "problems": [],
+    "uploaded_with": "tools/preserve_artifacts.sh --deep",
+    "why_preserved": "with the shard-0 BF16 reference already in the same dataset, anyone can re-derive both F2 control numbers (and the body-parity pairing) by fidelity.py replay alone, no GPU capture"
+   },
+   "captures/shard-0000/hidden-turbo6": {
+    "repo": "malaiwah/qwen38-27b-fidelity-suite-v5",
+    "repo_type": "dataset",
+    "revision": "a8a3cf0a69fde09a1c2a3b9bc9305f6b8d6377af",
+    "files": 513,
+    "problems": [],
+    "uploaded_with": "tools/preserve_artifacts.sh --deep",
+    "why_preserved": "with the shard-0 BF16 reference already in the same dataset, anyone can re-derive both F2 control numbers (and the body-parity pairing) by fidelity.py replay alone, no GPU capture"
+   }
+  },
+  "released": {
+   "what": "the saka and awq shard-0 hidden captures (endpoint copies deleted at cleanup), and every local weight snapshot of all four candidates on both boxes",
+   "recompute_cost_per_capture": "one model load plus ~4-6 min of prefill on this class of card; weights re-fetchable from the pinned upstream revisions or the archival mirrors in minutes",
+   "why_not_preserved": "state-the-cost tier: the reports and cumulative receipts are the durable artifact and the headline (turbo controls) is already replay-re-derivable from the preserved captures"
+  }
+ },
+ "disk_accounting": {
+  "rental": "167G free at close (47G at slot start); my scratch reduced to /var/tmp/work/kld5-short reports/logs/identity (<1G); turbo weights (41G) and pulled-back hidden (21G) deleted after mirror + preservation verification; nothing belonging to other agents touched",
+  "endpoint_151.185.34.17": "261G free at close; per Main's disposition the pinned rootfs, proot, BF16 checkpoint, suite, head, torch-ext and my reports/logs stay (load-bearing for future attribution work, expensive to rebuild); all four candidate quants scrubbed (mirrored under pinned revisions, re-fetchable on demand); GPU untouched at close -- Main had already taken the card back for qwen38-hyd-knee-a"
  }
 }
