@@ -422,3 +422,65 @@ marginal-acceptance price — exactly the crossover §17 measured.
    schedule's knee upward.
 
 ---
+## F10. The ranked left-on-the-table list
+
+Recoverable items first, ranked by measured-or-bounded gain per unit of risk. "Cost" is engineering
+cost on this fork; gains are single-stream unless marked.
+
+### Recoverable — decode
+
+| # | item | gain | cost | status |
+|---|---|---|---|---|
+| 1 | **b12x gate one-clause patch** — route lm_head (N>32768) and k/v (N<5120) to `exl3_gemm` (exl3.py:1202-1218) | **+15.4 % measured local**; honest bracket **+3…15 %** on the rental (dispatch share is proot-inflated here) | one clause + KLD spot-check | F7; patch in `receipts/kernel-gap-gate-ab.patch`; Main running bare-metal confirmation on the 4x |
+| 2 | **`in_proj_ba` GEMV** — the unquantized 5120×96 bf16 linear runs a `cutlass_80_wmma…16x16` kernel at 28 µs/call, 33 GB/s, 48×/step = 1.34 ms (5.2 % of GPU time) | ~1.25 ms/step ≈ **+5–7 %** | small: register a split-K GEMV (Triton or CUDA, N≤128, m≤16) in `UnquantizedLinearMethod` for this shape class; it already lives inside the decode graph, so kernel time is the whole cost. The weight is 983 KB — at 1.4 TB/s the op is worth ~3 µs, not 28 | F6; the "single most embarrassing line in the stack" — a 96-column GEMM leaving 5 % on the floor |
+| 3 | **QKV tuple-shard merge** — 16 attn layers × 3 launches → 1 (88 µs → ~36 µs measured rates), + draft ×3 | ~1.0 ms/step ≈ **+5 %** | HIGH: unlike `in_proj_qkvz` (already served as one tuple-shard GEMM — in-tree precedent, exl3.py:2931-2932), q/k/v are *serialized as separate trellises with separate suh/svh*; merging needs the quantizer to emit one matrix (checkpoint change) or an online re-encode at load | F3 |
+| 4 | **Draft-head cost** — 3 of the 4 per-step 953 MB head streams exist only to argmax one draft token each | up to 2.1 ms/step ≈ **+8–10 %** ceiling | structural-leaning: draft-only truncated vocab changes sampling semantics; side-stream overlap needs runner surgery; the cheap slice of this is already item 1 | F6/F9; F9's prediction 2 says any win here also moves the depth-schedule knee up |
+| 5 | TP2-only: `use_local_argmax_reduction=true` (speculative config) | +0.15–0.3 ms/step at TP2 | flag; greedy-equivalent check | F4 |
+| 6 | TP2-only: `VLLM_ENABLE_PCIE_ALLREDUCE=1` b12x oneshot A/B | unknown sign | one A/B | F4 |
+
+### Recoverable — prefill
+
+| # | item | gain | cost | status |
+|---|---|---|---|---|
+| 7 | **`--max-num-batched-tokens 6144`** | **+13–15 % measured on linears** (F8) + 2.67× less redundant reconstruct (F5) → est. **+15–25 % PP** | zero code; re-qualify the frozen profile (KV budget, fidelity gates, knee re-check) | F5/F8 |
+| 8 | **Strided-C hgemm into the cat destination** — delete the per-shard `torch.cat` (18–26 GB/chunk of pure copies) | est. **+5–8 % PP** | moderate fork patch; `hgemm` already takes strided C | F5 |
+| 9 | **Double-buffer the reconstruct scratch** + second stream — reconstruct[i+1] currently never overlaps hgemm[i] (WAR on the shared buffer) | hides most of the measured 13 % reconstruct share at 2048-chunks | moderate: 2 buffers + events (exl3.py:785-795) | F5/F8 |
+| 10 | FP8 prefill, properly | +31 % PP (previously measured) | requires rebuilding the ext with `reconstruct_fp8_slice` (or wiring the shipped-but-unused `reconstruct_fp8dg_nt` + DeepGEMM); **declined once at +0.0141 mean KLD — fidelity verdict unchanged**; flag currently INERT (docs/41 state (e)) | F5 |
+
+### Structural — not recoverable (and why)
+
+- **16–19 pts of "gap" vs the 1.792 TB/s spec** — no kernel of any kind reaches it; measured
+  ceiling 1462–1525 GB/s (F2). Retire the spec denominator from all future roofline claims.
+- **The big-GEMM kernels themselves** — exl3_gemm/b12x at 88–100 % of the achievable ceiling at
+  decode m (F2); hgemm at cuBLAS-reference TFLOPS at prefill M (F8). Nothing left in the kernels.
+- **~17–21 µs cooperative-launch floors** on the 22.5 MiB matrix class (out_proj/in_proj_z/o_proj,
+  128+ launches/step) — fusing needs new kernels, not flags (F2/F3).
+- **Head streamed once per sampling** is the price of MTP's per-depth argmax semantics; mitigations
+  are item 4's scope (F6/F9).
+- **GDN prefill on Triton** — FlashInfer's GDN kernels gate on SM90/SM10x; SM120 is excluded at
+  source (F5).
+- **Output hadamard** — already at ~1.8 TB/s; only a GEMM-epilogue fusion removes it (F8).
+- **TP2's 129 body allreduces** — the architecture reduces after every RowParallel layer; the
+  collective itself is already optimal one-shot-in-graph (F4).
+- **GDN state write ×4 spec slots** (372 MiB/req/step) — semantics of per-token state checkpointing
+  for spec verify; scales with batch, invisible at C1 (F6).
+
+### The two corrected headline numbers, restated once
+
+- **Decode:** 20.5 GB/step (not 17.4) at the measured 1.46–1.52 TB/s ceiling (not 1.792) →
+  **~85 % of achievable**. Recoverable stack on top: items 1–4 ≈ +13–25 % single-stream, of which
+  +15.4 % is already measured end-to-end locally.
+- **Prefill:** linears run at cuBLAS-reference speed and bound PP at ≈5.9k tok/s; the 3.3–3.7k
+  measurement means ~40 % of chunk time is stack plumbing + hybrid kernels, attributed (with an
+  explicit residual) in F5/F8. Items 7–9 ≈ +20–30 % PP without touching a kernel or the fidelity
+  budget.
+
+---
+
+*Method note: every microbenchmark in this document ran on this workstation's own RTX PRO 6000
+Blackwell SE through `/var/tmp/work/ggrun.sh` with `nvidia-smi` verified idle first; the rentals and
+AIBoss were not touched. Absolute local tok/s carries a proot dispatch tax (flagged wherever it
+matters); per-kernel GPU times are unaffected. Receipts: `receipts/kernel-gap-gemm-bandwidth.json`,
+`receipts/kernel-gap-profiled-decode.json`, `receipts/kernel-gap-gate-ab.{json,patch}`,
+`receipts/kernel-gap-prefill-phases.json`, `receipts/kernel-gap-profiler-table.txt`. Source walks:
+`'/home/mbelleau/.omp/agent/sessions/-qwen38-27b/2026-08-14T14-52-00-820Z_01a000c2-2db4-7000-ba65-0c964868558d/KernelGap/KernelGap.DecodeWalk.md'`, `'/home/mbelleau/.omp/agent/sessions/-qwen38-27b/2026-08-14T14-52-00-820Z_01a000c2-2db4-7000-ba65-0c964868558d/KernelGap/KernelGap.PrefillWalk.md'`, `'/home/mbelleau/.omp/agent/sessions/-qwen38-27b/2026-08-14T14-52-00-820Z_01a000c2-2db4-7000-ba65-0c964868558d/KernelGap/KernelGap.TpTax.md'`.*
