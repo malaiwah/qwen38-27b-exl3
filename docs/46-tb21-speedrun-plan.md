@@ -1552,3 +1552,63 @@ long-window endpoint as such - only the compute argument in §30; and Qwen's own
 Flipping the default taxes 100 % of traffic to serve the fraction of requests above 262k, and the
 dual-endpoint alternative costs routing, not fidelity. One probe set, one card, 48 prompts, 384 positions -
 the direction is robust on three controls and a mechanism proof; the exact number is not a constant.
+
+
+## §32 - Real multimodal load on the 8x at 1M, measured
+
+**Receipt: [`multimodal-load-8x.json`](../receipts/multimodal-load-8x.json).** The owner drove text, image and
+video traffic through `omp` at the DP8 1M endpoint while a TB2.1 arm ran at C16 underneath. Mixed traffic, so
+this is the realistic case rather than a clean benchmark. Video is confirmed in the server log by **48
+`video_processing_qwen`** events.
+
+### All eight GPUs saturate, and they balance
+
+| | mean util | cross-GPU spread | idle samples |
+|---|---:|---:|---:|
+| needle ladder, 12:50-13:20 | 63.6-78.2 % | up to **72.1 pts** | 20-35 % |
+| **multimodal, 13:20-13:31** | **92.9 %** | **14.7 pts** | **5.6 %** |
+
+Median utilisation is **97-100 % on every one of the eight cards**, power runs **382-575 W** against a 600 W
+limit, SM clocks hold **2347-2407 MHz**, temperatures 37-67 °C, **zero uncorrected ECC**.
+
+**And a mistake I nearly made.** A single `nvidia-smi` sample showed GPU 0 at 0 % while seven cards were at
+97 %, and an earlier sample had shown GPU 7 idle instead. That looks exactly like a DP load-balancing defect,
+and I was one step from writing it up as one. Segmenting the archived telemetry by time killed that story:
+**the idleness belongs to the needle ladder, which issues one enormous request at a time and therefore leaves
+seven of eight replicas idle by construction.** Under concurrent mixed load the spread collapses from 72
+points to 14.7. **Workload shape explained it, not topology** - and a single instantaneous sample could never
+have distinguished the two.
+
+**Queueing: none.** `num_requests_running` per engine was `[1,3,1,2,2,3,2,2]` with
+`num_requests_waiting` **0 on all eight** and zero capacity stalls, while saturated.
+
+### Multimodal is a prefill workload
+
+| | prefill tok/s | decode tok/s | input:output |
+|---|---:|---:|---:|
+| multimodal | **26,183** (3,273/GPU) | 878 (110/GPU) | **29.8 : 1** |
+| text-agent window | 9,642 | 623 | 15.5 : 1 |
+| TB2.1 campaign reference | — | — | 9.94 : 1 |
+
+Prefill throughput is **2.72×** the text-agent window while decode rises only 1.41×, because images and video
+expand into very large token counts. **At 29.8:1 input:output — three times the text-only campaign's 9.94:1 —
+multimodal cost is almost entirely input-side, so any price sheet that leads with output tokens misprices it
+badly.**
+
+### The prefix-cache result is the one to keep
+
+**Prefix cache hit rate rose from 26.9 % to 48.0 %, +21 points**, when the owner's subagent traffic arrived.
+That is the **first measured evidence** for a benefit this project had only ever asserted: omp subagents share
+system prompts and tool schemas, so their prefixes collide and the cache pays.
+
+**Unit caveat, stated because it is easy to over-claim.** vLLM's `prefix_cache_queries` counts **block
+lookups, not tokens**. 48.0 % is a block-level hit rate and is **not** the fraction of prompt tokens skipped;
+converting it into a token discount needs a token-level measurement we have not made.
+
+MTP acceptance also held up under multimodal traffic, **61.7 % against 58.9 %** on text — the shipped depth
+schedule `[[1,4,3],[5,64,1]]` needs no change for vision work.
+
+**Limits.** Mixed traffic throughout; the load was driven interactively so its composition is not
+script-reproducible; counter deltas come from one poller against a DP8 endpoint whose `/metrics` aggregates
+across engines, so rates are host-wide; and the engine exposes no modality-split prompt tokens, so 29.8:1
+bundles text and vision tokens together.

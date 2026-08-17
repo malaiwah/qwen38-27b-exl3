@@ -1,0 +1,90 @@
+{
+ "schema": "qwen38-multimodal-load-8x/1",
+ "generated_utc": "2026-08-17T13:33:49Z",
+ "what_this_is": "How the 8x DP8 endpoint at 1M context behaves under REAL multimodal production load driven through omp by the owner - not a benchmark. Text-agent load (a TB2.1 arm at C16) was running concurrently throughout, so this is a mixed-traffic measurement, which is the realistic case.",
+ "workload": {
+  "driver": "omp on the driver VM, tmux session qwen38, model vllm-gg/qwen38",
+  "modalities": "text + images + video",
+  "evidence_of_video": "48 video_processing_qwen events in the server log",
+  "concurrent_background": "TB2.1 1M arm, 8 shards x n=2 = C16",
+  "window_utc": "2026-08-17T13:20 -> 13:31 (727 s)"
+ },
+ "gpu_behaviour": {
+  "verdict": "all eight GPUs effectively saturated, and well balanced",
+  "mean_utilisation_pct": 92.9,
+  "idle_sample_fraction_pct": 5.6,
+  "cross_gpu_spread_points": 14.7,
+  "median_utilisation_pct": "97-100 on every GPU",
+  "power_draw_w": "382-575 observed, 600 W limit, peaks to ~613",
+  "temperature_c": "37-67",
+  "sm_clock_mhz": "2347-2407",
+  "ecc_uncorrected": 0,
+  "contrast_with_the_needle_ladder": "during 12:50-13:20 the same host read 63.6-78.2 % mean utilisation with 20-35 % idle samples and a cross-GPU spread up to 72 points. That was NOT a DP imbalance defect - the needle ladder issues ONE enormous request at a time, so seven of eight replicas are idle by construction. Under concurrent mixed load the spread collapses to 14.7 points. Workload shape, not topology, explained it, and I nearly published the opposite conclusion from a single-instant nvidia-smi sample."
+ },
+ "queueing": {
+  "num_requests_running_per_engine": [
+   1,
+   3,
+   1,
+   2,
+   2,
+   3,
+   2,
+   2
+  ],
+  "num_requests_waiting_per_engine": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ],
+  "waiting_by_reason_capacity": 0,
+  "verdict": "zero queueing and zero capacity stalls on all eight engines while saturated"
+ },
+ "throughput": {
+  "prefill_tok_s_aggregate": 26183,
+  "prefill_tok_s_per_gpu": 3273,
+  "decode_tok_s_aggregate": 878,
+  "decode_tok_s_per_gpu": 110,
+  "vs_text_agent_window": {
+   "prefill": "x2.72",
+   "decode": "x1.41"
+  },
+  "why_prefill_dominates": "images and video expand into very large token counts, so multimodal traffic is prefill-bound in a way text-agent traffic is not"
+ },
+ "input_output_ratio": {
+  "multimodal_mixed": 29.8,
+  "text_agent_window": 15.5,
+  "tb21_campaign_reference": 9.94,
+  "consequence": "multimodal load is 29.8:1 input:output, three times the 9.94:1 measured on the text-only TB2.1 campaign. Cost for multimodal traffic is therefore almost entirely INPUT-side, so any price sheet that leads with output tokens will misprice it badly."
+ },
+ "prefix_caching": {
+  "hit_rate_multimodal_pct": 48.0,
+  "hit_rate_text_agent_pct": 26.9,
+  "delta_points": 21.0,
+  "queries": 32370301,
+  "hits": 15529600,
+  "significance": "FIRST MEASURED evidence for the shared-prefix benefit this project had only ever asserted. omp subagents share system prompts and tool schemas, and the hit rate nearly doubled under that traffic.",
+  "UNIT_CAVEAT": "vllm prefix_cache_queries counts BLOCK lookups, not tokens. 48.0 % is a block-level hit rate and is NOT the fraction of prompt tokens skipped. Do not convert it to a token discount without a token-level measurement."
+ },
+ "mtp": {
+  "acceptance_multimodal_pct": 61.7,
+  "acceptance_text_agent_pct": 58.9,
+  "note": "the shipped depth schedule [[1,4,3],[5,64,1]] holds up under multimodal load; acceptance rose slightly"
+ },
+ "honest_limits": [
+  "Mixed traffic by construction - a TB2.1 arm ran throughout, so these are not clean multimodal-only numbers.",
+  "The owner drove the load interactively, so its composition is not reproducible from a script.",
+  "Counter deltas come from one of eight pollers (shard 0 URL) against a DP8 endpoint whose /metrics aggregates across engines; rates are host-wide, not per-shard.",
+  "No image/video token accounting: the engine does not expose modality-split prompt tokens, so the 29.8:1 ratio bundles text and vision tokens."
+ ],
+ "receipts": {
+  "gpu_telemetry": "receipts/rescue-1m/gpu-telemetry-8x.csv (5 s cadence, 3,632 samples)",
+  "engine_metrics": "receipts/rescue-1m/metrics-8x1m-s0.jsonl (5 s cadence, 755 samples)",
+  "server_log_evidence": "48 video_processing_qwen lines in ~/logs/serve-dp8-1m.log on the 8x host"
+ }
+}
