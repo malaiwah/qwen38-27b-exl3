@@ -1398,6 +1398,67 @@ speed — 2.14 accepted tokens per step here against 2.69 there, since these fro
 literary prose — while step time agrees to 2.6 % (25.72 ms against 25.05 implied). The two
 measurements are consistent.
 
+### Multi-GPU: what to actually run, measured 1x through 8x
+
+Every arm below served **this checkpoint** at its native 262,144-token window on RTX PRO 6000 Blackwell
+cards (driver 595.58.03), with CUDA-graph decode and prefix caching on, and **every arm passed the same
+five-check fidelity gate — including a full 262,144-token needle retrieval — before any throughput number
+from it was kept.** Numbers come from `tb21_ladder.py` receipts, not from a benchmark harness's own
+reporting.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/tb21-topology-dark.svg">
+  <img alt="Per-request and aggregate throughput against concurrency for six serving topologies from one GPU to eight. Top row is per-request tokens per second on a log scale with the knee marked as a diamond; bottom row is aggregate tokens per second. Left column is a 512-in/256-out short turn, right column is a 4,096-in/1,024-out typical turn. The knee moves right with GPU count: C4 on one card, C8 at two, C16 at four, C32 at eight. DP8 reaches the highest aggregate at 3,553 tokens per second at 128 concurrent requests, while TP2xDP4 leads at low concurrency." src="assets/tb21-topology-light.svg">
+</picture>
+
+| topology | GPUs | single-stream tok/s | peak aggregate tok/s | knee | KV tokens |
+|---|---:|---:|---:|---:|---:|
+| 1x | 1 | 134.8 | 558 @C16 | C4 | 1,760,318 |
+| TP2 | 2 | **159.6** | 605 @C16 | C4 | — |
+| DP2 | 2 | 135.8 | 1,072 @C32 | C8 | — |
+| TP4 | 4 | 151.0 | 1,359 @C64 | C4 | **8,769,375** |
+| TP2xDP2 | 4 | 156.7 | 1,808 @C64 | C8 | — |
+| DP4 | 4 | 134.1 | 1,958 @C64 | C16 | — |
+| TP2xDP4 | 8 | 153.2 | 2,438 @C128 | C16 | — |
+| **DP8** | 8 | 135.2 | **3,553 @C128** | **C32** | — |
+
+**Three rules fall out of this, and they are not the obvious ones.**
+
+1. **Data parallel for throughput, tensor parallel for latency — and the crossover is near C8-C16.**
+   TP2xDP4 takes the best single-stream on eight cards (**153.2**, +13.3 % over DP8) and wins every rung
+   up to C8; DP8 wins from C16 upward and by C128 leads on aggregate by 46 %. Pick by the concurrency you
+   actually serve, not by which sounds more parallel.
+2. **Tensor-parallel latency peaks at TP2 and then goes backwards.** TP4 measures **151.0** single-stream
+   against TP2's **159.6**, despite halving per-GPU weight bytes again — the PCIe all-reduce cost grows
+   faster than the weight-streaming saving. On a host without NVLink, TP2 is the latency sweet spot and
+   TP8 is for capacity only.
+3. **The knee scales linearly with replica count: a DP-N deployment holds its per-request floor to about
+   4N concurrent requests** (C4, C8, C16, C32 at N = 1, 2, 4, 8). That single line is the capacity-planning
+   number, and it is why the campaign runs `-n 4` per shard across 8 shards.
+
+**One host-level prerequisite is worth more than any flag here.** On direct-attach RTX PRO 6000 systems
+P2P can be silently **off** — we measured `can_device_access_peer` false, a 64 MiB cross-GPU copy at
+35.5 GB/s and a 256 B copy at 12.48 us. Writing the NVIDIA `ForceP2P` registry override and reloading the
+driver enabled it (**51.9 GB/s, +46.5 %**) and was worth **+7 % to +22 % on real tensor-parallel decode** —
+enough that our first TP2 verdict was wrong before it. Verify P2P before trusting any TP number, ours
+included ([`jarvis-p2p-override.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/jarvis-p2p-override.json)).
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/tb21-scaling-dark.svg">
+  <img alt="Two panels. Panel A plots data-parallel scaling efficiency against requests per replica at matched load, for DP2 to DP4 and DP4 to DP8 on two request shapes, against a linear reference at 100 percent; points scatter between 83 and 101 percent with no consistent pattern, and the caption records that the tiers were measured on different hosts through different harness paths so no scaling law is published. Panel B is three bars of memory bandwidth: the 1,792 GB/s vendor spec labelled not achievable, a measured pure-stream ceiling of 1,494 GB/s with an error bar, and our effective decode bandwidth of 1,150 GB/s with an error bar, which is 69 to 85 percent of achievable." src="assets/tb21-scaling-light.svg">
+</picture>
+
+**And a correction we owe readers of our own earlier claims.** This project previously described decode as
+running at "55-65 % of roofline". **Both terms of that fraction were wrong, in the same direction.** The
+numerator undercounted traffic — per-step weight traffic is **20.5 GB, not ~17.4**, because the 953 MB
+`lm_head` streams **once per draft sampling** — and the denominator used a vendor spec no kernel reaches:
+a pure-stream kernel measures **1,462-1,525 GB/s** on this SKU against the 1,792 GB/s spec. Corrected,
+decode runs at **69-85 % of achievable** depending on operating point, and the big trellis GEMMs
+themselves measure **88-100 %** of that ceiling — the kernels are essentially done. A real **15-31 point**
+inefficiency remains (launch floors, non-GEMM work, CPU gaps), about half of which we have since measured
+back. Method, per-kernel numbers and the arithmetic:
+[`docs/47-kernel-gap-analysis.md`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/docs/47-kernel-gap-analysis.md).
+
 ### KV-cache dtype: fp8 is the family's measured default
 
 The recipe on this card leaves `--kv-cache-dtype` unset; the family's qualified long-context
