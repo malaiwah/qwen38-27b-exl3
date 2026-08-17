@@ -143,3 +143,55 @@ run.
    kernels, not flags.
 
 ---
+## F4. TP2: 138 allreduces + 7 all_gathers per decode step; the collective is fine, the floors are not
+
+**Claim.** At TP2 the per-decode-step communication is 138 custom-allreduce calls (~5.47 MB total
+payload) + 7 all_gathers (~1.77 MB, 96 % of it logits) — a ~0.55–1.1 ms/step floor at the measured
+52 GB/s P2P — and the collective vLLM picks is already the right one (C++ one-shot custom AR,
+captured inside the decode CUDA graph). The reason TP2 gives +17.5 % instead of +70–80 % is only
+half comm; the other half is that per-launch floors and non-GEMM time do not shrink when weights
+halve. Full file:line walk: `'/home/mbelleau/.omp/agent/sessions/-qwen38-27b/2026-08-14T14-52-00-820Z_01a000c2-2db4-7000-ba65-0c964868558d/KernelGap/KernelGap.TpTax.md'` (scout report), key cites inline below.
+
+**Counts, from the model source** (dense Qwen3_5: `use_attn_reduce_scatter_for_moe` requires
+`is_moe_layer`, `$SP/vllm/model_executor/models/qwen3_5.py:129-133`, so every RowParallelLinear
+reduces, `linear.py:2086-2087`):
+- Target pass (m=4): 1 embed AR (`vocab_parallel_embedding.py:491-493`) + 16 attn o_proj + 48 GDN
+  out_proj (`qwen_gdn_linear_attn.py:486-494`) + 64 MLP down_proj = **129 AR** + 1 logits all_gather
+  (`logits_processor.py:85-97`; CUDA `use_all_gather()=True`, `platforms/interface.py:1095-1099`).
+- Each of 3 draft passes: embed AR + o_proj AR + down_proj AR + `fc` all_gather
+  (`qwen3_5_mtp.py:108-117` — ColumnParallelLinear `gather_output=True`) + per-pass logits
+  all_gather (`llm_base_proposer.py:486-494`) = 3 AR + 2 AG.
+- **Step: 138 AR (5.47 MB) + 7 AG (1.77 MB, logits = 1.74 MB of it).**
+
+**Collective identity.** Dispatch (`cuda_communicator.py:~285-345`) lands on `CustomAllreduce`:
+world_size 2 admitted up to 8 MiB (`custom_all_reduce.py:261,868-884`), requires driver P2P
+(`:244-258` — the ForceP2P dependency, docs/46 §19). At ws=2 the C++ kernel is **always the one-shot**
+(`/var/tmp/gg-rootfs/opt/vllm/csrc/custom_all_reduce.cuh:583-599`): 2 P2P barrier round-trips + one
+message-size peer read per call. It IS captured in the FULL_DECODE_ONLY graph with graph-registered
+buffers (`custom_all_reduce.py:729-785,1004-1014`) — TP does not break graph decode. b12x's PCIe
+oneshot is wired in but off by default (`envs.py:239-240`), and its fused TP2 remote-push transport
+requires hidden==4096 (`pcie_oneshot.py:1442`) — ours is 5120, so it would use the generic pull path.
+Prefill-size ARs (>8 MiB) fall to torch symm-mem two-shot or PyNCCL (`all_reduce_utils.py:75-86`).
+
+**Floor arithmetic at 52 GB/s.** Payload 5.47 MB → ~105 µs; 276 barrier RTTs × O(1.5–3 µs) →
+0.4–0.8 ms; 7 eager-adjacent AGs → 0.1–0.25 ms. **Comm floor ≈ 0.6–1.1 ms per ~8 ms TP2 step
+(~8–14 %).** That alone caps TP2 at ~1.75× even if everything else halved perfectly — and it does
+not: the 209 GEMM launches/step keep their ~17–28 µs cooperative-launch floors when the per-launch
+bytes halve (F2 item 3), so the small-matrix share of the step barely moves. [INFERENCE] Those two
+effects together reproduce the measured +17.5 % to within the noise of the acceptance-length variance;
+no third mechanism is needed.
+
+**Levers.**
+1. *Flag, measurable today:* `speculative_config.use_local_argmax_reduction=True`
+   (`$SP/vllm/config/speculative.py:147-150`; the model already carries `LocalArgmaxMixin`,
+   `qwen3_5_mtp.py:215`) replaces the 4×/step half-vocab logits all_gathers (1.74 MB eager NCCL) with
+   a 2-float/token exchange. Worth ~0.15–0.3 ms/step at TP2; zero effect at TP1. Greedy-equivalent
+   only — check sampling profile before shipping.
+2. *Flag, worth one A/B:* `VLLM_ENABLE_PCIE_ALLREDUCE=1 VLLM_PCIE_ALLREDUCE_BACKEND=b12x` (oneshot
+   cutoff 84 KB covers every decode AR). Same one-kernel structure; wins only if b12x's stage_pull
+   barrier beats the C++ flag spin on this fabric — measure, do not assume.
+3. *Structural:* 129 of the 138 ARs exist because every layer reduces a 40 KB message. Sequence-
+   parallel/reduce-scatter restructuring is upstream-scale work — not recoverable at this fork's
+   risk budget.
+
+---
