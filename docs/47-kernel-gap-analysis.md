@@ -813,7 +813,10 @@ the 2x's 38/38 more directly than state restoration does. The DO-NOT-ENABLE verd
 finite fix list: (a) root-cause fp8 transfer (fake-view byte arithmetic for 1-byte dtypes vs
 unregistered scale surfaces — blocking); (b) the partial-hit interleaving defect at bf16; (c) MP
 reconnect. Also newly measured: the connector *requires* APC+align (`validate_kv_cache_groups`
-refuses `mamba_cache_mode='none'`), and at bf16 KV the align block is 800, which forces
-`--max-num-batched-tokens` into [800, 1599] — a serving-profile constraint nobody had written down.
+refuses `mamba_cache_mode='none'`), and the GG validator forces `--max-num-batched-tokens` into
+a **KV-dtype-dependent band** — the align block halves when the KV dtype doubles: **fp8 KV → block
+1600 → batched-tokens ∈ [1600, 3199]; bf16/auto KV → block 800 → [800, 1599]** (and the LMCache
+server's `--chunk-size` must equal the block). A serving-profile constraint nobody had written
+down; quote it only with its dtype or the two bands will be mixed up.
 
 ---

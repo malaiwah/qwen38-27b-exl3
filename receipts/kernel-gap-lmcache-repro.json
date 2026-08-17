@@ -1,6 +1,6 @@
 {
  "what": "F12 live repro of the LMCache/hybrid corruption on the LOCAL card (TP1, hydrated K5/K6, MTP-3, LMCacheMPConnector via lmcache MP server, fork #403 gate patch APPLIED for every connector arm; APC+align mandatory - the connector refuses mamba_cache_mode='none'). Rootfs fully restored to r34 afterwards (md5-verified: scheduler.py, lmcache_mp_connector.py).",
- "geometry": "prompt P = 4,895 tok; P+S = 6,791; two ~11k fillers evict APC (kv-cache-memory-bytes 2.6GB); retrieve forced by APC eviction; lmcache MP server per arm (fresh), chunk = align block (1600 @ fp8 KV, 800 @ bf16 KV - the GG validator requires block <= max_num_batched_tokens < 2*block, so bf16 arms ran --max-num-batched-tokens 800). Comparator: 64-token greedy completion text + mean |chosen-logprob delta| vs the same-config cold generation.",
+ "geometry": "prompt P = 4,895 tok; P+S = 6,791; two ~11k fillers evict APC (kv-cache-memory-bytes 2.6GB); retrieve forced by APC eviction; lmcache MP server per arm (fresh), chunk = align block (KV-DTYPE-DEPENDENT: fp8 KV -> align block 1600 -> max_num_batched_tokens must be in [1600,3199]; bf16/auto KV -> block 800 -> [800,1599]; GG validator requires block <= max_num_batched_tokens < 2*block and the lmcache server --chunk-size must equal the block; bf16 arms ran --max-num-batched-tokens 800, fp8 arms 2048). Comparator: 64-token greedy completion text + mean |chosen-logprob delta| vs the same-config cold generation.",
  "results": {
   "fp8_KV_cold_roundtrip": "CATASTROPHIC: store(cold, single writer, no APC interleaving) -> evict APC -> retrieve => U+FFFD/out-of-script garbage from token 1, mean |dlp| 3.52 vs C0 (the 2x's 4.36-4.50 class). Server log confirms Retrieved 4800.",
   "bf16_KV_cold_roundtrip": "BIT-CLEAN: identical sequence with --kv-cache-dtype auto => text identical, mean |dlp| 0.0000. THE GDN STATE MACHINERY WORKS: 48 state pages stored, retrieved and integrated exactly.",
@@ -1542,5 +1542,13 @@
    "wall_s": 0.91
   }
  },
- "gpu_idle_verified_before_run": true
+ "gpu_idle_verified_before_run": true,
+ "rootfs_restored_final_md5": {
+  "vllm/model_executor/layers/quantization/exl3.py": "11dd7de622f0697e7d558d4752e58cab",
+  "vllm/model_executor/layers/linear.py": "cf599aaea6976677a0efe1d01b85af87",
+  "vllm/v1/core/sched/scheduler.py": "f07ef67d58a58d2681efc8f328a228fa",
+  "lmcache/integration/vllm/lmcache_mp_connector.py": "17cd6667966256c0cfd4750c212de515",
+  "note": "live values re-read at session close 2026-08-17; every file byte-identical to its pre-experiment r34 backup; #403 and both experiment patches are NOT applied on this workstation's rootfs"
+ },
+ "consequence_verbatim": "Our qualified default is fp8 KV, so LMCache could never have produced clean reuse on this stack, with or without #403 - the 'is our patch to blame' question the 2x ladder opened is retired."
 }
