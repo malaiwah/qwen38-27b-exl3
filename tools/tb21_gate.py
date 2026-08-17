@@ -297,14 +297,27 @@ def check_repeatability(ep: Endpoint, model: str, seed: int,
                              "body_head": out["body"][:300]})
                 continue
             ch = (out["json"].get("choices") or [{}])[0]
-            content = (ch.get("message") or {}).get("content") or ""
+            msg = ch.get("message") or {}
+            content = msg.get("content") or ""
+            # Qwen3.8 thinks by default at xhigh effort, so with a 64-token cap the
+            # ENTIRE budget lands in reasoning_content and `content` comes back "".
+            # Hashing content alone made this check compare eight empty strings and
+            # report PASS - vacuously - on every run we have ever published. The
+            # identity criterion must cover whatever the model actually emitted.
+            reasoning = (msg.get("reasoning_content") or msg.get("reasoning") or "")
+            payload = content + "\x00" + reasoning
             rows.append({
                 "i": i, "ok": True,
-                "sha256": hashlib.sha256(content.encode()).hexdigest(),
+                "sha256": hashlib.sha256(payload.encode()).hexdigest(),
+                "content_sha256": hashlib.sha256(content.encode()).hexdigest(),
+                "reasoning_sha256": hashlib.sha256(reasoning.encode()).hexdigest(),
+                "content_chars": len(content),
+                "reasoning_chars": len(reasoning),
                 "completion_tokens":
                     (out["json"].get("usage") or {}).get("completion_tokens"),
                 "finish_reason": ch.get("finish_reason"),
                 "content_head": content[:120],
+                "reasoning_head": reasoning[:120],
             })
         return rows
 
@@ -318,15 +331,23 @@ def check_repeatability(ep: Endpoint, model: str, seed: int,
             and a["completion_tokens"] == b["completion_tokens"]))
     all_ok = all(r.get("ok") for r in run_a + run_b)
     identical = all(matches) and len(matches) == 8
+    # A comparison over empty payloads proves nothing. Refuse to call that a pass.
+    substantive = [r for r in run_a if r.get("ok")
+                   and (r.get("content_chars", 0) + r.get("reasoning_chars", 0)) > 0]
+    vacuous = bool(run_a) and not substantive
     ev = {
         "prompts": 8,
         "prompt_synthesis": f"seeded word filler, seed {seed}, 800 chars each",
         "temperature": 0.0,
         "seed_param_supported": seed_supported,
-        "identity_criterion": "sha256(content) equal AND "
+        "identity_criterion": "sha256(content + NUL + reasoning_content) equal AND "
                               "usage.completion_tokens equal, per prompt "
                               "(text equality implies token identity under "
-                              "one tokenizer)",
+                              "one tokenizer). Reasoning is included because this "
+                              "model thinks by default and a short cap leaves "
+                              "content empty; comparing empty content is vacuous.",
+        "vacuity_guard": "FAIL if every response carried zero content AND zero reasoning",
+        "substantive_responses": len(substantive),
         "matches": matches,
         "run_a": run_a,
         "run_b": run_b,
@@ -336,9 +357,13 @@ def check_repeatability(ep: Endpoint, model: str, seed: int,
             "".join(r.get("sha256", "x") for r in run_b).encode()).hexdigest(),
         "note": CROSS_RESTART_NOTE,
     }
-    status = "PASS" if (all_ok and identical) else "FAIL"
+    status = "PASS" if (all_ok and identical and not vacuous) else "FAIL"
     if not all_ok:
         ev["why"] = "one or more requests failed outright"
+    elif vacuous:
+        ev["why"] = ("VACUOUS: every response returned empty content and empty "
+                     "reasoning, so identity was compared over nothing. Raise "
+                     "max_tokens or disable thinking for this probe.")
     elif not identical:
         ev["why"] = f"non-identical prompts: {[i for i, m in enumerate(matches) if not m]}"
     return {"name": "frozen_prompt_repeatability", "status": status,

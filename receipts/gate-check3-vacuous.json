@@ -1,0 +1,63 @@
+{
+ "schema": "qwen38-gate-check3-vacuous/1",
+ "generated_utc": "2026-08-17T13:23:17Z",
+ "what_this_is": "A self-audit finding against our own fidelity gate. Check 3, frozen_prompt_repeatability, has been VACUOUS on this model in every run we ever published: it hashed the OpenAI `content` field, Qwen3.8 thinks by default at xhigh effort, and with the probe's 64-token cap the entire budget lands in `reasoning_content`, so `content` came back empty. The check compared eight empty strings and reported PASS.",
+ "evidence_of_the_defect": {
+  "signature": "every run_a row carried sha256 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "that_hash_is": "sha256 of the empty string",
+  "confirmed_vacuous_in": [
+   {
+    "receipt": "receipts/tb21-gate-8x-dp8.json",
+    "empty_rows": 8,
+    "reported": "PASS"
+   },
+   {
+    "receipt": "receipts/tb21-gate-8x-tp4dp2.json",
+    "empty_rows": 8,
+    "reported": "PASS"
+   },
+   {
+    "receipt": "receipts/rescue-1m/needle-1m-262144.json",
+    "empty_rows": 8,
+    "reported": "PASS"
+   }
+  ],
+  "note": "completion_tokens was 64 in every row, so the model WAS generating - the text just never reached `content`."
+ },
+ "what_is_and_is_not_invalidated": {
+  "unaffected": "Checks 1, 2, 4 and 5 - liveness, generation proof, needle retrieval and MTP sanity - were substantive and did their job. The 262k and 786k needle passes in particular are real evidence and are unchanged. No fidelity conclusion in this project rests on check 3.",
+  "invalidated": "Any statement that we verified DETERMINISM. We did not. 'Five-check gate PASS' should be read as four substantive checks passing and one contributing no evidence.",
+  "cards_corrected": "the hydrated card's five-check wording is being amended rather than left to imply more than it proved"
+ },
+ "fix": {
+  "identity_criterion_now": "sha256(content + NUL + reasoning_content) AND usage.completion_tokens",
+  "vacuity_guard": "the check now FAILS outright if every response carried zero content AND zero reasoning, so it can never again pass by comparing nothing",
+  "new_evidence_fields": [
+   "content_sha256",
+   "reasoning_sha256",
+   "content_chars",
+   "reasoning_chars",
+   "reasoning_head",
+   "substantive_responses"
+  ]
+ },
+ "first_result_from_the_fixed_check": {
+  "receipt": "receipts/rescue-1m/gate-repeat-fixed.json",
+  "endpoint": "8x DP8 at 1M context, UNDER concurrent production load (TB2.1 arm at C16 plus omp)",
+  "substantive_responses": "8 of 8 (reasoning 261-310 chars, content 0 as expected)",
+  "matches": [
+   true,
+   false,
+   true,
+   true,
+   true,
+   true,
+   true,
+   true
+  ],
+  "result": "7 of 8 frozen prompts reproduced byte-identically; prompt 1 diverged (299 vs 261 reasoning chars). So the fixed check immediately surfaced real nondeterminism that the vacuous version could never see.",
+  "attribution_LIMIT": "Measured under concurrent load, so the most likely cause is continuous-batching nondeterminism - batch composition changes reduction order and therefore logits - which is a known vLLM property and NOT a quantisation defect. This is NOT yet separated from engine-level nondeterminism at concurrency 1. A quiet-endpoint re-run is required before attributing, and until then no claim is made."
+ },
+ "resume_command": "once the 8x is free of production load: python3 ~/tb21_gate.py --base-url http://127.0.0.1:8000 --model qwen38 --skip-needle --out gate-repeat-quiet.json  (expect 8/8 if the divergence is purely batching)",
+ "standing_rule": "A hash-equality check MUST assert that it hashed something. Any identity gate needs a vacuity guard, because an empty-vs-empty comparison is the most confident-looking false pass available."
+}

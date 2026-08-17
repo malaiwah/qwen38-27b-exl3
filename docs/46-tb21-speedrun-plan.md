@@ -1277,3 +1277,52 @@ and better answer is to stop trying: **measure at the kernel level, where the si
 is far smaller, then use the Amdahl bound above to state the server-level consequence** rather than trying to
 observe it. That is now the standing method for this class of patch, and issue #406 should carry the Amdahl
 framing instead of an end-to-end promise.
+
+
+## §29 - Our repeatability gate was passing by comparing nothing
+
+**Receipt: [`gate-check3-vacuous.json`](../receipts/gate-check3-vacuous.json).** Found while reading a 1M
+needle receipt closely enough to notice a hash I recognised.
+
+Every `frozen_prompt_repeatability` row in every gate receipt we have published carries the same digest:
+
+```
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+```
+
+**That is the sha256 of the empty string.** The check hashed the OpenAI `content` field; Qwen3.8 thinks by
+default at `xhigh` effort; the probe caps generation at 64 tokens; so the entire budget was consumed inside
+`<think>` and routed to `reasoning_content`, leaving `content` empty. `completion_tokens` was 64 on every
+row - **the model was generating the whole time, the text just never reached the field being hashed.** The
+gate then compared eight empty strings, found them equal, and reported **PASS**. It has never once tested
+determinism on this model.
+
+### What this does and does not touch
+
+**Unaffected: checks 1, 2, 4, 5.** Liveness, generation proof, needle retrieval and MTP sanity were all
+substantive. The 262k and 786k needle passes are real and unchanged, and **no fidelity conclusion in this
+project rests on check 3.**
+
+**Invalidated: any claim that we verified determinism.** We did not. "Five-check gate PASS" must be read as
+*four substantive checks passed and one contributed no evidence*, and the cards are being amended to say so
+rather than left implying more than they proved.
+
+### The fix, and what it immediately found
+
+Identity is now `sha256(content + NUL + reasoning_content)`, and - more importantly - the check carries a
+**vacuity guard**: it FAILS outright if every response returned zero content *and* zero reasoning, so it can
+never again pass by comparing nothing.
+
+Re-run on the live 1M endpoint it reports **substantive 8/8** (reasoning 261-310 chars) and **7 of 8
+identical, with prompt 1 diverging** (299 vs 261 reasoning chars). The fixed check found real nondeterminism
+in its first execution.
+
+**And now the honest limit on that result.** It was measured *under concurrent production load*, so the
+likely cause is **continuous-batching nondeterminism** - batch composition changes reduction order, which
+changes logits - a known vLLM property and **not** a quantisation defect. That is not yet separated from
+engine nondeterminism at concurrency 1, so **no attribution is claimed**. Resume when the host is quiet:
+`tb21_gate.py --skip-needle`, expecting 8/8 if the divergence is purely batching.
+
+**The transferable rule: a hash-equality check must assert that it hashed something.** An empty-vs-empty
+comparison is the most confident-looking false pass available, and it survived every review we did because
+the digest was constant and the status was green.
