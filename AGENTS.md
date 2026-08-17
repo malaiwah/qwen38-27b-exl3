@@ -39,13 +39,77 @@ python3 -m venv .venv
 . .venv/bin/activate
 python -m pip install -r requirements.txt   # host-only dependencies
 
-# Baseline through the extracted, pinned Gilded Gnosis image
+# Bounded BF16 teacher smoke; the native EXL3 context/vision profile is documented below.
 GG_MODELS=/var/tmp/models tools/ggrun.sh vllm serve /models/Qwen3.8-27B \
   --served-model-name qwen38-bf16 --max-model-len 8192 \
   --gpu-memory-utilization 0.92 --max-num-seqs 4 --port 8011
 ```
 
 GPU work belongs inside the pinned image. `tools/pull_rootfs.py` plus `tools/ggrun.sh` is the documented no-container-runtime path; it uses `proot`, not a host Python installation of vLLM. The image is pinned by digest in `docs/06-baseline-validation.md` and `receipts/production-image.json`.
+
+### OMP model setup
+
+`omp` is the local coding-agent CLI used to route requests to the vLLM-GG endpoint. On a brand-new Ubuntu host, install the small host prerequisites, run the official installer, reload the shell path, and verify the binary:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y ca-certificates curl git
+curl -fsSL https://omp.sh/install | sh
+source ~/.bashrc
+omp --version
+```
+
+If `omp` is still not found after installation, open a new shell and retry; the installer places the binary under the user-local installation path.
+
+Custom providers belong in `~/.omp/agent/models.yml` (merge this provider; do not remove unrelated providers):
+
+```yaml
+providers:
+  vllm-gg:
+    baseUrl: http://10.0.0.0:8000/v1  # replace the placeholder host
+    auth: none
+    api: openai-completions
+    models:
+      - id: qwen38
+        name: Qwen3.8-27B EXL3 K5/K6 native-context + vision (vLLM-GG)
+        reasoning: true
+        supportsTools: true
+        input: [text, image]
+        thinking:
+          mode: effort
+          efforts: [minimal, low, medium, high, xhigh]
+          defaultLevel: xhigh
+        contextWindow: 262144
+        maxTokens: 131072
+        compat:
+          supportsSamplingParams: true
+          supportsReasoningParams: true
+          supportsReasoningEffort: true
+          thinkingFormat: qwen-chat-template
+          reasoningContentField: reasoning_content
+          replayReasoningContent: true
+          qwenPreserveThinking: true
+          maxTokensField: max_tokens
+          supportsUsageInStreaming: true
+```
+
+The native model profile is `262144` context tokens with an 8,388,608-pixel vision ceiling. The OMP `maxTokens: 131072` value follows the upstream final-output guidance; these values require the context-qualified Gilded Gnosis launcher rather than the bounded 8,192-token smoke recipes preserved in historical receipts.
+
+This repository's `.omp/config.yml` selects `vllm-gg/qwen38:xhigh` for default, slow, vision, and task roles, advertises text+image input, and applies the Qwen thinking-mode defaults (`temperature: 1.0`, `topP: 0.95`, `topK: 20`, `minP: 0.0`, `presencePenalty: 0.0`, `repetitionPenalty: 1.0`). The OMP effort ladder uses its standard budgets; the model metadata carries the native context/output limits. For official non-thinking sampling, use the repository-local overlay:
+
+```bash
+omp --config .omp/qwen38-nonthinking.yml --thinking off
+```
+
+Validate registry/schema loading before starting a session:
+
+```bash
+omp models vllm-gg --json
+omp --model vllm-gg/qwen38 --thinking xhigh
+```
+
+The endpoint must be reachable at the configured host and port; `10.0.0.0` is intentionally a placeholder for the serving host.
+
 
 ### Build and publish a checkpoint
 
@@ -72,6 +136,8 @@ VARIANT=release docker/build-image.sh receipt
 ```
 
 These stages require rootless `podman`, `python3`, and `sha256sum`; `smoke` requires a usable GPU. `VARIANT=apc` adds the scheduler patch for prefix caching. `VARIANT=convert` is conversion-only and is not a serving-qualified image. `sbom` is available between `build` and `receipt`.
+
+The `context` smoke recipe is the native reference: `--max-model-len 262144`, `--gpu-memory-utilization 0.955`, prefix caching off, and `--mm-processor-kwargs '{"truncation":false,"max_pixels":8388608}'`. The `k4`, `k5k6`, and `hydrated` smoke recipes retain bounded 8,192-token settings because their receipts measure those profiles.
 
 ### Fidelity and benchmark workflows
 

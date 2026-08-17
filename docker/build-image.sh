@@ -610,14 +610,13 @@ recipe_args() {
   local model_path=$2
   local ignore='["re:.*visual\\..*","re:.*in_proj_a$","re:.*in_proj_b$","re:.*in_proj_ba$","re:.*mtp\\..*","lm_head"]'
   local k4_ignore='["re:.*visual\\..*","re:.*in_proj_a$","re:.*in_proj_b$","re:.*mtp\\..*","lm_head"]'
-  # Prefix caching is on in every published recipe from the promotion of
-  # localhost/vllm:gg-r34-patched-apc onwards, so the recipe smoke-tested here is the recipe
-  # the cards print. --mamba-cache-mode align is what the engine derives on its own once
-  # prefix caching is enabled; it is spelled out because a recipe that only implies it gives
-  # the reader nothing to check the engine banner against. RECIPE_PREFIX_CACHING=0
-  # reproduces the pre-promotion recipe for a control run.
+  # Prefix caching is on in the published bounded profiles. The native context profile is
+  # deliberately prefix-cache-off: the qualification receipt records refusal/deadlock/livelock
+  # at this window when align mode is enabled. RECIPE_PREFIX_CACHING=0 keeps every profile off.
   local apc=(--enable-prefix-caching --mamba-cache-mode align)
-  if [[ ${RECIPE_PREFIX_CACHING:-1} == 0 ]]; then apc=(--no-enable-prefix-caching); fi
+  if [[ $1 == context || ${RECIPE_PREFIX_CACHING:-1} == 0 ]]; then
+    apc=(--no-enable-prefix-caching)
+  fi
   case $1 in
     k4) printf '%s\n' serve "$model_path" \
         --served-model-name qwen38-k4 --quantization exl3 --enforce-eager \
@@ -647,7 +646,7 @@ recipe_args() {
         --served-model-name qwen38 --quantization exl3 \
         --quantization-config "{\"linear\":{\"weight\":\"mxfp8\"},\"ignore\":$ignore}" \
         --max-model-len "${CONTEXT_MAX_MODEL_LEN:-262144}" \
-        --gpu-memory-utilization "${CONTEXT_GPU_UTIL:-0.97}" --max-num-seqs 1 \
+        --gpu-memory-utilization "${CONTEXT_GPU_UTIL:-0.955}" --max-num-seqs 1 \
         --kv-cache-dtype fp8 --max-num-batched-tokens 2048 \
         --speculative-config '{"method":"mtp","num_speculative_tokens":3}' \
         --mm-processor-kwargs '{"truncation":false,"max_pixels":8388608}' \
@@ -678,7 +677,7 @@ recipe_env() {
           -e VLLM_EXL3_GRAPH_DECODE=1 -e VLLM_EXL3_PREFILL_RECONSTRUCT_M=128 ;;
     hydrated) : ;;
     # expandable_segments is NOT baked into the image env; the live launcher passes it, and
-    # rank 1 found the native-context profile needs it (plus a slightly lower utilisation)
+    # the native-context profile needs it (plus the qualified 0.955 utilisation)
     # to survive a multi-megapixel image on a physical 5090. Override with CONTEXT_GPU_UTIL
     # and CONTEXT_ALLOC_CONF; the exact argv used is recorded verbatim in the receipt.
     context) printf '%s\n' -e VLLM_EXL3_EMBED_BITS=8 -e VLLM_EXL3_GRAPH_DECODE=1 \
