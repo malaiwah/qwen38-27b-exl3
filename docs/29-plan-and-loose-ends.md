@@ -1019,6 +1019,37 @@ card and a >=32k output budget; the first attempt was inconclusive because 4,096
 model mid-reasoning), and claiming the **+7.2 GiB of unclaimed KV** via `--kv-cache-memory-bytes` - and
 the card is currently scoring the community-quant shortlist, then running BF16 attribution.
 
+**The roofline question is answered, and the answer was mostly arithmetic
+([docs/47](47-kernel-gap-analysis.md), F1-F10).** Asked why serving does not approach theoretical
+compute and bandwidth, the honest result is that **the headline gap largely did not exist**: the
+numerator was wrong (per-step weight traffic is **20.5 GB, not ~17.4** - `lm_head` streams **four times
+per step**, once per draft sampling, 18.6 % of all bytes) and the denominator was wrong (the 1.792 TB/s
+vendor spec is unachievable; the **measured pure-stream ceiling on this SKU is 1462-1525 GB/s**, 81-85 %
+of spec). Corrected, decode runs at **~85 % of achievable**, and the big trellis GEMMs measure **88-100 %
+of that ceiling at m=1-4** - the kernels are done. Every "55-65 % of roofline" sentence this project
+published was computed from both errors at once, and is superseded.
+
+**What is genuinely left, ranked and mostly cheap.** One lever is already **measured, not estimated**: a
+one-clause b12x routing gate (send `lm_head` and the small k/v projections to `exl3_gemm`) is worth
+**+15.4 % single-stream** on the local card (96.19 -> 110.97 tok/s), and most of it is not the 57 us
+per-call GPU delta but **eliminated eager Python dispatch** on the four per-step head calls; the rental
+figure is bracketed **+3-15 %** pending a bare-metal A/B, because proot inflates the dispatch term.
+Beside it: an unquantized `in_proj_ba` 5120x96 GEMV running at **33 GB/s** and costing **1.34 ms/step
+(5.2 % of GPU time)** for an op worth ~3 us, with a concrete split-K recipe. Prefill's standing
+explanation is **refuted**: "trellis decode cost" is common-mode with the dense reference (upstream
+reconstructs above 144 rows too), and the real items are **16x per-chunk re-reconstruction**, 18-26 GB
+of shard-concatenation copies per chunk, and 528 GDN Triton launches - together **+20-30 % PP with no
+kernel or fidelity change**. Two corrections fell out: docs/41's **16.1 %** b12x share is a *ctx-checkpoint*
+number and hydrated is **59.7 %** (banner added), and `VLLM_EXL3_PREFILL_FP8` is **dead code** on r34
+(nm-verified), now recorded as a live-looking-but-inert knob.
+
+**And it independently mechanised a result we had only measured.** The MTP depth schedule of
+[docs/46 §17](46-tb21-speedrun-plan.md) was derived empirically; docs/47 F9 shows **each depth level
+costs 1.22 GB/step, 78 % of it `lm_head`** - so depth is paid in *head bandwidth*, not draft compute,
+which is why dropping to depth 1 above the knee wins aggregate. An empirical schedule and a source-level
+traffic model agreeing is stronger than either alone, and it yields a testable prediction: **any
+head-cost reduction should move the knee up.**
+
 **TB2.1 speed-run plan written 2026-08-16, execution owned by a future session.** The owner asked for
 the ultimate API-hosted setup for the flagship quant on a 4x/8x RTX PRO 6000 Jarvis host with a separate
 load-driver VM, to produce a card-referenceable ladder - quick 1x / 2x / 4x and a full three-pass speed run
