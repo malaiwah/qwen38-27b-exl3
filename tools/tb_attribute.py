@@ -54,8 +54,23 @@ def _resolved(trials: list[dict]) -> bool:
     return any(t.get("reward") == 1.0 for t in trials)
 
 
-def _has_verdict(trials: list[dict]) -> bool:
-    return any(t.get("reward") is not None for t in trials)
+def _finished_with_verdict(trials: list[dict]) -> bool:
+    """A verdict that actually means the model answered and was graded.
+
+    Terminal-Bench runs the verifier even after the agent times out, so a
+    timed-out trial still carries `reward: 0.0`. Treating that as a verdict
+    would file "BF16 ran out of clock as well" under `capability` and thereby
+    exonerate the quantisation on tasks no arm ever finished - measured here as
+    35 of 36 such tasks, which is the entire difference between an honest
+    attribution and a flattering one. So a verdict counts only when some trial
+    reached it WITHOUT an agent timeout.
+    """
+    return any(
+        t.get("reward") is not None
+        and t.get("exception_type") != "AgentTimeoutError"
+        and not t.get("pre_model_void")
+        for t in trials
+    )
 
 
 def _all_void(trials: list[dict]) -> bool:
@@ -100,12 +115,15 @@ def attribute(p1: pathlib.Path, p2: pathlib.Path, p3: pathlib.Path,
         elif _resolved(bf16):
             bucket = "quantization-suspect"
             why = "BF16 resolved the task under otherwise identical conditions"
-        elif _has_verdict(bf16):
+        elif _finished_with_verdict(bf16):
             bucket = "capability"
-            why = "BF16 reached a verifier verdict and still failed"
+            why = ("BF16 ran to a verifier verdict WITHOUT timing out and still "
+                   "failed, so the quantisation is exonerated on this task")
         else:
             bucket = "inconclusive-timeout"
-            why = "neither arm produced a verdict; BF16 never finished either"
+            why = ("every BF16 trial hit the agent timeout, so BF16 ran out of "
+                   "clock too; the reward 0.0 on such a trial is the verifier "
+                   "grading an unfinished workspace, not a wrong answer")
         buckets[bucket].append(t)
 
         # Provisional if the quantisation's own second attempt was voided.

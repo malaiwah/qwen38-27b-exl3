@@ -758,3 +758,69 @@ path. A host with atomics may have more to give.
 
 **Standing action for every future multi-GPU rental: write the override and reload the driver before the
 first measurement.** Receipt: [`jarvis-p2p-override.json`](../receipts/jarvis-p2p-override.json).
+
+## 20. MEASURED: TP2 against DP2, and the verdict splits exactly on the axis it was predicted to
+
+Both arms on the same host with P2P enabled, same sr1 image, same shipping schedule
+`[[1,4,3],[5,64,1]]`, same 262,144 window, same seed and shapes, **both gated PASS on five checks
+including the 262k needle**. DP2 got an extra C32 rung because it was the arm that could still climb.
+
+| cell | 1x (knee-c) | TP2 +P2P | DP2 |
+|---|---:|---:|---:|
+| 512x256 single-stream | 134.8 | **159.6** | 135.8 |
+| 512x256 C4 per-req / agg | 108 / 330 | **124** / 382 | 121 / 372 |
+| 512x256 C8 per-req / agg | 62 / 463 | 69 / 516 | **109** / **616** |
+| 512x256 C16 per-req / agg | 37 / 558 | 40 / 605 | **68** / **850** |
+| 512x256 C32 per-req / agg | - | - | **38 / 1072** |
+| 4kx1k single-stream | 89.7 | **122.7** | 90.8 |
+| 4kx1k C8 agg | 392 | 438 | **451** |
+| 4kx1k C16 agg | 447 | 496 | **686** |
+| 4kx1k C32 agg | - | - | **761** |
+| knee label | C4 / C8 | C4 / C4 | **C8 / C8** |
+
+**The prediction in §18 was right, and sharper than expected.** TP2 wins **single-stream** decisively -
+**+17.5 %** over DP2 on the short shape (159.6 against 135.8) and **+35.1 %** on the 4k shape (122.7
+against 90.8) - because halving the weight bytes each step streams is the only lever that touches
+single-request decode on a weight-streaming-bound engine. DP2 wins **everything from C4 up**, and not
+only on aggregate: at C8 it delivers **109 per-request against TP2's 69** and **616 aggregate against
+516**, and at C16 **+40.5 % aggregate** (850 against 605).
+
+**Why DP2 wins per-request too, which is the part worth understanding.** DP2 is not two engines racing
+one workload; the router splits client concurrency, so **8 client requests are 4 per replica**. Each
+replica therefore sits at its own C4 - fast, near the knee - while TP2 puts all 8 on one engine. This is
+the coupling §18 predicted from the source: the depth schedule keys on
+`len(num_scheduled_tokens)`, **requests per step per replica**, so under DP2 a client at C8 lands each
+replica in the **depth-3** band rather than the depth-1 band. The schedule and the topology are not
+independent knobs, and here they compound in DP's favour.
+
+**Verdict for the campaign.** For a benchmark whose failures are **93 % timeouts**, per-request speed is
+what buys score and aggregate is what buys wall clock, and DP2 is ahead on both at every concurrency the
+campaign actually runs (`-n 16`). **Ship DP for the multi-GPU tiers.** TP is the right answer for
+exactly one shape of problem - a single latency-critical stream, where it is worth +17.5 % to +35.1 % -
+and it should be offered as that, not as the default. The 8x tier should therefore be **DP8**, with TP
+kept as a documented single-stream option rather than a ladder rung.
+
+## 21. MEASURED: the "+7.2 GiB of unclaimed KV" is mostly not claimable, and the engine's own advice OOMs
+
+vLLM prints a suggestion when profiling leaves memory unused: *"Replace gpu_memory_utilization config
+with `--kv-cache-memory-bytes 74719122432`"* (69.59 GiB) against the 62.38 GiB the profiler actually
+took. Following that suggestion **does not start**.
+
+| `--kv-cache-memory-bytes` | KV tokens computed | outcome |
+|---|---:|---|
+| unset (profiled, util 0.92) | 1,760,318 | baseline, starts |
+| **69.59 GiB** (the engine's own suggestion) | 1,963,883 (+11.6 %) | **OOM** - needed 4.09 GiB with 3.87 GiB free |
+| 67.0 GiB | 1,890,658 (+7.4 %) | **OOM** - needed 192 MiB with 45.56 MiB free, mid graph capture |
+| **66.0 GiB** | **1,862,833 (+5.8 %)** | **starts**, concurrency 6.72x -> **7.11x** |
+
+**The mechanism, and why the suggestion is a footgun.** The suggested figure is derived from *initial
+free memory* - measured before CUDA-graph capture and the reconstruct arena allocate. Claiming it starves
+exactly those allocations. And capture is not a constant: it took **1.64 GiB** in the profiled baseline
+and **1.98 GiB** in the 66 GiB run, which is why 67 GiB failed by 192 MiB and why any value near the
+edge is unsafe across restarts on a stack we already know shifts by tens of MiB between runs.
+
+**So the honest number is +5.8 %, not +11.6 %, and it buys capacity rather than speed** - it cannot move
+decode at fixed concurrency, and at TB shapes the pool is already 6.72x the window, so nothing here is
+binding. It is worth setting only where long-context capacity is the constraint, with the value
+**measured on that exact host** rather than copied from a log line. The todo is closed as *measured and
+mostly declined* rather than as a win.
