@@ -34,8 +34,11 @@
 # NAMED DEVIATIONS FROM THE 5090 PRE-REGISTRATION (platform change, stated not hidden)
 #   * model      : hydrated edition /models/qwen38-hyd, not the K5K6-context edition
 #   * window     : 262,144 (the shipping 2x profile, docs/46 §18), not 196,608
-#   * batching   : --max-num-seqs 64 --max-num-batched-tokens 8192 (shipping), not 1/2048.
-#                  The probe still issues at concurrency 1, so one request is in flight.
+#   * batching   : --max-num-seqs 64 (shipping) not 1; --max-num-batched-tokens 2048,
+#                  which is BOTH the pre-registration's value and the only band the
+#                  image's own mamba+LMCache guard admits at block_size 1600 (see the
+#                  serving-profile block below). The probe issues at concurrency 1, so
+#                  exactly one request is in flight regardless of max_num_seqs.
 #   * parallelism: --tensor-parallel-size 2. LMCacheMPConnector therefore registers two
 #                  GPU clients; the MP corruption path needs more than one rank, which is
 #                  why this must run on the 2x box.
@@ -121,7 +124,19 @@ LMC_PROM_PORT=${LMC_PROM_PORT:-9331}
 
 # ------------------------------------------------------------------ serving profile
 # The shipping 2x TP2 profile (~/bin/serve-tp2.sh, docs/46 §18), minus the chat-surface
-# parsers the probe cannot reach.
+# parsers the probe cannot reach, and with ONE forced change, measured not chosen:
+#
+#   the shipping --max-num-batched-tokens 8192 CANNOT run LMCache on this model at all.
+#   The image's own connector refuses it:
+#     ValueError: Mamba-hybrid models with LMCache require
+#     block_size <= max_num_batched_tokens < 2 * block_size so every prefill step
+#     advances exactly one block and every block boundary gets a state snapshot;
+#     got max_num_batched_tokens=8192, block_size=1600. Set --max-num-batched-tokens 1600.
+#   vLLM sets block_size to 1600 here ("Setting attention block size to 1600 tokens to
+#   ensure that attention page size is >= mamba page size"), so the admissible band is
+#   [1600, 3199]. 2048 sits inside it AND is exactly the value the 5090 pre-registration
+#   used, so this forced change also removes a deviation instead of adding one. Every arm
+#   including the L0 control runs at 2048 so the arms stay one variable apart.
 QUANT_CFG='{"linear":{"weight":"mxfp8"},"ignore":["re:.*visual\\..*","re:.*in_proj_a$","re:.*in_proj_b$","re:.*in_proj_ba$","re:.*mtp\\..*","lm_head"]}'
 SPEC='{"method":"mtp","num_speculative_tokens":3,"num_speculative_tokens_per_batch_size":[[1,4,3],[5,64,1]]}'
 MM_CFG='{"truncation":false}'
@@ -129,7 +144,7 @@ COMPILE='{"cudagraph_mode":"FULL_DECODE_ONLY"}'
 MAXLEN=${MAXLEN:-262144}
 GPU_UTIL=${GPU_UTIL:-0.92}
 SEQS=${SEQS:-64}
-BATCHED=${BATCHED:-8192}
+BATCHED=${BATCHED:-2048}
 TP=${TP:-2}
 READY_TIMEOUT=${READY_TIMEOUT:-2400}
 # how long the patched phase holds the LMCache server up for the fidelity gate, in 5s ticks
