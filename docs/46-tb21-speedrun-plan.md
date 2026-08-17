@@ -991,3 +991,60 @@ agrees with docs/47's independent finding that the trellis GEMMs already run at 
 *measured* achievable bandwidth ceiling. The falsifiable prediction for the DP8 arm is therefore
 **further sub-linear scaling, worst at low per-replica concurrency**; if DP8 instead scales *better* than
 DP4 did, this explanation is wrong and must be replaced rather than patched.
+
+## 24. MEASURED: DP8, and my §23 explanation is falsified by my own next measurement
+
+DP8 gated **PASS on all five checks including the 262,144-token needle** (check 6, connector-reuse,
+correctly reports SKIP - no KV connector attached), measured from the load driver **over the VPC**, which
+is the campaign-shaped path and restores comparability with the 1x and 2x tiers.
+
+| rung | 512x256 per-req / agg | 4kx1k per-req / agg |
+|---|---|---|
+| C1 | 135 / 135 | 90 / 90 |
+| C4 | 135 / 370 | 93 / 339 |
+| C16 | 118 / 1307 | 86 / 1239 |
+| C32 | 80 / **1947** | 71 / 1607 |
+| C64 | 67 / **2835** | 45 / 2214 |
+| C128 | 35 / **3553** | 25 / 2782 |
+
+**Peak aggregate 3,553 tok/s**, and the knee lands at **C32** on both shapes - against C16 for DP4 and
+C8 for DP2. The knee therefore scales **linearly with replica count**, which is the clean expected
+result and the single most useful planning number here: *a DP-N deployment holds its per-request floor to
+about 4N concurrent requests.*
+
+### The falsification
+
+§23 explained DP2->DP4's sub-linearity as a **shared-host-bandwidth ceiling** and committed to a
+falsifiable consequence: *"further sub-linear scaling, worst at low per-replica concurrency; if DP8
+instead scales better than DP4 did, this explanation is wrong and must be replaced rather than patched."*
+
+| requests per replica | DP2 -> DP4 | DP4 -> DP8 |
+|---:|---:|---:|
+| 2 | 88.1 % | **99.9 %** |
+| 4 | 83.4 % | 94.8 % |
+| 8 | 85.6 % | 97.4 % |
+| 16 | 91.3 % | 90.7 % |
+
+DP4->DP8 reaches **99.9-101.3 % of linear at low per-replica load** - the exact opposite of the predicted
+pattern, and better everywhere except the 16-per-replica point. **The shared-bandwidth explanation is
+withdrawn, not amended.**
+
+### The replacement, and it is less satisfying but more honest
+
+Both ratios compare **different physical hosts**, and Jarvis scales host resources with GPU count (2x:
+56 vCPU / 314 GB; 4x: 112 / 629; 8x: 224 / 1,259), so per-GPU host resources are roughly *constant*
+across the series - which removes the mechanism §23 proposed. Worse, the two ratios were not measured
+through the same harness path: DP2 and DP8 were driven **over the VPC**, while DP4 had to be driven from
+**localhost** because that host was VPC-isolated. So the "scaling deviation" is not a stable property of
+the topology at all; it is dominated by **which box and which path** each arm happened to use, at a
+resolution (5-17 %) coarser than the effect being claimed.
+
+**What that means for the §12 rule: its premise was wrong, and its conclusion survives for a better
+reason.** §12 assumed a scaling law could be read off two adjacent tiers. It cannot - not at this
+resolution, across changing hosts. So the 4x TB tier still must be **left blank rather than
+interpolated**, no longer because scaling is provably nonlinear, but because **we have no reliable
+scaling law to interpolate with**. Cards and charts must show measured tiers only.
+
+**The rule this project should carry forward:** a cross-tier ratio is only evidence if both arms ran on
+the same host through the same harness path. Ours did not, and saying so is cheaper than publishing a
+scaling law we cannot support.
