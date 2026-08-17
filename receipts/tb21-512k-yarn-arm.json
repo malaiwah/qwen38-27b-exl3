@@ -1,0 +1,102 @@
+{
+ "schema": "qwen38-tb21-512k-yarn-arm/1",
+ "generated_utc": "2026-08-17T19:01:10Z",
+ "what_this_is": "The task-level arm for static YaRN at FACTOR 2.0 and a 524,288 window, run on the 47 pre-registered discriminating tasks (receipts/tb21-512k-preregistration.json). PARTIAL BY DESIGN: I stopped it deliberately with 10 tasks still in flight to pause the 8x host, because the balance had fallen to $4.88 and the marginal value of 4 more tasks was far below the value of buying closeout runway.",
+ "completion": {
+  "pre_registered": 47,
+  "completed": 37,
+  "cancelled_by_operator": 10,
+  "cancelled_tasks": [
+   "circuit-fibsqrt",
+   "extract-moves-from-video",
+   "mailman",
+   "path-tracing",
+   "path-tracing-reverse",
+   "regex-chess",
+   "sam-cell-seg",
+   "schemelike-metacircular-eval",
+   "train-fasttext",
+   "winning-avg-corewars"
+  ],
+  "wall_clock_s": 3660.3,
+  "raw_headline": "20/47 resolved",
+  "exceptions": {
+   "AgentTimeoutError": 9,
+   "CancelledError": 10
+  },
+  "why_partial_is_still_valid": "the comparison below is restricted to the 37 tasks this arm actually completed, and the other two arms are re-scored on exactly those 37, so the denominators match. Cancelling 10 tasks costs statistical power, not validity."
+ },
+ "headline": "At factor 2.0 the YaRN penalty is INVISIBLE at task level: 20/37 for 512k-YaRN against 20/37 for 262k-native, an exact tie. At factor 4.0 the same subset scores 11/37. So the fidelity cost measured at the token level - 4.23e-03 for factor 2.0 versus 1.03e-02 for factor 4.0 - shows up at task level as 'no detectable difference' versus 'nine tasks lost out of thirty-seven'.",
+ "comparison_on_the_37_completed": {
+  "262k_native": 20,
+  "512k_yarn_factor_2": 20,
+  "1M_yarn_factor_4": 11,
+  "denominator": 37,
+  "512k_vs_native": {
+   "delta": 0,
+   "lost": [
+    "mteb-leaderboard",
+    "pytorch-model-cli"
+   ],
+   "gained": [
+    "polyglot-rust-c",
+    "video-processing"
+   ],
+   "sign_test_two_sided_p": 1.0,
+   "reading": "2 lost, 2 gained - pure churn, exactly what single-pass variance produces. No evidence of any task-level cost from factor 2.0.",
+   "p_value_note": "A two-sided sign test on a perfectly symmetric 2-versus-2 split is p = 1.0 by definition. My first computation printed 1.375 because the naive two-sided doubling double-counts the central term when the split is even; a probability above 1 is arithmetically impossible and is corrected here rather than left in the receipt."
+  },
+  "512k_vs_1M": {
+   "delta": 9,
+   "n_512k_only": 12,
+   "n_1M_only": 3,
+   "sign_test_two_sided_p": 0.03516,
+   "tasks_512k_resolved_that_1M_did_not": [
+    "build-pov-ray",
+    "compile-compcert",
+    "configure-git-webserver",
+    "largest-eigenval",
+    "overfull-hbox",
+    "rstan-to-pystan",
+    "sanitize-git-repo",
+    "sparql-university",
+    "sqlite-db-truncate",
+    "torch-tensor-parallelism",
+    "tune-mjcf",
+    "video-processing"
+   ],
+   "tasks_1M_resolved_that_512k_did_not": [
+    "model-extraction-relu-logits",
+    "mteb-leaderboard",
+    "protein-assembly"
+   ],
+   "reading": "12 versus 3 discordant, sign test p = 0.03516. This is the one comparison in the family that reaches conventional significance, and it is the one with the largest underlying token-level difference, which is the consistency one would hope for."
+  }
+ },
+ "two_scales_agree": {
+  "token_level_factor_2": 0.004231482,
+  "token_level_factor_4": 0.010265,
+  "token_level_ratio": 0.412,
+  "task_level_factor_2": "20/37, tied with native",
+  "task_level_factor_4": "11/37, nine behind native",
+  "reading": "the token-level and task-level instruments were built independently, use different data, and agree: factor 2.0 is cheap enough to disappear into single-pass noise, factor 4.0 is not."
+ },
+ "confounds_and_limits": [
+  "PARTIAL: 10 of 47 tasks were cancelled by me, so power is reduced. The comparison is restricted to the 37 completed and the other arms re-scored on the same 37.",
+  "The 262k and 1M arms ran at C32 and C16 respectively; this arm ran C32. Where it is compared to the 1M arm the concurrency differs, and less contention favours the 1M arm, so the +9 is if anything understated.",
+  "All three arms are single pass, so all carry best-of-1 variance; the 2-lost/2-gained churn against native is that variance made visible.",
+  "n=37 on a deliberately DISCRIMINATING subset, not a random sample of the suite. The subset was chosen to be hard, so none of these fractions is comparable to any published x/89 figure.",
+  "Denominator is 37. Never quote this as a Terminal-Bench score: the subset is selective and the agent timeout is non-stock."
+ ],
+ "does_not_revise": [
+  "31/89 single pass stock clock",
+  "44/89 best-of-2 stock clock (the published lower bound)",
+  "56/89 at 262k native 2x clock",
+  "48/89 at 1M YaRN 2x clock"
+ ],
+ "inputs": {
+  "merged": "receipts/tb21-512k-p1-merged.json",
+  "preregistration": "receipts/tb21-512k-preregistration.json",
+  "token_level": "receipts/yarn-512k-penalty.json"
+ }
+}
