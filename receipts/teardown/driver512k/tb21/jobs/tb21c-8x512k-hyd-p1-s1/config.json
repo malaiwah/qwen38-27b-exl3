@@ -1,0 +1,53 @@
+{
+    "job_name": "tb21c-8x512k-hyd-p1-s1",
+    "jobs_dir": "/home/ubuntu/tb21/jobs",
+    "timeout_multiplier": 2.0,
+    "retry": {
+        "max_retries": 3,
+        "include_exceptions": [
+            "Timeout",
+            "APIError",
+            "RemoteProtocolError",
+            "APIConnectionError",
+            "InternalServerError",
+            "EnvironmentStartError",
+            "ServiceUnavailableError",
+            "AgentSetupTimeoutError",
+            "ConnectionError",
+            "EnvironmentStartTimeoutError"
+        ]
+    },
+    "agents": [
+        {
+            "name": "terminus-2",
+            "model_name": "hosted_vllm/qwen38",
+            "kwargs": {
+                "api_base": "http://10.0.0.5:8000/v1",
+                "model_info": {
+                    "max_input_tokens": 524288,
+                    "max_output_tokens": 8192,
+                    "input_cost_per_token": 0,
+                    "output_cost_per_token": 0,
+                    "cache_creation_input_token_cost": 0,
+                    "cache_read_input_token_cost": 0
+                }
+            },
+            "env": {
+                "HOSTED_VLLM_API_KEY": "****"
+            }
+        }
+    ],
+    "datasets": [
+        {
+            "path": "/home/ubuntu/tb21/tasks",
+            "task_names": [
+                "break-filter-js-from-html",
+                "compile-compcert",
+                "headless-terminal",
+                "overfull-hbox",
+                "regex-chess",
+                "torch-tensor-parallelism"
+            ]
+        }
+    ]
+}

@@ -99,9 +99,13 @@
   {
    "item": "the omp tmux session state on the driver",
    "reason": "an interactive session, not an artifact; its transcripts live under ~/.omp/agent/sessions which is not a measurement source."
+  },
+  {
+   "item": "sanitize-git-repo trajectory.json and its shard job.log (2 files)",
+   "reason": "contain the task's planted HF/GitHub/AWS fixture secrets, 121 matches between them. Removed rather than allow-listed; see secret_scanning_incident. None of our own credentials appear anywhere in the sweep."
   }
  ],
- "invariant_statement": "At the time of writing, every file on every rental is in exactly one of four states: committed to git, proven byte-identical to something already committed, uploaded to the HF dataset, or listed above with a reason. There is no unexplained residue. An instance dying now costs compute only.",
+ "invariant_statement": "At the time of writing, every file on every rental is in exactly one of four states: committed to git, proven byte-identical to something already committed, uploaded to the HF dataset, or listed above with a reason. There is no unexplained residue. An instance dying now costs compute only. RE-VERIFIED after the 512k arm: the arm's own artifacts (55 result.json plus 24 metrics files) have been swept, deduped and committed, so the invariant still holds at teardown time and not merely at first sweep.",
  "verification": {
   "how": "re-run the sweep and diff against this manifest; every git-bound entry's sha256 must match the committed file, and the HF archives are addressed by repo path",
   "spot_checks": [
@@ -1768,5 +1772,2231 @@
    "sha256": "d59c485478d4a61a572947611d7cde12d7f2e1d20f1997d61639a42cd9b7d2c5",
    "bytes": 1007512
   }
- ]
+ ],
+ "final_sweep_after_the_512k_arm": {
+  "utc": "2026-08-17T19:04:06Z",
+  "swept": "driver ~/tb21/jobs/tb21c-8x512k-hyd-p1-s* and ~/tb21/receipts",
+  "duplicates_dropped": 26,
+  "oversized_dropped": 0,
+  "oversized_reason": "ladder receipts over 2 MiB that are already committed under their canonical receipts/tb21-ladder-*.json names; the driver held working copies",
+  "kept": 438,
+  "kept_mib": 33.32,
+  "files": [
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s0/adaptive-rejection-sampler__wLbrxtg/agent/trajectory.json",
+    "sha256": "e2c9107ff7f979cb88a3b82b0a71117b1a02ab4222905a65f846623c51a48883",
+    "bytes": 343476
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s0/adaptive-rejection-sampler__wLbrxtg/artifacts/manifest.json",
+    "sha256": "c1db653f487fb773c4f9247162ab3314e7f0584a486914b9874c4b3d6949e42d",
+    "bytes": 159
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s0/adaptive-rejection-sampler__wLbrxtg/config.json",
+    "sha256": "59e6ac06b230721043a70d21b5d295caf9e40d98f587a86c744d076376b0bcf4",
+    "bytes": 894
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s0/adaptive-rejection-sampler__wLbrxtg/lock.json",
+    "sha256": "56c3743dc534e0a5a9aec964ad82e7b18077b7f2f307eecf9b72a2a43df33eb6",
+    "bytes": 1450
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s0/adaptive-rejection-sampler__wLbrxtg/result.json",
+    "sha256": "7f324147e552186286afd9da574c75b04c6fce6892b88f3f3db5cb4fe3351210",
+    "bytes": 15121
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s0/adaptive-rejection-sampler__wLbrxtg/trial.log",
+    "sha256": "c66a0efab8a2449375efaead8a4e3ec26e5286d876b352e27c85ec6f821eaa87",
+    "bytes": 1733
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s0/adaptive-rejection-sampler__wLbrxtg/verifier/ctrf.json",
+    "sha256": "a7af012260d326179f282a0493e68764791a909d1f11b169d07b8e7d4575a4e4",
+    "bytes": 20556
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s0/cobol-modernization__HHZt9ig/agent/trajectory.json",
+    "sha256": "1533bc66e362a0b3b773b17f4289f905d8e0585c679ebdf61259348f6a4dae5d",
+    "bytes": 131097
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s0/cobol-modernization__HHZt9ig/artifacts/manifest.json",
+    "sha256": "c1db653f487fb773c4f9247162ab3314e7f0584a486914b9874c4b3d6949e42d",
+    "bytes": 159
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s0/cobol-modernization__HHZt9ig/config.json",
+    "sha256": "5a55b3e232d40ac1d26b84ecab2d6c39e711e4dbce635e38f711ee7403ff1191",
+    "bytes": 880
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s0/cobol-modernization__HHZt9ig/lock.json",
+    "sha256": "359d6270924e54a4a6b0d4f2f8060af49c1e2574ec22570400b7ca2aa2d1338a",
+    "bytes": 1436
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s0/cobol-modernization__HHZt9ig/result.json",
+    "sha256": "41513b1ddda2e6257f22b190e72a015b03c1c8b9b959193d6127cfdd43ed14d5",
+    "bytes": 4883
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s0/cobol-modernization__HHZt9ig/trial.log",
+    "sha256": "56464b317741e087592a97ac896937bc84d1a3bd5811974ac93993f7d54dba02",
+    "bytes": 1686
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s0/cobol-modernization__HHZt9ig/verifier/ctrf.json",
+    "sha256": "25e84da8fe404fd74a59e6691c0b38d3a8a2c66a4ebad7adde6fd75059d16ac7",
+    "bytes": 1447
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s0/config.json",
+    "sha256": "9d8ea732208932b247bccc84ac3419c00c3207a78aa962938b0af14396f07f65",
+    "bytes": 1560
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s0/gpt2-codegolf__npGNLGm/agent/trajectory.json",
+    "sha256": "23d1174557b49b913789cde9302932eaa2b979e68d756be76eb88f8c214dbedf",
+    "bytes": 348141
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s0/gpt2-codegolf__npGNLGm/artifacts/manifest.json",
+    "sha256": "c1db653f487fb773c4f9247162ab3314e7f0584a486914b9874c4b3d6949e42d",
+    "bytes": 159
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s0/gpt2-codegolf__npGNLGm/config.json",
+    "sha256": "4cee65cb23aa653833efe4a10d736103b1acd013803ba8cd1a83865dc5a8bb62",
+    "bytes": 868
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s0/gpt2-codegolf__npGNLGm/lock.json",
+    "sha256": "ba86ef87cd17d86cc0f5c674641a28c834199947706a5420288481fec7d4b58f",
+    "bytes": 1424
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s0/gpt2-codegolf__npGNLGm/result.json",
+    "sha256": "1daa53eab219cec2f05f3b87f84d91a033a985ad6d2cb4a35f94dfdeddb4e120",
+    "bytes": 15508
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s0/gpt2-codegolf__npGNLGm/trial.log",
+    "sha256": "079b7c45dc93ff98898be254a904ace80252b6715c54bb72cf31ac7f00d2123f",
+    "bytes": 2732
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s0/gpt2-codegolf__npGNLGm/verifier/ctrf.json",
+    "sha256": "d85f0cb2111375c379d8fb3f91750ab49d1f32d9fd4bf4d77afaec8154e1e5ba",
+    "bytes": 1514
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s0/job.log",
+    "sha256": "dbb8c2fc3bb1c0542b1a096cd22e1f284c22f5f49d1eae8bc4178e4dbb9b9588",
+    "bytes": 111082
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s0/lock.json",
+    "sha256": "2bc31c95b8aed9add5a67079dabfc8afc2796d8740b368723dcd853c760d601f",
+    "bytes": 12044
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s0/mteb-retrieve__Pnsch4B/agent/trajectory.json",
+    "sha256": "bdb6fd86dcfb280041be7b7a3faa0cbe744f6b14c4658b94584fc9fe5909d047",
+    "bytes": 185212
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s0/mteb-retrieve__Pnsch4B/artifacts/manifest.json",
+    "sha256": "c1db653f487fb773c4f9247162ab3314e7f0584a486914b9874c4b3d6949e42d",
+    "bytes": 159
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s0/mteb-retrieve__Pnsch4B/config.json",
+    "sha256": "43eed2a1373e0058cd18f268b10b762149608112e9b9581d9c21e120d3f5c917",
+    "bytes": 868
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s0/mteb-retrieve__Pnsch4B/lock.json",
+    "sha256": "1bc2b57936204635759d1f540894c57200721951e72cb7dd8df79c0146361c2a",
+    "bytes": 1424
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s0/mteb-retrieve__Pnsch4B/result.json",
+    "sha256": "e443650b052e01f7706b2275f8c709838d6ca87b21f6a1aeca31218b3bc9bb0b",
+    "bytes": 5415
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s0/mteb-retrieve__Pnsch4B/trial.log",
+    "sha256": "496fff5427a37da18bccd17750176761f968e64d8ee2faa9e87d3fe986587665",
+    "bytes": 3777
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s0/mteb-retrieve__Pnsch4B/verifier/ctrf.json",
+    "sha256": "1a1d15f9c075fb1843df36628665d2761f058850773bd7ad794fe60c8bc2e13e",
+    "bytes": 1094
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s0/raman-fitting__iFEyfma/agent/trajectory.json",
+    "sha256": "9a2172917bf7b8736a0eba59496541e8d00d723c07fbedfa8d86d86ef37c993d",
+    "bytes": 232241
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s0/raman-fitting__iFEyfma/artifacts/manifest.json",
+    "sha256": "c1db653f487fb773c4f9247162ab3314e7f0584a486914b9874c4b3d6949e42d",
+    "bytes": 159
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s0/raman-fitting__iFEyfma/config.json",
+    "sha256": "b3c20dd57d79bdf1261b1390834aa0f41e1c623833521240a9ab6d8569034e19",
+    "bytes": 868
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s0/raman-fitting__iFEyfma/lock.json",
+    "sha256": "980ea79114e9d8b341d379021dfd01c846509414a47b7f74ce9460be6a660bf2",
+    "bytes": 1424
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s0/raman-fitting__iFEyfma/result.json",
+    "sha256": "5c3722aedfe7448e930e57be264a923d68f2e448c2bc97e095e8aa0dc52fc104",
+    "bytes": 4991
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s0/raman-fitting__iFEyfma/trial.log",
+    "sha256": "7358c828dd902c68a7dc7635f3f212b6b54ff1ed1dd6a274154bb6672998eec9",
+    "bytes": 2388
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s0/raman-fitting__iFEyfma/verifier/ctrf.json",
+    "sha256": "bdc13df50d633ce213f0bfbdf7be8bce67a9acd312d32e5a77eb5f3a5b60bbfa",
+    "bytes": 4315
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s0/result.json",
+    "sha256": "2bb7512dd34ec32890728a523fd9dd4f5e6692b0c1ba028e8abec22f4c02b589",
+    "bytes": 1751
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s0/torch-pipeline-parallelism__nmGUiG7/agent/trajectory.json",
+    "sha256": "1dfc1021ce761c9dec3ac00df09c36bcd36e3ca7cac6e2265d357319f8595815",
+    "bytes": 399525
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s0/torch-pipeline-parallelism__nmGUiG7/artifacts/manifest.json",
+    "sha256": "c1db653f487fb773c4f9247162ab3314e7f0584a486914b9874c4b3d6949e42d",
+    "bytes": 159
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s0/torch-pipeline-parallelism__nmGUiG7/config.json",
+    "sha256": "f992a3219c1df35625cc119b1f2676a4dbe876c70ae172adebc565070cf63e0b",
+    "bytes": 894
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s0/torch-pipeline-parallelism__nmGUiG7/lock.json",
+    "sha256": "77c408c8fd630dca91835b07cc41e0d7e0a3c148d832d812d238dd0f3a441e86",
+    "bytes": 1450
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s0/torch-pipeline-parallelism__nmGUiG7/result.json",
+    "sha256": "c57c57bd3d4d336b7d19ac897e75d86ad03db06350ed092a6aa5786a8a378e39",
+    "bytes": 8028
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s0/torch-pipeline-parallelism__nmGUiG7/trial.log",
+    "sha256": "383db43dfafe4ca343daa27537f3e42fe384d7d137b0b2464e31ea7992f46bcc",
+    "bytes": 4551
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s0/torch-pipeline-parallelism__nmGUiG7/verifier/ctrf.json",
+    "sha256": "354d9f40ebc219a46bcd70481ecf9aaaa9a12af5e9fb67c26829e34699198d2a",
+    "bytes": 8588
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s0.log",
+    "sha256": "22b4612950ff4c6bcc2b0f53b7e1046bad82bf1080d5b4a173f2e15671533f90",
+    "bytes": 1390
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s1/break-filter-js-from-html__X2K2og8/agent/trajectory.json",
+    "sha256": "1c1adae03236abb58ab1ac235c8c97e723bf912d9b21349da72c957c6ecbcad7",
+    "bytes": 128879
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s1/break-filter-js-from-html__X2K2og8/artifacts/manifest.json",
+    "sha256": "c1db653f487fb773c4f9247162ab3314e7f0584a486914b9874c4b3d6949e42d",
+    "bytes": 159
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s1/break-filter-js-from-html__X2K2og8/config.json",
+    "sha256": "f64595e1466acc9bddadc82bed324f4ed756581f25f4c4712dd32a1ab2396281",
+    "bytes": 892
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s1/break-filter-js-from-html__X2K2og8/lock.json",
+    "sha256": "4b2ca1aa0ae212da2979bc853f288c0533ad355835b869a9aea9059a02b130e1",
+    "bytes": 1448
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s1/break-filter-js-from-html__X2K2og8/result.json",
+    "sha256": "9c76b13fb66375a2cd819f7aa80f586c0f21693aa656d44c18ebefb319367b90",
+    "bytes": 4745
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s1/break-filter-js-from-html__X2K2og8/trial.log",
+    "sha256": "0ad51efc9c813e601845f67583d91249eb461014904d2d5d75f90ef8defa83b9",
+    "bytes": 1150
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s1/break-filter-js-from-html__X2K2og8/verifier/ctrf.json",
+    "sha256": "82167d61e69bec3e5224f29b72537f75e2fc83c09e045e17925d5221925c5b88",
+    "bytes": 757
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s1/compile-compcert__Wx9DEjs/agent/trajectory.json",
+    "sha256": "af42560bacf44964c57051d52c963aec64b7353062265b353e1ad6785aa13ce0",
+    "bytes": 533723
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s1/compile-compcert__Wx9DEjs/artifacts/manifest.json",
+    "sha256": "c1db653f487fb773c4f9247162ab3314e7f0584a486914b9874c4b3d6949e42d",
+    "bytes": 159
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s1/compile-compcert__Wx9DEjs/config.json",
+    "sha256": "350bf59d00ef00359b9baa5066e7da8aab5202bdc4bfa9d9baa4b3435cc952cf",
+    "bytes": 874
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s1/compile-compcert__Wx9DEjs/lock.json",
+    "sha256": "382e448b41c99f04ceac5f1d2b80d1e107ac2e3941d198d57253c8e27131cc5d",
+    "bytes": 1430
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s1/compile-compcert__Wx9DEjs/result.json",
+    "sha256": "0fb4f3cc3704f7936cca71509661744bf88fda4c9636dc1f7a80faf96b79de7c",
+    "bytes": 6632
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s1/compile-compcert__Wx9DEjs/trial.log",
+    "sha256": "b017abc9dbdf4a4b270363217ed93241d07b43bdfd236a0b6dc06b91b23a40a8",
+    "bytes": 10256
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s1/compile-compcert__Wx9DEjs/verifier/ctrf.json",
+    "sha256": "bae18f4767dbd77949704487c693319a8e0eb796a1274574a6a9c391bb6c237a",
+    "bytes": 1487
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s1/config.json",
+    "sha256": "62fb714ba58a0a058aee3e4f162c01dedf1d93e44c92947f6ec95de60a708d5e",
+    "bytes": 1556
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s1/headless-terminal__dwDnzXB/agent/trajectory.json",
+    "sha256": "6b6ec058483f8489d5ff30f925e616e0c542f9185d96cd64e3142d73e47aeabc",
+    "bytes": 181814
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s1/headless-terminal__dwDnzXB/artifacts/manifest.json",
+    "sha256": "c1db653f487fb773c4f9247162ab3314e7f0584a486914b9874c4b3d6949e42d",
+    "bytes": 159
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s1/headless-terminal__dwDnzXB/config.json",
+    "sha256": "5243adbc8cabb98b64fdb1befb42fc9579fa9f336c255488f5fd26a3572e446b",
+    "bytes": 876
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s1/headless-terminal__dwDnzXB/lock.json",
+    "sha256": "65735a96d01a4b8d7d17ffabebb0370c51d0d2bdc2b299b8c6955bdaf13af748",
+    "bytes": 1432
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s1/headless-terminal__dwDnzXB/result.json",
+    "sha256": "96add1e76f0ed03cdc04451320068a752ab15fb0166b5722f03c17e4ad76af45",
+    "bytes": 4950
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s1/headless-terminal__dwDnzXB/trial.log",
+    "sha256": "5a054e1a4d27d1d8f059e7f83fd5ea7459ccb3d4be0e11a01d6017cdb8cc7f26",
+    "bytes": 1802
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s1/headless-terminal__dwDnzXB/verifier/ctrf.json",
+    "sha256": "eb0a7713c7688d0bf5c3c01a607cfb919114dfc773739132e6744c538456d892",
+    "bytes": 2846
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s1/job.log",
+    "sha256": "81b921e9c16d7e2022ca7a2cd2c001415f39e1ab4763c393a965ad8328b7d235",
+    "bytes": 113917
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s1/lock.json",
+    "sha256": "ee40628c912f88c0d05ad05253df246085c3737a79a6d183913dc526d6147ce5",
+    "bytes": 12036
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s1/overfull-hbox__zwyUWL5/agent/trajectory.json",
+    "sha256": "7401fb1ab8adf58e70a8fe0f0f2d5ad4c48fdee3a293c1ef7ce21053a2be0642",
+    "bytes": 208430
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s1/overfull-hbox__zwyUWL5/artifacts/manifest.json",
+    "sha256": "c1db653f487fb773c4f9247162ab3314e7f0584a486914b9874c4b3d6949e42d",
+    "bytes": 159
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s1/overfull-hbox__zwyUWL5/config.json",
+    "sha256": "6810c3c608ae49a2a04e2cef21aa6cab09979e6eae78d31b31bc70e89e04bd32",
+    "bytes": 868
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s1/overfull-hbox__zwyUWL5/lock.json",
+    "sha256": "d7555b961f607a3e4f959f0ba3b64664bdc5030fe37ad1ef4edd917422a75df8",
+    "bytes": 1424
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s1/overfull-hbox__zwyUWL5/result.json",
+    "sha256": "dcf6e283ec2cd67ec94510276a07b3b4541d9ae7c020831b4333b4336c904717",
+    "bytes": 4953
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s1/overfull-hbox__zwyUWL5/trial.log",
+    "sha256": "b39c840f5e45c717a5d8f8069e885c81a51597101411defb2b95f660a52efa35",
+    "bytes": 2286
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s1/overfull-hbox__zwyUWL5/verifier/ctrf.json",
+    "sha256": "8cd6b8665dbf5217c3608843f624f41d65eaf53cd98edf00d3c4b77490564e72",
+    "bytes": 1814
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s1/regex-chess__GwPwfXi/agent/trajectory.json",
+    "sha256": "e106e6aef0f959155fcd57285a0829e37200c0142a5473d88824aa5034e0250a",
+    "bytes": 106379
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s1/regex-chess__GwPwfXi/artifacts/manifest.json",
+    "sha256": "c1db653f487fb773c4f9247162ab3314e7f0584a486914b9874c4b3d6949e42d",
+    "bytes": 159
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s1/regex-chess__GwPwfXi/config.json",
+    "sha256": "8ab5a214da8cfd161a863e1ee058040d1d3727a83f30cd6b9cfd9edcc5a3358c",
+    "bytes": 864
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s1/regex-chess__GwPwfXi/lock.json",
+    "sha256": "5f428c595381e7f0c5946219000dfd2faa9a6cbc55407ed5514ac44e08647885",
+    "bytes": 1420
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s1/regex-chess__GwPwfXi/result.json",
+    "sha256": "a5407f63486799847d06b7bc3386f499eecc88f60ccebbe5bb71d05bb7754c54",
+    "bytes": 15211
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s1/regex-chess__GwPwfXi/trial.log",
+    "sha256": "40f99b2b855887ce4834e4d1a8ba9792ddfa23670b7b404c05e50e83d86d3a4f",
+    "bytes": 578
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s1/result.json",
+    "sha256": "a75aa6553fd68777e3fe369c16026e8e7b2307a358215270b4540438bdd16efe",
+    "bytes": 1482
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s1/torch-tensor-parallelism__njABQTW/agent/trajectory.json",
+    "sha256": "a6e13a0c29ac46ead905790031d88d464e3932472bdde96b317467ca4040527f",
+    "bytes": 240413
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s1/torch-tensor-parallelism__njABQTW/artifacts/manifest.json",
+    "sha256": "c1db653f487fb773c4f9247162ab3314e7f0584a486914b9874c4b3d6949e42d",
+    "bytes": 159
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s1/torch-tensor-parallelism__njABQTW/config.json",
+    "sha256": "0a4a436a15586715deb87cdd49f4d1a3ac2d40b12346bbf5f560f713179a8e04",
+    "bytes": 890
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s1/torch-tensor-parallelism__njABQTW/lock.json",
+    "sha256": "b4b1c561362d14591c70ff27c5753c0e50f0025907015afdf71c2a6c1ec4fb0a",
+    "bytes": 1446
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s1/torch-tensor-parallelism__njABQTW/result.json",
+    "sha256": "1160080a79f2268ae3f3fa47f1022b27b9d6a05ec04744bf79f18e9533ec3e3d",
+    "bytes": 4881
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s1/torch-tensor-parallelism__njABQTW/trial.log",
+    "sha256": "d8f771eff51d13fc182c5c798e9fe6044d95c714f6008b202b5ac37fa6747f97",
+    "bytes": 2329
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s1/torch-tensor-parallelism__njABQTW/verifier/ctrf.json",
+    "sha256": "496ea758a3a8d289c158d0da65f4da813833b8fd0f531149cd4f406dd50a1063",
+    "bytes": 1772
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s1.log",
+    "sha256": "bcbee4c1f6304865e04dfa05441cea0ecc28803c7cb503163d192a50e6d64fcb",
+    "bytes": 331
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s2/build-cython-ext__ZtxeDuj/agent/trajectory.json",
+    "sha256": "4cf2b8fe2881b19f3d50dfc194b769726c53d0002984567be588adece6253b51",
+    "bytes": 312576
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s2/build-cython-ext__ZtxeDuj/artifacts/manifest.json",
+    "sha256": "c1db653f487fb773c4f9247162ab3314e7f0584a486914b9874c4b3d6949e42d",
+    "bytes": 159
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s2/build-cython-ext__ZtxeDuj/config.json",
+    "sha256": "4f0a224703fa3a61826a52fa79db4584b62faee3c3b888e754a4625d6e02b1e8",
+    "bytes": 874
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s2/build-cython-ext__ZtxeDuj/lock.json",
+    "sha256": "b9655cd6649506ca538e19015818ce99fe2c7b0bdd5febec20c4b57ae2f2b36a",
+    "bytes": 1430
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s2/build-cython-ext__ZtxeDuj/result.json",
+    "sha256": "0e30c58b55d342f1fa86ca1c15b222763d2ae32e4e870d802be60e415274d265",
+    "bytes": 15952
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s2/build-cython-ext__ZtxeDuj/trial.log",
+    "sha256": "ea28ebbdd9627259a9cd7d4cb4dbd2d02526722a70360ca80fa6152db9595fa9",
+    "bytes": 5959
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s2/build-cython-ext__ZtxeDuj/verifier/ctrf.json",
+    "sha256": "189ef5371d7577f7b4148d3c9f05f906443d2770d299bc748758326b1aac36c2",
+    "bytes": 4259
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s2/config.json",
+    "sha256": "fa16b9f95c6df404ac13a8c1568eefb1089ce68fc8bbcf22a326a7fd3f3f1199",
+    "bytes": 1546
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s2/configure-git-webserver__abz6TCp/agent/trajectory.json",
+    "sha256": "44b8188d0f552a55957990a7c000d732671234f8bb2e2f790b3426861851e3bb",
+    "bytes": 105933
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s2/configure-git-webserver__abz6TCp/artifacts/manifest.json",
+    "sha256": "c1db653f487fb773c4f9247162ab3314e7f0584a486914b9874c4b3d6949e42d",
+    "bytes": 159
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s2/configure-git-webserver__abz6TCp/config.json",
+    "sha256": "f17ad8b46f8b1ad4e5e6f1bb524241e8310ba93ddb9b76ff89bd66820b9ab58d",
+    "bytes": 888
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s2/configure-git-webserver__abz6TCp/lock.json",
+    "sha256": "e9670617150020e55be7abaccdb1758acd3f5bce853db9319d8922902a793327",
+    "bytes": 1444
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s2/configure-git-webserver__abz6TCp/result.json",
+    "sha256": "439128857c9b398e8f110ff6742b0679a8dee50c35afa028ef51c701445f3d98",
+    "bytes": 4906
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s2/configure-git-webserver__abz6TCp/trial.log",
+    "sha256": "229ea07a1a4244709033218d40bf13f51bacc29ea554daf08d05c2d9f107f445",
+    "bytes": 1742
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s2/configure-git-webserver__abz6TCp/verifier/ctrf.json",
+    "sha256": "c9a7735581f2b60a10b352e8ecdc868c4311f08a4080c140fbe7082a8e2f999b",
+    "bytes": 749
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s2/job.log",
+    "sha256": "877807902a7e752c38f4096ca9c1b165b0fdea37e18f24079e0e8f20a1086b10",
+    "bytes": 182883
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s2/largest-eigenval__buQ3wx6/agent/trajectory.json",
+    "sha256": "016b9f4633cd6fb672b1bad9bf6a08ce2e938ca0796a0ee9784ca1873712003e",
+    "bytes": 200274
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s2/largest-eigenval__buQ3wx6/artifacts/manifest.json",
+    "sha256": "c1db653f487fb773c4f9247162ab3314e7f0584a486914b9874c4b3d6949e42d",
+    "bytes": 159
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s2/largest-eigenval__buQ3wx6/config.json",
+    "sha256": "cd4c6812b74aeda3ba3d5003583e112abfa9f860e0ecbe17f943c0ec533940ed",
+    "bytes": 874
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s2/largest-eigenval__buQ3wx6/lock.json",
+    "sha256": "8c2e2f90ba905bfe906fd14082749f7efb46afccaee06ec1bd527ed5368e403c",
+    "bytes": 1430
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s2/largest-eigenval__buQ3wx6/result.json",
+    "sha256": "fe402f81cd3190b707039f5251cee40dcaf976adeb69976aa2b0278a8693bf3c",
+    "bytes": 5150
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s2/largest-eigenval__buQ3wx6/trial.log",
+    "sha256": "fb9808342eae830026f9cf26f9cc1907e4ce83ee810d1412d3f2c226cf9e4fd6",
+    "bytes": 3205
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s2/largest-eigenval__buQ3wx6/verifier/ctrf.json",
+    "sha256": "9b634f07d68e1e82ef25c7893859ca34b94e3797fab36b826144598c7107b658",
+    "bytes": 1780
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s2/lock.json",
+    "sha256": "2b9dc7178b892434179ed596b12b43a80b4f761eed90b5f97e3c3c9ff5ccf7d2",
+    "bytes": 12016
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s2/path-tracing__hRnNnre/agent/trajectory.json",
+    "sha256": "3eb4321edfcbff09cf91a994a5c74a242f3b26c1c97d1e8a54452691190d6115",
+    "bytes": 592164
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s2/path-tracing__hRnNnre/artifacts/manifest.json",
+    "sha256": "c1db653f487fb773c4f9247162ab3314e7f0584a486914b9874c4b3d6949e42d",
+    "bytes": 159
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s2/path-tracing__hRnNnre/config.json",
+    "sha256": "16555b132c533d66b674b4e7b1c91bc925ac799acf70703fb757d373ce2e5438",
+    "bytes": 866
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s2/path-tracing__hRnNnre/lock.json",
+    "sha256": "2d19792f8c57568410e4f3a20536170d2898af6dd9913b79152d38e27f9a29a9",
+    "bytes": 1422
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s2/path-tracing__hRnNnre/result.json",
+    "sha256": "a9234da7198e138a6f0f2cfdd0a4be0fd1dd674ec377766b1e5466034b0c44b8",
+    "bytes": 9015
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s2/path-tracing__hRnNnre/trial.log",
+    "sha256": "c8d1e1fb3e47bae241692300a724eac926be64cd22fc41b09800ad9a79742e4c",
+    "bytes": 5291
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s2/result.json",
+    "sha256": "1d30d46bd14b96384c7fb350a1bcdb31d994769cdc0c3d6398027b3a35345216",
+    "bytes": 1586
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s2/rstan-to-pystan__23hYjBt/agent/trajectory.json",
+    "sha256": "93eed798437539a000d44bf21ae6ed9e9b7158a929dbae258e3c6536b3a769a5",
+    "bytes": 517927
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s2/rstan-to-pystan__23hYjBt/artifacts/manifest.json",
+    "sha256": "c1db653f487fb773c4f9247162ab3314e7f0584a486914b9874c4b3d6949e42d",
+    "bytes": 159
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s2/rstan-to-pystan__23hYjBt/config.json",
+    "sha256": "33a2eb9ba7987350e30f4e25bed0dc32bf3f6b546c5b48e66da052d9fc4c966a",
+    "bytes": 872
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s2/rstan-to-pystan__23hYjBt/lock.json",
+    "sha256": "dc42b656f2374ba22e5dba57d96fba085cd83a8a2ec1dd124b7c9a92a38739cb",
+    "bytes": 1428
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s2/rstan-to-pystan__23hYjBt/result.json",
+    "sha256": "37f087991a03fdd75f945c9736c9a5d820986b0a88b5f64c2fc44a58050b6658",
+    "bytes": 6494
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s2/rstan-to-pystan__23hYjBt/trial.log",
+    "sha256": "fb3f18be86ed031a97a3bf9774cd729326927d5ad766f02422c7642cfe0b9cdd",
+    "bytes": 10106
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s2/rstan-to-pystan__23hYjBt/verifier/ctrf.json",
+    "sha256": "1c1d1a03d8c29faaebfb676cd192a8ef96855bd52b591c0ca7a519b293b35c2d",
+    "bytes": 2534
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s2/train-fasttext__xrA2VrD/agent/trajectory.json",
+    "sha256": "c6c146466df017c33ea7438891b23f3b2bc8daacb5b9d5c983bcf8f43680871f",
+    "bytes": 231645
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s2/train-fasttext__xrA2VrD/artifacts/manifest.json",
+    "sha256": "c1db653f487fb773c4f9247162ab3314e7f0584a486914b9874c4b3d6949e42d",
+    "bytes": 159
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s2/train-fasttext__xrA2VrD/config.json",
+    "sha256": "64b941606a0dbbf1948b13f78074fa6a9616d68d51e05993be100d39643989b0",
+    "bytes": 870
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s2/train-fasttext__xrA2VrD/lock.json",
+    "sha256": "bc06351eedb75a2b7079793ec5a4f9d5c643feddfaf6de4e7bfd074c70c8113a",
+    "bytes": 1426
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s2/train-fasttext__xrA2VrD/result.json",
+    "sha256": "93dc596464e88e0baee627ddbcd1438bb7ffaad41659f3b534753ddd63092447",
+    "bytes": 9736
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s2/train-fasttext__xrA2VrD/trial.log",
+    "sha256": "a7c517061ab5c79f5ac153f2ff15310b4f5bd9f34d2790f443bd0b66ab86d676",
+    "bytes": 6460
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s2.log",
+    "sha256": "54e51182bfc4b8e612ab8c53818f028bf201b28a081158c5ca8f566a5f54c014",
+    "bytes": 154
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s3/build-pov-ray__jCfeQAo/agent/trajectory.json",
+    "sha256": "d24e5c142c86834cffd84ff87683d086a44d5fdfa5cce4f4d8dd49794179d2a8",
+    "bytes": 187011
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s3/build-pov-ray__jCfeQAo/artifacts/manifest.json",
+    "sha256": "c1db653f487fb773c4f9247162ab3314e7f0584a486914b9874c4b3d6949e42d",
+    "bytes": 159
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s3/build-pov-ray__jCfeQAo/config.json",
+    "sha256": "bfce4974b4a4edf4f19ca309c0ce093f83420d18c990968d0c1575c8b00af149",
+    "bytes": 868
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s3/build-pov-ray__jCfeQAo/lock.json",
+    "sha256": "6ece820d88cf78c17112967dd7a65e5d0662c895918c7631f89d237158d0c547",
+    "bytes": 1424
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s3/build-pov-ray__jCfeQAo/result.json",
+    "sha256": "848ab82c7faba2914c22fba94dbb237122fb2618e5f981bbe9c30763447e50bf",
+    "bytes": 5454
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s3/build-pov-ray__jCfeQAo/trial.log",
+    "sha256": "eab2079c7ceb856e0614dfb166bf05bf188ed69785d31eef43bec665f768d798",
+    "bytes": 3510
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s3/build-pov-ray__jCfeQAo/verifier/ctrf.json",
+    "sha256": "d217d80a6ea8e41d3e203d2240d22cc3f2ad444cf613615991ad86653a4c6104",
+    "bytes": 1467
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s3/config.json",
+    "sha256": "d12032bb5c9d27fe2008de23aa339e8998b2a31b24df80a0f2dbfb5008b00c96",
+    "bytes": 1523
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s3/dna-assembly__A6y8ZL7/agent/trajectory.json",
+    "sha256": "97e2e19311ed36f143191ca394297287c41f0129961afab73ff91625dac4db06",
+    "bytes": 474724
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s3/dna-assembly__A6y8ZL7/artifacts/manifest.json",
+    "sha256": "c1db653f487fb773c4f9247162ab3314e7f0584a486914b9874c4b3d6949e42d",
+    "bytes": 159
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s3/dna-assembly__A6y8ZL7/config.json",
+    "sha256": "42ab55494336dd6c56da4ac81afa070a9107fc78ae9e104e3b06680a41ea5a06",
+    "bytes": 866
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s3/dna-assembly__A6y8ZL7/lock.json",
+    "sha256": "d4ac4baa048d3e9c1bfc7c91519eaf3cb4d950ba69778ee62e816c75a7bc91a8",
+    "bytes": 1422
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s3/dna-assembly__A6y8ZL7/result.json",
+    "sha256": "bbde462cda2465a097e19a12471bb1b78498d76611677636e0b6d0c803a08183",
+    "bytes": 15250
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s3/dna-assembly__A6y8ZL7/trial.log",
+    "sha256": "1c0d8ab5fa4b236531afbcd2d4f4d07dfcdedf2b9ba505a5ac41ddefd983c150",
+    "bytes": 3187
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s3/dna-assembly__A6y8ZL7/verifier/ctrf.json",
+    "sha256": "f65580993554663eb3065584024efb981dd01fa78a7364d97106152045348c67",
+    "bytes": 1492
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s3/job.log",
+    "sha256": "c12b679848f60ed8fa038de713af54a7d8b38eda5abf813a8ac201634cd5a212",
+    "bytes": 219645
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s3/lock.json",
+    "sha256": "f0017354e7312679aff5fff81c626ba1d5e4dca52e114135facefdfd4498e93b",
+    "bytes": 11970
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s3/mailman__DSozsrw/agent/trajectory.json",
+    "sha256": "649c991fcd86f78c3f3cf498086d08604b0c59d5bef065a20ab6ab0e12da1050",
+    "bytes": 910400
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s3/mailman__DSozsrw/artifacts/manifest.json",
+    "sha256": "c1db653f487fb773c4f9247162ab3314e7f0584a486914b9874c4b3d6949e42d",
+    "bytes": 159
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s3/mailman__DSozsrw/config.json",
+    "sha256": "b8e1e0cd10668982aa3c658c4725b78bf4abd19b21911b719bf6fd92731d4947",
+    "bytes": 856
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s3/mailman__DSozsrw/lock.json",
+    "sha256": "345bf8ecc20670877dfbbe7e27ea3f521d9ff5f09916dc4b89ef24d97427935b",
+    "bytes": 1412
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s3/mailman__DSozsrw/result.json",
+    "sha256": "dd7a29fca90229926a18024124fbd92a8bda67b4c1a3e770bda2dd5a20f41945",
+    "bytes": 10255
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s3/mailman__DSozsrw/trial.log",
+    "sha256": "3a51985e67aa4365270e2b5e00c94531fd73bd01b41ca0c5819b1bdf4da577df",
+    "bytes": 11984
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s3/path-tracing-reverse__eGEAaSn/agent/trajectory.json",
+    "sha256": "8cdaac6277ae6eeecb94a09e0ec2e2b742614940d42a0894b35572138fde5ff7",
+    "bytes": 656223
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s3/path-tracing-reverse__eGEAaSn/artifacts/manifest.json",
+    "sha256": "c1db653f487fb773c4f9247162ab3314e7f0584a486914b9874c4b3d6949e42d",
+    "bytes": 159
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s3/path-tracing-reverse__eGEAaSn/config.json",
+    "sha256": "2038c6c3ce112daced881db5ae935e74af4a51f820ad595d3ecdc87d41360a30",
+    "bytes": 882
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s3/path-tracing-reverse__eGEAaSn/lock.json",
+    "sha256": "52da0060582db68312c91162f4c1910ebfa3a9df23d05f5df16f30d30b8de814",
+    "bytes": 1438
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s3/path-tracing-reverse__eGEAaSn/result.json",
+    "sha256": "fc6f9c0c3b49d87b0987c8d0efb83c3e6d6420a7c769feca21db8ffc818b315a",
+    "bytes": 17382
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s3/path-tracing-reverse__eGEAaSn/trial.log",
+    "sha256": "ef9a7032efc12f0c7c989b01c1bdb5b062e56afa9f45a2db44249674fcb81c28",
+    "bytes": 11442
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s3/result.json",
+    "sha256": "cb1e66b0ccbe40a549244b1a919c83f158a53d1e9769b2877b4dbe5aef137730",
+    "bytes": 1614
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s3/sam-cell-seg__GyBttaA/agent/trajectory.json",
+    "sha256": "44cca3bd0043e592762e2ff517754275144e37f999a4ddc4060201efa21dc797",
+    "bytes": 538929
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s3/sam-cell-seg__GyBttaA/artifacts/manifest.json",
+    "sha256": "c1db653f487fb773c4f9247162ab3314e7f0584a486914b9874c4b3d6949e42d",
+    "bytes": 159
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s3/sam-cell-seg__GyBttaA/config.json",
+    "sha256": "713e1f3651dfeacba355f770689f1994b4567edf34f5b2593744c79aeaa20de2",
+    "bytes": 866
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s3/sam-cell-seg__GyBttaA/lock.json",
+    "sha256": "255020f64e8fb49cff8f2cd9dbadd2636dbba2756608b328ceb381992f50fee9",
+    "bytes": 1422
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s3/sam-cell-seg__GyBttaA/result.json",
+    "sha256": "4829c33b2785e395ac7f34c60ec5c8e93b6df9a99c289a7f59170ac4d4f4a843",
+    "bytes": 17194
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s3/sam-cell-seg__GyBttaA/trial.log",
+    "sha256": "b1a7b0ab96d21bf1f96c98d2b40f229fef26965d02cdcbc693e15ad121121797",
+    "bytes": 10275
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s3/tune-mjcf__53H7cNW/agent/trajectory.json",
+    "sha256": "43b3e32461362a276a9e811f3df9cfd4ed21942b63d47b8da4d9791a99c96035",
+    "bytes": 168126
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s3/tune-mjcf__53H7cNW/artifacts/manifest.json",
+    "sha256": "c1db653f487fb773c4f9247162ab3314e7f0584a486914b9874c4b3d6949e42d",
+    "bytes": 159
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s3/tune-mjcf__53H7cNW/config.json",
+    "sha256": "9eeddb0e294257f46acdae5d112c4d948a369a7953b975250a2f5d843a95b972",
+    "bytes": 860
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s3/tune-mjcf__53H7cNW/lock.json",
+    "sha256": "63546ac50082266f0c56129f35e0f342b26fc9101d6427d17e1bdef7d66658c1",
+    "bytes": 1416
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s3/tune-mjcf__53H7cNW/result.json",
+    "sha256": "ef9467cbf260806cf6a706f7e98a7e0e11041f83d983f977d53c914757d78cc0",
+    "bytes": 4930
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s3/tune-mjcf__53H7cNW/trial.log",
+    "sha256": "1ee3314e6c839a4aa769f09e3a5d2a497424610d66e64dd60796bd129b4f32b6",
+    "bytes": 1762
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s3/tune-mjcf__53H7cNW/verifier/ctrf.json",
+    "sha256": "4452adad3cced7722f83a3235b80708395e38e7f5e8b4518ea0489740d91f993",
+    "bytes": 1785
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s3.log",
+    "sha256": "ca346226ff2676b2dd17a4b86a5b16ef24e01dadb441ea58d098419e382176ea",
+    "bytes": 531
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s4/caffe-cifar-10__bS33a2W/agent/trajectory.json",
+    "sha256": "8a6bf20a2a9985b0c2ae8d21545b357fcf780e95ae685a9b73f22faef1546027",
+    "bytes": 540486
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s4/caffe-cifar-10__bS33a2W/artifacts/manifest.json",
+    "sha256": "c1db653f487fb773c4f9247162ab3314e7f0584a486914b9874c4b3d6949e42d",
+    "bytes": 159
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s4/caffe-cifar-10__bS33a2W/config.json",
+    "sha256": "39b14cd001ac4d8f513751564c8da954d452227bef839e4191d712474bce707f",
+    "bytes": 870
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s4/caffe-cifar-10__bS33a2W/lock.json",
+    "sha256": "02875be19c0ab8d9954bed189cd2a934eaca48df7e88698a40b6bae51683cadd",
+    "bytes": 1426
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s4/caffe-cifar-10__bS33a2W/result.json",
+    "sha256": "03d59e7a4c28d193144f2f63e45c3cbe308e49010102d8933477d5e197126606",
+    "bytes": 7059
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s4/caffe-cifar-10__bS33a2W/trial.log",
+    "sha256": "6d5bc1f06e668593b962d3139b69128ba0b1f193dc1408d161564e4bb40396bf",
+    "bytes": 13044
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s4/caffe-cifar-10__bS33a2W/verifier/ctrf.json",
+    "sha256": "9190ed7860bf9bc9ce89b45e382e62425dd931e12cb4c83d44b79fc11e596fda",
+    "bytes": 2543
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s4/config.json",
+    "sha256": "31814fc89a8e6936c1ad859ca7f98f7cf930a4b7577ee39848e348a298d05497",
+    "bytes": 1541
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s4/extract-elf__S6rRVbL/agent/trajectory.json",
+    "sha256": "c82a95bdf0795ad942a7da74340dc94ca6557cc1519745554db220dc3c3025c5",
+    "bytes": 415278
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s4/extract-elf__S6rRVbL/artifacts/manifest.json",
+    "sha256": "c1db653f487fb773c4f9247162ab3314e7f0584a486914b9874c4b3d6949e42d",
+    "bytes": 159
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s4/extract-elf__S6rRVbL/config.json",
+    "sha256": "6d83c2eeadacb082267670191a9af95a84b538b65509bea4d460f5817cf24341",
+    "bytes": 864
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s4/extract-elf__S6rRVbL/lock.json",
+    "sha256": "2300845038dd650d0a8fbdc1c46879693626cf0fe99fdde5993d05f128cecbc6",
+    "bytes": 1420
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s4/extract-elf__S6rRVbL/result.json",
+    "sha256": "09afd0b06a3b6ce6093523fce715ceec174370d02ae66b48c33d701979c82aa7",
+    "bytes": 5230
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s4/extract-elf__S6rRVbL/trial.log",
+    "sha256": "e721795b0c045c9aeaccf99a92efc82c05e83a26f3db46d00ffaddbcd5ce55c5",
+    "bytes": 3340
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s4/extract-elf__S6rRVbL/verifier/ctrf.json",
+    "sha256": "144678d8df70370cbbb0f2695f8e2135dc4369b1e482b15b2d99b0b7c328b6c7",
+    "bytes": 4630
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s4/job.log",
+    "sha256": "e63e8ecfd57af9da96b2e0d468992089977ea7d7ef6e43ad3e1e9af01c7778ee",
+    "bytes": 148948
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s4/lock.json",
+    "sha256": "99a6d252861cb92589f3f0ad1c06e5a84dd7330b2444f7893d19de2ec785b9d8",
+    "bytes": 12006
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s4/make-doom-for-mips__SSUGPkW/agent/trajectory.json",
+    "sha256": "8f9a92606d21033c1eccf97259d15902aefece20bae7473e3ae29104b8b8ef81",
+    "bytes": 564115
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s4/make-doom-for-mips__SSUGPkW/artifacts/manifest.json",
+    "sha256": "c1db653f487fb773c4f9247162ab3314e7f0584a486914b9874c4b3d6949e42d",
+    "bytes": 159
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s4/make-doom-for-mips__SSUGPkW/config.json",
+    "sha256": "c08c4f72fc36d1bff3fd51fb7a38a64dd5795656403b7330cdb395c2203ace3f",
+    "bytes": 878
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s4/make-doom-for-mips__SSUGPkW/lock.json",
+    "sha256": "5eb538a78e72e8e526e8459fa1cab4293f0d1b946605585cbc30a3f48b652a42",
+    "bytes": 1434
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s4/make-doom-for-mips__SSUGPkW/result.json",
+    "sha256": "5823297be31638dcf16c1c46eb481d3a0e05815ae3de07e78d879bcf29a5e59b",
+    "bytes": 15998
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s4/make-doom-for-mips__SSUGPkW/trial.log",
+    "sha256": "fa8d98309e0562d12da4df97967df0e36ac62a4d8bd2544aa47095088e2d6139",
+    "bytes": 4885
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s4/make-doom-for-mips__SSUGPkW/verifier/ctrf.json",
+    "sha256": "ca6c43ff61294abacab734bd68c042d36a8e630a5b3dbaeee8f357bb4df92055",
+    "bytes": 6930
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s4/polyglot-rust-c__hhTjWXY/agent/trajectory.json",
+    "sha256": "e9ebf0f54e5b74b43be09abcfaae6c39b33c2fa4b993be752d4ca5292b65b5b7",
+    "bytes": 215846
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s4/polyglot-rust-c__hhTjWXY/artifacts/manifest.json",
+    "sha256": "c1db653f487fb773c4f9247162ab3314e7f0584a486914b9874c4b3d6949e42d",
+    "bytes": 159
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s4/polyglot-rust-c__hhTjWXY/config.json",
+    "sha256": "a8ac4df158aa42e4ddaca8ffaa80228ac8a99b5be1fb3f718e0f1798279707c0",
+    "bytes": 872
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s4/polyglot-rust-c__hhTjWXY/lock.json",
+    "sha256": "9a6ede4d2e5f475d60808c3bbdbe8397d2f6ee0c523ca8cc1110ec43490ddb85",
+    "bytes": 1428
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s4/polyglot-rust-c__hhTjWXY/result.json",
+    "sha256": "7c84ceb953c90fa7ff871eca83418b540788bf09be3b6096e3e17fa16f788a4a",
+    "bytes": 4613
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s4/polyglot-rust-c__hhTjWXY/trial.log",
+    "sha256": "9a66b3453b60cca143bbf01ce3415cb45909f17bf7d2f6cac9a60081b128c9dc",
+    "bytes": 1064
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s4/polyglot-rust-c__hhTjWXY/verifier/ctrf.json",
+    "sha256": "ef23ef7585d29434b46d57cb230ff36d7d3d9c23fb31c2ebc37a914754f2d923",
+    "bytes": 753
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s4/result.json",
+    "sha256": "0474676e4eb665947eb01dcad369b4ee7196ca86b78a55beff3a45038a702025",
+    "bytes": 1611
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s4/sanitize-git-repo__6M48PMp/agent/trajectory.json",
+    "sha256": "776176f3163257a1d3875f2db1151204726342de5325ab3e0bc0788f94d0fd3f",
+    "bytes": 140190
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s4/sanitize-git-repo__6M48PMp/artifacts/manifest.json",
+    "sha256": "c1db653f487fb773c4f9247162ab3314e7f0584a486914b9874c4b3d6949e42d",
+    "bytes": 159
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s4/sanitize-git-repo__6M48PMp/config.json",
+    "sha256": "8b2a1c5420f4058d66ff43f6496ddd55db8bfbee7f9e6d75b2af48b3ff304715",
+    "bytes": 876
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s4/sanitize-git-repo__6M48PMp/lock.json",
+    "sha256": "a1e84c5b6f18aacb92f0c88471957a67640f3d01f4d2ca11338405614bfefa7c",
+    "bytes": 1432
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s4/sanitize-git-repo__6M48PMp/result.json",
+    "sha256": "4674cd2f60904b3f8141532149c216e65f1efd337fcbecdb094bb06c9925c9fd",
+    "bytes": 4732
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s4/sanitize-git-repo__6M48PMp/trial.log",
+    "sha256": "7f7aa054816def333f8f3e497d1f79aa32d1a7ee9d6fe75268f0a3a5321537e5",
+    "bytes": 1629
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s4/sanitize-git-repo__6M48PMp/verifier/ctrf.json",
+    "sha256": "6fc8090438af7f2fb98c97c410c108051d65425f87cfd766f3560002737e75a7",
+    "bytes": 1488
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s4/video-processing__xR2hJr5/agent/trajectory.json",
+    "sha256": "014595671d06e3538c0c4f92a4365bfc5e0cbc19d35ae84aa40b317f05c8b89e",
+    "bytes": 550721
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s4/video-processing__xR2hJr5/artifacts/manifest.json",
+    "sha256": "c1db653f487fb773c4f9247162ab3314e7f0584a486914b9874c4b3d6949e42d",
+    "bytes": 159
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s4/video-processing__xR2hJr5/config.json",
+    "sha256": "98a65297834a63d9e4625c1c34a16d75e2fa6efcc8d0fc15825a81824df93daf",
+    "bytes": 874
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s4/video-processing__xR2hJr5/lock.json",
+    "sha256": "5581e8926aa2b16f028aa383f64521fa28cf22a380afd6e6a05607bd0e3676eb",
+    "bytes": 1430
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s4/video-processing__xR2hJr5/result.json",
+    "sha256": "c278cbb54ca88960153ccf9e5fc911509d36dbaced91a395d151dd52af65e0a2",
+    "bytes": 5470
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s4/video-processing__xR2hJr5/trial.log",
+    "sha256": "389807de64dcdddde2d69b84133be3de292542ff0ee34d9584730409a63f0428",
+    "bytes": 5339
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s4/video-processing__xR2hJr5/verifier/ctrf.json",
+    "sha256": "ba906644c829c0b244dd6458a15272845596d1e61d94edc9333cf9733cc1318b",
+    "bytes": 2165
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s4.log",
+    "sha256": "f6348b61d224b96f4be6cf9403b07320f6e4216aaf79d2e73b660d749fdecad5",
+    "bytes": 1390
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s5/cancel-async-tasks__bA6Qw3j/agent/trajectory.json",
+    "sha256": "0fd8ccf1576fd5d2be079621c07166ab4928be6f7f276f81edbddd831ac31dc7",
+    "bytes": 69979
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s5/cancel-async-tasks__bA6Qw3j/artifacts/manifest.json",
+    "sha256": "c1db653f487fb773c4f9247162ab3314e7f0584a486914b9874c4b3d6949e42d",
+    "bytes": 159
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s5/cancel-async-tasks__bA6Qw3j/config.json",
+    "sha256": "f12623d16337075c6c8435542f0992c71d908987143aa5e44844438f4823fb69",
+    "bytes": 878
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s5/cancel-async-tasks__bA6Qw3j/lock.json",
+    "sha256": "bb5315f95d3485bf709ee391b69054e704707fab91da2c2ef0d2ad9773b6ce15",
+    "bytes": 1434
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s5/cancel-async-tasks__bA6Qw3j/result.json",
+    "sha256": "cc39d2f4144d730de7027fa1cf6a70ae4307f2606fda054d8fbf6c3b9b7af028",
+    "bytes": 4560
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s5/cancel-async-tasks__bA6Qw3j/trial.log",
+    "sha256": "195c32678b2047b69885e100156db1b373f0ef0ff732f031e934f10e57dd1d1b",
+    "bytes": 851
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s5/cancel-async-tasks__bA6Qw3j/verifier/ctrf.json",
+    "sha256": "f71299e94bf8c66b6db638521f23015a9832159a43cc45382ca11651acfbacbc",
+    "bytes": 4081
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s5/config.json",
+    "sha256": "b1cebf997bddfbbe1ce29c521d432ff00cedbcb122a9564da5defc04f87bafce",
+    "bytes": 1577
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s5/extract-moves-from-video__KMuPGj7/agent/trajectory.json",
+    "sha256": "27d0e40edf854ae1d412c0646de99651416b8b0566ce708fd3ce7b1f940a760c",
+    "bytes": 504502
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s5/extract-moves-from-video__KMuPGj7/artifacts/manifest.json",
+    "sha256": "c1db653f487fb773c4f9247162ab3314e7f0584a486914b9874c4b3d6949e42d",
+    "bytes": 159
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s5/extract-moves-from-video__KMuPGj7/config.json",
+    "sha256": "3dc5059f81fd3d0443c6e69b28bfc64b3454690b1a792333313824fa00ab81d2",
+    "bytes": 890
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s5/extract-moves-from-video__KMuPGj7/lock.json",
+    "sha256": "ac8475a4e3aa2f5238275239deb6e73c5999e33f578800c12425f3c6a0887f7c",
+    "bytes": 1446
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s5/extract-moves-from-video__KMuPGj7/result.json",
+    "sha256": "0dfdbb0d165233c8ef319a39ae11ebd43c25b2a4c92edc191ad92965b5861e2f",
+    "bytes": 9693
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s5/extract-moves-from-video__KMuPGj7/trial.log",
+    "sha256": "d5f564f7cbe9e650dab1e9f7a99a5ec2dad146aa4de761369c7e1b8849bb192e",
+    "bytes": 6941
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s5/job.log",
+    "sha256": "59e5ed4b1b8608203bd579e9e7bfcf88d73595bb0ad5832ad27b9147fde05e9b",
+    "bytes": 230226
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s5/lock.json",
+    "sha256": "dc57d3de046c5fe66c91dbac3f8ea935e32d90f2c278d3567e7eb6d94bddf0be",
+    "bytes": 12078
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s5/make-mips-interpreter__DFZMhpv/agent/trajectory.json",
+    "sha256": "81a2973e768f8604bb25dd2555614c098778d0a55bdeca0ddec758aea07b2f0e",
+    "bytes": 838641
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s5/make-mips-interpreter__DFZMhpv/artifacts/manifest.json",
+    "sha256": "c1db653f487fb773c4f9247162ab3314e7f0584a486914b9874c4b3d6949e42d",
+    "bytes": 159
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s5/make-mips-interpreter__DFZMhpv/config.json",
+    "sha256": "2b792fea7ee928962571acb66656b2ec4c233cfdac0037d64409bcf0a2c7354b",
+    "bytes": 884
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s5/make-mips-interpreter__DFZMhpv/lock.json",
+    "sha256": "e106c121732410911c329389dd5f95c02df5181c68323b5a68b0dc42283a8db4",
+    "bytes": 1440
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s5/make-mips-interpreter__DFZMhpv/result.json",
+    "sha256": "c17767f10182d6fbb06ee2b6f85a924b8a6702ea985255f5e9e2f88ce4921200",
+    "bytes": 16480
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s5/make-mips-interpreter__DFZMhpv/trial.log",
+    "sha256": "fc96ccf40bc4a34ac615aeec28d25ee9e8b8175fc90cb86db355f2f062c8b042",
+    "bytes": 13252
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s5/make-mips-interpreter__DFZMhpv/verifier/ctrf.json",
+    "sha256": "09a66cbbd8af7adb856291b358e9ce1a0a1585661a13f027ca387c0645daa6ed",
+    "bytes": 6928
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s5/protein-assembly__GEZG8Qt/agent/trajectory.json",
+    "sha256": "33f3819b5fc3441361974184aef338dcf0b6fceabfa8912080ea1de04c87f4f4",
+    "bytes": 344527
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s5/protein-assembly__GEZG8Qt/artifacts/manifest.json",
+    "sha256": "c1db653f487fb773c4f9247162ab3314e7f0584a486914b9874c4b3d6949e42d",
+    "bytes": 159
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s5/protein-assembly__GEZG8Qt/config.json",
+    "sha256": "3841d5c52feeb9af0afa7d5f04f6130e5152eec84981385d4fcd9b915298dcf6",
+    "bytes": 874
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s5/protein-assembly__GEZG8Qt/lock.json",
+    "sha256": "5f72db2e79a63da1c94febc7d39452aae814a817ec0061502be3cca54d67a76d",
+    "bytes": 1430
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s5/protein-assembly__GEZG8Qt/result.json",
+    "sha256": "8f81eb50bc553529df3895cecd358c3f682aff47f020997696e046a2619b47a8",
+    "bytes": 5012
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s5/protein-assembly__GEZG8Qt/trial.log",
+    "sha256": "df6778346c8f7917e2581272677262c96c4c3ba96027760aba6b074ba4489c77",
+    "bytes": 2336
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s5/protein-assembly__GEZG8Qt/verifier/ctrf.json",
+    "sha256": "1b0990391d2ac65e1745808bfcc4f4bada351f338abb156b428bc52617bf1b13",
+    "bytes": 3756
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s5/result.json",
+    "sha256": "fba325686f595068b2d4ab2a341a742c48a851a02896629aad4db26d4c7186ef",
+    "bytes": 1541
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s5/schemelike-metacircular-eval__gdGoZ5a/agent/trajectory.json",
+    "sha256": "29242893a6ba21199ac189df1bb678122bbfdc17c3d0251cd025f1d84eb94c85",
+    "bytes": 657202
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s5/schemelike-metacircular-eval__gdGoZ5a/artifacts/manifest.json",
+    "sha256": "c1db653f487fb773c4f9247162ab3314e7f0584a486914b9874c4b3d6949e42d",
+    "bytes": 159
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s5/schemelike-metacircular-eval__gdGoZ5a/config.json",
+    "sha256": "d5345188316c7606cf272445e6cfeed9de1555ef6b3212731fd093f486ed921c",
+    "bytes": 898
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s5/schemelike-metacircular-eval__gdGoZ5a/lock.json",
+    "sha256": "1f83709909d80d251766c9d7cae56b9862d8062aa2ee658acdfff111f731d51d",
+    "bytes": 1454
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s5/schemelike-metacircular-eval__gdGoZ5a/result.json",
+    "sha256": "ea5430ce84832025d7563f4f9c622df04bcc93a801e44ec1d0831d6170a29565",
+    "bytes": 16480
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s5/schemelike-metacircular-eval__gdGoZ5a/trial.log",
+    "sha256": "290577d3fe1d372e7cf32e0c7a2496e8cca081de7eac0a8d88c0d3a6e4aa302b",
+    "bytes": 6574
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s5/winning-avg-corewars__d2xNvH8/agent/trajectory.json",
+    "sha256": "4070623f0066444da3ffb26c62a227a125c0417c6d399c795fff6a89a707a3fe",
+    "bytes": 844919
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s5/winning-avg-corewars__d2xNvH8/artifacts/manifest.json",
+    "sha256": "c1db653f487fb773c4f9247162ab3314e7f0584a486914b9874c4b3d6949e42d",
+    "bytes": 159
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s5/winning-avg-corewars__d2xNvH8/config.json",
+    "sha256": "f5acbaa96b014866f7a19bbf4bfffcb4481847202612c79cd9f13ca391183e16",
+    "bytes": 882
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s5/winning-avg-corewars__d2xNvH8/lock.json",
+    "sha256": "19bc8cd3c1db1027daf9d7674ad6bbe8c55b7059f9b4b6aa558a8e96b0f81425",
+    "bytes": 1438
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s5/winning-avg-corewars__d2xNvH8/result.json",
+    "sha256": "c148b30883ab55dd4ab63bb4db2eb37ab5f24612715b01c05d031594583ca3cb",
+    "bytes": 16578
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s5/winning-avg-corewars__d2xNvH8/trial.log",
+    "sha256": "97d52cc90d22777e34092a14b4fc74d28dc2b86d9983e871dc9904ea5a0dcf79",
+    "bytes": 6794
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s5.log",
+    "sha256": "a50984822edb1acef137e064aeb8e6e577a42af146c3d770c78138d9e1a16711",
+    "bytes": 250
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s6/chess-best-move__WuXpny4/agent/trajectory.json",
+    "sha256": "60c497cb8f4e4abd6ddfd210562400dde3f5104424d729b821315d554284820b",
+    "bytes": 379423
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s6/chess-best-move__WuXpny4/artifacts/manifest.json",
+    "sha256": "c1db653f487fb773c4f9247162ab3314e7f0584a486914b9874c4b3d6949e42d",
+    "bytes": 159
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s6/chess-best-move__WuXpny4/config.json",
+    "sha256": "b75f74a0cc908481f839a962d813ecda7a30ff93b8d147302091165707733bba",
+    "bytes": 872
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s6/chess-best-move__WuXpny4/lock.json",
+    "sha256": "d94cc64db3e8a330b5356f9c4140c5c5af1b50b1927ca678209de92f8f81f15d",
+    "bytes": 1428
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s6/chess-best-move__WuXpny4/result.json",
+    "sha256": "2bbfdadad3218304cc376f37fcf463d164826b9cd3ce24b99fa58c0669594c93",
+    "bytes": 8877
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s6/chess-best-move__WuXpny4/trial.log",
+    "sha256": "5386c66842adf3f073ac177f55e23f729dba90931dcb24a63d436d66d37764f1",
+    "bytes": 8835
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s6/chess-best-move__WuXpny4/verifier/ctrf.json",
+    "sha256": "bc8ddd20643185f56d63cbeb4eab4cc764fc0d0ac770fc9d20f65094c59b3087",
+    "bytes": 3156
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s6/config.json",
+    "sha256": "a5fc85e17835daa10e923b63db3662d16b177592a65cece76111406e854ce2cc",
+    "bytes": 1568
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s6/feal-linear-cryptanalysis__9sNQnaw/agent/trajectory.json",
+    "sha256": "a9bee519227f9f6a1b31338dcc1041ba2e6427d81d54029f6440b234f1eba91b",
+    "bytes": 275546
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s6/feal-linear-cryptanalysis__9sNQnaw/artifacts/manifest.json",
+    "sha256": "c1db653f487fb773c4f9247162ab3314e7f0584a486914b9874c4b3d6949e42d",
+    "bytes": 159
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s6/feal-linear-cryptanalysis__9sNQnaw/config.json",
+    "sha256": "36b4d906f8177b2853c69bf34e938389c75706e77834957b0092a5c650d0f05d",
+    "bytes": 892
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s6/feal-linear-cryptanalysis__9sNQnaw/lock.json",
+    "sha256": "fbd0feb7d708c68e21a04cf5ff1240fb46bc215fbc515d74fda792fff1e74606",
+    "bytes": 1448
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s6/feal-linear-cryptanalysis__9sNQnaw/result.json",
+    "sha256": "bf4d01d53450c403b53dca20accbca5eac44bc1ed6752051a61c39fa1ab0e02b",
+    "bytes": 4886
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s6/feal-linear-cryptanalysis__9sNQnaw/trial.log",
+    "sha256": "8d5a66a168d9456c45540f0ee8c4b854d4fe2739292a9d3968a1e79851ea097b",
+    "bytes": 2226
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s6/feal-linear-cryptanalysis__9sNQnaw/verifier/ctrf.json",
+    "sha256": "72851ffe515397dd756696a8e71002ee576b10e06711b491791d72c4d7f9afe2",
+    "bytes": 745
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s6/job.log",
+    "sha256": "738f4ec7f370d7416a9699eb3e3bb98c99f53965628c6a0e1e0017075e2cb425",
+    "bytes": 106161
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s6/lock.json",
+    "sha256": "85e1b77339161c24d9700734d969c31fc903be6b38a734fbaeda264cc979c326",
+    "bytes": 12060
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s6/model-extraction-relu-logits__S2K6KC5/agent/trajectory.json",
+    "sha256": "47a3496a1efe27aa6b9310b8f15521a204decfcce50740e33397f1f8fbb804ae",
+    "bytes": 299606
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s6/model-extraction-relu-logits__S2K6KC5/artifacts/manifest.json",
+    "sha256": "c1db653f487fb773c4f9247162ab3314e7f0584a486914b9874c4b3d6949e42d",
+    "bytes": 159
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s6/model-extraction-relu-logits__S2K6KC5/config.json",
+    "sha256": "254be071b9310babc7dc137573cd88112154d7c21d92c293001abbde30d3cfe3",
+    "bytes": 898
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s6/model-extraction-relu-logits__S2K6KC5/lock.json",
+    "sha256": "3116da3c4f76d6434920c033033cda81e884dbfde48bbcc10453377e36965dfa",
+    "bytes": 1454
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s6/model-extraction-relu-logits__S2K6KC5/result.json",
+    "sha256": "03cd8e486cc943eaa9daa8dd6565b4d8098b437f00f9d90ba43c83e0d18bed23",
+    "bytes": 5009
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s6/model-extraction-relu-logits__S2K6KC5/trial.log",
+    "sha256": "c7e3ff664b13f2231d66a051fc97dbc55a29f4da865683f939d1c04646b7fe54",
+    "bytes": 1939
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s6/model-extraction-relu-logits__S2K6KC5/verifier/ctrf.json",
+    "sha256": "857a38de4d1c646dea39e409529e4fae3471d806725cef87aebe1fe86bf7a203",
+    "bytes": 2399
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s6/pytorch-model-cli__ArcAhWH/agent/trajectory.json",
+    "sha256": "ff48a8aff34c31eb9b801dac9ca3afd9d52cbaf0960f3e799cfd59744ecfb00c",
+    "bytes": 143608
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s6/pytorch-model-cli__ArcAhWH/artifacts/manifest.json",
+    "sha256": "c1db653f487fb773c4f9247162ab3314e7f0584a486914b9874c4b3d6949e42d",
+    "bytes": 159
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s6/pytorch-model-cli__ArcAhWH/config.json",
+    "sha256": "02828d0aa9982fb7674aee1e01c071e42de4602b2113309bdd885d9dc73b4a90",
+    "bytes": 876
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s6/pytorch-model-cli__ArcAhWH/lock.json",
+    "sha256": "c4183d8e2a509afcf7a3f51a576e62a95c2347b26022c4aad00827417a3cac5e",
+    "bytes": 1432
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s6/pytorch-model-cli__ArcAhWH/result.json",
+    "sha256": "411257ad97a8bf0e0c10c4f23d79147c605558023631bcb0151e0a489a768f6e",
+    "bytes": 4909
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s6/pytorch-model-cli__ArcAhWH/trial.log",
+    "sha256": "9b0a02437d49feeb1620cfa4c7bfe3f99bf4b2fea792c49962684e28e2f3289f",
+    "bytes": 1588
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s6/pytorch-model-cli__ArcAhWH/verifier/ctrf.json",
+    "sha256": "eb8f06a945c8446b3b6c3935954063528ebd11e9aa58503684cbd6c078c1f3f9",
+    "bytes": 5265
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s6/result.json",
+    "sha256": "17c78d6b03499de8ed48f95b46388a48464a54477c540dbfe783df56091fe487",
+    "bytes": 1688
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s6/sparql-university__Y4Wfix9/agent/trajectory.json",
+    "sha256": "a3ffa40db363a95d34e1bafd2427ed9b21e86b15370231d4f2ff87f17ea1bc3f",
+    "bytes": 109053
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s6/sparql-university__Y4Wfix9/artifacts/manifest.json",
+    "sha256": "c1db653f487fb773c4f9247162ab3314e7f0584a486914b9874c4b3d6949e42d",
+    "bytes": 159
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s6/sparql-university__Y4Wfix9/config.json",
+    "sha256": "00bbcf84f214d6616131ca8e56c71d2eae81a62cf340d9ad778babea5f3accdb",
+    "bytes": 876
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s6/sparql-university__Y4Wfix9/lock.json",
+    "sha256": "93b534f3f86bb0b398a5872414a1911e31b686dd7ab57c4e375bd3aabbd0619c",
+    "bytes": 1432
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s6/sparql-university__Y4Wfix9/result.json",
+    "sha256": "a21343bbea90acde9bbbddad9ee97a32be2182d8917509cdc741eb080c3bbbe0",
+    "bytes": 4805
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s6/sparql-university__Y4Wfix9/trial.log",
+    "sha256": "3e294c7e2ea134c7ec8dc95d8181db31d029abde72d1fd915fd363d870f11c27",
+    "bytes": 1649
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s6/sparql-university__Y4Wfix9/verifier/ctrf.json",
+    "sha256": "832eea27ab1e2e8fd4148aa9b156369d5f7b048f21b74de3c97f48679029c8bb",
+    "bytes": 1458
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s6/write-compressor__b29xdqU/agent/trajectory.json",
+    "sha256": "ab2003a446d84ec2c2d2e50b32eb8c9a6ac39bb758f8ef4fd77b20c38ca351f1",
+    "bytes": 103401
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s6/write-compressor__b29xdqU/artifacts/manifest.json",
+    "sha256": "c1db653f487fb773c4f9247162ab3314e7f0584a486914b9874c4b3d6949e42d",
+    "bytes": 159
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s6/write-compressor__b29xdqU/config.json",
+    "sha256": "095a123416ef8707cab05a9fa542522351a8e038d1cd0be70a8835c2a7e959ba",
+    "bytes": 874
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s6/write-compressor__b29xdqU/lock.json",
+    "sha256": "bbafbac315a51fe48497931f38220532b8c4d7c27b5ab306703457c8bfe08a98",
+    "bytes": 1430
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s6/write-compressor__b29xdqU/result.json",
+    "sha256": "1cd1f2deb17692620ff6e45f68ef94ae1b9433430cd8dae5ea5259ab7e572a92",
+    "bytes": 14704
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s6/write-compressor__b29xdqU/trial.log",
+    "sha256": "07e0f54ab9a47cd8a9d24690251eb95b2d98d4884195ebe0160a77daac24f710",
+    "bytes": 437
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s6/write-compressor__b29xdqU/verifier/ctrf.json",
+    "sha256": "a2eebd3605d25cb00e662bc635faf8e53065a170f412cd8f2fbb56434c9d6ded",
+    "bytes": 3718
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s6.log",
+    "sha256": "b52b9953f54506d0914d39e93941c3c8987b07e50c983c2745892087f834c16b",
+    "bytes": 1389
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s7/circuit-fibsqrt__QQ3GBo8/agent/trajectory.json",
+    "sha256": "e6e56851d7c87665f5152758a00337187ad52a4824207ac52feed079709819b4",
+    "bytes": 752156
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s7/circuit-fibsqrt__QQ3GBo8/artifacts/manifest.json",
+    "sha256": "c1db653f487fb773c4f9247162ab3314e7f0584a486914b9874c4b3d6949e42d",
+    "bytes": 159
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s7/circuit-fibsqrt__QQ3GBo8/config.json",
+    "sha256": "9eb18938435d3692a2aa565187c2c631894c28d373f9822db50fedd29672e493",
+    "bytes": 872
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s7/circuit-fibsqrt__QQ3GBo8/lock.json",
+    "sha256": "c2fc8f965ebfd2c4622a930583da09ab0f050aec1f5718dd4c3f342b15acb922",
+    "bytes": 1428
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s7/circuit-fibsqrt__QQ3GBo8/result.json",
+    "sha256": "dbd35e54972968d57e191e3592ff68547cf2cd02e20d21ec4ee360ed1e381913",
+    "bytes": 15876
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s7/circuit-fibsqrt__QQ3GBo8/trial.log",
+    "sha256": "d060195c9200fefb4bc5ae06ba758689caa3b81455f2316e5b542f2b6f229649",
+    "bytes": 3207
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s7/config.json",
+    "sha256": "7835ccf5d66ea9bb93abe85edc6c8f2be0055fdbe1d3fe2e2b9588ed099a6638",
+    "bytes": 1506
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s7/gcode-to-text__Y4xii2N/agent/trajectory.json",
+    "sha256": "ddada6a5765e1baf06eac31c191b53ff6d96e47ef2e1470de8abfad3edf34dc3",
+    "bytes": 283346
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s7/gcode-to-text__Y4xii2N/artifacts/manifest.json",
+    "sha256": "c1db653f487fb773c4f9247162ab3314e7f0584a486914b9874c4b3d6949e42d",
+    "bytes": 159
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s7/gcode-to-text__Y4xii2N/config.json",
+    "sha256": "569adfd94b1ab743cf1b6021fc5d8b5e34ecf6613d23c5830d33dd2b5d41ff8e",
+    "bytes": 868
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s7/gcode-to-text__Y4xii2N/lock.json",
+    "sha256": "1bb0bc21223b07e9d103107a03f523f9a76667fff475d07e714bc123bdece5c8",
+    "bytes": 1424
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s7/gcode-to-text__Y4xii2N/result.json",
+    "sha256": "cf0d0cb84810fe487d06df6c3d02ed3f8d7377c4da144730a899f7e1856bff63",
+    "bytes": 5559
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s7/gcode-to-text__Y4xii2N/trial.log",
+    "sha256": "4a32f266c032e767e3586aa46c9aef5ba24cfb375082459e564933f9b44c40b3",
+    "bytes": 4841
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s7/gcode-to-text__Y4xii2N/verifier/ctrf.json",
+    "sha256": "2ee9b2e2898147e2cd33ca8efb16faea0cad63fe54bb6159a4fa421a5f3bc4b3",
+    "bytes": 1956
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s7/job.log",
+    "sha256": "308c58bc47614c99186695671605463ee3ce367e89aeff25244941dcfaffa62e",
+    "bytes": 113248
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s7/lock.json",
+    "sha256": "0075aebec37c7f86038cf4ec2c605a6a909b566fa15b7773d7521d8b80bbbbb7",
+    "bytes": 10189
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s7/mteb-leaderboard__CPR5U78/agent/trajectory.json",
+    "sha256": "158bb89f4ebd42689f2b734bfa271acfe98748b0feacf5b4c5db6f49e128e38c",
+    "bytes": 185085
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s7/mteb-leaderboard__CPR5U78/artifacts/manifest.json",
+    "sha256": "c1db653f487fb773c4f9247162ab3314e7f0584a486914b9874c4b3d6949e42d",
+    "bytes": 159
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s7/mteb-leaderboard__CPR5U78/config.json",
+    "sha256": "3f42b5f4b8d04bbb37920216ba894a9de772b1a4e0486e4bd4008d952788b179",
+    "bytes": 874
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s7/mteb-leaderboard__CPR5U78/lock.json",
+    "sha256": "c005a8220e830b788a84f0cf1646e16162bf9b5f74c7f6a6f4cd76247225ed0a",
+    "bytes": 1430
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s7/mteb-leaderboard__CPR5U78/result.json",
+    "sha256": "26fedcf8905018a1764b829d413a1d474dc82342d96aad5feaa47f1df3b4804c",
+    "bytes": 5468
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s7/mteb-leaderboard__CPR5U78/trial.log",
+    "sha256": "392a83f419f96c96377734d83ff6cac50efa90e7f0a49a3218c153dd662e4131",
+    "bytes": 4230
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s7/mteb-leaderboard__CPR5U78/verifier/ctrf.json",
+    "sha256": "1143b85398d70d8c74c40345b80f512c61b61762abd2fccb24fe66f1a16b17e3",
+    "bytes": 1869
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s7/query-optimize__jsK6FYN/agent/trajectory.json",
+    "sha256": "9db32119a395d94e7d16f0f8469adc0c8b1b4d43f53bad787f98e5eb141c0ea8",
+    "bytes": 67824
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s7/query-optimize__jsK6FYN/artifacts/manifest.json",
+    "sha256": "c1db653f487fb773c4f9247162ab3314e7f0584a486914b9874c4b3d6949e42d",
+    "bytes": 159
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s7/query-optimize__jsK6FYN/config.json",
+    "sha256": "3b85126cdccc56a766ae70047cac31f7767c97adac802a00f9b077b581791a4f",
+    "bytes": 870
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s7/query-optimize__jsK6FYN/lock.json",
+    "sha256": "1f5143835ba439905fcf7e2f4f689c40235ea2352bccbca27e20d53b0593567b",
+    "bytes": 1426
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s7/query-optimize__jsK6FYN/result.json",
+    "sha256": "bec0a4b02a0e67d7499970eebb336e0fad185f74fe9e011348e2a8bf4924ea17",
+    "bytes": 4785
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s7/query-optimize__jsK6FYN/trial.log",
+    "sha256": "4359cd656db091325d28b0048530f02dc129aa5f2c0e082c1026744127f84ba6",
+    "bytes": 1390
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s7/query-optimize__jsK6FYN/verifier/ctrf.json",
+    "sha256": "cd032e7554676806c0558898267d6b43cb120d396a635a8415868e2a55724f61",
+    "bytes": 5361
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s7/result.json",
+    "sha256": "48599f3578d531071e837f993c367faafd3751fbce054ab3e1a639a336fd89d1",
+    "bytes": 1455
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s7/sqlite-db-truncate__B9LTyMS/agent/trajectory.json",
+    "sha256": "0ce20b30720860fd1dc5857c2f756027004dc0212be83894002fd65e1a989369",
+    "bytes": 75849
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s7/sqlite-db-truncate__B9LTyMS/artifacts/manifest.json",
+    "sha256": "c1db653f487fb773c4f9247162ab3314e7f0584a486914b9874c4b3d6949e42d",
+    "bytes": 159
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s7/sqlite-db-truncate__B9LTyMS/config.json",
+    "sha256": "eaad2c11002f41184d6daeadbc9293a86a0e0794976b1d5315aef3f447cedf30",
+    "bytes": 878
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s7/sqlite-db-truncate__B9LTyMS/lock.json",
+    "sha256": "b19f94aee0b00168e08edb7cf044f87b6d2ff589438f2239e4f2b2b0b11a7154",
+    "bytes": 1434
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s7/sqlite-db-truncate__B9LTyMS/result.json",
+    "sha256": "c6114134f7d240f2a172baae20feb31eb19c4b230160b2da331f790357c71e0c",
+    "bytes": 4633
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s7/sqlite-db-truncate__B9LTyMS/trial.log",
+    "sha256": "0c961a766610070432fa4afdf179f20d843a04bba5427f3d3c1e30114183a1c7",
+    "bytes": 853
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s7/sqlite-db-truncate__B9LTyMS/verifier/ctrf.json",
+    "sha256": "a5e3ac63f0c2c5cae3d2a25500c6ccfdaffdbcb9865cc6352fdda490dc809a72",
+    "bytes": 746
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/jobs/tb21c-8x512k-hyd-p1-s7.log",
+    "sha256": "d512edb6e2a9619794b89f949c5a6431778bb97fe163403305750c34634ebeaf",
+    "bytes": 447
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/gate-v2base.log",
+    "sha256": "0fc182db4550b04fa238c5876e6193879be427bf00386538c239a9c6f649e92c",
+    "bytes": 238
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/gate-v2sched.log",
+    "sha256": "1f0d3d164cbaa65fd7c3b71a37b60442d237a6261caa1cb362ceb1928f26b7cf",
+    "bytes": 239
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/ladder-v2base.log",
+    "sha256": "500e5470ae04d8c6ba0557d70239a549089b042deb7b6c5e53afacf0107d85dd",
+    "bytes": 1556
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/ladder-v2sched.log",
+    "sha256": "6e89c50a68700b8c8f2d9923fcbb8d4cf111d243ccc75d9ddb62022ee6df3797",
+    "bytes": 1557
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-gate-4x-dp4.json",
+    "sha256": "a425c67efd9246cc17f05d8c6a494b4416135c802f1ce9708f3c18ac177bb5e0",
+    "bytes": 2016
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-gate-8x-dp8-campaign.json",
+    "sha256": "9c688099278471c4add3207f10d2efa5a35a76a8441c493081c6376b1acabc74",
+    "bytes": 569322
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-ladder-1x-hyd.log",
+    "sha256": "793484888226c5cc3994d44319ab1d078fa9178c891d4c339428471c3c838ed1",
+    "bytes": 2947
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x-hyd-p1-s0.jsonl",
+    "sha256": "35005b9849035e6793f1df4257519eab961f7d4a721ce916f348d2b6a29d56e2",
+    "bytes": 657523
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x-hyd-p1-s0.log",
+    "sha256": "eaa6b911ff6654e88977e5b800f9977c0e820f2bd903880f319787268dc94f65",
+    "bytes": 9673
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x-hyd-p1-s0.summary.json",
+    "sha256": "aee084562d28c0c0234de8d9203320fed32291ec29c173ff993a30d53869f5e1",
+    "bytes": 1954
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x-hyd-p1-s1.jsonl",
+    "sha256": "ea43e65b79396a74ff60bbb1fdf2eaa33681b88c3a05e01cd869b527cb1b83d5",
+    "bytes": 657518
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x-hyd-p1-s1.log",
+    "sha256": "6d771aa35b0c7ea476f717357b8e16a165bcbb5f440a50a07d125f4acb003065",
+    "bytes": 9681
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x-hyd-p1-s1.summary.json",
+    "sha256": "3226734cb4bf6e75017d92d4d8c42f1a5daabdb22dd736b28ea80e087d5ae99e",
+    "bytes": 1954
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x-hyd-p1-s2.jsonl",
+    "sha256": "ab4b2face5046a072796c798ae71979c8f00aa9dba0747cd1b0bbbce5a8f6ad9",
+    "bytes": 657445
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x-hyd-p1-s2.log",
+    "sha256": "9e8faf9287e5a247b0ef9517a2e3ae2882fb54478da0a6e674cbdaf6868cf220",
+    "bytes": 9675
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x-hyd-p1-s2.summary.json",
+    "sha256": "503300d63b6bf8d2f7c8105b788d721bdabf5587cdf0e4093d6302a6ab982a13",
+    "bytes": 1954
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x-hyd-p1-s3.jsonl",
+    "sha256": "f2e9dd7ee144a1558ac06d95bc67bc558e5b1f9fef2e5b49e6bc033c0d753095",
+    "bytes": 657468
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x-hyd-p1-s3.log",
+    "sha256": "3ba69d54bfc5ba1de6bd66528246be4e2e40c1ade18a78690fe51cf6c1712a2b",
+    "bytes": 9672
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x-hyd-p1-s3.summary.json",
+    "sha256": "348b0be8dfb992437701be7ae1464e0cb08c127dcd6ac0fe1e604d8220b9deed",
+    "bytes": 1954
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x-hyd-p1-s4.jsonl",
+    "sha256": "4792def0ebd70dd03f998d457354b099800546f6c6adb58d7091c46d7287a192",
+    "bytes": 657450
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x-hyd-p1-s4.log",
+    "sha256": "08d692ad6d600f64c5e1ae57e3736e961abfeea329d584b77812ae2883cac412",
+    "bytes": 9674
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x-hyd-p1-s4.summary.json",
+    "sha256": "6fbb0f0b42e98fd933ef7f48c75679d3b8b03f9bc0c7baa29d5b9bae20ab767b",
+    "bytes": 1954
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x-hyd-p1-s5.jsonl",
+    "sha256": "126715329fdd8b1578cd82d70decf271cb504d288fd43dc7fba8060477fdf116",
+    "bytes": 657499
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x-hyd-p1-s5.log",
+    "sha256": "c93dab974db7b534a928bcbcd668e918e90a1bea49dada3f1d4f4a0c7a20d5b7",
+    "bytes": 9672
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x-hyd-p1-s5.summary.json",
+    "sha256": "bc2c6b7f5b4d104b2566a16107e52d4b42163c36b7ab01a6d435d1ad53ad336e",
+    "bytes": 1954
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x-hyd-p1-s6.jsonl",
+    "sha256": "a3e89a193f0cd95726b49146dfe63b6a25a6bc0d068edfaa61aa0ec22d2340f3",
+    "bytes": 657478
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x-hyd-p1-s6.log",
+    "sha256": "d8180f4b9dff52424c7539d2b5ef459a04fc69e55dabc142533f989146c6c303",
+    "bytes": 9679
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x-hyd-p1-s6.summary.json",
+    "sha256": "a93c31a8d74036f2fe3be07d0a40d3b7710c42b25120174c3ffe794fcbacc804",
+    "bytes": 1954
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x-hyd-p1-s7.jsonl",
+    "sha256": "ccbaba087d1b31b560923b070f4ba7f650fd236a68482a4ea12bc3e41d9125b4",
+    "bytes": 657455
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x-hyd-p1-s7.log",
+    "sha256": "b2f456a0b06843957fe7cb92dd9dc2e2cb9a4cf9bed616874aff907a4d671fc8",
+    "bytes": 9670
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x-hyd-p1-s7.summary.json",
+    "sha256": "40b02618087db647aea192d653cd0429561d362e04a33042ba8ded213c77d0c3",
+    "bytes": 1954
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x1m-hyd-p1-s0.jsonl",
+    "sha256": "536ab1f7d5c62dc090f9817cbe25c0907db91e8dbc41bce77315d09f0331f02d",
+    "bytes": 1007559
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x1m-hyd-p1-s0.log",
+    "sha256": "95f838e3dfbda5e3e661fa95fac4ec6fa34b41b83f289e7a83caced169940792",
+    "bytes": 14680
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x1m-hyd-p1-s0.summary.json",
+    "sha256": "5135dca691ec962ae68fe49b1164c6bde85b8360edc69c5a8a06fa1ef6f27c4a",
+    "bytes": 1738
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x1m-hyd-p1-s1.jsonl",
+    "sha256": "e78c83a3afb40dff8f332917f78cf1108eafe6fb4d161b224afb92adfa934b06",
+    "bytes": 1007605
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x1m-hyd-p1-s1.log",
+    "sha256": "ac1ae369659e3d050555b19d03b953f1a6a4af4c43bc9f03068315a13c0e3117",
+    "bytes": 14692
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x1m-hyd-p1-s1.summary.json",
+    "sha256": "094f81a403bd9a460693006abdf3b34259404380620c96b324758370446fedf6",
+    "bytes": 1738
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x1m-hyd-p1-s2.jsonl",
+    "sha256": "9cdda789f0ecfc55b579963e6e166729edc116be33fbd26d54984cce66aff2a9",
+    "bytes": 1007554
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x1m-hyd-p1-s2.log",
+    "sha256": "a2be18a5e6e666534f3d9ea61a1d3b722f14401a9c1ed2e9f049039149c98501",
+    "bytes": 14680
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x1m-hyd-p1-s2.summary.json",
+    "sha256": "5b23bdecc146c25bccde284e84b64b6871d139adcc6ea632967d6a66394d61ee",
+    "bytes": 1738
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x1m-hyd-p1-s3.jsonl",
+    "sha256": "7ecb7e90330bedf2b213b492e3b9a2554e0dca2883e6006c39068ac866b6ab57",
+    "bytes": 1007568
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x1m-hyd-p1-s3.log",
+    "sha256": "b3f16032a290a49be005d9dbfe253d90f47ee6ff213cd3974b45ad14c81d27b8",
+    "bytes": 14684
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x1m-hyd-p1-s3.summary.json",
+    "sha256": "2adfd768316fa428995b91974dc655bb116f987fe5a0d8a1148f80d3e1bcea6d",
+    "bytes": 1738
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x1m-hyd-p1-s4.jsonl",
+    "sha256": "f4adc33f774d0976b66bcec6e2644486c1eb8c95ccf11e067424634636005bf0",
+    "bytes": 1007603
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x1m-hyd-p1-s4.log",
+    "sha256": "aa39c5dd166752f7c130a50f20d48aff3eb6acf15f8db5c5309bac6a9f3912f5",
+    "bytes": 14686
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x1m-hyd-p1-s4.summary.json",
+    "sha256": "f177b27830188f6d88411493a0411a2f419dab8b52c6eab870e0b72274275d66",
+    "bytes": 1738
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x1m-hyd-p1-s5.jsonl",
+    "sha256": "3af9a0f3818c19db1c5d597a90d339b42b4786ba2b6f27fc616854dd472a4e87",
+    "bytes": 1007600
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x1m-hyd-p1-s5.log",
+    "sha256": "c9ae2e0e80e68968174e89a3a68cce7c79e5111d766f97840f311df45654972d",
+    "bytes": 14677
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x1m-hyd-p1-s5.summary.json",
+    "sha256": "efb47bdc7a4e86986637d65b088a500a8bc77bd9a02a2d6f91573a637c5b7c2b",
+    "bytes": 1738
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x1m-hyd-p1-s6.jsonl",
+    "sha256": "4411d6fdd7d6c760d668b7d47df652f59077e4d77b6ca2fd4480dbbce328a4f0",
+    "bytes": 1007563
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x1m-hyd-p1-s6.log",
+    "sha256": "dc77ef721287c06ed992c43d0cf605e2bf30f43d510a74bda152386a8b15ad4b",
+    "bytes": 14691
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x1m-hyd-p1-s6.summary.json",
+    "sha256": "806fe1eb8d676837a95d11b9db642700ba72700b28df9b5704daa82bdc59f123",
+    "bytes": 1738
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x1m-hyd-p1-s7.jsonl",
+    "sha256": "d59c485478d4a61a572947611d7cde12d7f2e1d20f1997d61639a42cd9b7d2c5",
+    "bytes": 1007512
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x1m-hyd-p1-s7.log",
+    "sha256": "8c21db2f3399be2fa0ab410b61191b1794d310f40db170e8b7ca483454dd09da",
+    "bytes": 14694
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x1m-hyd-p1-s7.summary.json",
+    "sha256": "bfee1923db3cb7c0a8224d2281d06d7788eded47187f95610629e0aae1851aba",
+    "bytes": 1738
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x512k-hyd-p1-s0.jsonl",
+    "sha256": "c602c23ae885f8d85264c1c6f5171523e37f2528ec8290ae4325704e025e9d38",
+    "bytes": 283395
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x512k-hyd-p1-s0.log",
+    "sha256": "52901d5e8e51c58042f3c2a9be269bf976b09c82a341b56643466098b92c135a",
+    "bytes": 4343
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x512k-hyd-p1-s0.summary.json",
+    "sha256": "6664ffc83b0b66855038a873e23c20b437d721564ae3bd07f77578d841a8ded9",
+    "bytes": 1934
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x512k-hyd-p1-s1.jsonl",
+    "sha256": "9bd4b76f597a776e9ddcbd4e6156ab93a82a7420436738271c4f5f8733c1ca19",
+    "bytes": 283391
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x512k-hyd-p1-s1.log",
+    "sha256": "01f272fad53f5ecf39b8088734a3d69545048a21e8e3d60037d1d32e12aa2ec8",
+    "bytes": 4347
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x512k-hyd-p1-s1.summary.json",
+    "sha256": "151eb70022287a3f6575e77d3ec2092bfa123279d846e1845673e73075fba28b",
+    "bytes": 1934
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x512k-hyd-p1-s2.jsonl",
+    "sha256": "390dbc87bffe218d1ce80dc822fee2fc0eac57ebcf8e2565eb1fb9b67878fc14",
+    "bytes": 283793
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x512k-hyd-p1-s2.log",
+    "sha256": "237867ffc766af4e9ec61646868d08b24c7260f4996a48102980ab2b7c23d85e",
+    "bytes": 4345
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x512k-hyd-p1-s2.summary.json",
+    "sha256": "44826fb7c7a71240e63b53c3b2f78a5171313322d9169368387e264dd18deedd",
+    "bytes": 1935
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x512k-hyd-p1-s3.jsonl",
+    "sha256": "ae784f7e402325db7dbe73bfb1028fe76676be5565edb63007e95b48361f0c9e",
+    "bytes": 283395
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x512k-hyd-p1-s3.log",
+    "sha256": "1e2c695d93a1d33391557856ad5e3ee165b60257440f7f4e3f61784cda09f30c",
+    "bytes": 4349
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x512k-hyd-p1-s3.summary.json",
+    "sha256": "84f5e90da4f5e1f89a83b1d3102ce9fb7dfe55971390d6a642d6f50cf831de29",
+    "bytes": 1934
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x512k-hyd-p1-s4.jsonl",
+    "sha256": "3b29c5aa8e3062aa5f72acae0af335328635426f75ce2c7f4813756bfef21964",
+    "bytes": 283374
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x512k-hyd-p1-s4.log",
+    "sha256": "2a003990a68e3bb72ace97ddcb2c7628238745fa374beafec67207e1bb6f6885",
+    "bytes": 4348
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x512k-hyd-p1-s4.summary.json",
+    "sha256": "275e5c3616eb3fd166c9b523edc7cae8795aadf8bc93be529fa5b923701ee239",
+    "bytes": 1934
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x512k-hyd-p1-s5.jsonl",
+    "sha256": "301c76f917b85b6bd7a6f2965ca3e6ac0a94b83cd7a09ad8f4d1f7b5e7ec4d3d",
+    "bytes": 283375
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x512k-hyd-p1-s5.log",
+    "sha256": "778f904462c52ba51b3a729f29632e3e78d2a7eaf0e35b03a7313a47fb9a2f97",
+    "bytes": 4342
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x512k-hyd-p1-s5.summary.json",
+    "sha256": "49ea43f9a09de8720cbfcdd81cc8b232dcbf44621b32d016a5707585057e30dd",
+    "bytes": 1934
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x512k-hyd-p1-s6.jsonl",
+    "sha256": "59fadbda2b90e39b65a26be32a285da8e8299cc0b57ef9031498e9a12a0b0a91",
+    "bytes": 283770
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x512k-hyd-p1-s6.log",
+    "sha256": "2eba4ee6d99bce271fa1bc1d01495c469d5af9a8f9f61e47b5e1fc1406a470b8",
+    "bytes": 4349
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x512k-hyd-p1-s6.summary.json",
+    "sha256": "685b0f3280ced5c0e3645dcf366901cf236d0a9ca057c7a8d3ef987546311be7",
+    "bytes": 1935
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x512k-hyd-p1-s7.jsonl",
+    "sha256": "7253a96d01db1d53f65446ab6f0ce33050a64065312834fc8799ab09adb320c2",
+    "bytes": 283375
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x512k-hyd-p1-s7.log",
+    "sha256": "7580654b9f7e5bebe461580979b3c918777e6467863e506386c1b6795ec7dfb8",
+    "bytes": 4348
+   },
+   {
+    "path": "receipts/teardown/driver512k/tb21/receipts/tb21-metrics-8x512k-hyd-p1-s7.summary.json",
+    "sha256": "7748ca87ada2569a701bedf6c8a40dd91d4d957c82775ba55f4fea8c0690533e",
+    "bytes": 1934
+   }
+  ]
+ },
+ "secret_scanning_incident": {
+  "utc": "2026-08-17T19:07:25Z",
+  "what_happened": "GitHub push protection REJECTED the final sweep commit with GH013, naming a Hugging Face User Access Token inside a swept agent transcript. The push was blocked before anything reached the remote.",
+  "the_files": {
+   "tb21c-8x512k-hyd-p1-s4/sanitize-git-repo__6M48PMp/agent/trajectory.json": {
+    "hf_token": 70,
+    "github_pat": 29,
+    "aws_akid": 40
+   },
+   "tb21c-8x512k-hyd-p1-s4/job.log": {
+    "hf_token": 11,
+    "github_pat": 5,
+    "aws_akid": 6
+   }
+  },
+  "root_cause": "Both files belong to the Terminal-Bench task `sanitize-git-repo`, whose entire purpose is to find and remove secrets from a git repository. Its fixtures are therefore realistic token-shaped strings, and the agent's trajectory quotes them verbatim as it works. Sweeping raw agent transcripts from a benchmark that contains secret-handling tasks will reliably trip secret scanning.",
+  "were_any_OURS": {
+   "our_hf_token": 0,
+   "jarvis_api_key": 0,
+   "method": "scanned all 767 swept files for hf_/ghp_/AKIA/sk-/xox/private-key patterns and for our real HF token's exact bytes and the Jarvis key's exact bytes. Zero matches for either of ours.",
+   "conclusion": "NOT an incident with our credentials. No rotation required. The blocked strings are third-party fixtures."
+  },
+  "resolution": "Both files DELETED from the swept set rather than allow-listed. The unblock URL GitHub offered was deliberately NOT used: allow-listing would publish someone else's fixture secrets into a public repository, which is the wrong outcome even when the secrets are synthetic.",
+  "lesson": "Filter raw agent transcripts for secret patterns BEFORE committing them, not after a push is rejected. The scan is cheap - seven regexes over 767 files - and push protection is the wrong place to discover it, because by then the bytes are already in a local commit that has to be rewritten."
+ }
 }

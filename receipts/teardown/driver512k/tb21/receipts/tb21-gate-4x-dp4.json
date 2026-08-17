@@ -1,0 +1,81 @@
+{
+ "schema": "qwen38-tb21-gate/1",
+ "generated_utc": "2026-08-17T04:23:48Z",
+ "started_utc": "2026-08-17T04:15:48Z",
+ "argv": [
+  "tools/tb21_gate.py",
+  "--base-url",
+  "http://10.0.0.3:8000",
+  "--out",
+  "/home/ubuntu/tb21/receipts/tb21-gate-4x-dp4.json"
+ ],
+ "base_url": "http://10.0.0.3:8000",
+ "endpoint_identity": {
+  "served_model_id": null,
+  "is_mock_preflight_double": false
+ },
+ "seed": 46,
+ "cross_restart_note": "Within-process repeatability only. Cross-restart bit-exactness is NOT claimable on this stack: greedy text differs across engine restarts 7/8 and is identical within a process 8/8 (exl3_gemm autotune selects kernel configs by measured time per process) - receipts/scratch-arena.json.",
+ "metrics_before_check3": {
+  "available": false,
+  "utc": "2026-08-17T04:21:48Z",
+  "reason": "TimeoutError: timed out"
+ },
+ "metrics_after_check3": {
+  "available": false,
+  "utc": "2026-08-17T04:23:48Z",
+  "reason": "TimeoutError: timed out"
+ },
+ "checks": [
+  {
+   "name": "liveness",
+   "status": "FAIL",
+   "evidence": {
+    "health_status": 0,
+    "health_error": "TimeoutError: timed out",
+    "health_latency_s": 120.1019,
+    "models_status": 0,
+    "served_model_id": null,
+    "owned_by": null,
+    "models_payload": null,
+    "why": "/v1/models did not return a served model id"
+   }
+  },
+  {
+   "name": "generation_proof",
+   "status": "FAIL",
+   "evidence": {
+    "why": "no served model id to address"
+   }
+  },
+  {
+   "name": "frozen_prompt_repeatability",
+   "status": "FAIL",
+   "evidence": {
+    "why": "no served model id"
+   }
+  },
+  {
+   "name": "needle_retrieval",
+   "status": "FAIL",
+   "evidence": {
+    "why": "no served model id"
+   }
+  },
+  {
+   "name": "mtp_sanity",
+   "status": "SKIP",
+   "evidence": {
+    "reason": "/metrics unavailable on this endpoint: TimeoutError: timed out"
+   }
+  }
+ ],
+ "verdict": "FAIL",
+ "failed_checks": [
+  "liveness",
+  "generation_proof",
+  "frozen_prompt_repeatability",
+  "needle_retrieval"
+ ],
+ "finished_utc": "2026-08-17T04:23:48Z"
+}

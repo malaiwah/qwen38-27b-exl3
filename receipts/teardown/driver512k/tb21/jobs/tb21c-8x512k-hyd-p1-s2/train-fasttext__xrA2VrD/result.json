@@ -1,0 +1,187 @@
+{
+    "id": "4128eb0a-1113-4904-8823-539b7732f571",
+    "task_name": "terminal-bench/train-fasttext",
+    "trial_name": "train-fasttext__xrA2VrD",
+    "trial_uri": "file:///home/ubuntu/tb21/jobs/tb21c-8x512k-hyd-p1-s2/train-fasttext__xrA2VrD",
+    "task_id": {
+        "path": "/home/ubuntu/tb21/tasks/train-fasttext"
+    },
+    "source": "tasks",
+    "task_checksum": "f521c0d2f312c54d2ba22574c94cfe2e646969cc744974ab9faf68aead2bc1b2",
+    "config": {
+        "task": {
+            "path": "/home/ubuntu/tb21/tasks/train-fasttext",
+            "git_url": null,
+            "git_commit_id": null,
+            "name": null,
+            "ref": null,
+            "overwrite": false,
+            "download_dir": null,
+            "source": "tasks"
+        },
+        "trial_name": "train-fasttext__xrA2VrD",
+        "trials_dir": "/home/ubuntu/tb21/jobs/tb21c-8x512k-hyd-p1-s2",
+        "install_only": false,
+        "timeout_multiplier": 2.0,
+        "agent_timeout_multiplier": null,
+        "verifier_timeout_multiplier": null,
+        "agent_setup_timeout_multiplier": null,
+        "environment_build_timeout_multiplier": null,
+        "agent": {
+            "name": "terminus-2",
+            "import_path": null,
+            "model_name": "hosted_vllm/qwen38",
+            "n_concurrent": null,
+            "concurrency_group": null,
+            "skills": [],
+            "override_timeout_sec": null,
+            "override_setup_timeout_sec": null,
+            "max_timeout_sec": null,
+            "resume_trajectory": false,
+            "load_trajectory": null,
+            "extra_allowed_hosts": [],
+            "kwargs": {
+                "api_base": "http://10.0.0.5:8000/v1",
+                "model_info": {
+                    "max_input_tokens": 524288,
+                    "max_output_tokens": 8192,
+                    "input_cost_per_token": 0,
+                    "output_cost_per_token": 0,
+                    "cache_creation_input_token_cost": 0,
+                    "cache_read_input_token_cost": 0
+                }
+            },
+            "env": {
+                "HOSTED_VLLM_API_KEY": "****"
+            },
+            "mcp_servers": []
+        },
+        "environment": {
+            "type": "docker",
+            "import_path": null,
+            "force_build": false,
+            "delete": true,
+            "cpu_enforcement_policy": "auto",
+            "memory_enforcement_policy": "auto",
+            "override_cpus": null,
+            "override_memory_mb": null,
+            "override_storage_mb": null,
+            "override_gpus": null,
+            "override_tpu": null,
+            "mounts": null,
+            "extra_docker_compose": [],
+            "kwargs": {},
+            "extra_allowed_hosts": []
+        },
+        "verifier": {
+            "override_timeout_sec": null,
+            "max_timeout_sec": null,
+            "disable": false
+        },
+        "artifacts": [],
+        "extra_instruction_paths": [],
+        "job_id": "73527c30-5a1f-4953-96f6-efdce2d49c6d",
+        "source_trial": null
+    },
+    "agent_info": {
+        "name": "terminus-2",
+        "version": "2.0.0",
+        "model_info": {
+            "name": "qwen38",
+            "provider": "hosted_vllm"
+        }
+    },
+    "agent_result": {
+        "n_input_tokens": 1115530,
+        "n_cache_tokens": 0,
+        "n_output_tokens": 38984,
+        "cost_usd": null,
+        "rollout_details": [],
+        "metadata": {
+            "n_episodes": 56,
+            "api_request_times_msec": [
+                1809.9799156188965,
+                3191.999673843384,
+                4593.7159061431885,
+                3922.7523803710938,
+                4675.151109695435,
+                5053.406000137329,
+                4246.640205383301,
+                4568.312406539917,
+                12412.95051574707,
+                4248.486280441284,
+                28847.357511520386,
+                2584.636449813843,
+                2605.2603721618652,
+                2016.2146091461182,
+                1798.142910003662,
+                47727.38838195801,
+                5337.022066116333,
+                3001.6086101531982,
+                7164.238691329956,
+                3841.6295051574707,
+                2092.719554901123,
+                1726.4792919158936,
+                2639.5721435546875,
+                2624.4537830352783,
+                2218.754529953003,
+                3019.756317138672,
+                4405.943393707275,
+                5635.082721710205,
+                2092.4596786499023,
+                2569.8082447052,
+                5434.629678726196,
+                2415.6222343444824,
+                7065.574169158936,
+                12161.928415298462,
+                9582.246541976929,
+                4669.2609786987305,
+                2523.725748062134,
+                2243.9627647399902,
+                24013.33498954773,
+                3005.7733058929443,
+                3605.0784587860107,
+                10978.756189346313,
+                9272.056102752686,
+                11559.44013595581,
+                4844.2206382751465,
+                82853.21760177612,
+                22309.438705444336,
+                2427.7045726776123,
+                2519.500494003296,
+                12258.176326751709,
+                3180.887460708618,
+                4062.6626014709473,
+                55212.904930114746,
+                3621.624708175659,
+                2582.0658206939697,
+                3445.772171020508
+            ],
+            "summarization_count": 0
+        }
+    },
+    "verifier_result": null,
+    "verifier_environment_mode": "shared",
+    "exception_info": {
+        "exception_type": "CancelledError",
+        "exception_message": "",
+        "exception_traceback": "Traceback (most recent call last):\n  File \"/usr/lib/python3.12/asyncio/runners.py\", line 194, in run\n    return runner.run(main)\n           ^^^^^^^^^^^^^^^^\n  File \"/usr/lib/python3.12/asyncio/runners.py\", line 118, in run\n    return self._loop.run_until_complete(task)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/lib/python3.12/asyncio/base_events.py\", line 674, in run_until_complete\n    self.run_forever()\n  File \"/usr/lib/python3.12/asyncio/base_events.py\", line 641, in run_forever\n    self._run_once()\n  File \"/usr/lib/python3.12/asyncio/base_events.py\", line 1949, in _run_once\n    event_list = self._selector.select(timeout)\n                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/lib/python3.12/selectors.py\", line 468, in select\n    fd_event_list = self._selector.poll(timeout, max_ev)\n                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/ubuntu/.[REDACTED]/share/uv/tools/harbor/lib/python3.12/site-packages/harbor/cli/jobs.py\", line 318, in _handle_sigterm\n    raise KeyboardInterrupt\nKeyboardInterrupt\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/home/ubuntu/.[REDACTED]/share/uv/tools/harbor/lib/python3.12/site-packages/harbor/trial/trial.py\", line 378, in run\n    await self._run()\n  File \"/home/ubuntu/.[REDACTED]/share/uv/tools/harbor/lib/python3.12/site-packages/harbor/trial/single_step.py\", line 41, in _run\n    await self._run_agent()\n  File \"/home/ubuntu/.[REDACTED]/share/uv/tools/harbor/lib/python3.12/site-packages/harbor/trial/single_step.py\", line 87, in _run_agent\n    await self._sync_agent_output(self.result)\n  File \"/home/ubuntu/.[REDACTED]/share/uv/tools/harbor/lib/python3.12/site-packages/harbor/trial/trial.py\", line 722, in _sync_agent_output\n    await self._download_agent_logs()\n  File \"/home/ubuntu/.[REDACTED]/share/uv/tools/harbor/lib/python3.12/site-packages/harbor/trial/trial.py\", line 501, in _download_agent_logs\n    await self.agent_environment.prepare_logs_for_host()\n  File \"/home/ubuntu/.[REDACTED]/share/uv/tools/harbor/lib/python3.12/site-packages/harbor/environments/docker/docker.py\", line 931, in prepare_logs_for_host\n    await self._chown_to_host_user(target, recursive=True)\n  File \"/home/ubuntu/.[REDACTED]/share/uv/tools/harbor/lib/python3.12/site-packages/harbor/environments/docker/docker.py\", line 1023, in _chown_to_host_user\n    if await self._is_rootless_docker():\n       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/ubuntu/.[REDACTED]/share/uv/tools/harbor/lib/python3.12/site-packages/harbor/environments/docker/docker.py\", line 992, in _is_rootless_docker\n    proc = await asyncio.create_subprocess_exec(\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/lib/python3.12/asyncio/subprocess.py\", line 224, in create_subprocess_exec\n    transport, protocol = await loop.subprocess_exec(\n                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/lib/python3.12/asyncio/base_events.py\", line 1744, in subprocess_exec\n    transport = await self._make_subprocess_transport(\n                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/lib/python3.12/asyncio/unix_events.py\", line 218, in _make_subprocess_transport\n    await waiter\nasyncio.exceptions.CancelledError\n",
+        "occurred_at": "2026-08-17T18:58:19.795588Z"
+    },
+    "started_at": "2026-08-17T17:57:39.236923Z",
+    "finished_at": "2026-08-17T18:58:33.931130Z",
+    "environment_setup": {
+        "started_at": "2026-08-17T17:57:39.425581Z",
+        "finished_at": "2026-08-17T17:57:41.556013Z"
+    },
+    "agent_setup": {
+        "started_at": "2026-08-17T17:57:41.556042Z",
+        "finished_at": "2026-08-17T17:57:53.748086Z"
+    },
+    "agent_execution": {
+        "started_at": "2026-08-17T17:57:53.748227Z",
+        "finished_at": "2026-08-17T18:58:19.768426Z"
+    },
+    "verifier": null,
+    "step_results": null
+}

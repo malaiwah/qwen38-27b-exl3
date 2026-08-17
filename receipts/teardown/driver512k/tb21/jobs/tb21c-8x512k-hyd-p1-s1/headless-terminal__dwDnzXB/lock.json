@@ -1,0 +1,49 @@
+{
+    "schema_version": 2,
+    "task": {
+        "name": "headless-terminal",
+        "type": "[REDACTED]",
+        "digest": "sha256:203953871ebdae4efbf163af9499849368dab5e219b70d447e5ee9701ad382d9",
+        "source": "tasks",
+        "path": "/home/ubuntu/tb21/tasks/headless-terminal"
+    },
+    "install_only": false,
+    "timeout_multiplier": 2.0,
+    "agent": {
+        "name": "terminus-2",
+        "model_name": "hosted_vllm/qwen38",
+        "skills": [],
+        "resume_trajectory": false,
+        "extra_allowed_hosts": [],
+        "kwargs": {
+            "api_base": "http://10.0.0.5:8000/v1",
+            "model_info": {
+                "max_input_tokens": 524288,
+                "max_output_tokens": 8192,
+                "input_cost_per_token": 0,
+                "output_cost_per_token": 0,
+                "cache_creation_input_token_cost": 0,
+                "cache_read_input_token_cost": 0
+            }
+        },
+        "env": {
+            "HOSTED_VLLM_API_KEY": "****"
+        },
+        "mcp_servers": []
+    },
+    "skills": [],
+    "environment": {
+        "type": "docker",
+        "force_build": false,
+        "delete": true,
+        "cpu_enforcement_policy": "auto",
+        "memory_enforcement_policy": "auto",
+        "extra_docker_compose": [],
+        "kwargs": {},
+        "extra_allowed_hosts": []
+    },
+    "verifier": {
+        "disable": false,
+        "environment_mode": "shared"
+    }
+}

@@ -1,0 +1,167 @@
+{
+    "id": "8c55ac6a-c591-4676-94eb-3c5b83727dc9",
+    "task_name": "terminal-bench/path-tracing",
+    "trial_name": "path-tracing__hRnNnre",
+    "trial_uri": "file:///home/ubuntu/tb21/jobs/tb21c-8x512k-hyd-p1-s2/path-tracing__hRnNnre",
+    "task_id": {
+        "path": "/home/ubuntu/tb21/tasks/path-tracing"
+    },
+    "source": "tasks",
+    "task_checksum": "549aa348dde50ec3824205f402d9686da5d1dedf65ae2bd2ae8806513839fe93",
+    "config": {
+        "task": {
+            "path": "/home/ubuntu/tb21/tasks/path-tracing",
+            "git_url": null,
+            "git_commit_id": null,
+            "name": null,
+            "ref": null,
+            "overwrite": false,
+            "download_dir": null,
+            "source": "tasks"
+        },
+        "trial_name": "path-tracing__hRnNnre",
+        "trials_dir": "/home/ubuntu/tb21/jobs/tb21c-8x512k-hyd-p1-s2",
+        "install_only": false,
+        "timeout_multiplier": 2.0,
+        "agent_timeout_multiplier": null,
+        "verifier_timeout_multiplier": null,
+        "agent_setup_timeout_multiplier": null,
+        "environment_build_timeout_multiplier": null,
+        "agent": {
+            "name": "terminus-2",
+            "import_path": null,
+            "model_name": "hosted_vllm/qwen38",
+            "n_concurrent": null,
+            "concurrency_group": null,
+            "skills": [],
+            "override_timeout_sec": null,
+            "override_setup_timeout_sec": null,
+            "max_timeout_sec": null,
+            "resume_trajectory": false,
+            "load_trajectory": null,
+            "extra_allowed_hosts": [],
+            "kwargs": {
+                "api_base": "http://10.0.0.5:8000/v1",
+                "model_info": {
+                    "max_input_tokens": 524288,
+                    "max_output_tokens": 8192,
+                    "input_cost_per_token": 0,
+                    "output_cost_per_token": 0,
+                    "cache_creation_input_token_cost": 0,
+                    "cache_read_input_token_cost": 0
+                }
+            },
+            "env": {
+                "HOSTED_VLLM_API_KEY": "****"
+            },
+            "mcp_servers": []
+        },
+        "environment": {
+            "type": "docker",
+            "import_path": null,
+            "force_build": false,
+            "delete": true,
+            "cpu_enforcement_policy": "auto",
+            "memory_enforcement_policy": "auto",
+            "override_cpus": null,
+            "override_memory_mb": null,
+            "override_storage_mb": null,
+            "override_gpus": null,
+            "override_tpu": null,
+            "mounts": null,
+            "extra_docker_compose": [],
+            "kwargs": {},
+            "extra_allowed_hosts": []
+        },
+        "verifier": {
+            "override_timeout_sec": null,
+            "max_timeout_sec": null,
+            "disable": false
+        },
+        "artifacts": [],
+        "extra_instruction_paths": [],
+        "job_id": "73527c30-5a1f-4953-96f6-efdce2d49c6d",
+        "source_trial": null
+    },
+    "agent_info": {
+        "name": "terminus-2",
+        "version": "2.0.0",
+        "model_info": {
+            "name": "qwen38",
+            "provider": "hosted_vllm"
+        }
+    },
+    "agent_result": {
+        "n_input_tokens": 1640999,
+        "n_cache_tokens": 0,
+        "n_output_tokens": 175768,
+        "cost_usd": null,
+        "rollout_details": [],
+        "metadata": {
+            "n_episodes": 36,
+            "api_request_times_msec": [
+                5229.981184005737,
+                16554.58903312683,
+                16875.62084197998,
+                3476.6218662261963,
+                3454.862117767334,
+                16892.592668533325,
+                15634.719371795654,
+                33354.196071624756,
+                38720.30305862427,
+                8208.209037780762,
+                40966.98570251465,
+                11486.101388931274,
+                44067.1603679657,
+                5673.1202602386475,
+                68200.350522995,
+                9257.726907730103,
+                138304.3565750122,
+                189649.89066123962,
+                163234.0931892395,
+                15172.203063964844,
+                37847.52106666565,
+                138068.2384967804,
+                6851.677894592285,
+                42845.773696899414,
+                447573.2967853546,
+                138581.48550987244,
+                178209.20729637146,
+                310408.57672691345,
+                46586.16638183594,
+                12264.910221099854,
+                61120.26000022888,
+                12096.132040023804,
+                86884.00530815125,
+                103860.84461212158,
+                32164.007902145386,
+                59961.678981781006
+            ],
+            "summarization_count": 0
+        }
+    },
+    "verifier_result": null,
+    "verifier_environment_mode": "shared",
+    "exception_info": {
+        "exception_type": "CancelledError",
+        "exception_message": "",
+        "exception_traceback": "Traceback (most recent call last):\n  File \"/usr/lib/python3.12/asyncio/runners.py\", line 194, in run\n    return runner.run(main)\n           ^^^^^^^^^^^^^^^^\n  File \"/usr/lib/python3.12/asyncio/runners.py\", line 118, in run\n    return self._loop.run_until_complete(task)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/lib/python3.12/asyncio/base_events.py\", line 674, in run_until_complete\n    self.run_forever()\n  File \"/usr/lib/python3.12/asyncio/base_events.py\", line 641, in run_forever\n    self._run_once()\n  File \"/usr/lib/python3.12/asyncio/base_events.py\", line 1949, in _run_once\n    event_list = self._selector.select(timeout)\n                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/lib/python3.12/selectors.py\", line 468, in select\n    fd_event_list = self._selector.poll(timeout, max_ev)\n                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/ubuntu/.[REDACTED]/share/uv/tools/harbor/lib/python3.12/site-packages/harbor/cli/jobs.py\", line 318, in _handle_sigterm\n    raise KeyboardInterrupt\nKeyboardInterrupt\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/home/ubuntu/.[REDACTED]/share/uv/tools/harbor/lib/python3.12/site-packages/harbor/trial/trial.py\", line 378, in run\n    await self._run()\n  File \"/home/ubuntu/.[REDACTED]/share/uv/tools/harbor/lib/python3.12/site-packages/harbor/trial/single_step.py\", line 41, in _run\n    await self._run_agent()\n  File \"/home/ubuntu/.[REDACTED]/share/uv/tools/harbor/lib/python3.12/site-packages/harbor/trial/single_step.py\", line 87, in _run_agent\n    await self._sync_agent_output(self.result)\n  File \"/home/ubuntu/.[REDACTED]/share/uv/tools/harbor/lib/python3.12/site-packages/harbor/trial/trial.py\", line 722, in _sync_agent_output\n    await self._download_agent_logs()\n  File \"/home/ubuntu/.[REDACTED]/share/uv/tools/harbor/lib/python3.12/site-packages/harbor/trial/trial.py\", line 501, in _download_agent_logs\n    await self.agent_environment.prepare_logs_for_host()\n  File \"/home/ubuntu/.[REDACTED]/share/uv/tools/harbor/lib/python3.12/site-packages/harbor/environments/docker/docker.py\", line 931, in prepare_logs_for_host\n    await self._chown_to_host_user(target, recursive=True)\n  File \"/home/ubuntu/.[REDACTED]/share/uv/tools/harbor/lib/python3.12/site-packages/harbor/environments/docker/docker.py\", line 1023, in _chown_to_host_user\n    if await self._is_rootless_docker():\n       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/ubuntu/.[REDACTED]/share/uv/tools/harbor/lib/python3.12/site-packages/harbor/environments/docker/docker.py\", line 992, in _is_rootless_docker\n    proc = await asyncio.create_subprocess_exec(\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/lib/python3.12/asyncio/subprocess.py\", line 224, in create_subprocess_exec\n    transport, protocol = await loop.subprocess_exec(\n                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/lib/python3.12/asyncio/base_events.py\", line 1744, in subprocess_exec\n    transport = await self._make_subprocess_transport(\n                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/lib/python3.12/asyncio/unix_events.py\", line 218, in _make_subprocess_transport\n    await waiter\nasyncio.exceptions.CancelledError\n",
+        "occurred_at": "2026-08-17T18:58:19.789567Z"
+    },
+    "started_at": "2026-08-17T18:04:34.122147Z",
+    "finished_at": "2026-08-17T18:58:33.701355Z",
+    "environment_setup": {
+        "started_at": "2026-08-17T18:04:34.123226Z",
+        "finished_at": "2026-08-17T18:04:35.296648Z"
+    },
+    "agent_setup": {
+        "started_at": "2026-08-17T18:04:35.296686Z",
+        "finished_at": "2026-08-17T18:04:49.777278Z"
+    },
+    "agent_execution": {
+        "started_at": "2026-08-17T18:04:49.777422Z",
+        "finished_at": "2026-08-17T18:58:19.777730Z"
+    },
+    "verifier": null,
+    "step_results": null
+}
