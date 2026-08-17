@@ -1,0 +1,82 @@
+{
+ "NATIVE": {
+  "rope_parameters": {
+   "mrope_interleaved": true,
+   "mrope_section": [
+    11,
+    11,
+    10
+   ],
+   "partial_rotary_factor": 0.25,
+   "rope_theta": 10000000,
+   "rope_type": "default"
+  },
+  "class": "MRotaryEmbedding",
+  "rotary_dim": 64,
+  "base": 10000000.0,
+  "max_position_embeddings": 1048576,
+  "scaling_factor": null,
+  "mscale": 1.0,
+  "cos_sin_cache_shape": [
+   1048576,
+   64
+  ],
+  "inv_freq_first8": [
+   1.0,
+   0.6042963862419128,
+   0.36517414450645447,
+   0.22067339718341827,
+   0.1333521455526352,
+   0.08058421313762665,
+   0.04869675263762474,
+   0.02942727319896221
+  ]
+ },
+ "YARN": {
+  "rope_parameters": {
+   "mrope_interleaved": true,
+   "mrope_section": [
+    11,
+    11,
+    10
+   ],
+   "rope_type": "yarn",
+   "rope_theta": 10000000,
+   "partial_rotary_factor": 0.25,
+   "factor": 4.0,
+   "original_max_position_embeddings": 262144
+  },
+  "class": "MRotaryEmbedding",
+  "rotary_dim": 64,
+  "base": 10000000.0,
+  "max_position_embeddings": 1048576,
+  "scaling_factor": 4.0,
+  "mscale": 1.138629436111989,
+  "cos_sin_cache_shape": [
+   4194304,
+   64
+  ],
+  "inv_freq_first8": [
+   1.0,
+   0.6042963862419128,
+   0.36517414450645447,
+   0.22067339718341827,
+   0.1333521455526352,
+   0.08058421313762665,
+   0.04869675263762474,
+   0.02942727319896221
+  ]
+ },
+ "delta_over_probe_position_range": {
+  "positions_compared": 32776,
+  "note": "positions 0..N-1 cover every position the probe set uses (longest prompt 32,768 tokens plus 8 forced continuation tokens)",
+  "identical": false,
+  "max_abs_diff": 0.6884765625,
+  "mean_abs_diff": 0.10987134277820587,
+  "frac_entries_differing": 0.9996858239173889,
+  "max_abs_diff_at_position_0_31": 0.140625,
+  "max_abs_diff_at_position_512": 0.140625,
+  "max_abs_diff_at_position_32767": 0.67431640625,
+  "verdict": "the two arms build DIFFERENT rope tables at every position range the probe set touches, including position 0. A null KLD result therefore means the engine tolerated the change, not that the change was ignored."
+ }
+}
