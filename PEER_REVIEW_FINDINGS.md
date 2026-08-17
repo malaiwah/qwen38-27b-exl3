@@ -286,7 +286,7 @@ write-through).
 | SkeletonNegatives | S1.1–S1.9 + X-1, X-2 | No NEW-VIOLATION; all neg-globs clean at tip; S1.6 evidence count corrected 34→36 (assets/ = 36 files, 9 families × light/dark × png/svg); X-1 (lmcache run_mp_tests.py one-off raw artifact) and X-2 (tb21-8x Hub sync) RESOLVED |
 | ToolsInventory | S2.1–S2.4, P1/P2 denominators | No NEW-VIOLATION; 21 named tool files + 36 .sh re-verified; 95 executable .py (was 94 — new tools/fix_mirror_provenance.py from a721c8f); P1 overstatement RESOLVED (AGENTS.md:33 rewritten); S2.4 numbers now stale in the NEW direction (88/55/9 vs tip 95/62/10); denominator updated 95 = 62 argparse + 11 sys.argv + 22 no-arg |
 | FidelityContract | — | pending |
-| KldWorkflow | — | pending |
+| KldWorkflow | S4.1–S4.6, FIND-S4.1a/S4.3a, FIND-YARN-STYLE | No NEW-VIOLATION; the 3 KLD tools byte-stable (no upstream commit touched the slice); S4.1–S4.6 re-spot-checked at tip (set -euo pipefail :51/:41, shard bound :319-320, DRY echo-only :668-671, schema /3 :91, atomic write :988); FIND-S4.1a (dry-run wording vs :635 rm -rf) and FIND-S4.3a (header pin imprecision) STILL-OPEN; FIND-YARN-STYLE STILL-OPEN (intentional separate schema family, stylistic) |
 | GgrunRootfs | — | pending |
 | DocsMap | — | pending |
 | ReqsRuntime | — | pending |
@@ -326,7 +326,7 @@ write-through).
 | P6 | S8.3 bash preflight gate | PENDING | |
 | P7 | S10.7 "packed" phrasing | PENDING | |
 | P8 | S11.2 .omp input declaration over-attribution | PENDING | |
-| P9 | S16.8 per-run image-digest pin precision | PENDING | |
+| P9 | S16.8 per-run image-digest pin precision | STILL-OPEN | Re-confirmed at 3e60f03 (KldWorkflow): kld_ladder.sh:19-20 header wording unchanged; per-candidate identity pin :554-564 still carries no runtime field; pin_run :289-292 unchanged (die, gates GPU work) |
 | C1 | S16-V stale whole-tree sentence (:88-90) | PENDING | |
 | C2 | three-mirrors sections predate shortlist mirrors (no cross-links) | PENDING | |
 | C4 | exl3-d32ba0bb mirror lacks provenance note | PENDING | |
