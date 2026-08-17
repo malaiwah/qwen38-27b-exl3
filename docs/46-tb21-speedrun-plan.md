@@ -587,3 +587,65 @@ this result could take.
 
 **Prefix-cache hit rate is 0.0000 in every segment** - confirming the ladder's unique-seeded-prompt design
 did what it was built to do: no cache reuse inflating any throughput number in §14 or §15.
+
+## 17. MEASURED: the depth schedule re-derived for THIS card's knee, and the schedule we ship
+
+§15 measured the 5090-derived schedule `[[1,2,3],[3,64,1]]` and found it **loses 12-28 % per-request
+at C4** while gaining above C8 - and §14 had already measured this card's knees at **C4/C8**, i.e.
+exactly where it loses. So the schedule was wrong for the machine, not wrong in principle. Three more
+arms were measured to re-derive it, each a **single-variable** change off the same sr1 image, same
+262,144-token window, same seed 46, same shapes and rungs, and each **gated PASS on all five checks
+including the 262k needle** before any number was kept.
+
+The mechanism is not a guess: the scheduler picks depth by
+`dynamic_sd_lookup[len(num_scheduled_tokens)]` (`v1/core/sched/scheduler.py:1157-1160`), and
+`num_scheduled_tokens` is keyed by request, so the ranges are **requests in flight per step** - which
+is why a boundary written at 8 lands exactly on the C8 rung. Entries are inclusive
+`(range_start, range_end, num_speculative_tokens)` (`config/speculative.py:181-186`).
+
+| rung | MRV1 baseline | V2 static-3 | V2 `[[1,2,3],[3,64,1]]` (§15) | A `[[1,8,3],[9,64,1]]` | B `[[1,4,3],[5,8,2],[9,64,1]]` | **C `[[1,4,3],[5,64,1]]`** |
+|---|---:|---:|---:|---:|---:|---:|
+| 512x256 C4 per-req | 104.2 | 108.0 | **74.8** | 107.4 | 108.4 | **108.0** |
+| 512x256 C8 agg | 414 | 432 | 452 | 414 | 404 | **463** |
+| 512x256 C16 agg | 485 | 497 | 556 | 552 | 543 | **558** |
+| 4kx1k C4 per-req | 71.8 | 74.2 | **62.1** | 74.6 | 78.1 | 74.1 |
+| 4kx1k C8 agg | 345 | 348 | 390 | 348 | 348 | **392** |
+| 4kx1k C16 agg | 382 | 381 | 447 | 447 | 446 | **447** |
+
+**Ship `[[1,4,3],[5,64,1]]`.** Against the baseline it is **+11.8 % aggregate at C8** and **+15.1 % at
+C16** on the short shape, **+13.6 %** and **+17.0 %** on the 4k shape, and it **gives up nothing** -
+C4 per-request is +3.6 %. Against the schedule the campaign was about to ship it is **+44.4 %
+per-request at C4** (108.0 against 74.8) while still winning C8 and C16 aggregate. Receipts:
+[`tb21-ladder-1x-knee-{a,b,c}.json`](../receipts/) with
+[`tb21-gate-1x-knee-{a,b,c}.json`](../receipts/).
+
+**Two findings worth more than the tuning.**
+
+**1. Draft depth is not monotone in throughput - the middle value is the worst.** Arm B put depth 2
+across 5-8 expecting a compromise. At C8 it returned **57.9 per-req / 404 agg**, worse than depth 3
+(67.0/414) *and* worse than depth 1 (62.5/452), on both metrics, on both shapes. Depth 2 pays draft
+compute without earning enough acceptance to amortise it. Anyone tuning a schedule by interpolating
+between two measured depths will land on the worst cell available.
+
+**2. The knee label is relative, so a faster engine can appear to lose concurrency.** The knee is the
+largest rung holding >=50 % of that arm's *own* single-stream. V2 raised single-stream ~4 % (129.6 ->
+135.2), which raised the bar: at C8 the V2 arms deliver **more** absolute per-request throughput than
+MRV1 (67.0 against 66.0) yet miss the floor by 0.3-0.4 points (49.6-49.7 % against 50.9 %), so their
+knee **label** reads C4 where MRV1's reads C8. Nothing got worse. Any comparison of knee labels across
+arms with different single-stream speeds is meaningless unless the ratio is printed beside it.
+
+**One knob checked and correctly declined: acceptance-length adaptation.** `SpeculativeConfig` also
+offers `adaptive_speculative_tokens_window`, which re-picks depth from observed accepted length
+(`spec_decode/dynamic/acceptance_length.py:58-69`) as
+`min(max_depth, max(1, floor(mean_accepted + 1.5)))`. It is supported with `mtp` and it **cannot help
+this model**: our measured acceptance at depth 3 is 0.57-0.79, i.e. 1.7-2.4 accepted per draft, so the
+rule evaluates to `floor(3.2..3.9) = 3` and pins at the maximum permanently. It is also **blind to
+batch size** - the axis that produces the entire +11-17 % aggregate win above - so it optimises
+acceptance where throughput is what binds. Declined by arithmetic on measured inputs rather than by
+burning a GPU hour.
+
+**Async scheduling needed no action: it is already on.** `vllm.py:1162 Asynchronous scheduling is
+enabled` in both the API server and EngineCore on every arm above, because `EagleModelTypes` includes
+`MTPModelTypes` (`config/speculative.py:66`, `39-55`), so vLLM's auto-enable path takes it rather than
+the spec-decode disable path at `config/vllm.py:1124-1135`. Every number in this document was measured
+with it active; there is no unclaimed gain here, and §13 records it under *Verified ON and at 11*.
