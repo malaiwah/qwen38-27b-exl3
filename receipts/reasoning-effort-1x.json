@@ -1,0 +1,218 @@
+{
+ "schema": "qwen38-reasoning-effort-probe/1",
+ "generated_utc": "2026-08-17T02:46:05Z",
+ "base_url": "http://10.0.0.3:8000",
+ "model": "qwen38",
+ "prompt": "Write a Python function that finds the longest palindromic substring in O(n) time using Manacher's algorithm. Explain your reasoning.",
+ "max_tokens": 32768,
+ "temperature": 0,
+ "repeats": 2,
+ "why_the_budget_is_large": "The first attempt used 4,096 output tokens and every arm returned finish_reason=length, so it measured the cap. Any arm still showing truncated_by_cap>0 here is reported, not averaged away.",
+ "by_effort": {
+  "(unset)": {
+   "requests": 2,
+   "http_200": 2,
+   "median_completion_tokens": 18085.0,
+   "median_reasoning_chars": 56955.0,
+   "median_content_chars": 5973.0,
+   "median_latency_s": 168.9,
+   "finish_reasons": [
+    "stop"
+   ],
+   "truncated_by_cap": 0,
+   "answered_correct_algorithm": 2,
+   "code_block_present": 2
+  },
+  "xhigh": {
+   "requests": 2,
+   "http_200": 2,
+   "median_completion_tokens": 18085.0,
+   "median_reasoning_chars": 56955.0,
+   "median_content_chars": 5973.0,
+   "median_latency_s": 168.8,
+   "finish_reasons": [
+    "stop"
+   ],
+   "truncated_by_cap": 0,
+   "answered_correct_algorithm": 2,
+   "code_block_present": 2
+  },
+  "medium": {
+   "requests": 2,
+   "http_200": 2,
+   "median_completion_tokens": 3436.0,
+   "median_reasoning_chars": 4767.0,
+   "median_content_chars": 4944.0,
+   "median_latency_s": 26.2,
+   "finish_reasons": [
+    "stop"
+   ],
+   "truncated_by_cap": 0,
+   "answered_correct_algorithm": 2,
+   "code_block_present": 2
+  },
+  "low": {
+   "requests": 2,
+   "http_200": 2,
+   "median_completion_tokens": 3517.0,
+   "median_reasoning_chars": 4606.0,
+   "median_content_chars": 5250.0,
+   "median_latency_s": 27.0,
+   "finish_reasons": [
+    "stop"
+   ],
+   "truncated_by_cap": 0,
+   "answered_correct_algorithm": 2,
+   "code_block_present": 2
+  },
+  "none": {
+   "requests": 2,
+   "http_200": 0,
+   "median_completion_tokens": null,
+   "median_reasoning_chars": null,
+   "median_content_chars": null,
+   "median_latency_s": null,
+   "finish_reasons": [],
+   "truncated_by_cap": 0,
+   "answered_correct_algorithm": 0,
+   "code_block_present": 0
+  }
+ },
+ "invalid_values": [
+  {
+   "http_status": 400,
+   "error": "{\"error\":{\"message\":\"Unexpected reasoning effort high. Supported types are xhigh (default), medium, and low.\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}}",
+   "latency_s": 0.002,
+   "effort": "high",
+   "rejected_as_expected": true
+  }
+ ],
+ "runs": [
+  {
+   "http_status": 200,
+   "latency_s": 168.934,
+   "finish_reason": "stop",
+   "completion_tokens": 18085,
+   "prompt_tokens": 80,
+   "reasoning_chars": 56955,
+   "content_chars": 5973,
+   "mentions_manacher": true,
+   "has_code_block": true,
+   "error": null,
+   "effort": "(unset)",
+   "repeat": 0
+  },
+  {
+   "http_status": 200,
+   "latency_s": 168.789,
+   "finish_reason": "stop",
+   "completion_tokens": 18085,
+   "prompt_tokens": 80,
+   "reasoning_chars": 56955,
+   "content_chars": 5973,
+   "mentions_manacher": true,
+   "has_code_block": true,
+   "error": null,
+   "effort": "(unset)",
+   "repeat": 1
+  },
+  {
+   "http_status": 200,
+   "latency_s": 168.737,
+   "finish_reason": "stop",
+   "completion_tokens": 18085,
+   "prompt_tokens": 80,
+   "reasoning_chars": 56955,
+   "content_chars": 5973,
+   "mentions_manacher": true,
+   "has_code_block": true,
+   "error": null,
+   "effort": "xhigh",
+   "repeat": 0
+  },
+  {
+   "http_status": 200,
+   "latency_s": 168.767,
+   "finish_reason": "stop",
+   "completion_tokens": 18085,
+   "prompt_tokens": 80,
+   "reasoning_chars": 56955,
+   "content_chars": 5973,
+   "mentions_manacher": true,
+   "has_code_block": true,
+   "error": null,
+   "effort": "xhigh",
+   "repeat": 1
+  },
+  {
+   "http_status": 200,
+   "latency_s": 26.204,
+   "finish_reason": "stop",
+   "completion_tokens": 3436,
+   "prompt_tokens": 38,
+   "reasoning_chars": 4767,
+   "content_chars": 4944,
+   "mentions_manacher": true,
+   "has_code_block": true,
+   "error": null,
+   "effort": "medium",
+   "repeat": 0
+  },
+  {
+   "http_status": 200,
+   "latency_s": 26.206,
+   "finish_reason": "stop",
+   "completion_tokens": 3436,
+   "prompt_tokens": 38,
+   "reasoning_chars": 4767,
+   "content_chars": 4944,
+   "mentions_manacher": true,
+   "has_code_block": true,
+   "error": null,
+   "effort": "medium",
+   "repeat": 1
+  },
+  {
+   "http_status": 200,
+   "latency_s": 27.045,
+   "finish_reason": "stop",
+   "completion_tokens": 3517,
+   "prompt_tokens": 68,
+   "reasoning_chars": 4606,
+   "content_chars": 5250,
+   "mentions_manacher": true,
+   "has_code_block": true,
+   "error": null,
+   "effort": "low",
+   "repeat": 0
+  },
+  {
+   "http_status": 200,
+   "latency_s": 27.054,
+   "finish_reason": "stop",
+   "completion_tokens": 3517,
+   "prompt_tokens": 68,
+   "reasoning_chars": 4606,
+   "content_chars": 5250,
+   "mentions_manacher": true,
+   "has_code_block": true,
+   "error": null,
+   "effort": "low",
+   "repeat": 1
+  },
+  {
+   "http_status": 400,
+   "error": "{\"error\":{\"message\":\"Unexpected reasoning effort none. Supported types are xhigh (default), medium, and low.\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}}",
+   "latency_s": 0.008,
+   "effort": "none",
+   "repeat": 0
+  },
+  {
+   "http_status": 400,
+   "error": "{\"error\":{\"message\":\"Unexpected reasoning effort none. Supported types are xhigh (default), medium, and low.\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}}",
+   "latency_s": 0.003,
+   "effort": "none",
+   "repeat": 1
+  }
+ ]
+}

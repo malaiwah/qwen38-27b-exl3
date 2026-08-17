@@ -1414,9 +1414,31 @@ a no-op. To override, pass `--chat-template <file>`.
 Three upstream-template restrictions to code against. All three are Qwen's, unchanged by us, and
 all three surface as HTTP 400:
 
-- **`reasoning_effort` accepts only `xhigh` (default), `medium`, `low`, or `none`.** `high`,
-  `minimal` and `max` are rejected even though vLLM's OpenAI surface advertises them. If your
-  client hard-codes `high`, serve with `--default-chat-template-kwargs.reasoning_effort=xhigh`.
+- **`reasoning_effort` accepts only `xhigh` (default), `medium` and `low`** - measured against a
+  live endpoint, correcting an earlier revision of this card that also listed `none`. The server
+  answers **HTTP 400** `Unexpected reasoning effort none. Supported types are xhigh (default),
+  medium, and low.` for `none`, exactly as it does for `high`, `minimal` and `max` - all of which
+  vLLM's OpenAI surface advertises and this template rejects. If your client hard-codes `high`,
+  serve with `--default-chat-template-kwargs.reasoning_effort=xhigh`.
+- **What the ladder costs, measured rather than described.** Same prompt, temperature 0, 32,768-token
+  budget so no arm is truncated, two repeats each, on the qualified 1x endpoint
+  ([`receipts/reasoning-effort-1x.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/reasoning-effort-1x.json)):
+
+  | `reasoning_effort` | completion tokens | reasoning chars | latency | finish | correct algorithm |
+  |---|---:|---:|---:|---|---:|
+  | *(unset)* | 18,085 | 56,955 | 168.9 s | stop | 2/2 |
+  | `xhigh` (default) | 18,085 | 56,955 | 168.8 s | stop | 2/2 |
+  | `medium` | 3,436 | 4,767 | 26.2 s | stop | 2/2 |
+  | `low` | 3,517 | 4,606 | 27.0 s | stop | 2/2 |
+
+  Three things follow. **Unset is byte-identical to `xhigh`**, which is how the default is now
+  *measured* rather than assumed. **`xhigh` costs 5.3x the output tokens and 6.4x the wall clock of
+  `medium` for the same correct answer on this task** - the single largest cost knob on the client
+  side of this card, and the one to reach for first in any agent loop bounded by a per-task timeout
+  rather than by quality. And **`low` is not cheaper than `medium`** (3,517 against 3,436 tokens):
+  the bottom of the ladder is flat, so `medium` is the useful floor. Read narrowly: one prompt, one
+  shape, an exact-match check on whether the right algorithm is named - it establishes token cost,
+  not a quality ordering.
 - **Exactly one `system` message, first.** Two `system` messages 400 with `System message must
   be at the beginning.` (vllm#41114, open; fix PR vllm#44505 closed unmerged). Merge them
   client-side. A `developer` role is safe - vLLM folds and consolidates it (vllm#43590).
