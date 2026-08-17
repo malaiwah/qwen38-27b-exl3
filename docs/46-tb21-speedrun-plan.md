@@ -800,27 +800,40 @@ exactly one shape of problem - a single latency-critical stream, where it is wor
 and it should be offered as that, not as the default. The 8x tier should therefore be **DP8**, with TP
 kept as a documented single-stream option rather than a ladder rung.
 
-## 21. MEASURED: the "+7.2 GiB of unclaimed KV" is mostly not claimable, and the engine's own advice OOMs
+## 21. MEASURED: do not use `--kv-cache-memory-bytes` here - the engine's own suggestion breaks long context
 
 vLLM prints a suggestion when profiling leaves memory unused: *"Replace gpu_memory_utilization config
 with `--kv-cache-memory-bytes 74719122432`"* (69.59 GiB) against the 62.38 GiB the profiler actually
-took. Following that suggestion **does not start**.
+took - the "+7.2 GiB of unclaimed KV" this plan listed as an open win. **Every value above the
+profiler's own choice fails, and the last one fails in the worst possible way.**
 
-| `--kv-cache-memory-bytes` | KV tokens computed | outcome |
+| `--kv-cache-memory-bytes` | KV tokens | outcome |
 |---|---:|---|
-| unset (profiled, util 0.92) | 1,760,318 | baseline, starts |
-| **69.59 GiB** (the engine's own suggestion) | 1,963,883 (+11.6 %) | **OOM** - needed 4.09 GiB with 3.87 GiB free |
-| 67.0 GiB | 1,890,658 (+7.4 %) | **OOM** - needed 192 MiB with 45.56 MiB free, mid graph capture |
-| **66.0 GiB** | **1,862,833 (+5.8 %)** | **starts**, concurrency 6.72x -> **7.11x** |
+| unset (profiled, util 0.92) | 1,760,318 | **starts, all five gates PASS including the 262k needle** |
+| **69.59 GiB** (the engine's own suggestion) | 1,963,883 (+11.6 %) | **will not start** - OOM, needed 4.09 GiB with 3.87 GiB free |
+| 67.0 GiB | 1,890,658 (+7.4 %) | **will not start** - OOM mid graph capture, 192 MiB short of 45.56 MiB free |
+| 66.0 GiB | 1,862,833 (+5.8 %) | **starts, then dies on first full-window request** |
 
-**The mechanism, and why the suggestion is a footgun.** The suggested figure is derived from *initial
-free memory* - measured before CUDA-graph capture and the reconstruct arena allocate. Claiming it starves
-exactly those allocations. And capture is not a constant: it took **1.64 GiB** in the profiled baseline
-and **1.98 GiB** in the 66 GiB run, which is why 67 GiB failed by 192 MiB and why any value near the
-edge is unsafe across restarts on a stack we already know shifts by tens of MiB between runs.
+**The 66 GiB arm is the dangerous one.** It starts cleanly, reports concurrency 6.72x -> 7.11x, and
+passes liveness, generation, repeatability and MTP - **4 of 5 gates**. Then the 262,144-token needle
+arrives and the engine is killed by `torch.OutOfMemoryError: Tried to allocate 94.00 MiB. GPU 0 has
+94.97 GiB total of which 15.56 MiB is free`, surfacing as `EngineDeadError` and **HTTP 500**. A
+configuration that boots, answers short prompts, and then dies on the long-context request is strictly
+worse than one that refuses to boot - and it would have shipped if the gate did not include a
+full-window needle. That single check is the reason this is a finding rather than an outage.
 
-**So the honest number is +5.8 %, not +11.6 %, and it buys capacity rather than speed** - it cannot move
-decode at fixed concurrency, and at TB shapes the pool is already 6.72x the window, so nothing here is
-binding. It is worth setting only where long-context capacity is the constraint, with the value
-**measured on that exact host** rather than copied from a log line. The todo is closed as *measured and
-mostly declined* rather than as a win.
+**Mechanism.** The suggested figure is derived from *initial free memory*, measured **before**
+CUDA-graph capture, the reconstruct arena, and prefill activation for a full-window request allocate.
+Claiming it starves exactly those. Capture alone is not even constant: **1.64 GiB** in the profiled
+baseline against **1.98 GiB** in the 66 GiB run - which is why 67 GiB missed by 192 MiB, and why any
+value near the edge cannot survive restart-to-restart variance on a stack already measured to shift by
+tens of MiB between runs.
+
+**Verdict: leave `--kv-cache-memory-bytes` unset on this configuration.** The profiler's 62.38 GiB is
+the only value that survives a full-window request, so the "+7.2 GiB unclaimed" was never headroom - it
+is working memory for capture, arena and long-prefill activation. The knob buys capacity, never decode
+speed, and at TB shapes the pool is already 6.72x the window. Anyone who follows vLLM's own log
+suggestion on a 96 GB card at a 262k window gets a server that boots and later dies under the exact
+workload they enlarged it for. Todo closed as **measured and declined**, with the receipt
+([`tb21-gate-1x-kvclaim66.json`](../receipts/tb21-gate-1x-kvclaim66.json)) recording the 4-of-5 pass
+and the 500.
