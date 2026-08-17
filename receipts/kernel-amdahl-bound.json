@@ -933,7 +933,7 @@
   ]
  },
  "not_measured_and_why": {
-  "b12x_gate_kernel_level": "IN PROGRESS at the time of this commit -- the transpose result is landed first per the standing rule to commit measured numbers as soon as they exist. A faithful standalone harness for the gate needs real packed K6 trellis + suh/svh/mcg tensors for lm_head (N=248320) pulled from the hydrated checkpoint and driven through both _b12x_trellis_linear and exl3_gemm; see field gate_attempt if present."
+  "b12x_gate_kernel_level": "RESOLVED -- see gate_bound: no new harness was built because the gate's per-call kernel deltas were already measured on this box with this method (receipts/kernel-gap-gemm-bandwidth.json); this receipt adds the Amdahl arithmetic on top of them."
  },
  "artifacts": {
   "harness": "tools/kernel-amdahl-ba.py (this repo) == /var/tmp/work/kg_amdahl_ba.py",
@@ -941,5 +941,88 @@
   "raw_sweep_json": "receipts/kernel-amdahl-ba-raw.json",
   "raw_kernel_names_json": "receipts/kernel-amdahl-kernel-names.json"
  },
- "issue_comments": {}
+ "issue_comments": {
+  "repo": "local-inference-lab/vllm",
+  "406": {
+   "url": "https://github.com/local-inference-lab/vllm/issues/406#issuecomment-5318545141",
+   "title": "b12x K6 gate routes lm_head and k/v projections to a slower path at decode m",
+   "what_was_posted": "withdrew the issue's '+3-15 %' end-to-end bracket and replaced it with the measured-kernel Amdahl bound of +2.23 % (wall clock) / +2.91 % (decode GPU busy), showed the 0.566 ms/step arithmetic and the 1.1783x effective k, reported s28's inconclusive bare-metal result with its 2.84 % CV, and gave the paired repeat counts (13 needed at the bound, 31 at the observed median, 5 run). Explained the local +15.4 % as proot dispatch-shadow, not kernel time. Cross-referenced the transpose result.",
+   "posted_via": "gh api --method POST repos/.../issues/406/comments (REST). NOTE: `gh issue comment` could NOT be used -- it goes through api.github.com/graphql, which returned HTTP 503 throughout this session while the REST API was healthy. `gh api` is the same authenticated gh CLI, REST path."
+  },
+  "407": {
+   "url": "https://github.com/local-inference-lab/vllm/issues/407#issuecomment-5318554907",
+   "title": "in_proj_ba (unquantized 5120x96 bf16) runs at 33 GB/s and costs 5.2 % of decode GPU time",
+   "why_also_here": "the transpose measurement is this issue's subject matter, and this issue was the one carrying the '+8.0 % single-stream decode alone' end-to-end claim that the bound replaces; both are our own filed threads",
+   "what_was_posted": "the full m sweep with method and resolution (rel SEM 0.012 %), the split-K mechanism named from the profiler, the m=1 33 % regression and the missing m>=2 guard, the accuracy cost (2.366e-3 vs 1.658e-3 vs fp32, not bit-identical), the Amdahl bound with arithmetic and the k in {1.5,2,3,4.4} table, and a direct answer to the issue's own falsifier using the paired repeat counts. Retracted the +8.0 %.",
+   "posted_via": "gh api REST, after 1 transient 503 retry"
+  },
+  "gh_issue_comment_blocker": "`gh issue comment` and `gh issue view` both failed with HTTP 503 from api.github.com/graphql for the whole session (`gh auth status` also reported the graphql 503 while confirming the token). The REST API returned 200 on every attempt. Recorded rather than silently worked around; the comments are posted and their URLs verified by re-fetching them."
+ },
+ "gate_bound": {
+  "status": "MEASURED (reused) + bound derived here",
+  "why_no_new_harness": "The task allowed reporting only the transpose if a faithful standalone gate harness were not tractable in the time available. It turned out not to be needed: the gate's per-call kernel deltas were ALREADY measured on this same box with this same method -- CUDA events over 20-call CUDA graphs, real hydrated K6 trellis weights, autotune warmed, GPU verified idle -- and are recorded in receipts/kernel-gap-gemm-bandwidth.json. Building a second trellis harness would have re-measured an existing measurement. What was missing was the Amdahl arithmetic on top of it, which is what this section adds.",
+  "source_receipt": "receipts/kernel-gap-gemm-bandwidth.json",
+  "source_method": "CUDA events; graph numbers capture 20 back-to-back calls in one CUDA graph and replay 100x (matches served graph-decode launch regime); eager numbers 200 iters. autotune warmed before timing. b12x rows use the caller-owned-storage path vllm uses (exl3.py:1263-1305). GPU verified idle (0 compute procs) before runs.",
+  "row_count": "m=4, the served MTP verify width (same basis as the transpose numbers above)",
+  "components": [
+   {
+    "shape": "lm_head 5120x248320",
+    "b12x_graph_us": 710.07,
+    "exl3_gemm_graph_us": 652.06,
+    "delta_us_per_call": 58.01,
+    "per_call_k": 1.089,
+    "calls_per_step": 4,
+    "step_b12x_us": 2840.28,
+    "step_exl3_us": 2608.24,
+    "step_saving_us": 232.04
+   },
+   {
+    "shape": "attn.k_proj 5120x1024",
+    "b12x_graph_us": 28.2,
+    "exl3_gemm_graph_us": 17.69,
+    "delta_us_per_call": 10.51,
+    "per_call_k": 1.5941,
+    "calls_per_step": 16,
+    "step_b12x_us": 451.2,
+    "step_exl3_us": 283.04,
+    "step_saving_us": 168.16
+   },
+   {
+    "shape": "attn.v_proj 5120x1024",
+    "b12x_graph_us": 28.07,
+    "exl3_gemm_graph_us": 17.71,
+    "delta_us_per_call": 10.36,
+    "per_call_k": 1.585,
+    "calls_per_step": 16,
+    "step_b12x_us": 449.12,
+    "step_exl3_us": 283.36,
+    "step_saving_us": 165.76
+   }
+  ],
+  "call_counts_basis": "lm_head 4x/step -- docs/47 F6: the 953.5 MB head runs once for the target and once per MTP depth. k_proj/v_proj 16x each -- docs/47 F10.3: 16 full-attention layers, q/k/v serialized as separate trellises. Body pass only; any draft-model attn k/v would ADD saving, so this is a conservative count.",
+  "arithmetic": {
+   "step_b12x_us_total": 3740.6,
+   "step_saving_us_total": 565.96,
+   "saving_detail": "4 x 58.01 + 16 x 10.51 + 16 x 10.36 = 565.96 us/step",
+   "effective_k": 1.1783,
+   "effective_k_detail": "3740.60 / (3740.60 - 565.96) = 1.1783",
+   "cross_check": "issue #406's own body states 'per-call GPU deltas explain only ~0.6 ms/step'; this arithmetic gives 0.566 ms/step, confirming it independently",
+   "share_of_gpu_busy": 0.186843,
+   "share_of_gpu_busy_detail": "3740.60 us / (26000 us step x (1 - 0.23) GPU-busy) = 0.186843",
+   "bound_on_gpu_busy_pct": 2.909,
+   "bound_on_gpu_busy_detail": "1 - 1/1.1783 = 0.151302; x = 0.186843 x 0.151302 = 0.028270; bound = 2.909 %",
+   "share_of_wall_step": 0.143869,
+   "bound_on_wall_step_pct": 2.225,
+   "bound_on_wall_step_detail": "x = 0.143869 x 0.151302 = 0.021768; bound = 2.225 %",
+   "bound_over_step_range_pct": {
+    "identity": "gain = saved / (step - saved)",
+    "step_23ms": 2.523,
+    "step_26ms_local_measured": 2.225,
+    "step_28ms": 2.063
+   }
+  },
+  "VERDICT": "The gate's measured per-call kernel deltas bound the end-to-end single-stream decode gain at +2.23 % on a wall-clock step (+2.91 % of decode GPU busy time), i.e. +2.06 .. +2.52 % across the 23-28 ms step range. This is BELOW the +3 % lower end of the '+3-15 %' bracket published in issue #406. The +15.4 % observed locally is therefore NOT attributable to kernel time: it is the removal of eager-Python dispatch for the 4 per-step lm_head calls, on a box where proot ptraces every launch. The bracket must be replaced by this bound.",
+  "consistency_with_s28": "a ceiling of +2.23 % is fully consistent with s28's bare-metal +1.44 % median at a 2.84 % within-arm CV -- indeed at a true effect of ~2.2 % the paired repeat requirement is 7.8489 x (2.84/2.23)^2 = 12.8, i.e. ~13 repeats/cell, against the 5 that were run",
+  "INFERENCE_flag": "[INFERENCE] every percentage in this section is an Amdahl BOUND from measured per-call deltas and measured call counts; none was observed as a throughput delta. The step-time denominator (23-28 ms) is itself a local proot-inflated measurement, so the wall-clock bound is the softer of the two figures."
+ }
 }

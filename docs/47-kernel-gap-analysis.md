@@ -995,7 +995,52 @@ near enough for the magnitude actually observed — **the design was marginal by
 is exactly why the standing method is now: measure the kernel, publish the bound, and do not spend
 ladder time trying to observe an effect smaller than the harness CV.
 
-### F13.7 Provenance of the code under test
+### F13.7 The b12x gate, bounded the same way — and it lands *below* the bracket we published
+
+The gate patch did not need a new harness. Its per-call kernel deltas were **already** measured on
+this box with this method — CUDA events over 20-call CUDA graphs, real hydrated K6 trellis weights,
+autotune warmed, GPU verified idle (`receipts/kernel-gap-gemm-bandwidth.json`). What was missing was
+the arithmetic on top. Read at m=4, the served verify width:
+
+| shape | b12x µs | `exl3_gemm` µs | Δ/call | calls/step | Δ/step |
+|---|--:|--:|--:|--:|--:|
+| `lm_head` 5120×248320 | 710.07 | 652.06 | 58.01 | 4 | 232.04 µs |
+| `attn.k_proj` 5120×1024 | 28.20 | 17.69 | 10.51 | 16 | 168.16 µs |
+| `attn.v_proj` 5120×1024 | 28.07 | 17.71 | 10.36 | 16 | 165.76 µs |
+| | | | | | **565.96 µs** |
+
+Call counts are measured, not assumed: F6 has the 953.5 MB head running once for the target and once
+per MTP depth (**4×/step**), and F10.3 has **16** full-attention layers with q/k/v serialized as
+separate trellises. Body pass only — draft-model attention k/v would only *add* saving, so this is a
+conservative count. **The 0.566 ms/step independently reproduces the "~0.6 ms/step" that issue #406's
+own body already stated.**
+
+Total b12x time across the three shapes is 3740.6 µs/step, so the affected component's effective
+speedup is $3740.6 / (3740.6 - 565.96) = \mathbf{1.1783\times}$ — a *modest* k, because `lm_head`
+dominates the time and only gains 8.9 % per call. With $s_\text{wall} = 3740.6/26000 = 0.14387$ and
+$1 - 1/k = 0.15132$: $x = 0.021771$, bound $= 0.021771/0.978229 =$ **+2.225 %**. On a decode-GPU-busy
+basis (23 % idle) it is **+2.909 %**; across the 23–28 ms step range, `saved/(step − saved)` gives
+**+2.06 … +2.52 %**.
+
+**That ceiling sits below the +3 % floor of the "+3–15 %" bracket F7 published.** The consequence is
+unavoidable and worth stating flatly: **the +15.4 % F7 measured locally cannot be kernel time.** It is
+the removal of eager-Python dispatch for the 4 per-step `lm_head` calls, on a box where proot ptraces
+every launch ioctl. Real on this box, not portable, and not a performance result. §28's bare-metal
++1.44 % median is exactly what a ~+2.2 % effect looks like through a 2.84 % CV — at that true effect
+the paired repeat requirement is $7.8489 \times (2.84/2.23)^2 = 12.7$, i.e. **13 repeats/cell against
+the 5 that were run.**
+
+So both patches in the §28 factorial now have kernel-level numbers and bounded consequences:
+
+| patch | measured kernel k (m=4) | component share | **bound (wall clock)** | old claim |
+|---|--:|--:|--:|---|
+| `in_proj_ba` transpose | **3.58–4.58×** | 5.2 % | **+3.23 % … +4.24 %** | "+8.0 % measured" |
+| b12x gate | **1.1783×** (effective) | 14.4 % of step | **+2.23 %** | "+3–15 %" |
+
+Both old claims exceeded their own Amdahl ceilings, and both came from this proot box. That is the
+failure mode the standing method now exists to prevent.
+
+### F13.8 Provenance of the code under test, and where this was filed
 
 The transpose diff timed here is byte-identical to `git diff 3b35c04c6~1..3b35c04c6` regenerated from
 the fork clone at `/var/tmp/vllm-gg`, **sha256
@@ -1003,5 +1048,21 @@ the fork clone at `/var/tmp/vllm-gg`, **sha256
 `receipts/kernel-gap-transpose.patch`). The gate patch is
 `receipts/kernel-gap-gate-ab.patch`, sha256
 `fa2fe268f86bc8f60d3f8bdfea3fc7ae2bf75f4b9bae85ddce769dcb40bfe554`.
+
+Both corrections are filed on our own threads in `local-inference-lab/vllm`, replacing the end-to-end
+promises with these bounds:
+
+- **#406** (gate) — [issuecomment-5318545141](https://github.com/local-inference-lab/vllm/issues/406#issuecomment-5318545141):
+  withdraws the "+3–15 %" bracket for the +2.23 % bound.
+- **#407** (`in_proj_ba`) — [issuecomment-5318554907](https://github.com/local-inference-lab/vllm/issues/407#issuecomment-5318554907):
+  retracts "+8.0 % measured" for the +3.23…+4.24 % bound, and answers that issue's own falsifier with
+  the repeat-count arithmetic.
+
+Operational note for whoever files next: **`gh issue comment` was unusable this session.** It routes
+through `api.github.com/graphql`, which returned HTTP 503 on every attempt while the REST API
+returned 200 throughout (`gh auth status` reported the same graphql 503 while confirming the token).
+`gh api --method POST repos/OWNER/REPO/issues/N/comments -F body=@file` is the same authenticated CLI
+over REST and works. Comment bodies archived at `receipts/issue-drafts/08-kernel-amdahl-406.md` and
+`09-kernel-amdahl-407.md`; both posts were verified by re-fetching them and matching byte length.
 
 ---
