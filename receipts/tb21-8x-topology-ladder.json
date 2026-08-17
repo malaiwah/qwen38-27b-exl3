@@ -1,0 +1,382 @@
+{
+ "schema": "qwen38-tb21-8x-topology-ladder/2",
+ "generated_utc": "2026-08-17T11:23:01Z",
+ "what_this_is": "The COMPLETE 8x topology ladder for malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated on one host (jl-vm-473501, 8x RTX PRO 6000, ForceP2P applied). Four arms were planned; three ran and the fourth is architecturally impossible. Same host, same image, same knobs, one variable (topology).",
+ "host": "jl-vm-473501 (151.185.34.106, VPC 10.0.0.5)",
+ "image": "vllm:gg-r34-tb21-sr1 sha256:237a5025",
+ "knobs": {
+  "kv_cache_dtype": "fp8",
+  "mamba_cache_mode": "align",
+  "prefix_caching": true,
+  "cudagraph_mode": "FULL_DECODE_ONLY",
+  "mtp_depth_schedule": [
+   [
+    1,
+    4,
+    3
+   ],
+   [
+    5,
+    64,
+    1
+   ]
+  ],
+  "kv_cache_memory_bytes": "unset (deliberately, docs/46 \u00a721)",
+  "lmcache": "disabled (docs/46 \u00a722/\u00a725)"
+ },
+ "gates": {
+  "DP8": "PASS (262k needle)",
+  "TP2xDP4": "PASS (262k needle)",
+  "TP4xDP2": "PASS (262k needle, connector-reuse PASS)",
+  "TP8": "NOT REACHED - engine refuses to start"
+ },
+ "gate_methodology_note": "A --tp-smoke gate downgrades the needle to 32k. The TP4xDP2 arm was FIRST gated that way and then RE-gated at the full 262144-token needle so it is comparable to the other arms. Never compare a tp-smoke gate against a full-needle gate.",
+ "arms": {
+  "512x256": {
+   "DP8": {
+    "cells": {
+     "1": {
+      "agg_tok_s": 135.2,
+      "per_req_tok_s": 135.2
+     },
+     "2": {
+      "agg_tok_s": 198.4,
+      "per_req_tok_s": 105.5
+     },
+     "4": {
+      "agg_tok_s": 370.5,
+      "per_req_tok_s": 134.6
+     },
+     "8": {
+      "agg_tok_s": 692.5,
+      "per_req_tok_s": 109.7
+     },
+     "16": {
+      "agg_tok_s": 1307.1,
+      "per_req_tok_s": 117.8
+     },
+     "32": {
+      "agg_tok_s": 1947.2,
+      "per_req_tok_s": 79.8
+     },
+     "64": {
+      "agg_tok_s": 2835.5,
+      "per_req_tok_s": 67.0
+     },
+     "128": {
+      "agg_tok_s": 3552.6,
+      "per_req_tok_s": 34.5
+     }
+    },
+    "knee_concurrency": 32,
+    "single_stream_tok_s": 135.2,
+    "dp_degree": 8
+   },
+   "TP2xDP4": {
+    "cells": {
+     "1": {
+      "agg_tok_s": 153.1,
+      "per_req_tok_s": 153.2
+     },
+     "2": {
+      "agg_tok_s": 204.5,
+      "per_req_tok_s": 103.8
+     },
+     "4": {
+      "agg_tok_s": 443.0,
+      "per_req_tok_s": 131.9
+     },
+     "8": {
+      "agg_tok_s": 695.9,
+      "per_req_tok_s": 120.9
+     },
+     "16": {
+      "agg_tok_s": 1074.6,
+      "per_req_tok_s": 98.3
+     },
+     "32": {
+      "agg_tok_s": 1622.4,
+      "per_req_tok_s": 72.4
+     },
+     "64": {
+      "agg_tok_s": 2074.1,
+      "per_req_tok_s": 41.8
+     },
+     "128": {
+      "agg_tok_s": 2438.2,
+      "per_req_tok_s": 29.9
+     }
+    },
+    "knee_concurrency": 16,
+    "single_stream_tok_s": 153.2,
+    "dp_degree": 4
+   },
+   "TP4xDP2": {
+    "cells": {
+     "1": {
+      "agg_tok_s": 146.5,
+      "per_req_tok_s": 146.5
+     },
+     "2": {
+      "agg_tok_s": 192.2,
+      "per_req_tok_s": 100.5
+     },
+     "4": {
+      "agg_tok_s": 346.5,
+      "per_req_tok_s": 124.9
+     },
+     "8": {
+      "agg_tok_s": 481.1,
+      "per_req_tok_s": 83.1
+     },
+     "16": {
+      "agg_tok_s": 824.9,
+      "per_req_tok_s": 65.6
+     },
+     "32": {
+      "agg_tok_s": 1018.9,
+      "per_req_tok_s": 37.5
+     },
+     "64": {
+      "agg_tok_s": 1853.0,
+      "per_req_tok_s": 41.2
+     },
+     "128": {
+      "agg_tok_s": 2205.6,
+      "per_req_tok_s": 24.7
+     }
+    },
+    "knee_concurrency": 8,
+    "single_stream_tok_s": 146.5,
+    "dp_degree": 2
+   }
+  },
+  "4kx1k": {
+   "DP8": {
+    "cells": {
+     "1": {
+      "agg_tok_s": 90.1,
+      "per_req_tok_s": 90.2
+     },
+     "2": {
+      "agg_tok_s": 180.5,
+      "per_req_tok_s": 91.3
+     },
+     "4": {
+      "agg_tok_s": 339.0,
+      "per_req_tok_s": 92.8
+     },
+     "8": {
+      "agg_tok_s": 678.8,
+      "per_req_tok_s": 93.4
+     },
+     "16": {
+      "agg_tok_s": 1239.4,
+      "per_req_tok_s": 86.4
+     },
+     "32": {
+      "agg_tok_s": 1606.9,
+      "per_req_tok_s": 71.2
+     },
+     "64": {
+      "agg_tok_s": 2214.3,
+      "per_req_tok_s": 44.7
+     },
+     "128": {
+      "agg_tok_s": 2782.2,
+      "per_req_tok_s": 25.4
+     }
+    },
+    "knee_concurrency": 32,
+    "single_stream_tok_s": 90.2,
+    "dp_degree": 8
+   },
+   "TP2xDP4": {
+    "cells": {
+     "1": {
+      "agg_tok_s": 105.8,
+      "per_req_tok_s": 105.8
+     },
+     "2": {
+      "agg_tok_s": 183.3,
+      "per_req_tok_s": 91.8
+     },
+     "4": {
+      "agg_tok_s": 355.3,
+      "per_req_tok_s": 114.6
+     },
+     "8": {
+      "agg_tok_s": 684.2,
+      "per_req_tok_s": 96.6
+     },
+     "16": {
+      "agg_tok_s": 915.5,
+      "per_req_tok_s": 78.6
+     },
+     "32": {
+      "agg_tok_s": 1277.1,
+      "per_req_tok_s": 48.7
+     },
+     "64": {
+      "agg_tok_s": 1539.6,
+      "per_req_tok_s": 28.1
+     },
+     "128": {
+      "agg_tok_s": 1896.8,
+      "per_req_tok_s": 19.2
+     }
+    },
+    "knee_concurrency": 16,
+    "single_stream_tok_s": 105.8,
+    "dp_degree": 4
+   },
+   "TP4xDP2": {
+    "cells": {
+     "1": {
+      "agg_tok_s": 109.3,
+      "per_req_tok_s": 109.3
+     },
+     "2": {
+      "agg_tok_s": 193.7,
+      "per_req_tok_s": 105.0
+     },
+     "4": {
+      "agg_tok_s": 347.2,
+      "per_req_tok_s": 90.9
+     },
+     "8": {
+      "agg_tok_s": 583.4,
+      "per_req_tok_s": 80.1
+     },
+     "16": {
+      "agg_tok_s": 702.9,
+      "per_req_tok_s": 45.7
+     },
+     "32": {
+      "agg_tok_s": 810.6,
+      "per_req_tok_s": 26.3
+     },
+     "64": {
+      "agg_tok_s": 1324.8,
+      "per_req_tok_s": 21.8
+     },
+     "128": {
+      "agg_tok_s": 1874.1,
+      "per_req_tok_s": 15.3
+     }
+    },
+    "knee_concurrency": 8,
+    "single_stream_tok_s": 109.3,
+    "dp_degree": 2
+   }
+  },
+  "30kx2k": {
+   "TP4xDP2": {
+    "cells": {
+     "1": {
+      "agg_tok_s": 98.1,
+      "per_req_tok_s": 98.1
+     },
+     "2": {
+      "agg_tok_s": 150.9,
+      "per_req_tok_s": 75.9
+     },
+     "4": {
+      "agg_tok_s": 258.8,
+      "per_req_tok_s": 70.1
+     },
+     "8": {
+      "agg_tok_s": 303.9,
+      "per_req_tok_s": 49.0
+     },
+     "16": {
+      "agg_tok_s": 389.9,
+      "per_req_tok_s": 28.7
+     },
+     "32": {
+      "agg_tok_s": 479.6,
+      "per_req_tok_s": 16.0
+     },
+     "64": {
+      "agg_tok_s": 538.9,
+      "per_req_tok_s": 9.8
+     },
+     "128": {
+      "agg_tok_s": 678.9,
+      "per_req_tok_s": 5.7
+     }
+    },
+    "knee_concurrency": 4,
+    "single_stream_tok_s": 98.1,
+    "dp_degree": 2
+   }
+  }
+ },
+ "shape_coverage_note": "30kx2k was run only on the TP4xDP2 arm; DP8 and TP2xDP4 predate that shape being in the default ladder. The cross-arm comparisons below use 512x256 and 4kx1k, which all three arms ran.",
+ "tp8_refusal": {
+  "verdict": "TP8 IS IMPOSSIBLE for this model, and this is an architectural bound, not a misconfiguration.",
+  "error": "ValueError: EXL3 TP output slice must be 128-aligned, got start=62080, size=31040",
+  "raised_in": "vllm/model_executor/layers/quantization/exl3.py:2848 (_slice_exl3_tensor), via _shard_tensors_for_tensor_parallel:2904",
+  "derivation": {
+   "failing_slice_size": 31040,
+   "tp": 8,
+   "full_output_dim": 248320,
+   "tiles_of_128": 1940,
+   "tile_factorisation": "1940 = 2^2 x 5 x 97",
+   "per_tp": {
+    "1": "248320 = 128 x 1940 ALIGNED",
+    "2": "124160 = 128 x 970 ALIGNED",
+    "4": "62080 = 128 x 485 ALIGNED",
+    "8": "31040 = 128 x 242.5 REFUSED"
+   },
+   "conclusion": "EXL3 trellis tensors shard only on 128-element boundaries. The projection's output dim is 248320 = 128 x 1940 and 1940 = 4 x 485 with 485 odd, so the tile count divides by 4 but not by 8. MAX TENSOR-PARALLEL WIDTH FOR THIS MODEL IS EXACTLY 4, on any GPU count."
+  },
+  "consequence": "An 8-GPU host cannot be driven as one tensor-parallel replica. Every 8x configuration must use data parallelism for at least a factor of 2, which is why the ladder's four planned arms are really three."
+ },
+ "findings": [
+  {
+   "id": "T1",
+   "claim": "Peak throughput is DP8.",
+   "evidence": "512x256 C128: DP8 3552.6 vs TP2xDP4 2438.2 vs TP4xDP2 2205.6 tok/s. DP8 is +45.7 % over TP2xDP4."
+  },
+  {
+   "id": "T2",
+   "claim": "Single-stream latency optimum depends on prompt length, and TP2 is not always the winner.",
+   "evidence": "512x256 C1: TP2xDP4 153.2 > TP4xDP2 146.5 > DP8 135.2. But 4kx1k C1: TP4xDP2 109.3 > TP2xDP4 105.8 > DP8 90.1. Wider TP pays off only once the prompt gives it enough work to split."
+  },
+  {
+   "id": "T3",
+   "claim": "TP4xDP2 is DOMINATED at short shapes - worse on BOTH axes than TP2xDP4.",
+   "evidence": "512x256: single-stream 146.5 < 153.2 and peak 2205.6 < 2438.2. There is no short-prompt reason to pick it."
+  },
+  {
+   "id": "T4",
+   "claim": "THE KNEE TRACKS THE DATA-PARALLEL DEGREE, NOT THE GPU COUNT.",
+   "evidence": "512x256 and 4kx1k agree exactly: DP8 (DP=8) knee C32, TP2xDP4 (DP=4) knee C16, TP4xDP2 (DP=2) knee C8. All three are 4 x DP. This restates the earlier 'knee ~ 4N' rule correctly: N is the number of data-parallel REPLICAS, and adding TP width inside a replica does not raise the knee - it lowers it in proportion."
+  },
+  {
+   "id": "T5",
+   "claim": "Zero refusals across all three arms and all rungs.",
+   "evidence": "refused_or_errored == 0 in every cell of every arm, 1 through 128 concurrent."
+  }
+ ],
+ "serving_recommendation": {
+  "throughput": "DP8 - 3553 tok/s at C128, knee C32.",
+  "latency": "TP2xDP4 for short prompts (153.2 tok/s single-stream); TP4xDP2 only if prompts are >= ~4k.",
+  "never": "TP8 - refused by EXL3 at load time.",
+  "rule_of_thumb": "Size concurrency to 4 x data-parallel degree; that is where the per-request floor still holds."
+ },
+ "receipts": {
+  "ladders": [
+   "receipts/tb21-ladder-8x-dp8.json",
+   "receipts/tb21-ladder-8x-tp2dp4.json",
+   "receipts/tb21-ladder-8x-tp4dp2.json"
+  ],
+  "gates": [
+   "receipts/tb21-gate-8x-dp8.json",
+   "receipts/tb21-gate-8x-tp2dp4.json",
+   "receipts/tb21-gate-8x-tp4dp2.json"
+  ],
+  "tp8_log": "receipts/tb21-tp8-refusal.log"
+ }
+}

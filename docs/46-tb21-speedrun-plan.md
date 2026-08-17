@@ -1145,3 +1145,64 @@ attempts and failed on this **single** attempt. That is ordinary best-of-1 versu
 is the reason the unresolved set decomposes as **33 = 25 inconclusive-still + 1 capability + 2 harness-void +
 5 single-pass regressions** rather than the 28 a naive subtraction would predict. Any future arm that quotes
 a gain against 44/89 owes the same decomposition.
+
+
+## §27 - The topology ladder is complete, and one of its four arms does not exist
+
+**Receipt: [`tb21-8x-topology-ladder.json`](../receipts/tb21-8x-topology-ladder.json).** Same host, same
+image, same knobs, one variable. Four arms were planned. **Three ran; the fourth is architecturally
+impossible**, and finding out *why* is the most useful thing in this section.
+
+### TP8 cannot exist for this model
+
+```
+ValueError: EXL3 TP output slice must be 128-aligned, got start=62080, size=31040
+  exl3.py:2848 _slice_exl3_tensor  <- exl3.py:2904 _shard_tensors_for_tensor_parallel
+```
+
+EXL3 trellis tensors shard only on **128-element boundaries**. Reconstruct the tensor from the failing
+slice: `31040 x 8 = 248320 = 128 x 1940`, and **`1940 = 2^2 x 5 x 97`**.
+
+| TP | slice | tiles of 128 | |
+|---:|---:|---:|---|
+| 1 | 248320 | 1940.00 | aligned |
+| 2 | 124160 | 970.00 | aligned |
+| 4 | 62080 | 485.00 | aligned |
+| **8** | **31040** | **242.50** | **refused** |
+
+The tile count divides by 4 but not by 8, because 485 is odd. **The maximum tensor-parallel width for
+Qwen3.8-27B EXL3 is exactly 4, on any GPU count.** An 8-GPU host therefore *cannot* be driven as a single
+tensor-parallel replica: every 8x configuration must spend at least a factor of 2 on data parallelism. This
+is a property of the weights' dimensions, so no engine flag will move it.
+
+### The three real arms (512x256 / 4kx1k, all three arms ran both)
+
+| | single-stream | peak agg @C128 | knee | DP degree |
+|---|---:|---:|---:|---:|
+| **DP8** | 135.2 | **3552.6** | **C32** | 8 |
+| **TP2xDP4** | **153.2** | 2438.2 | C16 | 4 |
+| **TP4xDP2** | 146.5 | 2205.6 | C8 | 2 |
+
+**T4, the finding worth keeping: the knee tracks the data-parallel degree, not the GPU count.** DP8 knees at
+C32, TP2xDP4 at C16, TP4xDP2 at C8 - **all exactly 4 x DP**, and the two shapes agree exactly. Our earlier
+"knee ~ 4N" wording was ambiguous; the correct statement is **N = number of data-parallel replicas**. Adding
+TP width *inside* a replica does not raise the knee, it lowers it proportionally, because it buys
+single-stream speed with the very parallelism the knee is counting.
+
+**T2/T3, the nuance that stops a wrong recommendation: the latency winner depends on prompt length.** At
+512x256 the order is TP2xDP4 > TP4xDP2 > DP8, so **TP4xDP2 is strictly dominated** - worse single-stream
+*and* worse peak than TP2xDP4, with no short-prompt reason to choose it. But at **4kx1k it inverts**:
+TP4xDP2 109.3 > TP2xDP4 105.8 > DP8 90.1. Wider TP only pays once the prompt gives it enough work to split.
+
+Zero refusals in every cell of every arm, C1 through C128.
+
+**Serving recommendation:** DP8 for throughput; TP2xDP4 for latency on short prompts; TP4xDP2 only if
+prompts run past ~4k; never TP8. Size concurrency to **4 x data-parallel degree**.
+
+### A methodology trap we walked into and had to undo
+
+The TP4xDP2 arm was first gated with `--tp-smoke`, which **silently downgrades the needle from 262,144 to
+32,768 tokens**. That gate passed in 16 s and would have been quietly incomparable to the DP8 and TP2xDP4
+gates, both of which used the full needle. We caught it on the wall-clock smell, re-gated at the full 262k
+(PASS, 62 s, connector-reuse PASS too) and recorded the rule in the receipt: **never compare a `--tp-smoke`
+gate against a full-needle gate.**
