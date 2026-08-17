@@ -1,0 +1,2518 @@
+{
+ "schema": "qwen38-calibration-corpus-kld/1",
+ "question": "at identical widths and identical byte sizes, does the CONTENT of the calibration corpus change measured fidelity?",
+ "answered_here": "content_matters",
+ "preregistration": {
+  "file": "receipts/preregistration-kld9-window.json",
+  "file_sha256": "0fa601b4fbc99bf9bb2d2a06f5941f52f8034a4d3858930d9fe3132a546f7c61",
+  "registered_in_commit": "edced9a24675170cf7e073be68b96e4b704f606a",
+  "registered_at_utc": "2026-08-16T15:05:21+00:00",
+  "condition": "alt-calibration hydrated rebuild",
+  "why_this_matters": "the prediction, the thresholds and the decision rule were committed and pushed before this conversion ran. This tool reads them back out of that file and asserts each threshold appears in its prose, so the verdict cannot have been chosen after the number was known.",
+  "registered_prediction": {
+   "registered_point": 0.00275,
+   "registered_direction": "positive (alt-calibration worse than published hydrated)",
+   "registered_interval": [
+    1e-05,
+    0.0002
+   ],
+   "derivation": "no law predicts this one -- there is no calibration-content term in any model this project has fitted, which is the reason the experiment exists. The registered prediction is reasoned: exllamav3 accumulates its Hessian over 512,000 calibration tokens, and the quantization error at K5/K6 is dominated by weight geometry rather than by which natural text drove the activations, so the effect should be SMALL; but the alt corpus is a deliberate domain mismatch against a suite that is not 19th-century literature, so it should be non-zero and POSITIVE. Registered: +1e-05 to +2e-04 on a hydrated base of 0.002700, i.e. between the 3.76e-06 converter-draw noise floor and a quarter of the 0.000710 one-bit attention move. Registered point 0.00275 (hydrated + 5e-05)."
+  },
+  "registered_decision_rule": {
+   "content_does_not_matter": "the paired 95% CI of (alt - published) contains zero AND |difference| <= 2.9e-05, the half-width of the same-corpus sibling-rebuild control (paired -3.755e-06 [-2.854e-05, +2.062e-05]). Then converter-draw noise bounds the whole content effect and the lever is closed at this width.",
+   "content_matters": "the paired 95% CI excludes zero. The magnitude is then reported as a fraction of the smallest published margin this project draws conclusions from (hydrated vs error-driven, 0.000366) and of a one-bit move (hydrated vs context, attention K6->K5, 0.000710).",
+   "either_way": "publishable. docs/37's framing applies: allocation solved, content tested."
+  }
+ },
+ "protocol": {
+  "what": "shard 0 of the v5 suite, the identical published protocol",
+  "suite_token_sha256": "caef8a4628d6c07c162100895096f890cdf9cafc8e4c48b3d66035d737ee7cf7",
+  "contexts": 512,
+  "scored_positions": 1048064,
+  "reference_capture": "/work/gguf/hidden-bf16",
+  "reference_capture_control": {
+   "why": "the published shard-0 reports captured the BF16 reference at /work/kld5/hidden/shard-0000/hidden-bf16; this window reuses the surviving /work/gguf/hidden-bf16 capture instead",
+   "control": "/var/tmp/work/kld6/reports/report-hyd-rematch.json re-scored the published hydrated checkpoint against /work/gguf/hidden-bf16 and reproduced the published mean BITWISE (0.002699883159684943), paired difference exactly 0.0 on all 512 contexts (receipts/sibling-rebuild-fidelity.json -> capture_noise_floor)",
+   "consequence": "reports produced here are directly pairable against the published shard-0 reports"
+  },
+  "head": "/work/kld2/lm_head.safetensors",
+  "head_sha256": "25a30fd5f826da0abc4efc4cc71def9f02bcb8085f7175eee284d221dee4cfff",
+  "harness": {
+   "tool": "tools/fidelity.py",
+   "copy_used": "/work/kld9/tools/fidelity.py",
+   "note": "byte-identical to the copy the sibling-rebuild run scored with"
+  },
+  "capture_flags": "--gpu-memory-utilization 0.85, VLLM_EXL3_PREFILL_RECONSTRUCT_M=128, quantization exl3 with /work/kld4/qcfg.json",
+  "aggregation": "token_mean_kld with a cluster bootstrap over 330 source clusters, 10,000 resamples; every comparison is a PAIRED per-context difference",
+  "tail_row_required": "docs/34's flip item (1) asks for the tail row as well as the mean: p95, p99, p99.9, max and top-1 agreement are reported for every candidate, from the same report"
+ },
+ "toolchain": {
+  "converter_worktree": "5f3c537ca9d89893d771256f5c43c93656553fbb",
+  "converter_version": "exllamav3 v1.4.2",
+  "worktree_diff_sha256": "578066cda60415e0376f261b7c907baea2baa8239076260013208d8e70c192f2",
+  "worktree_diff_sha256_expected": "578066cda60415e0376f261b7c907baea2baa8239076260013208d8e70c192f2",
+  "alt_tree_code_only_diff_sha256": "578066cda60415e0376f261b7c907baea2baa8239076260013208d8e70c192f2",
+  "alt_tree_code_identity": true,
+  "alt_tree_code_identity_note": "the alt-calibration tree's diff EXCLUDING exllamav3/conversion/standard_cal_data hashes identically to the published converter's full diff, so the two trees differ in calibration DATA only, not in code",
+  "runner": "tools/ggrun.sh over the extracted image rootfs; marisa_trie supplied at /work/convertdeps/site for the convert and quantconfig steps",
+  "finalize": "/work/kld3/finalize_checkpoint.py -m OUT --upstream /models/Qwen3.8-27B",
+  "host": "rental RTX PRO 6000 Blackwell Server Edition, 97,887 MiB",
+  "build_script": {
+   "path": "/var/tmp/work/kld9/build_hyd_altcal.sh",
+   "sha256": "7a7bf2b2e16405ada8a0a398411713f2eb9ee0838e9c412b00038a68e37a482a"
+  },
+  "convert_log": {
+   "path": "/var/tmp/work/kld9/convert-hyd-altcal.log",
+   "sha256": "fe0cd550bd49886684bcb857f3e6f860d93e8cc1fd4c8585bce8569ddb38dc16",
+   "lines": 1072
+  }
+ },
+ "build": {
+  "predicted_bytes": {
+   "serialized_payload": 21586964548,
+   "serialized_gib": 20.1044,
+   "expectation": "byte SIZES identical to the published hydrated build file for file, tensor bytes different. EXL3 K5/K6 module sizes are fixed by width and shape, so no size can move; only the packed values can.",
+   "control": "the sibling rebuild with the DEFAULT corpus already differed in the tensor bytes of 3 of 16 files at identical sizes (/var/tmp/work/kld8/sibling-bytes.json, receipts/converter-determinism.json)"
+  },
+  "measured_role_payload_bytes": 21586964548,
+  "measured_role_payload_gib": 20.1044,
+  "payload_prediction_error_bytes": 0,
+  "quantization_manifest_roles": {
+   "embed_tokens": {
+    "modules": 0,
+    "bytes": 2542796800,
+    "gb": 2.543,
+    "formats": {
+     "BF16": 1
+    }
+   },
+   "full_attention": {
+    "modules": 64,
+    "bytes": 1259618560,
+    "gb": 1.26,
+    "formats": {
+     "exl3_K6_mcg": 64,
+     "BF16": 32
+    }
+   },
+   "linear_attention": {
+    "modules": 144,
+    "bytes": 4207138368,
+    "gb": 4.207,
+    "formats": {
+     "exl3_K6_mcg": 144,
+     "F16": 96,
+     "BF16": 192
+    }
+   },
+   "lm_head": {
+    "modules": 1,
+    "bytes": 954055684,
+    "gb": 0.954,
+    "formats": {
+     "exl3_K6_mcg": 1
+    }
+   },
+   "mlp_down_proj": {
+    "modules": 64,
+    "bytes": 4281073920,
+    "gb": 4.281,
+    "formats": {
+     "exl3_K6_mcg": 64
+    }
+   },
+   "mlp_gate_proj": {
+    "modules": 64,
+    "bytes": 3568042240,
+    "gb": 3.568,
+    "formats": {
+     "exl3_K5_mcg": 64
+    }
+   },
+   "mlp_up_proj": {
+    "modules": 64,
+    "bytes": 3568042240,
+    "gb": 3.568,
+    "formats": {
+     "exl3_K5_mcg": 64
+    }
+   },
+   "mtp_draft": {
+    "modules": 8,
+    "bytes": 283415584,
+    "gb": 0.283,
+    "formats": {
+     "exl3_K4_mcg": 1,
+     "exl3_K6_mcg": 5,
+     "exl3_K5_mcg": 2,
+     "BF16": 7
+    }
+   },
+   "norms_and_small": {
+    "modules": 0,
+    "bytes": 1320960,
+    "gb": 0.001,
+    "formats": {
+     "BF16": 129
+    }
+   },
+   "vision_tower": {
+    "modules": 0,
+    "bytes": 921460192,
+    "gb": 0.921,
+    "formats": {
+     "BF16": 333
+    }
+   }
+  },
+  "tree": {
+   "dir": "/var/tmp/work/kld9/qwen38-hyd-altcal",
+   "file_count": 22,
+   "total_bytes": 21610988312,
+   "total_gib": 20.1268,
+   "files": {
+    ".gitattributes": {
+     "bytes": 1570,
+     "sha256": "34448b82c17d60fec9b65b1f093c115ddbaadc04beb1b0140b6bfed2e012a930"
+    },
+    "DOCS-SHA256SUMS": {
+     "bytes": 233,
+     "sha256": "03875e02f772b06f82fd776d936585de76168abfa3036e9d7899dcee8557b8a2"
+    },
+    "LICENSE": {
+     "bytes": 11544,
+     "sha256": "bbedc3fda3305820b977265f01b8619d87570a6739de3a5582c3464840f1e57a"
+    },
+    "README.md": {
+     "bytes": 65012,
+     "sha256": "57e4bdb258ee1a7d2635c5174ebd4e56abe392505cdb5f8bbb356b0dc4293641"
+    },
+    "SHA256SUMS": {
+     "bytes": 1414,
+     "sha256": "b03b1ec7501c1cb2ae590d7a4c6c091f65b8367dc1fca1071ce593eaea031aaa"
+    },
+    "build-receipt.json": {
+     "bytes": 3601,
+     "sha256": "8d5c1c77c4b15b9838617d5ab16c5a373c991163afe7ff4e9cef86cd15fa3fdd"
+    },
+    "chat_template.jinja": {
+     "bytes": 8952,
+     "sha256": "c3cf9e34abf4f9e36c2d72165aa9c132d3e2a725b6c2586aaa3a8af9d7a81041"
+    },
+    "config.json": {
+     "bytes": 4620,
+     "sha256": "fbb105334da6554c10784ff1257fda5e3821d4d5426d64469cee2b2ad67ba2b3"
+    },
+    "crc32.txt": {
+     "bytes": 238,
+     "sha256": "b42dd291f5f98b05807e458f5b47849969a9b3326acbf0c97d28b05826740b83"
+    },
+    "generation_config.json": {
+     "bytes": 202,
+     "sha256": "e70c136c1b78ddc1fb0905bac8e733a4dc448d4f852a5dd75143fffc70be550e"
+    },
+    "merges.txt": {
+     "bytes": 3353259,
+     "sha256": "a9d356d7bdf1ef4949e3e748e95b8e10ad9d4e2e838eddc38a0a7b6b94d1db8d"
+    },
+    "model-00001-of-00003.safetensors": {
+     "bytes": 8351643585,
+     "sha256": "dd9626a041c3b3ed3765a5a5592e8616f471d70b0797160150f7b3e7f874187f"
+    },
+    "model-00002-of-00003.safetensors": {
+     "bytes": 8442742474,
+     "sha256": "7753fd61f64de0566213573a007526f9b13bacac913aff9ac43bec66f00c7578"
+    },
+    "model-00003-of-00003.safetensors": {
+     "bytes": 4792879451,
+     "sha256": "f8c112fde7bdce6061eaf5c3d56471ac949fa70a4de29ff60dbf61ffb4de5376"
+    },
+    "model.safetensors.index.json": {
+     "bytes": 238255,
+     "sha256": "ea6e0e1064efbb72d89b4a6f9e0ee76c909a94b3f25047487a2ffb282896a26c"
+    },
+    "preprocessor_config.json": {
+     "bytes": 390,
+     "sha256": "27225450ac9c6529872ee1924fcb0962ff5634834f817040f444118116f4e516"
+    },
+    "quantization_config.json": {
+     "bytes": 480293,
+     "sha256": "bdf00572254e104c61474e8006054e8666f03c24be523e4ddfb52766fefeffee"
+    },
+    "quantization_manifest.json": {
+     "bytes": 2827,
+     "sha256": "fe8a6998d115695ea40c92d4813fa5be8ca708d61290758de4652c1f3ad3458a"
+    },
+    "tokenizer.json": {
+     "bytes": 12809320,
+     "sha256": "0997f410c57a1f4e53b09e4be8f4a172d90edd9564368fb0847030937229b9f3"
+    },
+    "tokenizer_config.json": {
+     "bytes": 17928,
+     "sha256": "b11349aafa7cdc6a320767cf7ceb29ed82f7eda5d65e8e0819e76f0ce947bf27"
+    },
+    "video_preprocessor_config.json": {
+     "bytes": 385,
+     "sha256": "7768af27c1fafa9cc9011c1dc20067e03f8915e03b63504550e11d5066986d13"
+    },
+    "vocab.json": {
+     "bytes": 6722759,
+     "sha256": "ce99b4cb2983d118806ce0a8b777a35b093e2000a503ebde25853284c9dfa003"
+    }
+   }
+  },
+  "realised_widths": {
+   "modules_quantized": 409,
+   "body_modules_with_proxy_err": 400,
+   "per_role": {
+    "full_attn": {
+     "modules": 64,
+     "bpw_values": [
+      6.0
+     ],
+     "proxy_err_min": 1.1e-05,
+     "proxy_err_median": 5e-05,
+     "proxy_err_max": 0.000147,
+     "proxy_err_mean": 5.289062499999999e-05
+    },
+    "linear_attn": {
+     "modules": 144,
+     "bpw_values": [
+      6.0
+     ],
+     "proxy_err_min": 1.9e-05,
+     "proxy_err_median": 4.9e-05,
+     "proxy_err_max": 0.000167,
+     "proxy_err_mean": 6.634027777777777e-05
+    },
+    "mlp_down": {
+     "modules": 64,
+     "bpw_values": [
+      6.0
+     ],
+     "proxy_err_min": 1e-05,
+     "proxy_err_median": 0.00014,
+     "proxy_err_max": 0.000169,
+     "proxy_err_mean": 0.00012799999999999997
+    },
+    "mlp_gate": {
+     "modules": 64,
+     "bpw_values": [
+      5.0
+     ],
+     "proxy_err_min": 6.9e-05,
+     "proxy_err_median": 0.000275,
+     "proxy_err_max": 0.000449,
+     "proxy_err_mean": 0.00027290625000000004
+    },
+    "mlp_up": {
+     "modules": 64,
+     "bpw_values": [
+      5.0
+     ],
+     "proxy_err_min": 6.1e-05,
+     "proxy_err_median": 0.000413,
+     "proxy_err_max": 0.000555,
+     "proxy_err_mean": 0.00039103125
+    }
+   },
+   "head_and_mtp": {
+    "lm_head": {
+     "bpw": 6.0,
+     "proxy_err": 4.9e-05,
+     "rmse": null
+    },
+    "mtp.fc": {
+     "bpw": 4.0,
+     "proxy_err": null,
+     "rmse": 0.002379
+    },
+    "mtp.layers.0.self_attn.q_proj": {
+     "bpw": 6.0,
+     "proxy_err": null,
+     "rmse": 0.000203
+    },
+    "mtp.layers.0.self_attn.k_proj": {
+     "bpw": 6.0,
+     "proxy_err": null,
+     "rmse": 0.000313
+    },
+    "mtp.layers.0.self_attn.v_proj": {
+     "bpw": 6.0,
+     "proxy_err": null,
+     "rmse": 0.000302
+    },
+    "mtp.layers.0.self_attn.o_proj": {
+     "bpw": 6.0,
+     "proxy_err": null,
+     "rmse": 0.000303
+    },
+    "mtp.layers.0.mlp.up_proj": {
+     "bpw": 5.0,
+     "proxy_err": null,
+     "rmse": 0.001335
+    },
+    "mtp.layers.0.mlp.gate_proj": {
+     "bpw": 5.0,
+     "proxy_err": null,
+     "rmse": 0.001334
+    },
+    "mtp.layers.0.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": null,
+     "rmse": 0.000314
+    }
+   },
+   "per_module": {
+    "lm_head": {
+     "bpw": 6.0,
+     "proxy_err": 4.9e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.0.linear_attn.in_proj_qkv": {
+     "bpw": 6.0,
+     "proxy_err": 3e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.0.linear_attn.in_proj_z": {
+     "bpw": 6.0,
+     "proxy_err": 4.2e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.0.linear_attn.out_proj": {
+     "bpw": 6.0,
+     "proxy_err": 1.9e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.0.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 6.1e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.0.mlp.gate_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000192,
+     "rmse": null
+    },
+    "model.language_model.layers.0.mlp.up_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000205,
+     "rmse": null
+    },
+    "model.language_model.layers.1.linear_attn.in_proj_qkv": {
+     "bpw": 6.0,
+     "proxy_err": 2.4e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.1.linear_attn.in_proj_z": {
+     "bpw": 6.0,
+     "proxy_err": 2.5e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.1.linear_attn.out_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000108,
+     "rmse": null
+    },
+    "model.language_model.layers.1.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.0001,
+     "rmse": null
+    },
+    "model.language_model.layers.1.mlp.gate_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000261,
+     "rmse": null
+    },
+    "model.language_model.layers.1.mlp.up_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000306,
+     "rmse": null
+    },
+    "model.language_model.layers.10.linear_attn.in_proj_qkv": {
+     "bpw": 6.0,
+     "proxy_err": 4.9e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.10.linear_attn.in_proj_z": {
+     "bpw": 6.0,
+     "proxy_err": 4e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.10.linear_attn.out_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000101,
+     "rmse": null
+    },
+    "model.language_model.layers.10.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.00013,
+     "rmse": null
+    },
+    "model.language_model.layers.10.mlp.gate_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000386,
+     "rmse": null
+    },
+    "model.language_model.layers.10.mlp.up_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.00048,
+     "rmse": null
+    },
+    "model.language_model.layers.11.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000146,
+     "rmse": null
+    },
+    "model.language_model.layers.11.mlp.gate_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000356,
+     "rmse": null
+    },
+    "model.language_model.layers.11.mlp.up_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000464,
+     "rmse": null
+    },
+    "model.language_model.layers.11.self_attn.k_proj": {
+     "bpw": 6.0,
+     "proxy_err": 2.3e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.11.self_attn.o_proj": {
+     "bpw": 6.0,
+     "proxy_err": 6.3e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.11.self_attn.q_proj": {
+     "bpw": 6.0,
+     "proxy_err": 1.4e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.11.self_attn.v_proj": {
+     "bpw": 6.0,
+     "proxy_err": 2.7e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.12.linear_attn.in_proj_qkv": {
+     "bpw": 6.0,
+     "proxy_err": 3.8e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.12.linear_attn.in_proj_z": {
+     "bpw": 6.0,
+     "proxy_err": 3.2e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.12.linear_attn.out_proj": {
+     "bpw": 6.0,
+     "proxy_err": 9.8e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.12.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000136,
+     "rmse": null
+    },
+    "model.language_model.layers.12.mlp.gate_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.00033,
+     "rmse": null
+    },
+    "model.language_model.layers.12.mlp.up_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000428,
+     "rmse": null
+    },
+    "model.language_model.layers.13.linear_attn.in_proj_qkv": {
+     "bpw": 6.0,
+     "proxy_err": 4.1e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.13.linear_attn.in_proj_z": {
+     "bpw": 6.0,
+     "proxy_err": 3.2e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.13.linear_attn.out_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000125,
+     "rmse": null
+    },
+    "model.language_model.layers.13.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000148,
+     "rmse": null
+    },
+    "model.language_model.layers.13.mlp.gate_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000333,
+     "rmse": null
+    },
+    "model.language_model.layers.13.mlp.up_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000428,
+     "rmse": null
+    },
+    "model.language_model.layers.14.linear_attn.in_proj_qkv": {
+     "bpw": 6.0,
+     "proxy_err": 3.8e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.14.linear_attn.in_proj_z": {
+     "bpw": 6.0,
+     "proxy_err": 3.1e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.14.linear_attn.out_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000112,
+     "rmse": null
+    },
+    "model.language_model.layers.14.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000151,
+     "rmse": null
+    },
+    "model.language_model.layers.14.mlp.gate_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000345,
+     "rmse": null
+    },
+    "model.language_model.layers.14.mlp.up_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000447,
+     "rmse": null
+    },
+    "model.language_model.layers.15.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000163,
+     "rmse": null
+    },
+    "model.language_model.layers.15.mlp.gate_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000362,
+     "rmse": null
+    },
+    "model.language_model.layers.15.mlp.up_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000463,
+     "rmse": null
+    },
+    "model.language_model.layers.15.self_attn.k_proj": {
+     "bpw": 6.0,
+     "proxy_err": 3.5e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.15.self_attn.o_proj": {
+     "bpw": 6.0,
+     "proxy_err": 7.6e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.15.self_attn.q_proj": {
+     "bpw": 6.0,
+     "proxy_err": 1.9e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.15.self_attn.v_proj": {
+     "bpw": 6.0,
+     "proxy_err": 3.6e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.16.linear_attn.in_proj_qkv": {
+     "bpw": 6.0,
+     "proxy_err": 4.6e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.16.linear_attn.in_proj_z": {
+     "bpw": 6.0,
+     "proxy_err": 3.7e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.16.linear_attn.out_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000124,
+     "rmse": null
+    },
+    "model.language_model.layers.16.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000148,
+     "rmse": null
+    },
+    "model.language_model.layers.16.mlp.gate_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000341,
+     "rmse": null
+    },
+    "model.language_model.layers.16.mlp.up_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000445,
+     "rmse": null
+    },
+    "model.language_model.layers.17.linear_attn.in_proj_qkv": {
+     "bpw": 6.0,
+     "proxy_err": 4.5e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.17.linear_attn.in_proj_z": {
+     "bpw": 6.0,
+     "proxy_err": 3.5e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.17.linear_attn.out_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.00014,
+     "rmse": null
+    },
+    "model.language_model.layers.17.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000143,
+     "rmse": null
+    },
+    "model.language_model.layers.17.mlp.gate_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000333,
+     "rmse": null
+    },
+    "model.language_model.layers.17.mlp.up_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.00045,
+     "rmse": null
+    },
+    "model.language_model.layers.18.linear_attn.in_proj_qkv": {
+     "bpw": 6.0,
+     "proxy_err": 4.5e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.18.linear_attn.in_proj_z": {
+     "bpw": 6.0,
+     "proxy_err": 3.6e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.18.linear_attn.out_proj": {
+     "bpw": 6.0,
+     "proxy_err": 9.4e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.18.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000115,
+     "rmse": null
+    },
+    "model.language_model.layers.18.mlp.gate_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.00028,
+     "rmse": null
+    },
+    "model.language_model.layers.18.mlp.up_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000378,
+     "rmse": null
+    },
+    "model.language_model.layers.19.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.00014,
+     "rmse": null
+    },
+    "model.language_model.layers.19.mlp.gate_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000289,
+     "rmse": null
+    },
+    "model.language_model.layers.19.mlp.up_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000449,
+     "rmse": null
+    },
+    "model.language_model.layers.19.self_attn.k_proj": {
+     "bpw": 6.0,
+     "proxy_err": 5e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.19.self_attn.o_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.00011,
+     "rmse": null
+    },
+    "model.language_model.layers.19.self_attn.q_proj": {
+     "bpw": 6.0,
+     "proxy_err": 2.3e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.19.self_attn.v_proj": {
+     "bpw": 6.0,
+     "proxy_err": 5e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.2.linear_attn.in_proj_qkv": {
+     "bpw": 6.0,
+     "proxy_err": 3.1e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.2.linear_attn.in_proj_z": {
+     "bpw": 6.0,
+     "proxy_err": 3e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.2.linear_attn.out_proj": {
+     "bpw": 6.0,
+     "proxy_err": 9.8e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.2.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000101,
+     "rmse": null
+    },
+    "model.language_model.layers.2.mlp.gate_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000397,
+     "rmse": null
+    },
+    "model.language_model.layers.2.mlp.up_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000459,
+     "rmse": null
+    },
+    "model.language_model.layers.20.linear_attn.in_proj_qkv": {
+     "bpw": 6.0,
+     "proxy_err": 4e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.20.linear_attn.in_proj_z": {
+     "bpw": 6.0,
+     "proxy_err": 3.6e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.20.linear_attn.out_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000117,
+     "rmse": null
+    },
+    "model.language_model.layers.20.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000139,
+     "rmse": null
+    },
+    "model.language_model.layers.20.mlp.gate_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000303,
+     "rmse": null
+    },
+    "model.language_model.layers.20.mlp.up_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000496,
+     "rmse": null
+    },
+    "model.language_model.layers.21.linear_attn.in_proj_qkv": {
+     "bpw": 6.0,
+     "proxy_err": 4.9e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.21.linear_attn.in_proj_z": {
+     "bpw": 6.0,
+     "proxy_err": 3.8e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.21.linear_attn.out_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000107,
+     "rmse": null
+    },
+    "model.language_model.layers.21.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000158,
+     "rmse": null
+    },
+    "model.language_model.layers.21.mlp.gate_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000328,
+     "rmse": null
+    },
+    "model.language_model.layers.21.mlp.up_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000522,
+     "rmse": null
+    },
+    "model.language_model.layers.22.linear_attn.in_proj_qkv": {
+     "bpw": 6.0,
+     "proxy_err": 5.8e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.22.linear_attn.in_proj_z": {
+     "bpw": 6.0,
+     "proxy_err": 4.1e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.22.linear_attn.out_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000135,
+     "rmse": null
+    },
+    "model.language_model.layers.22.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000146,
+     "rmse": null
+    },
+    "model.language_model.layers.22.mlp.gate_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000264,
+     "rmse": null
+    },
+    "model.language_model.layers.22.mlp.up_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000532,
+     "rmse": null
+    },
+    "model.language_model.layers.23.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000144,
+     "rmse": null
+    },
+    "model.language_model.layers.23.mlp.gate_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000298,
+     "rmse": null
+    },
+    "model.language_model.layers.23.mlp.up_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000535,
+     "rmse": null
+    },
+    "model.language_model.layers.23.self_attn.k_proj": {
+     "bpw": 6.0,
+     "proxy_err": 5.5e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.23.self_attn.o_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.00011,
+     "rmse": null
+    },
+    "model.language_model.layers.23.self_attn.q_proj": {
+     "bpw": 6.0,
+     "proxy_err": 2.7e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.23.self_attn.v_proj": {
+     "bpw": 6.0,
+     "proxy_err": 5e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.24.linear_attn.in_proj_qkv": {
+     "bpw": 6.0,
+     "proxy_err": 5.1e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.24.linear_attn.in_proj_z": {
+     "bpw": 6.0,
+     "proxy_err": 4.5e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.24.linear_attn.out_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000128,
+     "rmse": null
+    },
+    "model.language_model.layers.24.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000137,
+     "rmse": null
+    },
+    "model.language_model.layers.24.mlp.gate_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000275,
+     "rmse": null
+    },
+    "model.language_model.layers.24.mlp.up_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.0005,
+     "rmse": null
+    },
+    "model.language_model.layers.25.linear_attn.in_proj_qkv": {
+     "bpw": 6.0,
+     "proxy_err": 4.5e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.25.linear_attn.in_proj_z": {
+     "bpw": 6.0,
+     "proxy_err": 3.8e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.25.linear_attn.out_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000122,
+     "rmse": null
+    },
+    "model.language_model.layers.25.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000137,
+     "rmse": null
+    },
+    "model.language_model.layers.25.mlp.gate_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000263,
+     "rmse": null
+    },
+    "model.language_model.layers.25.mlp.up_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000453,
+     "rmse": null
+    },
+    "model.language_model.layers.26.linear_attn.in_proj_qkv": {
+     "bpw": 6.0,
+     "proxy_err": 4.8e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.26.linear_attn.in_proj_z": {
+     "bpw": 6.0,
+     "proxy_err": 3.7e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.26.linear_attn.out_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000116,
+     "rmse": null
+    },
+    "model.language_model.layers.26.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000128,
+     "rmse": null
+    },
+    "model.language_model.layers.26.mlp.gate_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000228,
+     "rmse": null
+    },
+    "model.language_model.layers.26.mlp.up_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000346,
+     "rmse": null
+    },
+    "model.language_model.layers.27.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000135,
+     "rmse": null
+    },
+    "model.language_model.layers.27.mlp.gate_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000232,
+     "rmse": null
+    },
+    "model.language_model.layers.27.mlp.up_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000371,
+     "rmse": null
+    },
+    "model.language_model.layers.27.self_attn.k_proj": {
+     "bpw": 6.0,
+     "proxy_err": 3.6e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.27.self_attn.o_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000105,
+     "rmse": null
+    },
+    "model.language_model.layers.27.self_attn.q_proj": {
+     "bpw": 6.0,
+     "proxy_err": 2.8e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.27.self_attn.v_proj": {
+     "bpw": 6.0,
+     "proxy_err": 3.9e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.28.linear_attn.in_proj_qkv": {
+     "bpw": 6.0,
+     "proxy_err": 4.4e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.28.linear_attn.in_proj_z": {
+     "bpw": 6.0,
+     "proxy_err": 3.7e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.28.linear_attn.out_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000129,
+     "rmse": null
+    },
+    "model.language_model.layers.28.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.00014,
+     "rmse": null
+    },
+    "model.language_model.layers.28.mlp.gate_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000238,
+     "rmse": null
+    },
+    "model.language_model.layers.28.mlp.up_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000349,
+     "rmse": null
+    },
+    "model.language_model.layers.29.linear_attn.in_proj_qkv": {
+     "bpw": 6.0,
+     "proxy_err": 4.8e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.29.linear_attn.in_proj_z": {
+     "bpw": 6.0,
+     "proxy_err": 3.9e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.29.linear_attn.out_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000144,
+     "rmse": null
+    },
+    "model.language_model.layers.29.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000141,
+     "rmse": null
+    },
+    "model.language_model.layers.29.mlp.gate_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000244,
+     "rmse": null
+    },
+    "model.language_model.layers.29.mlp.up_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000349,
+     "rmse": null
+    },
+    "model.language_model.layers.3.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000128,
+     "rmse": null
+    },
+    "model.language_model.layers.3.mlp.gate_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000377,
+     "rmse": null
+    },
+    "model.language_model.layers.3.mlp.up_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000498,
+     "rmse": null
+    },
+    "model.language_model.layers.3.self_attn.k_proj": {
+     "bpw": 6.0,
+     "proxy_err": 2.2e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.3.self_attn.o_proj": {
+     "bpw": 6.0,
+     "proxy_err": 2.7e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.3.self_attn.q_proj": {
+     "bpw": 6.0,
+     "proxy_err": 1.1e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.3.self_attn.v_proj": {
+     "bpw": 6.0,
+     "proxy_err": 2.3e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.30.linear_attn.in_proj_qkv": {
+     "bpw": 6.0,
+     "proxy_err": 4.4e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.30.linear_attn.in_proj_z": {
+     "bpw": 6.0,
+     "proxy_err": 3.8e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.30.linear_attn.out_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000132,
+     "rmse": null
+    },
+    "model.language_model.layers.30.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000142,
+     "rmse": null
+    },
+    "model.language_model.layers.30.mlp.gate_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000248,
+     "rmse": null
+    },
+    "model.language_model.layers.30.mlp.up_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.00033,
+     "rmse": null
+    },
+    "model.language_model.layers.31.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000147,
+     "rmse": null
+    },
+    "model.language_model.layers.31.mlp.gate_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000264,
+     "rmse": null
+    },
+    "model.language_model.layers.31.mlp.up_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000354,
+     "rmse": null
+    },
+    "model.language_model.layers.31.self_attn.k_proj": {
+     "bpw": 6.0,
+     "proxy_err": 4.6e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.31.self_attn.o_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.00014,
+     "rmse": null
+    },
+    "model.language_model.layers.31.self_attn.q_proj": {
+     "bpw": 6.0,
+     "proxy_err": 3.3e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.31.self_attn.v_proj": {
+     "bpw": 6.0,
+     "proxy_err": 4.4e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.32.linear_attn.in_proj_qkv": {
+     "bpw": 6.0,
+     "proxy_err": 5.2e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.32.linear_attn.in_proj_z": {
+     "bpw": 6.0,
+     "proxy_err": 4.5e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.32.linear_attn.out_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000143,
+     "rmse": null
+    },
+    "model.language_model.layers.32.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000148,
+     "rmse": null
+    },
+    "model.language_model.layers.32.mlp.gate_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000264,
+     "rmse": null
+    },
+    "model.language_model.layers.32.mlp.up_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000354,
+     "rmse": null
+    },
+    "model.language_model.layers.33.linear_attn.in_proj_qkv": {
+     "bpw": 6.0,
+     "proxy_err": 5.3e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.33.linear_attn.in_proj_z": {
+     "bpw": 6.0,
+     "proxy_err": 4.3e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.33.linear_attn.out_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000167,
+     "rmse": null
+    },
+    "model.language_model.layers.33.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000152,
+     "rmse": null
+    },
+    "model.language_model.layers.33.mlp.gate_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000273,
+     "rmse": null
+    },
+    "model.language_model.layers.33.mlp.up_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000366,
+     "rmse": null
+    },
+    "model.language_model.layers.34.linear_attn.in_proj_qkv": {
+     "bpw": 6.0,
+     "proxy_err": 5.1e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.34.linear_attn.in_proj_z": {
+     "bpw": 6.0,
+     "proxy_err": 4.5e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.34.linear_attn.out_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000118,
+     "rmse": null
+    },
+    "model.language_model.layers.34.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000136,
+     "rmse": null
+    },
+    "model.language_model.layers.34.mlp.gate_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000248,
+     "rmse": null
+    },
+    "model.language_model.layers.34.mlp.up_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000323,
+     "rmse": null
+    },
+    "model.language_model.layers.35.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000129,
+     "rmse": null
+    },
+    "model.language_model.layers.35.mlp.gate_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000253,
+     "rmse": null
+    },
+    "model.language_model.layers.35.mlp.up_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000389,
+     "rmse": null
+    },
+    "model.language_model.layers.35.self_attn.k_proj": {
+     "bpw": 6.0,
+     "proxy_err": 5.8e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.35.self_attn.o_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000124,
+     "rmse": null
+    },
+    "model.language_model.layers.35.self_attn.q_proj": {
+     "bpw": 6.0,
+     "proxy_err": 4.9e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.35.self_attn.v_proj": {
+     "bpw": 6.0,
+     "proxy_err": 5.9e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.36.linear_attn.in_proj_qkv": {
+     "bpw": 6.0,
+     "proxy_err": 4.9e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.36.linear_attn.in_proj_z": {
+     "bpw": 6.0,
+     "proxy_err": 4.3e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.36.linear_attn.out_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000103,
+     "rmse": null
+    },
+    "model.language_model.layers.36.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000133,
+     "rmse": null
+    },
+    "model.language_model.layers.36.mlp.gate_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000261,
+     "rmse": null
+    },
+    "model.language_model.layers.36.mlp.up_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000422,
+     "rmse": null
+    },
+    "model.language_model.layers.37.linear_attn.in_proj_qkv": {
+     "bpw": 6.0,
+     "proxy_err": 5e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.37.linear_attn.in_proj_z": {
+     "bpw": 6.0,
+     "proxy_err": 3.9e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.37.linear_attn.out_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000106,
+     "rmse": null
+    },
+    "model.language_model.layers.37.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000158,
+     "rmse": null
+    },
+    "model.language_model.layers.37.mlp.gate_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000299,
+     "rmse": null
+    },
+    "model.language_model.layers.37.mlp.up_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000458,
+     "rmse": null
+    },
+    "model.language_model.layers.38.linear_attn.in_proj_qkv": {
+     "bpw": 6.0,
+     "proxy_err": 6.1e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.38.linear_attn.in_proj_z": {
+     "bpw": 6.0,
+     "proxy_err": 4.8e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.38.linear_attn.out_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000146,
+     "rmse": null
+    },
+    "model.language_model.layers.38.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000157,
+     "rmse": null
+    },
+    "model.language_model.layers.38.mlp.gate_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000242,
+     "rmse": null
+    },
+    "model.language_model.layers.38.mlp.up_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000467,
+     "rmse": null
+    },
+    "model.language_model.layers.39.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000161,
+     "rmse": null
+    },
+    "model.language_model.layers.39.mlp.gate_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000277,
+     "rmse": null
+    },
+    "model.language_model.layers.39.mlp.up_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000516,
+     "rmse": null
+    },
+    "model.language_model.layers.39.self_attn.k_proj": {
+     "bpw": 6.0,
+     "proxy_err": 6.8e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.39.self_attn.o_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000147,
+     "rmse": null
+    },
+    "model.language_model.layers.39.self_attn.q_proj": {
+     "bpw": 6.0,
+     "proxy_err": 4.1e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.39.self_attn.v_proj": {
+     "bpw": 6.0,
+     "proxy_err": 6.6e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.4.linear_attn.in_proj_qkv": {
+     "bpw": 6.0,
+     "proxy_err": 5.2e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.4.linear_attn.in_proj_z": {
+     "bpw": 6.0,
+     "proxy_err": 5.3e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.4.linear_attn.out_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000101,
+     "rmse": null
+    },
+    "model.language_model.layers.4.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000114,
+     "rmse": null
+    },
+    "model.language_model.layers.4.mlp.gate_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000326,
+     "rmse": null
+    },
+    "model.language_model.layers.4.mlp.up_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000496,
+     "rmse": null
+    },
+    "model.language_model.layers.40.linear_attn.in_proj_qkv": {
+     "bpw": 6.0,
+     "proxy_err": 5.8e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.40.linear_attn.in_proj_z": {
+     "bpw": 6.0,
+     "proxy_err": 5.1e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.40.linear_attn.out_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000151,
+     "rmse": null
+    },
+    "model.language_model.layers.40.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000156,
+     "rmse": null
+    },
+    "model.language_model.layers.40.mlp.gate_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000279,
+     "rmse": null
+    },
+    "model.language_model.layers.40.mlp.up_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000484,
+     "rmse": null
+    },
+    "model.language_model.layers.41.linear_attn.in_proj_qkv": {
+     "bpw": 6.0,
+     "proxy_err": 5.8e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.41.linear_attn.in_proj_z": {
+     "bpw": 6.0,
+     "proxy_err": 5e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.41.linear_attn.out_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.00014,
+     "rmse": null
+    },
+    "model.language_model.layers.41.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000169,
+     "rmse": null
+    },
+    "model.language_model.layers.41.mlp.gate_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000321,
+     "rmse": null
+    },
+    "model.language_model.layers.41.mlp.up_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000491,
+     "rmse": null
+    },
+    "model.language_model.layers.42.linear_attn.in_proj_qkv": {
+     "bpw": 6.0,
+     "proxy_err": 5.9e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.42.linear_attn.in_proj_z": {
+     "bpw": 6.0,
+     "proxy_err": 5e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.42.linear_attn.out_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.00013,
+     "rmse": null
+    },
+    "model.language_model.layers.42.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000158,
+     "rmse": null
+    },
+    "model.language_model.layers.42.mlp.gate_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000313,
+     "rmse": null
+    },
+    "model.language_model.layers.42.mlp.up_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000415,
+     "rmse": null
+    },
+    "model.language_model.layers.43.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000162,
+     "rmse": null
+    },
+    "model.language_model.layers.43.mlp.gate_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000313,
+     "rmse": null
+    },
+    "model.language_model.layers.43.mlp.up_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000442,
+     "rmse": null
+    },
+    "model.language_model.layers.43.self_attn.k_proj": {
+     "bpw": 6.0,
+     "proxy_err": 5.6e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.43.self_attn.o_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000109,
+     "rmse": null
+    },
+    "model.language_model.layers.43.self_attn.q_proj": {
+     "bpw": 6.0,
+     "proxy_err": 3.6e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.43.self_attn.v_proj": {
+     "bpw": 6.0,
+     "proxy_err": 5.3e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.44.linear_attn.in_proj_qkv": {
+     "bpw": 6.0,
+     "proxy_err": 5.4e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.44.linear_attn.in_proj_z": {
+     "bpw": 6.0,
+     "proxy_err": 4.5e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.44.linear_attn.out_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.00011,
+     "rmse": null
+    },
+    "model.language_model.layers.44.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000156,
+     "rmse": null
+    },
+    "model.language_model.layers.44.mlp.gate_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000299,
+     "rmse": null
+    },
+    "model.language_model.layers.44.mlp.up_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000411,
+     "rmse": null
+    },
+    "model.language_model.layers.45.linear_attn.in_proj_qkv": {
+     "bpw": 6.0,
+     "proxy_err": 6e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.45.linear_attn.in_proj_z": {
+     "bpw": 6.0,
+     "proxy_err": 4.7e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.45.linear_attn.out_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000152,
+     "rmse": null
+    },
+    "model.language_model.layers.45.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000166,
+     "rmse": null
+    },
+    "model.language_model.layers.45.mlp.gate_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000303,
+     "rmse": null
+    },
+    "model.language_model.layers.45.mlp.up_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000413,
+     "rmse": null
+    },
+    "model.language_model.layers.46.linear_attn.in_proj_qkv": {
+     "bpw": 6.0,
+     "proxy_err": 5.5e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.46.linear_attn.in_proj_z": {
+     "bpw": 6.0,
+     "proxy_err": 4.1e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.46.linear_attn.out_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000128,
+     "rmse": null
+    },
+    "model.language_model.layers.46.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000144,
+     "rmse": null
+    },
+    "model.language_model.layers.46.mlp.gate_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000291,
+     "rmse": null
+    },
+    "model.language_model.layers.46.mlp.up_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000387,
+     "rmse": null
+    },
+    "model.language_model.layers.47.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000143,
+     "rmse": null
+    },
+    "model.language_model.layers.47.mlp.gate_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000284,
+     "rmse": null
+    },
+    "model.language_model.layers.47.mlp.up_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000394,
+     "rmse": null
+    },
+    "model.language_model.layers.47.self_attn.k_proj": {
+     "bpw": 6.0,
+     "proxy_err": 6.1e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.47.self_attn.o_proj": {
+     "bpw": 6.0,
+     "proxy_err": 9e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.47.self_attn.q_proj": {
+     "bpw": 6.0,
+     "proxy_err": 4e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.47.self_attn.v_proj": {
+     "bpw": 6.0,
+     "proxy_err": 5.4e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.48.linear_attn.in_proj_qkv": {
+     "bpw": 6.0,
+     "proxy_err": 5.8e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.48.linear_attn.in_proj_z": {
+     "bpw": 6.0,
+     "proxy_err": 4.8e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.48.linear_attn.out_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000128,
+     "rmse": null
+    },
+    "model.language_model.layers.48.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000146,
+     "rmse": null
+    },
+    "model.language_model.layers.48.mlp.gate_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000272,
+     "rmse": null
+    },
+    "model.language_model.layers.48.mlp.up_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000365,
+     "rmse": null
+    },
+    "model.language_model.layers.49.linear_attn.in_proj_qkv": {
+     "bpw": 6.0,
+     "proxy_err": 5.7e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.49.linear_attn.in_proj_z": {
+     "bpw": 6.0,
+     "proxy_err": 4.1e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.49.linear_attn.out_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000135,
+     "rmse": null
+    },
+    "model.language_model.layers.49.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000134,
+     "rmse": null
+    },
+    "model.language_model.layers.49.mlp.gate_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000261,
+     "rmse": null
+    },
+    "model.language_model.layers.49.mlp.up_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000337,
+     "rmse": null
+    },
+    "model.language_model.layers.5.linear_attn.in_proj_qkv": {
+     "bpw": 6.0,
+     "proxy_err": 4.7e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.5.linear_attn.in_proj_z": {
+     "bpw": 6.0,
+     "proxy_err": 4.2e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.5.linear_attn.out_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.00012,
+     "rmse": null
+    },
+    "model.language_model.layers.5.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.00014,
+     "rmse": null
+    },
+    "model.language_model.layers.5.mlp.gate_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000406,
+     "rmse": null
+    },
+    "model.language_model.layers.5.mlp.up_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000522,
+     "rmse": null
+    },
+    "model.language_model.layers.50.linear_attn.in_proj_qkv": {
+     "bpw": 6.0,
+     "proxy_err": 5.5e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.50.linear_attn.in_proj_z": {
+     "bpw": 6.0,
+     "proxy_err": 3.7e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.50.linear_attn.out_proj": {
+     "bpw": 6.0,
+     "proxy_err": 9.7e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.50.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000109,
+     "rmse": null
+    },
+    "model.language_model.layers.50.mlp.gate_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000208,
+     "rmse": null
+    },
+    "model.language_model.layers.50.mlp.up_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000249,
+     "rmse": null
+    },
+    "model.language_model.layers.51.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.0001,
+     "rmse": null
+    },
+    "model.language_model.layers.51.mlp.gate_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000212,
+     "rmse": null
+    },
+    "model.language_model.layers.51.mlp.up_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000295,
+     "rmse": null
+    },
+    "model.language_model.layers.51.self_attn.k_proj": {
+     "bpw": 6.0,
+     "proxy_err": 6.2e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.51.self_attn.o_proj": {
+     "bpw": 6.0,
+     "proxy_err": 7e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.51.self_attn.q_proj": {
+     "bpw": 6.0,
+     "proxy_err": 4.5e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.51.self_attn.v_proj": {
+     "bpw": 6.0,
+     "proxy_err": 6e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.52.linear_attn.in_proj_qkv": {
+     "bpw": 6.0,
+     "proxy_err": 4.8e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.52.linear_attn.in_proj_z": {
+     "bpw": 6.0,
+     "proxy_err": 4.3e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.52.linear_attn.out_proj": {
+     "bpw": 6.0,
+     "proxy_err": 8.3e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.52.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 9.8e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.52.mlp.gate_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.0002,
+     "rmse": null
+    },
+    "model.language_model.layers.52.mlp.up_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000296,
+     "rmse": null
+    },
+    "model.language_model.layers.53.linear_attn.in_proj_qkv": {
+     "bpw": 6.0,
+     "proxy_err": 4.6e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.53.linear_attn.in_proj_z": {
+     "bpw": 6.0,
+     "proxy_err": 4.3e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.53.linear_attn.out_proj": {
+     "bpw": 6.0,
+     "proxy_err": 8.7e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.53.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000112,
+     "rmse": null
+    },
+    "model.language_model.layers.53.mlp.gate_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000201,
+     "rmse": null
+    },
+    "model.language_model.layers.53.mlp.up_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000294,
+     "rmse": null
+    },
+    "model.language_model.layers.54.linear_attn.in_proj_qkv": {
+     "bpw": 6.0,
+     "proxy_err": 5.6e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.54.linear_attn.in_proj_z": {
+     "bpw": 6.0,
+     "proxy_err": 4.4e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.54.linear_attn.out_proj": {
+     "bpw": 6.0,
+     "proxy_err": 9.2e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.54.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 9.9e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.54.mlp.gate_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000175,
+     "rmse": null
+    },
+    "model.language_model.layers.54.mlp.up_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000219,
+     "rmse": null
+    },
+    "model.language_model.layers.55.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000102,
+     "rmse": null
+    },
+    "model.language_model.layers.55.mlp.gate_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000194,
+     "rmse": null
+    },
+    "model.language_model.layers.55.mlp.up_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000323,
+     "rmse": null
+    },
+    "model.language_model.layers.55.self_attn.k_proj": {
+     "bpw": 6.0,
+     "proxy_err": 7.5e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.55.self_attn.o_proj": {
+     "bpw": 6.0,
+     "proxy_err": 8e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.55.self_attn.q_proj": {
+     "bpw": 6.0,
+     "proxy_err": 4.6e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.55.self_attn.v_proj": {
+     "bpw": 6.0,
+     "proxy_err": 5.4e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.56.linear_attn.in_proj_qkv": {
+     "bpw": 6.0,
+     "proxy_err": 4.9e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.56.linear_attn.in_proj_z": {
+     "bpw": 6.0,
+     "proxy_err": 4.7e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.56.linear_attn.out_proj": {
+     "bpw": 6.0,
+     "proxy_err": 6e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.56.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 8.7e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.56.mlp.gate_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000173,
+     "rmse": null
+    },
+    "model.language_model.layers.56.mlp.up_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000303,
+     "rmse": null
+    },
+    "model.language_model.layers.57.linear_attn.in_proj_qkv": {
+     "bpw": 6.0,
+     "proxy_err": 4.5e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.57.linear_attn.in_proj_z": {
+     "bpw": 6.0,
+     "proxy_err": 4.2e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.57.linear_attn.out_proj": {
+     "bpw": 6.0,
+     "proxy_err": 6.9e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.57.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 9e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.57.mlp.gate_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000157,
+     "rmse": null
+    },
+    "model.language_model.layers.57.mlp.up_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000305,
+     "rmse": null
+    },
+    "model.language_model.layers.58.linear_attn.in_proj_qkv": {
+     "bpw": 6.0,
+     "proxy_err": 5.2e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.58.linear_attn.in_proj_z": {
+     "bpw": 6.0,
+     "proxy_err": 4.3e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.58.linear_attn.out_proj": {
+     "bpw": 6.0,
+     "proxy_err": 7.8e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.58.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 6.8e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.58.mlp.gate_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000153,
+     "rmse": null
+    },
+    "model.language_model.layers.58.mlp.up_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.00029,
+     "rmse": null
+    },
+    "model.language_model.layers.59.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 7.4e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.59.mlp.gate_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000152,
+     "rmse": null
+    },
+    "model.language_model.layers.59.mlp.up_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000277,
+     "rmse": null
+    },
+    "model.language_model.layers.59.self_attn.k_proj": {
+     "bpw": 6.0,
+     "proxy_err": 7.1e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.59.self_attn.o_proj": {
+     "bpw": 6.0,
+     "proxy_err": 6e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.59.self_attn.q_proj": {
+     "bpw": 6.0,
+     "proxy_err": 4.7e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.59.self_attn.v_proj": {
+     "bpw": 6.0,
+     "proxy_err": 4e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.6.linear_attn.in_proj_qkv": {
+     "bpw": 6.0,
+     "proxy_err": 3.8e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.6.linear_attn.in_proj_z": {
+     "bpw": 6.0,
+     "proxy_err": 3.4e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.6.linear_attn.out_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000115,
+     "rmse": null
+    },
+    "model.language_model.layers.6.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000121,
+     "rmse": null
+    },
+    "model.language_model.layers.6.mlp.gate_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000339,
+     "rmse": null
+    },
+    "model.language_model.layers.6.mlp.up_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000423,
+     "rmse": null
+    },
+    "model.language_model.layers.60.linear_attn.in_proj_qkv": {
+     "bpw": 6.0,
+     "proxy_err": 4e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.60.linear_attn.in_proj_z": {
+     "bpw": 6.0,
+     "proxy_err": 3.2e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.60.linear_attn.out_proj": {
+     "bpw": 6.0,
+     "proxy_err": 5e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.60.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 8.6e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.60.mlp.gate_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000149,
+     "rmse": null
+    },
+    "model.language_model.layers.60.mlp.up_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000239,
+     "rmse": null
+    },
+    "model.language_model.layers.61.linear_attn.in_proj_qkv": {
+     "bpw": 6.0,
+     "proxy_err": 4.9e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.61.linear_attn.in_proj_z": {
+     "bpw": 6.0,
+     "proxy_err": 3.9e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.61.linear_attn.out_proj": {
+     "bpw": 6.0,
+     "proxy_err": 6e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.61.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 6.8e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.61.mlp.gate_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.00013,
+     "rmse": null
+    },
+    "model.language_model.layers.61.mlp.up_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.0002,
+     "rmse": null
+    },
+    "model.language_model.layers.62.linear_attn.in_proj_qkv": {
+     "bpw": 6.0,
+     "proxy_err": 3.6e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.62.linear_attn.in_proj_z": {
+     "bpw": 6.0,
+     "proxy_err": 2.8e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.62.linear_attn.out_proj": {
+     "bpw": 6.0,
+     "proxy_err": 5.2e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.62.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 6e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.62.mlp.gate_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.00011,
+     "rmse": null
+    },
+    "model.language_model.layers.62.mlp.up_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000128,
+     "rmse": null
+    },
+    "model.language_model.layers.63.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 1e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.63.mlp.gate_proj": {
+     "bpw": 5.0,
+     "proxy_err": 6.9e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.63.mlp.up_proj": {
+     "bpw": 5.0,
+     "proxy_err": 6.1e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.63.self_attn.k_proj": {
+     "bpw": 6.0,
+     "proxy_err": 5.3e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.63.self_attn.o_proj": {
+     "bpw": 6.0,
+     "proxy_err": 2.5e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.63.self_attn.q_proj": {
+     "bpw": 6.0,
+     "proxy_err": 2.7e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.63.self_attn.v_proj": {
+     "bpw": 6.0,
+     "proxy_err": 1.2e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.7.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000144,
+     "rmse": null
+    },
+    "model.language_model.layers.7.mlp.gate_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000415,
+     "rmse": null
+    },
+    "model.language_model.layers.7.mlp.up_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.00055,
+     "rmse": null
+    },
+    "model.language_model.layers.7.self_attn.k_proj": {
+     "bpw": 6.0,
+     "proxy_err": 2.3e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.7.self_attn.o_proj": {
+     "bpw": 6.0,
+     "proxy_err": 6.3e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.7.self_attn.q_proj": {
+     "bpw": 6.0,
+     "proxy_err": 1.3e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.7.self_attn.v_proj": {
+     "bpw": 6.0,
+     "proxy_err": 2.6e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.8.linear_attn.in_proj_qkv": {
+     "bpw": 6.0,
+     "proxy_err": 4.9e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.8.linear_attn.in_proj_z": {
+     "bpw": 6.0,
+     "proxy_err": 4.6e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.8.linear_attn.out_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000132,
+     "rmse": null
+    },
+    "model.language_model.layers.8.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000148,
+     "rmse": null
+    },
+    "model.language_model.layers.8.mlp.gate_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000449,
+     "rmse": null
+    },
+    "model.language_model.layers.8.mlp.up_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000555,
+     "rmse": null
+    },
+    "model.language_model.layers.9.linear_attn.in_proj_qkv": {
+     "bpw": 6.0,
+     "proxy_err": 4.8e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.9.linear_attn.in_proj_z": {
+     "bpw": 6.0,
+     "proxy_err": 4e-05,
+     "rmse": null
+    },
+    "model.language_model.layers.9.linear_attn.out_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.000114,
+     "rmse": null
+    },
+    "model.language_model.layers.9.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": 0.00015,
+     "rmse": null
+    },
+    "model.language_model.layers.9.mlp.gate_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.000428,
+     "rmse": null
+    },
+    "model.language_model.layers.9.mlp.up_proj": {
+     "bpw": 5.0,
+     "proxy_err": 0.00053,
+     "rmse": null
+    },
+    "mtp.fc": {
+     "bpw": 4.0,
+     "proxy_err": null,
+     "rmse": 0.002379
+    },
+    "mtp.layers.0.mlp.down_proj": {
+     "bpw": 6.0,
+     "proxy_err": null,
+     "rmse": 0.000314
+    },
+    "mtp.layers.0.mlp.gate_proj": {
+     "bpw": 5.0,
+     "proxy_err": null,
+     "rmse": 0.001334
+    },
+    "mtp.layers.0.mlp.up_proj": {
+     "bpw": 5.0,
+     "proxy_err": null,
+     "rmse": 0.001335
+    },
+    "mtp.layers.0.self_attn.k_proj": {
+     "bpw": 6.0,
+     "proxy_err": null,
+     "rmse": 0.000313
+    },
+    "mtp.layers.0.self_attn.o_proj": {
+     "bpw": 6.0,
+     "proxy_err": null,
+     "rmse": 0.000303
+    },
+    "mtp.layers.0.self_attn.q_proj": {
+     "bpw": 6.0,
+     "proxy_err": null,
+     "rmse": 0.000203
+    },
+    "mtp.layers.0.self_attn.v_proj": {
+     "bpw": 6.0,
+     "proxy_err": null,
+     "rmse": 0.000302
+    }
+   }
+  },
+  "working_directory_bytes": null
+ },
+ "score": {
+  "token_mean_kld": 0.0031543113835786002,
+  "token_median_kld": 0.0012258191643752525,
+  "p95_kld": 0.009720985192552689,
+  "p99_kld": 0.03282567138672419,
+  "p999_kld": 0.15772614698114673,
+  "max_kld": 2.412705160787837,
+  "mean_jsd_bits": 0.0011189283976815623,
+  "top1_agreement": 0.9763115611260381,
+  "contexts": 512,
+  "scored_positions": 1048064,
+  "suite_token_sha256": "caef8a4628d6c07c162100895096f890cdf9cafc8e4c48b3d66035d737ee7cf7",
+  "head_sha256": "25a30fd5f826da0abc4efc4cc71def9f02bcb8085f7175eee284d221dee4cfff",
+  "filter": "all",
+  "report": "/var/tmp/work/kld9/reports/report-altcal.json",
+  "schema": "qwen38-fidelity-report/2",
+  "ci95": [
+   0.002946999054114656,
+   0.0033945677044329996
+  ],
+  "clusters": 330,
+  "bootstrap_samples": 10000,
+  "reference": "/work/gguf/hidden-bf16",
+  "candidate": "/work/kld9/hidden/hidden-altcal",
+  "capture_log_sha256": "8a08cffd15266a8118827eb1186162d5baf6a126b1e30b54a409ead10d3dffcc"
+ },
+ "tail_row": {
+  "token_median_kld": 0.0012258191643752525,
+  "p95_kld": 0.009720985192552689,
+  "p99_kld": 0.03282567138672419,
+  "p999_kld": 0.15772614698114673,
+  "max_kld": 2.412705160787837,
+  "top1_agreement": 0.9763115611260381
+ },
+ "paired": {
+  "hyd": {
+   "paired_report": "/var/tmp/work/kld9/reports/paired-hyd-vs-altcal.json",
+   "schema": "qwen38-fidelity-paired/2",
+   "a_label": "hyd",
+   "a_mean": 0.002699883159684943,
+   "b_label": "altcal",
+   "b_mean": 0.0031543113835786,
+   "contexts": 512,
+   "difference_a_minus_b": -0.00045442822389365713,
+   "median_difference": -0.0004810781985310176,
+   "ci95": [
+    -0.0005417788068112355,
+    -0.00036338037993790504
+   ],
+   "clusters": 330,
+   "bootstrap_samples": 10000,
+   "a_wins": 425,
+   "b_wins": 87,
+   "interval_contains_zero": false,
+   "sign": "a better than b",
+   "reading": "difference is a MINUS b on the same 512 contexts, so a positive value means b carries more KLD and is worse"
+  }
+ },
+ "per_stratum_paired": {},
+ "prediction_check": {
+  "registered_primary": 0.00275,
+  "measured": 0.0031543113835786002,
+  "ratio_measured_over_registered": 1.1470223213013093,
+  "registered_interval_is_on": "the paired difference, alt minus published hydrated; positive means the alt corpus is worse",
+  "registered_interval": [
+   1e-05,
+   0.0002
+  ],
+  "registered_direction": "positive (alt-calibration worse than published hydrated)",
+  "measured_paired_difference_alt_minus_published": 0.00045442822389365713,
+  "registered_interval_contains_measured": false,
+  "registered_direction_correct": true
+ },
+ "verdict": {
+  "outcome": "content_matters",
+  "rule_applied": "the paired 95% CI excludes zero. The magnitude is then reported as a fraction of the smallest published margin this project draws conclusions from (hydrated vs error-driven, 0.000366) and of a one-bit move (hydrated vs context, attention K6->K5, 0.000710).",
+  "thresholds_used": {
+   "control_envelope_abs": 2.9e-05,
+   "control_ci95_half_width": 2.8539685967031816e-05,
+   "control_paired_difference": -3.7550331881264944e-06
+  },
+  "magnitude_in_context": {
+   "abs_difference": 0.00045442822389365713,
+   "as_fraction_of_the_smallest_margin_we_conclude_from": 1.240602228786163,
+   "as_fraction_of_a_one_bit_attention_move": 0.6404666116823049,
+   "as_multiple_of_the_same_corpus_converter_draw": 121.01843076395973
+  }
+ },
+ "preservation": {
+  "registered_policy": "the checkpoint is a same-bytes sibling of a published artifact and carries no release value; recompute cost recorded, deleted after scoring unless the effect is large enough to want the artifact."
+ },
+ "resident_weights_measured": {
+  "model_loading_gib": 20.31,
+  "model_loading_seconds": 2.517506,
+  "source": "vLLM gpu_model_runner, quoted from the capture log",
+  "embedding_form": "BF16 on disk and BF16 resident -- the fidelity protocol runs no int8 embedding overlay, so this is the un-overlaid figure",
+  "serialized_payload_gib": 20.1044,
+  "loader_delta_gib": 0.2056,
+  "loader_delta_note": "measured counterpart of docs/34's +0.35 GiB loader allowance, which is labelled a prediction there"
+ },
+ "errors": [],
+ "content_sha256": "f23c22cb59c05aaa89803e3d91470720e582ae45d3bc0b0b96825868f5e19266"
+}

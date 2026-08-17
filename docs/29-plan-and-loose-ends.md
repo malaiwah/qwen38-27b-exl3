@@ -248,6 +248,42 @@ scoring floor explains at most about 5 % of any cross-protocol gap, and none of 
   alt-calibration condition bounds (the delta sits above the ±2.9e-05 converter envelope but inside
   the registered 1e-05..2e-04 content range), and that attribution waits for it.
   ([`shortlist-shard0.json`](../receipts/shortlist-shard0.json),
+
+**F2 IS ANSWERED, and the answer is that we cannot blame our allocation: calibration *content* is a far
+bigger lever than the gap we were trying to explain
+([`altcal-fidelity.json`](../receipts/altcal-fidelity.json)).** The experiment rebuilt the **published
+hydrated recipe at identical widths and identical byte budget**, changing exactly one thing - the six
+`standard_cal_data/*.utf8` files, replaced by same-byte-size samples from a deliberately **disjoint**
+public source (Project Gutenberg literary prose in place of the mixed c4/code/multilingual set). Same
+converter worktree, same code diff, same seeds, same protocol, same v5 shard-0 suite and shared BF16 head.
+
+Result: **mean KLD 0.0031543** against the published build's 0.002700, i.e. the alt-calibration sibling is
+worse by a paired **+0.00045443**, winning only **87 of 512** contexts against the original's **425**.
+
+**Now put that number next to the question it was registered to settle.** The 6-bit puzzle was that at
+**equal transformer-body bytes** (17.0537 GiB both) stock uniform bitrate edges our K6-parity build
+**0.001583 against 0.001634** - a paired deficit of **5.07e-05** whose confidence interval excludes zero.
+The registered question was whether that deficit is **allocation shape** or **calibration content**.
+
+- measured calibration-content effect: **4.54e-04**
+- the deficit being attributed: **5.07e-05** - **8.9x smaller**
+- the converter's own nondeterminism envelope: **±2.9e-05** - **15.7x smaller**
+
+**So allocation shape cannot be isolated as the cause.** A single change of calibration corpus moves
+fidelity by nearly nine times the entire gap to uniform, which means the gap sits comfortably inside the
+range that corpus choice alone can produce. The honest statement for the cards is therefore: *at matched
+bytes and matched engine our hand allocation gives up a small, statistically real margin to uniform
+bitrate, and that margin is smaller than the effect of changing the calibration corpus - so it is not
+evidence that the allocation shape is wrong.*
+
+**Two things about the pre-registration itself, both worth stating because they cut against us.** We
+registered the **direction** correctly - alt-calibration would be worse - and that held. We registered the
+**magnitude** as 1e-05..2e-04 and the measurement came in at **4.54e-04**, i.e. **2.3x above our own upper
+bound**, so the interval does *not* contain the result. We underestimated how sensitive this recipe is to
+calibration content. And the scope is narrow by construction: this is **one** adversarially-disjoint corpus
+swap on **one** shard, so 4.54e-04 is best read as an *upper bound on content sensitivity* for a large
+content change, not as the variance of ordinary corpus choices. What it bounds is enough for F2; it does
+not license a claim about which corpus is best.
   [`kld5-1M-paired-shortlist.json`](../receipts/kld5-1M-paired-shortlist.json))
 - **An ik_llama comparator.** Reader-suggested: `cHunter789/Qwen3.8-27B-i1-IQ4_KS_KT-GGUF` under
   `ik_llama.cpp` (r/LocalLLaMA megathread `1voojjz`, comment `p3uk494`, "Try this with
