@@ -283,8 +283,8 @@ write-through).
 
 | Agent | Findings re-checked | Verdict |
 |---|---|---|
-| SkeletonNegatives | — | pending |
-| ToolsInventory | — | pending |
+| SkeletonNegatives | S1.1–S1.9 + X-1, X-2 | No NEW-VIOLATION; all neg-globs clean at tip; S1.6 evidence count corrected 34→36 (assets/ = 36 files, 9 families × light/dark × png/svg); X-1 (lmcache run_mp_tests.py one-off raw artifact) and X-2 (tb21-8x Hub sync) RESOLVED |
+| ToolsInventory | S2.1–S2.4, P1/P2 denominators | No NEW-VIOLATION; 21 named tool files + 36 .sh re-verified; 95 executable .py (was 94 — new tools/fix_mirror_provenance.py from a721c8f); P1 overstatement RESOLVED (AGENTS.md:33 rewritten); S2.4 numbers now stale in the NEW direction (88/55/9 vs tip 95/62/10); denominator updated 95 = 62 argparse + 11 sys.argv + 22 no-arg |
 | FidelityContract | — | pending |
 | KldWorkflow | — | pending |
 | GgrunRootfs | — | pending |
@@ -318,7 +318,7 @@ write-through).
 
 | # | Finding (see sections 1/3) | Terminal status | Evidence |
 |---|---|---|---|
-| P1 | S2.4 subcommand prevalence (10/94) | PENDING | |
+| P1 | S2.4 subcommand prevalence (10/94) | RESOLVED | AGENTS.md:33 rewritten at 3e60f03: "Most CLIs are flat argparse (55 of 88); only 9 use subparsers, and 11 parse sys.argv directly… Read the help rather than assuming a subcommand exists." New minor note: those counts now lag the tree (95 executables / 62 argparse / 10 subcommand CLIs after the yarn + mirror-pull additions) |
 | P2 | S13.1/S13.2 convention non-users | PENDING | |
 | P3 | S6.4 docs/04 lacks finalize step | PENDING | |
 | P4 | S12.5/S12.6 docs/04 lacks external-env statement | PENDING | |
