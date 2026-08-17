@@ -64,6 +64,12 @@ emitted over a quantized base.
 
 ## Consequence: convert then splice
 
+**Where these commands run.** Steps 1 and 3 are the **external exllamav3 toolchain** at
+`turboderp-org/exllamav3@5f3c537` (1.4.2) and run in that checkout's own environment — `convert.py`
+and `util/*` are exllamav3's, not this repository's. Steps 2 and 5 are ours and run in this
+repository's environment. Mixing the two environments is the single most common way to get a
+checkpoint that converts but will not load.
+
 1. `python convert.py -i <bf16> -o <k4> -w <wd> -b 4 -hb 6 -mb 6 -vb 16 -cb mcg -d 0`
 2. [`tools/splice_bf16_attn.py`](../tools/splice_bf16_attn.py): drop
    `.trellis/.suh/.svh/.mcg` for every
@@ -77,6 +83,12 @@ emitted over a quantized base.
 4. Fix `config.json`: `quantization_config.bits` still reads 4.00, and
    `update_config()` force-sets `tied_word_embeddings = true` whenever the key is
    present — this model is untied and must stay untied.
+5. [`tools/finalize_checkpoint.py`](../tools/finalize_checkpoint.py): the publication gate, and the
+   step that must not be skipped. It validates logical tensor names and shapes against the recipe,
+   repairs `quantization_config`, and emits `quantization_manifest.json`, `SHA256SUMS`,
+   `DOCS-SHA256SUMS` and `build-receipt.json`. All four are written atomically
+   (`write_atomic`, temp file then `os.replace`) precisely because a truncated `SHA256SUMS` still
+   parses and would silently verify fewer files than it claims to.
 
 The loader side needs no patching: `Linear.load()` probes `load_exl3` then
 `load_fp16` per module, and `storage_size()` already has the non-EXL3 branch, so

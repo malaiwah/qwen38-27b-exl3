@@ -9,7 +9,7 @@ Use `README.md` for the current overview, `PROGRESS.md` for chronology, and the 
 ## Architecture & Data Flow
 
 1. **Inputs:** a local, immutable Hugging Face model snapshot; calibration/held-out corpus data; and the pinned Gilded Gnosis runtime image.
-2. **Checkpoint build:** exllamav3 conversion produces packed EXL3 tensors; `tools/splice_bf16_attn.py` restores selected BF16 attention tensors; index/config generation and `tools/finalize_checkpoint.py` validate logical tensor names/shapes and emit manifests and checksums. The published recipe keeps MLP projections in mixed EXL3 K5/K6 roles while attention, vision, embeddings, and norms remain BF16 where specified by the manifest.
+2. **Checkpoint build:** exllamav3 conversion produces packed EXL3 tensors (the trellis/suh/svh/mcg layout; "packed" is this file's summary word, the layout itself is documented in docs/04 and docs/03); `tools/splice_bf16_attn.py` restores selected BF16 attention tensors; index/config generation and `tools/finalize_checkpoint.py` validate logical tensor names/shapes and emit manifests and checksums. The published recipe keeps MLP projections in mixed EXL3 K5/K6 roles while attention, vision, embeddings, and norms remain BF16 where specified by the manifest.
 3. **Serving:** `tools/ggrun.sh` runs the external vLLM image through static `proot`, binding host model/work/cache directories. Qwen EXL3 must use direct `vllm serve`; the image's family launchers do not accept Qwen. Patched modules implement Qwen/MTP construction and EXL3 dispatch; online K6 encoding and graph/prefill patches are explicit runtime variants, not package-local imports.
 4. **Evaluation:** `tools/fetch_corpus_v5.py` and `tools/suite3.py` freeze a held-out suite; `tools/fidelity.py` captures final-RMSNorm hidden states, replays them through one shared BF16 LM head, and computes full-vocabulary KL/JS/top-1 metrics. `tools/kld_ladder.sh` runs bounded shards, while `tools/kld_aggregate.py` and paired/qualification tools produce validated JSON receipts.
 
@@ -30,7 +30,7 @@ There is no `src/`, package manifest, root `Makefile`, or checked-in model paylo
 
 ## Development Commands
 
-Start with the script's own help; most CLIs use explicit `argparse` subcommands.
+Start with the script's own help. Most CLIs are **flat `argparse`** (55 of 88 executables); only **9** use subparsers, and **11** parse `sys.argv` directly (`tools/pull_rootfs.py`, `tools/tb_rows.py`, `tools/capture_determinism_receipt.py` and others). Read the help rather than assuming a subcommand exists.
 
 ### Host setup and pinned runtime
 
@@ -95,7 +95,7 @@ providers:
 
 The native model profile is `262144` context tokens with an 8,388,608-pixel vision ceiling. The OMP `maxTokens: 131072` value follows the upstream final-output guidance; these values require the context-qualified Gilded Gnosis launcher rather than the bounded 8,192-token smoke recipes preserved in historical receipts.
 
-This repository's `.omp/config.yml` selects `vllm-gg/qwen38:xhigh` for default, slow, vision, and task roles, advertises text+image input, and applies the Qwen thinking-mode defaults (`temperature: 1.0`, `topP: 0.95`, `topK: 20`, `minP: 0.0`, `presencePenalty: 0.0`, `repetitionPenalty: 1.0`). The OMP effort ladder uses its standard budgets; the model metadata carries the native context/output limits. For official non-thinking sampling, use the repository-local overlay:
+This repository's `.omp/config.yml` selects `vllm-gg/qwen38:xhigh` for default, slow, vision, and task roles and applies the Qwen thinking-mode defaults (`temperature: 1.0`, `topP: 0.95`, `topK: 20`, `minP: 0.0`, `presencePenalty: 0.0`, `repetitionPenalty: 1.0`). The OMP effort ladder uses its standard budgets; the model metadata carries the native context/output limits. Note that `input: [text, image]` is **not** in `.omp/config.yml` — modalities are declared in the host-global provider metadata (`~/.omp/agent/models.yml`), and the repository file only implies vision via the vision role. If you need to change what modalities are advertised, edit the provider metadata, not this file. For official non-thinking sampling, use the repository-local overlay:
 
 ```bash
 omp --config .omp/qwen38-nonthinking.yml --thinking off
@@ -158,10 +158,10 @@ A CPU-only aggregate can replay published reports when the suite and identities 
 
 ## Code Conventions & Common Patterns
 
-- Python CLIs use Python 3 type hints, `from __future__ import annotations`, `pathlib`, `argparse`, deterministic traversal/seeds, and composable subcommands. Most state is explicit files, manifests, environment variables, or server endpoints; there is no dependency-injection or application state framework.
+- Python CLIs **predominantly** use Python 3 type hints, `from __future__ import annotations`, `pathlib` and `argparse` with deterministic traversal/seeds. These are conventions, not invariants: 5 argparse CLIs lack the future import (`apc_card_recipes.py`, `bench.py`, `publish_cards.py`, `qualify_apc_receipt.py`, `splice_bf16_attn.py`) and 7 use `os.path` or plain strings instead of `pathlib`. Follow the convention in new code; do not assume it when reading. Most state is explicit files, manifests, environment variables, or server endpoints; there is no dependency-injection or application state framework.
 - Bash tools normally use `set -euo pipefail`, explicit positional/options parsing, bounded phases, and artifact checks. Some vLLM processes report a teardown failure after writing valid output; the artifact and receipt are the success criterion, not exit status alone.
 - Fail closed. Reject mutable Hub IDs, missing `config.json`, unknown files, unsupported tensor schemas, stale suite/head/runtime identities, digest mismatches, incomplete reports, and insufficient scratch space. Use `--dry-run` before GPU or destructive phases.
-- JSON receipts are versioned and written atomically (`.tmp` then replace). Preserve command lines, source/runtime revisions, SHA256s, and schema names. Do not overwrite a receipt to make a result look current; create a new receipt or document supersession.
+- JSON receipts are versioned and written atomically (`.tmp` then `os.replace`) — enforced in `tools/kld_aggregate.py`, `tools/kld_ladder.sh`, `docker/build-image.sh` and `tools/finalize_checkpoint.py:write_atomic`. A peer review found `finalize_checkpoint.py` writing all four of its artifacts non-atomically; that is fixed, and the reason it mattered is that a truncated `SHA256SUMS` still parses and silently verifies fewer files than it claims. Preserve command lines, source/runtime revisions, SHA256s, and schema names. Do not overwrite a receipt to make a result look current; create a new receipt or document supersession.
 - Packed physical tensors are not the same as logical model tensors. Use `quantization_manifest.json`, build receipts, and finalizer checks when changing checkpoint layout.
 - Runtime settings are intentionally explicit. For dense EXL3, the quantization config must exclude non-overlay modules with the established list:
 
@@ -205,7 +205,7 @@ There is no checked-in pytest suite, CI workflow, coverage configuration, `Makef
 
 - **Static/CPU checks:** use `--help`, manifest/index validation, `tools/fidelity.py paired`, and `tools/kld_aggregate.py aggregate` with published suite/head identities. `fidelity.py` lazily imports Torch, so help and pure-JSON paired work do not require Torch.
 - **Runtime/image checks:** run `docker/build-image.sh verify` before smoke; use `docker/smoke_client.py` for exact text+image requests and inspect `podman diff`, identity, and readiness evidence.
-- **Fidelity:** use `tools/kld_ladder.sh --dry-run <shards>` before a GPU run, then verify every shard before aggregation. Never reuse a report from another suite, model, head, runtime, or scoring window.
+- **Fidelity:** use `tools/kld_ladder.sh --dry-run <shards>` before a GPU run, then verify every shard before aggregation. Never reuse a report from another suite, model, head, runtime, or scoring window. `kld_aggregate.py` enforces suite id, model revision, head digest, scoring window and quantisation identity per report; the **runtime image digest is pinned per run** in `ladder-pin.json` (`kld_ladder.sh`) and carried into determinism receipts rather than checked per report, so cross-runtime reuse is caught at the pin, not the aggregate.
 - **Protocol probes:** `tools/run_wikitext_kld.sh` validates the external KLD protocol; `tools/decode_parity.py`, `tools/vision_eval.py`, `tools/tool_calls_e2e.py`, `tools/longctx.py`, `tools/longmm.py`, and `tools/task_retention.py` cover separate serving axes. Many probes record failures in JSON while returning zero, so inspect the receipt and require the tool's documented gate flags.
 - **Acceptance evidence:** check `identity_verified`, SHA256s, schema versions, gate fields, and exact pass/no-regression counts before reporting success. For GPU or long-context work, record GPU model, memory utilization, cache settings, image digest, and command line.
 - **Historical paths:** `run_v3.sh`, `v4_qualify.sh`, old KLD docs, and hardcoded retention wrappers may be useful for provenance but are not general-purpose regression suites. Prefer the current README, docs/42, and current receipts.

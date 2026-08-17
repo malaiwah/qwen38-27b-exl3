@@ -30,6 +30,20 @@
 # needs host root, and no stage touches an already-running container.
 set -euo pipefail
 
+# Preflight the documented requirements explicitly. `set -euo pipefail` does abort on a missing
+# binary, but only once some stage happens to invoke it, which surfaces as a confusing failure
+# deep in a build rather than a one-line "you are missing podman". A peer review flagged the
+# header's "Requires:" line as documentation with no enforcement behind it; this is the enforcement.
+missing=()
+for _bin in podman python3 sha256sum; do
+  command -v "$_bin" >/dev/null 2>&1 || missing+=("$_bin")
+done
+if (( ${#missing[@]} )); then
+  printf 'build-image.sh: missing required binaries: %s\n' "${missing[*]}" >&2
+  printf 'build-image.sh: this script runs rootless and needs all of: podman python3 sha256sum\n' >&2
+  exit 127
+fi
+
 REPO_ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 STAGE=${STAGE:-$REPO_ROOT/receipts/.production-image-stage}
 RECEIPT=${RECEIPT:-$REPO_ROOT/receipts/production-image.json}

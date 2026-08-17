@@ -45,6 +45,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import struct
 import subprocess
 from collections import defaultdict
@@ -82,6 +83,24 @@ SCOPE_NOTE = (
     "would make the receipt go stale while still claiming to describe the build -- they are "
     "listed under mutable_documentation and hashed in DOCS-SHA256SUMS instead."
 )
+
+
+def write_atomic(path: Path, text: str) -> None:
+    """Write `text` to `path` atomically: temp file in the same directory, then os.replace.
+
+    Every artifact this script emits is a VERIFICATION artifact - digest manifests and a build
+    receipt. A bare write_text that is interrupted leaves a TRUNCATED digest file, which is
+    strictly worse than no file at all, because a short SHA256SUMS still parses and silently
+    verifies fewer files than it claims to. os.replace is atomic within a filesystem, so a
+    reader sees either the previous content or the complete new content and never a partial one.
+
+    Found by a peer review of AGENTS.md's claim that receipts are written atomically: the claim
+    held for kld_aggregate.py and build-image.sh but was false here, for all four artifacts.
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(text)
+    os.replace(tmp, path)
 
 
 def read_header(path: Path) -> dict:
@@ -267,7 +286,7 @@ def main() -> int:
                           "stored_tensors": stored}
             added.append(prefix)
     if added:
-        qc_path.write_text(json.dumps(qc, indent=2) + "\n")
+        write_atomic(qc_path, json.dumps(qc, indent=2) + "\n")
     print(f"tensor_storage: {len(ts)} entries, {len(added)} added "
           f"({', '.join(added[:3])}{'...' if len(added) > 3 else ''})", flush=True)
 
@@ -309,7 +328,7 @@ def main() -> int:
                  "of them, so the Hub's tensor and parameter totals report packed storage "
                  "elements; logical_parameter_count is the real parameter count."),
     }
-    (d / "quantization_manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
+    write_atomic(d / "quantization_manifest.json", json.dumps(manifest, indent=2) + "\n")
     for role, v in manifest["roles"].items():
         print(f"  {role:20s} {v['gb']:7.3f} GB  {dict(v['formats'])}", flush=True)
 
@@ -323,7 +342,7 @@ def main() -> int:
                          f"file(s) are not on disk: {', '.join(absent)}")
     payload_sums = {n: sha256_file(p) for n, p in payload}
     payload_bytes = sum(p.stat().st_size for _, p in payload)
-    (d / "SHA256SUMS").write_text("".join(f"{h}  {n}\n" for n, h in payload_sums.items()))
+    write_atomic(d / "SHA256SUMS", "".join(f"{h}  {n}\n" for n, h in payload_sums.items()))
 
     doc_sums: dict[str, str] = {}
     doc_bytes = 0
@@ -338,7 +357,7 @@ def main() -> int:
         doc_bytes += p.stat().st_size
     docs_path = d / "DOCS-SHA256SUMS"
     if doc_sums:
-        docs_path.write_text("".join(f"{h}  {n}\n" for n, h in doc_sums.items()))
+        write_atomic(docs_path, "".join(f"{h}  {n}\n" for n, h in doc_sums.items()))
     elif docs_path.exists():
         docs_path.unlink()  # no documentation on disk, so any previous list is now fiction
 
@@ -370,7 +389,7 @@ def main() -> int:
         "upstream_check": upstream_check,
         "host": subprocess.run(["uname", "-sr"], capture_output=True, text=True).stdout.strip(),
     }
-    (d / "build-receipt.json").write_text(json.dumps(receipt, indent=2) + "\n")
+    write_atomic(d / "build-receipt.json", json.dumps(receipt, indent=2) + "\n")
     print(f"receipt: immutable payload {payload_bytes/1e9:.2f} GB over {len(payload_sums)} "
           f"files in SHA256SUMS, {len(logical)} logical tensors; documentation "
           f"{doc_bytes/1e6:.2f} MB over {len(doc_sums)} files in DOCS-SHA256SUMS, excluded "
