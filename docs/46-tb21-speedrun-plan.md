@@ -837,3 +837,92 @@ suggestion on a 96 GB card at a 262k window gets a server that boots and later d
 workload they enlarged it for. Todo closed as **measured and declined**, with the receipt
 ([`tb21-gate-1x-kvclaim66.json`](../receipts/tb21-gate-1x-kvclaim66.json)) recording the 4-of-5 pass
 and the 500.
+
+## 22. MEASURED: LMCache L1 CPU-DRAM on the 2x host - the baseline reproduces exactly, and our own gate patch makes it *worse*
+
+Seven scored 38-request arms, one probe (`tools/apc_poison_probe.py` sha256 `a96168f9…`, byte-identical
+to the 5090 run), one frozen prompt set (`prompts_sha256 9978404b…`), the pre-registered thresholds and
+fail rule of [`lmcache-reuse-test.json`](../receipts/lmcache-reuse-test.json) unchanged. **Verdict: do
+not enable LMCache, with or without the patch.** Receipt:
+[`lmcache-l1-2x.json`](../receipts/lmcache-l1-2x.json), harness `tools/run_lmcache_test_2x.sh`, L1
+configuration `tools/lmcache-l1-2x.env`.
+
+| arm | LMCache | gate patch #403 | failing | corrupted | acceptance median |
+|---|---|---|---:|---:|---:|
+| L0 control | off | mounted | **0/38** | 0 | 0.619 |
+| U1cold | on, fresh L2 | **absent** | **7/38** | 2 | 0.609 |
+| U2warm | on, same server | **absent** | **7/38** | 1 | 0.602 |
+| L1cold | on, fresh L2 | applied | **37/38** | 37 | **0.0** |
+| L2warm | on, same server | applied | **38/38** | 38 | **0.0** |
+| L3restart, **fresh** L2 | on, retained clean L2 | applied | **38/38** | 38 | **0.0** |
+| L3restart, **poisoned** L2 | on, retained unpatched L2 | applied | **38/38** | 38 | **0.0** |
+
+**The unpatched pair reproduces the 5090 baseline exactly: 7/38 and 7/38.** Different model edition
+(hydrated, not context), different GPU, different driver, TP2 not TP1, docker not podman, 262,144 window
+not 196,608 - and the same count, the same failing requests, and the same predictive rule. The
+pre-registered rule (*a request fails iff a scored needle lies inside `[hit-1600, hit)`*) scores **7
+predicted / 7 actual, zero false positives, zero false negatives in both arms**, and all 76 rows
+reconcile as `hit_arm = hit_L0 + 1600` (or both-zero, or a warm full self-match) - the identical 76/76
+reconciliation [`lmcache-fix.json`](../receipts/lmcache-fix.json) reported. On L0 the same rule flags 7
+requests and **none** fails: the connector-absent control at identical reuse geometry, 7/7 correct.
+Mean |chosen-logprob delta| vs L0 is **0.238/0.242** against the 5090's measured ~0.245. This is as
+close to an independent replication as our records contain.
+
+**Then the fix we filed made it catastrophically worse, for exactly the reason its own author flagged.**
+`local-inference-lab/vllm#403` gates the hybrid+connector divergent-hit path, and its PR body predicted
+0/38. Measured: **37/38 and 38/38**, U+FFFD replacement characters and out-of-script text on every
+failing request, SpecDecoding acceptance median **0.0** - cosmicnag's symptom verbatim. The mechanism is
+visible in one counter:
+
+| arm | `external_prefix_cache_queries` delta | `external_prefix_cache_hits` delta | MP log `Retrieved` lines |
+|---|---:|---:|---:|
+| U1cold + U2warm (unpatched) | 88,760 | **0** | **0** |
+| L1cold / L2warm (patched) | 110,780 / 97,980 | **59,200 / 60,800** | 158 |
+| L3restart, either L2 | 113,980 | **76,800** | 76 |
+
+Unpatched, **LMCache supplies zero tokens** - it is never asked to load, so the 7/38 is 100 % scheduler
+side, confirming `lmcache-fix.json`'s correction of our upstream comments. The gate closes that path, so
+vLLM finally *does* load from the connector (`ext > 0` for the first time in this investigation), and the
+**LMCache MP retrieve path does not restore the lagging Mamba/GDN state either**. Divergence vs L0 jumps
+from 0.24 to **4.36-4.50**, 18x, and the failure stops obeying the divergence window because there is no
+longer a window - the state is gone. `lmcache-fix.json` listed *"whether LMCache retrieves restore
+hybrid GDN state correctly when they DO supply tokens (ext > 0)"* as an open question. **Answered: they
+do not.** #403 is necessary and insufficient; its 0/38 prediction is refuted and must be re-labelled
+before anyone reads it as a green light.
+
+**Both L3restart variants, as the ladder required.** Poisoned L2 (34 files, 2.71 GB, written by the
+unpatched arms) stayed dirty - **confirmed**, 38/38. Fresh L2 (596 files, 47.5 GB, written by the
+*patched* arms) was **not** clean - **refuted**, 38/38 - because a poison-free L2 is unreachable here:
+every writer configuration is itself corrupt.
+
+**The five-check gate is blind to this.** `tb21_gate.py` returned **PASS on all five checks, 262k needle
+included**, against the same live server the probe had just scored 38/38 corrupted
+([`tb21-gate-2x-lmcache-l1.json`](../receipts/tb21-gate-2x-lmcache-l1.json)). No gate check reuses a
+prefix across a mamba block boundary, so none can see it. **A gate PASS must never be read as fidelity
+when a KV connector is attached**; the gate wants a sixth check that reuses a prefix across a block
+boundary and scores the answer, named here rather than changed mid-campaign.
+
+**What the feature would have bought, and why it does not matter.** L1 is CPU *pinned* DRAM
+(`l1_memory_manager.py`: *"CPU pinned-DRAM L1 memory manager"*), configured at **160 GiB** of the host's
+314 GB; it reached its full 171,798,691,840 bytes within ~13 s despite `--l1-use-lazy` defaulting True
+(size it as an up-front reservation, not a ceiling), and peaked at 44.27 GiB / 27.7 % with no evictions.
+On disjoint documents, warm vs cold as `/metrics` deltas between named snapshots: **32k, TTFT 6.3234 s ->
+0.2387 s (26.5x, 0.9256 hit rate); 128k, 32.5141 s -> 0.6111 s (53.2x, 0.9760 hit rate)**. The prize is
+real. The corruption detector then fired on **3 of the 4 warm variants**. A 53x prefill win that returns
+U+FFFD is not a win.
+
+**One more thing an operator needs to know before they try.** The shipping profile cannot run LMCache on
+this model *at all*: with `--max-num-batched-tokens 8192` the connector refuses to initialise -
+*"Mamba-hybrid models with LMCache require `block_size <= max_num_batched_tokens < 2 * block_size` … got
+max_num_batched_tokens=8192, block_size=1600"*. At this model's 1600-token block the admissible band is
+**[1600, 3199]**, so enabling LMCache costs a **2.6x cut in prefill chunk size** before correctness is
+even discussed. We ran every arm at 2048, which is inside the band *and* the pre-registration's own
+value, so the forced change removed a deviation instead of adding one. Note the irony: the code enforces
+*"every block boundary gets a state snapshot"* for prefill chunking, and violates the same invariant on
+the retrieve path.
+
+**Disposition.** LMCache stays in the image and stays **disabled by default**, exactly as
+[`tb21-image-sr1.json`](../receipts/tb21-image-sr1.json) `patch_layers[D]` has it. The remaining defect
+is named: LMCache must store and restore the SSM/GDN state block alongside the attention KV it supplies
+(what nixl does unconditionally in `_apply_prefix_caching`), or refuse hybrid models. Neither exists in
+`0.5.2+glm52dcp.4`. A negative result, cleanly measured, on the box before it was released.

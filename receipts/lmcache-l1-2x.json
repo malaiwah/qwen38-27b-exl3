@@ -1,0 +1,2490 @@
+{
+  "schema": "qwen38-lmcache-l1-2x/1",
+  "generated_utc": "2026-08-17T05:05:00Z",
+  "agent": "LMCacheL1",
+  "status": "COMPLETE. NEGATIVE RESULT, CLEANLY MEASURED. Seven scored 38-request arms on one host, one probe, pre-registered thresholds. DO NOT ENABLE LMCACHE.",
+  "headline": "The gate patch did NOT reach 0/38 and must not be shipped as a fix. It made things far worse, for the reason its own author flagged as untested. UNPATCHED, this host reproduces the 5090 baseline EXACTLY - L1cold 7/38 and L2warm 7/38, same failing-request geometry, same predictive rule 7/7 with zero false positives - on a different model edition, different GPU, different driver, TP2 instead of TP1, docker instead of podman. Applying the fork's #403 divergent-hit gate takes those arms to 37/38 and 38/38, and both restart arms to 38/38, because closing the scheduler-side path is what finally makes LMCache SUPPLY tokens (vLLM external_prefix_cache_hits_total delta 0 -> 59,200/60,800/76,800), and the LMCache MP retrieve path does not restore hybrid GDN state either. The gate is necessary and insufficient: it converts a bounded, silent, 18-percent-of-requests defect into total U+FFFD token soup with SpecDecoding acceptance median 0.0 on every request. receipts/lmcache-fix.json listed 'whether LMCache retrieves restore hybrid GDN state correctly when they DO supply tokens (ext > 0)' as an open LMCache-side question. Measured answer: they do not.",
+  "verdict": {
+    "recommendation": "DO NOT ENABLE LMCache on this stack, with or without the gate patch. Keep it in the image, keep it disabled by default, exactly as receipts/tb21-image-sr1.json patch_layers[D] already has it.",
+    "gate_patch_reached_0_of_38": false,
+    "gate_patch_disposition": "local-inference-lab/vllm#403 stays OPEN and correct as a scheduler-correctness fix (it removes an unconditional wrong-contract path), but it is NOT a corruption fix for LMCache and its PR body's prediction of 0/38 is now REFUTED by measurement. It must be re-labelled before anyone reads it as a green light.",
+    "remaining_defect_named": "LMCacheMPConnector's retrieve path (lmcache_driven_transfer, multi_layer_block_kv_transfer mode 'ptr') restores full-attention KV for the chunks it supplies but does not restore the lagging recurrent (Mamba/GDN) state at the resume boundary either. With the scheduler gate in place, EVERY request with a nonzero external hit resumes from an uninitialised/stale GDN state, which is why the divergence-window rule stops applying and the failure becomes total instead of bounded. Fixing this requires LMCache to store and restore the SSM/GDN state block alongside the attention KV (what nixl's _apply_prefix_caching does unconditionally), or to declare itself unable to and refuse hybrid models - neither exists in 0.5.2+glm52dcp.4.",
+    "l1_dram_shippability": "NOT SHIPPABLE for correctness reasons, not capacity or performance reasons. The L1 CPU-DRAM tier itself worked mechanically and its economics are excellent (26.5x/53.2x TTFT reduction, 92.6%/97.6% hit rate). Every one of those warm responses that the detector examined was corrupted. Speed that returns wrong tokens is not a feature.",
+    "second_finding_the_gate_is_blind": "tools/tb21_gate.py returned verdict PASS on ALL FIVE checks - liveness, generation, repeatability, the full 262,144-token needle, and MTP - against the same live server on which the probe measured 38/38 corrupted. The five-check gate cannot see this defect class, because none of its checks reuses a prefix across a mamba block boundary. Nobody may infer LMCache fidelity from a gate PASS. receipt: receipts/tb21-gate-2x-lmcache-l1.json"
+  },
+  "arm_counts_x_of_38": {
+    "L0_control_no_lmcache": "0/38",
+    "U1cold_unpatched": "7/38",
+    "U2warm_unpatched": "7/38",
+    "L1cold_gate_patched": "37/38",
+    "L2warm_gate_patched": "38/38",
+    "L3restart_fresh_L2_gate_patched": "38/38",
+    "L3restart_poisoned_L2_gate_patched": "38/38",
+    "preregistered_baseline_being_compared_against": "receipts/lmcache-reuse-test.json measured L1cold 7/38 and L2warm 7/38 corrupted on the RTX 5090; L3restart 38/38"
+  },
+  "hardware": {
+    "host": "jl-vm-473393, ubuntu@151.185.34.111 (Jarvis 2x VM)",
+    "gpus": "0, NVIDIA RTX PRO 6000 Blackwell Server Edition, GPU-8f4b1d29-90ae-f220-ef0a-3533e754b355, 97887 MiB, 595.58.03, Default\n1, NVIDIA RTX PRO 6000 Blackwell Server Edition, GPU-edc019bb-67f1-65ed-1d32-ccfdd9abd8e1, 97887 MiB, 595.58.03, Default",
+    "dram_total_gb": 314,
+    "dram_while_serving_with_L1_160GiB": "184 of 314 GB used, 130 GB available (free -g during U1cold)",
+    "vcpu": 56,
+    "docker": "Docker version 29.5.1, build 2518b52",
+    "disk": "/dev/vda1       968G   82G  887G   9% /",
+    "forcep2p_override_present_and_untouched": "RegistryDwords: \"ForceP2P=0x11;RMForceP2PType=1;RMPcieP2PType=2;GrdmaPciTopoCheckOverride=1;EnableResizableBar=1\" - asserted in the stage phase; the driver was never reloaded by this run",
+    "gpus_released_at_end": "0 MiB on both cards, verified after the last arm"
+  },
+  "image_and_overlay": {
+    "image": {
+      "tag": "vllm:gg-r34-tb21-sr1",
+      "id": "sha256:237a50250eb8bcaf4f9a88d688a26753db4d2a73d902a4ef48e4ad23d958df3e",
+      "role": "the TB2.1 campaign image, receipts/tb21-image-sr1.json"
+    },
+    "lmcache": {
+      "version": "0.5.2+glm52dcp.4",
+      "wheel_sha256": "83207aace71604d936ef874f38ff9ef269dc8460a97927e01c3b710349659e65",
+      "identity_note": "the same wheel receipts/lmcache-fix.json read; it already carries the fail-closed MP retrieve guard (vLLM reports kv_load_failure_policy='fail'), so PR #4600's contract is present in these arms and did NOT prevent any of this"
+    },
+    "wrapper": {
+      "path": "/usr/local/bin/glm52-lmcache-wrapper.sh",
+      "sha256": "5abf02609290d0ea7f1ed2a5cb9e67c08b331a362dd981b983d8ccfb71ae9eff",
+      "role": "the reporter's own wrapper; it derives the lmcache server argv and vLLM's --kv-transfer-config from the env in tools/lmcache-l1-2x.env"
+    },
+    "gate_patch_as_a_read_only_overlay_mount": {
+      "method": "-v $W/overlay/scheduler.patched.py:/opt/venv/lib/python3.12/site-packages/vllm/v1/core/sched/scheduler.py:ro - never baked into the image, exactly the way receipts/tb21-image-sr1.json layer A mounts its exl3 overlay",
+      "patch_file": "patches/gg-vllm-hybrid-divergent-hit-gate.patch",
+      "patch_sha256": "5f9ad10bedff87c4f37ce61bfe9be5cc9ed84dce99d9d3685c54b0341529839f",
+      "base_file_sha256_in_image": "e98b7227e0b66eea137ed6ccbc9ee99bd43485892c11c648284c30cde206ed05",
+      "base_identity": "equals receipts/tb21-image-sr1.json patch_layers[C].post_patch_sha256 for vllm/v1/core/sched/scheduler.py, i.e. the post-#52530 scheduler",
+      "apply": "patch -p1 --fuzz=0 -N succeeded, 'Hunk #1 succeeded at 763 (offset 37 lines)' - the +37 offset receipts/lmcache-fix.json.fixes.gg_vllm_scheduler_patch.shipped_bytes_verification predicted for sr1",
+      "overlay_sha256": "b38981d89744a566e30a64a945d6633ef30f007c7158681d428ffa759b3ea779",
+      "diff_size": "+23 lines, one conditional gated, no other change",
+      "sentinel": "supports_divergent_local_hybrid_hits",
+      "sentinel_discrimination": "0 hits in the base file, 2 in the overlay",
+      "sentinel_found_in_the_LOADED_BYTECODE_not_only_the_file": "asserted per arm before any request: the mounted file's sha256 is re-checked inside the container AND the string is searched recursively through Scheduler.schedule.__code__.co_consts, so the engine is proven to be RUNNING the patched code rather than merely having it mounted. This matters here because the image ships a stale __pycache__/scheduler.cpython-312.pyc for this module.",
+      "assertion_capture": [
+        "/opt/venv/lib/python3.12/site-packages/vllm/v1/core/sched/scheduler.py: OK",
+        "/opt/venv/lib/python3.12/site-packages/torch/cuda/__init__.py:63: FutureWarning: The pynvml package is deprecated. Please install nvidia-ml-py instead. If you did not install pynvml directly, please report this to the maintainers of the package that installed pynvml for you.",
+        "  import pynvml  # type: ignore[import]",
+        "INFO 08-17 03:50:48 [importing.py:53] Triton is installed but 0 active driver(s) found (expected 1). Disabling Triton to prevent runtime errors.",
+        "INFO 08-17 03:50:48 [importing.py:88] Triton not installed or not compatible; certain GPU-related functions will not be available.",
+        "W0817 03:50:48.360000 11 torch/utils/cpp_extension.py:140] No CUDA runtime is found, using CUDA_HOME='/usr/local/cuda'",
+        "WARNING 08-17 03:50:49 [interface.py:368] Failed to import from vllm._C: ModuleNotFoundError(\"No module named 'vllm._C'\")",
+        "OVERLAY_BYTECODE_GATE: present"
+      ],
+      "independent_control_that_the_overlay_itself_is_harmless": "arm L0 ran WITH the overlay mounted and LMCache off and scored 0/38 with all 38 A1/A2/A3/A4 correct. The corruption therefore requires LMCache, not the overlay."
+    }
+  },
+  "probe_and_prompts_unchanged": {
+    "probe": "tools/apc_poison_probe.py sha256 a96168f9b0c32387fe0cd2b180cb23ff67061b6dbe8f46c1423041c904e7aeb6 - byte-identical to the 5090 run's probe",
+    "prompts": "receipts/lmcache-frozen-prompts.json, prompts_sha256 9978404b0ce2d032ebf762e17335d7b5a37dbc424f57f61db66ecf3f946f39df",
+    "prompts_integrity_check_run_before_any_arm": "the field was compared AND the body was re-hashed the way the probe's build mode hashes it (json.dumps(sort_keys=True) over everything except prompts_sha256): recomputed digest equals the field, 38 correctness_requests, 16 needles, head_tokens 35, mamba_block_tokens 1600",
+    "thresholds": "THRESHOLDS inside the probe, unchanged: out_of_script_fraction > 0.02, replacement_char_count >= 1, longest_repeated_block_chars >= 80, ngram5_repetition_ratio >= 0.5 over >= 30 words",
+    "fail_rule": "a request fails iff the corruption detector fires OR any of A1/A2/A3 is wrong; A4 arithmetic stays diagnostic-only",
+    "concurrency": 1
+  },
+  "named_deviations_from_the_5090_preregistration": {
+    "model_edition": "hydrated /models/qwen38-hyd (21 GB, mxfp8 exl3, sha256-verified against its published SHA256SUMS) instead of the K5K6-context edition. THIS IS WHY THE UNPATCHED ARM PAIR EXISTS: this run re-establishes the 7/38 baseline on this edition rather than inheriting it, and it landed on exactly 7/38 twice.",
+    "window": "262,144 instead of 196,608 (the shipping 2x profile, docs/46 section 18). The longest frozen prompt is 15,570 tokens, so no prompt is near either limit.",
+    "max_num_seqs": "64 (shipping) instead of 1; the probe issues at concurrency 1, so exactly one request is in flight either way",
+    "max_num_batched_tokens": "2048 - the pre-registration's own value, arrived at by force rather than by choice, see forced_profile_finding below",
+    "parallelism": "--tensor-parallel-size 2, so LMCacheMPConnector registers two GPU clients (--max-gpu-workers 2). The 5090 run was single-GPU.",
+    "runtime": "docker 29.5.1 with the containerd image store instead of podman",
+    "chat_surface": "--reasoning-parser/--enable-auto-tool-choice/--tool-call-parser omitted; the probe drives /v1/completions with raw token ids and cannot reach them",
+    "block_size_is_the_same": "vLLM chose the SAME 1600-token attention block on this host ('Setting attention block size to 1600 tokens to ensure that attention page size is >= mamba page size'), so the frozen prompts' block geometry - the thing the whole probe is built around - transferred intact. Every recorded prefix-cache hit in every arm is a multiple of 1600."
+  },
+  "forced_profile_finding_lmcache_costs_prefill_batching": {
+    "what": "The shipping 2x profile CANNOT run LMCache on this model at all. With --max-num-batched-tokens 8192 the image's own connector refuses to initialise, in both TP workers, before serving anything.",
+    "error_verbatim": "ValueError: Mamba-hybrid models with LMCache require block_size <= max_num_batched_tokens < 2 * block_size so every prefill step advances exactly one block and every block boundary gets a state snapshot; got max_num_batched_tokens=8192, block_size=1600. Set --max-num-batched-tokens 1600.",
+    "admissible_band_here": "[1600, 3199], because block_size is 1600",
+    "what_we_used": "2048, inside the band and identical to the 5090 pre-registration, so this forced change REMOVES a deviation instead of adding one. Every arm including L0 ran at 2048.",
+    "why_it_matters_for_shipping": "enabling LMCache on a hybrid model forces max_num_batched_tokens from 8192 down to at most 3199, a 2.6x reduction in prefill chunk size, before any correctness question is asked. Even a hypothetical fixed LMCache would carry this cost on this model.",
+    "evidence": "out/lmcache-batched8192-rejection.txt and logs/server-U1U2-rejected-8192.log on the host; the ValueError line is reproduced above verbatim",
+    "note": "this guard is the same 'every block boundary gets a state snapshot' invariant the root cause is about - the code knows the invariant exists and enforces it for prefill chunking, while the retrieve path violates it."
+  },
+  "arms": {
+    "L0": {
+      "description": "control: sr1 image + gate overlay, shipping 2x TP2 profile (prefix caching + align, MTP-3, fp8 KV), LMCACHE_MODE=off \u2014 no LMCache; exactly one variable from the LMCache arms",
+      "summary": {
+        "requests": 38,
+        "failed": 0,
+        "corrupted": 0,
+        "answer_wrong": 0,
+        "per_field": {
+          "A1": 38,
+          "A2": 38,
+          "A3": 38,
+          "A4": 38
+        },
+        "detectors": {
+          "out_of_script_fraction": 0,
+          "replacement_char_count": 0,
+          "longest_repeated_block_chars": 0,
+          "ngram5_repetition_ratio": 0
+        },
+        "acc_min": 0.543478,
+        "acc_median": 0.619106,
+        "hit_rate": 0.63218,
+        "wall_s": 64.91
+      },
+      "failing_requests": []
+    },
+    "U1cold": {
+      "description": "UNPATCHED baseline: NO gate overlay, LMCache kv_both live (L1 CPU pinned DRAM 160 GiB (init 8 GiB, lazy), L2 fs_native 256 GiB, chunk 1600, 2 GPU workers, LRU 0.90/0.10, prefetch retain). Establishes whether this host + hydrated edition reproduces the 5090's 7/38 divergent-hit corruption at all; without it a clean patched arm is uninterpretable.",
+      "summary": {
+        "requests": 38,
+        "failed": 7,
+        "corrupted": 2,
+        "answer_wrong": 7,
+        "per_field": {
+          "A1": 34,
+          "A2": 35,
+          "A3": 31,
+          "A4": 38
+        },
+        "detectors": {
+          "out_of_script_fraction": 0,
+          "replacement_char_count": 0,
+          "longest_repeated_block_chars": 2,
+          "ngram5_repetition_ratio": 0
+        },
+        "acc_min": 0.492424,
+        "acc_median": 0.608946,
+        "hit_rate": 0.82874,
+        "wall_s": 50.87
+      },
+      "failing_requests": [
+        {
+          "request_id": "p1s2",
+          "prompt_tokens": 5470,
+          "prefix_cache_hits": 1600,
+          "corrupted": true,
+          "detectors_fired": [
+            "longest_repeated_block_chars"
+          ]
+        },
+        {
+          "request_id": "p1s5",
+          "prompt_tokens": 6670,
+          "prefix_cache_hits": 6400,
+          "corrupted": false,
+          "detectors_fired": []
+        },
+        {
+          "request_id": "p2s1",
+          "prompt_tokens": 3170,
+          "prefix_cache_hits": 1600,
+          "corrupted": true,
+          "detectors_fired": [
+            "longest_repeated_block_chars"
+          ]
+        },
+        {
+          "request_id": "p2s5",
+          "prompt_tokens": 6670,
+          "prefix_cache_hits": 6400,
+          "corrupted": false,
+          "detectors_fired": []
+        },
+        {
+          "request_id": "p3s1",
+          "prompt_tokens": 3170,
+          "prefix_cache_hits": 1600,
+          "corrupted": false,
+          "detectors_fired": []
+        },
+        {
+          "request_id": "p3s4",
+          "prompt_tokens": 6670,
+          "prefix_cache_hits": 6400,
+          "corrupted": false,
+          "detectors_fired": []
+        },
+        {
+          "request_id": "p4s1",
+          "prompt_tokens": 3035,
+          "prefix_cache_hits": 1600,
+          "corrupted": false,
+          "detectors_fired": []
+        }
+      ]
+    },
+    "U2warm": {
+      "description": "UNPATCHED baseline: NO gate overlay, LMCache kv_both live (L1 CPU pinned DRAM 160 GiB (init 8 GiB, lazy), L2 fs_native 256 GiB, chunk 1600, 2 GPU workers, LRU 0.90/0.10, prefetch retain). Establishes whether this host + hydrated edition reproduces the 5090's 7/38 divergent-hit corruption at all; without it a clean patched arm is uninterpretable.",
+      "summary": {
+        "requests": 38,
+        "failed": 7,
+        "corrupted": 1,
+        "answer_wrong": 7,
+        "per_field": {
+          "A1": 34,
+          "A2": 35,
+          "A3": 31,
+          "A4": 38
+        },
+        "detectors": {
+          "out_of_script_fraction": 0,
+          "replacement_char_count": 0,
+          "longest_repeated_block_chars": 1,
+          "ngram5_repetition_ratio": 0
+        },
+        "acc_min": 0.492424,
+        "acc_median": 0.602153,
+        "hit_rate": 0.852646,
+        "wall_s": 47.0
+      },
+      "failing_requests": [
+        {
+          "request_id": "p1s1",
+          "prompt_tokens": 3170,
+          "prefix_cache_hits": 1600,
+          "corrupted": false,
+          "detectors_fired": []
+        },
+        {
+          "request_id": "p1s5",
+          "prompt_tokens": 6670,
+          "prefix_cache_hits": 6400,
+          "corrupted": false,
+          "detectors_fired": []
+        },
+        {
+          "request_id": "p2s1",
+          "prompt_tokens": 3170,
+          "prefix_cache_hits": 1600,
+          "corrupted": true,
+          "detectors_fired": [
+            "longest_repeated_block_chars"
+          ]
+        },
+        {
+          "request_id": "p2s5",
+          "prompt_tokens": 6670,
+          "prefix_cache_hits": 6400,
+          "corrupted": false,
+          "detectors_fired": []
+        },
+        {
+          "request_id": "p3s1",
+          "prompt_tokens": 3170,
+          "prefix_cache_hits": 1600,
+          "corrupted": false,
+          "detectors_fired": []
+        },
+        {
+          "request_id": "p3s4",
+          "prompt_tokens": 6670,
+          "prefix_cache_hits": 6400,
+          "corrupted": false,
+          "detectors_fired": []
+        },
+        {
+          "request_id": "p4s1",
+          "prompt_tokens": 3035,
+          "prefix_cache_hits": 1600,
+          "corrupted": false,
+          "detectors_fired": []
+        }
+      ]
+    },
+    "L1cold": {
+      "description": "GATE PATCHED (local-inference-lab/vllm#403 overlay mounted read-only), LMCache kv_both live (L1 CPU pinned DRAM 160 GiB (init 8 GiB, lazy), L2 fs_native 256 GiB, chunk 1600, 2 GPU workers, LRU 0.90/0.10, prefetch retain). The prediction under test: 0/38.",
+      "summary": {
+        "requests": 38,
+        "failed": 37,
+        "corrupted": 37,
+        "answer_wrong": 37,
+        "per_field": {
+          "A1": 1,
+          "A2": 1,
+          "A3": 1,
+          "A4": 1
+        },
+        "detectors": {
+          "out_of_script_fraction": 37,
+          "replacement_char_count": 37,
+          "longest_repeated_block_chars": 0,
+          "ngram5_repetition_ratio": 0
+        },
+        "acc_min": 0.0,
+        "acc_median": 0.0,
+        "hit_rate": 0.627149,
+        "wall_s": 195.67
+      },
+      "failing_requests": [
+        {
+          "request_id": "p1s2",
+          "prompt_tokens": 5470,
+          "prefix_cache_hits": 0,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p1s3",
+          "prompt_tokens": 4270,
+          "prefix_cache_hits": 1600,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p1s4",
+          "prompt_tokens": 7870,
+          "prefix_cache_hits": 3200,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p1s5",
+          "prompt_tokens": 6670,
+          "prefix_cache_hits": 4800,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p1s6",
+          "prompt_tokens": 10070,
+          "prefix_cache_hits": 9600,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p1s7",
+          "prompt_tokens": 8370,
+          "prefix_cache_hits": 6400,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p1s8",
+          "prompt_tokens": 12470,
+          "prefix_cache_hits": 8000,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p1s9",
+          "prompt_tokens": 11170,
+          "prefix_cache_hits": 8000,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p1s10",
+          "prompt_tokens": 15570,
+          "prefix_cache_hits": 9600,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p2s1",
+          "prompt_tokens": 3170,
+          "prefix_cache_hits": 0,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p2s2",
+          "prompt_tokens": 5470,
+          "prefix_cache_hits": 3200,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p2s3",
+          "prompt_tokens": 4270,
+          "prefix_cache_hits": 1600,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p2s4",
+          "prompt_tokens": 7870,
+          "prefix_cache_hits": 4800,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p2s5",
+          "prompt_tokens": 6670,
+          "prefix_cache_hits": 4800,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p2s6",
+          "prompt_tokens": 10070,
+          "prefix_cache_hits": 8000,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p2s7",
+          "prompt_tokens": 8370,
+          "prefix_cache_hits": 6400,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p2s8",
+          "prompt_tokens": 12470,
+          "prefix_cache_hits": 9600,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p2s9",
+          "prompt_tokens": 11170,
+          "prefix_cache_hits": 8000,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p2s10",
+          "prompt_tokens": 15570,
+          "prefix_cache_hits": 12800,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p3s1",
+          "prompt_tokens": 3170,
+          "prefix_cache_hits": 0,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p3s2",
+          "prompt_tokens": 4270,
+          "prefix_cache_hits": 1600,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p3s3",
+          "prompt_tokens": 5470,
+          "prefix_cache_hits": 3200,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p3s4",
+          "prompt_tokens": 6670,
+          "prefix_cache_hits": 4800,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p3s5",
+          "prompt_tokens": 7870,
+          "prefix_cache_hits": 4800,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p3s6",
+          "prompt_tokens": 8370,
+          "prefix_cache_hits": 6400,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p3s7",
+          "prompt_tokens": 10070,
+          "prefix_cache_hits": 8000,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p3s8",
+          "prompt_tokens": 11170,
+          "prefix_cache_hits": 8000,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p3s9",
+          "prompt_tokens": 12470,
+          "prefix_cache_hits": 9600,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p3s10",
+          "prompt_tokens": 15570,
+          "prefix_cache_hits": 12800,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p4s1",
+          "prompt_tokens": 3035,
+          "prefix_cache_hits": 0,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p4s2",
+          "prompt_tokens": 3635,
+          "prefix_cache_hits": 1600,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p4s3",
+          "prompt_tokens": 4635,
+          "prefix_cache_hits": 1600,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p4s4",
+          "prompt_tokens": 5235,
+          "prefix_cache_hits": 3200,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p4s5",
+          "prompt_tokens": 6235,
+          "prefix_cache_hits": 3200,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p4s6",
+          "prompt_tokens": 6835,
+          "prefix_cache_hits": 4800,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p4s7",
+          "prompt_tokens": 7835,
+          "prefix_cache_hits": 4800,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p4s8",
+          "prompt_tokens": 8435,
+          "prefix_cache_hits": 6400,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        }
+      ]
+    },
+    "L2warm": {
+      "description": "GATE PATCHED (local-inference-lab/vllm#403 overlay mounted read-only), LMCache kv_both live (L1 CPU pinned DRAM 160 GiB (init 8 GiB, lazy), L2 fs_native 256 GiB, chunk 1600, 2 GPU workers, LRU 0.90/0.10, prefetch retain). The prediction under test: 0/38.",
+      "summary": {
+        "requests": 38,
+        "failed": 38,
+        "corrupted": 38,
+        "answer_wrong": 38,
+        "per_field": {
+          "A1": 0,
+          "A2": 0,
+          "A3": 0,
+          "A4": 0
+        },
+        "detectors": {
+          "out_of_script_fraction": 38,
+          "replacement_char_count": 38,
+          "longest_repeated_block_chars": 0,
+          "ngram5_repetition_ratio": 0
+        },
+        "acc_min": 0.0,
+        "acc_median": 0.0,
+        "hit_rate": 0.650523,
+        "wall_s": 196.05
+      },
+      "failing_requests": [
+        {
+          "request_id": "p1s1",
+          "prompt_tokens": 3170,
+          "prefix_cache_hits": 0,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p1s2",
+          "prompt_tokens": 5470,
+          "prefix_cache_hits": 3200,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p1s3",
+          "prompt_tokens": 4270,
+          "prefix_cache_hits": 1600,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p1s4",
+          "prompt_tokens": 7870,
+          "prefix_cache_hits": 4800,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p1s5",
+          "prompt_tokens": 6670,
+          "prefix_cache_hits": 4800,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p1s6",
+          "prompt_tokens": 10070,
+          "prefix_cache_hits": 8000,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p1s7",
+          "prompt_tokens": 8370,
+          "prefix_cache_hits": 6400,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p1s8",
+          "prompt_tokens": 12470,
+          "prefix_cache_hits": 9600,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p1s9",
+          "prompt_tokens": 11170,
+          "prefix_cache_hits": 8000,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p1s10",
+          "prompt_tokens": 15570,
+          "prefix_cache_hits": 12800,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p2s1",
+          "prompt_tokens": 3170,
+          "prefix_cache_hits": 0,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p2s2",
+          "prompt_tokens": 5470,
+          "prefix_cache_hits": 3200,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p2s3",
+          "prompt_tokens": 4270,
+          "prefix_cache_hits": 1600,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p2s4",
+          "prompt_tokens": 7870,
+          "prefix_cache_hits": 4800,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p2s5",
+          "prompt_tokens": 6670,
+          "prefix_cache_hits": 4800,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p2s6",
+          "prompt_tokens": 10070,
+          "prefix_cache_hits": 8000,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p2s7",
+          "prompt_tokens": 8370,
+          "prefix_cache_hits": 6400,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p2s8",
+          "prompt_tokens": 12470,
+          "prefix_cache_hits": 9600,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p2s9",
+          "prompt_tokens": 11170,
+          "prefix_cache_hits": 8000,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p2s10",
+          "prompt_tokens": 15570,
+          "prefix_cache_hits": 12800,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p3s1",
+          "prompt_tokens": 3170,
+          "prefix_cache_hits": 0,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p3s2",
+          "prompt_tokens": 4270,
+          "prefix_cache_hits": 1600,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p3s3",
+          "prompt_tokens": 5470,
+          "prefix_cache_hits": 3200,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p3s4",
+          "prompt_tokens": 6670,
+          "prefix_cache_hits": 4800,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p3s5",
+          "prompt_tokens": 7870,
+          "prefix_cache_hits": 4800,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p3s6",
+          "prompt_tokens": 8370,
+          "prefix_cache_hits": 6400,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p3s7",
+          "prompt_tokens": 10070,
+          "prefix_cache_hits": 8000,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p3s8",
+          "prompt_tokens": 11170,
+          "prefix_cache_hits": 8000,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p3s9",
+          "prompt_tokens": 12470,
+          "prefix_cache_hits": 9600,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p3s10",
+          "prompt_tokens": 15570,
+          "prefix_cache_hits": 12800,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p4s1",
+          "prompt_tokens": 3035,
+          "prefix_cache_hits": 0,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p4s2",
+          "prompt_tokens": 3635,
+          "prefix_cache_hits": 1600,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p4s3",
+          "prompt_tokens": 4635,
+          "prefix_cache_hits": 1600,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p4s4",
+          "prompt_tokens": 5235,
+          "prefix_cache_hits": 3200,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p4s5",
+          "prompt_tokens": 6235,
+          "prefix_cache_hits": 3200,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p4s6",
+          "prompt_tokens": 6835,
+          "prefix_cache_hits": 4800,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p4s7",
+          "prompt_tokens": 7835,
+          "prefix_cache_hits": 4800,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p4s8",
+          "prompt_tokens": 8435,
+          "prefix_cache_hits": 6400,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        }
+      ]
+    },
+    "L3fresh": {
+      "description": "GATE PATCHED, NEW server over the RETAINED FRESH (poison-free) L2 written by the patched cold/warm passes: vLLM's own prefix cache and LMCache's L1 start empty, so any reuse is an LMCache L2 retrieval. Expected clean.",
+      "summary": {
+        "requests": 38,
+        "failed": 38,
+        "corrupted": 38,
+        "answer_wrong": 38,
+        "per_field": {
+          "A1": 0,
+          "A2": 0,
+          "A3": 0,
+          "A4": 0
+        },
+        "detectors": {
+          "out_of_script_fraction": 38,
+          "replacement_char_count": 38,
+          "longest_repeated_block_chars": 0,
+          "ngram5_repetition_ratio": 0
+        },
+        "acc_min": 0.0,
+        "acc_median": 0.0,
+        "hit_rate": 0.478631,
+        "wall_s": 196.83
+      },
+      "failing_requests": [
+        {
+          "request_id": "p1s1",
+          "prompt_tokens": 3170,
+          "prefix_cache_hits": 0,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p1s2",
+          "prompt_tokens": 5470,
+          "prefix_cache_hits": 0,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p1s3",
+          "prompt_tokens": 4270,
+          "prefix_cache_hits": 1600,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p1s4",
+          "prompt_tokens": 7870,
+          "prefix_cache_hits": 166400,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p1s5",
+          "prompt_tokens": 6670,
+          "prefix_cache_hits": 4800,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p1s6",
+          "prompt_tokens": 10070,
+          "prefix_cache_hits": 264000,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p1s7",
+          "prompt_tokens": 8370,
+          "prefix_cache_hits": 6400,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p1s8",
+          "prompt_tokens": 12470,
+          "prefix_cache_hits": 416000,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p1s9",
+          "prompt_tokens": 11170,
+          "prefix_cache_hits": 8000,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p1s10",
+          "prompt_tokens": 15570,
+          "prefix_cache_hits": 432000,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p2s1",
+          "prompt_tokens": 3170,
+          "prefix_cache_hits": 0,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p2s2",
+          "prompt_tokens": 5470,
+          "prefix_cache_hits": 3200,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p2s3",
+          "prompt_tokens": 4270,
+          "prefix_cache_hits": 1600,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p2s4",
+          "prompt_tokens": 7870,
+          "prefix_cache_hits": 4800,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p2s5",
+          "prompt_tokens": 6670,
+          "prefix_cache_hits": 4800,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p2s6",
+          "prompt_tokens": 10070,
+          "prefix_cache_hits": 8000,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p2s7",
+          "prompt_tokens": 8370,
+          "prefix_cache_hits": 6400,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p2s8",
+          "prompt_tokens": 12470,
+          "prefix_cache_hits": 9600,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p2s9",
+          "prompt_tokens": 11170,
+          "prefix_cache_hits": 8000,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p2s10",
+          "prompt_tokens": 15570,
+          "prefix_cache_hits": 11200,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p3s1",
+          "prompt_tokens": 3170,
+          "prefix_cache_hits": 0,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p3s2",
+          "prompt_tokens": 4270,
+          "prefix_cache_hits": 1600,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p3s3",
+          "prompt_tokens": 5470,
+          "prefix_cache_hits": 3200,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p3s4",
+          "prompt_tokens": 6670,
+          "prefix_cache_hits": 4800,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p3s5",
+          "prompt_tokens": 7870,
+          "prefix_cache_hits": 4800,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p3s6",
+          "prompt_tokens": 8370,
+          "prefix_cache_hits": 6400,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p3s7",
+          "prompt_tokens": 10070,
+          "prefix_cache_hits": 8000,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p3s8",
+          "prompt_tokens": 11170,
+          "prefix_cache_hits": 8000,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p3s9",
+          "prompt_tokens": 12470,
+          "prefix_cache_hits": 9600,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p3s10",
+          "prompt_tokens": 15570,
+          "prefix_cache_hits": 11200,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p4s1",
+          "prompt_tokens": 3035,
+          "prefix_cache_hits": 0,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p4s2",
+          "prompt_tokens": 3635,
+          "prefix_cache_hits": 1600,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p4s3",
+          "prompt_tokens": 4635,
+          "prefix_cache_hits": 1600,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p4s4",
+          "prompt_tokens": 5235,
+          "prefix_cache_hits": 3200,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p4s5",
+          "prompt_tokens": 6235,
+          "prefix_cache_hits": 3200,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p4s6",
+          "prompt_tokens": 6835,
+          "prefix_cache_hits": 4800,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p4s7",
+          "prompt_tokens": 7835,
+          "prefix_cache_hits": 4800,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p4s8",
+          "prompt_tokens": 8435,
+          "prefix_cache_hits": 6400,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        }
+      ]
+    },
+    "L3poison": {
+      "description": "GATE PATCHED, NEW server over the RETAINED POISONED L2 written by the UNPATCHED arms: receipts/lmcache-fix.json predicts this stays dirty until the directory is wiped, because the stores themselves were computed under a corrupted boundary state.",
+      "summary": {
+        "requests": 38,
+        "failed": 38,
+        "corrupted": 38,
+        "answer_wrong": 38,
+        "per_field": {
+          "A1": 0,
+          "A2": 0,
+          "A3": 0,
+          "A4": 0
+        },
+        "detectors": {
+          "out_of_script_fraction": 38,
+          "replacement_char_count": 38,
+          "longest_repeated_block_chars": 0,
+          "ngram5_repetition_ratio": 0
+        },
+        "acc_min": 0.0,
+        "acc_median": 0.0,
+        "hit_rate": 0.558044,
+        "wall_s": 197.53
+      },
+      "failing_requests": [
+        {
+          "request_id": "p1s1",
+          "prompt_tokens": 3170,
+          "prefix_cache_hits": 0,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p1s2",
+          "prompt_tokens": 5470,
+          "prefix_cache_hits": 0,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p1s3",
+          "prompt_tokens": 4270,
+          "prefix_cache_hits": 1600,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p1s4",
+          "prompt_tokens": 7870,
+          "prefix_cache_hits": 6400,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p1s5",
+          "prompt_tokens": 6670,
+          "prefix_cache_hits": 4800,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p1s6",
+          "prompt_tokens": 10070,
+          "prefix_cache_hits": 14400,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p1s7",
+          "prompt_tokens": 8370,
+          "prefix_cache_hits": 6400,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p1s8",
+          "prompt_tokens": 12470,
+          "prefix_cache_hits": 40000,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p1s9",
+          "prompt_tokens": 11170,
+          "prefix_cache_hits": 8000,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p1s10",
+          "prompt_tokens": 15570,
+          "prefix_cache_hits": 48000,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p2s1",
+          "prompt_tokens": 3170,
+          "prefix_cache_hits": 0,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p2s2",
+          "prompt_tokens": 5470,
+          "prefix_cache_hits": 3200,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p2s3",
+          "prompt_tokens": 4270,
+          "prefix_cache_hits": 1600,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p2s4",
+          "prompt_tokens": 7870,
+          "prefix_cache_hits": 4800,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p2s5",
+          "prompt_tokens": 6670,
+          "prefix_cache_hits": 4800,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p2s6",
+          "prompt_tokens": 10070,
+          "prefix_cache_hits": 8000,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p2s7",
+          "prompt_tokens": 8370,
+          "prefix_cache_hits": 6400,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p2s8",
+          "prompt_tokens": 12470,
+          "prefix_cache_hits": 9600,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p2s9",
+          "prompt_tokens": 11170,
+          "prefix_cache_hits": 8000,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p2s10",
+          "prompt_tokens": 15570,
+          "prefix_cache_hits": 11200,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p3s1",
+          "prompt_tokens": 3170,
+          "prefix_cache_hits": 0,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p3s2",
+          "prompt_tokens": 4270,
+          "prefix_cache_hits": 1600,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p3s3",
+          "prompt_tokens": 5470,
+          "prefix_cache_hits": 3200,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p3s4",
+          "prompt_tokens": 6670,
+          "prefix_cache_hits": 4800,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p3s5",
+          "prompt_tokens": 7870,
+          "prefix_cache_hits": 4800,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p3s6",
+          "prompt_tokens": 8370,
+          "prefix_cache_hits": 6400,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p3s7",
+          "prompt_tokens": 10070,
+          "prefix_cache_hits": 8000,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p3s8",
+          "prompt_tokens": 11170,
+          "prefix_cache_hits": 8000,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p3s9",
+          "prompt_tokens": 12470,
+          "prefix_cache_hits": 9600,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p3s10",
+          "prompt_tokens": 15570,
+          "prefix_cache_hits": 11200,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p4s1",
+          "prompt_tokens": 3035,
+          "prefix_cache_hits": 0,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p4s2",
+          "prompt_tokens": 3635,
+          "prefix_cache_hits": 1600,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p4s3",
+          "prompt_tokens": 4635,
+          "prefix_cache_hits": 1600,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p4s4",
+          "prompt_tokens": 5235,
+          "prefix_cache_hits": 3200,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p4s5",
+          "prompt_tokens": 6235,
+          "prefix_cache_hits": 3200,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p4s6",
+          "prompt_tokens": 6835,
+          "prefix_cache_hits": 4800,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p4s7",
+          "prompt_tokens": 7835,
+          "prefix_cache_hits": 4800,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        },
+        {
+          "request_id": "p4s8",
+          "prompt_tokens": 8435,
+          "prefix_cache_hits": 6400,
+          "corrupted": true,
+          "detectors_fired": [
+            "out_of_script_fraction",
+            "replacement_char_count"
+          ]
+        }
+      ]
+    }
+  },
+  "the_preregistered_predictive_rule_reproduced_exactly": {
+    "rule": "a request fails iff a SCORED needle lies inside [hit_tokens - 1600, hit_tokens), the divergence window between the full-attention group's hit and the last position with a recurrent-state checkpoint",
+    "how_scored": "needle absolute offset = prompts.head_tokens (35) + needle.token_end, both frozen properties of prompts_sha256 9978404b; hit_tokens is vLLM's own per-request prefix_cache_hits counter delta. Neither quantity is fitted to the outcome.",
+    "results": {
+      "L0": {
+        "arm": "L0",
+        "rule_predicts_failure_and_failed": 0,
+        "predicted_but_passed": 7,
+        "failed_but_unpredicted": 0,
+        "correctly_predicted_pass": 31
+      },
+      "U1cold": {
+        "arm": "U1cold",
+        "rule_predicts_failure_and_failed": 7,
+        "predicted_but_passed": 0,
+        "failed_but_unpredicted": 0,
+        "correctly_predicted_pass": 31
+      },
+      "U2warm": {
+        "arm": "U2warm",
+        "rule_predicts_failure_and_failed": 7,
+        "predicted_but_passed": 0,
+        "failed_but_unpredicted": 0,
+        "correctly_predicted_pass": 31
+      }
+    },
+    "reading": "UNPATCHED U1cold and U2warm: the rule predicts 7 failures and gets exactly those 7, zero false positives and zero false negatives, in both arms - the same 7/38 count and the same divergence-window mechanism the 5090 measured. L0: the identical rule, applied to L0's own recorded hits, flags 7 requests and NONE of them fails - the connector-absent control at identical reuse geometry, 7/7 correct, discriminating scheduler-side state loss from any data-delivery story.",
+    "hit_reconciliation_76_of_76": {
+      "U1cold": {
+        "both zero (first-ever request)": 1,
+        "h == h_L0 + 1600": 37
+      },
+      "U2warm": {
+        "h == h_L0 + 1600": 33,
+        "L2warm full self-match at own full-chunk cap": 5
+      }
+    },
+    "hit_reconciliation_reading": "every one of the 76 unpatched LMCache-arm rows reconciles as hit_arm == hit_L0 + 1600, or both zero for the first-ever request, or a full self-match at the request's own full-chunk cap in the warm pass - the same 76/76 reconciliation receipts/lmcache-fix.json reported for the 5090, reproduced row for row on different hardware.",
+    "the_rule_stops_applying_once_the_gate_is_applied": "with the gate the failure is no longer bounded by the divergence window: 37/38 and 38/38 fail, including requests with no scored needle anywhere near a boundary. That is the signature of a different mechanism, and it is the one the ext>0 retrieve path introduces."
+  },
+  "the_causal_chain_quantified": {
+    "instrument": "vLLM's own external_prefix_cache_{hits,queries}_total, deltas between the named per-arm pre/post /metrics snapshots (never absolutes), corroborated by counted 'Stored'/'Retrieved' lines in the LMCache MP server log",
+    "unpatched": {
+      "external_prefix_cache_queries_delta": {
+        "U1cold": 51580,
+        "U2warm": 37180
+      },
+      "external_prefix_cache_hits_delta": {
+        "U1cold": 0,
+        "U2warm": 0
+      },
+      "lmcache_mp_log": {
+        "stored_lines": 34,
+        "retrieved_lines": 0
+      },
+      "reading": "LMCache was asked 88,760 tokens' worth of questions across the two arms and supplied ZERO tokens. It never retrieved once. The 7/38 corruption in these arms is therefore 100 % scheduler-side, which confirms receipts/lmcache-fix.json's correction of our earlier upstream comments: the bounded failures are not wrong bytes from LMCache."
+    },
+    "gate_patched": {
+      "external_prefix_cache_hits_delta": {
+        "L1cold": 59200,
+        "L2warm": 60800,
+        "L3fresh": 76800,
+        "L3poison": 76800
+      },
+      "lmcache_mp_log": {
+        "patched_pass": {
+          "stored_lines": 596,
+          "retrieved_lines": 158
+        },
+        "restart_fresh_pass": {
+          "stored_lines": 26,
+          "retrieved_lines": 76
+        }
+      },
+      "reading": "the gate removes the scheduler's wrong-contract shortcut, so vLLM now actually loads from the connector - ext > 0 for the first time in this entire investigation - and the corruption becomes total. The gate did not create a new bug; it revealed the one receipts/lmcache-fix.json named as untested."
+    },
+    "chosen_logprob_divergence_vs_L0": {
+      "instrument": "mean |chosen-token logprob delta| against the L0 control, per arm, same instrument as the 5090 run",
+      "unpatched": {
+        "U1cold": 0.238,
+        "U2warm": 0.242
+      },
+      "gate_patched": {
+        "L1cold": 4.361,
+        "L2warm": 4.471,
+        "L3fresh": 4.47,
+        "L3poison": 4.499
+      },
+      "reading": "0.238/0.242 reproduces the 5090's measured ~0.245 almost exactly - independent agreement of a second instrument across two platforms. The patched arms are 18x worse: not a boundary defect, a destroyed state. identical_text_requests is 0 in all six LMCache arms, so every request with any hit ran with a divergent state even when its answers survived."
+    },
+    "counter_sanity_check": {
+      "what": "vLLM's prefix_cache_queries_total delta divided by the frozen schedule's own total prompt length (301,180 tokens over 38 requests), per arm",
+      "ratios": {
+        "L0": 1.0,
+        "U1cold": 1.0,
+        "U2warm": 1.0,
+        "L1cold": 1.03,
+        "L2warm": 1.0,
+        "L3fresh": 9.99,
+        "L3poison": 1.61
+      },
+      "reading": "the instrument is exact (1.00x) in every arm that is not in the total-corruption regime, which is why the hit deltas above can be read literally. The L3 arms' 9.99x and 1.61x are the same counter inflation receipts/lmcache-reuse-test.json flagged on its own L3restart rows ('a counter artifact under async loads, noted, not load-bearing'): under total corruption the engine re-queries. Reproduced here, still not load-bearing - the arm counts are scored from response text, not counters."
+    }
+  },
+  "the_two_L3restart_variants_reported_separately": {
+    "why_two": "receipts/lmcache-fix.json.unproven_until_gpu_ladder item 2 required both: 'that L3restart over a FRESH L2 (poison-free stores) is clean with the gate applied; L3 over the existing poisoned L2 directory is expected to stay dirty until wiped - the re-run must record both'",
+    "L3restart_over_FRESH_L2": {
+      "count": "38/38",
+      "l2_at_pass_start": "596 files, 47,535,357,952 bytes - written by the GATE-PATCHED cold/warm passes and retained",
+      "expectation": "clean",
+      "outcome": "REFUTED. 38/38 failed, all four detectors' out_of_script and replacement-char firing on every request, acceptance median 0.0.",
+      "why_the_expectation_was_wrong": "the expectation assumed the patched arms would produce poison-free stores. They do not: the patched cold/warm passes were themselves 37/38 and 38/38 corrupt, so the 'fresh' L2 is a store of KV computed under a corrupted boundary state. A poison-free L2 is unreachable on this stack, because there is no configuration in which the writer is clean."
+    },
+    "L3restart_over_POISONED_L2": {
+      "count": "38/38",
+      "l2_at_pass_start": "34 files, 2,711,748,608 bytes - the retained copy written by the UNPATCHED arms",
+      "expectation": "stays dirty until wiped",
+      "outcome": "CONFIRMED. 38/38 failed. Retrieval activity is real: 26 files and 2.07 GB were added during the pass and vLLM recorded a 76,800-token external hit delta, so the poisoned stores were genuinely re-served."
+    },
+    "honest_limit_on_this_comparison": "both variants are 38/38, so this pair confirms the poisoned-stays-dirty prediction but CANNOT isolate poison propagation from the ext>0 retrieve defect: with the gate applied both mechanisms are active at once. Isolating them needs an LMCache that restores hybrid state, which does not exist yet."
+  },
+  "exercise_gate_from_the_preregistration": {
+    "rule": "the experiment is EXERCISED only if the restart pass shows nonzero LMCache retrieval activity together with a nonempty L2 directory at pass start",
+    "verdict": "PASSED",
+    "evidence": {
+      "nonempty_L2_at_pass_start": {
+        "L1cold-post": [
+          "dir: /home/ubuntu/lmcachetest/l2/data",
+          "files: 44",
+          "bytes: 3509321728"
+        ],
+        "L1cold-pre": [
+          "dir: /home/ubuntu/lmcachetest/l2/data",
+          "files: 0",
+          "bytes: 0"
+        ],
+        "L2warm-post": [
+          "dir: /home/ubuntu/lmcachetest/l2/data",
+          "files: 596",
+          "bytes: 47535357952"
+        ],
+        "L3fresh-post": [
+          "dir: /home/ubuntu/lmcachetest/l2/data",
+          "files: 622",
+          "bytes: 49609048064"
+        ],
+        "L3fresh-pre": [
+          "dir: /home/ubuntu/lmcachetest/l2/data",
+          "files: 596",
+          "bytes: 47535357952"
+        ],
+        "L3poison-post": [
+          "dir: /home/ubuntu/lmcachetest/l2-poisoned/data",
+          "files: 60",
+          "bytes: 4785438720"
+        ],
+        "L3poison-pre": [
+          "dir: /home/ubuntu/lmcachetest/l2-poisoned/data",
+          "files: 34",
+          "bytes: 2711748608"
+        ],
+        "U1cold-post": [
+          "dir: /home/ubuntu/lmcachetest/l2/data",
+          "files: 32",
+          "bytes: 2552233984"
+        ],
+        "U1cold-pre": [
+          "dir: /home/ubuntu/lmcachetest/l2/data",
+          "files: 0",
+          "bytes: 0"
+        ],
+        "U2warm-post": [
+          "dir: /home/ubuntu/lmcachetest/l2/data",
+          "files: 34",
+          "bytes: 2711748608"
+        ],
+        "clean-retained": [
+          "dir: /home/ubuntu/lmcachetest/l2-clean/data",
+          "files: 596",
+          "bytes: 47535357952"
+        ],
+        "poisoned-retained": [
+          "dir: /home/ubuntu/lmcachetest/l2-poisoned/data",
+          "files: 34",
+          "bytes: 2711748608"
+        ]
+      },
+      "explicit_successful_retrieve_lines_in_the_MP_log": {
+        "restart_fresh": 76,
+        "patched_coldwarm": 158,
+        "unpatched_coldwarm": 0
+      },
+      "vllm_external_hit_deltas": {
+        "L3fresh": 76800,
+        "L3poison": 76800
+      },
+      "prometheus_gap_named": "the LMCache prometheus endpoint on 9331 served an EMPTY body on this build, so the pre-registration's first evidence option was unavailable; its second option (explicit retrieve lines in the MP log) plus vLLM's own external-hit counters carry the gate instead. The /status endpoint on 8330 worked and is what the L1 numbers below come from."
+    },
+    "note": "the UNPATCHED arms do NOT pass a retrieval-activity gate, and that is the finding rather than a defect of the run: they cannot, because the scheduler bug prevents any load from being requested."
+  },
+  "lmcache_L1_cpu_dram_config": {
+    "recorded_verbatim_and_reproducible_from_the_repo": "tools/lmcache-l1-2x.env",
+    "there_is_no_yaml": "LMCache 0.5.2+glm52dcp.4 in this image is configured by the wrapper's CLI argv, derived from environment variables. The env file above is the entire configuration and lives in the repo, not only on the host.",
+    "the_tier": "LMCache L1 is CPU pinned DRAM - lmcache/v1/distributed/memory_manager/l1_memory_manager.py line 2 is literally '\"\"\"CPU pinned-DRAM L1 memory manager.\"\"\"', and --l1-size-gb feeds L1MemoryManagerConfig.size_in_bytes. It is the MP-server spelling of local_cpu: true / max_local_cpu_size.",
+    "size_chosen": "160 GiB (--l1-size-gb 160, --l1-init-size-gb 8)",
+    "justification": "314 GB total, minus 21 GB of weights in page cache, minus ~40 GB resident for the engine core and two TP workers, minus ~10 GB OS and agents, leaves ~240 GB; 160 GiB = 172 GB keeps ~70 GB unallocated. Measured while serving: 184 of 314 GB used, 130 GB available, no swap pressure, no allocation failure.",
+    "measured_behaviour": {
+      "pool_total_bytes": 171798691840,
+      "pool_total_gib": 160.0,
+      "lazy_allocation_did_not_stay_lazy": "despite --l1-use-lazy defaulting True and --l1-init-size-gb 8, the LazyMemoryAllocator expanded in 10,240 MB steps to the full 163,840 MB within ~13 s of server start. Anyone sizing this knob should treat it as an up-front pinned reservation, not a ceiling.",
+      "peak_use": "596 objects, 44.27 GiB, 27.7 % of the pool at the end of the patched passes",
+      "l1_evictions": "none needed at this workload size",
+      "chunk_size": 1600,
+      "hash_algorithm": "blake3",
+      "status_endpoint": "http://127.0.0.1:8330/status, captured per named snapshot in out/lmcache-status-*.json"
+    },
+    "kv_transfer_config_vllm_saw": "KVTransferConfig(kv_connector='LMCacheMPConnector', kv_role='kv_both', kv_connector_extra_config={'lmcache.mp.host': 'tcp://127.0.0.1', 'lmcache.mp.port': 5796, 'lmcache.mp.mq_timeout': 60, 'lmcache.mp.heartbeat_interval': 5}, kv_load_failure_policy='fail')",
+    "command_json": {
+      "gate_patched_arm": {
+        "schema": "qwen38-lmcache-2x-command/1",
+        "arm": "L1cold",
+        "image": "vllm:gg-r34-tb21-sr1",
+        "description": "GATE PATCHED (local-inference-lab/vllm#403 overlay mounted read-only), LMCache kv_both live (L1 CPU pinned DRAM 160 GiB (init 8 GiB, lazy), L2 fs_native 256 GiB, chunk 1600, 2 GPU workers, LRU 0.90/0.10, prefetch retain). The prediction under test: 0/38.",
+        "gate_overlay_mounted": true,
+        "l2_host_dir": "/home/ubuntu/lmcachetest/l2",
+        "docker_argv": [
+          "docker",
+          "run",
+          "--rm",
+          "--name",
+          "lmcachetest-L1cold",
+          "--gpus",
+          "all",
+          "--ipc",
+          "host",
+          "--network",
+          "host",
+          "-v",
+          "/home/ubuntu/models:/models:ro",
+          "-v",
+          "/home/ubuntu/lmcachetest/l2:/l2:rw",
+          "-v",
+          "/home/ubuntu/lmcachetest/logs:/lmclogs:rw",
+          "-v",
+          "/home/ubuntu/lmcachetest/overlay/scheduler.patched.py:/opt/venv/lib/python3.12/site-packages/vllm/v1/core/sched/scheduler.py:ro",
+          "-e",
+          "HF_HUB_OFFLINE=1",
+          "-e",
+          "TRANSFORMERS_OFFLINE=1",
+          "-e",
+          "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:False",
+          "-e",
+          "VLLM_USE_V2_MODEL_RUNNER=1",
+          "-e",
+          "VLLM_EXL3_GRAPH_DECODE=1",
+          "-e",
+          "VLLM_EXL3_PREFILL_RECONSTRUCT_M=128",
+          "-e",
+          "PORT=8000",
+          "-e",
+          "LMCACHE_MODE=disk",
+          "-e",
+          "LMCACHE_CHUNK_SIZE=1600",
+          "-e",
+          "LMCACHE_L1_GB=160",
+          "-e",
+          "LMCACHE_L1_INIT_GB=8",
+          "-e",
+          "LMCACHE_L2_GB=256",
+          "-e",
+          "LMCACHE_L2_WORKERS=8",
+          "-e",
+          "LMCACHE_MAX_CPU_WORKERS=8",
+          "-e",
+          "LMCACHE_MAX_GPU_WORKERS=2",
+          "-e",
+          "LMCACHE_L2_PATH=/l2/data",
+          "-e",
+          "LMCACHE_PORT=5796",
+          "-e",
+          "LMCACHE_HTTP_PORT=8330",
+          "-e",
+          "LMCACHE_PROMETHEUS_PORT=9331",
+          "-e",
+          "LMCACHE_LOG=/lmclogs/lmcache-mp-patched.log",
+          "-e",
+          "LMCACHE_START_TIMEOUT=600",
+          "--entrypoint",
+          "/usr/local/bin/glm52-lmcache-wrapper.sh",
+          "vllm:gg-r34-tb21-sr1"
+        ],
+        "wrapper_argv": [
+          "/opt/venv/bin/vllm",
+          "serve",
+          "/models/qwen38-hyd",
+          "--served-model-name",
+          "qwen38",
+          "--tensor-parallel-size",
+          "2",
+          "--quantization",
+          "exl3",
+          "--quantization-config",
+          "{\"linear\":{\"weight\":\"mxfp8\"},\"ignore\":[\"re:.*visual\\\\..*\",\"re:.*in_proj_a$\",\"re:.*in_proj_b$\",\"re:.*in_proj_ba$\",\"re:.*mtp\\\\..*\",\"lm_head\"]}",
+          "--max-model-len",
+          "262144",
+          "--gpu-memory-utilization",
+          "0.92",
+          "--max-num-seqs",
+          "64",
+          "--kv-cache-dtype",
+          "fp8",
+          "--max-num-batched-tokens",
+          "2048",
+          "--enable-prefix-caching",
+          "--mamba-cache-mode",
+          "align",
+          "--speculative-config",
+          "{\"method\":\"mtp\",\"num_speculative_tokens\":3,\"num_speculative_tokens_per_batch_size\":[[1,4,3],[5,64,1]]}",
+          "--mm-processor-kwargs",
+          "{\"truncation\":false}",
+          "--compilation-config",
+          "{\"cudagraph_mode\":\"FULL_DECODE_ONLY\"}",
+          "--host",
+          "0.0.0.0",
+          "--port",
+          "8000"
+        ],
+        "note": "the wrapper appends --kv-transfer-config with LMCacheMPConnector kv_both (mq_timeout 60, heartbeat 5) when LMCACHE_MODE=disk, and execs the model server unchanged when LMCACHE_MODE=off"
+      },
+      "unpatched_arm": {
+        "schema": "qwen38-lmcache-2x-command/1",
+        "arm": "U1cold",
+        "image": "vllm:gg-r34-tb21-sr1",
+        "description": "UNPATCHED baseline: NO gate overlay, LMCache kv_both live (L1 CPU pinned DRAM 160 GiB (init 8 GiB, lazy), L2 fs_native 256 GiB, chunk 1600, 2 GPU workers, LRU 0.90/0.10, prefetch retain). Establishes whether this host + hydrated edition reproduces the 5090's 7/38 divergent-hit corruption at all; without it a clean patched arm is uninterpretable.",
+        "gate_overlay_mounted": false,
+        "l2_host_dir": "/home/ubuntu/lmcachetest/l2",
+        "docker_argv": [
+          "docker",
+          "run",
+          "--rm",
+          "--name",
+          "lmcachetest-U1cold",
+          "--gpus",
+          "all",
+          "--ipc",
+          "host",
+          "--network",
+          "host",
+          "-v",
+          "/home/ubuntu/models:/models:ro",
+          "-v",
+          "/home/ubuntu/lmcachetest/l2:/l2:rw",
+          "-v",
+          "/home/ubuntu/lmcachetest/logs:/lmclogs:rw",
+          "-e",
+          "HF_HUB_OFFLINE=1",
+          "-e",
+          "TRANSFORMERS_OFFLINE=1",
+          "-e",
+          "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:False",
+          "-e",
+          "VLLM_USE_V2_MODEL_RUNNER=1",
+          "-e",
+          "VLLM_EXL3_GRAPH_DECODE=1",
+          "-e",
+          "VLLM_EXL3_PREFILL_RECONSTRUCT_M=128",
+          "-e",
+          "PORT=8000",
+          "-e",
+          "LMCACHE_MODE=disk",
+          "-e",
+          "LMCACHE_CHUNK_SIZE=1600",
+          "-e",
+          "LMCACHE_L1_GB=160",
+          "-e",
+          "LMCACHE_L1_INIT_GB=8",
+          "-e",
+          "LMCACHE_L2_GB=256",
+          "-e",
+          "LMCACHE_L2_WORKERS=8",
+          "-e",
+          "LMCACHE_MAX_CPU_WORKERS=8",
+          "-e",
+          "LMCACHE_MAX_GPU_WORKERS=2",
+          "-e",
+          "LMCACHE_L2_PATH=/l2/data",
+          "-e",
+          "LMCACHE_PORT=5796",
+          "-e",
+          "LMCACHE_HTTP_PORT=8330",
+          "-e",
+          "LMCACHE_PROMETHEUS_PORT=9331",
+          "-e",
+          "LMCACHE_LOG=/lmclogs/lmcache-mp-unpatched.log",
+          "-e",
+          "LMCACHE_START_TIMEOUT=600",
+          "--entrypoint",
+          "/usr/local/bin/glm52-lmcache-wrapper.sh",
+          "vllm:gg-r34-tb21-sr1"
+        ],
+        "wrapper_argv": [
+          "/opt/venv/bin/vllm",
+          "serve",
+          "/models/qwen38-hyd",
+          "--served-model-name",
+          "qwen38",
+          "--tensor-parallel-size",
+          "2",
+          "--quantization",
+          "exl3",
+          "--quantization-config",
+          "{\"linear\":{\"weight\":\"mxfp8\"},\"ignore\":[\"re:.*visual\\\\..*\",\"re:.*in_proj_a$\",\"re:.*in_proj_b$\",\"re:.*in_proj_ba$\",\"re:.*mtp\\\\..*\",\"lm_head\"]}",
+          "--max-model-len",
+          "262144",
+          "--gpu-memory-utilization",
+          "0.92",
+          "--max-num-seqs",
+          "64",
+          "--kv-cache-dtype",
+          "fp8",
+          "--max-num-batched-tokens",
+          "2048",
+          "--enable-prefix-caching",
+          "--mamba-cache-mode",
+          "align",
+          "--speculative-config",
+          "{\"method\":\"mtp\",\"num_speculative_tokens\":3,\"num_speculative_tokens_per_batch_size\":[[1,4,3],[5,64,1]]}",
+          "--mm-processor-kwargs",
+          "{\"truncation\":false}",
+          "--compilation-config",
+          "{\"cudagraph_mode\":\"FULL_DECODE_ONLY\"}",
+          "--host",
+          "0.0.0.0",
+          "--port",
+          "8000"
+        ],
+        "note": "the wrapper appends --kv-transfer-config with LMCacheMPConnector kv_both (mq_timeout 60, heartbeat 5) when LMCACHE_MODE=disk, and execs the model server unchanged when LMCACHE_MODE=off"
+      }
+    }
+  },
+  "what_an_api_host_would_ask_for_hit_rate_and_ttft": {
+    "method": "the project's existing reuse method (probe reuse mode): two disjoint documents no correctness arm touched, at 32k and 128k, each issued cold then warm then warm-exact on the SAME live gate-patched LMCache server, with prefix-cache hits and queries read as DELTAS between the named per-request /metrics snapshots, never as absolutes. Arm-level snapshots: reuse-L1-pre and reuse-L1-post.",
+    "results": [
+      {
+        "length_tag": "32k",
+        "prompt_tokens": 32842,
+        "ttft_saved_s": 6.0847,
+        "ttft_speedup_cold_over_warm": 26.491,
+        "variants": [
+          {
+            "label": "cold",
+            "ttft_s": 6.3234,
+            "prefix_cache_hits_delta": 0.0,
+            "prefix_cache_queries_delta": 65684.0,
+            "prefix_cache_hit_rate_this_request": 0.0,
+            "corruption_detector_fired": false
+          },
+          {
+            "label": "warm",
+            "ttft_s": 0.2387,
+            "prefix_cache_hits_delta": 30400.0,
+            "prefix_cache_queries_delta": 32842.0,
+            "prefix_cache_hit_rate_this_request": 0.925644,
+            "corruption_detector_fired": true
+          },
+          {
+            "label": "warm-exact",
+            "ttft_s": 0.2296,
+            "prefix_cache_hits_delta": 30400.0,
+            "prefix_cache_queries_delta": 32842.0,
+            "prefix_cache_hit_rate_this_request": 0.925644,
+            "corruption_detector_fired": true
+          }
+        ]
+      },
+      {
+        "length_tag": "128k",
+        "prompt_tokens": 131146,
+        "ttft_saved_s": 31.903,
+        "ttft_speedup_cold_over_warm": 53.206,
+        "variants": [
+          {
+            "label": "cold",
+            "ttft_s": 32.5141,
+            "prefix_cache_hits_delta": 0.0,
+            "prefix_cache_queries_delta": 131146.0,
+            "prefix_cache_hit_rate_this_request": 0.0,
+            "corruption_detector_fired": false
+          },
+          {
+            "label": "warm",
+            "ttft_s": 0.6111,
+            "prefix_cache_hits_delta": 128000.0,
+            "prefix_cache_queries_delta": 131146.0,
+            "prefix_cache_hit_rate_this_request": 0.976011,
+            "corruption_detector_fired": false
+          },
+          {
+            "label": "warm-exact",
+            "ttft_s": 0.6124,
+            "prefix_cache_hits_delta": 128000.0,
+            "prefix_cache_queries_delta": 131146.0,
+            "prefix_cache_hit_rate_this_request": 0.976011,
+            "corruption_detector_fired": true
+          }
+        ]
+      }
+    ],
+    "arm_level_external_hit_delta": {
+      "external_prefix_cache_hits_total": 6400,
+      "external_prefix_cache_queries_total": 175164
+    },
+    "reading": "the economics are exactly what makes this feature attractive and exactly why the negative result matters. 32k: TTFT 6.3234 s cold -> 0.2387 s warm, 6.0847 s saved, 26.5x, hit rate 0.9256. 128k: 32.5141 s -> 0.6111 s, 31.903 s saved, 53.2x, hit rate 0.9760. THEN: the corruption detector fired on 3 of the 4 warm variants (32k warm, 32k warm-exact, 128k warm-exact). A 53x prefill win that returns U+FFFD is not a win, and an API host shipping it would serve silent HTTP 200 garbage to every cache-hitting request.",
+    "note_on_the_cold_32k_query_delta": "the 32k cold row's prefix_cache_queries delta is 65,684, EXACTLY twice its 32,842-token prompt, so that one request was counted twice by the queries counter; its hits delta is 0 either way, so the cold hit rate of 0.0 and the TTFT of 6.3234 s are unaffected. Mechanism uninstrumented, named not explained. The warm and warm-exact rows are clean single-request deltas (32,842 queries, 30,400 hits each) and the 0.9256 hit rate quoted is theirs."
+  },
+  "five_check_fidelity_gate_on_the_lmcache_enabled_server": {
+    "tool": "tools/tb21_gate.py, run from the driver VM ubuntu@151.185.34.98 against --base-url http://10.0.0.4:8000 while the gate-patched LMCache server was held up",
+    "receipt": "receipts/tb21-gate-2x-lmcache-l1.json",
+    "verdict": "PASS",
+    "checks": [
+      {
+        "name": "liveness",
+        "status": "PASS"
+      },
+      {
+        "name": "generation_proof",
+        "status": "PASS"
+      },
+      {
+        "name": "frozen_prompt_repeatability",
+        "status": "PASS"
+      },
+      {
+        "name": "needle_retrieval",
+        "status": "PASS"
+      },
+      {
+        "name": "mtp_sanity",
+        "status": "PASS"
+      }
+    ],
+    "needle_included": "yes - check 4 needle_retrieval at the full 262,144-token window, PASS",
+    "what_this_does_and_does_not_mean": "It means the server is alive, generates, is repeatable within the process, retrieves a needle from a 262k context and drafts with MTP. It does NOT mean fidelity: the probe measured 38/38 corrupted on this same server minutes earlier. The gate's needle is a single long request with no prefix reuse, so no check crosses a mamba block boundary of a cached prefix. Treat a gate PASS as necessary and nowhere near sufficient whenever a KV connector is attached.",
+    "action_item_this_creates": "the gate should gain a sixth check that reuses a prefix across a block boundary and scores the answer. Named here, not silently fixed, because changing the gate mid-campaign would break comparability with every gate receipt already published."
+  },
+  "unproven_until_gpu_ladder_closed_out": {
+    "item_1_gate_turns_L1cold_L2warm_to_0_of_38": "REFUTED. 37/38 and 38/38. The prediction was wrong because it assumed the scheduler path was the only defect.",
+    "item_2_L3_over_fresh_L2_clean_and_over_poisoned_L2_dirty": "HALF CONFIRMED. Poisoned L2 stayed dirty (38/38) as predicted. Fresh L2 was NOT clean (38/38): a poison-free L2 cannot be produced on this stack because every writer configuration is itself corrupt.",
+    "item_3_p1s1_zero_hit_L3restart_failure": "DID NOT RECUR in this form. p1s1 is the only request that PASSED in the patched L1cold arm (it is the first-ever request and can retrieve nothing), and it failed in both restart arms with a nonzero hit. The 5090's zero-hit-and-still-wrong anomaly did not reproduce; with the gate applied there is no longer a bounded regime in which it could be isolated. Still uninstrumented, still a named blind spot.",
+    "item_4_PR_4600_behavioural_effect": "PARTIALLY ANSWERED, negatively. The deployed wheel already carries the equivalent fail-closed guard (vLLM shows kv_load_failure_policy='fail'), so all six LMCache arms ran WITH that contract in place, and it prevented none of this. PR #4600 addresses retrieve FAILURES being ACKed as successes; here the retrieves SUCCEED and deliver KV without the matching recurrent state, which is outside its scope. Its CPU-proven contract stands; it is not a corruption fix either.",
+    "item_5_do_lmcache_retrieves_restore_hybrid_GDN_state_when_ext_gt_0": "ANSWERED: NO. This is the run's central new fact. ext > 0 was reached for the first time (59,200-76,800 token hit deltas) and every arm that reached it went to 37-38/38 with U+FFFD and acceptance median 0.0."
+  },
+  "how_to_reproduce": {
+    "harness": "tools/run_lmcache_test_2x.sh (the 5090's tools/run_lmcache_test.sh is deliberately untouched as the record of that run)",
+    "phases": "./run.sh stage; ./run.sh control; ./run.sh unpatched; ./run.sh patched (holds for the gate, signal with touch $W/gate-done); ./run.sh restart-fresh; ./run.sh restart-poison; ./run.sh receipt",
+    "work_dir_on_host": "/home/ubuntu/lmcachetest (out/, logs/, overlay/, l2/, l2-clean/, l2-poisoned/)",
+    "inputs_needed": "receipts/lmcache-frozen-prompts.json copied to $W/prompts.json, tools/apc_poison_probe.py and patches/gg-vllm-hybrid-divergent-hit-gate.patch copied to $W/tools/",
+    "fail_closed": "every sha256 is asserted before use and any mismatch aborts under set -euo pipefail; the overlay's gate is additionally asserted in the loaded bytecode; the prompts digest is re-derived from the body rather than trusted",
+    "assembled_raw": "$W/out/assembled.json on the host (3.3 MB: all 266 scored rows, all startup facts, all named metric snapshots, all L2 snapshots, divergence blocks)"
+  },
+  "not_claimed": [
+    "that LMCache is unusable for non-hybrid (pure full-attention) models - nothing here tests that, and the defect mechanism is specifically about the lagging recurrent state of a hybrid model",
+    "that a corrected LMCache could not deliver these TTFT wins - the 26.5x/53.2x figures show the prize is real; only this implementation's correctness is refuted",
+    "that the gate patch is wrong as scheduler code - it removes a genuinely unconditional wrong-contract path and its CPU gates stand; it is simply not sufficient, and its 0/38 prediction is refuted",
+    "cross-host comparability - every number here is from one host, one image, one probe. The 5090 comparison is legitimate only because the probe, prompts, thresholds, fail rule and 1600-token block geometry are identical; the model edition and parallelism are not, which is exactly why the unpatched arm pair was run",
+    "that 160 GiB is the optimal L1 size - it was never the binding constraint at this workload (27.7 % peak use)"
+  ],
+  "artifacts": {
+    "harness": "tools/run_lmcache_test_2x.sh",
+    "l1_config": "tools/lmcache-l1-2x.env",
+    "probe": "tools/apc_poison_probe.py (unchanged)",
+    "frozen_prompts": "receipts/lmcache-frozen-prompts.json",
+    "gate_patch": "patches/gg-vllm-hybrid-divergent-hit-gate.patch",
+    "fidelity_gate_receipt": "receipts/tb21-gate-2x-lmcache-l1.json",
+    "prior_receipts_this_extends": [
+      "receipts/lmcache-reuse-test.json",
+      "receipts/lmcache-fix.json",
+      "receipts/gg-scheduler-fix-filing.json",
+      "receipts/tb21-image-sr1.json"
+    ],
+    "docs": "docs/46-tb21-speedrun-plan.md section 22"
+  }
+}

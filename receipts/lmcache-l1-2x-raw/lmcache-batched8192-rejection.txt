@@ -1,0 +1,52 @@
+(Worker_TP0 pid=1168) INFO 08-17 04:02:43 [gpu_worker.py:632] CUDA graph memory profiling is enabled (default since v0.21.0). The current --gpu-memory-utilization=0.9200 is equivalent to --gpu-memory-utilization=0.8973 without CUDA graph memory profiling. To maintain the same effective KV cache size as before, increase --gpu-memory-utilization to 0.9427. To disable, set VLLM_MEMORY_PROFILER_ESTIMATE_CUDAGRAPHS=0.
+(Worker_TP1 pid=1181) INFO 08-17 04:02:43 [gpu_worker.py:632] CUDA graph memory profiling is enabled (default since v0.21.0). The current --gpu-memory-utilization=0.9200 is equivalent to --gpu-memory-utilization=0.8973 without CUDA graph memory profiling. To maintain the same effective KV cache size as before, increase --gpu-memory-utilization to 0.9427. To disable, set VLLM_MEMORY_PROFILER_ESTIMATE_CUDAGRAPHS=0.
+(EngineCore pid=932) WARNING 08-17 04:02:43 [kv_cache_utils.py:1298] Add 3 padding layers, may waste at most 6.25% KV cache memory
+(EngineCore pid=932) INFO 08-17 04:02:43 [kv_cache_utils.py:2475] GPU KV cache size: 4,081,538 tokens
+(EngineCore pid=932) INFO 08-17 04:02:43 [kv_cache_utils.py:2476] Maximum concurrency for 262,144 tokens per request: 15.57x
+(Worker_TP0 pid=1168) INFO 08-17 04:02:43 [factory.py:62] Creating v1 connector with name: LMCacheMPConnector and engine_id: e9de8941-ad09-4ecf-a97f-fe083a90e37b
+(Worker_TP0 pid=1168) WARNING 08-17 04:02:43 [base.py:190] Initializing KVConnectorBase_V1. This API is experimental and subject to change in the future as we iterate the design.
+(Worker_TP1 pid=1181) INFO 08-17 04:02:43 [factory.py:62] Creating v1 connector with name: LMCacheMPConnector and engine_id: e9de8941-ad09-4ecf-a97f-fe083a90e37b
+(Worker_TP1 pid=1181) WARNING 08-17 04:02:43 [base.py:190] Initializing KVConnectorBase_V1. This API is experimental and subject to change in the future as we iterate the design.
+(Worker_TP0 pid=1168) ERROR 08-17 04:02:43 [multiproc_executor.py:1022] WorkerProc hit an exception.
+(Worker_TP0 pid=1168) ERROR 08-17 04:02:43 [multiproc_executor.py:1022] Traceback (most recent call last):
+(Worker_TP0 pid=1168) ERROR 08-17 04:02:43 [multiproc_executor.py:1022]   File "/opt/venv/lib/python3.12/site-packages/vllm/v1/executor/multiproc_executor.py", line 1014, in worker_busy_loop
+(Worker_TP0 pid=1168) ERROR 08-17 04:02:43 [multiproc_executor.py:1022]     output = func(*args, **kwargs)
+(Worker_TP0 pid=1168) ERROR 08-17 04:02:43 [multiproc_executor.py:1022]              ^^^^^^^^^^^^^^^^^^^^^
+(Worker_TP0 pid=1168) ERROR 08-17 04:02:43 [multiproc_executor.py:1022]   File "/opt/venv/lib/python3.12/site-packages/vllm/v1/worker/worker_base.py", line 325, in initialize_from_config
+(Worker_TP0 pid=1168) ERROR 08-17 04:02:43 [multiproc_executor.py:1022]     self.worker.initialize_from_config(kv_cache_config)  # type: ignore
+(Worker_TP0 pid=1168) ERROR 08-17 04:02:43 [multiproc_executor.py:1022]     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(Worker_TP0 pid=1168) ERROR 08-17 04:02:43 [multiproc_executor.py:1022]   File "/opt/venv/lib/python3.12/site-packages/vllm/tracing/otel.py", line 178, in sync_wrapper
+(Worker_TP0 pid=1168) ERROR 08-17 04:02:43 [multiproc_executor.py:1022]     return func(*args, **kwargs)
+(Worker_TP0 pid=1168) ERROR 08-17 04:02:43 [multiproc_executor.py:1022]            ^^^^^^^^^^^^^^^^^^^^^
+(Worker_TP0 pid=1168) ERROR 08-17 04:02:43 [multiproc_executor.py:1022]   File "/opt/venv/lib/python3.12/site-packages/vllm/v1/worker/gpu_worker.py", line 786, in initialize_from_config
+(Worker_TP0 pid=1168) ERROR 08-17 04:02:43 [multiproc_executor.py:1022]     ensure_kv_transfer_initialized(self.vllm_config, kv_cache_config)
+(Worker_TP0 pid=1168) ERROR 08-17 04:02:43 [multiproc_executor.py:1022]   File "/opt/venv/lib/python3.12/site-packages/vllm/distributed/kv_transfer/kv_transfer_state.py", line 90, in ensure_kv_transfer_initialized
+(Worker_TP0 pid=1168) ERROR 08-17 04:02:43 [multiproc_executor.py:1022]     _KV_CONNECTOR_AGENT = KVConnectorFactory.create_connector(
+(Worker_TP0 pid=1168) ERROR 08-17 04:02:43 [multiproc_executor.py:1022]                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(Worker_TP0 pid=1168) ERROR 08-17 04:02:43 [multiproc_executor.py:1022]   File "/opt/venv/lib/python3.12/site-packages/vllm/distributed/kv_transfer/kv_connector/factory.py", line 75, in create_connector
+(Worker_TP0 pid=1168) ERROR 08-17 04:02:43 [multiproc_executor.py:1022]     return connector_cls(config, role, kv_cache_config)
+(Worker_TP0 pid=1168) ERROR 08-17 04:02:43 [multiproc_executor.py:1022]            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(Worker_TP0 pid=1168) ERROR 08-17 04:02:43 [multiproc_executor.py:1022]   File "/opt/venv/lib/python3.12/site-packages/lmcache/integration/vllm/lmcache_mp_connector.py", line 617, in __init__
+(Worker_TP0 pid=1168) ERROR 08-17 04:02:43 [multiproc_executor.py:1022]     validate_mamba_step_alignment(vllm_config)
+(Worker_TP0 pid=1168) ERROR 08-17 04:02:43 [multiproc_executor.py:1022]   File "/opt/venv/lib/python3.12/site-packages/lmcache/integration/vllm/lmcache_mp_connector.py", line 166, in validate_mamba_step_alignment
+(Worker_TP0 pid=1168) ERROR 08-17 04:02:43 [multiproc_executor.py:1022]     raise ValueError(
+(Worker_TP0 pid=1168) ERROR 08-17 04:02:43 [multiproc_executor.py:1022] ValueError: Mamba-hybrid models with LMCache require block_size <= max_num_batched_tokens < 2 * block_size so every prefill step advances exactly one block and every block boundary gets a state snapshot; got max_num_batched_tokens=8192, block_size=1600. Set --max-num-batched-tokens 1600.
+(Worker_TP0 pid=1168) ERROR 08-17 04:02:43 [multiproc_executor.py:1022] Traceback (most recent call last):
+(Worker_TP0 pid=1168) ERROR 08-17 04:02:43 [multiproc_executor.py:1022]   File "/opt/venv/lib/python3.12/site-packages/vllm/v1/executor/multiproc_executor.py", line 1014, in worker_busy_loop
+(Worker_TP0 pid=1168) ERROR 08-17 04:02:43 [multiproc_executor.py:1022]     output = func(*args, **kwargs)
+(Worker_TP0 pid=1168) ERROR 08-17 04:02:43 [multiproc_executor.py:1022]              ^^^^^^^^^^^^^^^^^^^^^
+(Worker_TP0 pid=1168) ERROR 08-17 04:02:43 [multiproc_executor.py:1022]   File "/opt/venv/lib/python3.12/site-packages/vllm/v1/worker/worker_base.py", line 325, in initialize_from_config
+(Worker_TP0 pid=1168) ERROR 08-17 04:02:43 [multiproc_executor.py:1022]     self.worker.initialize_from_config(kv_cache_config)  # type: ignore
+(Worker_TP0 pid=1168) ERROR 08-17 04:02:43 [multiproc_executor.py:1022]     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(Worker_TP0 pid=1168) ERROR 08-17 04:02:43 [multiproc_executor.py:1022]   File "/opt/venv/lib/python3.12/site-packages/vllm/tracing/otel.py", line 178, in sync_wrapper
+(Worker_TP0 pid=1168) ERROR 08-17 04:02:43 [multiproc_executor.py:1022]     return func(*args, **kwargs)
+(Worker_TP0 pid=1168) ERROR 08-17 04:02:43 [multiproc_executor.py:1022]            ^^^^^^^^^^^^^^^^^^^^^
+(Worker_TP0 pid=1168) ERROR 08-17 04:02:43 [multiproc_executor.py:1022]   File "/opt/venv/lib/python3.12/site-packages/vllm/v1/worker/gpu_worker.py", line 786, in initialize_from_config
+(Worker_TP0 pid=1168) ERROR 08-17 04:02:43 [multiproc_executor.py:1022]     ensure_kv_transfer_initialized(self.vllm_config, kv_cache_config)
+(Worker_TP0 pid=1168) ERROR 08-17 04:02:43 [multiproc_executor.py:1022]   File "/opt/venv/lib/python3.12/site-packages/vllm/distributed/kv_transfer/kv_transfer_state.py", line 90, in ensure_kv_transfer_initialized
+(Worker_TP0 pid=1168) ERROR 08-17 04:02:43 [multiproc_executor.py:1022]     _KV_CONNECTOR_AGENT = KVConnectorFactory.create_connector(
+(Worker_TP0 pid=1168) ERROR 08-17 04:02:43 [multiproc_executor.py:1022]                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(Worker_TP0 pid=1168) ERROR 08-17 04:02:43 [multiproc_executor.py:1022]   File "/opt/venv/lib/python3.12/site-packages/vllm/distributed/kv_transfer/kv_connector/factory.py", line 75, in create_connector
+(Worker_TP0 pid=1168) ERROR 08-17 04:02:43 [multiproc_executor.py:1022]     return connector_cls(config, role, kv_cache_config)
+(Worker_TP0 pid=1168) ERROR 08-17 04:02:43 [multiproc_executor.py:1022]            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(Worker_TP0 pid=1168) ERROR 08-17 04:02:43 [multiproc_executor.py:1022] ValueError: Mamba-hybrid models with LMCache require block_size <= max_num_batched_tokens < 2 * block_size so every prefill step advances exactly one block and every block boundary gets a state snapshot; got max_num_batched_tokens=8192, block_size=1600. Set --max-num-batched-tokens 1600.

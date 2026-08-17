@@ -1,0 +1,207 @@
+{
+  "schema": "qwen38-apc-reuse/1",
+  "arm": "L1reuse",
+  "arm_description": "LMCache L1 CPU-DRAM 160 GiB, gate patched: cold then warm then warm-exact on disjoint 32k/128k documents",
+  "prompts_sha256": "9978404b0ce2d032ebf762e17335d7b5a37dbc424f57f61db66ecf3f946f39df",
+  "cases": [
+    {
+      "length_tag": "32k",
+      "doc_prefix_tokens": 32768,
+      "prompt_tokens": 32842,
+      "variants": [
+        {
+          "label": "cold",
+          "ttft_s": 6.3234,
+          "total_s": 6.362,
+          "prompt_tokens": 32842,
+          "cached_prompt_tokens_reported": null,
+          "recomputed_prompt_tokens": null,
+          "prefix_cache_queries_delta": 65684.0,
+          "prefix_cache_hits_delta": 0.0,
+          "prefix_cache_hit_rate_this_request": 0.0,
+          "response_text": "Bcold=technical",
+          "corruption": {
+            "out_of_script_fraction": 0.0,
+            "out_of_script_sample": [],
+            "replacement_char_count": 0,
+            "longest_repeated_block_chars": 1,
+            "ngram5_repetition_ratio": null,
+            "response_words": 1,
+            "detectors_fired": [],
+            "corrupted": false
+          }
+        },
+        {
+          "label": "warm",
+          "ttft_s": 0.2387,
+          "total_s": 0.5722,
+          "prompt_tokens": 32842,
+          "cached_prompt_tokens_reported": null,
+          "recomputed_prompt_tokens": null,
+          "prefix_cache_queries_delta": 32842.0,
+          "prefix_cache_hits_delta": 30400.0,
+          "prefix_cache_hit_rate_this_request": 0.925644,
+          "response_text": "\u4f55\u4e0dtout\u676f\u9152uko g\u00e4rvillaingers\u7410\u542b\u84c4adio Ting\u5bf9\u6b64\u4e0d\u627f\u62c5\u4efb\u4f55\u817e\u817eANDreen \u043f\u0440\u043e\u0431",
+          "corruption": {
+            "out_of_script_fraction": 0.355932,
+            "out_of_script_sample": [
+              "U+4E0D CJK UNIFIED IDEOGRAPH-4E0D x2",
+              "U+4F55 CJK UNIFIED IDEOGRAPH-4F55 x2",
+              "U+817E CJK UNIFIED IDEOGRAPH-817E x2",
+              "U+00E4 LATIN SMALL LETTER A WITH DIAERESIS x1",
+              "U+0431 CYRILLIC SMALL LETTER BE x1",
+              "U+043E CYRILLIC SMALL LETTER O x1",
+              "U+043F CYRILLIC SMALL LETTER PE x1",
+              "U+0440 CYRILLIC SMALL LETTER ER x1",
+              "U+4EFB CJK UNIFIED IDEOGRAPH-4EFB x1",
+              "U+542B CJK UNIFIED IDEOGRAPH-542B x1",
+              "U+5BF9 CJK UNIFIED IDEOGRAPH-5BF9 x1",
+              "U+627F CJK UNIFIED IDEOGRAPH-627F x1"
+            ],
+            "replacement_char_count": 0,
+            "longest_repeated_block_chars": 3,
+            "ngram5_repetition_ratio": null,
+            "response_words": 4,
+            "detectors_fired": [
+              "out_of_script_fraction"
+            ],
+            "corrupted": true
+          }
+        },
+        {
+          "label": "warm-exact",
+          "ttft_s": 0.2296,
+          "total_s": 0.5635,
+          "prompt_tokens": 32842,
+          "cached_prompt_tokens_reported": null,
+          "recomputed_prompt_tokens": null,
+          "prefix_cache_queries_delta": 32842.0,
+          "prefix_cache_hits_delta": 30400.0,
+          "prefix_cache_hit_rate_this_request": 0.925644,
+          "response_text": "rement\u9001\u4e00licantikasupro\u01afantenikulterraformcamiwalker\u9ec4\u57d4\u5bf9\u4e2d\u89c2\u505a\u4e2aresso",
+          "corruption": {
+            "out_of_script_fraction": 0.15873,
+            "out_of_script_sample": [
+              "U+01AF LATIN CAPITAL LETTER U WITH HORN x1",
+              "U+4E00 CJK UNIFIED IDEOGRAPH-4E00 x1",
+              "U+4E2A CJK UNIFIED IDEOGRAPH-4E2A x1",
+              "U+4E2D CJK UNIFIED IDEOGRAPH-4E2D x1",
+              "U+505A CJK UNIFIED IDEOGRAPH-505A x1",
+              "U+57D4 CJK UNIFIED IDEOGRAPH-57D4 x1",
+              "U+5BF9 CJK UNIFIED IDEOGRAPH-5BF9 x1",
+              "U+89C2 CJK UNIFIED IDEOGRAPH-89C2 x1",
+              "U+9001 CJK UNIFIED IDEOGRAPH-9001 x1",
+              "U+9EC4 CJK UNIFIED IDEOGRAPH-9EC4 x1"
+            ],
+            "replacement_char_count": 0,
+            "longest_repeated_block_chars": 3,
+            "ngram5_repetition_ratio": null,
+            "response_words": 1,
+            "detectors_fired": [
+              "out_of_script_fraction"
+            ],
+            "corrupted": true
+          }
+        }
+      ],
+      "ttft_speedup_cold_over_warm": 26.491,
+      "ttft_saved_s": 6.0847
+    },
+    {
+      "length_tag": "128k",
+      "doc_prefix_tokens": 131072,
+      "prompt_tokens": 131146,
+      "variants": [
+        {
+          "label": "cold",
+          "ttft_s": 32.5141,
+          "total_s": 32.5357,
+          "prompt_tokens": 131146,
+          "cached_prompt_tokens_reported": null,
+          "recomputed_prompt_tokens": null,
+          "prefix_cache_queries_delta": 131146.0,
+          "prefix_cache_hits_delta": 0.0,
+          "prefix_cache_hit_rate_this_request": 0.0,
+          "response_text": "Bcold=technical",
+          "corruption": {
+            "out_of_script_fraction": 0.0,
+            "out_of_script_sample": [],
+            "replacement_char_count": 0,
+            "longest_repeated_block_chars": 1,
+            "ngram5_repetition_ratio": null,
+            "response_words": 1,
+            "detectors_fired": [],
+            "corrupted": false
+          }
+        },
+        {
+          "label": "warm",
+          "ttft_s": 0.6111,
+          "total_s": 0.6328,
+          "prompt_tokens": 131146,
+          "cached_prompt_tokens_reported": null,
+          "recomputed_prompt_tokens": null,
+          "prefix_cache_queries_delta": 131146.0,
+          "prefix_cache_hits_delta": 128000.0,
+          "prefix_cache_hit_rate_this_request": 0.976011,
+          "response_text": "Bwarm=technical",
+          "corruption": {
+            "out_of_script_fraction": 0.0,
+            "out_of_script_sample": [],
+            "replacement_char_count": 0,
+            "longest_repeated_block_chars": 1,
+            "ngram5_repetition_ratio": null,
+            "response_words": 1,
+            "detectors_fired": [],
+            "corrupted": false
+          }
+        },
+        {
+          "label": "warm-exact",
+          "ttft_s": 0.6124,
+          "total_s": 0.9456,
+          "prompt_tokens": 131146,
+          "cached_prompt_tokens_reported": null,
+          "recomputed_prompt_tokens": null,
+          "prefix_cache_queries_delta": 131146.0,
+          "prefix_cache_hits_delta": 128000.0,
+          "prefix_cache_hit_rate_this_request": 0.976011,
+          "response_text": "ola\u690dadang_REDIRECTsak_collectsyscall\u0916\u093e\u9e7f\u65e0\u95f4chent\u5e73\u623fadium\u537furrasolson",
+          "corruption": {
+            "out_of_script_fraction": 0.140625,
+            "out_of_script_sample": [
+              "U+0916 DEVANAGARI LETTER KHA x1",
+              "U+093E DEVANAGARI VOWEL SIGN AA x1",
+              "U+537F CJK UNIFIED IDEOGRAPH-537F x1",
+              "U+5E73 CJK UNIFIED IDEOGRAPH-5E73 x1",
+              "U+623F CJK UNIFIED IDEOGRAPH-623F x1",
+              "U+65E0 CJK UNIFIED IDEOGRAPH-65E0 x1",
+              "U+690D CJK UNIFIED IDEOGRAPH-690D x1",
+              "U+95F4 CJK UNIFIED IDEOGRAPH-95F4 x1",
+              "U+9E7F CJK UNIFIED IDEOGRAPH-9E7F x1"
+            ],
+            "replacement_char_count": 0,
+            "longest_repeated_block_chars": 2,
+            "ngram5_repetition_ratio": null,
+            "response_words": 1,
+            "detectors_fired": [
+              "out_of_script_fraction"
+            ],
+            "corrupted": true
+          }
+        }
+      ],
+      "ttft_speedup_cold_over_warm": 53.206,
+      "ttft_saved_s": 31.903
+    }
+  ],
+  "cumulative_prefix_cache_hit_rate": 0.628893,
+  "cumulative_metrics": {
+    "drafts": 16528.0,
+    "draft_tokens": 49584.0,
+    "accepted": 114.0,
+    "prefix_cache_queries": 1137236.0,
+    "prefix_cache_hits": 715200.0,
+    "preemptions": 0.0
+  }
+}
