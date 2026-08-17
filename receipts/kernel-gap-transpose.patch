@@ -1,0 +1,44 @@
+diff --git a/vllm/model_executor/layers/linear.py b/vllm/model_executor/layers/linear.py
+index f1ec65603..4da60b5e4 100644
+--- a/vllm/model_executor/layers/linear.py
++++ b/vllm/model_executor/layers/linear.py
+@@ -220,6 +220,27 @@ class UnquantizedLinearMethod(LinearMethodBase):
+             from vllm.model_executor.layers.utils import dispatch_cpu_unquantized_gemm
+ 
+             dispatch_cpu_unquantized_gemm(layer, remove_weight=True)
++        # Tiny-N tall-K linears (e.g. Qwen3.5 GDN in_proj_ba, 5120x96) hand cuBLAS
++        # a TN problem at decode row counts and get a 16x16 wmma tile kernel at
++        # ~33 GB/s effective (20-28 us/call). The identical product with the weight
++        # pre-transposed to K x N runs 3.6x faster (5.6 us). Keep an NN copy for
++        # these shapes; ~1 MB/layer. Measured on RTX PRO 6000 Blackwell SE:
++        # +8.0 % end-to-end single-stream decode on Qwen3.8-27B (48 GDN layers).
++        import os
++
++        if (
++            os.environ.get("VLLM_TINY_N_MM_TRANSPOSE", "1") != "0"
++            and getattr(layer, "weight", None) is not None
++            and layer.weight.dim() == 2
++            and layer.weight.shape[0] <= 128
++            and layer.weight.shape[1] >= 4096
++            and layer.weight.is_cuda
++        ):
++            layer.register_buffer(
++                "weight_kn",
++                layer.weight.data.t().contiguous(),
++                persistent=False,
++            )
+ 
+     def apply(
+         self,
+@@ -229,6 +250,11 @@ class UnquantizedLinearMethod(LinearMethodBase):
+     ) -> torch.Tensor:
+         if envs.VLLM_BATCH_INVARIANT and current_platform.is_cuda_alike():
+             return linear_batch_invariant(x, layer.weight, bias)
++        w_kn = getattr(layer, "weight_kn", None)
++        if w_kn is not None and bias is None:
++            return torch.mm(x.reshape(-1, x.shape[-1]), w_kn).view(
++                *x.shape[:-1], w_kn.shape[1]
++            )
+         return dispatch_unquantized_gemm()(layer, x, layer.weight, bias)
+ 
+ 
