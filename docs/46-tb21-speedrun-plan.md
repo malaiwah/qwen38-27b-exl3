@@ -415,3 +415,63 @@ rather than asserted from the plan.
 significant unclaimed decode win is the V2 runner (staged, A/B pending), the KV headroom is free but
 irrelevant to TB specifically, and the largest *TB-score* lever (reasoning effort) is deliberately left
 at default to protect comparability.
+
+
+## 14. MEASURED: the 1x knee ladder, and what it says about pass 1
+
+Run 2026-08-17 on `jl-vm-473319` (1x RTX PRO 6000 96 GB, driver 595.58.03), sr1 image, native
+262,144-token window, graph decode on, MTP-3, fp8 KV, prefix caching on, `max_num_seqs 64` as a search
+ceiling. Seed 46, 3 repeats per cell, 7 rungs x 3 shapes, **zero refused or errored requests in all 21
+cells**. Full per-cell data with verbatim `/metrics` snapshots:
+[`tb21-ladder-1x-hyd.json`](../receipts/tb21-ladder-1x-hyd.json). Chart:
+`assets/tb21-knee-1x-{light,dark}.svg`.
+
+| shape | C1 | C2 | C4 | C8 | C16 | C32 | C64 | **knee** |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| **512-in/256-out** per-req tok/s | **129.57** | 87.76 | 104.25 | 65.97 | 36.95 | 23.73 | 15.16 | **C8** (50.9 %) |
+| aggregate tok/s | 129.55 | 174.69 | 311.79 | 413.98 | 485.00 | 664.56 | **828.59** | |
+| **4k-in/1k-out** per-req tok/s | **95.29** | 85.21 | 71.78 | 46.98 | 24.87 | 14.53 | 9.39 | **C4** (75.3 %) |
+| aggregate tok/s | 95.28 | 168.87 | 279.63 | 344.70 | 381.55 | 455.31 | **584.32** | |
+| **30k-in/2k-out** per-req tok/s | **77.29** | 60.59 | 43.79 | 23.38 | 12.78 | 6.29 | 3.38 | **C4** (56.7 %) |
+| aggregate tok/s | 77.28 | 113.02 | 160.43 | 179.12 | **195.37** | 185.12 | 187.66 | |
+
+### Four findings, in order of consequence
+
+**1. The knee for TB's actual shape is C4 - and pass 1 ran at n=16.** A TB turn measured ~4,600 prompt
+tokens with reasoning bursts to 15,577 completion tokens, i.e. squarely between the 4k and 30k shapes,
+both of which knee at **C4**. Pass 1 ran `-n 16`, **four times past the knee**, where per-request
+throughput is only **26 %** of single-stream. Quantified against the measured burst: 15,577 tokens at
+C16's 24.87 tok/s is **10.4 minutes for one turn**; at C4's 71.78 tok/s it is **3.6 minutes**. Task
+timeout budgets are minutes-scale. **That is very likely a major cause of pass 1's 54-of-58
+`AgentTimeoutError` failures** - we were converting capability into clock by over-subscribing the card.
+This is a correction to the campaign's baseline `-n`, not a criticism of the pass: `-n 16` was inherited
+from the TB pins, never measured, which is exactly why the owner ordered a knee search before scaling.
+
+**2. On long contexts, aggregate throughput has a hard ceiling, not a tradeoff.** The 30k shape peaks at
+**C16 (195.37 tok/s)** and then *falls* - 185.12 at C32, 187.66 at C64. Past C16 on long prompts, extra
+concurrency buys **nothing at all** while per-request collapses to 4.4 % of single-stream. The
+"aggregate keeps climbing past the knee" tradeoff that holds on short prompts does **not** hold here.
+
+**3. TTFT becomes the binding constraint before decode does.** 30k-in at C64: TTFT p50 **455.8 s**, p95
+**575.0 s** - over seven minutes before the first token. 4k-in at C32/C64: 22.0 s / 52.2 s. For an agent
+with minute-scale per-task budgets, high concurrency fails the task during *prefill*, before decode
+speed matters at all. Any tier's `-n` must respect TTFT, not just per-request decode.
+
+**4. MTP acceptance is healthy and concurrency-stable, and the server never refused a request.**
+Acceptance ranges 0.54-0.94 (highest **0.9417** at C1 on the short shape, ~0.62 typical on longer
+shapes) with no systematic collapse as concurrency rises. Zero refusals/errors across all 21 cells
+including 64 concurrent 30k-token prompts - a robustness result worth stating for an API-hoster
+audience.
+
+### Consequences for the campaign
+
+- **Baseline `-n` per replica is 4, not 16**, for any tier whose workload resembles TB. Short-prompt
+  workloads may use C8.
+- **DP-K scaling should multiply replicas at n=4**, not raise n per replica: 8 replicas x n=4 = 32 global
+  concurrent trials, which is more useful than 2 replicas x n=16 because it keeps every request above the
+  per-request floor.
+- **A pass-1 re-run at n=4 is now the highest-value TB measurement available** - if the timeout rate
+  drops sharply, the 31/89 headline was a serving artifact rather than a capability ceiling, and that
+  matters for every number we publish about this model as an agent.
+- The 50 %-of-single-stream rule is the owner's, fixed before the sweep; both it and
+  max-aggregate-among-eligible are computed in the receipt so a reader can apply a different floor.
