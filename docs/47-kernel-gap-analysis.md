@@ -785,3 +785,35 @@ be bit-clean (validates the clean chain); (ii) forced APC-hit-over-expired-lmcac
 poison; (iii) the clamp must convert (ii) to clean-or-miss.
 
 ---
+## F12 addendum — MEASURED (live repro, local card): the dominant defect is fp8-KV transfer, the state machinery itself is sound, and a third mechanism exists
+
+Three-arm repro with #403 applied throughout (`receipts/kernel-gap-lmcache-repro.json`; rootfs
+restored md5-verified):
+
+1. **fp8 KV (the served profile), cold single-writer round-trip → catastrophic corruption**
+   (garbage from token 1, mean |Δlogprob| 3.52 — the 2x's 4.4 class). No APC interleaving, no TTL
+   games, no poisoning precondition: store → evict APC → retrieve is sufficient to corrupt.
+2. **bf16 KV, identical sequence → BIT-CLEAN (Δ = 0.0000).** The 48 GDN state pages stored,
+   retrieved and integrated exactly — F12's "the state pages were in the payload all along" is now
+   *measured*, and the F12 clean-chain claim is validated.
+3. **bf16 KV + a partial-APC-hit request interleaved between store and retrieve → plausible-but-
+   wrong text (Δ 0.711), reproduced twice, NOT fixed by the store-side null clamp** — and the
+   server ledger shows the store-under-miss precondition never fired (read TTL is not since-write
+   expiry), so this is a *third* mechanism in the partial-retrieve path (retrieve-side null-page
+   scribble aliasing a live state read, or mid-sequence state landing under partial `vllm_hit`).
+   The F12 store-poisoning hole stays source-true but measured-insufficient to explain this arm;
+   the ~20-line clamp is archived as hygiene (`receipts/kernel-gap-lmcache-store-clamp.patch`).
+
+Operational extra: restarting the MP server under a live engine kills it (`No GPU context
+registered`, EngineDeadError) — there is no reconnect.
+
+**Consequence:** the served profile runs `--kv-cache-dtype fp8`, so LMCache could never have
+produced clean reuse on this stack regardless of #403 and regardless of GDN state — arm 1 explains
+the 2x's 38/38 more directly than state restoration does. The DO-NOT-ENABLE verdict stands with a
+finite fix list: (a) root-cause fp8 transfer (fake-view byte arithmetic for 1-byte dtypes vs
+unregistered scale surfaces — blocking); (b) the partial-hit interleaving defect at bf16; (c) MP
+reconnect. Also newly measured: the connector *requires* APC+align (`validate_kv_cache_groups`
+refuses `mamba_cache_mode='none'`), and at bf16 KV the align block is 800, which forces
+`--max-num-batched-tokens` into [800, 1599] — a serving-profile constraint nobody had written down.
+
+---

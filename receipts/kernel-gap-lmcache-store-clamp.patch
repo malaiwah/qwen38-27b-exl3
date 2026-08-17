@@ -1,0 +1,33 @@
+--- /var/tmp/work/lmcache_mp_connector.py.r34.bak
++++ /var/tmp/gg-rootfs/opt/venv/lib/python3.12/site-packages/lmcache/integration/vllm/lmcache_mp_connector.py
+@@ -397,6 +397,30 @@
+         if num_chunks >= 1:
+             start_token_idx = tracker.num_stored_tokens
+             end_token_idx = start_token_idx + num_chunks * lmcache_tokens_per_chunk
++            # KERNEL-GAP F12 CLAMP (docs/47): never store a chunk whose covering
++            # block id in ANY engine group is the shared null block (id 0). In
++            # mamba_cache_mode='align' the recurrent-state rows inside a
++            # vLLM-APC-hit span are null placeholders whose page bytes are stale
++            # garbage (the null page is never zeroed); storing them under a valid
++            # prefix-hash key poisons the cache for every later retrieve.
++            for group_idx, tokens_per_block in enumerate(group_tokens_per_block):
++                ids = tracker.allocated_block_ids.get(group_idx, [])
++                first_block = start_token_idx // tokens_per_block
++                last_block = min(
++                    (end_token_idx + tokens_per_block - 1) // tokens_per_block,
++                    len(ids),
++                )
++                for block_pos in range(first_block, last_block):
++                    if ids[block_pos] == 0:
++                        null_token = block_pos * tokens_per_block
++                        end_token_idx = min(
++                            end_token_idx,
++                            (null_token // lmcache_tokens_per_chunk)
++                            * lmcache_tokens_per_chunk,
++                        )
++                        break
++            if end_token_idx <= start_token_idx:
++                return None
+             block_ids = slice_block_ids_per_group(
+                 tracker.allocated_block_ids,
+                 group_tokens_per_block,
