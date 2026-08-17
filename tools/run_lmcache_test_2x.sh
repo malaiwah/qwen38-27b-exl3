@@ -671,6 +671,32 @@ phase_restart() {
   say "$arm complete"
 }
 
+# Bring one arm's server up and hold it, scoring nothing. Used to validate external tools
+# against a known-good and a known-bad configuration - e.g. tb21_gate.py's check 6, which
+# must PASS on the L0 (LMCache-off) server and FAIL on a patched LMCache server. Signal
+# completion with: touch $W/serve-done
+phase_serve() {
+  local arm=$1 log
+  log=$LOGS/serve-$arm.log
+  require_free_gpu
+  configure_arm "$arm"
+  compose "$arm"
+  start_sampler "serve-$arm"
+  launch "$arm" "$log" || { startup_facts "$log" "serve-$arm"; tail -80 "$log" >&2; stop_server; die "$arm failed to start"; }
+  startup_facts "$log" "serve-$arm"
+  rm -f "$W/serve-done"
+  say "arm $arm SERVING on $BIND:$PORT, scoring nothing. Signal with: touch $W/serve-done"
+  local i
+  for ((i = 0; i < GATE_HOLD_TIMEOUT; i++)); do
+    [[ -f $W/serve-done ]] && break
+    sleep 5
+  done
+  say "closing the serve hold after $((i * 5))s"
+  snap_metrics "serve-$arm"
+  stop_server
+  say "serve $arm complete"
+}
+
 phase_receipt() {
   python3 - "$OUT" "$W" <<'PY'
 import importlib.util, json, pathlib, re, sys
@@ -773,5 +799,6 @@ patched) phase_patched ;;
 restart-fresh) phase_restart L3fresh "$L2_CLEAN" ;;
 restart-poison) phase_restart L3poison "$L2_POISON" ;;
 receipt) phase_receipt ;;
-*) die "usage: $0 {stage|control|unpatched|patched|restart-fresh|restart-poison|receipt}" ;;
+serve) phase_serve "${2:?usage: $0 serve <L0|L1cold|U1cold|L3fresh|L3poison>}" ;;
+*) die "usage: $0 {stage|control|unpatched|patched|restart-fresh|restart-poison|receipt|serve <arm>}" ;;
 esac

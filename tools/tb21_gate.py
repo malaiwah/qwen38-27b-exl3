@@ -476,6 +476,188 @@ def check_needle(ep: Endpoint, model: str, args, is_mock: bool) -> dict:
             "evidence": ev}
 
 
+def _token_len(ep: Endpoint, model: str, text: str) -> int | None:
+    """Exact token length via /tokenize, or None when the endpoint has no such route."""
+    out = ep.call("POST", "/tokenize", {"model": model, "prompt": text},
+                  timeout=max(ep.timeout, 300))
+    if out["status"] == 200 and out["json"] and out["json"].get("count"):
+        return int(out["json"]["count"])
+    return None
+
+
+def build_reuse_doc(seed: int, total_chars: int,
+                    needle_char_offsets: list[int]) -> tuple[str, list[dict]]:
+    """Deterministic filler carrying one needle sentence at each requested char offset."""
+    rng = random.Random(f"tb21-gate-reuse:{seed}")
+    parts: list[str] = []
+    needles: list[dict] = []
+    cursor = 0
+    for i, offset in enumerate(sorted(needle_char_offsets)):
+        label = f"N{i + 1}"
+        code = "".join(str(rng.randint(0, 9)) for _ in range(9))
+        sentence = f" The {label} vault access code is {code}. "
+        gap = max(0, offset - cursor)
+        if gap:
+            filler = synth_words(random.Random(f"tb21-reuse-fill:{seed}:{i}"), gap)
+            parts.append(filler)
+            cursor += len(filler)
+        parts.append(sentence)
+        cursor += len(sentence)
+        needles.append({"label": label, "code": code,
+                        "sentence": sentence.strip(), "char_end": cursor})
+    tail = max(0, total_chars - cursor)
+    if tail:
+        parts.append(synth_words(random.Random(f"tb21-reuse-tail:{seed}"), tail))
+    return "".join(parts), needles
+
+
+def check_connector_reuse(ep: Endpoint, model: str, args, is_mock: bool) -> dict:
+    """Check 6: reuse a prefix ACROSS a mamba block boundary and score the answer.
+
+    Why this check exists, in one measured sentence: on 2026-08-17 this gate returned PASS
+    on all five of its other checks - the 262,144-token needle included - against a server
+    that the frozen poisoning probe had scored 38/38 CORRUPTED minutes earlier
+    (receipts/lmcache-l1-2x.json, receipts/tb21-gate-2x-lmcache-l1.json). None of the five
+    reuses a cached prefix across a mamba block boundary, so none of them can see the
+    hybrid+KV-connector state-loss defect class. A gate PASS is not fidelity whenever a KV
+    connector is attached.
+
+    Geometry, in tokens, all multiples of the served attention/mamba block B
+    (--reuse-block-tokens, the value vLLM logs as "Setting attention block size to N
+    tokens"):
+
+      request A  document truncated at 4B + 500, asks for needle N1 at depth ~1.5B
+                 -> publishes cache blocks up to 4B and is its own control
+      request B  the SAME document truncated at 4B + 900, so it shares a >4B prefix with A
+                 and its recorded hit floors to a block multiple; asks for N1 (a needle far
+                 from any boundary, which must survive) AND for N2 at depth 4B - 200, which
+                 lies inside [3B, 4B) - the LAST block of the hit, i.e. exactly the
+                 divergence window between the full-attention group's hit and the last
+                 position where a recurrent-state checkpoint exists.
+
+    A correct engine answers both needles in B. An engine that takes the full-attention
+    group's hit as the model-wide computed prefix, or a connector that supplies KV without
+    the matching SSM/GDN state, loses N2 while keeping N1.
+
+    Status is NOT_EXERCISED - never PASS - if B did not actually reuse at least one block,
+    because a check that never touched the path proves nothing about it.
+    """
+    name = "connector_prefix_reuse"
+    if not args.check_connector_reuse:
+        return {"name": name, "status": "SKIP",
+                "evidence": {"reason": (
+                    "opt-in check, off by default so every previously published gate "
+                    "receipt stays comparable. MANDATORY BY POLICY whenever the server "
+                    "runs with --kv-transfer-config (any KV connector attached).")}}
+    if is_mock:
+        return {"name": name, "status": "SKIP",
+                "evidence": {"reason": "mock preflight double returns canned JSON; "
+                                       "prefix reuse is not meaningful without a real model"}}
+    block = args.reuse_block_tokens
+    a_tokens = 4 * block + 500
+    b_tokens = 4 * block + 900
+    n1_depth = int(1.5 * block)
+    n2_depth = 4 * block - 200
+    ev: dict = {
+        "block_tokens": block,
+        "target_geometry_tokens": {
+            "request_a_doc": a_tokens, "request_b_doc": b_tokens,
+            "needle_1_depth": n1_depth, "needle_2_depth": n2_depth,
+            "needle_2_window": [3 * block, 4 * block],
+        },
+    }
+
+    sample = synth_words(random.Random("tb21-gate-reuse-cpt"), 8000)
+    n = _token_len(ep, model, sample)
+    if n:
+        cpt = len(sample) / n
+        ev["token_estimation_method"] = f"/tokenize calibration: 8000 chars -> {n} tokens"
+    else:
+        cpt = 4.0
+        ev["token_estimation_method"] = "chars/4 heuristic (/tokenize unavailable)"
+    ev["chars_per_token"] = round(cpt, 4)
+
+    doc, needles = build_reuse_doc(
+        args.seed, int(b_tokens * cpt),
+        [int(n1_depth * cpt), int(n2_depth * cpt)])
+    a_doc = doc[:int(a_tokens * cpt)]
+    b_doc = doc[:int(b_tokens * cpt)]
+    # measured, not assumed: where the needles and the two documents actually land
+    ev["measured_tokens"] = {
+        "request_a_doc": _token_len(ep, model, a_doc),
+        "request_b_doc": _token_len(ep, model, b_doc),
+        "needle_1_depth": _token_len(ep, model, doc[:needles[0]["char_end"]]),
+        "needle_2_depth": _token_len(ep, model, doc[:needles[1]["char_end"]]),
+    }
+    n2 = ev["measured_tokens"]["needle_2_depth"]
+    ev["needle_2_lands_in_the_divergence_window"] = (
+        None if n2 is None else bool(3 * block <= n2 < 4 * block))
+    ev["needles"] = [{"label": x["label"], "code": x["code"]} for x in needles]
+
+    ask_one = ("\n\nQuestion: what is the N1 vault access code stated in the document "
+               "above? Answer with the digits only.")
+    ask_both = ("\n\nAnswer using only the document above, on exactly two lines and "
+                "nothing else:\nN1=<the N1 vault access code>\nN2=<the N2 vault access "
+                "code>")
+    long_timeout = max(ep.timeout, 900)
+
+    a_out = ep.chat(model, a_doc + ask_one, max_tokens=48, no_think=True,
+                    timeout=long_timeout)
+    a_ans = ((a_out["json"] or {}).get("choices") or [{}])[0]
+    a_text = ((a_ans.get("message") or {}).get("content") or "")
+    ev["request_a"] = {"http_status": a_out["status"], "latency_s": a_out["latency_s"],
+                       "error": a_out["error"], "answer": a_text,
+                       "n1_retrieved": needles[0]["code"] in a_text}
+
+    m_before = metrics_snapshot(ep)
+    b_out = ep.chat(model, b_doc + ask_both, max_tokens=64, no_think=True,
+                    timeout=long_timeout)
+    m_after = metrics_snapshot(ep)
+    b_ans = ((b_out["json"] or {}).get("choices") or [{}])[0]
+    b_text = ((b_ans.get("message") or {}).get("content") or "")
+    hits = None
+    if m_before.get("available") and m_after.get("available"):
+        hits = round(m_after["sums"].get("prefix_cache_hits", 0.0)
+                     - m_before["sums"].get("prefix_cache_hits", 0.0), 3)
+    ev["request_b"] = {
+        "http_status": b_out["status"], "latency_s": b_out["latency_s"],
+        "error": b_out["error"], "answer": b_text,
+        "n1_retrieved": needles[0]["code"] in b_text,
+        "n2_retrieved": needles[1]["code"] in b_text,
+        "usage": (b_out["json"] or {}).get("usage"),
+        "prefix_cache_hits_delta": hits,
+        "prefix_cache_hits_delta_scope": "request B only, between two named snapshots",
+    }
+    ev["reuse_exercised"] = bool(hits is not None and hits >= block)
+
+    if a_out["status"] != 200 or b_out["status"] != 200:
+        ev["why"] = "request refused or failed (recorded outcome)"
+        return {"name": name, "status": "FAIL", "evidence": ev}
+    if not ev["request_a"]["n1_retrieved"]:
+        ev["why"] = ("request A could not retrieve its own needle without any reuse: the "
+                     "check's own control failed, so nothing about reuse is measurable")
+        return {"name": name, "status": "FAIL", "evidence": ev}
+    if not ev["reuse_exercised"]:
+        ev["why"] = (f"request B reused fewer than one {block}-token block "
+                     f"(prefix_cache_hits delta {hits}); the boundary this check exists to "
+                     "cross was never crossed. Enable prefix caching, and check that the "
+                     "block size passed as --reuse-block-tokens matches the server's own "
+                     "\"Setting attention block size to N tokens\" line.")
+        return {"name": name, "status": "NOT_EXERCISED", "evidence": ev}
+    ok = ev["request_b"]["n1_retrieved"] and ev["request_b"]["n2_retrieved"]
+    if not ok:
+        ev["why"] = (
+            "request B reused a prefix across the block boundary and then answered wrong. "
+            "Losing N2 while keeping N1 is the hybrid+connector signature: attention KV is "
+            "valid across the reused prefix but the recurrent (Mamba/GDN) state at the "
+            "resume boundary is not restored, so content inside the last reused block is "
+            "gone. See receipts/lmcache-l1-2x.json."
+            if ev["request_b"]["n1_retrieved"] else
+            "request B reused a prefix across the block boundary and lost both needles: "
+            "total state loss, not a bounded divergence window.")
+    return {"name": name, "status": "PASS" if ok else "FAIL", "evidence": ev}
+
+
 def check_mtp(before: dict, after: dict, is_mock: bool) -> dict:
     name = "mtp_sanity"
     if is_mock:
@@ -541,6 +723,16 @@ def main() -> int:
     ap.add_argument("--seed", type=int, default=46)
     ap.add_argument("--timeout", type=float, default=120.0,
                     help="per-request timeout (needle/tokenize get more)")
+    ap.add_argument("--check-connector-reuse", action="store_true",
+                    help="check 6: reuse a prefix across a mamba block boundary and score "
+                         "the answer. OFF by default so previously published receipts stay "
+                         "comparable; MANDATORY BY POLICY whenever the server runs with "
+                         "--kv-transfer-config (see receipts/lmcache-l1-2x.json: the other "
+                         "five checks all PASSED against a server measured 38/38 corrupted)")
+    ap.add_argument("--reuse-block-tokens", type=int, default=1600,
+                    help="served attention/mamba block size for check 6; must match the "
+                         "server's own \"Setting attention block size to N tokens\" line "
+                         "(default 1600, this model's value)")
     args = ap.parse_args()
 
     ep = Endpoint(args.base_url, args.api_key, args.timeout)
@@ -579,7 +771,14 @@ def main() -> int:
     checks.append(c5)
     print(f"[gate] 5 mtp: {c5['status']}", flush=True)
 
+    c6 = (check_connector_reuse(ep, model, args, is_mock) if model else
+          {"name": "connector_prefix_reuse", "status": "FAIL",
+           "evidence": {"why": "no served model id"}})
+    checks.append(c6)
+    print(f"[gate] 6 connector-reuse: {c6['status']}", flush=True)
+
     failed = [c["name"] for c in checks if c["status"] == "FAIL"]
+    not_exercised = [c["name"] for c in checks if c["status"] == "NOT_EXERCISED"]
     receipt = {
         "schema": SCHEMA,
         "generated_utc": utcnow(),
@@ -597,13 +796,22 @@ def main() -> int:
         "checks": checks,
         "verdict": "FAIL" if failed else "PASS",
         "failed_checks": failed,
+        "not_exercised_checks": not_exercised,
+        "verdict_scope": (
+            "PASS means every check that RAN passed. It is not a fidelity claim: with a KV "
+            "connector attached, checks 1-5 all passed against a server independently "
+            "measured 38/38 corrupted (receipts/lmcache-l1-2x.json). Read check 6, and if "
+            "it is SKIP or NOT_EXERCISED, read the verdict as untested for prefix-reuse "
+            "correctness."),
         "finished_utc": utcnow(),
     }
     with open(args.out, "w") as f:
         json.dump(receipt, f, indent=1)
     print(f"[gate] receipt -> {args.out}", flush=True)
     print(f"[gate] verdict: {receipt['verdict']}"
-          + (f" (failed: {', '.join(failed)})" if failed else ""), flush=True)
+          + (f" (failed: {', '.join(failed)})" if failed else "")
+          + (f" (not exercised: {', '.join(not_exercised)})" if not_exercised else ""),
+          flush=True)
     return 1 if failed else 0
 
 

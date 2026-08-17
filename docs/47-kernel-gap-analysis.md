@@ -525,7 +525,22 @@ engineering; nothing below touches the fidelity budget without its own KLD gate.
 - *Effort:* hours. *Risk:* minimal — exl3_gemm is the fork's own bit-faithful reference path
   (exl3.py:976).
 
-**P1.2 — prefill chunk size 6144 (F5.1 + F8, PP +15–25 % est).**
+**P1.2 — prefill chunk size 6144. DONE — MEASURED: +3.3 % PP at 32k, +8.4 % at 197k, +9.3 % at
+259k; ALL FIVE GATES PASS on both arms, including the full-window needle; decode unchanged.**
+(`receipts/kernel-gap-chunk6144-requal.json`.) Ladder verdicts, 2048 vs 6144 under the 262k
+single-stream profile (util identical across arms; APC off in this profile, so no 1600-clipping
+confound): fit 282,996 → 278,528 KV tokens (−1.6 %); decode 106.77 → 108.93 tok/s (within
+between-boot variance — the prefill/decode stories stay uncontaminated); needle **exact at 197k ×3
+depths AND at 258,962 tokens = 98.8 % of the window with the engine alive afterwards, on both
+arms** — the docs/46 §21 trap did not fire. Estimate-vs-measured, stated plainly: F8's +15–25 %
+was 2–4× high at short context — the per-matrix linear gain dilutes through the ~40 % of chunk time
+the linears do not own, and the dilution shrinks with context (chunk-count-proportional overheads
+dominate at 197k+). Verdict: **safe and free, ship-eligible for long-prompt profiles (a 259k
+request gets −10.3 s wall); at 32k it is +3.3 %, not a headline.** Knee re-check at C4/C8 remains
+open (single-stream profile has max_num_seqs 1; the concurrency arm belongs with Main's 4x ladder).
+Original plan text follows for the ladder definition.
+
+**P1.2 (original plan) — prefill chunk size 6144 (F5.1 + F8, PP +15–25 % est).**
 - *Change:* none (serve flag `--max-num-batched-tokens 6144`). This is a *re-qualification*, not a
   patch: the 2048 in the frozen profile interacts with KV budget, CUDA-graph rows, MTP slots
   (`max_num_scheduled_tokens` warning observed in the F6 boot log), and the 262k needle gate.
