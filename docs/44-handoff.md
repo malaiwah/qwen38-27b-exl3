@@ -20,6 +20,8 @@ transcript. Every claim here is checkable from a committed receipt.
 66 min, and JarvisLabs' FAQ **deletes data** at zero balance). Burn: 473501 $15.29/hr, 471041 $1.90/hr,
 473296 $0.94/hr. **Multi-GPU is strictly linear at $1.89/GPU-hr, no volume discount** (`docs/49`).
 
+**Remote state.** `github` is at local HEAD and is the authoritative publish target. **`origin` (gitea at `gitea.svc.home.malaiwah.com`) is UNREACHABLE — it answers HTTP 502**, so the mirror is behind by however many commits landed while it was down. That is a server-side outage, not a push failure: `git ls-remote origin` reproduces the 502 directly. Re-run `git push origin main` once the host is back; nothing else is needed and no evidence is at risk, because every artifact is on `github` and on the Hub.
+
 ## 2. Running work
 
 **None.** No subagents, no campaigns, no probes. Everything dispatched this session has landed and is committed.
