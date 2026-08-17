@@ -192,6 +192,25 @@ pass1() {
   mkdir -p "$JOBS"
   disk_guard
 
+  # Continuous /metrics timeline, one poller per replica, for the whole pass
+  # (owner requirement: regular-interval capture, published for transparency;
+  # rehearsed live 2026-08-16). Poller failure must never fail the pass -- it
+  # is read-only observability -- hence the soft teardown at the end.
+  local pollers=() pi
+  if [ -f "$HERE/tb21_metrics_poll.py" ]; then
+    mkdir -p "$TB21_HOME/receipts"
+    for pi in $(seq 0 $((k-1))); do
+      local pout="$TB21_HOME/receipts/tb21-metrics-$TIER-$model-p1-s$pi.jsonl"
+      python3 "$HERE/tb21_metrics_poll.py" \
+        --base-url "${urls[$pi]}" --interval "${TB21_METRICS_INTERVAL:-5}" \
+        --out "$pout" >"$TB21_HOME/receipts/tb21-metrics-$TIER-$model-p1-s$pi.log" 2>&1 &
+      pollers+=($!)
+      echo "[pass1] metrics poller s$pi pid $! -> $pout"
+    done
+  else
+    echo "[pass1] WARNING: tb21_metrics_poll.py not staged; pass runs WITHOUT the metrics timeline"
+  fi
+
   local pids=() jobs=()
   for i in $(seq 0 $((k-1))); do
     local job="tb21c-$TIER-$model-p1-s$i"
@@ -231,6 +250,18 @@ pass1() {
       rc=1
     fi
   done
+
+  # Soft poller teardown: SIGTERM triggers each poller's summary receipt.
+  # A poller that already died is fine (kill fails quietly); the pass rc is
+  # never affected by observability teardown.
+  for pi in "${pollers[@]:-}"; do
+    [ -n "$pi" ] && kill -TERM "$pi" 2>/dev/null || true
+  done
+  if [ "${#pollers[@]}" -gt 0 ]; then
+    sleep 1
+    echo "[pass1] metrics pollers stopped (summaries written beside each .jsonl)"
+  fi
+
   return $rc
 }
 
