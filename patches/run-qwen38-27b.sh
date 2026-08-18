@@ -69,8 +69,8 @@ fi
 # head (attn K4, MLP K5/K6) delivers 113.8 tok/s single-stream (2x FP8) with
 # 58.2% acceptance and 2.745 mean acceptance length (docs/22). On the live
 # container, measured 77.8% acceptance at 3.33 mean length.
-MTP="${MTP:-3}"
-SPECULATIVE_TOKENS="${SPECULATIVE_TOKENS:-3}"
+MTP="${MTP:-4}"
+SPECULATIVE_TOKENS="${SPECULATIVE_TOKENS:-4}"
 if [ "${MTP}" != "0" ]; then
   SPEC_CONFIG="$(printf '{"method":"mtp","num_speculative_tokens":%s}' "${SPECULATIVE_TOKENS}")"
 else
