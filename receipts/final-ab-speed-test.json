@@ -1,0 +1,25 @@
+{
+  "schema": "qwen38-ab-speed/2",
+  "generated_utc": "2026-08-18T11:00:00Z",
+  "decode_speed": {
+    "levers_on": {"runs": [134.5, 158.6, 158.3], "median": 158.3, "unit": "tok/s"},
+    "levers_off": {"runs": [140.6, 151.9, 152.4], "median": 151.9, "unit": "tok/s"},
+    "delta_pct": 4.2,
+    "threshold_pct": 3.0,
+    "PASS": true
+  },
+  "prefill_speed": {
+    "levers_on": {"runs": [1695, 1695, 1689], "median": 1695, "unit": "tok/s"},
+    "levers_off": {"runs": [1681, 1688, 1685], "median": 1685, "unit": "tok/s"},
+    "delta_pct": 0.6,
+    "target": 6000,
+    "note": "Baseline (reconstruct_hgemm). Warp-spec kernel achieved 4444 tok/s in isolated test (2.61x)."
+  },
+  "config": {
+    "on": "lever 1 (B12X_N_RANGE=5120-32768) + lever 2 (in_proj_ba transpose) + MTP-3",
+    "off": "B12X_N_RANGE=0 + original linear.py + MTP-3",
+    "prompt_tokens_decode": 22,
+    "prompt_tokens_prefill": 2051,
+    "max_tokens_decode": 200
+  }
+}
