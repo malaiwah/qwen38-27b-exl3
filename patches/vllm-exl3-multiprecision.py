@@ -32,6 +32,7 @@ from types import ModuleType, SimpleNamespace
 from typing import TYPE_CHECKING, Any
 
 import torch
+import torch.nn.functional as F
 from transformers import PretrainedConfig
 
 from vllm.config import CUDAGraphMode, get_current_vllm_config_or_none
@@ -79,7 +80,7 @@ from vllm.model_executor.layers.quantization.utils.mxfp8_utils import (
 )
 from vllm.model_executor.layers.quantization.utils.quant_utils import kMxfp8Dynamic
 from vllm.model_executor.parameter import BasevLLMParameter
-from vllm.model_executor.utils import replace_parameter
+from vllm.model_executor.utils import replace_parameter, set_weight_attrs
 from vllm.transformers_utils.repo_utils import get_hf_file_to_dict
 
 if TYPE_CHECKING:
@@ -102,9 +103,9 @@ _EXL3_ONLINE_QUANTIZER: Any | None = None
 # dense_gemm (mxf8f6f4 block-scaled MMA) for prefill. Gated by env var.
 _MULTIPRECISION_ENABLED = os.environ.get("VLLM_EXL3_MULTIPRECISION", "0") == "1"
 # Layer routing: MLP + GDN → FP4 (fast), full attention → trellis W4A16 (KLD-passing)
-# 16 full attention layers stay on trellis W4A16 (BF16 activations, KLD-passing).
-# 48 GDN layers + 64 MLP layers use FP4 W4A4 (4x MMA throughput).
-# KLD reduction: 16 layers × ~0.0012 = ~0.019 (from 0.0633 to ~0.044).
+# Sweet spot measured: PP=6370, TG=196.1 at 8K/4seq/MTP6/graphs (2f8bd8b).
+# All-attn-trellis alternative measured PP=4646/TG=139.1 — misses both targets.
+# Native-context goal: ~256k with FP8 KV cache (BF16 KV = 16.8GB at 262k, unaffordable).
 _FP4_LAYER_PATTERNS = ("mlp.gate_up_proj", "mlp.down_proj", "linear_attn.")  # MLP + GDN; full attn stays trellis W4A16
 _FP6_LAYER_PATTERNS = ()  # All layers use FP4
 _FP6_CONVERSION_MODULE = None
@@ -346,6 +347,222 @@ def _online_trellis_bits() -> int | None:
 
 def _online_trellis_shape_supported(input_size: int, output_size: int) -> bool:
     return input_size % _HADAMARD_BLOCK == 0 and output_size % _HADAMARD_BLOCK == 0
+
+
+_EMBED_ONLINE_EPS = 1.0e-8
+
+
+def _embed_online_bits() -> int | None:
+    """Return the online embedding-quantization width, or None when disabled.
+
+    ``VLLM_EXL3_EMBED_ONLINE_BITS`` selects per-row online quantization of the
+    token embedding table (``VocabParallelEmbedding``) at load time. Accepted
+    values: unset/0 = off; an integer from 3 to 8. Only ``8`` (int8) and ``6``
+    (packed int6) reduce the table footprint; other widths quantize to the
+    requested precision but remain stored in an int8 container.
+    """
+    raw = os.environ.get("VLLM_EXL3_EMBED_ONLINE_BITS")
+    if raw is None or not raw.strip():
+        return None
+    try:
+        bits = int(raw)
+    except ValueError:
+        raise ValueError(
+            f"VLLM_EXL3_EMBED_ONLINE_BITS must be an integer from 3 to 8, "
+            f"got {raw!r}"
+        ) from None
+    if bits not in range(3, 9):
+        raise ValueError(
+            f"VLLM_EXL3_EMBED_ONLINE_BITS must be from 3 to 8, got {bits}"
+        )
+    return bits
+
+
+class Exl3OnlineEmbeddingMethod(QuantizeMethodBase):
+    """Env-gated online quantization for ``VocabParallelEmbedding`` token tables.
+
+    The checkpoint is loaded as BF16 (so the stock vocab-parallel weight loader
+    works unchanged) and converted in ``process_weights_after_loading`` to a
+    compact per-row format, freeing the BF16 tensor:
+
+    * ``bits == 8``: per-row symmetric int8. ``q`` is int8 ``[V, H]`` and the
+      per-row scale is fp16 ``[V]``. Footprint ~1.27 GiB for 248320x5120.
+    * ``bits == 6``: per-row symmetric int6, packed four elements to three
+      bytes (4*6 = 24 bits). ``q`` is uint8 ``[V, 3H/4]`` and the scale is
+      fp16 ``[V]``. Footprint ~0.95 GiB for 248320x5120 (requires ``H % 4``).
+    * other ``bits`` in ``3..7``: quantized to the requested precision but kept
+      in an int8 container (no extra footprint reduction vs ``bits == 8``).
+
+    ``embedding()`` performs a CUDA-graph-safe gather + dequant: it indexes the
+    compact weight with ``F.embedding`` (a pure gather, no host sync, no
+    ``.item()``), casts to bf16, and multiplies by the gathered per-row scale.
+    Steady-state allocations are limited to the gathered rows.
+
+    EXL3 Trellis K6/K8 would be preferable (smaller, KLD-safe) but the shipped
+    exllamav3 extension only exposes ``reconstruct`` / ``reconstruct_slice``
+    over *contiguous, 128-aligned* bands of the matrix N dimension
+    (``reconstruct.cu`` lines 118-121), not an arbitrary-row indexed gather.
+    An embedding lookup needs scattered vocab rows, so a Trellis-backed gather
+    would either reconstruct the whole table (defeating the savings) or launch
+    one ``reconstruct_slice`` per 128-row band touched by the batch (dynamic
+    count, not graph-safe). See ``upstream/embed-online-quant/issue-body.md``.
+    """
+
+    def __init__(self, bits: int) -> None:
+        super().__init__()
+        self.bits = int(bits)
+        # Only 6 packs to a sub-byte container; 8 uses native int8. Every other
+        # width quantizes to N-bit precision but stays in an int8 container.
+        self.packed: bool = self.bits == 6
+
+    # -- QuantizeMethodBase -------------------------------------------------
+
+    def create_weights(
+        self,
+        layer: torch.nn.Module,
+        input_size_per_partition: int,
+        output_partition_sizes: list[int],
+        input_size: int,
+        output_size: int,
+        params_dtype: torch.dtype,
+        **extra_weight_attrs,
+    ) -> None:
+        """Create the BF16 loading weight, mirroring UnquantizedEmbeddingMethod.
+
+        The quantized tensors are materialized only in
+        ``process_weights_after_loading``; until then the layer carries a normal
+        BF16 ``weight`` so the vocab-parallel weight loader is unaffected.
+        """
+        weight = Parameter(
+            torch.empty(
+                sum(output_partition_sizes),
+                input_size_per_partition,
+                dtype=params_dtype,
+            ),
+            requires_grad=False,
+        )
+        set_weight_attrs(weight, {"input_dim": 1, "output_dim": 0})
+        layer.register_parameter("weight", weight)
+        set_weight_attrs(weight, extra_weight_attrs)
+
+    def process_weights_after_loading(self, layer: torch.nn.Module) -> None:
+        """Encode the loaded BF16 table to the compact per-row format and free it."""
+        w = layer.weight.data
+        prefix = getattr(layer, "prefix", type(layer).__name__)
+        device = w.device
+        num_rows, hidden = w.shape
+
+        if self.packed and hidden % 4 != 0:
+            raise ValueError(
+                f"VLLM_EXL3_EMBED_ONLINE_BITS=6 requires hidden_dim divisible by "
+                f"4, got {hidden} for {prefix}"
+            )
+
+        if not self.packed and self.bits != 8:
+            logger.warning_once(
+                "VLLM_EXL3_EMBED_ONLINE_BITS=%d for %s is stored in an int8 "
+                "container; only bits=6 packs to a sub-byte footprint.",
+                self.bits, prefix,
+            )
+
+        # Per-row symmetric scale. Compute in fp32 to avoid bf16 rounding in
+        # the division; the stored scale stays fp16 (negligible size).
+        amax = w.to(torch.float32).abs().amax(dim=1)
+        max_q = (1 << (self.bits - 1)) - 1  # 127 for 8, 31 for 6, etc.
+        scale = amax.clamp(min=_EMBED_ONLINE_EPS) / max_q
+        scale_fp16 = scale.to(torch.float16)
+
+        q_fp32 = (w.to(torch.float32) / scale.unsqueeze(1)).round()
+        if self.packed:
+            # int6: signed [-32, 31] -> unsigned [0, 63] for packing.
+            q_fp32 = q_fp32.clamp(-32, 31)
+            u = (q_fp32 + 32).to(torch.uint8)  # [V, H]
+            u = u.reshape(num_rows, hidden // 4, 4).to(torch.int32)
+            val = (
+                u[..., 0]
+                | (u[..., 1] << 6)
+                | (u[..., 2] << 12)
+                | (u[..., 3] << 18)
+            )  # int32 [V, H/4]
+            b0 = (val & 0xFF).to(torch.uint8)
+            b1 = ((val >> 8) & 0xFF).to(torch.uint8)
+            b2 = ((val >> 16) & 0xFF).to(torch.uint8)
+            q_weight = (
+                torch.stack((b0, b1, b2), dim=-1)
+                .reshape(num_rows, (hidden // 4) * 3)
+                .contiguous()
+            )
+        else:
+            # int8 container (native for bits==8, N-bit range otherwise).
+            q_lo = -(1 << (self.bits - 1))
+            q_weight = q_fp32.clamp(q_lo, max_q).to(torch.int8)
+
+        # Free the BF16 table before registering the compact tensors.
+        _mem_before = (
+            torch.cuda.memory_allocated(device) / 1024**3
+            if device.type == "cuda" else 0.0
+        )
+        del layer.weight
+        del w
+        layer.register_buffer("q_weight", q_weight, persistent=False)
+        layer.register_buffer("embed_scale", scale_fp16, persistent=False)
+        if device.type == "cuda":
+            torch.cuda.empty_cache()
+        _mem_after = (
+            torch.cuda.memory_allocated(device) / 1024**3
+            if device.type == "cuda" else 0.0
+        )
+        logger.info(
+            "EXL3 embed online K%d conversion complete for %s %.2f→%.2f GiB "
+            "(Δ%.2f)",
+            self.bits, prefix, _mem_before, _mem_after, _mem_after - _mem_before,
+        )
+
+    def apply(
+        self,
+        layer: torch.nn.Module,
+        x: torch.Tensor,
+        bias: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        raise NotImplementedError(
+            "Exl3OnlineEmbeddingMethod only supports embedding() gather; "
+            "apply() is not used by VocabParallelEmbedding."
+        )
+
+    def embedding(self, layer: torch.nn.Module, input_: torch.Tensor) -> torch.Tensor:
+        """CUDA-graph-safe gather + dequant of the compact embedding table."""
+        scale = F.embedding(input_, layer.embed_scale).to(torch.bfloat16)
+        # [num_idx, 1]
+        scale = scale.unsqueeze(-1)
+        if self.packed:
+            packed_cols = layer.q_weight.shape[1]
+            hidden = (packed_cols // 3) * 4
+            packed = F.embedding(input_, layer.q_weight)  # uint8 [N, 3H/4]
+            n = packed.shape[0]
+            packed = packed.reshape(n, hidden // 4, 3).to(torch.int32)
+            val = (
+                packed[..., 0]
+                | (packed[..., 1] << 8)
+                | (packed[..., 2] << 16)
+            )  # [N, H/4]
+            u = torch.stack(
+                (val & 0x3F, (val >> 6) & 0x3F, (val >> 12) & 0x3F,
+                 (val >> 18) & 0x3F),
+                dim=-1,
+            ).reshape(n, hidden)  # int32 [N, H]
+            q = (u - 32).to(torch.bfloat16)
+        else:
+            q = F.embedding(input_, layer.q_weight).to(torch.bfloat16)
+        return q * scale
+
+    def tie_weights(
+        self, layer: torch.nn.Module, embed_tokens: torch.nn.Module
+    ) -> torch.nn.Module:
+        raise NotImplementedError(
+            "Online embedding quantization (VLLM_EXL3_EMBED_ONLINE_BITS) is "
+            "incompatible with tied word embeddings; the EXL3 stack already "
+            "unties lm_head (see tie_word_embeddings override)."
+        )
 
 
 def _load_online_encoding_with_retry(
