@@ -1,0 +1,14 @@
+{
+  "schema": "qwen38-prefill-speed/2",
+  "generated_utc": "2026-08-18T10:25:00Z",
+  "description": "Baseline prefill speed with original patch + levers 1+2 ON",
+  "config": "Original exl3.py patch + linear-ba.py (lever 2) + B12X_N_RANGE=5120-32768 (lever 1)",
+  "results": [
+    {"run": 1, "prompt_tokens": 2051, "wall_time_s": 1.595, "tok_s": 1286},
+    {"run": 2, "prompt_tokens": 2051, "wall_time_s": 1.207, "tok_s": 1699},
+    {"run": 3, "prompt_tokens": 2051, "wall_time_s": 1.211, "tok_s": 1694}
+  ],
+  "median_tok_s": 1699,
+  "target_tok_s": 6000,
+  "note": "This is the BASELINE (reconstruct_hgemm path). The warp-spec kernel achieved 4444 tok/s in a previous test (2.61x speedup) but had a correctness bug that has been fixed. End-to-end test with the fixed kernel pending."
+}
