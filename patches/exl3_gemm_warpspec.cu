@@ -170,20 +170,29 @@ __device__ inline half2 decode_3inst_2(uint32_t x0, uint32_t x1) {
 // Dequant (vendored from exl3_dq.cuh)
 // ============================================================================
 
+// Optimized dq4: uses __funnelshift_r (1 instruction) instead of 64-bit fshift (2-3 instructions),
+// and conditional subtract instead of % modulo (2 ops vs 3 ops).
+// Savings: ~6 instructions per dq4 call, ~12 per dq_dispatch.
 template <int bits, int cb>
 __device__ __forceinline__ void dq4(const uint32_t* ptr, int t_offset, FragB& frag) {
+    constexpr int BUFSIZE = bits * 256 / 32;  // 48 for bits=6
     int b0 = (t_offset + 257) * bits - 16;
-    int b1 = b0 + 3 * bits;
-    int b2 = b1 + 16;
+    int b2 = b0 + 3 * bits + 16;
     int i0 = b0 / 32;
     int i2 = (b2 - 1) / 32;
     int s2 = (i2 + 1) * 32 - b2;
-    uint32_t a = ptr[i0 % (bits * 256 / 32)];
-    uint32_t b = ptr[i2 % (bits * 256 / 32)];
-    uint32_t w3 = fshift(b, a, s2) & 0xffff;
-    uint32_t w2 = fshift(b, a, s2 + bits) & 0xffff;
-    uint32_t w1 = fshift(b, a, s2 + bits * 2) & 0xffff;
-    uint32_t w0 = fshift(b, a, s2 + bits * 3) & 0xffff;
+    // Eliminate % modulo with conditional subtract (2 ops vs 3 for reciprocal multiply)
+    uint32_t a = ptr[i0 < BUFSIZE ? i0 : i0 - BUFSIZE];
+    uint32_t b = ptr[i2 < BUFSIZE ? i2 : i2 - BUFSIZE];
+    // Use funnelshift for 1-instruction shifts (vs 2-3 for 64-bit fshift)
+    uint32_t w3 = (s2 < 32) ? __funnelshift_r(b, a, s2) : (a >> (s2 - 32));
+    w3 &= 0xffff;
+    uint32_t w2 = (s2 + bits < 32) ? __funnelshift_r(b, a, s2 + bits) : (a >> (s2 + bits - 32));
+    w2 &= 0xffff;
+    uint32_t w1 = (s2 + bits * 2 < 32) ? __funnelshift_r(b, a, s2 + bits * 2) : (a >> (s2 + bits * 2 - 32));
+    w1 &= 0xffff;
+    uint32_t w0 = (s2 + bits * 3 < 32) ? __funnelshift_r(b, a, s2 + bits * 3) : (a >> (s2 + bits * 3 - 32));
+    w0 &= 0xffff;
     frag[0] = decode_3inst_2<cb>(w0, w1);
     frag[1] = decode_3inst_2<cb>(w2, w3);
 }
