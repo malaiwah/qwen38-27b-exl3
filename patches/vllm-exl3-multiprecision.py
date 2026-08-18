@@ -32,7 +32,7 @@ from types import ModuleType, SimpleNamespace
 from typing import TYPE_CHECKING, Any
 
 import torch
-import torch.nn.functional as F
+from torch.nn.parameter import Parameter
 from transformers import PretrainedConfig
 
 from vllm.config import CUDAGraphMode, get_current_vllm_config_or_none
@@ -386,15 +386,15 @@ class Exl3OnlineEmbeddingMethod(QuantizeMethodBase):
     compact per-row format, freeing the BF16 tensor:
 
     * ``bits == 8``: per-row symmetric int8. ``q`` is int8 ``[V, H]`` and the
-      per-row scale is fp16 ``[V]``. Footprint ~1.27 GiB for 248320x5120.
+      per-row scale is fp16 ``[V]``. Footprint ~1.27 GB (decimal) for 248320x5120.
     * ``bits == 6``: per-row symmetric int6, packed four elements to three
       bytes (4*6 = 24 bits). ``q`` is uint8 ``[V, 3H/4]`` and the scale is
-      fp16 ``[V]``. Footprint ~0.95 GiB for 248320x5120 (requires ``H % 4``).
+      fp16 ``[V]``. Footprint ~0.95 GB (decimal) for 248320x5120 (requires ``H % 4``).
     * other ``bits`` in ``3..7``: quantized to the requested precision but kept
       in an int8 container (no extra footprint reduction vs ``bits == 8``).
 
     ``embedding()`` performs a CUDA-graph-safe gather + dequant: it indexes the
-    compact weight with ``F.embedding`` (a pure gather, no host sync, no
+    compact weight by token id (a pure gather, no host sync, no
     ``.item()``), casts to bf16, and multiplies by the gathered per-row scale.
     Steady-state allocations are limited to the gathered rows.
 
@@ -531,13 +531,14 @@ class Exl3OnlineEmbeddingMethod(QuantizeMethodBase):
 
     def embedding(self, layer: torch.nn.Module, input_: torch.Tensor) -> torch.Tensor:
         """CUDA-graph-safe gather + dequant of the compact embedding table."""
-        scale = F.embedding(input_, layer.embed_scale).to(torch.bfloat16)
-        # [num_idx, 1]
-        scale = scale.unsqueeze(-1)
+        # Direct advanced indexing (a pure gather) is used instead of
+        # F.embedding so integer-dtype / 1-D tensors are accepted uniformly;
+        # it is CUDA-graph-capturable and never host-syncs.
+        scale = layer.embed_scale[input_].to(torch.bfloat16).unsqueeze(-1)
         if self.packed:
             packed_cols = layer.q_weight.shape[1]
             hidden = (packed_cols // 3) * 4
-            packed = F.embedding(input_, layer.q_weight)  # uint8 [N, 3H/4]
+            packed = layer.q_weight[input_]  # uint8 [N, 3H/4]
             n = packed.shape[0]
             packed = packed.reshape(n, hidden // 4, 3).to(torch.int32)
             val = (
@@ -552,7 +553,7 @@ class Exl3OnlineEmbeddingMethod(QuantizeMethodBase):
             ).reshape(n, hidden)  # int32 [N, H]
             q = (u - 32).to(torch.bfloat16)
         else:
-            q = F.embedding(input_, layer.q_weight).to(torch.bfloat16)
+            q = layer.q_weight[input_].to(torch.bfloat16)
         return q * scale
 
     def tie_weights(
@@ -2038,6 +2039,14 @@ class Exl3Config(QuantizationConfig):
         self, layer: torch.nn.Module, prefix: str
     ) -> QuantizeMethodBase | None:
         self._require_enforce_eager()
+        # Online embedding-table quantization (VocabParallelEmbedding only).
+        # Exact type-name check: ParallelLMHead subclasses VocabParallelEmbedding
+        # and must keep its ExL3 linear/head path below.
+        if (
+            type(layer).__name__ == "VocabParallelEmbedding"
+            and (embed_bits := _embed_online_bits()) is not None
+        ):
+            return Exl3OnlineEmbeddingMethod(embed_bits)
         is_lm_head = layer.__class__.__name__ == "ParallelLMHead"
         if is_lm_head and not prefix:
             prefix = "lm_head"
