@@ -230,8 +230,21 @@ void exl3_gemm_marlin_launch
     static_assert(shmem_bytes <= EXL3_SMEM_MAX_BYTES,
                   "Marlin kernel shared memory exceeds device limit");
 
-    // Launch exactly num_sms blocks (persistent grid)
-    int num_blocks = MIN(num_sms, total_tiles);
+    // Fix 1 (reviewer P1): Only use persistent grid when grid_n <= num_sms.
+    // Otherwise K-split partners for the same M-tile would end up in different
+    // persistent iterations, causing self-deadlock or spin-stalls.
+    // Fix 3 (reviewer P2): Fall back to non-persistent launch when total_tiles
+    // is moderate, keeping all K-split partners resident concurrently.
+    int num_blocks;
+    if (grid_n <= num_sms && total_tiles > num_sms * 4) {
+        // Persistent: many tiles, each SM processes multiple
+        num_blocks = num_sms;
+    } else {
+        // Non-persistent: launch all tiles at once (like v3)
+        // Each block handles exactly one (M-tile, N-slice) pair
+        num_blocks = total_tiles;
+    }
+    num_blocks = MIN(num_blocks, 65535);  // CUDA grid limit
 
     auto kernel = exl3_gemm_marlin_kernel<
         bits, c_fp32, cb, TILE_M, TILE_K, TILE_N, SH_STAGES, FRAG_STAGES>;
@@ -323,6 +336,13 @@ void exl3_gemm_marlin_torch
 
     int device = A.device().index();
     int* locks_ptr = DevCtx::instance().get_locks(device);
+
+    // Fix 2 (reviewer P2): Lock buffer overflow guard
+    int grid_m_check = (size_m + 63) / 64;  // TILE_M=64
+    int blocks_n_check = size_n / 16;
+    TORCH_CHECK(grid_m_check * blocks_n_check < 1024 * 1024,
+        "exl3_gemm_marlin: lock buffer overflow: grid_m=", grid_m_check,
+        " * blocks_n=", blocks_n_check, " >= MAX_TILES_C=1,048,576");
 
     exl3_gemm_marlin(
         A_ptr, B_ptr, C_ptr, size_m, size_k, size_n, bits, cb, c_fp32,
