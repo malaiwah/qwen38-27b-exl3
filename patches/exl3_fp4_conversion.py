@@ -518,25 +518,23 @@ def convert_layer_to_fp4(
     N = trellis.shape[1] * 16
     device = trellis.device
 
-    # --- Reconstruct trellis codes to FP16 weight on CPU to avoid GPU OOM ---
-    # The FP16 weight matrix can be 4+ GB for large layers; keeping it on
-    # GPU alongside existing FP4 weights causes OOM. Do reconstruction and
-    # Hadamard fold on CPU, then move only the final FP4 result to GPU.
-    trellis_cpu = trellis.cpu()
-    suh_cpu = suh.cpu()
-    svh_cpu = svh.cpu()
+    # --- Reconstruct trellis codes to FP16 weight on GPU ---
+    # ext.reconstruct is a CUDA kernel that requires GPU tensors.
+    # Use GPU but free temporaries immediately after each step.
     mcg, mul1 = _codebook_to_flags(cb)
-    W = torch.empty(K, N, dtype=torch.float16, device="cpu")
-    ext.reconstruct(W, trellis_cpu, bits, mcg, mul1)
+    W = torch.empty(K, N, dtype=torch.float16, device=device)
+    ext.reconstruct(W, trellis, bits, mcg, mul1)
 
-    # --- Fold Hadamard transforms + per-element scales into W (on CPU) ---
-    W_final = hadamard_fold_weight(W, suh_cpu, svh_cpu)
+    # --- Fold Hadamard transforms + per-element scales into W (on GPU) ---
+    W_final = hadamard_fold_weight(W, suh, svh)
+    del W
 
     # --- Transpose to (N, K) for the nn.Linear weight layout ---
     W_linear = W_final.t().contiguous()  # (N, K)
+    del W_final
 
-    # Free CPU temporaries
-    del W, W_final, trellis_cpu, suh_cpu, svh_cpu
+    # Free trellis tensors early to reclaim VRAM before quantization
+    torch.cuda.empty_cache()
 
     # --- Quantise to MXFP4 (FP4 E2M1 + UE8M0 block scales, sf_vec_size=32) ---
     packed, scale_storage = _quantize_matrix_fp4_mxfp4(
@@ -571,6 +569,12 @@ def convert_all_shards_to_fp4(
     """
     shard_ids = list(layer.exl3_shard_ids)
     fp4_weights: dict[Any, Any] = {}
+    # Unfreeze b12x kernel resolution for FP4 quantization
+    try:
+        from b12x._lib.runtime_control import unfreeze_kernel_resolution
+        unfreeze_kernel_resolution()
+    except ImportError:
+        pass
 
     for shard_id in shard_ids:
         trellis = layer.trellis.exl3_tensors[shard_id]
@@ -594,12 +598,7 @@ def convert_all_shards_to_fp4(
     # Store on the layer for the runtime path.
     layer.fp4_weights = fp4_weights
 
-    # Free trellis tensors to reclaim VRAM. The caller returns early and
-    # skips all trellis warmup/priming when FP4 is active.
-    for attr in ("trellis", "suh", "svh", "mcg", "mul1"):
-        param = getattr(layer, attr, None)
-        if param is not None and hasattr(param, "exl3_tensors"):
-            param.exl3_tensors.clear()
+    # Note: caller frees trellis tensors after confirming all shards converted.
     return fp4_weights
 
 

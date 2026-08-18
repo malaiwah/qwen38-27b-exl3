@@ -262,27 +262,29 @@ def convert_layer_to_fp6(
     N = trellis.shape[1] * 16
     device = trellis.device
 
-    # --- Reconstruct trellis codes to FP16 weight on CPU to avoid GPU OOM ---
-    # The FP16 weight matrix can be 4+ GB for large layers; keeping it on
-    # GPU alongside existing FP6 weights causes OOM. Do reconstruction and
-    # Hadamard fold on CPU, then move only the final FP6 result to GPU.
-    trellis_cpu = trellis.cpu()
-    suh_cpu = suh.cpu()
-    svh_cpu = svh.cpu()
+    # --- Reconstruct trellis codes to FP16 weight on GPU ---
+    # ext.reconstruct is a CUDA kernel that requires GPU tensors.
     mcg, mul1 = _codebook_to_flags(cb)
-    W = torch.empty(K, N, dtype=torch.float16, device="cpu")
-    ext.reconstruct(W, trellis_cpu, bits, mcg, mul1)
+    W = torch.empty(K, N, dtype=torch.float16, device=device)
+    ext.reconstruct(W, trellis, bits, mcg, mul1)
 
-    # --- Fold Hadamard transforms + per-element scales into W (on CPU) ---
-    W_final = hadamard_fold_weight(W, suh_cpu, svh_cpu)
+    # --- Fold Hadamard transforms + per-element scales into W (on GPU) ---
+    W_final = hadamard_fold_weight(W, suh, svh)
+    del W
 
     # --- Transpose to (N, K) for the nn.Linear weight layout ---
     W_linear = W_final.t().contiguous()  # (N, K)
-
-    # Free CPU temporaries
-    del W, W_final, trellis_cpu, suh_cpu, svh_cpu
+    del W_final
+    torch.cuda.empty_cache()
 
     # --- Quantise to MXFP6 (W6A8: E2M3 weights, E4M3 activations) ---
+    # Unfreeze kernel resolution right before quantization — b12x may have
+    # frozen during the reconstruction/fold above or from a prior layer.
+    try:
+        from b12x._lib.runtime_control import unfreeze_kernel_resolution
+        unfreeze_kernel_resolution()
+    except ImportError:
+        pass
     fp6_weight = quantize_dense_weight_to_fp6(
         W_linear.to(torch.bfloat16).to(device),
         source_format=_FP6_SOURCE_FORMAT,
@@ -315,6 +317,13 @@ def convert_all_shards_to_fp6(
     """
     shard_ids = list(layer.exl3_shard_ids)
     fp6_weights: dict[Any, Any] = {}
+    # Unfreeze b12x kernel resolution — quantize_dense_weight_to_fp6
+    # compiles new CuTe DSL kernels that may have been frozen after warmup.
+    try:
+        from b12x._lib.runtime_control import unfreeze_kernel_resolution
+        unfreeze_kernel_resolution()
+    except ImportError:
+        pass
 
     for shard_id in shard_ids:
         trellis = layer.trellis.exl3_tensors[shard_id]
@@ -333,17 +342,7 @@ def convert_all_shards_to_fp6(
         )
         fp6_weights[shard_id] = fp6_weight
         # Clear CUDA cache between shards to prevent fragmentation OOM
-        torch.cuda.empty_cache()
-
-    # Store on the layer for the runtime path.
-    layer.fp6_weights = fp6_weights
-
-    # Free trellis tensors to reclaim VRAM. The caller returns early and
-    # skips all trellis warmup/priming when FP6 is active.
-    for attr in ("trellis", "suh", "svh", "mcg", "mul1"):
-        param = getattr(layer, attr, None)
-        if param is not None and hasattr(param, "exl3_tensors"):
-            param.exl3_tensors.clear()
+    # Note: caller frees trellis tensors after confirming all shards converted.
     return fp6_weights
 
 
