@@ -55,3 +55,20 @@
 4. If KLD fails with FP4: try hybrid FP4/FP6 (FP4 for MLP, FP6 for attention)
 5. If FP4 PP < 10k: optimize activation quantization (remove per-row scaling overhead)
 6. If still < 10k: try warp-spec with trellis→FP6 dequant fused in producer warps
+
+
+### MXFP4 vs NVFP4 (Explorer Recommendation)
+- USE MXFP4: UE8M0 scales (power-of-2), sf_vec_size=32, 0.53 bytes/weight
+- vLLM's B12xMxFp4LinearKernel already uses: blockscaled.mm(ab_dtype="float4_e2m1fn", sf_dtype="float8_e8m0fnu", sf_vec_size=32)
+- Simplest quantization: reuse b12x._lib.fp6._ue8m0_scale_from_block_max(block_max, FLOAT4_E2M1_MAX=6.0)
+- FP4 total weight: 12.2 GB (saves 3.7 GB vs K6 — no MoE OOM)
+- Weight read: 6.8ms (vs 8.9ms for K6)
+- Runtime: 3 ops per GEMM (activation quantize, blockscaled.mm, output scale)
+
+### Fp4Conversion Subagent
+- Was writing exl3_fp4_conversion.py — check agent://Fp4Conversion for results
+- If incomplete, write it manually using MXFP4 path (option b from explorer):
+  1. Reuse hadamard_fold_weight from exl3_fp6_conversion.py
+  2. Quantize to FP4: _ue8m0_scale_from_block_max + nearest_fp4 lookup
+  3. Pack 2 codes per byte
+  4. Call dense_gemm(ab_dtype="float4_e2m1fn", sf_dtype="float8_e8m0fnu", sf_vec_size=32)
