@@ -606,6 +606,11 @@ def convert_all_shards_to_fp4(
 # 3. Runtime apply
 # ---------------------------------------------------------------------------
 
+try:
+    import torch as _torch
+except Exception:
+    _torch = None
+
 def fp4_apply(
     x: torch.Tensor,
     fp4_weight: FP4DenseWeight,
@@ -667,6 +672,8 @@ def fp4_apply(
         a_torch = a_packed.unsqueeze(-1)
 
     b_torch = fp4_weight.packed_view().unsqueeze(-1)
+
+
 
     # --- Run the GEMM at the true M (padding rows are never computed) ---
     y = torch.empty((m, n, 1), device=device, dtype=torch.bfloat16)

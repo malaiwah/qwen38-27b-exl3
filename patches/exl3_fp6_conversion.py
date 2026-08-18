@@ -342,6 +342,7 @@ def convert_all_shards_to_fp6(
         )
         fp6_weights[shard_id] = fp6_weight
         # Clear CUDA cache between shards to prevent fragmentation OOM
+        torch.cuda.empty_cache()
     # Note: caller frees trellis tensors after confirming all shards converted.
     return fp6_weights
 
@@ -349,6 +350,12 @@ def convert_all_shards_to_fp6(
 # ---------------------------------------------------------------------------
 # 3. Runtime apply
 # ---------------------------------------------------------------------------
+
+try:
+    import torch
+except ImportError:
+    pass
+
 
 def fp6_apply(
     x: torch.Tensor,
@@ -367,8 +374,11 @@ def fp6_apply(
         Output activations, shape ``(M, N)``, bfloat16.
     """
     from b12x.quantization.mxfp6.fp6_dense_weights import dense_fp6_linear
-
-    # dense_fp6_linear handles dtype conversion internally (converts to bf16).
+    try:
+        from b12x._lib.runtime_control import unfreeze_kernel_resolution
+        unfreeze_kernel_resolution()
+    except ImportError:
+        pass
     return dense_fp6_linear(x, fp6_weight)
 
 
