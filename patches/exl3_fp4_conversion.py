@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""EXL3 trellis K6 -> MXFP4 W4A4 load-time weight conversion.
+"""EXL3 trellis K6 -> NVFP4 W4A4 load-time weight conversion.
 
-This module converts EXL3 trellis-quantized K6 weights to MXFP4 format at
+This module converts EXL3 trellis-quantized K6 weights to NVFP4 format at
 model load time, enabling the b12x ``dense_gemm`` W4A4 (E2M1 weights x E2M1
 activations) code path for prefill on SM120/Blackwell.
 
@@ -28,21 +28,24 @@ At runtime the linear collapses to a plain GEMM::
 
     y = x @ W_final         (no Hadamard, no per-block scaling)
 
-The folded weight is then quantised to MXFP4 (FP4 E2M1 with UE8M0 block
-scales) and executed at runtime via ``dense_gemm`` with
-``ab_dtype='float4_e2m1fn'``, which uses the ``mxf4nvf4.m16n8k64`` MMA
-(4x throughput vs FP16 on SM120/Blackwell).
+The folded weight is then quantised to NVFP4 (FP4 E2M1 with Float8E4M3FN
+block scales + a per-tensor global scale) and executed at runtime via
+``dense_gemm`` with ``ab_dtype='float4_e2m1fn'``, which uses the
+``mxf4nvf4.m16n8k64`` MMA (4x throughput vs FP16 on SM120/Blackwell).
 
-MXFP4 format
+NVFP4 format
 ------------
 * **Weights** are static, quantised once at load time into packed FP4
-  E2M1 codes (4 bits/element, 2 values per byte) + swizzled UE8M0
-  block-scales (``sf_vec_size=32``).
+  E2M1 codes (4 bits/element, 2 values per byte) + swizzled Float8E4M3FN
+  block-scales (``sf_vec_size=16``) and a per-tensor float32 **global
+  scale**.
 * **Activations** are data-dependent, quantised on the fly each forward
-  to the same MXFP4 format (FP4 E2M1 + UE8M0 block scales).
-* **No global scale** is needed — the UE8M0 power-of-two block scales
-  carry the full dynamic range (unlike NVFP4 which uses E4M3 block
-  scales + a per-tensor global scale).
+  to the same NVFP4 format (FP4 E2M1 + Float8E4M3FN block scales + a
+  per-tensor global scale).
+* **Two-level scaling**: each 16-element block has an E4M3FN block scale
+  ``sf``; the effective scale is ``sf * global_scale``.  The GEMM epilogue
+  ``alpha = 1 / (gs_act * gs_weight)`` undoes both per-tensor global
+  scales so the block-scale MMA products reconstruct the true values.
 * **MMA**: ``mxf4nvf4.m16n8k64`` — 64-element K reduction per MMA
   instruction (vs 16 for FP16, 32 for FP6), giving 4x throughput.
 
@@ -66,7 +69,7 @@ hooks at the bottom of this file).
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, fields
+from dataclasses import dataclass
 from typing import Any, Optional
 
 import torch
@@ -78,10 +81,17 @@ import torch
 _HADAMARD_BLOCK = 128
 _HADAMARD_NORM = 1.0 / math.sqrt(_HADAMARD_BLOCK)
 
-# MXFP4 block scale parameters — match the FP6 / MXFP8 UE8M0 scheme.
-_SF_VEC_SIZE = 32          # elements per UE8M0 scale block
+# NVFP4 block scale parameters — E4M3FN block scales with sf_vec_size=16,
+# matching b12x's MmaMXF4NVF4Op (NVF4: Float4E2M1FN operands, Float8E4M3FN
+# scales, sf_vec_size=16).  See b12x._lib.intrinsics for the reference
+# quantization recipe.
+_SF_VEC_SIZE = 16          # elements per E4M3FN scale block
 _FP4_E2M1_MAX = 6.0        # maximum magnitude representable in FP4 E2M1
 _INV_FP4_E2M1_MAX = 1.0 / _FP4_E2M1_MAX
+_FP8_E4M3_MAX = 448.0      # maximum magnitude representable in FP8 E4M3FN
+# Per-tensor global scale numerator: amax maps to FP4_E2M1_MAX after the
+# two-level (block-scale × global-scale) dequant.  gs = 448 * 6 / amax.
+_NVFP4_GS_NUM = _FP8_E4M3_MAX * _FP4_E2M1_MAX
 
 # The 8 representable FP4 E2M1 magnitudes (sign is separate).
 _FP4_MAG_LUT = (0.0, 0.5, 1.0, 1.5, 2.0, 3.0, 4.0, 6.0)
@@ -265,34 +275,13 @@ def _fp4_encode_nibbles(values: torch.Tensor) -> torch.Tensor:
     return idx | sign_bit
 
 
-def _pow2_ceil_ue8m0(
-    scale: torch.Tensor,
-) -> tuple[torch.Tensor, torch.Tensor]:
-    """Round positive fp32 scales UP to a power of two.
+def _reciprocal_or_zero(value: torch.Tensor) -> torch.Tensor:
+    """Return ``1 / value``, mapping an unrepresentable zero scale to zero.
 
-    Returns ``(rounded_fp32, ue8m0_u8)`` where ``ue8m0_u8`` is the IEEE-754
-    exponent byte (bias-127) of the rounded value.  A zero scale maps to
-    ``(0.0, 0)``.
-
-    Bit-exact Torch replica of the b12x ``pow2_ceil_ue8m0`` device intrinsic.
+    Matches ``b12x._lib.intrinsics._reciprocal_or_zero_torch`` so that
+    zero blocks (amax 0) produce zero quantised values rather than NaNs.
     """
-    bits = scale.to(torch.float32).contiguous().view(torch.int32)
-    mant = bits & 0x007FFFFF
-    bumped = torch.where(mant != 0, (bits + 0x00800000) & 0x7F800000, bits)
-    rounded = bumped.view(torch.float32)
-    byte = ((bumped >> 23) & 0xFF).to(torch.uint8)
-    return rounded, byte
-
-
-def _ue8m0_inv_scale(byte: torch.Tensor) -> torch.Tensor:
-    """Return ``1 / 2^(byte-127)`` for UE8M0 bytes; ``0`` for byte 0.
-
-    This is the inverse block scale used to normalise values before
-    quantising to FP4: ``normalized = value * inv_scale``.
-    """
-    inv_bits = (254 - byte.to(torch.int32)).clamp(min=0) << 23
-    inv = inv_bits.view(torch.float32)
-    return torch.where(byte == 0, torch.zeros_like(inv), inv)
+    return torch.where(value == 0, torch.zeros_like(value), 1.0 / value)
 
 
 def _swizzle_block_scale(scale: torch.Tensor) -> torch.Tensor:
@@ -302,8 +291,10 @@ def _swizzle_block_scale(scale: torch.Tensor) -> torch.Tensor:
     matches the smem bank-conflict-free tile layout.  This is a bit-exact
     Torch replica of ``b12x._lib.intrinsics.swizzle_block_scale``.
 
-    Input:  ``(batch, rows, cols)`` or ``(rows, cols)`` uint8.
-    Output: ``(batch, rows_padded, cols_padded)`` uint8, where
+    Input:  ``(batch, rows, cols)`` or ``(rows, cols)`` — ``cols`` is the
+            number of scale columns (``K // _SF_VEC_SIZE``); dtype is the
+            raw scale-element type (uint8, float8_e4m3fn, …).
+    Output: ``(batch, rows_padded, cols_padded)``, same dtype, where
             ``rows_padded = align_up(rows, 128)`` and
             ``cols_padded = align_up(cols, 4)``.
     """
@@ -329,22 +320,26 @@ def _swizzle_block_scale(scale: torch.Tensor) -> torch.Tensor:
     return swizzled[0] if squeeze_batch else swizzled
 
 
-def _as_mxfp4_scale_view(
+def _as_nvfp4_scale_view(
     scale_storage: torch.Tensor,
     rows: int,
     cols: int,
 ) -> torch.Tensor:
-    """View flat swizzled UE8M0 scales as the 6D tensor dense_gemm expects.
+    """View flat swizzled E4M3FN scales as the 6D tensor dense_gemm expects.
 
     ``scale_storage`` is ``(batch, -1)`` flat uint8 (the output of
     ``_swizzle_block_scale`` reshaped to 2D).  ``rows`` and ``cols`` are
     the *logical* matrix dimensions (before padding).  ``cols`` must be
-    divisible by ``_SF_VEC_SIZE`` (32).
+    divisible by ``_SF_VEC_SIZE`` (16).
+
+    The 6D shape ``(32, 4, rows//128, 4, cols//sf_vec_size//4, batch)``
+    matches ``b12x._lib.intrinsics.as_grouped_scale_view`` and the
+    ``BlockScaledBasicChunk`` atom layout for sf_vec_size=16.
     """
     batch = scale_storage.shape[0]
     rows_padded = _align_up(rows, 128)
     cols_padded = _align_up(cols // _SF_VEC_SIZE, 4)
-    sf = scale_storage.view(torch.float8_e8m0fnu)
+    sf = scale_storage.view(torch.float8_e4m3fn)
     sf = sf.view(batch, rows_padded // 128, cols_padded // 4, 32, 4, 4)
     return sf.permute(3, 4, 1, 5, 2, 0)
 
@@ -353,22 +348,30 @@ def _as_mxfp4_scale_view(
 # Matrix quantisation (shared by weight and activation paths)
 # ---------------------------------------------------------------------------
 
-def _quantize_matrix_fp4_mxfp4(
+def _quantize_matrix_fp4_nvfp4(
     mat_bf16: torch.Tensor,
-) -> tuple[torch.Tensor, torch.Tensor]:
-    """Quantize a ``(rows, K)`` bf16/fp16 matrix to packed MXFP4.
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    """Quantize a ``(rows, K)`` bf16/fp16 matrix to packed NVFP4.
 
     Produces:
-    * ``packed``   — ``(rows, K // 2)`` uint8, two FP4 E2M1 nibbles per byte
-                     (low nibble = first element, high nibble = second).
-    * ``scale_storage`` — ``(1, -1)`` flat uint8, swizzled UE8M0 block
-                           scales ready for ``_as_mxfp4_scale_view``.
+    * ``packed``        — ``(rows, K // 2)`` uint8, two FP4 E2M1 nibbles
+                          per byte (low nibble = first element, high
+                          nibble = second).
+    * ``scale_storage`` — ``(1, -1)`` flat uint8, swizzled Float8E4M3FN
+                          block scales ready for ``_as_nvfp4_scale_view``.
+    * ``global_scale``  — ``(1,)`` float32 per-tensor global scale.
 
     The quantisation is block-wise along the K dimension with
-    ``sf_vec_size = 32``: each block of 32 consecutive K elements shares
-    one UE8M0 (power-of-two) scale.  The scale is chosen as
-    ``pow2_ceil(max_abs / 6.0)`` so that the scaled values fit within the
-    FP4 E2M1 range ``[-6, 6]``.
+    ``sf_vec_size = 16``: each block of 16 consecutive K elements shares
+    one Float8E4M3FN block scale plus a per-tensor float32 global scale
+    (two-level NVFP4 scaling).  This matches
+    ``b12x._lib.intrinsics.quantize_grouped_nvfp4_torch`` exactly:
+
+    * ``global_scale = 448 * 6 / amax``  (amax = max abs of the whole
+      matrix; maps the largest element to FP4_E2M1_MAX after dequant).
+    * ``block_scale = e4m3(global_scale * block_max / 6.0)``
+    * ``q = round_fp4(x * global_scale / block_scale)``
+    * dequant: ``x ≈ q * block_scale / global_scale``
     """
     rows, k = mat_bf16.shape
     if k % _SF_VEC_SIZE != 0:
@@ -376,32 +379,46 @@ def _quantize_matrix_fp4_mxfp4(
             f"K must be a multiple of {_SF_VEC_SIZE}, got K={k}"
         )
 
-    # --- Block along K dimension: (rows, K//32, 32) ---
+    # --- Block along K dimension: (rows, K//16, 16) ---
     blocked = mat_bf16.to(torch.float32).reshape(rows, k // _SF_VEC_SIZE, _SF_VEC_SIZE)
 
-    # --- Per-block max-abs → UE8M0 power-of-two scale ---
-    block_max = blocked.abs().amax(dim=-1, keepdim=True)  # (rows, K//32, 1)
-    # scale = pow2_ceil(max_abs / FP4_MAX); the pow2_ceil ensures the
-    # normalised values never exceed FP4_E2M1_MAX.
-    _rounded, scale_byte = _pow2_ceil_ue8m0(block_max * _INV_FP4_E2M1_MAX)
-    inv_scale = _ue8m0_inv_scale(scale_byte)  # (rows, K//32, 1) = 1/scale
+    # --- Per-block max-abs ---
+    block_max = blocked.abs().amax(dim=-1, keepdim=True)  # (rows, K//16, 1)
 
-    # --- Quantise to FP4 E2M1 ---
-    normalised = (blocked * inv_scale).clamp(-_FP4_E2M1_MAX, _FP4_E2M1_MAX)
-    fp4_values = _fp4_quantize_values(normalised)          # (rows, K//32, 32)
-    nibbles = _fp4_encode_nibbles(fp4_values)               # (rows, K//32, 32) uint8
+    # --- Per-tensor global scale: gs = 448 * 6 / amax ---
+    tensor_amax = block_max.max().clamp_min(1e-12)
+    global_scale = (_NVFP4_GS_NUM / tensor_amax).reshape(1)  # (1,) float32
+
+    # --- Per-block E4M3FN scale: sf = e4m3(gs * block_max / 6.0) ---
+    scale = (
+        (global_scale * (block_max * _INV_FP4_E2M1_MAX))
+        .to(torch.float8_e4m3fn)
+        .to(torch.float32)
+    )  # (rows, K//16, 1) float32
+
+    # --- Quantise to FP4 E2M1: q = round_fp4(x * gs / sf) ---
+    output_scale = _reciprocal_or_zero(
+        scale * _reciprocal_or_zero(global_scale)
+    )  # = gs / sf  (with zero → zero)
+    normalised = (blocked * output_scale).clamp(-_FP4_E2M1_MAX, _FP4_E2M1_MAX)
+    fp4_values = _fp4_quantize_values(normalised)          # (rows, K//16, 16)
+    nibbles = _fp4_encode_nibbles(fp4_values)               # (rows, K//16, 16) uint8
 
     # --- Pack 2 nibbles per byte: (rows, K//2) ---
     nibbles = nibbles.reshape(rows, k // 2, 2)
     packed = nibbles[..., 0] | (nibbles[..., 1] << 4)      # (rows, K//2) uint8
     packed = packed.contiguous()
 
-    # --- Swizzle UE8M0 scales into the flat layout dense_gemm consumes ---
-    scales = scale_byte.squeeze(-1)                         # (rows, K//32) uint8
-    swizzled = _swizzle_block_scale(scales.unsqueeze(0))    # (1, rows_pad, K//32_pad)
-    scale_storage = swizzled.reshape(1, -1).contiguous()   # (1, -1) flat
+    # --- Swizzle E4M3FN scales into the flat layout dense_gemm consumes ---
+    scales = scale.squeeze(-1)                             # (rows, K//16) float32
+    swizzled = _swizzle_block_scale(
+        scales.to(torch.float8_e4m3fn).unsqueeze(0)
+    )                                                       # (1, rows_pad, K//16_pad)
+    scale_storage = (
+        swizzled.view(torch.uint8).reshape(1, -1).contiguous()
+    )                                                       # (1, -1) flat uint8
 
-    return packed, scale_storage
+    return packed, scale_storage, global_scale
 
 
 # ---------------------------------------------------------------------------
@@ -410,16 +427,18 @@ def _quantize_matrix_fp4_mxfp4(
 
 @dataclass
 class FP4DenseWeight:
-    """A single MXFP4-quantized dense weight ready for :func:`fp4_apply`.
+    """A single NVFP4-quantized dense weight ready for :func:`fp4_apply`.
 
     ``packed`` holds ``(out_features, in_features // 2)`` FP4 E2M1 codes
-    (2 per byte) and ``scale_storage`` is the flat swizzled UE8M0 block-scale
-    buffer; the 6D scale view ``dense_gemm`` wants is rebuilt on demand via
-    :meth:`scale_view`.
+    (2 per byte), ``scale_storage`` is the flat swizzled Float8E4M3FN
+    block-scale buffer, and ``global_scale`` is the per-tensor float32
+    global scale.  The 6D scale view ``dense_gemm`` wants is rebuilt on
+    demand via :meth:`scale_view`.
     """
 
     packed: torch.Tensor            # (N, K//2) uint8
-    scale_storage: torch.Tensor     # (1, -1) flat uint8 (swizzled UE8M0)
+    scale_storage: torch.Tensor     # (1, -1) flat uint8 (swizzled E4M3FN)
+    global_scale: torch.Tensor      # (1,) float32 per-tensor global scale
     out_features: int
     in_features: int
 
@@ -428,8 +447,8 @@ class FP4DenseWeight:
         self._fp4_view: Optional[torch.Tensor] = None
 
     def scale_view(self) -> torch.Tensor:
-        """The 6D swizzled UE8M0 scale view for ``dense_gemm``."""
-        return _as_mxfp4_scale_view(
+        """The 6D swizzled E4M3FN scale view for ``dense_gemm``."""
+        return _as_nvfp4_scale_view(
             self.scale_storage, self.out_features, self.in_features
         )
 
@@ -453,6 +472,7 @@ class FP4DenseWeight:
         return FP4DenseWeight(
             packed=self.packed.to(dev),
             scale_storage=self.scale_storage.to(dev),
+            global_scale=self.global_scale.to(dev),
             out_features=self.out_features,
             in_features=self.in_features,
         )
@@ -486,7 +506,7 @@ def convert_layer_to_fp4(
     *,
     shard_id: Any = None,
 ) -> FP4DenseWeight:
-    """Convert one EXL3 trellis shard to an MXFP4 ``FP4DenseWeight``.
+    """Convert one EXL3 trellis shard to an NVFP4 ``FP4DenseWeight``.
 
     Steps:
       1. Extract trellis codes, suh, svh from the layer's ``exl3_tensors``.
@@ -494,7 +514,7 @@ def convert_layer_to_fp4(
          ``ext.reconstruct()``.
       3. Fold the Hadamard transforms and per-block scales into ``W``.
       4. Transpose to ``(N, K)`` (the ``nn.Linear`` weight layout) and
-         quantise to MXFP4 (FP4 E2M1 + UE8M0 block scales).
+         quantise to NVFP4 (FP4 E2M1 + E4M3FN block scales + global scale).
       5. Return the ``FP4DenseWeight``.
 
     Args:
@@ -536,8 +556,8 @@ def convert_layer_to_fp4(
     # Free trellis tensors early to reclaim VRAM before quantization
     torch.cuda.empty_cache()
 
-    # --- Quantise to MXFP4 (FP4 E2M1 + UE8M0 block scales, sf_vec_size=32) ---
-    packed, scale_storage = _quantize_matrix_fp4_mxfp4(
+    # --- Quantise to NVFP4 (FP4 E2M1 + E4M3FN block scales, sf_vec_size=16) ---
+    packed, scale_storage, global_scale = _quantize_matrix_fp4_nvfp4(
         W_linear.to(torch.bfloat16).to(device)
     )
 
@@ -547,6 +567,7 @@ def convert_layer_to_fp4(
     fp4_weight = FP4DenseWeight(
         packed=packed,
         scale_storage=scale_storage,
+        global_scale=global_scale,
         out_features=N,
         in_features=K,
     )
@@ -558,7 +579,7 @@ def convert_all_shards_to_fp4(
     layer: torch.nn.Module,
     ext: Any,
 ) -> dict[Any, Any]:
-    """Convert every shard in an EXL3 layer to MXFP4.
+    """Convert every shard in an EXL3 layer to NVFP4.
 
     Iterates over ``layer.exl3_shard_ids``, reconstructs each shard's
     trellis codes, folds the Hadamard, and quantises to FP4.  The resulting
@@ -615,15 +636,18 @@ def fp4_apply(
     x: torch.Tensor,
     fp4_weight: FP4DenseWeight,
 ) -> torch.Tensor:
-    """Run the MXFP4 W4A4 dense linear.
+    """Run the NVFP4 W4A4 dense linear.
 
-    Quantises ``x`` to FP4 E2M1 with UE8M0 block scales on the fly, then
-    runs ``dense_gemm`` with ``ab_dtype='float4_e2m1fn'`` which uses the
-    ``mxf4nvf4.m16n8k64`` MMA (4x throughput vs FP16 on SM120/Blackwell).
+    Quantises ``x`` to FP4 E2M1 with Float8E4M3FN block scales and a
+    per-tensor global scale on the fly, then runs ``dense_gemm`` with
+    ``ab_dtype='float4_e2m1fn'`` which uses the ``mxf4nvf4.m16n8k64``
+    MMA (4x throughput vs FP16 on SM120/Blackwell).
 
-    Both activations and weights are FP4 E2M1.  The UE8M0 power-of-two block
-    scales carry the full dynamic range for each operand, so no global
-    scale or epilogue alpha is needed (``alpha = 1.0``).
+    Both activations and weights are FP4 E2M1 with E4M3FN block scales
+    (``sf_vec_size=16``).  Each operand also carries a per-tensor float32
+    global scale; the GEMM epilogue ``alpha = 1 / (gs_act * gs_weight)``
+    undoes both so the block-scale MMA products reconstruct the true
+    values.
 
     Args:
         x:          Input activations, shape ``(M, K)``, float16 or bfloat16.
@@ -643,11 +667,9 @@ def fp4_apply(
             f"in_features mismatch: x K={k}, weight in_features="
             f"{fp4_weight.in_features}"
         )
-
     n = fp4_weight.out_features
     device = x.device
 
-    # --- Pad M to a multiple of _TILE (128) for the quantiser ---
     m_pad = ((m + _TILE - 1) // _TILE) * _TILE
     x_bf16 = x.to(torch.bfloat16)
     if m_pad != m:
@@ -656,13 +678,11 @@ def fp4_apply(
         x_quant = x_pad
     else:
         x_quant = x_bf16
-
-    # --- Quantise activation to MXFP4 (FP4 E2M1 + UE8M0 block scales) ---
-    a_packed, a_scale_storage = _quantize_matrix_fp4_mxfp4(x_quant)
-    # a_packed: (m_pad, K//2) uint8
+    # --- Quantise activation to NVFP4 (pure-Torch, CUDA-graph safe) ---
+    a_packed, a_scale_storage, a_global_scale = _quantize_matrix_fp4_nvfp4(x_quant)
 
     # --- Build scale views for dense_gemm ---
-    a_sf = _as_mxfp4_scale_view(a_scale_storage, m_pad, k)
+    a_sf = _as_nvfp4_scale_view(a_scale_storage, m_pad, k)
     b_sf = fp4_weight.scale_view()
 
     # --- Build operand tensors: (rows, K//2, L=1) ---
@@ -670,20 +690,23 @@ def fp4_apply(
         a_torch = a_packed.view(torch.float4_e2m1fn_x2).unsqueeze(-1)
     except (TypeError, RuntimeError):
         a_torch = a_packed.unsqueeze(-1)
-
     b_torch = fp4_weight.packed_view().unsqueeze(-1)
 
+    # --- Epilogue alpha undoes both per-tensor global scales ---
+    alpha = torch.reciprocal(a_global_scale * fp4_weight.global_scale).to(
+        torch.float32
+    )
 
-
-    # --- Run the GEMM at the true M (padding rows are never computed) ---
+    # --- Run the GEMM at the true M ---
     y = torch.empty((m, n, 1), device=device, dtype=torch.bfloat16)
     dense_gemm(
         (a_torch[:m], a_sf),
         (b_torch, b_sf),
         ab_dtype="float4_e2m1fn",
-        sf_dtype="float8_e8m0fnu",
+        sf_dtype="float8_e4m3fn",
         sf_vec_size=_SF_VEC_SIZE,
         c_dtype="bfloat16",
+        alpha=alpha,
         out=y,
     )
     return y[:, :, 0]
@@ -835,19 +858,23 @@ if __name__ == "__main__":
 
     # Test FP4 quantisation round-trip.
     W_linear = W_folded.t().contiguous().to(torch.bfloat16)  # (N, K)
-    packed, scale_storage = _quantize_matrix_fp4_mxfp4(W_linear)
+    packed, scale_storage, global_scale = _quantize_matrix_fp4_nvfp4(W_linear)
     assert packed.shape == (N, K // 2), f"packed shape {packed.shape}"
     expected_scales = N * (K // _SF_VEC_SIZE)
     assert scale_storage.numel() >= expected_scales, (
         f"scale_storage {scale_storage.numel()} < {expected_scales}"
     )
+    assert global_scale.shape == (1,), f"global_scale shape {global_scale.shape}"
+    assert global_scale.dtype == torch.float32, f"global_scale dtype {global_scale.dtype}"
     print(f"FP4 packed shape: {packed.shape}, dtype: {packed.dtype}")
-    print(f"Scale storage: {scale_storage.numel()} bytes (UE8M0)")
+    print(f"Scale storage: {scale_storage.numel()} bytes (E4M3FN)")
+    print(f"Global scale: {global_scale.item():.6f}")
 
     # Build FP4DenseWeight and verify scale_view shape.
     fp4_w = FP4DenseWeight(
         packed=packed,
         scale_storage=scale_storage,
+        global_scale=global_scale,
         out_features=N,
         in_features=K,
     )
