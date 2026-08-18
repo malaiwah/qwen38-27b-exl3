@@ -428,7 +428,37 @@ def _quantize_matrix_fp4_nvfp4(
     )                                                       # (1, -1) flat uint8
 
     return packed, scale_storage, global_scale
+def _quantize_matrix_fp4_nvfp4_into(
+    mat_bf16: torch.Tensor,
+    packed_buf: torch.Tensor,
+    scale_buf: torch.Tensor,
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    """Same as _quantize_matrix_fp4_nvfp4 but writes into pre-allocated buffers.
 
+    CUDA-graph-safe: no allocations inside. Writes packed codes into packed_buf
+    and swizzled scales into scale_buf. Returns (packed_buf, scale_buf, global_scale).
+    """
+    rows, k = mat_bf16.shape
+    blocked = mat_bf16.to(torch.float32).reshape(rows, k // _SF_VEC_SIZE, _SF_VEC_SIZE)
+    block_max = blocked.abs().amax(dim=-1, keepdim=True)
+    tensor_amax = block_max.max().clamp_min(1e-12)
+    global_scale = (_NVFP4_GS_NUM / tensor_amax).reshape(1)
+    scale = (
+        (global_scale * (block_max * _INV_FP4_E2M1_MAX))
+        .to(torch.float8_e4m3fn)
+        .to(torch.float32)
+    )
+    output_scale = _reciprocal_or_zero(scale * _reciprocal_or_zero(global_scale))
+    normalised = (blocked * output_scale).clamp(-_FP4_E2M1_MAX, _FP4_E2M1_MAX)
+    fp4_values = _fp4_quantize_values(normalised)
+    nibbles = _fp4_encode_nibbles(fp4_values)
+    nibbles = nibbles.reshape(rows, k // 2, 2)
+    packed = nibbles[..., 0] | (nibbles[..., 1] << 4)
+    packed_buf.copy_(packed)
+    scales = scale.squeeze(-1).to(torch.float8_e4m3fn).unsqueeze(0)
+    swizzled = _swizzle_block_scale(scales)
+    scale_buf.copy_(swizzled.view(torch.uint8).reshape(1, -1))
+    return packed_buf, scale_buf, global_scale
 
 # ---------------------------------------------------------------------------
 # FP4DenseWeight — the load-time artifact
@@ -662,19 +692,15 @@ def fp4_apply(
     device = x.device
 
     m_pad = ((m + _TILE - 1) // _TILE) * _TILE
-    # Skip .to(bf16) if already bf16 (apply() already converts)
     x_bf16 = x if x.dtype == torch.bfloat16 else x.to(torch.bfloat16)
 
     # --- Quantise activation to NVFP4 (unified b12x TMA kernel for all M) ---
-    # Bypass b12x per-call Python validation
     import b12x.quantization.nvfp4._impl as _nvfp4_impl
     _nvfp4_impl._validate_launch_tensor = lambda *a, **kw: None
     _nvfp4_impl._overlaps = lambda *a: False
-
     from b12x.quantization.nvfp4 import plan as _nvfp4_plan, allocate_outputs as _nvfp4_alloc, run as _nvfp4_run
     # Cache global_scale per M for prefill (saves 189 launches).
-    # For decode (M≤128), compute per-call — each layer's activation has
-    # different magnitude, and errors compound token-by-token.
+    # For decode (M≤128), compute per-call — errors compound token-by-token.
     global _CACHED_GS_M, _CACHED_GS_VAL
     if m > _TILE and _CACHED_GS_M == m:
         a_global_scale = _CACHED_GS_VAL
@@ -689,7 +715,6 @@ def fp4_apply(
     if cached is None:
         qplan = _nvfp4_plan(m_pad, k)
         qouts = _nvfp4_alloc(qplan, device=device)
-        # Only cache pad buffer for decode (M≤128); prefill allocates per-call
         x_pad = torch.zeros(m_pad, k, dtype=torch.bfloat16, device=device) if (m_pad != m and m <= _TILE) else None
         _QUANT_CACHE[cache_key] = (qplan, qouts, x_pad)
         cached = (qplan, qouts, x_pad)
@@ -699,7 +724,6 @@ def fp4_apply(
             x_pad[:m].copy_(x_bf16)
             x_quant = x_pad
         else:
-            # Prefill: allocate temporary pad (freed after quant)
             x_quant = torch.zeros(m_pad, k, dtype=torch.bfloat16, device=device)
             x_quant[:m].copy_(x_bf16)
     else:
