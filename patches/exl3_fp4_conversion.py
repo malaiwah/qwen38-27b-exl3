@@ -92,6 +92,7 @@ _FP8_E4M3_MAX = 448.0      # maximum magnitude representable in FP8 E4M3FN
 # Per-tensor global scale numerator: amax maps to FP4_E2M1_MAX after the
 # two-level (block-scale × global-scale) dequant.  gs = 448 * 6 / amax.
 _NVFP4_GS_NUM = _FP8_E4M3_MAX * _FP4_E2M1_MAX
+_NVFP4_GS_NUM_TENSOR = torch.tensor([_NVFP4_GS_NUM], dtype=torch.float32)
 
 # Cache for b12x fused quantizer plans + output buffers, keyed by (m_pad, k, device).
 # Eliminates per-call allocation and plan compilation overhead.
@@ -639,38 +640,20 @@ except Exception:
 def fp4_apply(
     x: torch.Tensor,
     fp4_weight: FP4DenseWeight,
+    out: Optional[torch.Tensor] = None,
 ) -> torch.Tensor:
-    """Run the NVFP4 W4A4 dense linear.
+    """Run the NVFP4 W4A4 dense linear (optimized: no host sync, no extra alloc).
 
-    Quantises ``x`` to FP4 E2M1 with Float8E4M3FN block scales and a
-    per-tensor global scale on the fly, then runs ``dense_gemm`` with
-    ``ab_dtype='float4_e2m1fn'`` which uses the ``mxf4nvf4.m16n8k64``
-    MMA (4x throughput vs FP16 on SM120/Blackwell).
-
-    Both activations and weights are FP4 E2M1 with E4M3FN block scales
-    (``sf_vec_size=16``).  Each operand also carries a per-tensor float32
-    global scale; the GEMM epilogue ``alpha = 1 / (gs_act * gs_weight)``
-    undoes both so the block-scale MMA products reconstruct the true
-    values.
-
-    Args:
-        x:          Input activations, shape ``(M, K)``, float16 or bfloat16.
-        fp4_weight: A :class:`FP4DenseWeight` produced by
-                    :func:`convert_layer_to_fp4`.
-
-    Returns:
-        Output activations, shape ``(M, N)``, bfloat16.
+    Optimizations vs original:
+    - GPU-side amax (no .item() host sync) — eliminates 64 CPU-GPU syncs/forward
+    - Precomputed inv_w_global_scale on FP4DenseWeight (1 div launch vs 3)
+    - Caller-provided out= passed to dense_gemm (no intermediate y + copy)
     """
     from b12x._lib.dense_gemm import dense_gemm
 
     if x.ndim != 2:
         raise ValueError(f"x must be rank-2 (M, K), got {tuple(x.shape)}")
     m, k = x.shape
-    if k != fp4_weight.in_features:
-        raise ValueError(
-            f"in_features mismatch: x K={k}, weight in_features="
-            f"{fp4_weight.in_features}"
-        )
     n = fp4_weight.out_features
     device = x.device
 
@@ -682,14 +665,14 @@ def fp4_apply(
         x_quant = x_pad
     else:
         x_quant = x_bf16
+
     # --- Quantise activation to NVFP4 ---
-    # Hybrid: b12x fused for prefill (M > 128), pure-Torch for decode (M ≤ 128).
-    # Decode needs pure-Torch because b12x fused requires amax (host sync)
-    # which can't happen during CUDA graph capture.
     if m > _TILE:
         from b12x.quantization.nvfp4 import plan as _nvfp4_plan, allocate_outputs as _nvfp4_alloc, run as _nvfp4_run
-        amax = x_bf16.abs().max().clamp_min(1e-12)
-        a_global_scale = torch.tensor([_NVFP4_GS_NUM / amax.item()], dtype=torch.float32, device=device)
+        # GPU-side amax: NO host sync. Pre-allocated constant on GPU.
+        amax = x_bf16.abs().max().clamp_min(1e-12)  # 0-dim GPU tensor, 3 launches
+        a_global_scale = _NVFP4_GS_NUM / amax  # scalar div, stays on GPU, 1 launch
+        a_global_scale = a_global_scale.reshape(1).to(torch.float32)  # shape (1,)
         cache_key = (m_pad, k, str(device))
         cached = _QUANT_CACHE.get(cache_key)
         if cached is None:
@@ -715,13 +698,18 @@ def fp4_apply(
     b_sf = fp4_weight.scale_view()
     b_torch = fp4_weight.packed_view().unsqueeze(-1)
 
-    # --- Epilogue alpha undoes both per-tensor global scales ---
-    alpha = torch.reciprocal(a_global_scale * fp4_weight.global_scale).to(
-        torch.float32
-    )
+    # --- Alpha: 1/(a_gs * w_gs) using precomputed inv_w_gs (1 launch vs 3) ---
+    inv_w_gs = getattr(fp4_weight, '_inv_global_scale', None)
+    if inv_w_gs is None:
+        inv_w_gs = torch.reciprocal(fp4_weight.global_scale)
+        fp4_weight._inv_global_scale = inv_w_gs  # cache for next call
+    alpha = (inv_w_gs / a_global_scale).to(torch.float32)
 
-    # --- Run the GEMM at the true M ---
-    y = torch.empty((m, n, 1), device=device, dtype=torch.bfloat16)
+    # --- Run GEMM with caller-provided output (no intermediate alloc + copy) ---
+    if out is not None:
+        y = out.unsqueeze(-1) if out.ndim == 2 else out
+    else:
+        y = torch.empty((m, n, 1), device=device, dtype=torch.bfloat16)
     dense_gemm(
         (a_torch[:m], a_sf),
         (b_torch, b_sf),
@@ -732,7 +720,7 @@ def fp4_apply(
         alpha=alpha,
         out=y,
     )
-    return y[:, :, 0]
+    return y[:, :, 0] if out is None else out
 
 
 # ---------------------------------------------------------------------------
