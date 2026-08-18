@@ -98,15 +98,32 @@ _B12X_FUSED_MOE_API: Any | None = None
 _B12X_MIXED_TRELLIS_API: Any | None = None
 _B12X_TRELLIS_LINEAR_API: Any | None = None
 _EXL3_ONLINE_QUANTIZER: Any | None = None
+# FP6 W6A8 path: convert trellis K6 weights to MXFP6 at load time, use b12x
+# dense_gemm (mxf8f6f4 block-scaled MMA) for prefill. Gated by env var.
+_FP6_PREFILL_ENABLED = os.environ.get("VLLM_EXL3_FP6_PREFILL", "0") == "1"
+_FP6_PREFILL_THRESHOLD = int(os.environ.get("VLLM_EXL3_FP6_THRESHOLD", "128"))
+_FP6_CONVERSION_MODULE = None
+
+
+def _load_fp6_conversion():
+    """Lazily import the EXL3→FP6 conversion module."""
+    global _FP6_CONVERSION_MODULE
+    if _FP6_CONVERSION_MODULE is not None:
+        return _FP6_CONVERSION_MODULE
+    try:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "exl3_fp6_conversion",
+            os.environ.get("VLLM_EXL3_FP6_MODULE", "/opt/fp6/exl3_fp6_conversion.py"),
+        )
+        _FP6_CONVERSION_MODULE = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(_FP6_CONVERSION_MODULE)
+        logger.info("EXL3→FP6 conversion module loaded")
+    except Exception as exc:
+        logger.warning("Failed to load EXL3→FP6 conversion module: %s", exc)
+        _FP6_CONVERSION_MODULE = None
+    return _FP6_CONVERSION_MODULE
 _EXL3_ONLINE_WARMED_SIGNATURES: set[tuple[int, int, int, int]] = set()
-# Warp-specialized EXL3 GEMM kernel integration.
-# When M exceeds this threshold the exllamav3_ext exl3_gemm path internally
-# falls back to reconstruct_hgemm (dequant B → FP16 scratch → cuBLAS hgemm).
-# We intercept at the Python layer and route large-M batches through the
-# fused warp-spec kernel instead.
-_AUTO_RECONSTRUCT_THRESHOLD = 144
-_WARPSPEC_MODULE: Any | None = None
-_WARPSPEC_LOAD_ATTEMPTED = False
 # Serialized dense shapes whose exl3_gemm autotuning already ran eagerly,
 # keyed by (device_index, m, k, n, bits, codebook). The extension hashes its
 # own autotune cache over the same shape fields and the codebook selector, not
@@ -412,176 +429,6 @@ def _load_exl3_ext() -> Any:
         )
     _EXL3_EXT = ext
     return ext
-
-def _load_warpspec_module() -> Any | None:
-    """Lazily build and load the warp-specialized EXL3 GEMM kernel.
-
-    Compiles ``exl3_gemm_warpspec.cu`` as a torch extension on first call.
-    The resulting module exports ``warpspec_gemm(A, B, M, K, N, bits, cb,
-    locks, post_scale)`` which fuses inline trellis dequant with warp-level
-    MMA in a single kernel, avoiding the reconstruct-to-FP16 + cuBLAS hgemm
-    round-trip that ``exl3_gemm`` uses for large M.
-
-    Returns ``None`` (and logs a warning) on any failure so that callers
-    can transparently fall back to the standard ``_exl3_gemm`` path.
-    """
-    global _WARPSPEC_MODULE, _WARPSPEC_LOAD_ATTEMPTED
-    if _WARPSPEC_LOAD_ATTEMPTED:
-        return _WARPSPEC_MODULE
-    _WARPSPEC_LOAD_ATTEMPTED = True
-    try:
-        os.environ.setdefault("TORCH_CUDA_ARCH_LIST", "12.0a+PTX")
-        from torch.utils.cpp_extension import load as _torch_ext_load
-
-        cu_path = os.environ.get(
-            "VLLM_EXL3_WARPSPEC_CU",
-            "/opt/warpspec/exl3_gemm_warpspec.cu",
-        )
-        ext_dir = os.environ.get(
-            "VLLM_EXL3_EXT_DIR",
-            "/opt/exllamav3-python/exllamav3/exllamav3_ext",
-        )
-        _WARPSPEC_MODULE = _torch_ext_load(
-            name="exl3_gemm_warpspec",
-            sources=[cu_path],
-            extra_cflags=["-O3", "-std=c++17"],
-            extra_cuda_cflags=[
-                "-O3",
-                "--use_fast_math",
-                "-std=c++17",
-                "-DCUDA_HAS_FP16=1",
-                "-D__CUDA_NO_HALF_OPERATORS__",
-                "-D__CUDA_NO_HALF_CONVERSIONS__",
-                "-D__CUDA_NO_BFLOAT16_CONVERSIONS__",
-                "-D__CUDA_NO_HALF2_OPERATORS__",
-                "-expt-relaxed-constexpr",
-                "-U__CUDA_NO_HALF_OPERATORS__",
-                "-U__CUDA_NO_HALF_CONVERSIONS__",
-            ],
-            extra_ldflags=[
-                "-L/usr/local/cuda-13.2/targets/x86_64-linux/lib",
-                "-L/usr/local/cuda/lib",
-            ],
-            extra_include_paths=[
-                ext_dir,
-                os.path.join(ext_dir, "quant"),
-                os.path.join(ext_dir, "util"),
-                os.path.dirname(cu_path),
-            ],
-            verbose=True,
-        )
-        logger.info(
-            "Warp-specialized EXL3 GEMM kernel loaded successfully"
-        )
-    except Exception as exc:
-        logger.warning(
-            "Failed to load warp-specialized EXL3 kernel (%s); "
- "falling back to exl3_gemm for M > %d.",
-            exc,
-            _AUTO_RECONSTRUCT_THRESHOLD,
-        )
-        _WARPSPEC_MODULE = None
-    return _WARPSPEC_MODULE
-
-
-@torch.library.custom_op(
-    "vllm::warpspec_exl3_gemm",
-    mutates_args=(),
-    device_types="cuda",
-)
-def _warpspec_exl3_gemm(
-    x: torch.Tensor,
-    trellis: torch.Tensor,
-    suh: torch.Tensor,
-    svh: torch.Tensor,
-    has_mcg: bool,
-    has_mul1: bool,
-) -> torch.Tensor:
-    """Opaque torch op: full EXL3 linear through the warp-spec kernel.
-
-    Pipeline: input Hadamard (``had_r_128`` with *suh*) → fused inline
-    dequant + MMA (``warpspec_gemm``) → output Hadamard (``had_r_128``
-    with *svh*).
-
-    Shape compatibility is checked by the caller before invoking this op.
-    """
-    mod = _WARPSPEC_MODULE
-    assert mod is not None, "warpspec module must be loaded before calling"
-
-    M = x.shape[0]
-    K = trellis.shape[0] * 16
-    N = trellis.shape[1] * 16
-    bits = trellis.shape[2] // 16
-    cb = 1 if has_mcg else 0
-
-    ext = _load_exl3_ext()
-
-    # Input Hadamard transform (same as reconstruct_hgemm path step 1).
-    xh = torch.empty_like(x)
-    ext.had_r_128(x, xh, suh, None, 1.0)
-
-    # Flatten the 3D trellis (K//16, N//16, bits*16) into a contiguous 1D
-    # buffer.  The kernel treats B as a flat uint16 array and computes all
-    # strides internally from size_k/size_n/bits.  A contiguous 3D tensor
-    # already has the matching row-major flat layout, but explicitly
-    # flattening removes any ambiguity (non-contiguous views, unexpected
-    # strides from weight loading) and guarantees the pointer arithmetic in
-    # the kernel is correct.
-    trellis_flat = trellis.contiguous().reshape(-1)
-
-    # The warp-specialized kernel has a fixed tile height of WS_TILE_M = 128.
-    # It does NOT tile over M internally — the persistent grid only covers
-    # (K, N) tiles.  For M > 128 the kernel would compute only the first 128
-    # rows and leave the rest as uninitialised garbage.
-    # Tile M externally in chunks of 128, creating fresh locks per chunk
-    # (locks are consumed by the split-K reduction of each chunk).
-    _WS_TILE_M = 128
-    tiles_n = N // 128
-    post_scale = torch.empty(0, dtype=torch.float16, device=x.device)
-
-    if M <= _WS_TILE_M:
-        locks = torch.zeros(tiles_n, dtype=torch.int32, device=x.device)
-        C_raw = mod.warpspec_gemm(
-            xh, trellis_flat, M, K, N, bits, cb, locks, post_scale
-        )
-    else:
-        C_raw = torch.empty(
-            M, N, dtype=torch.float16, device=x.device
-        )
-        for m_start in range(0, M, _WS_TILE_M):
-            m_end = min(m_start + _WS_TILE_M, M)
-            m_chunk = m_end - m_start
-            locks = torch.zeros(
-                tiles_n, dtype=torch.int32, device=x.device
-            )
-            C_chunk = mod.warpspec_gemm(
-                xh[m_start:m_end], trellis_flat,
-                m_chunk, K, N, bits, cb, locks, post_scale,
-            )
-            C_raw[m_start:m_end] = C_chunk
-
-    # Output Hadamard transform (same as reconstruct_hgemm path step 4).
-    output = torch.empty_like(C_raw)
-    ext.had_r_128(C_raw, output, None, svh, 1.0)
-
-    return output
-
-
-@_warpspec_exl3_gemm.register_fake
-def _warpspec_exl3_gemm_fake(
-    x: torch.Tensor,
-    trellis: torch.Tensor,
-    suh: torch.Tensor,
-    svh: torch.Tensor,
-    has_mcg: bool,
-    has_mul1: bool,
-) -> torch.Tensor:
-    del suh, svh, has_mcg, has_mul1
-    return torch.empty(
-        (x.shape[0], trellis.shape[1] * 16),
-        dtype=torch.float16,
-        device=x.device,
-    )
 
 
 def _load_b12x_fused_moe() -> Any:
@@ -2475,6 +2322,28 @@ class Exl3LinearMethod(LinearMethodBase):
                     device=device, non_blocking=True
                 ).contiguous()
 
+        # FP6 W6A8 path: convert trellis K6 weights to MXFP6 at load time.
+        # When FP6 is enabled, we skip all trellis warmup/priming and use
+        # b12x dense_gemm (mxf8f6f4 block-scaled MMA) for all inference.
+        if _FP6_PREFILL_ENABLED:
+            conv = _load_fp6_conversion()
+            if conv is not None:
+                try:
+                    ext = _load_exl3_ext()
+                    fp6_weights = conv.convert_all_shards_to_fp6(layer, ext)
+                    layer.fp6_weights = fp6_weights  # type: ignore[attr-defined]
+                    logger.info(
+                        "EXL3→FP6 conversion complete for %s (%d shards)",
+                        getattr(layer, "prefix", layer.__class__.__name__),
+                        len(fp6_weights),
+                    )
+                    # FP6 handles all inference — skip trellis warmup and
+                    # graph decode priming (they access freed trellis tensors).
+                    return
+                except Exception as exc:
+                    logger.warning("EXL3→FP6 conversion failed for %s: %s",
+                                   getattr(layer, "prefix", ""), exc)
+
         for shard_id in layer.exl3_shard_ids:
             trellis = layer.trellis.exl3_tensors[shard_id]
             if not _b12x_trellis_k6_supported(
@@ -2539,7 +2408,10 @@ class Exl3LinearMethod(LinearMethodBase):
     ) -> torch.Tensor:
         original_shape = x.shape[:-1]
         original_dtype = x.dtype
-        x_2d = x.reshape(-1, x.shape[-1]).to(torch.float16).contiguous()
+        # FP6 path uses bf16 (the b12x quantizer expects bf16 input)
+        has_fp6 = hasattr(layer, "fp6_weights") and layer.fp6_weights
+        target_dtype = torch.bfloat16 if has_fp6 else torch.float16
+        x_2d = x.reshape(-1, x.shape[-1]).to(target_dtype).contiguous()
         outputs = [
             self._apply_one(layer, x_2d, shard_id) for shard_id in layer.exl3_shard_ids
         ]
@@ -2776,55 +2648,36 @@ class Exl3LinearMethod(LinearMethodBase):
     def _apply_one(
         layer: torch.nn.Module, x: torch.Tensor, shard_id: ShardId
     ) -> torch.Tensor:
+        # FP6 W6A8 path: use b12x dense_gemm for ALL M (prefill + decode)
+        # b12x dense_gemm has decode-tuned tiles via expected_m parameter
+        fp6_weights = getattr(layer, "fp6_weights", None)
+        if fp6_weights is not None and shard_id in fp6_weights:
+            conv = _load_fp6_conversion()
+            if conv is not None:
+                return conv.fp6_apply(x, fp6_weights[shard_id])
+
         trellis = layer.trellis.exl3_tensors[shard_id]
-        packed_k = trellis.shape[0] * 16
-        if x.shape[-1] > packed_k:
-            raise ValueError(
-                f"EXL3 input width {x.shape[-1]} exceeds packed K={packed_k}"
-            )
-        if x.shape[-1] < packed_k:
-            x = torch.nn.functional.pad(x, (0, packed_k - x.shape[-1]))
         has_mcg = shard_id in layer.mcg.exl3_tensors
         has_mul1 = shard_id in layer.mul1.exl3_tensors
-        suh = layer.suh.exl3_tensors[shard_id]
-        svh = layer.svh.exl3_tensors[shard_id]
         if _b12x_trellis_k6_supported(
             trellis,
             has_mcg=has_mcg,
             has_mul1=has_mul1,
         ):
-            output = _b12x_trellis_linear(x, trellis, suh, svh)
-        elif (
-            x.shape[0] > _AUTO_RECONSTRUCT_THRESHOLD
-            and _WARPSPEC_MODULE is not None
-        ):
-            # Large-M prefill: route through the fused warp-spec kernel
-            # (inline dequant + MMA) instead of letting exl3_gemm fall
-            # back to reconstruct_hgemm (dequant → FP16 scratch → cuBLAS).
-            # The module was loaded at import time; shape checks here are
-            # plain Python so dynamo can guard on them without tracing
-            # into the C++ extension build path.
-            _n = trellis.shape[1] * 16
-            _bits = trellis.shape[2] // 16
-            # The warpspec kernel supports cb=0 (standard) and cb=1 (MCG)
-            # but not cb=2 (mul1 codebook).  Skip the warpspec path when
-            # the layer needs the mul1 codebook (has_mul1 and not has_mcg).
-            _use_warpspec = (
-                _n % 128 == 0
-                and _bits in (4, 5, 6)
-                and not (has_mul1 and not has_mcg)
+            output = _b12x_trellis_linear(
+                x,
+                trellis,
+                layer.suh.exl3_tensors[shard_id],
+                layer.svh.exl3_tensors[shard_id],
             )
-            if _use_warpspec:
-                output = _warpspec_exl3_gemm(
-                    x, trellis, suh, svh, has_mcg, has_mul1
-                )
-            else:
-                output = _exl3_gemm(
-                    x, trellis, suh, svh, has_mcg, has_mul1
-                )
         else:
             output = _exl3_gemm(
-                x, trellis, suh, svh, has_mcg, has_mul1
+                x,
+                trellis,
+                layer.suh.exl3_tensors[shard_id],
+                layer.svh.exl3_tensors[shard_id],
+                has_mcg,
+                has_mul1,
             )
         logical_n = Exl3LinearMethod._output_shard_size(layer, shard_id)
         if output.shape[-1] < logical_n:
@@ -5370,14 +5223,6 @@ def warmup_exl3_mixed_trellis_route_pack(model: torch.nn.Module) -> int:
                 )
             )
     return warmed
-
-# Build/load the warp-specialized kernel at import time so that the
-# compiled extension is ready before any dynamo-traced forward pass.
-# This runs outside any torch.compile region, avoiding the dynamo
-# skip-list error on torch.utils.cpp_extension.load.  If the build
-# fails, _WARPSPEC_MODULE stays None and _apply_one falls back to
-# the standard exl3_gemm path transparently.
-_load_warpspec_module()
 
 
 __all__ = [
