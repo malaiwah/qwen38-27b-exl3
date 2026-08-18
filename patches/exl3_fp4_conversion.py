@@ -683,15 +683,13 @@ def fp4_apply(
     else:
         x_quant = x_bf16
     # --- Quantise activation to NVFP4 ---
-    # Hybrid: b12x fused bf16_to_fp4_tma for prefill (M > 128, single kernel),
-    # pure-Torch for decode (M ≤ 128, CUDA-graph safe).
-    # Quantizer outputs (plan + buffers) are cached per (m_pad, k) shape to
-    # eliminate per-call allocation overhead.
+    # Hybrid: b12x fused for prefill (M > 128), pure-Torch for decode (M ≤ 128).
+    # Decode needs pure-Torch because b12x fused requires amax (host sync)
+    # which can't happen during CUDA graph capture.
     if m > _TILE:
         from b12x.quantization.nvfp4 import plan as _nvfp4_plan, allocate_outputs as _nvfp4_alloc, run as _nvfp4_run
         amax = x_bf16.abs().max().clamp_min(1e-12)
         a_global_scale = torch.tensor([_NVFP4_GS_NUM / amax.item()], dtype=torch.float32, device=device)
-        # Cache plan + outputs per shape (avoid recompilation + allocation)
         cache_key = (m_pad, k, str(device))
         cached = _QUANT_CACHE.get(cache_key)
         if cached is None:
@@ -707,7 +705,6 @@ def fp4_apply(
         except (TypeError, RuntimeError):
             a_torch = qouts.packed_a_storage[:m].permute(1, 2, 0).unsqueeze(-1)
     else:
-        # Decode path: pure-Torch quantizer (CUDA-graph safe)
         a_packed, a_scale_storage, a_global_scale = _quantize_matrix_fp4_nvfp4(x_quant)
         a_sf = _as_nvfp4_scale_view(a_scale_storage, m_pad, k)
         try:
