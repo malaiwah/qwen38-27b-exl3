@@ -100,6 +100,7 @@ _QUANT_CACHE: dict = {}
 # Cached global_scale per M (compute amax once per forward, reuse for all layers)
 _CACHED_GS_M: int = -1
 _CACHED_GS_VAL: torch.Tensor | None = None
+_ALPHA_CACHE: dict = {}
 
 # The 8 representable FP4 E2M1 magnitudes (sign is separate).
 _FP4_MAG_LUT = (0.0, 0.5, 1.0, 1.5, 2.0, 3.0, 4.0, 6.0)
@@ -708,12 +709,11 @@ def fp4_apply(
 
     b_sf = fp4_weight.scale_view()
     b_torch = fp4_weight.packed_view().unsqueeze(-1)
-
-    # --- Alpha: 1/(a_gs * w_gs) using precomputed inv_w_gs (1 launch vs 3) ---
+    # --- Alpha: 1/(a_gs * w_gs) using precomputed inv_w_gs (1 launch) ---
     inv_w_gs = getattr(fp4_weight, '_inv_global_scale', None)
     if inv_w_gs is None:
         inv_w_gs = torch.reciprocal(fp4_weight.global_scale)
-        fp4_weight._inv_global_scale = inv_w_gs  # cache for next call
+        fp4_weight._inv_global_scale = inv_w_gs
     alpha = (inv_w_gs / a_global_scale).to(torch.float32)
 
     # --- Run GEMM with caller-provided output (no intermediate alloc + copy) ---
@@ -730,6 +730,7 @@ def fp4_apply(
         c_dtype="bfloat16",
         alpha=alpha,
         out=y,
+        expected_m=m if m > _TILE else None,
     )
     return y[:, :, 0] if out is None else out
 
