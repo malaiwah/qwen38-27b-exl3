@@ -243,15 +243,25 @@ __device__ __forceinline__ void dq_dispatch(const uint32_t* ptr, int idx, FragB&
 #define WS_PROD_WARPS 4
 #define WS_CONS_WARPS 4
 
-// Tile config: TILE_K=16 to avoid sub_k complexity, TILE_M=64 for Marlin scale
-#define WS_TILE_M 64
+// Tile config: TILE_K=16 to avoid sub_k complexity, TILE_M=128 for full MMA
+// datapath utilisation on SM120 (TILE_M=64 only achieves ~50% MMA throughput).
+#define WS_TILE_M 128
 #define WS_TILE_K 16
 #define WS_TILE_N 128
-#define WS_TILEBLOCKS_M (WS_TILE_M / 16)   // 4
+#define WS_TILEBLOCKS_M (WS_TILE_M / 16)   // 8
 #define WS_TILEBLOCKS_K (WS_TILE_K / 16)   // 1
 #define WS_TILEBLOCKS_N (WS_TILE_N / 16)   // 8
 #define WS_SH_STAGES 4
 #define WS_FRAG_STAGES 3
+
+// Threadblock N-swizzle for L2 cache reuse of B weights.
+// Adjacent N-tiles are contiguous in trellis B memory, so grouping them
+// improves L2 hit rate when the persistent grid spans many N-tiles.
+// The swizzle permutes only the N-coordinate; K-order is preserved so the
+// inter-block split-K lock mechanism (which depends on tiles being processed
+// in K-order within each N-column) remains correct.
+#define WS_SWIZZLE_SIZE 4    // N-tiles per swizzle row
+#define WS_SWIZZLE_TOTAL_N 8 // N-tiles per swizzle group (row × col)
 
 // H_ACC for SM120
 #if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ == 1200)
@@ -259,6 +269,15 @@ __device__ __forceinline__ void dq_dispatch(const uint32_t* ptr, int idx, FragB&
 #else
 #define WS_H_ACC 0
 #endif
+
+// sm_120a architecture-specific features (setmaxnreg, PDL, 256b loads, etc.)
+#if defined(__CUDA_ARCH_FEAT_SM120_ALL)
+#define WS_SM120A 1
+#else
+#define WS_SM120A 0
+#endif
+
+
 
 // XOR-swizzle for A
 #define WS_A_COLS (WS_TILE_K / 8)
@@ -272,11 +291,27 @@ __device__ __forceinline__ void dq_dispatch(const uint32_t* ptr, int idx, FragB&
 #define WS_N_BLOCKS_PER_PROD (WS_TILEBLOCKS_N / WS_PROD_WARPS)  // 8/4 = 2
 
 // Shared memory sizes
-#define WS_SH_A_STAGE (WS_TILE_M * WS_TILE_K)                    // 64*16 = 1024 halfs
+#define WS_SH_A_STAGE (WS_TILE_M * WS_TILE_K)                    // 128*16 = 2048 halfs
 #define WS_SH_B_STAGE (WS_TILEBLOCKS_K * WS_TILEBLOCKS_N * 256 / 16 * 6)  // 1*8*96 = 768 uint16s
 // FP16 B buffer: per stage, per K-block, per N-block, 32 threads × 2 FragB × 2 half2
 #define WS_SH_FP16_B_STAGE (WS_TILEBLOCKS_K * WS_TILEBLOCKS_N * 32 * 2 * 2 * 2)  // 1*8*32*2*2 = 1024 halfs
 #define WS_SH_C_SIZE (4 * WS_CONS_WARPS * 32 * WS_FRAGS_N_PER_CONS)  // 4*128*4 = 2048 floats
+
+// N-coordinate swizzle for L2 cache reuse.
+// Permutes the N-tile index within groups of WS_SWIZZLE_TOTAL_N so that
+// adjacent blocks (which receive contiguous linear tile-id ranges) hit
+// N-tiles that are nearby in trellis B memory.  K-order is untouched,
+// keeping the split-K lock protocol correct.
+__device__ __forceinline__
+int ws_swizzle_n(int n_raw, int tiles_n) {
+    if (tiles_n < WS_SWIZZLE_TOTAL_N || tiles_n % WS_SWIZZLE_TOTAL_N != 0)
+        return n_raw;
+    int group  = n_raw / WS_SWIZZLE_TOTAL_N;
+    int within = n_raw % WS_SWIZZLE_TOTAL_N;
+    int row    = within % WS_SWIZZLE_SIZE;
+    int col    = within / WS_SWIZZLE_SIZE;
+    return group * WS_SWIZZLE_TOTAL_N + row * (WS_SWIZZLE_TOTAL_N / WS_SWIZZLE_SIZE) + col;
+}
 
 // ============================================================================
 // Warp-specialized inner kernel
@@ -310,6 +345,22 @@ void warpspec_inner
     const bool is_consumer = warp_id >= WS_PROD_WARPS;
     const int cons_warp = warp_id - WS_PROD_WARPS;  // 0-3 for consumers
     const int prod_warp = warp_id;                   // 0-3 for producers
+    // setmaxnreg: give producers fewer registers (40) and consumers more (232)
+    // so the warp scheduler can run more consumer warps concurrently for MMA
+    // throughput.  Producers do mostly integer ALU (dequant) and need few regs.
+    // NOTE: With TILE_M=128, consumer register pressure rises (~250 regs for
+    // frag_c + frag_c_h + staged frags).  If spilling hurts perf, raise the
+    // consumer limit to 255 or disable H_ACC (saves 64 regs from frag_c_h).
+    if (is_producer) {
+        #if WS_SM120A
+        asm volatile("setmaxnreg.dec.sync.aligned.u32 %0;\n" :: "n"(40));
+        #endif
+    } else {
+        #if WS_SM120A
+        asm volatile("setmaxnreg.inc.sync.aligned.u32 %0;\n" :: "n"(232));
+        #endif
+    }
+
 
     // Dimensions
     int tiles_k = size_k / WS_TILE_K;
@@ -337,12 +388,11 @@ void warpspec_inner
 
     // ---- Pipe 0: Global → Shared ----
     int slice0_k = (slice_beg % tiles_k);
-    int slice0_n = (slice_beg / tiles_k);
+    int slice0_n_raw = (slice_beg / tiles_k);   // linear N-index (pre-swizzle)
     int slice0_iters = slice_len;
 
     int gl_a_stride_m = WS_TILE_M * size_k;
     const int gl_a_stride_k = WS_TILE_K;
-    const half* gl_a_ptr = A + slice0_k * gl_a_stride_k;
     half* sh0_a_ptr = sh_a + (slice0_iters % WS_SH_STAGES) * WS_SH_A_STAGE;
 
     const int load_a_iters = (WS_SH_A_STAGE / 8 + WS_BASE_THREADS - 1) / WS_BASE_THREADS;
@@ -359,7 +409,6 @@ void warpspec_inner
 
     int gl_b_stride_k = blocks_n * TILEBLOCKS_K * 256 / 16 * bits;
     const int gl_b_stride_n = TILEBLOCKS_N * 256 / 16 * bits;
-    const uint16_t* gl_b_ptr = B + slice0_k * gl_b_stride_k + slice0_n * gl_b_stride_n;
     uint16_t* sh0_b_ptr = sh_b + (slice0_iters % WS_SH_STAGES) * WS_SH_B_STAGE;
 
     const int load_b_iters = (WS_SH_B_STAGE / 8 + WS_BASE_THREADS - 1) / WS_BASE_THREADS;
@@ -380,17 +429,15 @@ void warpspec_inner
         sh0_b_ptr = sh_b + stage * WS_SH_B_STAGE;
         if (slice0_k >= tiles_k) {
             slice0_k = 0;
-            slice0_n++;
-            gl_a_ptr = A + slice0_k * gl_a_stride_k;
-            gl_b_ptr = B + slice0_k * gl_b_stride_k + slice0_n * gl_b_stride_n;
-        } else {
-            gl_a_ptr += gl_a_stride_k;
-            gl_b_ptr += gl_b_stride_k;
+            slice0_n_raw++;
         }
     };
 
     auto async_load_gl = [&]() {
         if (slice0_iters) {
+            int slice0_n = ws_swizzle_n(slice0_n_raw, tiles_n);
+            const half* gl_a_ptr = A + slice0_k * gl_a_stride_k;
+            const uint16_t* gl_b_ptr = B + slice0_k * gl_b_stride_k + slice0_n * gl_b_stride_n;
             {
                 const int4* gl = (const int4*)gl_a_ptr;
                 int4* sh = (int4*)sh0_a_ptr;
@@ -417,7 +464,7 @@ void warpspec_inner
 
     // ---- Pipe 1: Shared → Registers (split producer/consumer) ----
     int slice1_k = slice0_k;
-    int slice1_n = slice0_n;
+    int slice1_n_raw = slice0_n_raw;
     int slice1_iters = slice0_iters;
     half* sh1_a_ptr = sh_a + (slice1_iters % WS_SH_STAGES) * WS_SH_A_STAGE;
     uint16_t* sh1_b_ptr = sh_b + (slice1_iters % WS_SH_STAGES) * WS_SH_B_STAGE;
@@ -428,7 +475,7 @@ void warpspec_inner
         int stage = slice1_iters % WS_SH_STAGES;
         sh1_a_ptr = sh_a + stage * WS_SH_A_STAGE;
         sh1_b_ptr = sh_b + stage * WS_SH_B_STAGE;
-        if (slice1_k >= tiles_k) { slice1_k = 0; slice1_n++; }
+        if (slice1_k >= tiles_k) { slice1_k = 0; slice1_n_raw++; }
     };
 
     // Register fragments — declared before lambdas that capture them
@@ -530,26 +577,25 @@ void warpspec_inner
     // ---- Pipe 2: Output ----
     int slice2_k = slice0_k;
     int slice2_k0 = slice0_k;
-    int slice2_n = slice0_n;
+    int slice2_n_raw = slice0_n_raw;   // linear N-index (pre-swizzle)
     int slice2_iters = slice0_iters;
 
     int gl_c_stride_n = WS_TILE_N;
     int gl_c_stride_m = WS_TILE_M * size_n;
-    half* gl_c_ptr_16 = ((half*)C) + slice2_n * gl_c_stride_n;
-    float* gl_c_ptr_32 = ((float*)C) + slice2_n * gl_c_stride_n;
 
     auto advance2 = [&]() {
         slice2_k++;
         slice2_iters--;
         if (slice2_k >= tiles_k) {
-            slice2_k = 0; slice2_k0 = 0; slice2_n++;
-            if constexpr (c_fp32) gl_c_ptr_32 += gl_c_stride_n;
-            else gl_c_ptr_16 += gl_c_stride_n;
+            slice2_k = 0; slice2_k0 = 0; slice2_n_raw++;
         }
     };
 
     // Reduction (consumer only, but all threads sync)
     auto reduce = [&]() {
+        int slice2_n = ws_swizzle_n(slice2_n_raw, tiles_n);
+        half* gl_c_ptr_16 = ((half*)C) + slice2_n * gl_c_stride_n;
+        float* gl_c_ptr_32 = ((float*)C) + slice2_n * gl_c_stride_n;
         #if WS_H_ACC
         // Fold fp16 accumulators into fp32
         if (is_consumer) {
@@ -639,6 +685,13 @@ void warpspec_inner
                     }
                 }
         }
+
+        // PDL disabled: causes TG regression. See comment at kernel start.
+        // if (last && threadIdx.x == 0) {
+        //     #if WS_SM120A
+        //     asm volatile("griddepcontrol.launch_dependents;" ::);
+        //     #endif
+        // }
 
         // Last block: write final output directly to global (no sh_c round-trip)
         if (is_consumer && last) {
@@ -794,6 +847,7 @@ void launch_warpspec
         warpspec_kernel<bits, c_fp32, cb, shmem_out_had>,
         cudaFuncAttributeMaxDynamicSharedMemorySize, 101376);
 
+    // Standard launch (PDL disabled — causes TG regression on shared stream)
     warpspec_kernel<bits, c_fp32, cb, shmem_out_had>
         <<<grid, WS_BASE_THREADS, shmem, stream>>>(
             A, B, C, size_m, size_k, size_n, locks, post_scale);
@@ -813,6 +867,12 @@ __global__ void warpspec_kernel
     const half* __restrict__ post_scale
 )
 {
+    // PDL disabled: griddepcontrol.wait causes TG regression when warp-spec
+    // shares a stream with decode kernels. Re-enable with per-stream isolation.
+    // #if WS_SM120A
+    // asm volatile("griddepcontrol.wait;" ::);
+    // #endif
+
     warpspec_inner<bits, c_fp32, cb, shmem_out_had>(
         A, B, C, size_m, size_k, size_n, locks, post_scale,
         blockIdx.x, gridDim.x);
