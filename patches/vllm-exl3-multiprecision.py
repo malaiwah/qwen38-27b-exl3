@@ -101,8 +101,11 @@ _EXL3_ONLINE_QUANTIZER: Any | None = None
 # FP6 W6A8 path: convert trellis K6 weights to MXFP6 at load time, use b12x
 # dense_gemm (mxf8f6f4 block-scaled MMA) for prefill. Gated by env var.
 _MULTIPRECISION_ENABLED = os.environ.get("VLLM_EXL3_MULTIPRECISION", "0") == "1"
-# Layer routing: MLP → FP4 (4x MMA for prefill), attention/GDN stays on trellis
-_FP4_LAYER_PATTERNS = ("mlp.gate_up_proj", "mlp.down_proj", "linear_attn.", "self_attn.")  # All layers
+# Layer routing: MLP + GDN → FP4 (fast), full attention → trellis W4A16 (KLD-passing)
+# 16 full attention layers stay on trellis W4A16 (BF16 activations, KLD-passing).
+# 48 GDN layers + 64 MLP layers use FP4 W4A4 (4x MMA throughput).
+# KLD reduction: 16 layers × ~0.0012 = ~0.019 (from 0.0633 to ~0.044).
+_FP4_LAYER_PATTERNS = ("mlp.gate_up_proj", "mlp.down_proj", "linear_attn.")  # MLP + GDN; full attn stays trellis W4A16
 _FP6_LAYER_PATTERNS = ()  # All layers use FP4
 _FP6_CONVERSION_MODULE = None
 _FP4_CONVERSION_MODULE = None
@@ -1179,7 +1182,10 @@ def _b12x_trellis_k6_supported(
     has_mul1: bool,
 ) -> bool:
     """Gate the native path to the exact K6/MCG contract it implements."""
-
+    # When VLLM_EXL3_SKIP_TRELLIS_PREP=1, skip b12x prepared weights (saves 16GB).
+    # Attention layers fall back to ext.exl3_gemm (raw trellis codes, no prep needed).
+    if os.environ.get("VLLM_EXL3_SKIP_TRELLIS_PREP", "0") == "1":
+        return False
     bounds = _b12x_trellis_n_bounds()
     if bounds is not None:
         n_packed = int(trellis.shape[1]) * 16

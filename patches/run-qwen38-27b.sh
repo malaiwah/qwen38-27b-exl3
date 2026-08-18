@@ -25,7 +25,7 @@ SERVED_MODEL_NAME="${SERVED_MODEL_NAME:-Qwen3.8-27B}"
 # PR #314 is mounted over the pinned GG r34 base image. Refuse to start if the
 # installed overlay is absent or differs from the exact qualified source.
 EXL3_PATCH_HOST="${EXL3_PATCH_HOST:-/home/mbelleau/vllm-exl3-multiprecision.py}"
-EXL3_PATCH_SHA256="603e331de52f3b3cdaab58abc9c0b752235394f71337589b0bf2c3232fd4c723"
+EXL3_PATCH_SHA256="bff97ce0e165cde2d1b7502b953134664e96a66411c263d1941b91634687732f"
 EXL3_PATCH_CTR="/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py"
 [ -f "${EXL3_PATCH_HOST}" ] || {
   echo "EXL3 graph patch is missing: ${EXL3_PATCH_HOST}" >&2
@@ -44,9 +44,9 @@ QUANTIZATION_CONFIG='{"linear":{"weight":"mxfp8"},"ignore":["re:.*visual\\..*","
 #   - max-num-batched-tokens 8192: vLLM warns that 4096 is suboptimal with
 #     MTP-3 (draft token slots need headroom); 8192 accommodates the 3 draft
 #     tokens per sequence across 8 concurrent seqs.
-GPU_MEMORY_UTILIZATION="${GPU_MEMORY_UTILIZATION:-0.90}"
-MAX_MODEL_LEN="${MAX_MODEL_LEN:-32768}"
-MAX_NUM_SEQS="${MAX_NUM_SEQS:-8}"
+GPU_MEMORY_UTILIZATION="${GPU_MEMORY_UTILIZATION:-0.93}"
+MAX_MODEL_LEN="${MAX_MODEL_LEN:-8192}"
+MAX_NUM_SEQS="${MAX_NUM_SEQS:-4}"
 MAX_NUM_BATCHED_TOKENS="${MAX_NUM_BATCHED_TOKENS:-8192}"
 
 # Graph-captured prefill has produced Xid 31 on short sm_120 prefills.
@@ -88,7 +88,6 @@ done
 printf 'Starting Qwen3.8-27B K5K6-hydrated: revision=%s context=%s sequences=%s MTP=%s batched=%s graph=%s\n' \
   "${MODEL_REVISION:0:12}" "${MAX_MODEL_LEN}" "${MAX_NUM_SEQS}" "${MTP}" \
   "${MAX_NUM_BATCHED_TOKENS}" "${VLLM_EXL3_GRAPH_DECODE}"
-
 podman rm -f "${NAME}" >/dev/null 2>&1 || true
 
 # Under systemd, conmon supplies readiness and podman remains in the foreground.
@@ -132,6 +131,7 @@ podman run "${RUN_ARGS[@]}" --replace \
   -e PYTHONUNBUFFERED=1 -e PYTHONDONTWRITEBYTECODE=1 \
   -v "${HF_CACHE_HOST}":/root/.cache/huggingface:ro \
   -v "${EXL3_PATCH_HOST}":"${EXL3_PATCH_CTR}":ro \
+  -v /home/mbelleau/scheduler_patch.py:/opt/venv/lib/python3.12/site-packages/vllm/v1/core/sched/scheduler.py:ro \
   -v /home/mbelleau/.cache/jit:/cache/jit \
   -v /home/mbelleau/qwen38-27b-exl3/patches/exl3_fp4_conversion.py:/opt/fp4/exl3_fp4_conversion.py:ro \
   -v /home/mbelleau/qwen38-27b-exl3/patches/triton_fp4_quant.py:/opt/fp4/triton_fp4_quant.py:ro \
