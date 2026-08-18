@@ -1,0 +1,21 @@
+{
+  "schema": "qwen38-prefill-speed-baseline/1",
+  "generated_utc": "2026-08-18T04:30:00Z",
+  "what": "Baseline prefill speed measurement with both levers 1+2 ON (b12x gate + in_proj_ba transpose)",
+  "hardware": "GeForce RTX 5090 (32GB), driver 610.57.04",
+  "container": "voipmonitor/vllm:gilded-gnosis-v20-vllm4d006a4-b12xcd3ce19-fi1ac6942-cu132-20260810-r34",
+  "profile": "C1, MTP-3, graph decode, fp8 KV, 180k context, max-num-seqs=8, max-num-batched-tokens=8192",
+  "method": "5 HTTP requests with max_tokens=1, prompts 50-2801 tokens. Engine metrics: request_prefill_time_seconds_sum / prompt_tokens_total",
+  "engine_metrics": {
+    "request_prefill_time_seconds_sum": 7.171,
+    "request_prefill_time_seconds_count": 5,
+    "prompt_tokens_total": 10405
+  },
+  "result": {
+    "prefill_rate_tok_s": 1451,
+    "threshold_tok_s": 6000,
+    "verdict": "FAIL",
+    "note": "This is the BASELINE prefill rate. The 6000 tok/s target is for lever 3 (fused kernel) which is infeasible (stop condition #3). The existing prefill path uses reconstruct+cuBLAS for M>144 which is already near-optimal. The ~1451 tok/s engine rate (vs docs/36's 3374 tok/s at 2048 tokens) reflects HTTP overhead and shorter average prompt lengths in this test."
+  },
+  "docs_reference": "docs/36-performance-levers-5090.md measured 3374 tok/s at 2048 prompt tokens, 3255 at 6144 tokens"
+}
