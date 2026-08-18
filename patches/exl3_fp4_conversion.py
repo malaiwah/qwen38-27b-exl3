@@ -745,39 +745,68 @@ def fp4_apply(
     m_pad = ((m + _TILE - 1) // _TILE) * _TILE
     x_bf16 = x if x.dtype == torch.bfloat16 else x.to(torch.bfloat16)
 
-    # --- Quantise activation to NVFP4 (unified b12x TMA kernel for all M) ---
-    import b12x.quantization.nvfp4._impl as _nvfp4_impl
-    _nvfp4_impl._validate_launch_tensor = lambda *a, **kw: None
-    _nvfp4_impl._overlaps = lambda *a: False
-    from b12x.quantization.nvfp4 import plan as _nvfp4_plan, allocate_outputs as _nvfp4_alloc, run as _nvfp4_run
-    # Per-call amax: each layer has different activation magnitude.
-    # Caching across layers causes catastrophic KLD (12.38 vs 0.0027).
-    amax = x_bf16.abs().max().clamp_min(1e-12)
-    a_global_scale = (_NVFP4_GS_NUM / amax).reshape(1).to(torch.float32)
-    cache_key = (m_pad, k, str(device))
-    cached = _QUANT_CACHE.get(cache_key)
-    if cached is None:
-        qplan = _nvfp4_plan(m_pad, k)
-        qouts = _nvfp4_alloc(qplan, device=device)
-        x_pad = torch.zeros(m_pad, k, dtype=torch.bfloat16, device=device) if (m_pad != m and m <= _TILE) else None
-        _QUANT_CACHE[cache_key] = (qplan, qouts, x_pad)
-        cached = (qplan, qouts, x_pad)
-    qplan, qouts, x_pad = cached
-    if m_pad != m:
-        if x_pad is not None:
-            x_pad[:m].copy_(x_bf16)
-            x_quant = x_pad
+    # --- Quantise activation to NVFP4 ---
+    # For decode (M < 128): Triton kernel (no 128× padding waste)
+    _use_triton = (m < _TILE and __import__('os').environ.get("VLLM_EXL3_FP4_TRITON_DECODE", "1") == "1")
+    if _use_triton:
+        try:
+            import sys as _sys; _sys.path.insert(0, '/opt/fp4')
+            from triton_fp4_quant import triton_fp4_quant as _triton_quant
+            k_blocks = k // _SF_VEC_SIZE
+            scale_stride = ((k_blocks + 3) // 4) * 4
+            _tkey = (m, k, str(device))
+            _tcached = _QUANT_CACHE.get(_tkey)
+            if _tcached is None:
+                _sbuf = torch.zeros(128 * scale_stride, dtype=torch.uint8, device=device)
+                _pbuf = torch.zeros(m, k // 2, dtype=torch.uint8, device=device)
+                _gsbuf = torch.zeros(1, dtype=torch.float32, device=device)
+                _igsbuf = torch.zeros(1, dtype=torch.float32, device=device)
+                _QUANT_CACHE[_tkey] = (_sbuf, _pbuf, _gsbuf, _igsbuf)
+                _tcached = (_sbuf, _pbuf, _gsbuf, _igsbuf)
+            _sbuf, _pbuf, _gsbuf, _igsbuf = _tcached
+            _sbuf.zero_()
+            # amax + global scale (GPU-side, no .item())
+            amax = x_bf16.abs().max().clamp_min(1e-12)
+            a_global_scale = (_NVFP4_GS_NUM / amax).reshape(1).to(torch.float32)
+            _gsbuf.copy_(a_global_scale)
+            _igsbuf.copy_(1.0 / a_global_scale)
+            _triton_quant(x_bf16, _sbuf, _pbuf, _gsbuf, _igsbuf)
+            a_sf = _sbuf.view(torch.float8_e4m3fn)
+            a_torch = _pbuf.unsqueeze(-1)  # (M, K//2, 1)
+        except Exception:
+            _use_triton = False
+    if not _use_triton:
+        # b12x TMA path (prefill or Triton fallback)
+        import b12x.quantization.nvfp4._impl as _nvfp4_impl
+        _nvfp4_impl._validate_launch_tensor = lambda *a, **kw: None
+        _nvfp4_impl._overlaps = lambda *a: False
+        from b12x.quantization.nvfp4 import plan as _nvfp4_plan, allocate_outputs as _nvfp4_alloc, run as _nvfp4_run
+        amax = x_bf16.abs().max().clamp_min(1e-12)
+        a_global_scale = (_NVFP4_GS_NUM / amax).reshape(1).to(torch.float32)
+        cache_key = (m_pad, k, str(device))
+        cached = _QUANT_CACHE.get(cache_key)
+        if cached is None:
+            qplan = _nvfp4_plan(m_pad, k)
+            qouts = _nvfp4_alloc(qplan, device=device)
+            x_pad = torch.zeros(m_pad, k, dtype=torch.bfloat16, device=device) if (m_pad != m and m <= _TILE) else None
+            _QUANT_CACHE[cache_key] = (qplan, qouts, x_pad)
+            cached = (qplan, qouts, x_pad)
+        qplan, qouts, x_pad = cached
+        if m_pad != m:
+            if x_pad is not None:
+                x_pad[:m].copy_(x_bf16)
+                x_quant = x_pad
+            else:
+                x_quant = torch.zeros(m_pad, k, dtype=torch.bfloat16, device=device)
+                x_quant[:m].copy_(x_bf16)
         else:
-            x_quant = torch.zeros(m_pad, k, dtype=torch.bfloat16, device=device)
-            x_quant[:m].copy_(x_bf16)
-    else:
-        x_quant = x_bf16
-    _nvfp4_run(plan=qplan, x=x_quant, global_scale=a_global_scale, outputs=qouts)
-    a_sf = qouts.scale_storage.view(torch.float8_e4m3fn)
-    try:
-        a_torch = qouts.packed_a_view[:m]
-    except (TypeError, RuntimeError):
-        a_torch = qouts.packed_a_storage[:m].permute(1, 2, 0).unsqueeze(-1)
+            x_quant = x_bf16
+        _nvfp4_run(plan=qplan, x=x_quant, global_scale=a_global_scale, outputs=qouts)
+        a_sf = qouts.scale_storage.view(torch.float8_e4m3fn)
+        try:
+            a_torch = qouts.packed_a_view[:m]
+        except (TypeError, RuntimeError):
+            a_torch = qouts.packed_a_storage[:m].permute(1, 2, 0).unsqueeze(-1)
 
     b_sf = fp4_weight.scale_view()
     b_torch = fp4_weight.packed_view().unsqueeze(-1)
