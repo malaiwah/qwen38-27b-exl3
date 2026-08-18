@@ -664,48 +664,52 @@ def fp4_apply(
     m_pad = ((m + _TILE - 1) // _TILE) * _TILE
     # Skip .to(bf16) if already bf16 (apply() already converts)
     x_bf16 = x if x.dtype == torch.bfloat16 else x.to(torch.bfloat16)
-    if m_pad != m:
-        x_pad = torch.zeros(m_pad, k, dtype=torch.bfloat16, device=device)
-        x_pad[:m].copy_(x_bf16)
-        x_quant = x_pad
-    else:
-        x_quant = x_bf16
 
-    # --- Quantise activation to NVFP4 ---
-    if m > _TILE:
-        from b12x.quantization.nvfp4 import plan as _nvfp4_plan, allocate_outputs as _nvfp4_alloc, run as _nvfp4_run
-        # Cache global_scale per M: compute amax only for first layer per
-        # forward pass. Subsequent layers with same M reuse it (saves 3
-        # launches × 63 layers = 189 launches per forward).
-        global _CACHED_GS_M, _CACHED_GS_VAL
-        if _CACHED_GS_M != m:
-            amax = x_bf16.abs().max().clamp_min(1e-12)
-            a_global_scale = (_NVFP4_GS_NUM / amax).reshape(1).to(torch.float32)
+    # --- Quantise activation to NVFP4 (unified b12x TMA kernel for all M) ---
+    # Bypass b12x per-call Python validation
+    import b12x.quantization.nvfp4._impl as _nvfp4_impl
+    _nvfp4_impl._validate_launch_tensor = lambda *a, **kw: None
+    _nvfp4_impl._overlaps = lambda *a: False
+
+    from b12x.quantization.nvfp4 import plan as _nvfp4_plan, allocate_outputs as _nvfp4_alloc, run as _nvfp4_run
+    # Cache global_scale per M for prefill (saves 189 launches).
+    # For decode (M≤128), compute per-call — each layer's activation has
+    # different magnitude, and errors compound token-by-token.
+    global _CACHED_GS_M, _CACHED_GS_VAL
+    if m > _TILE and _CACHED_GS_M == m:
+        a_global_scale = _CACHED_GS_VAL
+    else:
+        amax = x_bf16.abs().max().clamp_min(1e-12)
+        a_global_scale = (_NVFP4_GS_NUM / amax).reshape(1).to(torch.float32)
+        if m > _TILE:
             _CACHED_GS_M = m
             _CACHED_GS_VAL = a_global_scale
+    cache_key = (m_pad, k, str(device))
+    cached = _QUANT_CACHE.get(cache_key)
+    if cached is None:
+        qplan = _nvfp4_plan(m_pad, k)
+        qouts = _nvfp4_alloc(qplan, device=device)
+        # Only cache pad buffer for decode (M≤128); prefill allocates per-call
+        x_pad = torch.zeros(m_pad, k, dtype=torch.bfloat16, device=device) if (m_pad != m and m <= _TILE) else None
+        _QUANT_CACHE[cache_key] = (qplan, qouts, x_pad)
+        cached = (qplan, qouts, x_pad)
+    qplan, qouts, x_pad = cached
+    if m_pad != m:
+        if x_pad is not None:
+            x_pad[:m].copy_(x_bf16)
+            x_quant = x_pad
         else:
-            a_global_scale = _CACHED_GS_VAL
-        cache_key = (m_pad, k, str(device))
-        cached = _QUANT_CACHE.get(cache_key)
-        if cached is None:
-            qplan = _nvfp4_plan(m_pad, k)
-            qouts = _nvfp4_alloc(qplan, device=device)
-            _QUANT_CACHE[cache_key] = (qplan, qouts)
-            cached = (qplan, qouts)
-        qplan, qouts = cached
-        _nvfp4_run(plan=qplan, x=x_quant, global_scale=a_global_scale, outputs=qouts)
-        a_sf = qouts.scale_storage.view(torch.float8_e4m3fn)
-        try:
-            a_torch = qouts.packed_a_view[:m]
-        except (TypeError, RuntimeError):
-            a_torch = qouts.packed_a_storage[:m].permute(1, 2, 0).unsqueeze(-1)
+            # Prefill: allocate temporary pad (freed after quant)
+            x_quant = torch.zeros(m_pad, k, dtype=torch.bfloat16, device=device)
+            x_quant[:m].copy_(x_bf16)
     else:
-        a_packed, a_scale_storage, a_global_scale = _quantize_matrix_fp4_nvfp4(x_quant)
-        a_sf = _as_nvfp4_scale_view(a_scale_storage, m_pad, k)
-        try:
-            a_torch = a_packed.view(torch.float4_e2m1fn_x2).unsqueeze(-1)[:m]
-        except (TypeError, RuntimeError):
-            a_torch = a_packed.unsqueeze(-1)[:m]
+        x_quant = x_bf16
+    _nvfp4_run(plan=qplan, x=x_quant, global_scale=a_global_scale, outputs=qouts)
+    a_sf = qouts.scale_storage.view(torch.float8_e4m3fn)
+    try:
+        a_torch = qouts.packed_a_view[:m]
+    except (TypeError, RuntimeError):
+        a_torch = qouts.packed_a_storage[:m].permute(1, 2, 0).unsqueeze(-1)
 
     b_sf = fp4_weight.scale_view()
     b_torch = fp4_weight.packed_view().unsqueeze(-1)
