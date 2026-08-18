@@ -266,7 +266,7 @@ __device__ __forceinline__ void dq_dispatch(const uint32_t* ptr, int idx, FragB&
 #define WS_SH_A_STAGE (WS_TILE_M * WS_TILE_K)                    // 64*16 = 1024 halfs
 #define WS_SH_B_STAGE (WS_TILEBLOCKS_K * WS_TILEBLOCKS_N * 256 / 16 * 6)  // 1*8*96 = 768 uint16s
 // FP16 B buffer: per stage, per K-block, per N-block, 32 threads × 2 FragB × 2 half2
-#define WS_SH_FP16_B_STAGE (WS_TILEBLOCKS_K * WS_TILEBLOCKS_N * 32 * 2 * 2)  // 1*8*32*2*2 = 1024 halfs
+#define WS_SH_FP16_B_STAGE (WS_TILEBLOCKS_K * WS_TILEBLOCKS_N * 32 * 2 * 2 * 2)  // 1*8*32*2*2 = 1024 halfs
 #define WS_SH_C_SIZE (4 * WS_CONS_WARPS * 32 * WS_FRAGS_N_PER_CONS)  // 4*128*4 = 2048 floats
 
 // ============================================================================
@@ -434,9 +434,9 @@ void warpspec_inner
     // = [FRAG_STAGES][TILEBLOCKS_K][TILEBLOCKS_N][32][4] halfs
     // Each FragB = 2 half2 = 4 halfs per thread per N-block
     #define FP16_B_OFFSET(stage, sk, sn) \
-        ((stage) * WS_TILEBLOCKS_K * WS_TILEBLOCKS_N * 32 * 4 + \
-         (sk) * WS_TILEBLOCKS_N * 32 * 4 + \
-         (sn) * 32 * 4)
+        ((stage) * WS_TILEBLOCKS_K * WS_TILEBLOCKS_N * 256 + \
+         (sk) * WS_TILEBLOCKS_N * 256 + \
+         (sn) * 256)
 
     // Producer: dequant B → FP16 shared
     auto producer_load_frags = [&](int buf) {
@@ -453,11 +453,10 @@ void warpspec_inner
             half2* dst = (half2*)(sh_fp16_b + FP16_B_OFFSET(buf % WS_FRAG_STAGES, 0, sub_n));
             dst[lane_id * 2 + 0] = frag0[0];
             dst[lane_id * 2 + 1] = frag0[1];
-            dst[lane_id * 2 + 32] = frag1[0];  // frag1 at offset +32 half2s
-            dst[lane_id * 2 + 33] = frag1[1];
+            dst[lane_id * 2 + 64] = frag1[0];
+            dst[lane_id * 2 + 65] = frag1[1];
         }
-        // No __syncthreads here — consumer will sync before reading
-        advance1();
+        // advance1() is called explicitly in the main loop after consumer loads
     };
 
     // Consumer: ldmatrix A + load FP16 B → registers
@@ -486,10 +485,10 @@ void warpspec_inner
             half2* src = (half2*)(sh_fp16_b + FP16_B_OFFSET(buf % WS_FRAG_STAGES, 0, n_block));
             frag_b_reg[buf][n2][0] = src[lane_id * 2 + 0];
             frag_b_reg[buf][n2][1] = src[lane_id * 2 + 1];
-            frag_b_reg[buf][n2 + 1][0] = src[lane_id * 2 + 32];
-            frag_b_reg[buf][n2 + 1][1] = src[lane_id * 2 + 33];
+            frag_b_reg[buf][n2 + 1][0] = src[lane_id * 2 + 64];
+            frag_b_reg[buf][n2 + 1][1] = src[lane_id * 2 + 65];
         }
-        advance1();
+        // advance1() is called explicitly in the main loop after consumer loads
     };
 
 
@@ -632,34 +631,9 @@ void warpspec_inner
                 }
         }
 
-        // Last block: write final output with Hadamard
+        // Last block: write final output directly to global (no sh_c round-trip)
         if (is_consumer && last) {
-            // Write to shared memory for Hadamard transform
             int n0 = cons_warp * WS_FRAGS_N_PER_CONS;
-            #pragma unroll
-            for (int m = 0; m < WS_TILEBLOCKS_M; ++m) {
-                int r0 = m * 16 + lane_id / 4;
-                int r1 = r0 + 8;
-                int c = (lane_id % 4) * 2;
-                if (r0 < size_m) {
-                    #pragma unroll
-                    for (int n = 0; n < WS_FRAGS_N_PER_CONS; ++n) {
-                        float* p = sh_c + r0 * WS_TILE_N + (n0 + n) * 8 + c;
-                        *p++ = frag_c[m][n][0]; *p++ = frag_c[m][n][1];
-                    }
-                }
-                if (r1 < size_m) {
-                    #pragma unroll
-                    for (int n = 0; n < WS_FRAGS_N_PER_CONS; ++n) {
-                        float* p = sh_c + r1 * WS_TILE_N + (n0 + n) * 8 + c;
-                        *p++ = frag_c[m][n][2]; *p++ = frag_c[m][n][3];
-                    }
-                }
-            }
-            // Note: Hadamard transform would be done here in production.
-            // For now, write directly to global without Hadamard (parity test will
-            // compare against reconstruct+matmul which also skips Hadamard in the
-            // test harness).
             #pragma unroll
             for (int m = 0; m < WS_TILEBLOCKS_M; ++m) {
                 int r0 = m * 16 + lane_id / 4;
@@ -670,12 +644,10 @@ void warpspec_inner
                     for (int n = 0; n < WS_FRAGS_N_PER_CONS; ++n) {
                         if constexpr (c_fp32) {
                             float* p = gl_c_ptr_32 + r0 * size_n + (n0 + n) * 8 + c;
-                            float* s = sh_c + r0 * WS_TILE_N + (n0 + n) * 8 + c;
-                            *p++ = *s++; *p++ = *s++;
+                            *p++ = frag_c[m][n][0]; *p++ = frag_c[m][n][1];
                         } else {
-                            half* p = gl_c_ptr_16 + r0 * size_n + (n0 + n) * 8 + c;
-                            float* s = sh_c + r0 * WS_TILE_N + (n0 + n) * 8 + c;
-                            *p++ = __float2half_rn(*s++); *p++ = __float2half_rn(*s++);
+                            half2* p = (half2*)(gl_c_ptr_16 + r0 * size_n + (n0 + n) * 8 + c);
+                            *p = __floats2half2_rn(frag_c[m][n][0], frag_c[m][n][1]);
                         }
                     }
                 }
@@ -684,12 +656,10 @@ void warpspec_inner
                     for (int n = 0; n < WS_FRAGS_N_PER_CONS; ++n) {
                         if constexpr (c_fp32) {
                             float* p = gl_c_ptr_32 + r1 * size_n + (n0 + n) * 8 + c;
-                            float* s = sh_c + r1 * WS_TILE_N + (n0 + n) * 8 + c;
-                            *p++ = *s++; *p++ = *s++;
+                            *p++ = frag_c[m][n][2]; *p++ = frag_c[m][n][3];
                         } else {
-                            half* p = gl_c_ptr_16 + r1 * size_n + (n0 + n) * 8 + c;
-                            float* s = sh_c + r1 * WS_TILE_N + (n0 + n) * 8 + c;
-                            *p++ = __float2half_rn(*s++); *p++ = __float2half_rn(*s++);
+                            half2* p = (half2*)(gl_c_ptr_16 + r1 * size_n + (n0 + n) * 8 + c);
+                            *p = __floats2half2_rn(frag_c[m][n][2], frag_c[m][n][3]);
                         }
                     }
                 }
@@ -711,19 +681,26 @@ void warpspec_inner
 
     clear_frag_c();
     if constexpr (WS_FRAG_STAGES > 1) {
-        // First load: producer dequants, consumer loads A
+        // Phase 1: producer dequants B → sh_fp16_b[0]
         if (is_producer) producer_load_frags(0);
-        else consumer_load_frags(0);
-        __syncthreads();  // Ensure FP16 B is visible to consumers
+        __syncthreads();
+        // Phase 2: consumer loads A (ldmatrix) + reads sh_fp16_b[0]
+        if (is_consumer) consumer_load_frags(0);
+        __syncthreads();
+        advance1();
     }
 
     #define WS_FSTAGE(_load, _mul) \
         async_load_gl(); \
         wait_stage(); \
+        /* Phase 1: producer dequants next B while consumer matmuls current frags */ \
         if (is_producer) producer_load_frags(_load); \
-        else { consumer_load_frags(_load); } \
+        else matmul(_mul); \
         __syncthreads(); \
-        if (is_consumer) matmul(_mul); \
+        /* Phase 2: consumer loads A + reads sh_fp16_b written by producer */ \
+        if (is_consumer) consumer_load_frags(_load); \
+        advance1(); \
+        __syncthreads(); \
         if (slice2_k == tiles_k - 1 || slice2_iters == 1) { reduce(); slice2_k0 = slice2_k + 1; } \
         advance2(); \
         if (!slice2_iters) break;
@@ -806,7 +783,7 @@ void launch_warpspec
     // Set optin shared memory
     cudaFuncSetAttribute(
         warpspec_kernel<bits, c_fp32, cb, shmem_out_had>,
-        cudaFuncAttributeMaxDynamicSharedMemorySize, 100 * 1024);
+        cudaFuncAttributeMaxDynamicSharedMemorySize, 101376);
 
     warpspec_kernel<bits, c_fp32, cb, shmem_out_had>
         <<<grid, WS_BASE_THREADS, shmem, stream>>>(
