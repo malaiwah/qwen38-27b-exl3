@@ -1,0 +1,34 @@
+{
+  "schema": "qwen38-warpspec-integration/1",
+  "generated_utc": "2026-08-18T09:30:00Z",
+  "integration": {
+    "approach": "Created vllm-exl3-warpspec.py patch that builds warp-spec kernel at import time and routes M>144 through warpspec_gemm instead of reconstruct_hgemm",
+    "patch_file": "/home/mbelleau/vllm-exl3-warpspec.py",
+    "dynamo_fix": "Moved torch.utils.cpp_extension.load to module import time (dynamo skip-list)"
+  },
+  "speed_results": {
+    "prompt_tokens": 1400,
+    "warpspec_pp_tps": 4444,
+    "baseline_pp_tps": 1701,
+    "speedup": 2.61,
+    "target": 6000,
+    "meets_target": false,
+    "gap_pct": 35
+  },
+  "correctness_issue": {
+    "status": "INCORRECT for M>144",
+    "evidence": "Same prompt: warp-spec outputs '!', baseline outputs ' The'. Short prompts (M<144) produce correct output.",
+    "likely_causes": [
+      "Trellis memory layout assumptions may not match contiguous int16 tensor layout",
+      "post_scale (svh) parameter declared but unused in kernel",
+      "Inter-block reduction may have race conditions for certain tile counts"
+    ]
+  },
+  "next_steps": [
+    "Fix B-pointer stride to match exllamav3 trellis layout",
+    "Use post_scale for output Hadamard scaling",
+    "Fuse Hadamard transforms into kernel (eliminate 2 extra launches per layer)",
+    "Pre-allocate locks and post_scale buffers per layer",
+    "Extend to MoE expert GEMMs"
+  ]
+}
