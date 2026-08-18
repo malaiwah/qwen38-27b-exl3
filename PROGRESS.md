@@ -1205,3 +1205,42 @@ reference suite download. Cannot run through the serving API; needs container st
 **Commits:** 7d7b16f (unified b12x quantizer), 5a685cf (revert alpha cache),
 d37eff5 (cached global_scale), 7db10a9 (GPU-side amax + out= param). All on
 `malaiwah/qwen38-27b-exl3@main`.
+
+## KLD validation + architectural analysis (2026-08-18, continued)
+
+**KLD measured for FP4 W4A4:** 12.380 (target: ≤0.002729, published hydrated: 0.002700).
+Top-1 agreement: 0.022%. The FP4 W4A4 quantization (4-bit activations) destroys
+fidelity by 4500x. Measured via fidelity.py capture (512 contexts, shard-0000)
++ replay against BF16 reference with shared LM head from v3 suite.
+
+**Root cause:** The KLD target (delta ≤2.9e-5 vs 0.002700) requires W4A16
+(weight-only quantization, BF16 activations). Any activation quantization
+(FP4, FP6, FP8) blows the threshold by orders of magnitude:
+- FP4 W4A4: KLD=12.38 (4500x worse)
+- FP8 W8A8: KLD=0.005294 (1.9x worse, published)
+- Trellis K5K6 W4A16: KLD=0.002700 (PASS, published)
+
+**Architectural tension:**
+- 10k PP requires W4A4 (4-bit activations, 4x MMA throughput on SM120)
+- KLD parity requires W4A16 (BF16 activations, no activation quantization)
+- W4A16 max PP = 1591 (baseline trellis) or ~5050 (with PR #316 reconstruct+hgemm)
+- W4A4 max PP = 7813 (our optimized FP4) but KLD=12.38
+
+**TG comparison:**
+- Trellis K5K6 W4A16: TG=93.7 (with MTP-3)
+- FP4 W4A4: TG=71.0 (with MTP-3)
+- Target: TG≥151.9
+
+**Conclusion:** Achieving PP≥10k AND TG≥151.9 AND KLD parity simultaneously
+appears architecturally impossible on RTX 5090 (31.4 GiB, SM120) with current
+b12x/trellis kernels. The three goals are in fundamental tension:
+1. KLD parity ⟹ W4A16 ⟹ PP≤5050 (not 10k)
+2. PP≥10k ⟹ W4A4 ⟹ KLD=12.38 (not 0.0027)
+3. TG≥151.9 not met by either path (max 93.7 with trellis+MTP-3)
+
+**Path forward** (if user wants to continue):
+1. Implement PR #316 reconstruct+hgemm in our patch → trellis PP 1591→5050, KLD PASS
+2. Write custom W4A16 CUDA kernel at FP4 MMA throughput → potential PP 10k, KLD PASS
+   (requires dequantizing 4-bit weights in-register while feeding BF16 MMA,
+    essentially a Marlin-style kernel for trellis codes on SM120)
+3. Accept that PP≥10k and KLD parity are mutually exclusive on this hardware
