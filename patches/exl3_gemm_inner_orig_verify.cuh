@@ -1,6 +1,5 @@
 #pragma once
 
-#include "exl3_kernel_map.cuh"
 #include "../ptx.cuh"
 
 // Constants
@@ -27,7 +26,7 @@
 
 template<EXL3_GEMM_T_ARGS, bool shmem_out_had>
 inline __device__
-void exl3_gemm_prefill_inner
+void exl3_gemm_kernel_inner
 (
     const half* __restrict__  A,
     const uint16_t* __restrict__ B,
@@ -36,9 +35,7 @@ void exl3_gemm_prefill_inner
     const int size_k,
     const int size_n,
     int* __restrict__ locks,
-    const half* post_scale,
-    const int num_slices_param,
-    const int block_id_param
+    const half* post_scale
 )
 {
     const int TILEBLOCKS_M = TILESIZE_M / 16;
@@ -93,9 +90,9 @@ void exl3_gemm_prefill_inner
     int blocks_n = tiles_n * TILEBLOCKS_N;
 
     // Start and end index of current slice, must span at least one tile
-    int num_slices = num_slices_param;
-    int slice_beg = tiles_k * tiles_n * block_id_param / num_slices;
-    int slice_end = tiles_k * tiles_n * (block_id_param + 1) / num_slices;
+    int num_slices = gridDim.x;
+    int slice_beg = tiles_k * tiles_n * blockIdx.x / num_slices;
+    int slice_end = tiles_k * tiles_n * (blockIdx.x + 1) / num_slices;
     int slice_len = slice_end - slice_beg;
     if (slice_len < 1) return;
 
