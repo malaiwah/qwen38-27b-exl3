@@ -678,18 +678,32 @@ def fp4_apply(
         x_quant = x_pad
     else:
         x_quant = x_bf16
-    # --- Quantise activation to NVFP4 (pure-Torch, CUDA-graph safe) ---
-    a_packed, a_scale_storage, a_global_scale = _quantize_matrix_fp4_nvfp4(x_quant)
+    # --- Quantise activation to NVFP4 ---
+    # Hybrid: b12x fused bf16_to_fp4_tma for prefill (M > 128, single kernel),
+    # pure-Torch for decode (M ≤ 128, CUDA-graph safe).
+    if m > _TILE:
+        # Prefill path: use b12x fused TMA kernel (1 kernel vs 10+ PyTorch ops)
+        from b12x.quantization.nvfp4 import plan as _nvfp4_plan, allocate_outputs as _nvfp4_alloc, run as _nvfp4_run
+        amax = x_bf16.abs().max().clamp_min(1e-12)
+        a_global_scale = torch.tensor([_NVFP4_GS_NUM / amax.item()], dtype=torch.float32, device=device)
+        qplan = _nvfp4_plan(m_pad, k)
+        qouts = _nvfp4_alloc(qplan, device=device)
+        _nvfp4_run(plan=qplan, x=x_quant, global_scale=a_global_scale, outputs=qouts)
+        a_sf = qouts.scale_storage.view(torch.float8_e4m3fn)
+        try:
+            a_torch = qouts.packed_a_view[:m]
+        except (TypeError, RuntimeError):
+            a_torch = qouts.packed_a_storage[:m].permute(1, 2, 0).unsqueeze(-1)
+    else:
+        # Decode path: pure-Torch quantizer (CUDA-graph safe)
+        a_packed, a_scale_storage, a_global_scale = _quantize_matrix_fp4_nvfp4(x_quant)
+        a_sf = _as_nvfp4_scale_view(a_scale_storage, m_pad, k)
+        try:
+            a_torch = a_packed.view(torch.float4_e2m1fn_x2).unsqueeze(-1)[:m]
+        except (TypeError, RuntimeError):
+            a_torch = a_packed.unsqueeze(-1)[:m]
 
-    # --- Build scale views for dense_gemm ---
-    a_sf = _as_nvfp4_scale_view(a_scale_storage, m_pad, k)
     b_sf = fp4_weight.scale_view()
-
-    # --- Build operand tensors: (rows, K//2, L=1) ---
-    try:
-        a_torch = a_packed.view(torch.float4_e2m1fn_x2).unsqueeze(-1)
-    except (TypeError, RuntimeError):
-        a_torch = a_packed.unsqueeze(-1)
     b_torch = fp4_weight.packed_view().unsqueeze(-1)
 
     # --- Epilogue alpha undoes both per-tensor global scales ---
