@@ -45,7 +45,7 @@ QUANTIZATION_CONFIG='{"linear":{"weight":"mxfp8"},"ignore":["re:.*visual\\..*","
 #     MTP-3 (draft token slots need headroom); 8192 accommodates the 3 draft
 #     tokens per sequence across 8 concurrent seqs.
 GPU_MEMORY_UTILIZATION="${GPU_MEMORY_UTILIZATION:-0.90}"
-MAX_MODEL_LEN="${MAX_MODEL_LEN:-65536}"
+MAX_MODEL_LEN="${MAX_MODEL_LEN:-32768}"
 MAX_NUM_SEQS="${MAX_NUM_SEQS:-8}"
 MAX_NUM_BATCHED_TOKENS="${MAX_NUM_BATCHED_TOKENS:-8192}"
 
@@ -69,8 +69,8 @@ fi
 # head (attn K4, MLP K5/K6) delivers 113.8 tok/s single-stream (2x FP8) with
 # 58.2% acceptance and 2.745 mean acceptance length (docs/22). On the live
 # container, measured 77.8% acceptance at 3.33 mean length.
-MTP="${MTP:-4}"
-SPECULATIVE_TOKENS="${SPECULATIVE_TOKENS:-4}"
+MTP="${MTP:-6}"
+SPECULATIVE_TOKENS="${SPECULATIVE_TOKENS:-6}"
 if [ "${MTP}" != "0" ]; then
   SPEC_CONFIG="$(printf '{"method":"mtp","num_speculative_tokens":%s}' "${SPECULATIVE_TOKENS}")"
 else
