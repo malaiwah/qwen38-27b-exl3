@@ -1148,3 +1148,60 @@ SSM path is treated (BF16 > FP8 > NVFP4). Both turbo captures preserved to the v
 accounted. Receipts: shortlist-shard0.json, shortlist-report-{turbo5,turbo6,saka,awq}.json,
 kld5-1M-{turbo5,turbo6,saka,awq,k6parity}.json, kld5-1M-paired-shortlist.json. F2 sentence + four
 axis-named rows handed to Main. Unrun remainder + exact resume commands in the master receipt.
+
+## NVFP4 W4A4 prefill/decode optimization session (2026-08-18)
+
+**Goal:** ≥10,000 tok/s prefill (PP), ≥151.9 tok/s decode (TG) with NVFP4 W4A4
+all-layers FP4 on RTX 5090 (31.4 GiB, SM120). Baseline PP=1650, TG=26.7.
+
+**Final measured (median of 3, after warmup):**
+
+| metric | value | target | gap |
+|---|---|---|---|
+| PP (2051 tok) | 7814 tok/s | 10000 | 22% |
+| PP (2001 tok) | 7983 tok/s (peak) | — | — |
+| TG (165 tok) | 69.5 tok/s | 151.9 | 54% |
+| Inference | correct | — | — |
+
+**Optimizations applied (exl3_fp4_conversion.py, vllm-exl3-multiprecision.py):**
+
+1. GPU-side amax (no `.item()` host sync) → TG 26.7→41.3 (+55%)
+2. Cached global_scale per M (prefill only, saves 189 launches/forward) → PP +5.7%
+3. Allocation-free custom_op (`out=` param to `dense_gemm`) → PP +11.7%
+4. Precomputed `inv_w_global_scale` on `FP4DenseWeight` → minor
+5. Skip redundant `.to(bf16)` when input already bf16 → minor
+6. Bypass b12x per-call Python validation → negligible
+7. `expected_m` hint to `dense_gemm` → negligible
+8. Unified b12x TMA quantizer for all M (decode M=1 padded to 128) → TG 41.3→69.5 (+68%)
+9. Per-call amax for decode (M≤128) — cached global_scale causes garbage decode output
+
+**Approaches tried and rejected:**
+
+- Fixed global scale (gs=336): slower (per-call `torch.tensor` alloc overhead)
+- Alpha cache per (weight, M): correctness bug (temporary `FP4DenseWeight` objects)
+- `mma_tiler_mn=(128,256)`: unsupported for FP4 on SM120
+- `STOCK_TORCH_COMPILE` mode: PP=8602 (+10%) but TG=18.3 (-74%) — torch.compile
+  breaks exl3 CUDA graph capture for decode
+- `MAX_NUM_BATCHED_TOKENS=16384`: no improvement (single prompt already fills batch)
+- `N_RANGE` expansion (32768→36864): no measurable improvement
+- Pre-compiled quant plans at load time: OOM from too many compiled kernel variants
+- M-based dispatch (trellis for decode, FP4 for prefill): OOM (both weight sets >31.4 GiB)
+
+**Configuration:** compile=NONE, cudagraph=FULL_DECODE_ONLY, MTP=3,
+max_model_len=65536, gpu_util=0.90, N_RANGE=5120-36864, all layers NVFP4 W4A4.
+
+**Remaining gaps require kernel-level work:**
+
+- PP: fused quant+GEMM CUDA kernel (eliminates HBM round-trip for quantized activations).
+  The b12x quant kernel is compute-bound at ~19ms/forward (64 layers × 4 linears ×
+  128×K elements per call). GEMM is 11ms. Total 30ms; need 20ms for 10k.
+- TG: W4A16 decode path (trellis, no activation quantization) blocked by OOM
+  (trellis MLP ~9 GiB + FP4 weights ~17 GiB = 26 GiB, insufficient KV cache room).
+  Alternatively, a fused quant+GEMM kernel would eliminate the 19ms quant overhead.
+
+**KLD validation:** still pending — requires fidelity.py in-process capture + HF
+reference suite download. Cannot run through the serving API; needs container stop.
+
+**Commits:** 7d7b16f (unified b12x quantizer), 5a685cf (revert alpha cache),
+d37eff5 (cached global_scale), 7db10a9 (GPU-side amax + out= param). All on
+`malaiwah/qwen38-27b-exl3@main`.
