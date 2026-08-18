@@ -2788,7 +2788,28 @@ class Exl3LinearMethod(LinearMethodBase):
         has_mul1 = shard_id in layer.mul1.exl3_tensors
         suh = layer.suh.exl3_tensors[shard_id]
         svh = layer.svh.exl3_tensors[shard_id]
-        if _b12x_trellis_k6_supported(
+        _force_warpspec = (
+            os.environ.get("VLLM_EXL3_FORCE_WARPSPEC", "0") == "1"
+            and x.shape[0] > _AUTO_RECONSTRUCT_THRESHOLD
+            and _WARPSPEC_MODULE is not None
+        )
+        if _force_warpspec:
+            _n = trellis.shape[1] * 16
+            _bits = trellis.shape[2] // 16
+            _use_warpspec = (
+                _n % 128 == 0
+                and _bits in (4, 5, 6)
+                and not (has_mul1 and not has_mcg)
+            )
+            if _use_warpspec:
+                output = _warpspec_exl3_gemm(
+                    x, trellis, suh, svh, has_mcg, has_mul1
+                )
+            else:
+                output = _exl3_gemm(
+                    x, trellis, suh, svh, has_mcg, has_mul1
+                )
+        elif _b12x_trellis_k6_supported(
             trellis,
             has_mcg=has_mcg,
             has_mul1=has_mul1,
