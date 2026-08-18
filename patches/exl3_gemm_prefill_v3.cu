@@ -34,8 +34,7 @@
 #include <c10/cuda/CUDAGuard.h>
 #include <ATen/cuda/CUDAContext.h>
 #include <cmath>
-// Tile shape for prefill
-#define PREFILL_TILE_M    16
+#define PREFILL_TILE_M    64
 #define PREFILL_TILE_K    32
 #define PREFILL_TILE_N    128
 #define PREFILL_SH_STAGES 4
