@@ -93,6 +93,10 @@ _FP8_E4M3_MAX = 448.0      # maximum magnitude representable in FP8 E4M3FN
 # two-level (block-scale × global-scale) dequant.  gs = 448 * 6 / amax.
 _NVFP4_GS_NUM = _FP8_E4M3_MAX * _FP4_E2M1_MAX
 
+# Cache for b12x fused quantizer plans + output buffers, keyed by (m_pad, k, device).
+# Eliminates per-call allocation and plan compilation overhead.
+_QUANT_CACHE: dict = {}
+
 # The 8 representable FP4 E2M1 magnitudes (sign is separate).
 _FP4_MAG_LUT = (0.0, 0.5, 1.0, 1.5, 2.0, 3.0, 4.0, 6.0)
 
@@ -681,13 +685,21 @@ def fp4_apply(
     # --- Quantise activation to NVFP4 ---
     # Hybrid: b12x fused bf16_to_fp4_tma for prefill (M > 128, single kernel),
     # pure-Torch for decode (M ≤ 128, CUDA-graph safe).
+    # Quantizer outputs (plan + buffers) are cached per (m_pad, k) shape to
+    # eliminate per-call allocation overhead.
     if m > _TILE:
-        # Prefill path: use b12x fused TMA kernel (1 kernel vs 10+ PyTorch ops)
         from b12x.quantization.nvfp4 import plan as _nvfp4_plan, allocate_outputs as _nvfp4_alloc, run as _nvfp4_run
         amax = x_bf16.abs().max().clamp_min(1e-12)
         a_global_scale = torch.tensor([_NVFP4_GS_NUM / amax.item()], dtype=torch.float32, device=device)
-        qplan = _nvfp4_plan(m_pad, k)
-        qouts = _nvfp4_alloc(qplan, device=device)
+        # Cache plan + outputs per shape (avoid recompilation + allocation)
+        cache_key = (m_pad, k, str(device))
+        cached = _QUANT_CACHE.get(cache_key)
+        if cached is None:
+            qplan = _nvfp4_plan(m_pad, k)
+            qouts = _nvfp4_alloc(qplan, device=device)
+            _QUANT_CACHE[cache_key] = (qplan, qouts)
+            cached = (qplan, qouts)
+        qplan, qouts = cached
         _nvfp4_run(plan=qplan, x=x_quant, global_scale=a_global_scale, outputs=qouts)
         a_sf = qouts.scale_storage.view(torch.float8_e4m3fn)
         try:
