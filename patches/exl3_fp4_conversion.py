@@ -742,6 +742,17 @@ def fp4_apply(
         y = out.unsqueeze(-1) if out.ndim == 2 else out
     else:
         y = torch.empty((m, n, 1), device=device, dtype=torch.bfloat16)
+    # Tile override for prefill: (128, 256) halves wave count vs (128, 128)
+    # for M~2000, N~17408 on 170 SMs (6.8 waves vs 13.6).
+    import os as _os
+    _tile_override = _os.environ.get("VLLM_EXL3_FP4_TILE_MN", "")
+    _tile_kwargs = {}
+    if _tile_override and m > _TILE:
+        try:
+            tm, tn = (int(x) for x in _tile_override.split(","))
+            _tile_kwargs["mma_tiler_mn"] = (tm, tn)
+        except (ValueError, TypeError):
+            pass
     dense_gemm(
         (a_torch[:m], a_sf),
         (b_torch, b_sf),
@@ -752,6 +763,7 @@ def fp4_apply(
         alpha=alpha,
         out=y,
         expected_m=m if m > _TILE else None,
+        **_tile_kwargs,
     )
     return y[:, :, 0] if out is None else out
 
