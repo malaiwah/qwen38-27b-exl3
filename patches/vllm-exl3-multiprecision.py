@@ -904,20 +904,31 @@ def _exl3_gemm(
     k = x.shape[1]
 
     if m >= 128 and not os.environ.get("VLLM_EXL3_PREFILL_RECONSTRUCT_M", "1") == "0":
-        # Reconstruct trellis codes to FP16 weight matrix (K, N) per call
+        # Reconstruct trellis codes to FP16 weight matrix (K, N)
+        # Cache large weights (gate_up, >150 MB) to skip reconstruct on repeat calls
         t_k = int(trellis.shape[0]) * 16
         t_n = int(trellis.shape[1]) * 16
-        weight = torch.empty(t_k, t_n, dtype=torch.float16, device=x.device)
-        trellis_k = int(trellis.shape[2]) // 16
-        ext.reconstruct(weight, trellis, trellis_k, mcg, mul1)
-        # Fold Hadamard rotation + scales (suh, svh) into weight
-        from exl3_fp4_conversion import hadamard_fold_weight
-        weight = hadamard_fold_weight(weight, suh, svh)
-        # cuBLAS hgemm: C = A @ W  (A is [M,K], W is [K,N], C is [M,N])
+        weight_size_mb = t_k * t_n * 2 / 1024 / 1024  # FP16
+        cache_key = trellis.data_ptr()
+        if not hasattr(_exl3_gemm, '_gate_cache'):
+            _exl3_gemm._gate_cache = {}  # type: ignore[attr-defined]
+        _gate_cache = _exl3_gemm._gate_cache  # type: ignore[attr-defined]
+        weight = None
+        if weight_size_mb > 150:
+            weight = _gate_cache.get(cache_key)
+        # Skip caching during profiling (determine_available_memory)
+        if weight is None:
+            weight = torch.empty(t_k, t_n, dtype=torch.float16, device=x.device)
+            trellis_k = int(trellis.shape[2]) // 16
+            ext.reconstruct(weight, trellis, trellis_k, mcg, mul1)
+            import sys; sys.path.insert(0, '/opt/fp4')
+            from exl3_fp4_conversion import hadamard_fold_weight
+            weight = hadamard_fold_weight(weight, suh, svh)
+            if weight_size_mb > 150 and len(_gate_cache) < 16 and os.path.exists("/tmp/recon_cache_enable"):
+                _gate_cache[cache_key] = weight
         output = torch.empty(m, n, dtype=torch.float16, device=x.device)
         ext.hgemm(x, weight, output)
         return output
-
     # Decode path: original trellis kernel
     output = torch.empty(
         (m, n),
