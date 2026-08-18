@@ -793,17 +793,23 @@ def fp4_apply(
         y = out.unsqueeze(-1) if out.ndim == 2 else out
     else:
         y = torch.empty((m, n, 1), device=device, dtype=torch.bfloat16)
-    # Tile override for prefill: (128, 256) halves wave count vs (128, 128)
-    # for M~2000, N~17408 on 170 SMs (6.8 waves vs 13.6).
+    # Tile/load/swap overrides for prefill tuning.
     import os as _os
     _tile_override = _os.environ.get("VLLM_EXL3_FP4_TILE_MN", "")
+    _load_path = _os.environ.get("VLLM_EXL3_FP4_LOAD_PATH", "")
+    _swap_ab = _os.environ.get("VLLM_EXL3_FP4_SWAP_AB", "0") == "1"
     _tile_kwargs = {}
-    if _tile_override and m > _TILE:
-        try:
-            tm, tn = (int(x) for x in _tile_override.split(","))
-            _tile_kwargs["mma_tiler_mn"] = (tm, tn)
-        except (ValueError, TypeError):
-            pass
+    if m > _TILE:
+        if _tile_override:
+            try:
+                tm, tn = (int(x) for x in _tile_override.split(","))
+                _tile_kwargs["mma_tiler_mn"] = (tm, tn)
+            except (ValueError, TypeError):
+                pass
+        if _load_path:
+            _tile_kwargs["load_path"] = _load_path
+        if _swap_ab:
+            _tile_kwargs["swap_ab"] = True
     dense_gemm(
         (a_torch[:m], a_sf),
         (b_torch, b_sf),
