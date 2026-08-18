@@ -1,0 +1,37 @@
+{
+  "schema": "qwen38-warpspec-benchmark/1",
+  "generated_utc": "2026-08-18T09:00:00Z",
+  "description": "Warp-specialized kernel benchmark vs cuBLAS FP16 GEMM on RTX 5090 (SM120)",
+  "warpspec_kernel": {
+    "config": "TILE_M=64, TILE_K=16, TILE_N=128, 4 producer + 4 consumer warps, H_ACC=1",
+    "results": [
+      {"M": 1, "K": 5120, "N": 128, "ms": 0.144, "tflops": 0.01},
+      {"M": 1, "K": 5120, "N": 5120, "ms": 0.026, "tflops": 2.00},
+      {"M": 4, "K": 5120, "N": 128, "ms": 0.152, "tflops": 0.03},
+      {"M": 16, "K": 5120, "N": 128, "ms": 0.183, "tflops": 0.11},
+      {"M": 64, "K": 5120, "N": 128, "ms": 0.290, "tflops": 0.29},
+      {"M": 64, "K": 5120, "N": 5120, "ms": 0.032, "tflops": 103.29},
+      {"M": 256, "K": 5120, "N": 5120, "ms": 0.033, "tflops": 407.64},
+      {"M": 2048, "K": 5120, "N": 5120, "ms": 0.033, "tflops": 3241.17}
+    ],
+    "note": "The very low ms and very high TFLOPS for large M+N suggest the kernel may not be computing the full K reduction correctly with random data. Needs validation with real model weights."
+  },
+  "cublas_reference": {
+    "results": [
+      {"M": 1, "K": 5120, "N": 128, "ms": 0.005, "tflops": 0.24},
+      {"M": 1, "K": 5120, "N": 5120, "ms": 0.035, "tflops": 1.52},
+      {"M": 4, "K": 5120, "N": 128, "ms": 0.006, "tflops": 0.81},
+      {"M": 16, "K": 5120, "N": 128, "ms": 0.009, "tflops": 2.30},
+      {"M": 64, "K": 5120, "N": 128, "ms": 0.006, "tflops": 13.43},
+      {"M": 64, "K": 5120, "N": 5120, "ms": 0.021, "tflops": 162.42},
+      {"M": 256, "K": 5120, "N": 5120, "ms": 0.066, "tflops": 202.90},
+      {"M": 2048, "K": 5120, "N": 5120, "ms": 0.527, "tflops": 203.90}
+    ]
+  },
+  "next_steps": [
+    "Validate warp-spec kernel output correctness with real model weights",
+    "Fix K-reduction for large K (320 tiles) — lock logic may need adjustment",
+    "Benchmark with actual exllamav3 reconstruct+cuBLAS path for fair comparison",
+    "Integrate into LinearEXL3.forward() and measure end-to-end PP2k tok/s"
+  ]
+}
