@@ -97,6 +97,9 @@ _NVFP4_GS_NUM_TENSOR = torch.tensor([_NVFP4_GS_NUM], dtype=torch.float32)
 # Cache for b12x fused quantizer plans + output buffers, keyed by (m_pad, k, device).
 # Eliminates per-call allocation and plan compilation overhead.
 _QUANT_CACHE: dict = {}
+# Cached global_scale per M (compute amax once per forward, reuse for all layers)
+_CACHED_GS_M: int = -1
+_CACHED_GS_VAL: torch.Tensor | None = None
 
 # The 8 representable FP4 E2M1 magnitudes (sign is separate).
 _FP4_MAG_LUT = (0.0, 0.5, 1.0, 1.5, 2.0, 3.0, 4.0, 6.0)
@@ -658,7 +661,8 @@ def fp4_apply(
     device = x.device
 
     m_pad = ((m + _TILE - 1) // _TILE) * _TILE
-    x_bf16 = x.to(torch.bfloat16)
+    # Skip .to(bf16) if already bf16 (apply() already converts)
+    x_bf16 = x if x.dtype == torch.bfloat16 else x.to(torch.bfloat16)
     if m_pad != m:
         x_pad = torch.zeros(m_pad, k, dtype=torch.bfloat16, device=device)
         x_pad[:m].copy_(x_bf16)
@@ -669,10 +673,17 @@ def fp4_apply(
     # --- Quantise activation to NVFP4 ---
     if m > _TILE:
         from b12x.quantization.nvfp4 import plan as _nvfp4_plan, allocate_outputs as _nvfp4_alloc, run as _nvfp4_run
-        # GPU-side amax: NO host sync. Pre-allocated constant on GPU.
-        amax = x_bf16.abs().max().clamp_min(1e-12)  # 0-dim GPU tensor, 3 launches
-        a_global_scale = _NVFP4_GS_NUM / amax  # scalar div, stays on GPU, 1 launch
-        a_global_scale = a_global_scale.reshape(1).to(torch.float32)  # shape (1,)
+        # Cache global_scale per M: compute amax only for first layer per
+        # forward pass. Subsequent layers with same M reuse it (saves 3
+        # launches × 63 layers = 189 launches per forward).
+        global _CACHED_GS_M, _CACHED_GS_VAL
+        if _CACHED_GS_M != m:
+            amax = x_bf16.abs().max().clamp_min(1e-12)
+            a_global_scale = (_NVFP4_GS_NUM / amax).reshape(1).to(torch.float32)
+            _CACHED_GS_M = m
+            _CACHED_GS_VAL = a_global_scale
+        else:
+            a_global_scale = _CACHED_GS_VAL
         cache_key = (m_pad, k, str(device))
         cached = _QUANT_CACHE.get(cache_key)
         if cached is None:
