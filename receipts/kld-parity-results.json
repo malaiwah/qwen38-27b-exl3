@@ -1,0 +1,28 @@
+{
+  "schema": "qwen38-kld-parity-results/1",
+  "generated_utc": "2026-08-18T08:20:00Z",
+  "baseline": {
+    "description": "BF16 reference vs published hydrated-rematch capture (from HF dataset)",
+    "token_mean_kld": 0.002699883159684943,
+    "contexts": 512,
+    "scored_positions": 1048064,
+    "top1_agreement": 0.9779689026624329,
+    "source": "malaiwah/qwen38-27b-fidelity-suite-v5/captures/shard-0000/hidden-hyd-rematch"
+  },
+  "levers_on": {
+    "description": "BF16 reference vs fresh capture with levers 1+2 ON",
+    "token_mean_kld": 0.0026499655056130243,
+    "contexts": 512,
+    "scored_positions": 1048064,
+    "top1_agreement": 0.9782303370786517,
+    "source": "fresh capture with VLLM_EXL3_B12X_N_RANGE=5120-32768 + in_proj_ba transpose"
+  },
+  "delta": {
+    "levers_on_vs_published": 0.000049917654072,
+    "threshold": 0.000029,
+    "passes_threshold": false,
+    "note": "Delta includes run-to-run variance from different vLLM sessions. Levers-ON KLD is LOWER (better) than published. A/B comparison with levers-OFF capture in progress."
+  },
+  "data_source": "HuggingFace datasets malaiwah/qwen38-27b-fidelity-suite-v5 + v3 (no NFS needed)",
+  "lm_head": "malaiwah/qwen38-27b-fidelity-suite-v3/lm-head/weight.safetensors"
+}
