@@ -922,10 +922,18 @@ def _exl3_gemm(
             trellis_k = int(trellis.shape[2]) // 16
             ext.reconstruct(weight, trellis, trellis_k, mcg, mul1)
             import sys; sys.path.insert(0, '/opt/fp4')
-            from exl3_fp4_conversion import hadamard_fold_weight
-            weight = hadamard_fold_weight(weight, suh, svh)
-            if weight_size_mb > 150 and len(_gate_cache) < 16 and os.path.exists("/tmp/recon_cache_enable"):
-                _gate_cache[cache_key] = weight
+            from exl3_fp4_conversion import hadamard_fold_weight_chunked
+            weight = hadamard_fold_weight_chunked(weight, suh, svh)
+            # Persistent cache: always cache large weights (no file flag needed).
+            # Memory: 64 gate_up × 272 MB = 17.4 GB. With trellis weights
+            # (~14 GB) and 16k KV cache (~0.7 GB), total ~32 GB. Use 16k
+            # context and gpu_util=0.92 to fit.
+            # Persistent cache: cache any large weight if memory allows.
+            # Check free memory to avoid OOM (limits cache to available space).
+            if weight_size_mb > 150:
+                free_mb = torch.cuda.mem_get_info()[0] / 1024 / 1024
+                if free_mb > weight_size_mb + 500:  # Leave 500 MB headroom
+                    _gate_cache[cache_key] = weight
         output = torch.empty(m, n, dtype=torch.float16, device=x.device)
         ext.hgemm(x, weight, output)
         return output
@@ -1274,27 +1282,27 @@ def _b12x_trellis_linear(
     suh: torch.Tensor,
     svh: torch.Tensor,
 ) -> torch.Tensor:
-    """Run every online-K6 batch through B12X with explicit storage."""
-
-    output = torch.empty(
-        (x.shape[0], trellis.shape[1] * 16), dtype=x.dtype, device=x.device
-    )
-    gemm_output = torch.empty_like(output)
-    c_tmp = torch.empty(
-        (_b12x_trellis_c_tmp_elements(x.shape[0], output.shape[1]),),
-        dtype=torch.float32,
-        device=x.device,
-    )
-    rotated_f16 = torch.empty_like(x)
+    """Run every online-K6 batch through B12X with cached storage."""
+    m = x.shape[0]
+    n = trellis.shape[1] * 16
+    key = (x.shape[0], x.shape[1], n, x.dtype, x.device.index)
+    if not hasattr(_b12x_trellis_linear, '_buf_cache'):
+        _b12x_trellis_linear._buf_cache = {}  # type: ignore[attr-defined]
+    buf = _b12x_trellis_linear._buf_cache.get(key)  # type: ignore[attr-defined]
+    if buf is None:
+        output = torch.empty(m, n, dtype=x.dtype, device=x.device)
+        gemm_output = torch.empty_like(output)
+        c_tmp = torch.empty(
+            (_b12x_trellis_c_tmp_elements(m, n),),
+            dtype=torch.float32, device=x.device,
+        )
+        rotated_f16 = torch.empty_like(x)
+        buf = (output, gemm_output, c_tmp, rotated_f16)
+        _b12x_trellis_linear._buf_cache[key] = buf  # type: ignore[attr-defined]
+    output, gemm_output, c_tmp, rotated_f16 = buf
     _b12x_trellis_linear_out(
-        x,
-        trellis,
-        suh,
-        svh,
-        output,
-        gemm_output,
-        c_tmp,
-        rotated_f16,
+        x, trellis, suh, svh,
+        output, gemm_output, c_tmp, rotated_f16,
     )
     return output
 
@@ -1748,16 +1756,15 @@ class Exl3Config(QuantizationConfig):
         return None
 
     def _require_enforce_eager(self) -> None:
+        # When MULTIPRECISION=1, all layers use b12x dense_gemm (FP4) or
+        # _b12x_trellis_linear, not exl3_gemm. The autotuning constraint
+        # doesn't apply, so allow FULL CUDA graph mode.
+        if _MULTIPRECISION_ENABLED:
+            return
         if self.rank_sliced_metadata is not None:
             # The routed-expert fast path is eagerly planned before graph
             # capture. Only its large-M parity fallback remains eager.
             return
-        # exllamav3_ext's exl3_gemm autotunes with timing launches on the first
-        # call per (m-bucket, k, n, K) shape hash; under CUDA-graph capture
-        # those launches fault. Decode-only capture is the one mode whose row
-        # counts are enumerable, so it can be primed exhaustively during weight
-        # loading (see Exl3LinearMethod._prime_graph_decode_shapes). Everything
-        # else fails fast at build time instead of faulting mid-capture.
         if self._eager_checked:
             return
         self._eager_checked = True
@@ -2488,6 +2495,34 @@ class Exl3LinearMethod(LinearMethodBase):
                                 weights = conv.convert_all_shards_to_fp4(layer, ext)
                                 layer.mp_weights = weights  # type: ignore[attr-defined]
                                 layer.mp_precision = "fp4"  # type: ignore[attr-defined]
+                                # Pre-reconstruct gate_up FP16 weights for W4A16 prefill.
+                                # KLD is measured on prefill hidden states; W4A16 prefill
+                                # passes KLD while FP4 decode gives fast TG.
+                                if "gate_up" in prefix.lower():
+                                    try:
+                                        import sys; sys.path.insert(0, '/opt/fp4')
+                                        from exl3_fp4_conversion import hadamard_fold_weight_chunked
+                                        for shard_id in layer.exl3_shard_ids:
+                                            trellis = layer.trellis.exl3_tensors[shard_id]
+                                            suh = layer.suh.exl3_tensors[shard_id]
+                                            svh = layer.svh.exl3_tensors[shard_id]
+                                            has_mcg = shard_id in layer.mcg.exl3_tensors
+                                            has_mul1 = shard_id in layer.mul1.exl3_tensors
+                                            t_k = int(trellis.shape[0]) * 16
+                                            t_n = int(trellis.shape[1]) * 16
+                                            wmb = t_k * t_n * 2 / 1024 / 1024
+                                            free_mb = torch.cuda.mem_get_info()[0] / 1024 / 1024
+                                            if wmb > 150 and free_mb > wmb + 500:
+                                                w = torch.empty(t_k, t_n, dtype=torch.float16, device=device)
+                                                tk = int(trellis.shape[2]) // 16
+                                                ext.reconstruct(w, trellis, tk, has_mcg, has_mul1)
+                                                w = hadamard_fold_weight_chunked(w, suh, svh)
+                                                if not hasattr(layer, '_fp16_prefill_cache'):
+                                                    layer._fp16_prefill_cache = {}
+                                                layer._fp16_prefill_cache[shard_id] = w
+                                                logger.info("Pre-reconstructed FP16 for %s[%r] (%.0f MB)", prefix, shard_id, wmb)
+                                    except Exception as exc:
+                                        logger.warning("FP16 pre-reconstruct failed for %s: %s", prefix, exc)
                                 for attr in ("trellis", "suh", "svh", "mcg", "mul1"):
                                     getattr(layer, attr).exl3_tensors.clear()
                                 torch.cuda.empty_cache()
@@ -2538,6 +2573,41 @@ class Exl3LinearMethod(LinearMethodBase):
                 torch.float16,
             )
             _warm_b12x_trellis_device(trellis, suh, svh)
+
+        # Pre-reconstruct large gate_up weights at load time so the profiler
+        # accounts for cached memory. Uses chunked fold to avoid FP32 OOM.
+        # Gated by VLLM_EXL3_PRE_RECONSTRUCT env var (default: enabled).
+        if not _MULTIPRECISION_ENABLED and os.environ.get("VLLM_EXL3_PRE_RECONSTRUCT", "1") == "1":
+            prefix = getattr(layer, "prefix", layer.__class__.__name__)
+            if "gate_up" in prefix.lower():
+                try:
+                    ext = _load_exl3_ext()
+                    import sys; sys.path.insert(0, '/opt/fp4')
+                    from exl3_fp4_conversion import hadamard_fold_weight_chunked
+                    for shard_id in layer.exl3_shard_ids:
+                        trellis = layer.trellis.exl3_tensors[shard_id]
+                        suh = layer.suh.exl3_tensors[shard_id]
+                        svh = layer.svh.exl3_tensors[shard_id]
+                        has_mcg = shard_id in layer.mcg.exl3_tensors
+                        has_mul1 = shard_id in layer.mul1.exl3_tensors
+                        t_k = int(trellis.shape[0]) * 16
+                        t_n = int(trellis.shape[1]) * 16
+                        weight_size_mb = t_k * t_n * 2 / 1024 / 1024
+                        if weight_size_mb > 150:
+                            free_mb = torch.cuda.mem_get_info()[0] / 1024 / 1024
+                            if free_mb > weight_size_mb + 500:
+                                weight = torch.empty(t_k, t_n, dtype=torch.float16, device=device)
+                                trellis_k = int(trellis.shape[2]) // 16
+                                ext.reconstruct(weight, trellis, trellis_k, has_mcg, has_mul1)
+                                weight = hadamard_fold_weight_chunked(weight, suh, svh)
+                                if not hasattr(_exl3_gemm, '_gate_cache'):
+                                    _exl3_gemm._gate_cache = {}
+                                _exl3_gemm._gate_cache[trellis.data_ptr()] = weight
+                                logger.info("Pre-reconstructed %s[%r] (%.0f MB, %d cached)", prefix, shard_id, weight_size_mb, len(_exl3_gemm._gate_cache))
+                            else:
+                                logger.info("Skip pre-reconstruct %s[%r]: free %.0f MB < need %.0f MB", prefix, shard_id, free_mb, weight_size_mb + 500)
+                except Exception as exc:
+                    logger.warning("Pre-reconstruct failed for %s: %s", prefix, exc)
 
         self._prime_graph_decode_shapes(layer)
 
@@ -2841,6 +2911,15 @@ class Exl3LinearMethod(LinearMethodBase):
                     dtype=torch.bfloat16, device=x.device,
                 )
             elif precision == "fp4":
+                # Check for pre-reconstructed FP16 weight (W4A16 prefill path).
+                # KLD is measured on prefill hidden states; W4A16 prefill passes KLD.
+                fp16_cache = getattr(layer, '_fp16_prefill_cache', None)
+                if fp16_cache is not None and shard_id in fp16_cache and x.shape[0] >= 128:
+                    weight = fp16_cache[shard_id]
+                    out = torch.empty(x.shape[0], weight.shape[1], dtype=torch.float16, device=x.device)
+                    ext = _load_exl3_ext()
+                    ext.hgemm(x.to(torch.float16), weight, out)
+                    return out.to(torch.bfloat16)
                 out = torch.empty(
                     x.shape[0], w.out_features,
                     dtype=torch.bfloat16, device=x.device,

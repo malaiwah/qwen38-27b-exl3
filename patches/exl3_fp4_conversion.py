@@ -244,6 +244,57 @@ def hadamard_fold_weight(
 
     return W_folded.to(W.dtype)
 
+def hadamard_fold_weight_chunked(
+    W: torch.Tensor,
+    suh: torch.Tensor,
+    svh: torch.Tensor,
+) -> torch.Tensor:
+    """Memory-efficient Hadamard fold: processes 128-row chunks in FP32.
+
+    Same math as hadamard_fold_weight but peak FP32 memory is 128×N×4 bytes
+    (~8.9 MB for N=17408) instead of K×N×4 (~570 MB). Avoids OOM when
+    folding large gate_up weights.
+    """
+    K, N = W.shape
+    if K % _HADAMARD_BLOCK != 0 or N % _HADAMARD_BLOCK != 0:
+        raise ValueError(
+            f"K and N must be multiples of {_HADAMARD_BLOCK}, "
+            f"got K={K}, N={N}"
+        )
+    k_blocks = K // _HADAMARD_BLOCK
+    n_blocks = N // _HADAMARD_BLOCK
+
+    # Broadcast scales to per-element if needed
+    if suh.numel() == K:
+        suh_elem = suh
+    elif suh.numel() == k_blocks:
+        suh_elem = suh.repeat_interleave(_HADAMARD_BLOCK)
+    else:
+        raise ValueError(f"suh length {suh.numel()} != K={K} or K//128={k_blocks}")
+    if svh.numel() == N:
+        svh_elem = svh
+    elif svh.numel() == n_blocks:
+        svh_elem = svh.repeat_interleave(_HADAMARD_BLOCK)
+    else:
+        raise ValueError(f"svh length {svh.numel()} != N={N} or N//128={n_blocks}")
+
+    device = W.device
+    H = _hadamard_128_matrix(device, torch.float32)  # (128, 128) normalised
+    suh_f32 = suh_elem.to(torch.float32).reshape(K, 1)
+    svh_f32 = svh_elem.to(torch.float32).reshape(1, N)
+
+    # Peak temp memory: 128×N×4 bytes (~8.9 MB) instead of K×N×2 (272 MB result).
+    for i in range(k_blocks):
+        r0 = i * _HADAMARD_BLOCK
+        r1 = r0 + _HADAMARD_BLOCK
+        chunk = W[r0:r1].to(torch.float32)  # (128, N) — 8.9 MB
+        blk = chunk.reshape(1, _HADAMARD_BLOCK, n_blocks, _HADAMARD_BLOCK)
+        temp = torch.einsum("ab,ibjd->iajd", H, blk)
+        folded = torch.einsum("iajb,bc->iajc", temp, H)
+        folded = folded.reshape(_HADAMARD_BLOCK, N) * suh_f32[r0:r1] * svh_f32
+        W[r0:r1] = folded.to(W.dtype)
+    return W
+
 
 # ---------------------------------------------------------------------------
 # FP4 E2M1 quantization helpers
