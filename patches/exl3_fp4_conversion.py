@@ -757,8 +757,8 @@ def fp4_apply(
             _tkey = (m, k, str(device))
             _tcached = _QUANT_CACHE.get(_tkey)
             if _tcached is None:
-                _sbuf = torch.zeros(128 * scale_stride, dtype=torch.uint8, device=device)
-                _pbuf = torch.zeros(m, k // 2, dtype=torch.uint8, device=device)
+                _sbuf = torch.zeros(1, 128 * scale_stride, dtype=torch.uint8, device=device)
+                _pbuf = torch.zeros(1, m, k // 2, dtype=torch.uint8, device=device)
                 _gsbuf = torch.zeros(1, dtype=torch.float32, device=device)
                 _igsbuf = torch.zeros(1, dtype=torch.float32, device=device)
                 _QUANT_CACHE[_tkey] = (_sbuf, _pbuf, _gsbuf, _igsbuf)
@@ -770,9 +770,10 @@ def fp4_apply(
             a_global_scale = (_NVFP4_GS_NUM / amax).reshape(1).to(torch.float32)
             _gsbuf.copy_(a_global_scale)
             _igsbuf.copy_(1.0 / a_global_scale)
-            _triton_quant(x_bf16, _sbuf, _pbuf, _gsbuf, _igsbuf)
+            _triton_quant(x_bf16, _sbuf.view(-1), _pbuf[0], _gsbuf, _igsbuf)
             a_sf = _sbuf.view(torch.float8_e4m3fn)
-            a_torch = _pbuf.unsqueeze(-1)  # (M, K//2, 1)
+            # Match b12x layout: (M, K//2, 1) viewed as float4_e2m1fn_x2
+            a_torch = _pbuf.permute(1, 2, 0).view(torch.float4_e2m1fn_x2)
         except Exception:
             _use_triton = False
     if not _use_triton:
