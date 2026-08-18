@@ -98,16 +98,87 @@ _B12X_FUSED_MOE_API: Any | None = None
 _B12X_MIXED_TRELLIS_API: Any | None = None
 _B12X_TRELLIS_LINEAR_API: Any | None = None
 _EXL3_ONLINE_QUANTIZER: Any | None = None
-# Multi-precision FP4/FP6 path: convert trellis weights to MXFP4 (for MLP)
-# or MXFP6 (for attention/GDN) at load time. FP4 gives 4x MMA throughput
-# for the largest matrices; FP6 gives 2x for precision-sensitive layers.
+# FP6 W6A8 path: convert trellis K6 weights to MXFP6 at load time, use b12x
+# dense_gemm (mxf8f6f4 block-scaled MMA) for prefill. Gated by env var.
 _MULTIPRECISION_ENABLED = os.environ.get("VLLM_EXL3_MULTIPRECISION", "0") == "1"
+# Layer routing: MLP → FP4 (4x MMA for prefill), attention/GDN stays on trellis
+_FP4_LAYER_PATTERNS = ("mlp.gate_up_proj", "mlp.down_proj", "linear_attn.", "self_attn.")
+_FP6_LAYER_PATTERNS = ()  # All layers use FP4
 _FP6_CONVERSION_MODULE = None
 _FP4_CONVERSION_MODULE = None
 
-# Layer name patterns → precision
-_FP4_LAYER_PATTERNS = ("mlp.gate_proj", "mlp.up_proj", "mlp.down_proj")
-_FP6_LAYER_PATTERNS = ("linear_attn.", "self_attn.")
+# Replace b12x threading.Lock with a dynamo-traceable context manager.
+# b12x's runtime_control.py uses `with _STATE_LOCK:` which dynamo can't trace.
+# The FP6 GEMM is wrapped as a custom_op (opaque to dynamo), but the nullcontext
+# patch ensures runtime calls to raise_if_kernel_resolution_frozen don't block.
+if os.environ.get("VLLM_EXL3_MULTIPRECISION", "0") == "1":
+    try:
+        import contextlib
+        from b12x._lib import runtime_control as _b12x_rc
+        _b12x_rc._STATE_LOCK = contextlib.nullcontext()
+        logger.info("Patched b12x _STATE_LOCK → nullcontext for dynamo tracing")
+    except ImportError:
+        pass
+
+# FP6 GEMM custom_op: makes dense_fp6_linear_expanded opaque to dynamo.
+# Same pattern as baseline's _b12x_trellis_linear_out custom_op.
+# Prevents dynamo from tracing into b12x internals (current_cuda_stream,
+# cuda.CUstream, CuTe DSL compilation) that break fullgraph_capture.
+if os.environ.get("VLLM_EXL3_MULTIPRECISION", "0") == "1":
+    @torch.library.custom_op("exl3::fp6_linear", mutates_args=("output",))
+    def _fp6_linear_op(
+        x: torch.Tensor,
+        weight: torch.Tensor,
+        scale_storage: torch.Tensor,
+        global_scale: torch.Tensor,
+        output: torch.Tensor,
+        fmt: str,
+        out_features: int,
+        in_features: int,
+        act_fmt: str,
+    ) -> None:
+        from b12x.quantization.mxfp6.fp6_dense_weights import dense_fp6_linear_expanded
+        result = dense_fp6_linear_expanded(
+            x, weight, scale_storage, global_scale, fmt,
+            out_features, in_features, act_fmt=act_fmt,
+        )
+        output.copy_(result)
+
+    @_fp6_linear_op.register_fake
+    def _fp6_linear_op_fake(
+        x, weight, scale_storage, global_scale, output,
+        fmt, out_features, in_features, act_fmt,
+    ):
+        pass  # output is pre-allocated; no shape to infer
+
+# FP4 GEMM custom_op: same pattern — opaque to dynamo, prevents inductor
+# fusion and tracing into b12x internals.
+if os.environ.get("VLLM_EXL3_MULTIPRECISION", "0") == "1":
+    @torch.library.custom_op("exl3::fp4_linear", mutates_args=("output",))
+    def _fp4_linear_op(
+        x: torch.Tensor,
+        weight_packed: torch.Tensor,
+        weight_scale: torch.Tensor,
+        weight_global_scale: torch.Tensor,
+        output: torch.Tensor,
+        out_features: int,
+        in_features: int,
+    ) -> None:
+        conv = _load_fp4_conversion()
+        conv.fp4_apply(x, conv.FP4DenseWeight(
+            packed=weight_packed,
+            scale_storage=weight_scale,
+            global_scale=weight_global_scale,
+            out_features=out_features,
+            in_features=in_features,
+        ), out=output)
+
+    @_fp4_linear_op.register_fake
+    def _fp4_linear_op_fake(
+        x, weight_packed, weight_scale, weight_global_scale, output,
+        out_features, in_features,
+    ):
+        pass  # output is pre-allocated
 
 
 def _load_fp6_conversion():
@@ -122,8 +193,6 @@ def _load_fp6_conversion():
             os.environ.get("VLLM_EXL3_FP6_MODULE", "/opt/fp6/exl3_fp6_conversion.py"),
         )
         _FP6_CONVERSION_MODULE = importlib.util.module_from_spec(spec)
-        import sys as _sys
-        _sys.modules["exl3_fp6_conversion"] = _FP6_CONVERSION_MODULE
         spec.loader.exec_module(_FP6_CONVERSION_MODULE)
         logger.info("EXL3→FP6 conversion module loaded")
     except Exception as exc:
@@ -138,14 +207,13 @@ def _load_fp4_conversion():
     if _FP4_CONVERSION_MODULE is not None:
         return _FP4_CONVERSION_MODULE
     try:
-        import importlib.util
+        import importlib.util, sys
         spec = importlib.util.spec_from_file_location(
             "exl3_fp4_conversion",
             os.environ.get("VLLM_EXL3_FP4_MODULE", "/opt/fp4/exl3_fp4_conversion.py"),
         )
         _FP4_CONVERSION_MODULE = importlib.util.module_from_spec(spec)
-        import sys as _sys
-        _sys.modules["exl3_fp4_conversion"] = _FP4_CONVERSION_MODULE
+        sys.modules["exl3_fp4_conversion"] = _FP4_CONVERSION_MODULE
         spec.loader.exec_module(_FP4_CONVERSION_MODULE)
         logger.info("EXL3→FP4 conversion module loaded")
     except Exception as exc:
@@ -163,8 +231,9 @@ def _layer_precision(prefix: str) -> str:
     for pat in _FP6_LAYER_PATTERNS:
         if pat in name:
             return "fp6"
-    # Default: FP6 for unknown layers (safest)
-    return "fp6"
+    return "skip"  # Unmatched layers stay on trellis
+
+_FP4_CONVERSION_MODULE = None
 _EXL3_ONLINE_WARMED_SIGNATURES: set[tuple[int, int, int, int]] = set()
 # Serialized dense shapes whose exl3_gemm autotuning already ran eagerly,
 # keyed by (device_index, m, k, n, bits, codebook). The extension hashes its
@@ -824,11 +893,31 @@ def _exl3_gemm(
     mcg: bool,
     mul1: bool,
 ) -> torch.Tensor:
-    """Opaque torch op around the bit-faithful ExLlamaV3 dense call."""
+    """Opaque torch op around the bit-faithful ExLlamaV3 dense call.
 
+    For prefill (M >= 128), use reconstruct + hgemm (cuBLAS) for 3x speedup.
+    For decode (M < 128), use the original trellis kernel.
+    """
     ext = _load_exl3_ext()
+    m = x.shape[0]
+    n = trellis.shape[1] * 16
+    k = x.shape[1]
+
+    if m >= 128 and not os.environ.get("VLLM_EXL3_PREFILL_RECONSTRUCT_M", "1") == "0":
+        # Reconstruct trellis codes to FP16 weight matrix (K, N) per call
+        t_k = int(trellis.shape[0]) * 16
+        t_n = int(trellis.shape[1]) * 16
+        weight = torch.empty(t_k, t_n, dtype=torch.float16, device=x.device)
+        trellis_k = int(trellis.shape[2]) // 16
+        ext.reconstruct(weight, trellis, trellis_k, mcg, mul1)
+        # cuBLAS hgemm: C = A @ W^T  (A is [M,K], W is [K,N], C is [M,N])
+        output = torch.empty(m, n, dtype=torch.float16, device=x.device)
+        ext.hgemm(x, weight, output)
+        return output
+
+    # Decode path: original trellis kernel
     output = torch.empty(
-        (x.shape[0], trellis.shape[1] * 16),
+        (m, n),
         dtype=torch.float16,
         device=x.device,
     )
@@ -2364,58 +2453,60 @@ class Exl3LinearMethod(LinearMethodBase):
                     device=device, non_blocking=True
                 ).contiguous()
 
-        # FP6 W6A8 path: convert trellis K6 weights to MXFP6 at load time.
-        # When FP6 is enabled, we skip all trellis warmup/priming and use
-        # b12x dense_gemm (mxf8f6f4 block-scaled MMA) for all inference.
         # Multi-precision FP4/FP6 path: convert trellis weights at load time.
         # MLP layers → FP4 (4x MMA), attention/GDN → FP6 (2x MMA, fidelity).
         if _MULTIPRECISION_ENABLED:
             prefix = getattr(layer, "prefix", layer.__class__.__name__)
-            precision = _layer_precision(prefix)
-            # Skip lm_head and other very large layers — GPU reconstruction
-            # of 4+ GiB FP16 weights causes OOM. Let them use trellis.
-            if "lm_head" in prefix.lower() or "ParallelLMHead" in prefix:
+            # Skip lm_head (ParallelLMHead) — too large to convert (4.74 GiB temp)
+            if "lm_head" in prefix.lower() or "ParallelLMHead" in type(layer).__name__:
                 logger.info("Skipping multi-precision for %s (too large)", prefix)
             else:
-                try:
-                    # Unfreeze b12x kernel resolution — the FP6 quantizer
-                    # needs to compile new CuTe DSL kernels during weight conversion.
+                precision = _layer_precision(prefix)
+                if precision == "skip":
+                    pass  # Stay on trellis
+                else:
                     try:
-                        from b12x._lib.runtime_control import unfreeze_kernel_resolution
-                        unfreeze_kernel_resolution()
-                    except ImportError:
-                        pass
-                    with torch.no_grad(), torch.compiler.disable():
+                        ext = _load_exl3_ext()
+                        _mem_before = torch.cuda.memory_allocated() / 1024**3
                         if precision == "fp4":
                             conv = _load_fp4_conversion()
                             if conv is not None:
                                 weights = conv.convert_all_shards_to_fp4(layer, ext)
-                                layer.mp_weights = weights
-                                layer.mp_precision = "fp4"
-                                logger.info("EXL3→FP4 conversion complete for %s (%d shards)",
-                                            prefix, len(weights))
+                                layer.mp_weights = weights  # type: ignore[attr-defined]
+                                layer.mp_precision = "fp4"  # type: ignore[attr-defined]
                                 for attr in ("trellis", "suh", "svh", "mcg", "mul1"):
-                                    param = getattr(layer, attr, None)
-                                    if param is not None and hasattr(param, "exl3_tensors"):
-                                        param.exl3_tensors.clear()
+                                    getattr(layer, attr).exl3_tensors.clear()
+                                torch.cuda.empty_cache()
+                                _mem_after = torch.cuda.memory_allocated() / 1024**3
+                                logger.info("EXL3→FP4 conversion complete for %s (%d shards) %.2f→%.2f GiB (Δ%.2f)", prefix, len(weights), _mem_before, _mem_after, _mem_after - _mem_before)
                                 return
                         elif precision == "fp6":
                             conv = _load_fp6_conversion()
                             if conv is not None:
                                 weights = conv.convert_all_shards_to_fp6(layer, ext)
-                                layer.mp_weights = weights
-                                layer.mp_precision = "fp6"
-                                logger.info("EXL3→FP6 conversion complete for %s (%d shards)",
-                                            prefix, len(weights))
+                                layer.mp_weights = weights  # type: ignore[attr-defined]
+                                layer.mp_precision = "fp6"  # type: ignore[attr-defined]
                                 for attr in ("trellis", "suh", "svh", "mcg", "mul1"):
-                                    param = getattr(layer, attr, None)
-                                    if param is not None and hasattr(param, "exl3_tensors"):
-                                        param.exl3_tensors.clear()
+                                    getattr(layer, attr).exl3_tensors.clear()
+                                torch.cuda.empty_cache()
+                                # Pre-expand FP6 weights to avoid OOM during warmup
+                                for sid, w in weights.items():
+                                    try:
+                                        _ = w.expanded_weight
+                                    except Exception:
+                                        pass
+                                torch.cuda.empty_cache()
+                                _mem_after = torch.cuda.memory_allocated() / 1024**3
+                                logger.info("EXL3→FP6 conversion complete for %s (%d shards) %.2f→%.2f GiB (Δ%.2f)", prefix, len(weights), _mem_before, _mem_after, _mem_after - _mem_before)
                                 return
-                except Exception as exc:
-                    logger.warning("EXL3 multi-precision conversion failed for %s: %s",
-                                   prefix, exc)
+                    except Exception as exc:
+                        _mem_err = torch.cuda.memory_allocated() / 1024**3
+                        logger.warning("EXL3 multi-precision conversion failed for %s: %s [%.2f GiB allocated]", prefix, exc, _mem_err)
 
+        # Skip trellis warmup for layers where trellis was freed during FP4/FP6 conversion.
+        # Layers with mp_keep_trellis=True still need warmup.
+        if getattr(layer, "mp_weights", None) is not None and not getattr(layer, "mp_keep_trellis", False):
+            return
         for shard_id in layer.exl3_shard_ids:
             trellis = layer.trellis.exl3_tensors[shard_id]
             if not _b12x_trellis_k6_supported(
@@ -2450,6 +2541,9 @@ class Exl3LinearMethod(LinearMethodBase):
         if not rows:
             return
         owner = getattr(layer, "prefix", layer.__class__.__name__)
+        # Skip priming for layers where trellis was freed during FP4/FP6 conversion
+        if getattr(layer, "mp_weights", None) is not None and not getattr(layer, "mp_keep_trellis", False):
+            return
         for shard_id in layer.exl3_shard_ids:
             trellis = layer.trellis.exl3_tensors[shard_id]
             has_mcg = shard_id in layer.mcg.exl3_tensors
@@ -2480,7 +2574,7 @@ class Exl3LinearMethod(LinearMethodBase):
     ) -> torch.Tensor:
         original_shape = x.shape[:-1]
         original_dtype = x.dtype
-        # Multi-precision path uses bf16 (b12x quantizers expect bf16 input)
+        # FP6 path uses bf16 (the b12x quantizer expects bf16 input)
         has_mp = hasattr(layer, "mp_weights") and layer.mp_weights
         target_dtype = torch.bfloat16 if has_mp else torch.float16
         x_2d = x.reshape(-1, x.shape[-1]).to(target_dtype).contiguous()
@@ -2720,18 +2814,28 @@ class Exl3LinearMethod(LinearMethodBase):
     def _apply_one(
         layer: torch.nn.Module, x: torch.Tensor, shard_id: ShardId
     ) -> torch.Tensor:
-        # Multi-precision dispatch: FP4 for MLP, FP6 for attention/GDN
+        # Multi-precision dispatch: direct calls (same pattern as FP6-only patch)
+        # b12x _STATE_LOCK is patched to nullcontext, so dynamo can trace
+        # through b12x's runtime_control functions without errors.
         mp_weights = getattr(layer, "mp_weights", None)
         if mp_weights is not None and shard_id in mp_weights:
             precision = getattr(layer, "mp_precision", "fp6")
-            if precision == "fp4":
-                conv = _load_fp4_conversion()
-                if conv is not None:
-                    return conv.fp4_apply(x, mp_weights[shard_id])
-            elif precision == "fp6":
-                conv = _load_fp6_conversion()
-                if conv is not None:
-                    return conv.fp6_apply(x, mp_weights[shard_id])
+            w = mp_weights[shard_id]
+            if precision == "fp6":
+                out = torch.empty(
+                    x.shape[0], w.out_features,
+                    dtype=torch.bfloat16, device=x.device,
+                )
+            elif precision == "fp4":
+                out = torch.empty(
+                    x.shape[0], w.out_features,
+                    dtype=torch.bfloat16, device=x.device,
+                )
+                _fp4_linear_op(
+                    x, w.packed, w.scale_storage, w.global_scale,
+                    out, w.out_features, w.in_features,
+                )
+                return out
 
         trellis = layer.trellis.exl3_tensors[shard_id]
         has_mcg = shard_id in layer.mcg.exl3_tensors
