@@ -910,7 +910,10 @@ def _exl3_gemm(
         weight = torch.empty(t_k, t_n, dtype=torch.float16, device=x.device)
         trellis_k = int(trellis.shape[2]) // 16
         ext.reconstruct(weight, trellis, trellis_k, mcg, mul1)
-        # cuBLAS hgemm: C = A @ W^T  (A is [M,K], W is [K,N], C is [M,N])
+        # Fold Hadamard rotation + scales (suh, svh) into weight
+        from exl3_fp4_conversion import hadamard_fold_weight
+        weight = hadamard_fold_weight(weight, suh, svh)
+        # cuBLAS hgemm: C = A @ W  (A is [M,K], W is [K,N], C is [M,N])
         output = torch.empty(m, n, dtype=torch.float16, device=x.device)
         ext.hgemm(x, weight, output)
         return output
