@@ -699,17 +699,10 @@ def fp4_apply(
     _nvfp4_impl._validate_launch_tensor = lambda *a, **kw: None
     _nvfp4_impl._overlaps = lambda *a: False
     from b12x.quantization.nvfp4 import plan as _nvfp4_plan, allocate_outputs as _nvfp4_alloc, run as _nvfp4_run
-    # Cache global_scale per M for prefill (saves 189 launches).
-    # For decode (M≤128), compute per-call — errors compound token-by-token.
-    global _CACHED_GS_M, _CACHED_GS_VAL
-    if m > _TILE and _CACHED_GS_M == m:
-        a_global_scale = _CACHED_GS_VAL
-    else:
-        amax = x_bf16.abs().max().clamp_min(1e-12)
-        a_global_scale = (_NVFP4_GS_NUM / amax).reshape(1).to(torch.float32)
-        if m > _TILE:
-            _CACHED_GS_M = m
-            _CACHED_GS_VAL = a_global_scale
+    # Per-call amax: each layer has different activation magnitude.
+    # Caching across layers causes catastrophic KLD (12.38 vs 0.0027).
+    amax = x_bf16.abs().max().clamp_min(1e-12)
+    a_global_scale = (_NVFP4_GS_NUM / amax).reshape(1).to(torch.float32)
     cache_key = (m_pad, k, str(device))
     cached = _QUANT_CACHE.get(cache_key)
     if cached is None:

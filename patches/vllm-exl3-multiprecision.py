@@ -102,7 +102,7 @@ _EXL3_ONLINE_QUANTIZER: Any | None = None
 # dense_gemm (mxf8f6f4 block-scaled MMA) for prefill. Gated by env var.
 _MULTIPRECISION_ENABLED = os.environ.get("VLLM_EXL3_MULTIPRECISION", "0") == "1"
 # Layer routing: MLP → FP4 (4x MMA for prefill), attention/GDN stays on trellis
-_FP4_LAYER_PATTERNS = ("mlp.gate_up_proj", "mlp.down_proj", "linear_attn.", "self_attn.")
+_FP4_LAYER_PATTERNS = ("mlp.gate_up_proj", "mlp.down_proj", "linear_attn.", "self_attn.")  # All layers
 _FP6_LAYER_PATTERNS = ()  # All layers use FP4
 _FP6_CONVERSION_MODULE = None
 _FP4_CONVERSION_MODULE = None
