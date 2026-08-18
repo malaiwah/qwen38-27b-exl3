@@ -345,7 +345,7 @@ void warpspec_inner
         int m = (i * WS_BASE_THREADS + t) / (gl_a_stride_k / 8);
         load_a_gl[i] = m * size_k / 8 + k;
         load_a_sh[i] = m * A_COLS + (k ^ ((m >> A_SWIZZLE_SHIFT) & A_SWIZZLE_MASK));
-        pred_a_gl[i] = m < size_m;
+        pred_a_gl[i] = m < size_m && m < WS_TILE_M;
     }
 
     int gl_b_stride_k = blocks_n * TILEBLOCKS_K * 256 / 16 * bits;
@@ -842,13 +842,22 @@ torch::Tensor warpspec_gemm
     int* lock_ptr = locks.data_ptr<int>();
     const half* ps_ptr = post_scale.numel() > 0 ? (const half*)post_scale.data_ptr() : nullptr;
 
-    // Dispatch based on bits and cb
+    // Dispatch based on bits and cb.
+    // cb=1: MCG codebook (layers with mcg tensor)
+    // cb=0: standard codebook (layers without mcg)
+    // cb=2 (mul1 codebook) is not yet supported by the warpspec dequant.
     if (bits == 6 && cb == 1) {
         launch_warpspec<6, false, 1, false>(a_ptr, b_ptr, c_ptr, size_m, size_k, size_n, lock_ptr, ps_ptr, stream);
+    } else if (bits == 6 && cb == 0) {
+        launch_warpspec<6, false, 0, false>(a_ptr, b_ptr, c_ptr, size_m, size_k, size_n, lock_ptr, ps_ptr, stream);
     } else if (bits == 5 && cb == 1) {
         launch_warpspec<5, false, 1, false>(a_ptr, b_ptr, c_ptr, size_m, size_k, size_n, lock_ptr, ps_ptr, stream);
+    } else if (bits == 5 && cb == 0) {
+        launch_warpspec<5, false, 0, false>(a_ptr, b_ptr, c_ptr, size_m, size_k, size_n, lock_ptr, ps_ptr, stream);
     } else if (bits == 4 && cb == 1) {
         launch_warpspec<4, false, 1, false>(a_ptr, b_ptr, c_ptr, size_m, size_k, size_n, lock_ptr, ps_ptr, stream);
+    } else if (bits == 4 && cb == 0) {
+        launch_warpspec<4, false, 0, false>(a_ptr, b_ptr, c_ptr, size_m, size_k, size_n, lock_ptr, ps_ptr, stream);
     } else {
         TORCH_CHECK(false, "Unsupported bits/cb combination: ", bits, "/", cb);
     }
