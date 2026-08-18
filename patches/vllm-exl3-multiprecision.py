@@ -2495,34 +2495,6 @@ class Exl3LinearMethod(LinearMethodBase):
                                 weights = conv.convert_all_shards_to_fp4(layer, ext)
                                 layer.mp_weights = weights  # type: ignore[attr-defined]
                                 layer.mp_precision = "fp4"  # type: ignore[attr-defined]
-                                # Pre-reconstruct gate_up FP16 weights for W4A16 prefill.
-                                # KLD is measured on prefill hidden states; W4A16 prefill
-                                # passes KLD while FP4 decode gives fast TG.
-                                if "gate_up" in prefix.lower():
-                                    try:
-                                        import sys; sys.path.insert(0, '/opt/fp4')
-                                        from exl3_fp4_conversion import hadamard_fold_weight_chunked
-                                        for shard_id in layer.exl3_shard_ids:
-                                            trellis = layer.trellis.exl3_tensors[shard_id]
-                                            suh = layer.suh.exl3_tensors[shard_id]
-                                            svh = layer.svh.exl3_tensors[shard_id]
-                                            has_mcg = shard_id in layer.mcg.exl3_tensors
-                                            has_mul1 = shard_id in layer.mul1.exl3_tensors
-                                            t_k = int(trellis.shape[0]) * 16
-                                            t_n = int(trellis.shape[1]) * 16
-                                            wmb = t_k * t_n * 2 / 1024 / 1024
-                                            free_mb = torch.cuda.mem_get_info()[0] / 1024 / 1024
-                                            if wmb > 150 and free_mb > wmb + 500:
-                                                w = torch.empty(t_k, t_n, dtype=torch.float16, device=device)
-                                                tk = int(trellis.shape[2]) // 16
-                                                ext.reconstruct(w, trellis, tk, has_mcg, has_mul1)
-                                                w = hadamard_fold_weight_chunked(w, suh, svh)
-                                                if not hasattr(layer, '_fp16_prefill_cache'):
-                                                    layer._fp16_prefill_cache = {}
-                                                layer._fp16_prefill_cache[shard_id] = w
-                                                logger.info("Pre-reconstructed FP16 for %s[%r] (%.0f MB)", prefix, shard_id, wmb)
-                                    except Exception as exc:
-                                        logger.warning("FP16 pre-reconstruct failed for %s: %s", prefix, exc)
                                 for attr in ("trellis", "suh", "svh", "mcg", "mul1"):
                                     getattr(layer, attr).exl3_tensors.clear()
                                 torch.cuda.empty_cache()
