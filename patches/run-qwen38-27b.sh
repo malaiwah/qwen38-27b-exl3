@@ -25,7 +25,7 @@ SERVED_MODEL_NAME="${SERVED_MODEL_NAME:-Qwen3.8-27B}"
 # PR #314 is mounted over the pinned GG r34 base image. Refuse to start if the
 # installed overlay is absent or differs from the exact qualified source.
 EXL3_PATCH_HOST="${EXL3_PATCH_HOST:-/home/mbelleau/vllm-exl3-multiprecision.py}"
-EXL3_PATCH_SHA256="c4a6adec5851aea0a951963cc6f1961163e8699013365f4967c6fdefbc92a1bf"
+EXL3_PATCH_SHA256="603e331de52f3b3cdaab58abc9c0b752235394f71337589b0bf2c3232fd4c723"
 EXL3_PATCH_CTR="/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py"
 [ -f "${EXL3_PATCH_HOST}" ] || {
   echo "EXL3 graph patch is missing: ${EXL3_PATCH_HOST}" >&2
@@ -121,9 +121,9 @@ podman run "${RUN_ARGS[@]}" --replace \
   -e VLLM_EXL3_ONLINE_CACHE_DIR=/cache/jit/exl3-online \
   -e VLLM_EXL3_ONLINE_CACHE_MODE=readwrite \
   \
-  -e VLLM_EXL3_MULTIPRECISION=0 \
+  -e VLLM_EXL3_MULTIPRECISION=1 \
   -e VLLM_EXL3_GRAPH_DECODE="${VLLM_EXL3_GRAPH_DECODE}" \
-  -e VLLM_EXL3_B12X_N_RANGE="${VLLM_EXL3_B12X_N_RANGE:-5120-36864}" \
+    -e VLLM_EXL3_B12X_N_RANGE="${VLLM_EXL3_B12X_N_RANGE:-5120-36864}" \
   -e VLLM_EXL3_EXT_PATH=/opt/exllamav3 \
   -e VLLM_EXL3_ENCODER_SOURCE=/opt/exllamav3-python/exllamav3 \
   -e VLLM_EXL3_ENCODER_REVISION=704aefd743b390af4bd0fb429d1906f9b964c7d8 \
@@ -149,13 +149,13 @@ podman run "${RUN_ARGS[@]}" --replace \
          --kv-cache-dtype fp8_e4m3 \
          --gpu-memory-utilization '${GPU_MEMORY_UTILIZATION}' \
          --max-model-len '${MAX_MODEL_LEN}' \
-         --max-num-seqs '${MAX_NUM_SEQS}' \
-         --max-num-batched-tokens '${MAX_NUM_BATCHED_TOKENS}' \
-         --compilation-config '{\"mode\":\"NONE\",\"cudagraph_mode\":\"'${CUDAGRAPH_MODE}'\"}' \
-         --mm-processor-kwargs \"\${MM_PROCESSOR_KWARGS}\" \
-         --mm-processor-cache-type shm \
-         --default-chat-template-kwargs '{\"preserve_thinking\": true}' \
-                  --enable-chunked-prefill \
+        --max-num-seqs '${MAX_NUM_SEQS}' \
+        --max-num-batched-tokens '${MAX_NUM_BATCHED_TOKENS}' \
+        --compilation-config '{\"mode\":\"NONE\",\"cudagraph_mode\":\"'${CUDAGRAPH_MODE}'\"}' \
+        --mm-processor-kwargs \"\${MM_PROCESSOR_KWARGS}\" \
+        --mm-processor-cache-type shm \
+        --default-chat-template-kwargs '{\"preserve_thinking\": true}' \
+        --enable-chunked-prefill \
          --reasoning-parser qwen3 \
          --enable-auto-tool-choice --tool-call-parser qwen3_coder \
          \"\${SPEC_ARGS[@]}\""
