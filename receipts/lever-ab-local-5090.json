@@ -1,0 +1,55 @@
+{
+ "schema": "qwen38-lever-ab-local-5090/1",
+ "generated_utc": "2026-08-18T03:20:00Z",
+ "what_this_is": "Local RTX 5090 A/B of levers 1+2 (b12x gate + in_proj_ba transpose) against baseline. Single GPU, podman container, C1 decode, 3x200 tokens, temperature=0, identical prompt.",
+ "hardware": "GeForce RTX 5090 (32GB), driver 610.57.04, CUDA 13.2",
+ "container": "voipmonitor/vllm:gilded-gnosis-v20-vllm4d006a4-b12xcd3ce19-fi1ac6942-cu132-20260810-r34",
+ "profile": "C1 (single sequence), MTP-3, graph decode, fp8 KV, 180k context, max-num-seqs=8",
+ "prompt": "The quick brown fox jumps over the lazy dog. This is a test of the decoding speed.",
+ "method": "3x200-token greedy generations per arm, 50-token warmup before each arm, wall-time measured via perf_counter",
+ "arms": {
+   "A_baseline": {
+     "description": "Both levers OFF: VLLM_EXL3_B12X_N_RANGE=0 (no gate) + original linear.py (no transpose)",
+     "tok_s": [142.5, 145.1, 142.5],
+     "median": 142.5
+   },
+   "B_lever2_only": {
+     "description": "Lever 2 ON only: VLLM_EXL3_B12X_N_RANGE=0 (no gate) + patched linear.py (transpose, m>=2 guard)",
+     "tok_s": [149.4, 148.7, 148.6],
+     "median": 148.7
+   },
+   "C_both_levers": {
+     "description": "Both levers ON: default VLLM_EXL3_B12X_N_RANGE=5120-32768 (gate active) + patched linear.py (transpose)",
+     "tok_s": [149.8, 150.2, 150.7],
+     "median": 150.2
+   }
+ },
+ "results": {
+   "lever_1_gate_effect": {
+     "delta_pct": "+1.0%",
+     "baseline": "arm B (lever2 only) median 148.7",
+     "patched": "arm C (both) median 150.2",
+     "threshold": "+3%",
+     "verdict": "FAIL"
+   },
+   "lever_2_transpose_effect": {
+     "delta_pct": "+4.4%",
+     "baseline": "arm A (both off) median 142.5",
+     "patched": "arm B (lever2 only) median 148.7",
+     "threshold": "+3%",
+     "verdict": "PASS",
+     "mechanism": "MTP-3 verify pass processes m>=2 tokens, triggering the transpose path for tiny-N GDN in_proj_ba layers (5120x96). The pre-transposed KxN weight runs 3.6x faster than the original TN layout."
+   },
+   "combined_effect": {
+     "delta_pct": "+5.4%",
+     "baseline": "arm A (both off) median 142.5",
+     "patched": "arm C (both) median 150.2",
+     "verdict": "PASS"
+   }
+ },
+ "notes": [
+   "Lever 1 (b12x gate) shows only +1.0% at C1, consistent with the bare-metal rental test (+1.4% median, inconclusive). The gate routes lm_head and k/v to exl3_gemm, but the per-call GPU savings are small.",
+   "Lever 2 (in_proj_ba transpose) shows +4.4% at C1, exceeding the +3% threshold. The speedup comes from MTP-3 verify passes (m>=2) where the transpose path is active. At pure m=1 decode, the transpose is inactive.",
+   "Combined +5.4% exceeds the +3% threshold. The levers are complementary: lever 1 helps lm_head/k/v routing, lever 2 helps GDN in_proj_ba transpose."
+ ]
+}
