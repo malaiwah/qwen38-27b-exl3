@@ -122,6 +122,7 @@ podman run "${RUN_ARGS[@]}" --replace \
   -e VLLM_EXL3_ONLINE_CACHE_MODE=readwrite \
   \
   -e VLLM_EXL3_MULTIPRECISION=1 \
+  -e VLLM_EXL3_FP4_TRITON_DECODE=0 \
   -e VLLM_EXL3_GRAPH_DECODE="${VLLM_EXL3_GRAPH_DECODE}" \
     -e VLLM_EXL3_B12X_N_RANGE="${VLLM_EXL3_B12X_N_RANGE:-5120-36864}" \
   -e VLLM_EXL3_EXT_PATH=/opt/exllamav3 \
@@ -133,6 +134,7 @@ podman run "${RUN_ARGS[@]}" --replace \
   -v "${EXL3_PATCH_HOST}":"${EXL3_PATCH_CTR}":ro \
   -v /home/mbelleau/.cache/jit:/cache/jit \
   -v /home/mbelleau/qwen38-27b-exl3/patches/exl3_fp4_conversion.py:/opt/fp4/exl3_fp4_conversion.py:ro \
+  -v /home/mbelleau/qwen38-27b-exl3/patches/triton_fp4_quant.py:/opt/fp4/triton_fp4_quant.py:ro \
   -v /home/mbelleau/qwen38-27b-exl3/patches/exl3_fp6_conversion.py:/opt/fp6/exl3_fp6_conversion.py:ro \
   -v /home/mbelleau/vllm-exl3-linear-ba.py:/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/linear.py:ro \
   --entrypoint /bin/bash \
@@ -146,8 +148,9 @@ podman run "${RUN_ARGS[@]}" --replace \
          --quantization exl3 \
          --quantization-config \"\${QUANTIZATION_CONFIG}\" \
          --attention-backend '${ATTN_BACKEND}' \
-         --kv-cache-dtype fp8_e4m3 \
+         \
          --gpu-memory-utilization '${GPU_MEMORY_UTILIZATION}' \
+        --kv-cache-dtype bfloat16 \
          --max-model-len '${MAX_MODEL_LEN}' \
         --max-num-seqs '${MAX_NUM_SEQS}' \
         --max-num-batched-tokens '${MAX_NUM_BATCHED_TOKENS}' \
