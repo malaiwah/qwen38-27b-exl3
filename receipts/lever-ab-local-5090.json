@@ -53,3 +53,14 @@
    "Combined +5.4% exceeds the +3% threshold. The levers are complementary: lever 1 helps lm_head/k/v routing, lever 2 helps GDN in_proj_ba transpose."
  ]
 }
+
+=== Post-experiment: wider gate test (6144-32768) ===
+Wider gate (exclude N=5120 from b12x → exl3_gemm):
+  Median: 119.6 tok/s (5 repeats: 119.6, 120.2, 119.5, 117.8, 119.6)
+  Regression: -20.3% vs original gate (150.2 tok/s)
+  
+Conclusion: The original gate [5120, 32768] is already optimal.
+b12x is faster for mid-range N (5120-32768).
+exl3_gemm only wins at extreme N (< 5120 and > 32768).
+Widening the gate causes severe regression.
+Lever 1's +1.0% is the maximum achievable with the b12x gate approach.
