@@ -1,0 +1,26 @@
+{
+  "schema": "qwen38-final-speed/1",
+  "generated_utc": "2026-08-18T10:35:00Z",
+  "config": "Original exl3.py + linear-ba.py (lever 2) + B12X_N_RANGE=5120-32768 (lever 1) + MTP-3",
+  "decode_speed": {
+    "runs": [
+      {"run": 1, "tokens": 200, "time_s": 2.372, "tok_s": 84.3},
+      {"run": 2, "tokens": 200, "time_s": 1.900, "tok_s": 105.2},
+      {"run": 3, "tokens": 200, "time_s": 1.898, "tok_s": 105.4}
+    ],
+    "median_tok_s": 105.3,
+    "note": "Lower than previous 150 tok/s measurement — likely due to B12X JIT compilation overhead or cache mount affecting memory layout"
+  },
+  "prefill_speed": {
+    "prompt_tokens": 2051,
+    "runs": [
+      {"run": 1, "time_s": 1.217, "tok_s": 1685},
+      {"run": 2, "time_s": 1.211, "tok_s": 1694},
+      {"run": 3, "time_s": 1.213, "tok_s": 1691}
+    ],
+    "median_tok_s": 1691,
+    "target": 6000,
+    "note": "Baseline with reconstruct_hgemm. Warp-spec kernel achieved 4444 tok/s in isolated test."
+  },
+  "gpu_memory": "30943 MiB / 32607 MiB (95%)"
+}
