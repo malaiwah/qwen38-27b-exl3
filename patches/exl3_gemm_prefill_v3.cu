@@ -141,6 +141,9 @@ void exl3_gemm_prefill_v3_launch
     constexpr int SH_STAGES = PREFILL_SH_STAGES;
     constexpr int FRAG_STAGES = PREFILL_FRAG_STAGES;
 
+    // Fix 2: Use getCurrentCUDAStream for both launches (reviewer P2)
+    cudaStream_t stream = at::cuda::getCurrentCUDAStream().stream();
+
     // Step 1: Launch input Hadamard pre-pass
     {
         int total_warps = size_m * size_k / 128;
@@ -148,7 +151,7 @@ void exl3_gemm_prefill_v3_launch
         int blocks = (total_warps + warps_per_block - 1) / warps_per_block;
         blocks = MIN(blocks, 65535);  // CUDA grid limit
         int threads = 128;
-        exl3_input_hadamard_kernel<<<blocks, threads>>>(
+        exl3_input_hadamard_kernel<<<blocks, threads, 0, stream>>>(
             A, A_had, suh, size_m, size_k
         );
     }
@@ -181,7 +184,7 @@ void exl3_gemm_prefill_v3_launch
     cudaFuncSetAttribute(kernel,
         cudaFuncAttributeMaxDynamicSharedMemorySize, shmem_bytes);
 
-    kernel<<<total_blocks, block_dim, shmem_bytes>>>(
+    kernel<<<total_blocks, block_dim, shmem_bytes, stream>>>(
         A_had, B, C, size_m, size_k, size_n, locks, svh, grid_n
     );
 }
@@ -244,8 +247,13 @@ void exl3_gemm_prefill_torch
     int num_sms  // ignored, uses DevCtx
 )
 {
-    int size_m = A.size(0);
-    int size_k = A.size(1);
+    // Fix 1: Set CUDA device from input tensor (reviewer P2)
+    const at::cuda::OptionalCUDAGuard device_guard(A.device());
+
+    // Fix 4: size_m = product of all leading dims (reviewer P3)
+    int size_m = 1;
+    for (int d = 0; d < A.dim() - 1; ++d) size_m *= A.size(d);
+    int size_k = A.size(-1);
     int size_n = B.size(1) * 16;  // B shape is (K//16, N//16, 16*bits), so N = B.size(1)*16
     bool c_fp32 = (C.scalar_type() == at::ScalarType::Float);
 
@@ -257,9 +265,18 @@ void exl3_gemm_prefill_torch
     const half* svh_ptr = svh ? (const half*)svh->data_ptr<at::Half>() : nullptr;
 
     // Use DevCtx for locks (same as existing kernel)
-    int device;
-    cudaGetDevice(&device);
+    int device = A.device().index();
     int* locks_ptr = DevCtx::instance().get_locks(device);
+
+    // Fix 3: Bounds-check lock buffer (reviewer P2)
+    // DevCtx allocates MAX_TILES_C=1,048,576 ints for locks.
+    // v3 uses grid_m * (N/16) lock entries. Check for overflow.
+    int grid_m = (size_m + PREFILL_TILE_M - 1) / PREFILL_TILE_M;
+    int blocks_n = size_n / 16;
+    TORCH_CHECK(grid_m * blocks_n < 1024 * 1024,
+        "exl3_gemm_prefill: lock buffer overflow: grid_m=", grid_m,
+        " * blocks_n=", blocks_n, " >= MAX_TILES_C=1,048,576.",
+        " Use existing exl3_gemm for M > ", (1024*1024 / blocks_n - 1) * PREFILL_TILE_M);
 
     exl3_gemm_prefill(
         A_ptr, B_ptr, C_ptr, size_m, size_k, size_n, bits, cb, c_fp32,
