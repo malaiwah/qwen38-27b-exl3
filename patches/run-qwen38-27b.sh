@@ -25,7 +25,7 @@ SERVED_MODEL_NAME="${SERVED_MODEL_NAME:-Qwen3.8-27B}"
 # PR #314 is mounted over the pinned GG r34 base image. Refuse to start if the
 # installed overlay is absent or differs from the exact qualified source.
 EXL3_PATCH_HOST="${EXL3_PATCH_HOST:-/home/mbelleau/vllm-exl3-multiprecision.py}"
-EXL3_PATCH_SHA256="0ec00d55f915b1f0b03cdaea70752a0a2aec368ff41151a6e80b7df4ab4a68ce"
+EXL3_PATCH_SHA256="4b4e315188a077f74b69aac8e323a47ba77f5930000b6fc5c449a9e40cf4d437"
 EXL3_PATCH_CTR="/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py"
 [ -f "${EXL3_PATCH_HOST}" ] || {
   echo "EXL3 graph patch is missing: ${EXL3_PATCH_HOST}" >&2
@@ -45,7 +45,7 @@ QUANTIZATION_CONFIG='{"linear":{"weight":"mxfp8"},"ignore":["re:.*visual\\..*","
 #     MTP-3 (draft token slots need headroom); 8192 accommodates the 3 draft
 #     tokens per sequence across 8 concurrent seqs.
 GPU_MEMORY_UTILIZATION="${GPU_MEMORY_UTILIZATION:-0.93}"
-MAX_MODEL_LEN="${MAX_MODEL_LEN:-193600}"
+MAX_MODEL_LEN="${MAX_MODEL_LEN:-238400}"
 MAX_NUM_SEQS="${MAX_NUM_SEQS:-4}"
 MAX_NUM_BATCHED_TOKENS="${MAX_NUM_BATCHED_TOKENS:-8192}"
 
@@ -123,6 +123,7 @@ podman run "${RUN_ARGS[@]}" --replace \
   -e VLLM_EXL3_MULTIPRECISION=1 \
   -e VLLM_EXL3_FP4_TRITON_DECODE=0 \
   -e VLLM_EXL3_GRAPH_DECODE="${VLLM_EXL3_GRAPH_DECODE}" \
+  -e VLLM_EXL3_EMBED_ONLINE_BITS=6 \
     -e VLLM_EXL3_B12X_N_RANGE="${VLLM_EXL3_B12X_N_RANGE:-5120-36864}" \
   -e VLLM_EXL3_EXT_PATH=/opt/exllamav3 \
   -e VLLM_EXL3_ENCODER_SOURCE=/opt/exllamav3-python/exllamav3 \
