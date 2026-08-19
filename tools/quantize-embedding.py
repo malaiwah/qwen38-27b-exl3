@@ -93,7 +93,7 @@ def main() -> None:
 
     # Copy all files except the shard containing the embedding
     for f in src.iterdir():
-        if f.name == embed_shard:
+        if f.name == embed_shard or not f.is_file():
             continue
         dest = out / f.name
         if not dest.exists():
