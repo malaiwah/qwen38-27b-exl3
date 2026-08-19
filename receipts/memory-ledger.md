@@ -110,3 +110,13 @@ Cover every entry of `_W4A16_ALLOWED_ROUTED_SIZES = (8,16,32,48,64)`.
 `/home/mbelleau/b12x/b12x/moe/_shared/kernels/w4a16/kernel.py` and the
 container's copy have different md5sums and different line numbers. Every
 b12x claim must be read from the container overlay, not the host checkout.
+
+## L12. The V2 model runner costs ~1.14 GiB of KV versus V1
+Same config, only `VLLM_USE_V2_MODEL_RUNNER` differing: available KV cache
+**10.49 GiB (V1) vs 9.35 GiB (V2)**, which moved max context from 262,144 to
+252,960 (we run 250,000). The V2 runner is worth it (+32% TG, see
+`receipts/tg-v2-runner-2026-08-19.md`) but the 1.14 GiB is unexplained -
+**to chase:** what the V2 runner holds that V1 does not (extra input buffers,
+per-phase workspaces, the speculator's own captured graphs and static buffers).
+Note its first failure mode is a *clean* KV-sizing ValueError with a suggested
+max length, not an OOM, so it is easy to mistake for an incompatibility.

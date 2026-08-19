@@ -57,7 +57,7 @@ QUANTIZATION_CONFIG='{"linear":{"weight":"mxfp8"},"ignore":["re:.*visual\\..*","
 # max-model-len 262144 — full native context, unlocked by the KV freed above
 #   (9.82 GiB KV vs 8.89 GiB at mnbt 8192). Was 238,400.
 GPU_MEMORY_UTILIZATION="${GPU_MEMORY_UTILIZATION:-0.93}"
-MAX_MODEL_LEN="${MAX_MODEL_LEN:-262144}"
+MAX_MODEL_LEN="${MAX_MODEL_LEN:-250000}"
 MAX_NUM_SEQS="${MAX_NUM_SEQS:-4}"
 MAX_NUM_BATCHED_TOKENS="${MAX_NUM_BATCHED_TOKENS:-3072}"
 
@@ -147,13 +147,14 @@ podman run "${RUN_ARGS[@]}" --replace \
   -e VLLM_EXL3_FP8DG_PREFILL_M="${VLLM_EXL3_FP8DG_PREFILL_M:-0}" \
   -e VLLM_EXL3_FP8DG_SELFTEST="${VLLM_EXL3_FP8DG_SELFTEST:-0}" \
   -e VLLM_EXL3_FP8DG_CACHE="${VLLM_EXL3_FP8DG_CACHE:-0}" \
+  -e VLLM_USE_V2_MODEL_RUNNER="${VLLM_USE_V2_MODEL_RUNNER:-1}" \
   -e VLLM_NO_USAGE_STATS="${VLLM_NO_USAGE_STATS:-1}" \
   -e DO_NOT_TRACK="${DO_NOT_TRACK:-1}" \
   -e VLLM_EXL3_PREFILL_RECONSTRUCT_M="${VLLM_EXL3_PREFILL_RECONSTRUCT_M:-1}" \
   -e PROFILER_CONFIG="${PROFILER_CONFIG:-}" \
   -e NSYS_PROFILE="${NSYS_PROFILE:-0}" -e NSYS_TAG="${NSYS_TAG:-run}" \
   -e VLLM_NVTX_SCOPES_FOR_PROFILING="${VLLM_NVTX_SCOPES_FOR_PROFILING:-1}" \
-  -e VLLM_EXL3_FP4_LAYERS="${VLLM_EXL3_FP4_LAYERS:-mlp.gate_up_proj,mlp.down_proj,linear_attn.}" \
+  -e VLLM_EXL3_FP4_LAYERS="${VLLM_EXL3_FP4_LAYERS:-mlp.gate_up_proj,mlp.down_proj,linear_attn.,self_attn.}" \
   -e VLLM_EXL3_FP6_LAYERS="${VLLM_EXL3_FP6_LAYERS:-}" \
   -e VLLM_EXL3_B12X_ANY_BITS="${VLLM_EXL3_B12X_ANY_BITS:-0}" \
     -e VLLM_EXL3_B12X_N_RANGE="${VLLM_EXL3_B12X_N_RANGE:-5120-36864}" \
@@ -165,6 +166,8 @@ podman run "${RUN_ARGS[@]}" --replace \
   -v "${HF_CACHE_HOST}":/root/.cache/huggingface:ro \
   -v "${EXL3_PATCH_HOST}":"${EXL3_PATCH_CTR}":ro \
   -v /home/mbelleau/scheduler_patch.py:/opt/venv/lib/python3.12/site-packages/vllm/v1/core/sched/scheduler.py:ro \
+  -v /home/mbelleau/spec_decode_utils_patch.py:/opt/venv/lib/python3.12/site-packages/vllm/v1/worker/gpu/spec_decode/utils.py:ro \
+  -v /home/mbelleau/autoregressive_speculator_patch.py:/opt/venv/lib/python3.12/site-packages/vllm/v1/worker/gpu/spec_decode/autoregressive/speculator.py:ro \
   -v /home/mbelleau/qwen3_5_mtp_patch.py:/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5_mtp.py:ro \
   -v /home/mbelleau/.cache/jit:/cache/jit \
   -v /home/mbelleau/qwen38-27b-exl3/patches/exl3_fp4_conversion.py:/opt/fp4/exl3_fp4_conversion.py:ro \
