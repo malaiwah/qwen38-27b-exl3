@@ -379,47 +379,37 @@ remains the serving path and an EDA re-solve is the best in-family lever.
 
 ---
 
-## Re-solve status (2026-08-19, goal session): DEFERRED — input lost, recovery recipe below
+## Re-solve status (2026-08-19, goal session): DONE — and it refutes the `sqrt_energy` recommendation above
 
-The `sqrt_energy` re-solve recommended above was scheduled and then **deferred by
-decision**, because its input does not exist any more.
+The re-solve ran. **No GPU was needed**, because the ladder is published after all:
+`malaiwah/qwen38-27b-fidelity-suite-v5` (dataset) ->
+`captures/shard-0000/error-driven-ladder.json`. An earlier note in this document
+deferred the lane claiming the ladder was lost; that was wrong — it looked only at
+the EDA-research *model* repo. Full account is in
+`receipts/eda-resolve-2026-08-19.md`.
 
-**What is missing.** The solve is a dynamic program over a per-module ladder of
-`(proxy_err, out_energy)` at each candidate width for all 409 body modules. The plan
-records the ladder only by reference — `ladder.source =
-/var/tmp/work/kld6/ladder.json` — with `ladder.modules = 409` and `meta.elapsed_sec
-= 7473.2`. That path is gone, the ladder is **not** among the published EDA-research
-artifacts (the repo ships the plan, `solved-fixed`, `solved-override`, the convert
-log and the weights, but not the ladder), and the only surviving `ladder.json` on
-the build host belongs to an unrelated project (msrt-work, different schema). So
-docs/57's "the solve costs ~1 s and no GPU" is true *given the ladder* and false
-without it: regeneration is **7,473 s ~= 2.08 h of GPU**.
+`tools/eda-resolve.py` reproduces the published `rel` solve bit-for-bit (objective
+0.0655141051 vs 0.06551410506951784, 175 modules moved, all role byte deltas
+identical) after passing three exact validations: derived `fixed(role)` -> hydrated
+role totals, -> published solved role totals, and the objective domain pinned to
+15 significant figures over the 400 movable modules.
 
-**Why deferred rather than regenerated.** Weighed against the requant lane
-(calibration -> W4A4 -> MTP merge), which is on the critical path for the one
-unmet north-star criterion, the EDA lane's expected value is low by this
-document's own analysis: the gain is bounded above by the 8.7% same-harness
-ordering, of **unknown sign** against the hydrated recipe until measured, and the
-`sqrt_energy` weighting is itself a factor of 2.47x uncertain and was selected
-knowing this run's answer. Spending 2.08 h of exclusive GPU on that ahead of the
-criterion-critical lane is the wrong trade.
+With the solver validated, the recommendation in the section above **does not
+survive**:
 
-**Recovery recipe (for whoever runs the next trellis rebuild, which needs the
-ladder anyway).**
+| weighting | attention+GDN | MLP gate+up | MLP down | moved |
+|---|---|---|---|---|
+| `rel` (published, measured worse) | −456,785,920 | +512,491,520 | −55,705,600 | 175 |
+| `sqrt_energy` (recommended above) | **−155,975,680** | +980,418,560 | −824,442,880 | 236 |
+| `abs` | **+100,270,080** | +1,236,664,320 | −1,336,934,400 | 320 |
 
-1. Regenerate the ladder with the same propagation recipe recorded in
-   `ladder.meta.propagation_recipe`: hydrated (attention K6, mlp gate/up K5, down
-   K6, head K6/mcg, MTP as `-mb 4` plus the fixed/override regexes, BF16
-   embed+vision), candidate widths `{big: [3,4,5,6,7], small: [4,5,6,7,8]}` with
-   `big_numel_threshold = 52,000,000`. Metric: `proxy_err = tr(EᵀHE)/tr(WᵀHW)`
-   (exllamav3's own per-module Hessian-weighted relative error) and `out_energy =
-   tr(WᵀHW)/count` on the raw accumulated Hessian. Budget ~2.1 h GPU.
-2. **Persist the ladder as a published artifact this time** — it is the expensive
-   input and the only non-reproducible one; the DP over it is seconds.
-3. Re-solve with `w_m = sqrt(out_energy)` under the same byte law
-   (`bytes(role,K) = fixed(role) + params(role)*K/8`) and budget
-   (21,586,964,548 B, the hydrated serialized payload).
-4. Validate as a **paired** comparison against hydrated on shard 0 and ship only if
-   the paired interval excludes zero in EDA's favour — the `rel` solve's failure
-   (predicted −0.000251, measured +0.000366) is exactly what an unpaired,
-   sign-unvalidated objective buys.
+The `[INFERENCE]` above — that `sqrt_energy` would shift bits toward attention —
+is false: it still strips 156 MB from attention and GDN, the same direction as the
+objective that already lost, only gentler. **`abs` is the only weighting that moves
+bytes toward attention/GDN**, and only by 0.46% of budget. Corrected guidance:
+solve `abs` if a rebuild happens; better still, treat all three as inadequate,
+because every one is first-order and layer-local and therefore structurally blind
+to the KV compounding the attribution work measured. No KLD prediction is attached
+to either new allocation — the plan's KLD-per-objective-unit scale is in `rel`
+units and does not transfer.
+
