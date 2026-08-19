@@ -41,3 +41,28 @@ a 26% gap from protocol alone. The third-party leaderboard scores our K5K6 weigh
 
 No third-party checkpoint has ever been measured on our suite. Until one is, no
 chart here may place a competitor on our axis.
+
+## turboderp-style charts (`tools/plot-turbo-style.py`)
+
+`kld-spread-vs-size.png`, `kld-mean-vs-size.png`, `kld-histograms.png` reproduce
+the three diagram types from https://huggingface.co/turboderp/Qwen3.8-27B-exl3
+using our own measurements. They obey the same one-axis-one-protocol rule as the
+other charts: every point is from the 512-context shard-0 suite, and none of
+turboderp's y-values appear on them, because his suite is openwebtext 8x8192.
+
+Two deliberate omissions from his design:
+
+* **No self-noise floor.** He draws the divergence of the BF16 reference against
+  itself under bf16-rounding-scale perturbation and expresses everything as a
+  multiple of it (his median floor is 0.0007, mean 0.0052). We have never
+  measured ours, so drawing one would be fabrication. Worth doing: it is the
+  only way to know how much of our 0.003405 is signal.
+* **No shaded band across a family.** His families are monotone bpw ladders, so
+  `fill_between` is meaningful. Ours are not -- five configurations sit at
+  exactly 16.85 GiB because they are one checkpoint allocated differently -- so
+  the p25-p75 spread is drawn as a per-point vertical whisker instead.
+
+The x-axis matches his definition exactly ("excl. embeddings, incl. output
+head"): our 409 trellis matrices include `lm_head` and exclude the BF16
+`embed_tokens`. Sizes are computed from exact format definitions rather than
+measured, and reproduce the known 16.82 GiB K5K6 payload to 0.2%.
