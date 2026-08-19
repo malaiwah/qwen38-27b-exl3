@@ -102,12 +102,13 @@ _EXL3_ONLINE_QUANTIZER: Any | None = None
 # FP6 W6A8 path: convert trellis K6 weights to MXFP6 at load time, use b12x
 # dense_gemm (mxf8f6f4 block-scaled MMA) for prefill. Gated by env var.
 _MULTIPRECISION_ENABLED = os.environ.get("VLLM_EXL3_MULTIPRECISION", "0") == "1"
-# Layer routing: MLP + GDN → FP4 (fast), full attention → trellis W4A16 (KLD-passing)
-# Sweet spot measured: PP=6370, TG=196.1 at 8K/4seq/MTP6/graphs (2f8bd8b).
-# All-attn-trellis alternative measured PP=4646/TG=139.1 — misses both targets.
-# Native-context goal: ~256k with FP8 KV cache (BF16 KV = 16.8GB at 262k, unaffordable).
+# Layer routing profiles (measured 2026-08-18, RTX 5090, MTP=6, graphs, FP8 KV):
+#   FLAGSHIP (this): MLP+GDN FP4, full-attn trellis, int6 embeds
+#     -> PP=6408 TG=157.6 KLD=0.0567 top1=90.3% at 238.4k ctx
+#   QUALITY (all-FP6 + B12X_PACKED_B_MIN_N=1024): _FP4=() _FP6=(all four patterns)
+#     -> PP=4671 TG=154.0 KLD=0.0107 top1=95.6% (5.3x better KLD, misses PP>=6000)
 _FP4_LAYER_PATTERNS = ("mlp.gate_up_proj", "mlp.down_proj", "linear_attn.")  # MLP + GDN; full attn stays trellis W4A16
-_FP6_LAYER_PATTERNS = ()  # All layers use FP4
+_FP6_LAYER_PATTERNS = ()  # flagship: no FP6 layers
 _FP6_CONVERSION_MODULE = None
 _FP4_CONVERSION_MODULE = None
 
@@ -467,8 +468,14 @@ class Exl3OnlineEmbeddingMethod(QuantizeMethodBase):
 
         # Per-row symmetric scale. Compute in fp32 to avoid bf16 rounding in
         # the division; the stored scale stays fp16 (negligible size).
-        amax = w.to(torch.float32).abs().amax(dim=1)
+        # Chunked: a full-table fp32 copy is 4.74 GiB for 248320x5120 and
+        # OOMs when quantized weights are large (measured under all-FP6).
         max_q = (1 << (self.bits - 1)) - 1  # 127 for 8, 31 for 6, etc.
+        amax = torch.empty(num_rows, dtype=torch.float32, device=device)
+        _AMAX_CHUNK = 16384
+        for r0 in range(0, num_rows, _AMAX_CHUNK):
+            r1 = min(r0 + _AMAX_CHUNK, num_rows)
+            amax[r0:r1] = w[r0:r1].to(torch.float32).abs().amax(dim=1)
         scale = amax.clamp(min=_EMBED_ONLINE_EPS) / max_q
         scale_fp16 = scale.to(torch.float16)
         del amax
@@ -3183,10 +3190,9 @@ class Exl3LinearMethod(LinearMethodBase):
             precision = getattr(layer, "mp_precision", "fp6")
             w = mp_weights[shard_id]
             if precision == "fp6":
-                out = torch.empty(
-                    x.shape[0], w.out_features,
-                    dtype=torch.bfloat16, device=x.device,
-                )
+                conv = _load_fp6_conversion()
+                if conv is not None:
+                    return conv.fp6_apply(x, w)
             elif precision == "fp4":
                 # Check for pre-reconstructed FP16 weight (W4A16 prefill path).
                 # KLD is measured on prefill hidden states; W4A16 prefill passes KLD.
