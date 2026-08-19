@@ -1342,3 +1342,24 @@ log) into any future trellis rebuild that happens for other reasons, but do
 not schedule a rebuild solely for EDA while the mixed GPTQ requant lane
 (0.002666 third-party) is unmeasured on our suite. Full analysis in
 [docs/57-eda-allocation-revisit.md](docs/57-eda-allocation-revisit.md).
+
+**Qwen 3.6 quantization prior art surveyed.** Researched how the Qwen 3.5/3.6
+generation decided per-module bitrate attribution and what fidelity metric
+judged it, engaging our attribution physics and depth findings as falsification
+targets. Key findings: (1) llama.cpp's `use_more_bits` heuristic
+(`src/llama-quant.cpp:430-432`) is U-shaped — promotes the first **and** last
+1/8 of layers, plus every 3rd middle layer — and explicitly special-cases
+`attn_v` as "more sensitive to quantization" (line 153); the first-1/8 part
+aligns with our depth finding, the last-1/8 does not. (2) EXL2's allocation
+minimises a configurable norm of per-module relative-Frobenius-norm output
+error via simulated annealing — no layer term, no KLD. EXL3 replaces this with
+direct KLD (`F.kl_div`) and adds a U-shaped layer-position heuristic in
+`allocation.py` ("End layers contribute disproportionately"). (3) Leaving GDN
+`linear_attn` at higher precision is standard NVFP4 practice, but driven by a
+correctness bug (vLLM #40252: fused tensor names missing from ignore list),
+not by measured fidelity. (4) Unsloth's 150+ KLD benchmarks found "attn_\*
+especially sensitive for hybrid architectures" — matching our direction — but
+did not diagnose the KV-cache compounding mechanism. No source published a
+controlled early-vs-late KLD experiment or a measured proxy-objective
+regression. Full analysis in
+[docs/58-qwen36-quant-prior-art.md](docs/58-qwen36-quant-prior-art.md).
