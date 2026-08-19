@@ -107,8 +107,15 @@ _MULTIPRECISION_ENABLED = os.environ.get("VLLM_EXL3_MULTIPRECISION", "0") == "1"
 #     -> PP=6408 TG=157.6 KLD=0.0567 top1=90.3% at 238.4k ctx
 #   QUALITY (all-FP6 + B12X_PACKED_B_MIN_N=1024): _FP4=() _FP6=(all four patterns)
 #     -> PP=4671 TG=154.0 KLD=0.0107 top1=95.6% (5.3x better KLD, misses PP>=6000)
-_FP4_LAYER_PATTERNS = ("mlp.gate_up_proj", "mlp.down_proj", "linear_attn.")  # MLP + GDN; full attn stays trellis W4A16
-_FP6_LAYER_PATTERNS = ()  # flagship: no FP6 layers
+_FP4_LAYER_PATTERNS = tuple(
+    p for p in os.environ.get(
+        "VLLM_EXL3_FP4_LAYERS",
+        "mlp.gate_up_proj,mlp.down_proj,linear_attn.",
+    ).split(",") if p
+)  # MLP + GDN; full attn stays trellis W4A16; override for KLD attribution
+_FP6_LAYER_PATTERNS = tuple(
+    p for p in os.environ.get("VLLM_EXL3_FP6_LAYERS", "").split(",") if p
+)  # flagship: no FP6 layers; override for hybrid precision A/Bs
 _FP6_CONVERSION_MODULE = None
 _FP4_CONVERSION_MODULE = None
 
@@ -2681,6 +2688,128 @@ class Exl3OnlineLinearMethod(_Fp8OnlineLinearBase):
         return output if output.dtype == original_dtype else output.to(original_dtype)
 
 
+# ---------------------------------------------------------------------------
+# FP8-DG prefill path: ext.reconstruct_fp8dg_nt + DeepGEMM blockwise W8A8.
+#
+# The shipped extension can decode a trellis shard STRAIGHT to the DeepGEMM
+# NT FP8 layout (q_nt [N, K] e4m3 + per-128x128 fp32 scales) in one kernel —
+# no fp16 intermediate.  Unlike exl3_gemm (which re-decodes the weight for
+# every M-tile), this decodes once per prefill chunk and then runs the GEMM
+# at FP8 MMA rates.  The Hadamard/scale sandwich moves to the activations:
+#
+#   y = ((x * suh) @ Had_K) @ W_raw @ Had_N * svh
+#
+# with the middle GEMM in FP8.  Enabled by VLLM_EXL3_FP8DG_PREFILL_M=<min M>
+# (0 = off); only trellis shards at M >= threshold take this path, so decode
+# and CUDA graphs never see it (FULL_DECODE_ONLY keeps prefill eager).
+# ---------------------------------------------------------------------------
+_FP8DG_PREFILL_M = int(os.environ.get("VLLM_EXL3_FP8DG_PREFILL_M", "0"))
+_FP8DG_SELFTEST_ARMED = os.environ.get("VLLM_EXL3_FP8DG_SELFTEST", "0") == "1"
+_FP8DG_SCRATCH: dict = {}
+_FP8DG_WCACHE: dict = {}
+_FP8DG_HAD: dict = {}
+_FP8DG_DISABLED = False  # set on first hard failure (e.g. no SM120 kernel)
+
+
+def _fp8dg_had(device: torch.device, dtype: torch.dtype) -> torch.Tensor:
+    key = (str(device), str(dtype))
+    h = _FP8DG_HAD.get(key)
+    if h is None:
+        if "/opt/fp4" not in sys.path:
+            sys.path.insert(0, "/opt/fp4")
+        from exl3_fp4_conversion import _hadamard_128_matrix
+
+        h = _hadamard_128_matrix(device, torch.float32).to(dtype).contiguous()
+        _FP8DG_HAD[key] = h
+    return h
+
+
+def _fp8dg_gemm(
+    layer: torch.nn.Module,
+    x: torch.Tensor,
+    shard_id,
+    q_nt: torch.Tensor,
+    w_scales_dg: torch.Tensor,
+) -> torch.Tensor:
+    from vllm.model_executor.layers.quantization.utils.fp8_utils import (
+        per_token_group_quant_fp8,
+    )
+    from vllm.utils.deep_gemm import fp8_gemm_nt
+
+    suh = layer.suh.exl3_tensors[shard_id]
+    svh = layer.svh.exl3_tensors[shard_id]
+    m, K = x.shape
+    N = q_nt.shape[0]
+    H = _fp8dg_had(x.device, torch.bfloat16)
+    xr = x.to(torch.bfloat16) * suh.to(torch.bfloat16)
+    xr = (xr.reshape(m, K // 128, 128) @ H).reshape(m, K)
+    xq, xs = per_token_group_quant_fp8(
+        xr, 128, column_major_scales=True, tma_aligned_scales=True,
+        use_ue8m0=True,
+    )
+    out = torch.empty(m, N, dtype=torch.bfloat16, device=x.device)
+    fp8_gemm_nt(
+        (xq, xs), (q_nt, w_scales_dg), out, is_deep_gemm_e8m0_used=True
+    )
+    y = (out.reshape(m, N // 128, 128) @ H).reshape(m, N)
+    y = y * svh.to(torch.bfloat16)
+    return y.to(torch.float16)
+
+
+def _fp8dg_prefill_apply(
+    layer: torch.nn.Module,
+    x: torch.Tensor,
+    shard_id,
+    trellis: torch.Tensor,
+    has_mcg: bool,
+    has_mul1: bool,
+) -> torch.Tensor:
+    from vllm.model_executor.layers.quantization.utils.fp8_utils import (
+        deepgemm_post_process_fp8_weight_block,
+    )
+
+    use_cache = os.environ.get("VLLM_EXL3_FP8DG_CACHE", "0") == "1"
+    if use_cache:
+        cached = _FP8DG_WCACHE.get((id(layer), shard_id))
+        if cached is not None:
+            return _fp8dg_gemm(layer, x, shard_id, cached[0], cached[1])
+
+    ext = _load_exl3_ext()
+    bits = trellis.shape[2] // 16
+    K = trellis.shape[0] * 16
+    N = trellis.shape[1] * 16
+    device = x.device
+    if use_cache:
+        # Dedicated tensors (kept alive in the cache).
+        q_nt = torch.empty(N, K, dtype=torch.float8_e4m3fn, device=device)
+        w_scales = torch.empty(
+            N // 128, K // 128, dtype=torch.float32, device=device
+        )
+    else:
+        key = (N, K, str(device))
+        bufs = _FP8DG_SCRATCH.get(key)
+        if bufs is None:
+            bufs = (
+                torch.empty(N, K, dtype=torch.float8_e4m3fn, device=device),
+                torch.empty(
+                    N // 128, K // 128, dtype=torch.float32, device=device
+                ),
+            )
+            _FP8DG_SCRATCH[key] = bufs
+        q_nt, w_scales = bufs
+    ext.reconstruct_fp8dg_nt(q_nt, w_scales, trellis, bits, has_mcg, has_mul1)
+    # DeepGEMM on SM100/SM120 wants UE8M0 power-of-two scales in a packed
+    # int32 layout: requantize the e4m3 codes in place and transform the
+    # scale tensor (probe-verified: fp32 scales -> NaN, post-processed ->
+    # cos 0.9989 vs bf16 reference).
+    q_nt, w_scales_dg = deepgemm_post_process_fp8_weight_block(
+        q_nt, w_scales, (128, 128), use_e8m0=True
+    )
+    if use_cache:
+        _FP8DG_WCACHE[(id(layer), shard_id)] = (q_nt, w_scales_dg)
+    return _fp8dg_gemm(layer, x, shard_id, q_nt, w_scales_dg)
+
+
 class Exl3LinearMethod(LinearMethodBase):
     def __init__(self, quant_config: Exl3Config) -> None:
         self.quant_config = quant_config
@@ -3263,26 +3392,84 @@ class Exl3LinearMethod(LinearMethodBase):
         trellis = layer.trellis.exl3_tensors[shard_id]
         has_mcg = shard_id in layer.mcg.exl3_tensors
         has_mul1 = shard_id in layer.mul1.exl3_tensors
-        if _b12x_trellis_k6_supported(
-            trellis,
-            has_mcg=has_mcg,
-            has_mul1=has_mul1,
+        global _FP8DG_SELFTEST_ARMED, _FP8DG_DISABLED
+        if (
+            _FP8DG_PREFILL_M > 0
+            and not _FP8DG_DISABLED
+            and x.shape[0] >= _FP8DG_PREFILL_M
         ):
-            output = _b12x_trellis_linear(
-                x,
-                trellis,
-                layer.suh.exl3_tensors[shard_id],
-                layer.svh.exl3_tensors[shard_id],
-            )
+            try:
+                output = _fp8dg_prefill_apply(
+                    layer, x, shard_id, trellis, has_mcg, has_mul1
+                )
+            except Exception as exc:
+                _FP8DG_DISABLED = True
+                logger.warning(
+                    "EXL3 FP8DG prefill failed (disabled for the rest of "
+                    "this process): %s", exc,
+                )
+                output = None
+            if (
+                output is not None
+                and _FP8DG_SELFTEST_ARMED
+                and torch.isfinite(x).all().item()
+                and x.abs().max().item() > 0
+            ):
+                _FP8DG_SELFTEST_ARMED = False
+                ref = (
+                    _b12x_trellis_linear(
+                        x, trellis,
+                        layer.suh.exl3_tensors[shard_id],
+                        layer.svh.exl3_tensors[shard_id],
+                    )
+                    if _b12x_trellis_k6_supported(
+                        trellis, has_mcg=has_mcg, has_mul1=has_mul1
+                    )
+                    else _exl3_gemm(
+                        x, trellis,
+                        layer.suh.exl3_tensors[shard_id],
+                        layer.svh.exl3_tensors[shard_id],
+                        has_mcg, has_mul1,
+                    )
+                )
+                a = output.float().flatten()
+                b = ref.float().flatten()
+                cos = torch.nn.functional.cosine_similarity(
+                    a, b, dim=0
+                ).item()
+                rel = (
+                    (a - b).abs().max()
+                    / b.abs().max().clamp_min(1e-6)
+                ).item()
+                logger.info(
+                    "EXL3 FP8DG selftest [m=%d K=%d N=%d]: cos=%.6f "
+                    "max_rel=%.4g", x.shape[0], x.shape[1],
+                    output.shape[-1], cos, rel,
+                )
+                output = ref  # serve the exact path on the selftest call
         else:
-            output = _exl3_gemm(
-                x,
+            output = None
+        if output is None:
+            if _b12x_trellis_k6_supported(
                 trellis,
-                layer.suh.exl3_tensors[shard_id],
-                layer.svh.exl3_tensors[shard_id],
-                has_mcg,
-                has_mul1,
-            )
+                has_mcg=has_mcg,
+                has_mul1=has_mul1,
+            ):
+                output = _b12x_trellis_linear(
+                    x,
+                    trellis,
+                    layer.suh.exl3_tensors[shard_id],
+                    layer.svh.exl3_tensors[shard_id],
+                )
+            else:
+                output = _exl3_gemm(
+                    x,
+                    trellis,
+                    layer.suh.exl3_tensors[shard_id],
+                    layer.svh.exl3_tensors[shard_id],
+                    has_mcg,
+                    has_mul1,
+                )
         logical_n = Exl3LinearMethod._output_shard_size(layer, shard_id)
         if output.shape[-1] < logical_n:
             raise ValueError(
