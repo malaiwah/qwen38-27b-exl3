@@ -250,6 +250,7 @@ podman run "${RUN_ARGS[@]}" --replace \
   -e MM_PROCESSOR_KWARGS="${MM_PROCESSOR_KWARGS}" \
   -e SPEC_CONFIG="${SPEC_CONFIG}" \
   -e LANGUAGE_MODEL_ONLY="${LANGUAGE_MODEL_ONLY:-0}" \
+  -e PREFIX_CACHING="${PREFIX_CACHING:-0}" \
   -e VLLM_EXL3_ONLINE_TRELLIS_BITS=6 \
   -e VLLM_EXL3_ONLINE_CACHE_DIR=/cache/jit/exl3-online \
   -e VLLM_EXL3_ONLINE_CACHE_MODE=readwrite \
@@ -307,6 +308,7 @@ podman run "${RUN_ARGS[@]}" --replace \
        ln -sf /usr/local/cuda-13.2/targets/x86_64-linux/lib/* /usr/local/cuda-13.2/lib64/ 2>/dev/null || true; rm -f /opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/__pycache__/exl3*.pyc /opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/__pycache__/linear*.pyc; \
        SPEC_ARGS=(); if [ -n \"\${SPEC_CONFIG:-}\" ]; then SPEC_ARGS=(--speculative-config \"\${SPEC_CONFIG}\"); fi; \
        LMO_ARGS=(); if [ \"\${LANGUAGE_MODEL_ONLY:-0}\" = \"1\" ]; then LMO_ARGS=(--language-model-only); fi; \
+       PC_ARGS=(); if [ \"\${PREFIX_CACHING:-0}\" = \"1\" ]; then PC_ARGS=(--enable-prefix-caching); fi; \
        PROF_ARGS=(); if [ -n \"\${PROFILER_CONFIG:-}\" ]; then PROF_ARGS=(--profiler-config \"\${PROFILER_CONFIG}\"); fi; \
        NSYS=(); if [ \"\${NSYS_PROFILE:-0}\" = \"1\" ]; then mkdir -p /cache/jit/nsys; \
          NSYS=(nsys profile --trace=cuda,nvtx,osrt --sample=none --cuda-graph-trace=node \
@@ -332,7 +334,7 @@ podman run "${RUN_ARGS[@]}" --replace \
         --enable-chunked-prefill \
          --reasoning-parser qwen3 \
          --enable-auto-tool-choice --tool-call-parser qwen3_coder \
-         \"\${SPEC_ARGS[@]}\" \"\${PROF_ARGS[@]}\""
+         \"\${SPEC_ARGS[@]}\" \"\${PC_ARGS[@]}\" \"\${PROF_ARGS[@]}\""
 
 [ "${FOREGROUND:-0}" = "1" ] && exit 0
 
