@@ -25,7 +25,7 @@ SERVED_MODEL_NAME="${SERVED_MODEL_NAME:-Qwen3.8-27B}"
 # PR #314 is mounted over the pinned GG r34 base image. Refuse to start if the
 # installed overlay is absent or differs from the exact qualified source.
 EXL3_PATCH_HOST="${EXL3_PATCH_HOST:-/home/mbelleau/vllm-exl3-multiprecision.py}"
-EXL3_PATCH_SHA256="e59e47bef5970f3709deae17ce06117e6155e9b9be006035049326e2ff506aa4"
+EXL3_PATCH_SHA256="b657ef3aaa4a1dccbb4af87a283d00771a8eb5c9252f108da37dfefbf420da5d"
 EXL3_PATCH_CTR="/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py"
 [ -f "${EXL3_PATCH_HOST}" ] || {
   echo "EXL3 graph patch is missing: ${EXL3_PATCH_HOST}" >&2
@@ -247,6 +247,8 @@ podman run "${RUN_ARGS[@]}" --replace \
   -e VLLM_NVTX_SCOPES_FOR_PROFILING="${VLLM_NVTX_SCOPES_FOR_PROFILING:-1}" \
   -e VLLM_EXL3_FP4_LAYERS="${VLLM_EXL3_FP4_LAYERS:-mlp.gate_up_proj,mlp.down_proj,linear_attn.,self_attn.}" \
   -e VLLM_EXL3_FP6_LAYERS="${VLLM_EXL3_FP6_LAYERS:-}" \
+  -e VLLM_EXL3_FP4_LAYER_RANGE="${VLLM_EXL3_FP4_LAYER_RANGE:-}" \
+  -e VLLM_EXL3_FP6_LAYER_RANGE="${VLLM_EXL3_FP6_LAYER_RANGE:-}" \
   -e VLLM_EXL3_B12X_ANY_BITS="${VLLM_EXL3_B12X_ANY_BITS:-0}" \
   -e VLLM_EXL3_B12X_SELFTEST="${VLLM_EXL3_B12X_SELFTEST:-0}" \
   -e VLLM_EXL3_PREFILL_RECONSTRUCT_MAX_MB="${VLLM_EXL3_PREFILL_RECONSTRUCT_MAX_MB:-4096}" \

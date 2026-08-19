@@ -234,14 +234,78 @@ def _load_fp4_conversion():
     return _FP4_CONVERSION_MODULE
 
 
+def _parse_layer_range(spec: str) -> tuple[int, int] | None:
+    """Parse "lo-hi" into an inclusive decoder-layer index range.
+
+    Empty or malformed -> None, meaning "no index restriction".
+    """
+
+    spec = (spec or "").strip()
+    if not spec:
+        return None
+    try:
+        lo_s, _, hi_s = spec.partition("-")
+        if not hi_s:
+            lo = hi = int(lo_s)
+        else:
+            lo, hi = int(lo_s), int(hi_s)
+        if lo > hi:
+            lo, hi = hi, lo
+        return (lo, hi)
+    except ValueError:
+        logger.warning(
+            "Ignoring malformed layer range %r (expected \"lo-hi\")", spec
+        )
+        return None
+
+
+_FP4_LAYER_RANGE = _parse_layer_range(
+    os.environ.get("VLLM_EXL3_FP4_LAYER_RANGE", "")
+)
+_FP6_LAYER_RANGE = _parse_layer_range(
+    os.environ.get("VLLM_EXL3_FP6_LAYER_RANGE", "")
+)
+_LAYER_INDEX_RE = re.compile(r"layers\.(\d+)\.")
+
+
+def _layer_index(name: str) -> int | None:
+    """Decoder-layer index from a weight prefix, or None if it has none."""
+
+    match = _LAYER_INDEX_RE.search(name)
+    return int(match.group(1)) if match else None
+
+
+def _within_layer_range(name: str, rng: tuple[int, int] | None) -> bool:
+    """Whether this prefix's layer index falls inside an optional range.
+
+    Prefixes with no layer index (lm_head, vision tower, MTP module) are treated
+    as inside, so a range restricts only the decoder stack.
+    """
+
+    if rng is None:
+        return True
+    idx = _layer_index(name)
+    if idx is None:
+        return True
+    return rng[0] <= idx <= rng[1]
+
+
 def _layer_precision(prefix: str) -> str:
-    """Determine whether a layer should use FP4 or FP6 based on its name."""
+    """Determine whether a layer should use FP4 or FP6 based on its name.
+
+    VLLM_EXL3_FP4_LAYER_RANGE / VLLM_EXL3_FP6_LAYER_RANGE narrow a conversion to
+    a contiguous span of decoder layers.  That turns precision into a continuous
+    memory dial instead of an all-or-nothing switch: converting mlp.gate_up_proj
+    to MXFP6 costs ~2.4 GiB more than its trellis form across all 64 layers, which
+    is the difference between serving 238,400 context and 199,104, so converting
+    only as many layers as fit is the useful middle ground.
+    """
     name = prefix.lower()
     for pat in _FP4_LAYER_PATTERNS:
-        if pat in name:
+        if pat in name and _within_layer_range(name, _FP4_LAYER_RANGE):
             return "fp4"
     for pat in _FP6_LAYER_PATTERNS:
-        if pat in name:
+        if pat in name and _within_layer_range(name, _FP6_LAYER_RANGE):
             return "fp6"
     return "skip"  # Unmatched layers stay on trellis
 
