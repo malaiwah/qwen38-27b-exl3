@@ -129,3 +129,34 @@ chunk, runs PP 1080.6 +/- 2.2.
 
 The conclusion of this receipt is therefore unchanged, and now rests on a
 measured rather than a derived floor.
+
+---
+
+## SUPERSEDED IN PART (same day): the CORRECTION's `self_attn` claim is wrong
+
+The CORRECTION section above concluded that `self_attn` (7% of parameters) is the
+one FP4 group that fits the post-floor budget, based on its attributed
+contribution of 0.004491. That was arithmetic on an additive model, so it was
+tested as a held-out prediction — and **it failed by +46%**:
+
+| | predicted | measured |
+|---|---|---|
+| KLD mean | 0.007903 | **0.011534** ci95 [0.010944, **0.012203**] |
+| p99 | — | 0.115940 |
+
+The CI upper bound crosses 0.012, so criterion 3 is **not** reliably met, and the
+measured `self_attn` contribution is 0.008097 rather than 0.004491 (1.80x).
+
+Cause: the attribution derived `self_attn` **by residual** inside an all-FP4
+mixture. Attention error propagates through the KV cache and is re-read at every
+later position, so it compounds over the 2047 scored positions; when the MLP is
+also quantized that compounding is partly masked, making the *marginal*
+contribution much smaller than the *standalone* one. So additivity holds for the
+per-position MLP groups (validated -1.9% on gate_up+down) and **fails for
+attention**.
+
+Net effect on this receipt's overall conclusion: unchanged, and now stronger.
+Every FP4 group is measured or bounded above the budget, so **no FP4 subset
+reliably reaches KLD <= 0.012** - closed by measurement rather than by a model.
+Full detail: `receipts/selfattn-fp4-additivity-failure-2026-08-19.md`.
+
