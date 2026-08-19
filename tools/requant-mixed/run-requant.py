@@ -199,7 +199,11 @@ def main() -> None:
     # (64 layers total: 16 full_attention + 48 linear_attention/GDN).
     # The sequential pipeline processes one layer at a time, offloading
     # the rest to CPU, keeping VRAM usage bounded to ~1-2 layers on GPU.
-    sequential_targets = ["re:model\\.language_model\\.layers\\.\\d+$"]
+    # Whole-decoder-layer subgraphs OOM on 32 GiB (512x2048 calibration
+    # activations live across the full layer). Per-Linear granularity is the
+    # pipeline's own recommendation for dense models and bounds live memory to
+    # one projection at a time.
+    sequential_targets = ["Linear"]
 
     # Qwen3.8-27B is multimodal (Qwen3_5ForConditionalGeneration); llmcompressor's
     # pre_process cannot auto-initialize its processor and aborts when a dataset is
