@@ -1,0 +1,38 @@
+{
+  "config": {
+    "layer": 0,
+    "matrix": "mlp.gate_proj",
+    "in_features": 5120,
+    "out_features": 17408,
+    "quant_bits": 5,
+    "use_mcg": true,
+    "k_rotations": 8,
+    "epochs": 10,
+    "samples": 128,
+    "lr": 0.001,
+    "seed": 42,
+    "device": "cuda:0"
+  },
+  "hadamard": {
+    "mse": 0.0018471205839887261,
+    "g_scale": 0.8631016535974607,
+    "mse_original_space": 1.2344504796146794e-07
+  },
+  "learned_rotation": {
+    "mse": 8.900426473701373e-05,
+    "g_scale": 1.8954775011334226,
+    "mse_original_space": 8.955262455856428e-05
+  },
+  "identity": {
+    "mse": 8.902105037122965e-05,
+    "g_scale": 1.8954775011334226,
+    "mse_original_space": 8.902105037122965e-05
+  },
+  "mse_hadamard_original_space": 1.2344504796146794e-07,
+  "mse_learned_original_space": 8.955262455856428e-05,
+  "mse_identity_original_space": 8.902105037122965e-05,
+  "improvement_pct": -72444.52571197282,
+  "hadamard_vs_identity_pct": 99.86133049717264,
+  "identity_invariant_diff": 0.0,
+  "verdict": "NO-GO"
+}

@@ -359,3 +359,16 @@ This pilot requires GPU access (for `quantize_tiles`) but no kernel changes, no 
 | Channel scaling fused into load | `paroquant/kernels/cuda/rotation.cuh` | 21-40 |
 | Group size 128, n_bits 4 | `paroquant/optim/qlinear.py` | 30-31 |
 | Published checkpoint: z-lab/Qwen3.8-27B-PARO | HuggingFace | config |
+
+---
+
+## MEASURED OUTCOME (2026-08-19): NO-GO
+
+The pilot this document specified has run (`tools/rotation-pilot.py`,
+`receipts/rotation-pilot-2026-08-19.md`). In original weight space on layer 0
+`mlp.gate_proj`: Hadamard MSE 1.234e-07, identity 8.902e-05, learned K=8 Givens
+8.955e-05 — the learned rotations do not beat identity and trail EXL3's fixed
+Hadamard by 725x. The GO estimate above is superseded by measurement; the
+exllamav3 FWHT path stays. (The harness itself needed a measurement-domain fix
+before it could be trusted — first run was invalid by its own sanity check; see
+the receipt for the full account.)
