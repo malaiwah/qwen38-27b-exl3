@@ -254,11 +254,18 @@ def hadamard_fold_weight_chunked(
     suh: torch.Tensor,
     svh: torch.Tensor,
 ) -> torch.Tensor:
-    """Memory-efficient Hadamard fold: processes 128-row chunks in FP32.
+    """Memory-bounded Hadamard fold, processing several 128-row blocks per pass.
 
-    Same math as hadamard_fold_weight but peak FP32 memory is 128×N×4 bytes
-    (~8.9 MB for N=17408) instead of K×N×4 (~570 MB). Avoids OOM when
-    folding large gate_up weights.
+    Same math as hadamard_fold_weight, but the FP32 working set is capped so we
+    never materialise K*N*4 bytes.
+
+    Launch count matters as much as peak memory here: this fold also runs on the
+    per-call trellis prefill path (exl3.py `_exl3_gemm`, M>=128), where a
+    fixed 128-row chunk means K/128 iterations x 2 einsums each — 80 launches
+    for K=5120, measured as 2880 bmm launches per request across the 36
+    attention matrices (receipts/prefill-profile-2026-08-19.md). Sizing the
+    chunk to a byte budget instead collapses that to a handful of launches at
+    the same peak memory.
     """
     K, N = W.shape
     if K % _HADAMARD_BLOCK != 0 or N % _HADAMARD_BLOCK != 0:
@@ -288,15 +295,22 @@ def hadamard_fold_weight_chunked(
     suh_f32 = suh_elem.to(torch.float32).reshape(K, 1)
     svh_f32 = svh_elem.to(torch.float32).reshape(1, N)
 
-    # Peak temp memory: 128×N×4 bytes (~8.9 MB) instead of K×N×2 (272 MB result).
-    for i in range(k_blocks):
-        r0 = i * _HADAMARD_BLOCK
-        r1 = r0 + _HADAMARD_BLOCK
-        chunk = W[r0:r1].to(torch.float32)  # (128, N) — 8.9 MB
-        blk = chunk.reshape(1, _HADAMARD_BLOCK, n_blocks, _HADAMARD_BLOCK)
+    # Rows per pass from a byte budget: three FP32 tensors of the chunk are
+    # live at once (chunk, temp, folded), hence the factor 3.
+    budget_mb = int(os.environ.get("VLLM_EXL3_FOLD_FP32_BUDGET_MB", "96"))
+    rows_per_chunk = max(
+        _HADAMARD_BLOCK, (budget_mb * 1024 * 1024) // max(1, N * 4 * 3)
+    )
+    bpc = max(1, min(k_blocks, rows_per_chunk // _HADAMARD_BLOCK))
+    for i0 in range(0, k_blocks, bpc):
+        nb = min(bpc, k_blocks - i0)
+        r0 = i0 * _HADAMARD_BLOCK
+        r1 = r0 + nb * _HADAMARD_BLOCK
+        chunk = W[r0:r1].to(torch.float32)
+        blk = chunk.reshape(nb, _HADAMARD_BLOCK, n_blocks, _HADAMARD_BLOCK)
         temp = torch.einsum("ab,ibjd->iajd", H, blk)
         folded = torch.einsum("iajb,bc->iajc", temp, H)
-        folded = folded.reshape(_HADAMARD_BLOCK, N) * suh_f32[r0:r1] * svh_f32
+        folded = folded.reshape(nb * _HADAMARD_BLOCK, N) * suh_f32[r0:r1] * svh_f32
         W[r0:r1] = folded.to(W.dtype)
     return W
 
