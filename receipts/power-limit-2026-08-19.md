@@ -97,3 +97,27 @@ silently throttled by a vendor daemon *and* by a unit file, and neither shows up
 any application-level metric — only in a spec cross-check. The cheap tell was two
 deviations in opposite directions: bandwidth above nameplate (a VRAM overclock, also
 present here as `mem_clock_offsets: 6000`) and compute below it (the cap).
+
+## ADDENDUM (same day): the VRAM overclock, disclosed symmetrically
+
+The peer review (`receipts/peer-review-2026-08-19-evening.md`) flagged asymmetric
+treatment: the 400 W power cap got this receipt, while the second machine-state
+deviation in the same `lactd` config — `mem_clock_offsets: {0: 6000}`, a GDDR7
+overclock — got a parenthetical. Symmetric disclosure:
+
+- **Every measurement in this project was taken with the VRAM overclock active**,
+  including all KLD/fidelity evidence. Measured bandwidth is 1,840.5 GB/s = 102.7 %
+  of the 1,792 GB/s nameplate; the overclock is why a stock-spec cross-check reads
+  "above nameplate".
+- It was **deliberately left in place** when the power cap was removed: the user's
+  config comments mark it as an intentional efficiency setting, and unlike the cap it
+  *helps* rather than throttles.
+- Risk assessment, honestly stated: a marginal GDDR7 overclock can manifest as silent
+  retransmission (link-level) rather than visible corruption. Two observations bound
+  the risk without eliminating it: (1) the fold bit-identity checks and the b12x-vs-
+  exl3_gemm selftests (cos 1.000000, max_rel 0e0 / ≤1.1e-3) were run *on this card in
+  this state* and show no instability signature; (2) decode throughput — the
+  bandwidth-bound axis — matches its roofline share across three profiles with sd ≤1 %.
+  What has NOT been done: an A/B of KLD at stock memory clock. Registered as implicit
+  in the run-SD item; if run-to-run SD comes back ≈0, memory-path nondeterminism
+  (including OC-induced) is bounded at the fidelity level we care about.

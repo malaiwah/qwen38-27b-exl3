@@ -1,0 +1,52 @@
+/opt/venv/lib/python3.12/site-packages/torch/cuda/__init__.py:63: FutureWarning: The pynvml package is deprecated. Please install nvidia-ml-py instead. If you did not install pynvml directly, please report this to the maintainers of the package that installed pynvml for you.
+  import pynvml  # type: ignore[import]
+INFO 08-19 11:50:19 [deep_gemm.py:202] DeepGEMM PDL enabled on deep_gemm.
+INFO 08-19 11:50:19 [deep_gemm.py:120] DeepGEMM E8M0 enabled on current platform.
+
+===== M=1 (ms per call) =====
+shape         cnt        exl3_gemm             b12x              fp4     fp8dg_cached  fp8dg_fused_est   fp8dg_uncached   best
+mlp.gate+up   128            0.039              nan            0.356            0.056            1.728            3.881   exl3_gemm
+mlp.down       64            0.049              nan            0.376            0.063            1.770            3.925   exl3_gemm
+gdn.in_qkv     48            0.031              nan            0.392            0.055            1.058            2.291   exl3_gemm
+gdn.in_z       48            0.024              nan            0.398            0.049            0.675            1.421   exl3_gemm
+gdn.out        48            0.025              nan            0.388            0.053            0.691            1.441   exl3_gemm
+attn.q         16            0.033              nan            0.425            0.049            1.244            2.734   exl3_gemm
+attn.o         16            0.025              nan            0.460            0.050            0.669            1.422   exl3_gemm
+attn.kv        32            0.019              nan            0.458            0.054            0.168            0.333   exl3_gemm
+-- chunk total (ms), weighted by count --                   
+  exl3_gemm               13.6 ms   implied       74 tok/s
+  b12x                     0.0 ms   implied        0 tok/s   [missing ['mlp.gate+up', 'mlp.down', 'gdn.in_qkv', 'gdn.in_z', 'gdn.out', 'attn.q', 'attn.o', 'attn.kv']]
+  fp4                    155.0 ms   implied        6 tok/s
+  fp8dg_cached            22.0 ms   implied       45 tok/s
+  fp8dg_fused_est        486.7 ms   implied        2 tok/s
+  fp8dg_uncached        1072.4 ms   implied        1 tok/s
+  ORACLE(per-shape)       13.6 ms   implied       74 tok/s
+
+===== M=2051 (ms per call) =====
+shape         cnt        exl3_gemm             b12x              fp4     fp8dg_cached  fp8dg_fused_est   fp8dg_uncached   best
+mlp.gate+up   128            4.851              nan            0.393            0.612            2.284            4.437   fp4
+mlp.down       64            5.802              nan            0.548            0.630            2.337            4.492   fp4
+gdn.in_qkv     48            3.456              nan            0.289            0.409            1.412            2.645   fp4
+gdn.in_z       48            2.395              nan            0.285            0.248            0.873            1.619   fp8dg_cached
+gdn.out        48            2.511              nan            0.266            0.231            0.870            1.619   fp8dg_cached
+attn.q         16            4.012              nan            0.332            0.497            1.692            3.182   fp4
+attn.o         16            2.460              nan            0.283            0.245            0.864            1.617   fp8dg_cached
+attn.kv        32            1.766              nan            0.263            0.065            0.179            0.344   fp8dg_cached
+-- chunk total (ms), weighted by count --                   
+  exl3_gemm             1553.7 ms   implied     1320 tok/s
+  b12x                     0.0 ms   implied        0 tok/s   [missing ['mlp.gate+up', 'mlp.down', 'gdn.in_qkv', 'gdn.in_z', 'gdn.out', 'attn.q', 'attn.o', 'attn.kv']]
+  fp4                    144.0 ms   implied    14247 tok/s
+  fp8dg_cached           175.3 ms   implied    11703 tok/s
+  fp8dg_fused_est        640.0 ms   implied     3205 tok/s
+  fp8dg_uncached        1225.6 ms   implied     1673 tok/s
+  ORACLE(per-shape)      133.5 ms   implied    15359 tok/s
+
+recon/post per shape (M-independent):
+  mlp.gate+up  recon=  1.672 post=  2.153 cnt= 128 b12x=False
+  mlp.down     recon=  1.707 post=  2.155 cnt=  64 b12x=False
+  gdn.in_qkv   recon=  1.003 post=  1.233 cnt=  48 b12x=False
+  gdn.in_z     recon=  0.625 post=  0.746 cnt=  48 b12x=False
+  gdn.out      recon=  0.639 post=  0.749 cnt=  48 b12x=False
+  attn.q       recon=  1.194 post=  1.490 cnt=  16 b12x=False
+  attn.o       recon=  0.619 post=  0.753 cnt=  16 b12x=False
+  attn.kv      recon=  0.114 post=  0.165 cnt=  32 b12x=False
