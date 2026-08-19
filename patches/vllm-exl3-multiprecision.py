@@ -332,6 +332,17 @@ _PREFILL_RECONSTRUCT_CACHE = (
 # Minimum row count for preferring B12X W4A16 over the fused exl3_gemm kernel.
 # 0 keeps B12X for every row count (previous behaviour).
 _B12X_MIN_M = int(os.environ.get("VLLM_EXL3_B12X_MIN_M", "0"))
+# Per-matrix exception for the lm_head (248,320 x 5,120 - 30x wider than any
+# body matrix). nsys Round 2 measured the fused-K6 lm_head at 14.8% of the MTP
+# decode window (567 us/call); the MIN_M dispatch that is right for the 409
+# body matrices routes this one matrix wrong. None = inherit _B12X_MIN_M;
+# 0 = always send lm_head to B12X (its cooperative small-M K6 kernel at
+# decode row counts). See receipts/nsys-round2-2026-08-19.md.
+_B12X_LM_HEAD_MIN_M = (
+    int(os.environ["VLLM_EXL3_B12X_LM_HEAD_MIN_M"])
+    if "VLLM_EXL3_B12X_LM_HEAD_MIN_M" in os.environ
+    else None
+)
 # The dense W4A16 kernel caps its temporary accumulation arena at
 # SMs * 4 * block_m * 256 fp32 elements.  SM120/SM121 devices supported by
 # this path have at most 192 SMs, and block_m never exceeds 64.  Keeping this
@@ -3713,11 +3724,23 @@ class Exl3LinearMethod(LinearMethodBase):
             # configs.  Both paths are trellis-exact (agreement verified by
             # VLLM_EXL3_B12X_SELFTEST at m=4 and m=3072, cos >= 0.999999), so
             # routing by row count is free.  0 = always prefer B12X.
+            eff_min_m = _B12X_MIN_M
+            if _B12X_LM_HEAD_MIN_M is not None:
+                # Cached per layer: one getattr per forward instead of a
+                # prefix string scan in the decode hot path.
+                is_lm_head = getattr(layer, "_mp_is_lm_head", None)
+                if is_lm_head is None:
+                    is_lm_head = (
+                        "lm_head" in getattr(layer, "prefix", "").lower()
+                    )
+                    layer._mp_is_lm_head = is_lm_head
+                if is_lm_head:
+                    eff_min_m = _B12X_LM_HEAD_MIN_M
             use_b12x = _b12x_trellis_k6_supported(
                 trellis,
                 has_mcg=has_mcg,
                 has_mul1=has_mul1,
-            ) and (_B12X_MIN_M == 0 or x.shape[0] >= _B12X_MIN_M)
+            ) and (eff_min_m == 0 or x.shape[0] >= eff_min_m)
             # NOTE (PR #318's warning applies): this is a Python-level branch.
             # Safe under shape-specialised CUDA graphs (m is fixed per captured
             # graph) and with compile=NONE; if torch.compile with dynamic shapes
