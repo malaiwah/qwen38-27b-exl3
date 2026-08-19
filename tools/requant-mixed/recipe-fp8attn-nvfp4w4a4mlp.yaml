@@ -1,0 +1,75 @@
+# SPDX-License-Identifier: Apache-2.0
+# llmcompressor 0.13.0 / compressed-tensors 0.17.0 recipe
+#
+# Middle-SKU variant: FP8 W8A16 (weight-only, per-channel) on all
+# attention + linear-attention (GDN) modules, NVFP4 W4A4 group-16 on all
+# MLP modules (activations also quantized to FP4 with local dynamic scales).
+# lm_head, embeddings, norms, GDN conv/state, vision tower, and MTP head
+# are kept unquantized (ignore).
+#
+# Verified scheme definitions (compressed-tensors 0.17.0 source):
+#   * FP8 weight-only: custom QuantizationArgs — num_bits=8, type=float,
+#     strategy=channel, symmetric=true, dynamic=false, no input_activations.
+#     Produces naive_quantized format per-module.
+#   * NVFP4 W4A4: preset "NVFP4" — weights AND input_activations both
+#     num_bits=4, type=float, strategy=tensor_group, group_size=16.
+#     input_activations.dynamic="local" (DynamicType.LOCAL).
+#     (quantization/quant_scheme.py:159-185). Produces nvfp4_pack_quantized
+#     format.
+#   * Mixed model format: mixed-precision (compressors/format.py:113).
+
+quantization_stage:
+  quantization_modifiers:
+    GPTQModifier:
+      block_size: 128
+      dampening_frac: 0.01
+      offload_hessians: true
+      config_groups:
+        # Group 0: FP8 W8A16 weight-only on attention + linear-attention
+        fp8_attn:
+          targets:
+            - "re:.*self_attn\\.(q_proj|k_proj|v_proj|o_proj)$"
+            - "re:.*linear_attn\\.(in_proj_qkv|in_proj_z|in_proj_a|in_proj_b|out_proj)$"
+          weights:
+            num_bits: 8
+            type: float
+            strategy: channel
+            symmetric: true
+            dynamic: false
+          input_activations: null
+          output_activations: null
+
+        # Group 1: NVFP4 W4A4 group-16 on all MLP modules (weights + activations)
+        nvfp4_w4a4_mlp:
+          targets:
+            - "re:.*mlp\\.(gate_proj|up_proj|down_proj)$"
+          weights:
+            num_bits: 4
+            type: float
+            strategy: tensor_group
+            symmetric: true
+            dynamic: false
+            group_size: 16
+            scale_dtype: float8_e4m3fn
+            zp_dtype: float8_e4m3fn
+          input_activations:
+            num_bits: 4
+            type: float
+            strategy: tensor_group
+            symmetric: true
+            dynamic: local
+            group_size: 16
+            observer: static_minmax
+            scale_dtype: float8_e4m3fn
+            zp_dtype: float8_e4m3fn
+          output_activations: null
+
+      ignore:
+        - "lm_head"
+        - "re:.*embed_tokens$"
+        - "re:.*norm\\.weight$"
+        - "re:.*layernorm\\.weight$"
+        - "re:.*linear_attn\\.(conv1d|A_log|dt_bias|norm)$"
+        - "re:.*self_attn\\.(q_norm|k_norm)$"
+        - "re:.*visual\\..*"
+        - "re:^mtp\\..*"

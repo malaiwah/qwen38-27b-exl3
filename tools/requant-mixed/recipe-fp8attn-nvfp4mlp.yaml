@@ -1,0 +1,72 @@
+# SPDX-License-Identifier: Apache-2.0
+# llmcompressor 0.13.0 / compressed-tensors 0.17.0 recipe
+#
+# Fidelity-winner scheme: FP8 W8A16 (weight-only, per-channel) on all
+# attention + linear-attention (GDN) modules, NVFP4 W4A16 group-16 on all
+# MLP modules.  lm_head, embeddings, norms, GDN conv/state, vision tower,
+# and MTP head are kept unquantized (ignore).
+#
+# Verified scheme definitions (compressed-tensors 0.17.0 source):
+#   * FP8 weight-only: custom QuantizationArgs — num_bits=8, type=float,
+#     strategy=channel, symmetric=true, dynamic=false, no input_activations.
+#     Produces naive_quantized format per-module (NaiveQuantizationCompressor
+#     fallback, compressors/naive_quantized/base.py:151).
+#   * NVFP4 W4A16: preset "NVFP4A16" — weights num_bits=4, type=float,
+#     strategy=tensor_group, group_size=16, symmetric=true.
+#     (quantization/quant_scheme.py:145-157). Produces nvfp4_pack_quantized
+#     format (compressors/nvfp4/base.py:27).
+#   * Mixed model format: mixed-precision (compressors/format.py:113).
+
+quantization_stage:
+  quantization_modifiers:
+    GPTQModifier:
+      block_size: 128
+      dampening_frac: 0.01
+      offload_hessians: true
+      # config_groups with two groups enables mixed-precision output.
+      # QuantizationMixin.resolve_quantization_config (mixin.py:344-383)
+      # builds a QuantizationConfig from config_groups; QuantizationConfig.
+      # from_pretrained (quant_config.py:148-252) infers mixed_precision
+      # format when >=2 distinct per-module formats exist.
+      config_groups:
+        # Group 0: FP8 W8A16 weight-only on attention + linear-attention
+        fp8_attn:
+          targets:
+            - "re:.*self_attn\\.(q_proj|k_proj|v_proj|o_proj)$"
+            - "re:.*linear_attn\\.(in_proj_qkv|in_proj_z|in_proj_a|in_proj_b|out_proj)$"
+          weights:
+            num_bits: 8
+            type: float
+            strategy: channel
+            symmetric: true
+            dynamic: false
+          # No input_activations  →  weight-only (W8A16)
+          input_activations: null
+          output_activations: null
+
+        # Group 1: NVFP4 W4A16 group-16 on all MLP modules
+        nvfp4_mlp:
+          targets:
+            - "re:.*mlp\\.(gate_proj|up_proj|down_proj)$"
+          weights:
+            num_bits: 4
+            type: float
+            strategy: tensor_group
+            symmetric: true
+            dynamic: false
+            group_size: 16
+            scale_dtype: float8_e4m3fn
+            zp_dtype: float8_e4m3fn
+          input_activations: null
+          output_activations: null
+
+      # Keep these unquantized
+      ignore:
+        - "lm_head"
+        - "re:.*embed_tokens$"
+        - "re:.*norm\\.weight$"
+        - "re:.*layernorm\\.weight$"
+        - "re:.*linear_attn\\.(conv1d|A_log|dt_bias|norm)$"
+        - "re:.*self_attn\\.(q_norm|k_norm)$"
+        - "re:.*visual\\..*"
+        - "re:^mtp\\..*"
