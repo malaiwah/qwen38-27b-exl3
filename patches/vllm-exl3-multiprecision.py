@@ -2806,14 +2806,22 @@ class Exl3LinearMethod(LinearMethodBase):
                         conv = _load_fp4_conversion()
                         if conv is not None:
                             _mem_b = torch.cuda.memory_allocated() / 1024**3
-                            draft_w = conv.convert_all_shards_to_fp4(layer, ext)
-                            # Keep trellis tensors: verify path stays K6-exact.
+                            # Banded conversion: the unbanded path needs a
+                            # 4.74 GiB fp32 fold temp + ~14 GiB quantizer
+                            # transients for the 5120x248320 head; the banded
+                            # path (reconstruct_slice N-bands, two-pass global
+                            # amax) peaks at ~250 MB.  It also does NOT store
+                            # layer.fp4_weights, so the verify pass keeps the
+                            # exact K6 trellis route.
+                            draft_w = conv.convert_all_shards_to_fp4_banded(
+                                layer, ext
+                            )
                             layer.fp4_draft_weights = draft_w  # type: ignore[attr-defined]
                             torch.cuda.empty_cache()
                             _mem_a = torch.cuda.memory_allocated() / 1024**3
                             logger.info(
-                                "EXL3 FP4 draft head built for %s (%d shards) "
-                                "%.2f→%.2f GiB (Δ%.2f)",
+                                "EXL3 FP4 draft head built (banded) for %s "
+                                "(%d shards) %.2f→%.2f GiB (Δ%.2f)",
                                 prefix, len(draft_w), _mem_b, _mem_a, _mem_a - _mem_b,
                             )
                     except Exception as exc:

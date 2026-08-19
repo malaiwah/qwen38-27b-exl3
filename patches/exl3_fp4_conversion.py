@@ -69,6 +69,7 @@ hooks at the bottom of this file).
 from __future__ import annotations
 
 import math
+import os
 from dataclasses import dataclass
 from typing import Any, Optional
 
@@ -80,6 +81,10 @@ import torch
 
 _HADAMARD_BLOCK = 128
 _HADAMARD_NORM = 1.0 / math.sqrt(_HADAMARD_BLOCK)
+
+# One-shot arm flag for the banded-conversion selftest (see
+# convert_all_shards_to_fp4).
+_BANDED_SELFTEST_ARMED = True
 
 # NVFP4 block scale parameters — E4M3FN block scales with sf_vec_size=16,
 # matching b12x's MmaMXF4NVF4Op (NVF4: Float4E2M1FN operands, Float8E4M3FN
@@ -410,6 +415,7 @@ def _as_nvfp4_scale_view(
 
 def _quantize_matrix_fp4_nvfp4(
     mat_bf16: torch.Tensor,
+    global_scale_override: torch.Tensor | None = None,
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """Quantize a ``(rows, K)`` bf16/fp16 matrix to packed NVFP4.
 
@@ -446,8 +452,17 @@ def _quantize_matrix_fp4_nvfp4(
     block_max = blocked.abs().amax(dim=-1, keepdim=True)  # (rows, K//16, 1)
 
     # --- Per-tensor global scale: gs = 448 * 6 / amax ---
-    tensor_amax = block_max.max().clamp_min(1e-12)
-    global_scale = (_NVFP4_GS_NUM / tensor_amax).reshape(1)  # (1,) float32
+    # (banded conversion passes a precomputed whole-matrix scale so every
+    # band quantizes against the same reference)
+    if global_scale_override is not None:
+        global_scale = (
+            global_scale_override.to(torch.float32)
+            .reshape(1)
+            .to(mat_bf16.device)
+        )
+    else:
+        tensor_amax = block_max.max().clamp_min(1e-12)
+        global_scale = (_NVFP4_GS_NUM / tensor_amax).reshape(1)  # (1,) float32
 
     # --- Per-block E4M3FN scale: sf = e4m3(gs * block_max / 6.0) ---
     scale = (
@@ -703,6 +718,39 @@ def convert_all_shards_to_fp4(
             layer, ext, bits, cb, shard_id=shard_id
         )
         fp4_weights[shard_id] = fp4_weight
+        # Optional one-shot selftest: banded converter must reproduce the
+        # unbanded artifact (VLLM_EXL3_FP4_BANDED_SELFTEST=1).  Run on the
+        # first shard converted in the process, then disarm.
+        global _BANDED_SELFTEST_ARMED
+        if _BANDED_SELFTEST_ARMED and os.environ.get(
+            "VLLM_EXL3_FP4_BANDED_SELFTEST", "0"
+        ) == "1":
+            _BANDED_SELFTEST_ARMED = False
+            try:
+                banded = convert_layer_to_fp4_banded(
+                    layer, ext, bits, cb, shard_id=shard_id
+                )
+                gs_ref = float(fp4_weight.global_scale)
+                gs_band = float(banded.global_scale)
+                packed_mism = int(
+                    (banded.packed != fp4_weight.packed).sum().item()
+                )
+                scale_mism = int(
+                    (banded.scale_storage != fp4_weight.scale_storage)
+                    .sum().item()
+                )
+                total = fp4_weight.packed.numel()
+                print(
+                    f"[FP4 banded selftest] gs ref={gs_ref:.6g} "
+                    f"band={gs_band:.6g} packed_mismatch={packed_mism}/{total} "
+                    f"({100.0 * packed_mism / total:.4f}%) "
+                    f"scale_mismatch={scale_mism}/{fp4_weight.scale_storage.numel()}",
+                    flush=True,
+                )
+                del banded
+                torch.cuda.empty_cache()
+            except Exception as exc:  # pragma: no cover - diagnostics only
+                print(f"[FP4 banded selftest] FAILED: {exc}", flush=True)
         # Clear CUDA cache between shards to prevent fragmentation OOM
         torch.cuda.empty_cache()
 
@@ -710,6 +758,147 @@ def convert_all_shards_to_fp4(
     layer.fp4_weights = fp4_weights
 
     # Note: caller frees trellis tensors after confirming all shards converted.
+    return fp4_weights
+
+
+# ---------------------------------------------------------------------------
+# 2b. Banded load-time conversion (large matrices, e.g. lm_head)
+# ---------------------------------------------------------------------------
+#
+# ``convert_layer_to_fp4`` materialises the full weight three times (fp16
+# reconstruct, fp32 Hadamard fold, fp32 quantizer transients).  For the
+# 5120x248320 lm_head that is a 4.74 GiB fp32 fold temp plus ~14 GiB of
+# quantizer transients — unbuildable at load time.  The banded path keeps
+# peak transient memory at ~250 MB independent of N:
+#
+#   * ``ext.reconstruct_slice`` decodes a contiguous 128-aligned N-band of
+#     the (K, N) trellis weight (reconstruct.cu enforces n_offset % 128 == 0
+#     and band_width % 128 == 0).
+#   * The Hadamard fold is exactly separable along 128-aligned N bounds:
+#     Had_N is block-diagonal with 128-point blocks and svh is per-element,
+#     so folding W[:, n0:n1] with svh[n0:n1] equals slicing the full fold.
+#   * Quantisation is two-pass: pass 1 computes the whole-matrix amax over
+#     folded bands, pass 2 quantizes each band against that single global
+#     scale (bit-compatible with the unbanded quantizer, which also uses one
+#     per-tensor scale).
+#   * The swizzled block-scale layout is row-block-major (outermost dim is
+#     rows/128), so a 128-aligned row band's swizzled storage is a
+#     contiguous slice of the full matrix's storage at byte offset
+#     ``n0 * cols_padded`` — bands write directly into the final buffer.
+#
+# The result is a plain ``FP4DenseWeight``; ``fp4_apply`` needs no changes.
+
+def convert_layer_to_fp4_banded(
+    layer: torch.nn.Module,
+    ext: Any,
+    bits: int,
+    cb: int,
+    *,
+    shard_id: Any = None,
+    band_n: int = 2048,
+) -> FP4DenseWeight:
+    """Convert one EXL3 trellis shard to NVFP4 in 128-aligned N bands."""
+    if not hasattr(ext, "reconstruct_slice"):
+        raise RuntimeError(
+            "exllamav3_ext lacks reconstruct_slice; banded conversion "
+            "unavailable"
+        )
+    if band_n % _HADAMARD_BLOCK != 0:
+        raise ValueError(f"band_n must be a multiple of 128, got {band_n}")
+
+    trellis = layer.trellis.exl3_tensors[shard_id]
+    suh = layer.suh.exl3_tensors[shard_id]
+    svh = layer.svh.exl3_tensors[shard_id]
+    K = trellis.shape[0] * 16
+    N = trellis.shape[1] * 16
+    device = trellis.device
+    if K % _HADAMARD_BLOCK != 0 or N % _HADAMARD_BLOCK != 0:
+        raise ValueError(f"K={K} and N={N} must be multiples of 128")
+    mcg, mul1 = _codebook_to_flags(cb)
+
+    cols_padded = _align_up(K // _SF_VEC_SIZE, 4)
+    # Final artifacts, written band by band.
+    packed_full = torch.empty(N, K // 2, dtype=torch.uint8, device=device)
+    scale_full = torch.empty(1, N * cols_padded, dtype=torch.uint8, device=device)
+
+    band_buf = torch.empty(K, band_n, dtype=torch.float16, device=device)
+
+    def _folded_band(n0: int, nb: int) -> torch.Tensor:
+        band = band_buf[:, :nb]
+        ext.reconstruct_slice(band, trellis, bits, mcg, mul1, n0)
+        # In-place chunked fold: fp32 transients are 128 x nb.
+        return hadamard_fold_weight_chunked(band, suh, svh[n0:n0 + nb])
+
+    # --- Pass 1: whole-matrix amax over the folded weight ---
+    amax = torch.zeros((), dtype=torch.float32, device=device)
+    for n0 in range(0, N, band_n):
+        nb = min(band_n, N - n0)
+        band = _folded_band(n0, nb)
+        torch.maximum(amax, band.abs().amax().to(torch.float32), out=amax)
+    amax = amax.clamp_min(1e-12)
+    global_scale = (_NVFP4_GS_NUM / amax).reshape(1)
+
+    # --- Pass 2: quantize each band against the fixed global scale ---
+    for n0 in range(0, N, band_n):
+        nb = min(band_n, N - n0)
+        band = _folded_band(n0, nb)
+        rows = band.t().contiguous().to(torch.bfloat16)  # (nb, K)
+        packed_b, scale_b, _ = _quantize_matrix_fp4_nvfp4(
+            rows, global_scale_override=global_scale
+        )
+        packed_full[n0:n0 + nb].copy_(packed_b)
+        off = n0 * cols_padded
+        scale_full[0, off:off + nb * cols_padded].copy_(scale_b.reshape(-1))
+        del rows, packed_b, scale_b
+
+    del band_buf
+    torch.cuda.empty_cache()
+
+    return FP4DenseWeight(
+        packed=packed_full,
+        scale_storage=scale_full,
+        global_scale=global_scale,
+        out_features=N,
+        in_features=K,
+    )
+
+
+def convert_all_shards_to_fp4_banded(
+    layer: torch.nn.Module,
+    ext: Any,
+    *,
+    band_n: int = 2048,
+) -> dict[Any, Any]:
+    """Banded variant of :func:`convert_all_shards_to_fp4`.
+
+    Same shard iteration and codebook detection, but each shard is
+    converted via :func:`convert_layer_to_fp4_banded` with bounded peak
+    memory.  Does NOT store ``layer.fp4_weights`` or free trellis tensors —
+    the caller decides (the draft-head path keeps the trellis for the
+    verify pass).
+    """
+    fp4_weights: dict[Any, Any] = {}
+    try:
+        from b12x._lib.runtime_control import unfreeze_kernel_resolution
+        unfreeze_kernel_resolution()
+    except ImportError:
+        pass
+
+    for shard_id in list(layer.exl3_shard_ids):
+        trellis = layer.trellis.exl3_tensors[shard_id]
+        bits = trellis.shape[2] // 16
+        has_mcg = shard_id in layer.mcg.exl3_tensors
+        has_mul1 = shard_id in layer.mul1.exl3_tensors
+        if has_mcg and not has_mul1:
+            cb = 1
+        elif has_mul1 and not has_mcg:
+            cb = 2
+        else:
+            cb = 0
+        fp4_weights[shard_id] = convert_layer_to_fp4_banded(
+            layer, ext, bits, cb, shard_id=shard_id, band_n=band_n
+        )
+        torch.cuda.empty_cache()
     return fp4_weights
 
 
