@@ -1486,7 +1486,19 @@ def _b12x_trellis_k6_supported(
     has_mcg: bool,
     has_mul1: bool,
 ) -> bool:
-    """Gate the native path to the exact K6/MCG contract it implements."""
+    """Gate the native path to the contract b12x's trellis256 kernel implements.
+
+    b12x accepts 3/4/5/6-bit payloads
+    (moe/_shared/kernels/w4a16/prepare.py:1575 `if bits not in (3, 4, 5, 6)`),
+    and `api.prepare_weight` infers the width from the tensor. The historical
+    gate here accepted only K6 (96 int16 words), which silently excluded this
+    checkpoint's K5 `mlp.gate_proj`/`up_proj` (80 words) — 6.64 GiB and the
+    largest matrices in the model — and forced them onto the `_exl3_gemm`
+    reconstruct+Hadamard-fold path, measured at 4.72 ms CPU per call versus
+    0.30 ms for b12x (receipts/prefill-profile-2026-08-19.md).
+
+    VLLM_EXL3_B12X_ANY_BITS=1 admits 3/4/5/6-bit; default stays K6-only.
+    """
     # When VLLM_EXL3_SKIP_TRELLIS_PREP=1, skip b12x prepared weights (saves 16GB).
     # Attention layers fall back to ext.exl3_gemm (raw trellis codes, no prep needed).
     if os.environ.get("VLLM_EXL3_SKIP_TRELLIS_PREP", "0") == "1":
@@ -1496,12 +1508,17 @@ def _b12x_trellis_k6_supported(
         n_packed = int(trellis.shape[1]) * 16
         if not bounds[0] <= n_packed <= bounds[1]:
             return False
+    n_words = int(trellis.shape[2])
+    if os.environ.get("VLLM_EXL3_B12X_ANY_BITS", "0") == "1":
+        bits_ok = n_words in (48, 64, 80, 96)
+    else:
+        bits_ok = n_words == 96
     return bool(
         has_mcg
         and not has_mul1
         and trellis.dtype == torch.int16
         and trellis.ndim == 3
-        and int(trellis.shape[2]) == 96
+        and bits_ok
         and int(trellis.shape[0]) % 8 == 0
         and int(trellis.shape[1]) % 8 == 0
     )
@@ -1529,14 +1546,47 @@ def _warm_b12x_trellis_device(
     _B12X_TRELLIS_WARMED_DEVICES.add(device_index)
 
 
-def _b12x_trellis_c_tmp_elements(rows: int, columns: int) -> int:
+def _b12x_trellis_c_tmp_elements(
+    rows: int, columns: int, *, bits: int = 6
+) -> int:
     """Return graph-safe dense-W4A16 scratch capacity for one static shape."""
 
     rows = int(rows)
     columns = int(columns)
-    if rows <= 128:
+    bits = int(bits)
+    if rows <= 128 and bits == 6:
         # The cooperative K6 small-M kernel does not consume W4A16 scratch.
         return 1
+    # Non-K6 payloads (this checkpoint's K5 mlp.gate_proj/up_proj) take the
+    # scratch-consuming path even at decode row counts, so the K6 shortcut
+    # above would hand b12x a 1-element buffer and it raises
+    # "W4A16 GEMM scratch is not initialized for CUDA graph capture" during
+    # capture. Mirror b12x's own sizing rather than guessing: the dense runner
+    # rounds m UP to a multiple of the routed block size
+    # (route_slots = ceil(m/block)*block, kernel.py _run_trellis256_dense_*)
+    # before calling packed_gemm_scratch_elements, so sizing on raw `rows`
+    # under-allocates by up to 64x. Cover every allowed block size.
+    try:
+        from b12x.moe._shared.kernels.w4a16.host import (
+            _W4A16_ALLOWED_ROUTED_SIZES,
+            packed_gemm_scratch_elements,
+        )
+
+        sms = torch.cuda.get_device_properties(
+            torch.cuda.current_device()
+        ).multi_processor_count
+        need = max(
+            packed_gemm_scratch_elements(
+                size_n=columns,
+                route_slots=((rows + block - 1) // block) * block,
+                moe_block_size=block,
+                sms=int(sms),
+            )
+            for block in _W4A16_ALLOWED_ROUTED_SIZES
+        )
+        return min(int(need), _B12X_TRELLIS_C_TMP_CAP)
+    except Exception:
+        pass
     padded_rows = max(
         ((rows + 47) // 48) * 48,
         ((rows + 63) // 64) * 64,
@@ -1596,7 +1646,8 @@ def _b12x_trellis_linear(
     """Run every online-K6 batch through B12X with cached storage."""
     m = x.shape[0]
     n = trellis.shape[1] * 16
-    key = (x.shape[0], x.shape[1], n, x.dtype, x.device.index)
+    bits = int(trellis.shape[2]) // 16
+    key = (x.shape[0], x.shape[1], n, bits, x.dtype, x.device.index)
     if not hasattr(_b12x_trellis_linear, '_buf_cache'):
         _b12x_trellis_linear._buf_cache = {}  # type: ignore[attr-defined]
     buf = _b12x_trellis_linear._buf_cache.get(key)  # type: ignore[attr-defined]
@@ -1604,7 +1655,7 @@ def _b12x_trellis_linear(
         output = torch.empty(m, n, dtype=x.dtype, device=x.device)
         gemm_output = torch.empty_like(output)
         c_tmp = torch.empty(
-            (_b12x_trellis_c_tmp_elements(m, n),),
+            (_b12x_trellis_c_tmp_elements(m, n, bits=bits),),
             dtype=torch.float32, device=x.device,
         )
         rotated_f16 = torch.empty_like(x)

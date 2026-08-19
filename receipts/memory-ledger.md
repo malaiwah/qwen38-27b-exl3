@@ -79,3 +79,34 @@ the service with **default** env, silently replacing the container. Two
 were really the 8192 default. All config experiments must
 `systemctl --user stop` first and then **assert** the effective args from the
 engine's own `non-default args:` dump (`/tmp/boot_cfg.sh` does this).
+
+## L9. b12x prepared trellis weights cost ~2 GiB (docstring says "zero-copy views")
+Measured 2026-08-19 on an all-trellis config routed through b12x
+(`VLLM_EXL3_B12X_ANY_BITS=1`): vLLM reports **18.83 GiB for weight** where the
+raw trellis payload is 16.82 GiB (`tools/shape-inventory.py`). Peak activation
+also rose to 3.25 GiB (vs 2.32 for the balanced FP4/trellis mix), leaving only
+**6.28 GiB KV = max ctx 158,304**, and the instance still died on the first
+2051-token prefill (same underprofiled-peak pattern as L1). Consequence:
+all-trellis cannot reach the 238,400-token context target on this card, so the
+KLD-optimal weight format is context-limited for structural reasons, not
+tuning. **To chase:** what exactly `prepare_trellis256_dense_weight` retains
+beyond views, and whether the b12x dense scratch can be shared across shapes
+instead of one buffer per (m, k, n, bits).
+
+## L10. OUR bug: W4A16 scratch sized on a K6-only assumption (fixed)
+`_b12x_trellis_c_tmp_elements` returned **1 element** for `rows <= 128` with the
+comment "the cooperative K6 small-M kernel does not consume W4A16 scratch".
+That is true only for K6. Admitting K5 (this checkpoint's `mlp.gate_proj`/
+`up_proj`) made b12x raise *"W4A16 GEMM scratch is not initialized for CUDA
+graph capture; provide a preallocated fc*_c_tmp workspace with sufficient
+capacity"* during capture. Two-part fix: gate the shortcut on `bits == 6`, and
+size the real case from b12x's own formula — noting the dense runner rounds m
+UP to a multiple of the routed block size (`route_slots = ceil(m/block)*block`)
+before calling `packed_gemm_scratch_elements`, so sizing on raw `rows`
+under-allocates by up to 64x (m=1, N=17408 needs 1,114,112 floats, not 17,408).
+Cover every entry of `_W4A16_ALLOWED_ROUTED_SIZES = (8,16,32,48,64)`.
+
+## L11. Host b12x checkout != container b12x
+`/home/mbelleau/b12x/b12x/moe/_shared/kernels/w4a16/kernel.py` and the
+container's copy have different md5sums and different line numbers. Every
+b12x claim must be read from the container overlay, not the host checkout.
