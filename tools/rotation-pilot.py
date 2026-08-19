@@ -149,6 +149,24 @@ def import_exllamav3(exllama_path: str):
         if p and p not in sys.path:
             sys.path.insert(0, p)
 
+    # exllamav3/__init__ pulls modules/attn.py which imports flash_attn at
+    # module scope. The pilot only uses quantize_tiles() and never dispatches
+    # attention, and the serving image ships without flash_attn (vLLM uses its
+    # own backends). Stub it so the package import succeeds; any actual USE of
+    # the stub raises loudly instead of silently faking results.
+    import types
+    if "flash_attn" not in sys.modules:
+        _stub = types.ModuleType("flash_attn")
+        def _unavailable(*_a, **_k):
+            raise RuntimeError(
+                "flash_attn stubbed for the rotation pilot; attention "
+                "dispatch must not be reached from quantize_tiles()"
+            )
+        _stub.flash_attn_func = _unavailable
+        _stub.flash_attn_with_kvcache = _unavailable
+        _stub.flash_attn_varlen_func = _unavailable
+        sys.modules["flash_attn"] = _stub
+
     try:
         from exllamav3.ext import exllamav3_ext as ext  # noqa: F401
         from exllamav3.modules.quant.exl3_lib import quantize as qmod
