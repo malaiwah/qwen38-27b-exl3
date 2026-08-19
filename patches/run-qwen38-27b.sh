@@ -56,6 +56,47 @@ QUANTIZATION_CONFIG='{"linear":{"weight":"mxfp8"},"ignore":["re:.*visual\\..*","
 #   24k prefill + vision + decode interleaved = ROBUST).
 # max-model-len 262144 — full native context, unlocked by the KV freed above
 #   (9.82 GiB KV vs 8.89 GiB at mnbt 8192). Was 238,400.
+# PROFILE selects one of the two measured serving profiles. Full numbers and
+# the proof that no single profile reaches all six north-star criteria are in
+# receipts/frontier-2026-08-19.md; both are n=3-boot harness results.
+#
+#   throughput (default)  all-FP4.      PP 7665.6+/-20.4  TG fox 184.8+/-1.0
+#                         essay 93.3    KLD 0.063759  p99 0.7010  ctx 250,000
+#                         -> 4/6 criteria. The only profile with PP >= 7000.
+#   fidelity              all-trellis.  PP 1080.6+/-2.2   TG fox 207.6+/-0.2
+#                         essay 92.9    KLD 0.003412  p99 0.03488 ctx 238,400
+#                         -> 5/6 criteria; fails only PP. KLD is within 26% of
+#                         the checkpoint's own published 0.002700, and it beats
+#                         the committed baseline 16.6x on KLD mean and 18.3x on
+#                         p99 while giving +29% TG-fox. Prefill-heavy workloads
+#                         pay ~7x, which is the whole tradeoff.
+#
+# Explicit env always wins over the profile defaults (`:=` below).
+PROFILE="${PROFILE:-throughput}"
+case "${PROFILE}" in
+  throughput)
+    : "${VLLM_EXL3_FP4_LAYERS:=mlp.gate_up_proj,mlp.down_proj,linear_attn.,self_attn.}"
+    : "${VLLM_EXL3_PREFILL_RECONSTRUCT_M:=1}"
+    : "${VLLM_EXL3_SKIP_TRELLIS_PREP:=0}"
+    : "${MAX_MODEL_LEN:=250000}"
+    ;;
+  fidelity)
+    # A single comma means "no FP4 layers" (empty would fall back to defaults).
+    : "${VLLM_EXL3_FP4_LAYERS:=,}"
+    # No reconstruct+fold, so no FP16 gate cache: that cache attempting ~21 GiB
+    # is what made all-trellis unbootable before.
+    : "${VLLM_EXL3_PREFILL_RECONSTRUCT_M:=0}"
+    : "${VLLM_EXL3_SKIP_TRELLIS_PREP:=1}"
+    : "${MAX_MODEL_LEN:=238400}"
+    ;;
+  *)
+    echo "Unknown PROFILE='${PROFILE}' (expected: throughput | fidelity)" >&2
+    exit 4
+    ;;
+esac
+export VLLM_EXL3_FP4_LAYERS VLLM_EXL3_PREFILL_RECONSTRUCT_M
+export VLLM_EXL3_SKIP_TRELLIS_PREP MAX_MODEL_LEN
+
 GPU_MEMORY_UTILIZATION="${GPU_MEMORY_UTILIZATION:-0.93}"
 MAX_MODEL_LEN="${MAX_MODEL_LEN:-250000}"
 MAX_NUM_SEQS="${MAX_NUM_SEQS:-4}"

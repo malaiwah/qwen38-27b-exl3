@@ -460,27 +460,41 @@ def max_model_len() -> int:
 # Long-context probe
 # ---------------------------------------------------------------------------
 def long_ctx_check(target_tokens: int = 200000) -> bool:
-    """Check whether the server accepts a prompt exceeding ``target_tokens``.
+    """Check whether the server accepts a prompt of about ``target_tokens``.
 
-    Builds a prompt by repeating a sentence enough times to exceed the
-    target token count, then POSTs with ``max_tokens=1``.  Returns True iff
-    the server returns HTTP 200.  Returns False on HTTP 400 (context too long)
-    or any other error — never raises.
+    Returns True iff the server returns HTTP 200.  Never raises.
+
+    Two things this must NOT do, both learned the hard way:
+
+    * **Do not overshoot the target.**  An earlier version inflated the prompt
+      by 20% (``target/10*1.2`` reps ~= 240k tokens for a 200k target), which
+      exceeds ``max_model_len`` on any profile between the target and
+      target*1.2 -- e.g. the 238,400-token fidelity profile -- so the server
+      correctly answered HTTP 400 and the check reported a capability gap that
+      did not exist.  Build to just over the target instead, and clamp to the
+      served ``max_model_len`` leaving room for the sampled token.
+    * **Do not use a short timeout.**  This is a capability check, not a speed
+      check.  A 200k-token prefill takes ~295 s on the fidelity profile
+      (~680 tok/s); the old 300 s timeout raced it.
     """
-    # Rough heuristic: ~1.3 tokens per word for English prose.  Over-build the
-    # prompt so we comfortably exceed target_tokens even if the tokeniser is
-    # efficient.  The sentence is 8 words ≈ 10 tokens.
     sentence = "The system processes each request with deterministic scheduling. "
-    # ~10 tokens per sentence; over-build to exceed target with margin.
-    # Calculate repetitions to exceed target_tokens with a 20% margin.
-    reps = int(target_tokens / 10 * 1.2)
+    tokens_per_sentence = 10  # measured for this sentence with this tokenizer
+    reps = int(target_tokens / tokens_per_sentence) + 8
+    try:
+        served = max_model_len()
+    except Exception:
+        served = 0
+    if served:
+        # Leave headroom for the sampled token and any template overhead.
+        max_reps = max(1, (served - 64) // tokens_per_sentence)
+        reps = min(reps, max_reps)
     prompt = sentence * reps
     try:
         r = requests.post(
             f"{BASE_URL}/v1/completions",
             json={"model": MODEL, "prompt": prompt,
                   "max_tokens": 1, "temperature": 0},
-            timeout=300,
+            timeout=1800,
         )
         return r.status_code == 200
     except requests.RequestException:

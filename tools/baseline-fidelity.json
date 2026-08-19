@@ -1,34 +1,34 @@
 {
   "schema": "qwen38-profile-baseline/1",
-  "provenance": "PROFILE=throughput (all-FP4), adopted 2026-08-19: util 0.93 / mnbt 3072 / max-model-len 250000 / VLLM_USE_V2_MODEL_RUNNER=1. Numbers are Phase-0 harness n=3 boots (receipts/bench-v2-allfp4-default-2026-08-19.json). See receipts/frontier-2026-08-19.md for the PROFILE=fidelity alternative (5/6 criteria, KLD 0.003412).",
-  "note": "PP/TG are single-request overhead-inclusive metrics (receipts/peer-review-2026-08-18.md section C). acceptance_essay is high-variance across configs; threshold deliberately loose. Robustness is NOT covered by this gate - run tools/stress-gate.py. This baseline gates the throughput profile only; the fidelity profile has its own baseline JSON.",
+  "provenance": "PROFILE=fidelity (all-trellis), 2026-08-19: util 0.93 / mnbt 3072 / max-model-len 238400 / VLLM_USE_V2_MODEL_RUNNER=1 / PREFILL_RECONSTRUCT_M=0 / SKIP_TRELLIS_PREP=1. Phase-0 harness n=3 boots (receipts/bench-v2-alltrellis-2026-08-19.json). KLD mean 0.003412 ci95 [0.003171,0.003680], p99 0.03488, 512 contexts shard-0000 (/tmp/kld-data/reports/report-alltrellis-int6emb.json). 5/6 north-star criteria; fails only PP>=7000. See receipts/frontier-2026-08-19.md.",
+  "note": "Fidelity profile: trades ~7x prefill for 16.6x better KLD mean and 18.3x better p99 versus the committed baseline. PP baseline here is deliberately the low value - this gate guards against regression of THIS profile, not against the throughput profile.",
   "metrics": {
     "pp_tok_s": {
-      "baseline": 7665.6,
+      "baseline": 1080.6,
       "rule": "min_ratio",
       "min_ratio": 0.95,
       "description": "Prefill prompt throughput, 2051-tok prompt, max_tokens=1, temperature=0, median of 5 reps after warmup."
     },
     "tg_essay_tok_s": {
-      "baseline": 93.3,
+      "baseline": 92.9,
       "rule": "min_ratio",
       "min_ratio": 0.95,
       "description": "Decode throughput on the essay prompt, max_tokens=500, temperature=0, median of 3 reps."
     },
     "tg_fox_tok_s": {
-      "baseline": 184.8,
+      "baseline": 207.6,
       "rule": "min_ratio",
       "min_ratio": 0.95,
       "description": "Decode throughput on the fox prompt, max_tokens=200, temperature=0, median of 3 reps."
     },
     "max_model_len": {
-      "baseline": 250000,
+      "baseline": 238400,
       "rule": "min_absolute",
-      "min_absolute": 250000,
+      "min_absolute": 238400,
       "description": "Served max_model_len from /v1/models; must not have shrunk below the flagship FP8-KV context."
     },
     "acceptance_essay": {
-      "baseline": 0.298,
+      "baseline": 0.304,
       "rule": "min_absolute",
       "min_absolute": 0.25,
       "description": "MTP acceptance rate on the essay prompt, differenced spec_decode_num_accepted/draft counters before vs after the TG-essay run."
