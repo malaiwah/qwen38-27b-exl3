@@ -102,3 +102,68 @@ units are not comparable across weightings, so transferring that scale would be
 meaningless arithmetic. Any of these allocations remains a pre-registrable
 candidate requiring a **paired** shard-0 validation against hydrated, shipping only
 if the paired interval excludes zero in its favour.
+
+---
+
+## v2: structured weight models — and the class model falsifies itself on first contact
+
+**Added** (same day, on request): `class-kld` weighting (per-class KLD-per-eps-unit
+scales fitted from the plan's own two measured single-class deltas: attn 0.017425,
+mlp 0.026340 — the 1.51x spread the plan averaged away), `--max-width` (b12x
+ANY_BITS prefill supports K3–K6 only, `patches/vllm-exl3-multiprecision.py:1644`;
+the published solve put **42 modules at K7**, all off the fast path on our stack),
+`--depth-form u` (both-ends weighting; prior art in llama.cpp `use_more_bits`,
+`src/llama-quant.cpp:430`, and exllamav3's own `allocation.py` — docs/58),
+`--budget-delta`, width heatmaps, and a `--compare` mode. Regression re-verified:
+`rel` at defaults still replicates the published solve bit-for-bit.
+
+### The held-out test: the class model has the WRONG SIGN too
+
+The two class scales are fitted on single-class moves; the published solve is a
+cross-class reallocation neither saw. Prediction for it:
+
+| model | predicted ΔKLD | measured |
+|---|---|---|
+| plan's global scale | −0.000211 | +0.000366 |
+| **2-class scales** | **−0.000328** | +0.000366 |
+
+Wrong sign, and *further* from truth than the global scale. My hypothesis that
+"the 1.51x spread IS the class signal" is **falsified**: whatever makes
+cross-class reallocation regress is not expressible as any per-module reweighting
+fitted from those two deltas. Candidates that survive: within-class heterogeneity
+(the k/v-vs-q/o state-writer split), depth structure, and true non-additivity.
+Consequence: every `predicted_kld_delta` this tool emits for class-kld solves
+carries demonstrated wrong-sign risk for cross-class moves — the artifacts say so,
+and the exp05 solve's −0.0059 "prediction" should be read as a red flag that
+large-amp solves leave the calibrated regime, not as a forecast.
+
+### What the matrix shows anyway (allocations, not predictions)
+
+| | attn+GDN | MLP g+u | L00-15 | L48-63 | agree w/ rel |
+|---|---|---|---|---|---|
+| rel (published) | −457 MB | +512 MB | 0 | 0 | 100% |
+| class-kld | **−657 MB** | +702 MB | +108 MB | −156 MB | 82.9% |
+| class-kld K≤6 | −668 MB | +713 MB | +108 MB | −161 MB | 77.3% |
+| class-kld K≤6 u=.05 | −579 MB | +724 MB | +212 MB | **+52 MB** | 68.9% |
+| class-kld K≤6 exp=.05 | −490 MB | +724 MB | **+325 MB** | **−619 MB** | 55.5% |
+| abs K≤6 | **−279 MB** | +1,281 MB | −460 MB | +330 MB | 29.6% |
+
+- **class-kld doubles down on attention-robbing** (−657 MB): the fitted scales say
+  an MLP eps-unit costs 1.51x more KLD than an attention one, so the solver strips
+  attention harder than `rel` did. Given the held-out sign failure, this direction
+  is exactly as suspect as `rel`'s.
+- **The K≤6 serving cap is nearly free**: 93.9% agreement with the uncapped solve;
+  role deltas barely move. There is no reason ever to allow K7/K8 for our stack.
+- **`u` and `exp` depth forms are genuinely different allocations** (59.9%
+  agreement): exp piles bytes into the first half; u protects both ends and strips
+  the middle. Two buildable, discriminable hypotheses.
+
+### Experiment upgrade
+
+The queued depth calibration becomes **three arms**, same cost structure
+(13 layers each, identical bytes and KV): `FP6_LAYER_RANGE=0-12` (early) vs
+`26-38` (middle) vs `51-63` (late). Monotone-early predicts
+KLD(early) > KLD(middle) > KLD(late); U-shape predicts middle < both ends...
+inverted: converting the MIDDLE to FP6 should hurt LEAST under the U-hypothesis
+(middle layers are least sensitive) and converting EARLY should hurt most under
+the exp-hypothesis. Three arms discriminate the two forms; two arms cannot.
