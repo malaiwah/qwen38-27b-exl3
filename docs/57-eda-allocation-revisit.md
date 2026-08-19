@@ -379,37 +379,60 @@ remains the serving path and an EDA re-solve is the best in-family lever.
 
 ---
 
-## Re-solve status (2026-08-19, goal session): DONE — and it refutes the `sqrt_energy` recommendation above
+## Re-solve status (2026-08-19, goal session): DONE — refutes the `sqrt_energy` candidate, and corrects two errors of mine
 
-The re-solve ran. **No GPU was needed**, because the ladder is published after all:
-`malaiwah/qwen38-27b-fidelity-suite-v5` (dataset) ->
-`captures/shard-0000/error-driven-ladder.json`. An earlier note in this document
-deferred the lane claiming the ladder was lost; that was wrong — it looked only at
-the EDA-research *model* repo. Full account is in
-`receipts/eda-resolve-2026-08-19.md`.
-
+The re-solve ran, with **no GPU**. Full account: `receipts/eda-resolve-2026-08-19.md`.
 `tools/eda-resolve.py` reproduces the published `rel` solve bit-for-bit (objective
-0.0655141051 vs 0.06551410506951784, 175 modules moved, all role byte deltas
-identical) after passing three exact validations: derived `fixed(role)` -> hydrated
-role totals, -> published solved role totals, and the objective domain pinned to
-15 significant figures over the 400 movable modules.
+0.0655141051 vs 0.06551410506951784, 175 modules moved, every role byte delta
+identical) after three exact validations: derived `fixed(role)` -> all 10 hydrated
+role totals; -> the published solved role totals; and the objective domain pinned
+over the 400 movable modules, reproducing this plan's own `objective_hydrated` to
+15 significant figures.
 
-With the solver validated, the recommendation in the section above **does not
-survive**:
+### Two corrections to earlier notes of mine in this file
 
-| weighting | attention+GDN | MLP gate+up | MLP down | moved |
-|---|---|---|---|---|
-| `rel` (published, measured worse) | −456,785,920 | +512,491,520 | −55,705,600 | 175 |
-| `sqrt_energy` (recommended above) | **−155,975,680** | +980,418,560 | −824,442,880 | 236 |
-| `abs` | **+100,270,080** | +1,236,664,320 | −1,336,934,400 | 320 |
+**1. I briefly deferred this lane claiming its input was lost. That was wrong
+twice over.** The ladder *is* published — in a different repo of the same account
+(`malaiwah/qwen38-27b-fidelity-suite-v5`, dataset ->
+`captures/shard-0000/error-driven-ladder.json`) — and, more to the point, **§4 of
+this document already said no ladder is needed at all**: the closed-form rule
+(`sort by log_3.73(c_m / numel_m)`, cut at budget) recovers 396/400 modules and
+100.0% of the objective from a pre-existing conversion log. I asserted a 2.08 h GPU
+cost while editing a file that stated the cost was ~1 s. Read the whole document
+before acting on part of it.
 
-The `[INFERENCE]` above — that `sqrt_energy` would shift bits toward attention —
-is false: it still strips 156 MB from attention and GDN, the same direction as the
-objective that already lost, only gentler. **`abs` is the only weighting that moves
-bytes toward attention/GDN**, and only by 0.46% of budget. Corrected guidance:
-solve `abs` if a rebuild happens; better still, treat all three as inadequate,
-because every one is first-order and layer-local and therefore structurally blind
-to the KV compounding the attribution work measured. No KLD prediction is attached
-to either new allocation — the plan's KLD-per-objective-unit scale is in `rel`
-units and does not transfer.
+**2. `abs` is not a clean "corrected recommendation".** §1 records that `abs` was
+*considered and rejected at selection*: its implied KLD-per-objective-unit scale
+varies **2.52x** across the two validation deltas versus **1.51x** for `rel`. So the
+honest position is a genuine tension, not a fix:
 
+| weighting | direction on attention+GDN | sign correct on all 4 calibration pairs | scale consistency |
+|---|---|---|---|
+| `rel` (shipped, measured worse) | −456,785,920 | no (sign error on reallocation) | best (1.51x) |
+| `sqrt_energy` (§4's candidate) | **−155,975,680** | yes | intermediate (2.47x worst LOO) |
+| `abs` | **+100,270,080** | yes | worst (2.52x) |
+
+### What the solve establishes
+
+The `[INFERENCE]` in §4 — that `sqrt_energy` would shift bits toward attention —
+**is false**. `sqrt_energy` still strips 156 MB from attention and GDN: the same
+direction as the objective that already regressed, merely gentler. Of the three,
+only `abs` moves bytes *toward* attention/GDN (+100 MB, 0.46% of budget), funded by
+gutting `mlp_down_proj` (−1.34 GB) — and `abs` is precisely the weighting with the
+worst scale consistency. All three agree on taking bits off `down_proj` for
+`gate/up`.
+
+So §6's recommendation 2 ("re-solve with `sqrt_energy`") should now read: **do not
+re-solve with `sqrt_energy` — its allocation is directionally the same error as
+`rel`.** If an in-family lever is ever needed, `abs` is the only sign-correct
+*and* right-direction candidate, and it must be pre-registered with the between-role
+reallocation delta demanded by §6.4, accepting its 2.52x scale uncertainty.
+
+The deeper conclusion is that none of these weightings is adequate: every one is
+first-order and layer-local, so all are structurally blind to the KV compounding the
+attribution work measured. The next real step for this family is a
+compounding-aware objective, not another reweighting of a blind one.
+
+No KLD prediction is attached to either new allocation: the plan's
+`kld_per_objective_unit` is calibrated in `rel` units and does not transfer across
+weightings.

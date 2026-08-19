@@ -17,9 +17,17 @@ different repo of the same account:
 `captures/shard-0000/error-driven-ladder.json` — all 409 modules, `numel`,
 `out_energy`, `recipe_bits`, and `ladder{width: proxy_err}` for five widths each.
 
-Lesson recorded: "not in the model repo" is not "not published". Enumerate every
-repo of the account, both types, and grep the file lists — the scan that found it
-took 11 s.
+Two lessons, the second worse than the first:
+
+1. "Not in the model repo" is not "not published". Enumerating every repo of the
+   account, both types, and grepping the file lists took **11 s**.
+2. **The document I was editing already answered the question.** docs/57 §4 states
+   the solve needs no ladder at all: the closed-form rule
+   (`sort by log_3.73(c_m / numel_m)`, cut at budget) recovers 396/400 modules and
+   100.0% of the objective from a pre-existing conversion log, so the solve is "~1 s
+   from a log we already have". I asserted a 2.08 h GPU cost while editing a file
+   that put it at ~1 s, because I had grepped that file for one section instead of
+   reading it. Read the whole source before acting on part of it.
 
 ## The reconstruction is falsifiable, and it passes
 
@@ -64,11 +72,27 @@ same mistake as `rel`, merely smaller — so if the attribution physics holds, a
 `mlp_down_proj` (−1.34 GB). All three weightings agree on one thing: take bits off
 `mlp_down_proj` and give them to `gate/up`.
 
-**Corrected recommendation:** if a trellis rebuild ever runs, the candidate to
-solve is **`abs`**, not `sqrt_energy`. And the deeper point stands — every one of
-these objectives is first-order and layer-local, so none of them can see the KV
-compounding that the measured attribution work says dominates. The right fix is a
-compounding-aware objective, not a different weighting of a blind one.
+**Corrected recommendation, with the tension stated.** `sqrt_energy` should not be
+re-solved: its allocation is directionally the same error as `rel`. But `abs` is not
+a clean replacement either — docs/57 §1 records that `abs` was *considered and
+rejected at selection* because its implied KLD-per-objective-unit scale varies
+**2.52x** across the two validation deltas versus **1.51x** for `rel`. The real
+picture:
+
+| weighting | attention+GDN direction | sign correct on all 4 pairs | scale consistency |
+|---|---|---|---|
+| `rel` (shipped, measured worse) | −456,785,920 | no | best (1.51x) |
+| `sqrt_energy` | −155,975,680 | yes | intermediate (2.47x worst LOO) |
+| `abs` | **+100,270,080** | yes | worst (2.52x) |
+
+`abs` is the only candidate that is both sign-correct and right-direction, and it is
+also the least scale-consistent. That is a tension, not a fix. Any `abs` re-solve
+must be pre-registered with the between-role reallocation delta docs/57 §6.4
+requires, and its 2.52x scale uncertainty accepted up front.
+
+The deeper point stands regardless: every one of these objectives is first-order and
+layer-local, so none can see the KV compounding the attribution work measured. The
+right fix is a compounding-aware objective, not another reweighting of a blind one.
 
 ## What is NOT claimed
 
