@@ -33,3 +33,12 @@ top-1 95.6%, TG 154.0 PASS, PP 4671 (misses 6000). One env/routing flip.
 W4A8 dense kernel (e2m1 b_fmt), FP4 draft-only lm_head (+5-7% TG),
 FP4 16-row decode tile (+5-15% TG), fused prefill act-quant (+3-6% PP),
 per-layer KLD attribution, 256k closer via vision-tower int8.
+
+## Addendum (post-close A/Bs)
+- FP4 draft-only lm_head: wiring complete (env-gated OFF); build blocked on
+  4.74GiB fp32 head-conversion temp → backlog: N-banded conversion. TG=154.5
+  fallback baseline at 8K/FP8KV confirms graceful degradation.
+- PIECEWISE/FULL_AND_PIECEWISE cudagraphs (VLLM_COMPILE): runtime OOM at
+  flagship budget (134MB short). With FULL (no gain) and VLLM_COMPILE (+0.3%),
+  graph-mode changes are CLOSED as a PP lever on this memory budget.
+- Flagship re-verified after all A/Bs: PP=6413, TG=159.0, sanity clean.
