@@ -125,6 +125,7 @@ podman run "${RUN_ARGS[@]}" --replace \
   -e VLLM_EXL3_GRAPH_DECODE="${VLLM_EXL3_GRAPH_DECODE}" \
   -e VLLM_EXL3_EMBED_ONLINE_BITS=6 \
   -e B12X_PACKED_B_MIN_N=1024 \
+  -e VLLM_EXL3_FP4_PER_ROW_GS=0 \
     -e VLLM_EXL3_B12X_N_RANGE="${VLLM_EXL3_B12X_N_RANGE:-5120-36864}" \
   -e VLLM_EXL3_EXT_PATH=/opt/exllamav3 \
   -e VLLM_EXL3_ENCODER_SOURCE=/opt/exllamav3-python/exllamav3 \

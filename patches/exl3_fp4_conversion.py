@@ -747,6 +747,7 @@ def fp4_apply(
 
     # --- Quantise activation to NVFP4 ---
     # For decode (M < 128): Triton kernel (no 128× padding waste)
+    _row_amax = None
     _use_triton = (m < _TILE and __import__('os').environ.get("VLLM_EXL3_FP4_TRITON_DECODE", "1") == "1")
     if _use_triton:
         try:
@@ -782,7 +783,22 @@ def fp4_apply(
         _nvfp4_impl._validate_launch_tensor = lambda *a, **kw: None
         _nvfp4_impl._overlaps = lambda *a: False
         from b12x.quantization.nvfp4 import plan as _nvfp4_plan, allocate_outputs as _nvfp4_alloc, run as _nvfp4_run
-        amax = x_bf16.abs().max().clamp_min(1e-12)
+        # Per-row activation global scale (VLLM_EXL3_FP4_PER_ROW_GS=1):
+        # per-tensor amax lets one outlier row wreck the FP4 range for all
+        # 2051 prefill rows. Pre-scale each row to unit amax, quantize with a
+        # constant global scale, and undo per-row on the GEMM output (the
+        # dense_gemm row_scale epilogue is MX-FP6-only, so the undo is a torch
+        # broadcast multiply). Prefill-only (m > 1); decode m=1 is per-row by
+        # definition and stays on the graph-safe per-tensor path.
+        if m > 1 and __import__('os').environ.get("VLLM_EXL3_FP4_PER_ROW_GS", "0") == "1":
+            _row_amax = (
+                x_bf16.to(torch.float32).abs().amax(dim=1, keepdim=True)
+                .clamp_min(1e-6)
+            )  # [M, 1] fp32
+            x_bf16 = (x_bf16.to(torch.float32) / _row_amax).to(torch.bfloat16)
+            amax = torch.ones((), device=device, dtype=torch.float32)
+        else:
+            amax = x_bf16.abs().max().clamp_min(1e-12)
         a_global_scale = (_NVFP4_GS_NUM / amax).reshape(1).to(torch.float32)
         cache_key = (m_pad, k, str(device))
         cached = _QUANT_CACHE.get(cache_key)
@@ -852,6 +868,9 @@ def fp4_apply(
         expected_m=m if m > _TILE else None,
         **_tile_kwargs,
     )
+    if _row_amax is not None:
+        # Undo the per-row pre-scaling on the output (broadcast [M,1] over N).
+        y[:, :, 0].mul_(_row_amax.to(torch.bfloat16))
     return y[:, :, 0] if out is None else out
 
 
