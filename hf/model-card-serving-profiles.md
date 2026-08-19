@@ -1,0 +1,91 @@
+
+## Serving profiles on one RTX 5090 — pick by workload
+
+Three measured serving configurations ship with
+[`run-qwen38-27b.sh`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/patches/run-qwen38-27b.sh),
+selected with a single environment variable. All numbers below are measured on a
+physical RTX 5090 (32 GB, 600 W) with the Gilded Gnosis vLLM fork, `n=3` boots per
+profile, MTP acceptance reported beside every decode number, and KLD measured on
+512 held-out contexts against the BF16 reference.
+
+__omp_shell("[Speed vs fidelity](charts/profiles-tradeoff.png)")
+
+__omp_shell("[What each profile delivers](charts/profiles-throughput.png)")
+
+### The three profiles
+
+| | `PROFILE=fidelity` | `PROFILE=balanced` | `PROFILE=throughput` |
+|---|---|---|---|
+| **weights** | all-trellis (K5/K6 as shipped) | trellis + `mlp.gate_up_proj` MXFP6 | all-FP4 (NVFP4) |
+| **prefill** (2051-tok) | 1,966 ± 1 tok/s | 3,251 ± 1 tok/s | **9,639 ± 18 tok/s** |
+| **decode**, short prompt | **208.3 ± 0.4** (acc 1.000) | 202.8 ± 0.2 (acc 1.000) | 187.4 ± 0.6 (acc 0.930) |
+| **decode**, 500-tok generation | 93.2 ± 0.1 (acc 0.304) | **95.5 ± 0.1** (acc 0.324) | 94.3 ± 0.0 (acc 0.298) |
+| **KLD** vs BF16 | **0.003437** [0.003196, 0.003706] | 0.005672 [0.005302, 0.006087] | 0.063759 |
+| **KLD p99** | **0.035204** | 0.059908 | 0.7010 |
+| **max context** | 238,400 | 199,104 | **250,000** |
+| **weights resident** | 18.8 GiB | 21.2 GiB | **15.9 GiB** |
+| vision + MTP | pass | pass | pass |
+| **use it when** | fidelity is the product: RAG over long documents, agents, eval harnesses, anything where the quant must not change answers | mixed traffic: you want 1.7x the prefill and the best decode, and 199k context is enough | prompt-heavy batch work: reranking, classification, bulk summarisation, where 4-bit drift is acceptable |
+| **the catch** | prefill is 4.9x slower than `throughput` | 39,296 fewer context tokens | 19x the divergence of `fidelity`; measurably worse draft agreement (0.930 vs 1.000) |
+
+```bash
+PROFILE=fidelity   ./run-qwen38-27b.sh   # most faithful, full context
+PROFILE=balanced   ./run-qwen38-27b.sh   # best decode, 1.7x prefill, 199k ctx
+PROFILE=throughput ./run-qwen38-27b.sh   # fastest prefill  (default)
+```
+
+### How the fidelity compares to other quantisations
+
+__omp_shell("[Fidelity vs other quants](charts/fidelity-vs-quants.png)")
+
+`PROFILE=fidelity` serves at **0.003437** — within 27 % of this checkpoint's own
+offline figure (0.002700) and **35 % below** the official
+[`Qwen/Qwen3.8-27B-FP8`](https://huggingface.co/Qwen/Qwen3.8-27B-FP8) (0.005294)
+while resident in 18.8 GiB instead of 28.6 GiB. `PROFILE=balanced` (0.005672) is
+statistically level with official FP8 at 1.7x the prefill of `fidelity`.
+`PROFILE=throughput` trades that away: at 0.063759 it is 2x worse than
+third-party NVFP4 (0.031059), which is the honest price of 4-bit activations.
+
+### Other combinations that were measured
+
+Configurations that are reachable with the same launcher but are **not** shipped as
+profiles, with the reason:
+
+| configuration | prefill | decode (fox / essay) | KLD | max ctx | verdict |
+|---|---|---|---|---|---|
+| all-FP6 (`FP6_LAYERS` = all four groups) | 4,742 | 187.3 / 87.9 | 0.010699 | 99,000 | passes the 0.012 bar but costs 60 % of context; use only if ~99k is enough |
+| `fidelity` + 13 gate_up layers in FP6 | 2,145 | 207.9 / 92.2 | ~0.0039 *(predicted)* | 238,400 | +9 % prefill at full context, but boots with only a **40 MiB** memory margin — documented, not shipped |
+| `self_attn` in FP4 | 2,043 | 199.5 / 91.0 | 0.011534 [0.010944, **0.012203**] | 238,400 | rejected: the CI crosses the 0.012 bar, and p99 triples to 0.1159 |
+| FP8-DeepGEMM prefill, cached | 7,062 | — | 0.05762 | 238,400 | superseded by all-FP4, which is faster and simpler |
+| `B12X_ANY_BITS=1` (K5 through B12X) | 2,458 | — | — | 238,400 | **known broken**: +51 % prefill but the model emits garbage. B12X's bits=5 GEMM is correct in isolation (cos 1.000000); the fault is in the integration. Guarded with a warning |
+| FP4 draft head | — | 157.6 / 76.1 | — | — | negative vs 160.6 / 75.2 with it off |
+| per-row FP4 global scales | — | — | no measurable gain | — | disabled |
+
+### Knob reference — measured effect of each lever
+
+| knob | measured effect | note |
+|---|---|---|
+| GPU power limit 400 W → 600 W | FP4 prefill **+25.3 %** (7,695 → 9,639); trellis **+0.0 %**, FP6 **+2.0 %** | only the FP4 path is power-limited. Check `nvidia-smi -q -d POWER` before benchmarking — a vendor tool or systemd unit may be capping the card |
+| `VLLM_USE_V2_MODEL_RUNNER=1` | decode **+32 %** (essay 70.9 → 93.5, fox 141.9 → 185.6) | the MTP draft loop only gets CUDA graphs in the V2 runner; on V1 it runs eager and silently costs a third of decode |
+| `--max-num-batched-tokens 8192 → 3072` | **fixes an engine-fatal OOM** on any prompt over ~4k tokens, and *frees* 0.93 GiB of KV | correctness fix, not tuning |
+| `VLLM_EXL3_SKIP_TRELLIS_PREP=0` (B12X for K6) | `fidelity` prefill **+50.8 %** (1,081 → 1,630) at unchanged KLD | verified fidelity-neutral over 512 contexts (0.003412 → 0.003407) |
+| `VLLM_EXL3_PREFILL_RECONSTRUCT_M=1` + `MAX_MB=512` + `CACHE=0` | **+14.1 %** (1,630 → 1,858) | `MAX_MB` keeps the 2.37 GiB lm_head off the path; `CACHE=0` stops the FP16 cache being filled during vLLM's profiling pass, which otherwise leaves zero KV |
+| `VLLM_EXL3_FOLD_FP32_BUDGET_MB=48` | **+5.9 %** (1,858 → 1,967), **bit-identical** output | measured optimum; 64 MB and above fall off a cliff (L2 residency). Bigger is *worse* |
+| `VLLM_EXL3_B12X_MIN_M=128` | essay **+3.4 %**, MTP acceptance **+8.2 %** (0.281 → 0.304), prefill unchanged | B12X wins prefill, the fused kernel wins decode; route by row count |
+| `VLLM_EXL3_FP6_LAYER_RANGE=lo-hi` | ~**0.029 GiB** of KV per converted layer | turns precision into a continuous memory dial instead of all-or-nothing |
+| MTP depth 4 / 6 / 8 / 10 | flat: 185.3 / 185.0 / 185.2 / 184.8 | draft depth is **not** the decode limiter |
+
+### One measured relationship worth knowing
+
+Weight fidelity and decode speed are **coupled through speculative decoding**.
+Same runner, same draft depth, same scheduler — only the weight format differs:
+
+| weights | MTP acceptance (short prompt) | decode |
+|---|---|---|
+| trellis (K5/K6) | **1.000** | **208.3** tok/s |
+| trellis + `self_attn` FP4 | 0.967 | 199.5 tok/s |
+| all-FP4 | 0.930 | 187.4 tok/s |
+
+A less faithful target model disagrees with its own draft head more often, and every
+rejected draft token is a wasted verify slot. Quantising harder does not only cost
+accuracy — past a point it costs throughput too.

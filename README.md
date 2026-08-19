@@ -50,6 +50,10 @@
 
 ## Serving on one RTX 5090 (measured 2026-08-19)
 
+![Speed vs fidelity](charts/profiles-tradeoff.png)
+
+![What each profile delivers](charts/profiles-throughput.png)
+
 Two profiles, selected by `PROFILE=` in
 [`patches/run-qwen38-27b.sh`](patches/run-qwen38-27b.sh). Both pass
 `tools/verify-profile.sh` (exit 0, 8/8 checks each, including a 200k-token
@@ -59,8 +63,8 @@ KLD is 512 contexts of shard-0000 against the BF16 reference.
 | | `PROFILE=throughput` | `PROFILE=fidelity` | `PROFILE=balanced` |
 |---|---|---|---|
 | weights | all-FP4 | all-trellis (K5K6 as shipped) | trellis + gate_up MXFP6 |
-| PP, 2051-tok | **7694.9 ± 21.8** tok/s | 1965.4 ± 2.1 tok/s | 3266.3 ± 13.9 tok/s |
-| TG fox / essay | 185.0 ± 0.6 / 93.3 ± 0.1 | **207.7 ± 0.1** / 93.1 ± 0.1 | 203.3 ± 0.5 / **95.7 ± 0.2** |
+| PP, 2051-tok | **9638.9 ± 18.3** tok/s | 1965.9 ± 1.3 tok/s | 3250.6 ± 1.2 tok/s |
+| TG fox / essay | 187.4 ± 0.6 / 94.3 ± 0.0 | **208.3 ± 0.4** / 93.2 ± 0.1 | 202.8 ± 0.2 / **95.5 ± 0.1** |
 | MTP acceptance fox / essay | 0.930 / 0.298 | **1.000** / 0.304 | **1.000** / **0.324** |
 | KLD mean | 0.063759 | **0.003437** [0.003196, 0.003706] | 0.005672 [0.005302, 0.006087] |
 | KLD p99 | 0.7010 | **0.035204** | 0.059908 |
