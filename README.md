@@ -59,9 +59,9 @@ KLD is 512 contexts of shard-0000 against the BF16 reference.
 | | `PROFILE=throughput` | `PROFILE=fidelity` |
 |---|---|---|
 | weights | all-FP4 | all-trellis (K5K6 as shipped) |
-| PP, 2051-tok | **7694.9 ± 21.8** tok/s | 1966.8 ± 8.3 tok/s |
-| TG fox / essay | 185.0 ± 0.6 / 93.3 ± 0.1 | **211.1 ± 1.0** / 90.0 ± 0.2 |
-| MTP acceptance fox / essay | 0.930 / 0.298 | **1.000** / 0.281 |
+| PP, 2051-tok | **7694.9 ± 21.8** tok/s | 1965.4 ± 2.1 tok/s |
+| TG fox / essay | 185.0 ± 0.6 / 93.3 ± 0.1 | **207.7 ± 0.1** / 93.1 ± 0.1 |
+| MTP acceptance fox / essay | 0.930 / 0.298 | **1.000** / 0.304 |
 | KLD mean | 0.063759 | **0.003437** [0.003196, 0.003706] |
 | KLD p99 | 0.7010 | **0.035204** |
 | max context | **250,000** | 238,400 |

@@ -25,7 +25,7 @@ SERVED_MODEL_NAME="${SERVED_MODEL_NAME:-Qwen3.8-27B}"
 # PR #314 is mounted over the pinned GG r34 base image. Refuse to start if the
 # installed overlay is absent or differs from the exact qualified source.
 EXL3_PATCH_HOST="${EXL3_PATCH_HOST:-/home/mbelleau/vllm-exl3-multiprecision.py}"
-EXL3_PATCH_SHA256="528cb458883fac1639d276c12c9f8a54cf9803388e1ddd3f1793f59e43c42449"
+EXL3_PATCH_SHA256="e59e47bef5970f3709deae17ce06117e6155e9b9be006035049326e2ff506aa4"
 EXL3_PATCH_CTR="/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py"
 [ -f "${EXL3_PATCH_HOST}" ] || {
   echo "EXL3 graph patch is missing: ${EXL3_PATCH_HOST}" >&2
@@ -63,8 +63,8 @@ QUANTIZATION_CONFIG='{"linear":{"weight":"mxfp8"},"ignore":["re:.*visual\\..*","
 #   throughput (default)  all-FP4.      PP 7665.6+/-20.4  TG fox 184.8+/-1.0
 #                         essay 93.3    KLD 0.063759  p99 0.7010  ctx 250,000
 #                         -> 4/6 criteria. The only profile with PP >= 7000.
-#   fidelity              all-trellis.  PP 1857.7+/-3.7   TG fox 210.5+/-0.4
-#                         essay 90.0    KLD 0.003437  p99 0.03520 ctx 238,400
+#   fidelity              all-trellis.  PP 1965.4+/-2.1   TG fox 207.7+/-0.1
+#                         essay 93.1    KLD 0.003437  p99 0.03520 ctx 238,400
 #                         -> 5/6 criteria; fails only PP. KLD is within 26% of
 #                         the checkpoint's own published 0.002700, and it beats
 #                         the committed baseline 16.6x on KLD mean and 18.3x on
@@ -99,6 +99,13 @@ case "${PROFILE}" in
     # operates on independent 128x128 blocks so every budget is bit-identical
     # (verified: max_abs_diff 0.000e+00), making this a free win.
     : "${VLLM_EXL3_FOLD_FP32_BUDGET_MB:=48}"
+    # Route K6 by row count: B12X for prefill, fused exl3_gemm for decode.
+    # B12X owns prefill (PP 1504 -> 1967) but the fused kernel decodes better and
+    # drafts better -- TG-essay 93.1+/-0.1 vs 90.0+/-0.2 and MTP acceptance
+    # 0.304 vs 0.281, at unchanged PP (1965.4+/-2.1 vs 1966.8+/-8.3).  Costs
+    # TG-fox 207.7 vs 211.1, which still clears its 190 threshold by 9.3%.
+    # Set VLLM_EXL3_B12X_MIN_M=0 to prefer B12X at every row count instead.
+    : "${VLLM_EXL3_B12X_MIN_M:=128}"
     # B12X W4A16 consumes the same packed trellis payload as the fused
     # exl3_gemm kernel but costs 0.30 ms CPU per call instead of 4.72 ms, and a
     # full 512-context KLD run proves it is fidelity-neutral (0.003407 vs
@@ -221,6 +228,7 @@ podman run "${RUN_ARGS[@]}" --replace \
   -e VLLM_EXL3_B12X_SELFTEST="${VLLM_EXL3_B12X_SELFTEST:-0}" \
   -e VLLM_EXL3_PREFILL_RECONSTRUCT_MAX_MB="${VLLM_EXL3_PREFILL_RECONSTRUCT_MAX_MB:-4096}" \
   -e VLLM_EXL3_PREFILL_RECONSTRUCT_CACHE="${VLLM_EXL3_PREFILL_RECONSTRUCT_CACHE:-1}" \
+  -e VLLM_EXL3_B12X_MIN_M="${VLLM_EXL3_B12X_MIN_M:-0}" \
   -e VLLM_EXL3_FOLD_FP32_BUDGET_MB="${VLLM_EXL3_FOLD_FP32_BUDGET_MB:-96}" \
   -e VLLM_EXL3_B12X_N_RANGE="${VLLM_EXL3_B12X_N_RANGE:-5120-36864}" \
   -e VLLM_EXL3_EXT_PATH=/opt/exllamav3 \

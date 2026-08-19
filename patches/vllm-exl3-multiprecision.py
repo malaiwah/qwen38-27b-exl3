@@ -263,6 +263,9 @@ _B12X_SELFTEST_DONE: set[tuple] = set()
 _PREFILL_RECONSTRUCT_CACHE = (
     os.environ.get("VLLM_EXL3_PREFILL_RECONSTRUCT_CACHE", "1") == "1"
 )
+# Minimum row count for preferring B12X W4A16 over the fused exl3_gemm kernel.
+# 0 keeps B12X for every row count (previous behaviour).
+_B12X_MIN_M = int(os.environ.get("VLLM_EXL3_B12X_MIN_M", "0"))
 # The dense W4A16 kernel caps its temporary accumulation arena at
 # SMs * 4 * block_m * 256 fp32 elements.  SM120/SM121 devices supported by
 # this path have at most 192 SMs, and block_m never exceeds 64.  Keeping this
@@ -3604,11 +3607,18 @@ class Exl3LinearMethod(LinearMethodBase):
         else:
             output = None
         if output is None:
+            # B12X W4A16 wins prefill decisively (fidelity profile PP 1504 ->
+            # 1967 when the K6 matrices use it) but loses decode to the fused
+            # exl3_gemm kernel, which also drafts better: TG-essay 93.3 vs 90.0
+            # and MTP acceptance 0.304 vs 0.281, measured on otherwise identical
+            # configs.  Both paths are trellis-exact (agreement verified by
+            # VLLM_EXL3_B12X_SELFTEST at m=4 and m=3072, cos >= 0.999999), so
+            # routing by row count is free.  0 = always prefer B12X.
             use_b12x = _b12x_trellis_k6_supported(
                 trellis,
                 has_mcg=has_mcg,
                 has_mul1=has_mul1,
-            )
+            ) and (_B12X_MIN_M == 0 or x.shape[0] >= _B12X_MIN_M)
             suh = layer.suh.exl3_tensors[shard_id]
             svh = layer.svh.exl3_tensors[shard_id]
             if (
