@@ -93,3 +93,38 @@ with FP8 KV cache.
 - **bits ∈ {3,4,5,7}**: N-bit precision but int8 container (no extra footprint
   reduction vs 8); one-time warning logged.
 - No container restart / model run performed, per constraints.
+
+## Push log — three integration fixes (2026-08-18)
+
+Three fixes found during live 256k-context integration on RTX 5090 (31.4 GB)
+were pushed to the fork branch `feature/embed-online-kquant` and summarised in
+a PR #436 comment.
+
+### Commit
+- **SHA:** `fd500ef883cc3d63c9cf84dcd59fb5c4f560fa39`
+- **Branch:** `feature/embed-online-kquant` on `malaiwah/vllm-voipmonitor`
+- **File:** `vllm/model_executor/layers/quantization/exl3.py` (+100/-23)
+- **ast.parse:** OK
+
+### Fixes
+1. **`_install_embed_online_hook()`** — wraps `VocabParallelEmbedding.__init__`
+   to swap `quant_method` post-init when `VLLM_EXL3_EMBED_ONLINE_BITS` is set.
+   Model code constructs embeddings without `quant_config`, so
+   `get_quant_method` is never consulted. Exact-type check excludes
+   `ParallelLMHead`.
+2. **Chunked encode + chunked amax (16384 rows/chunk)** — caps load-peak
+   transients at ~0.5 GiB (was 4.74 GiB fp32 amax + 4.7+1.3 GiB packing
+   intermediates → OOM).
+3. **0-row `[0, hidden]` BF16 stub `Parameter`** — keeps `layer.weight`
+   addressable for the MTP embed-sharing pre-check
+   (`llm_base_proposer.py:1573`); both sharing paths share the whole module,
+   so the draft inherits `q_weight`/`embed_scale`.
+
+### PR comment
+https://github.com/local-inference-lab/vllm/pull/436#issuecomment-5335862865
+
+### Measured results (RTX 5090, FP8 KV cache)
+- int6 embeddings freed 1.48 GiB profiled (available KV 7.41→8.89 GiB)
+- vLLM max_model_len estimate 194,208→239,904
+- Serving verified at 238,400 context: PP=6408 tok/s, TG=157.6 tok/s
+- KLD 0.0567 (512-context replay), MTP=6, vision requests working
