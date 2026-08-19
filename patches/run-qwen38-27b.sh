@@ -65,7 +65,7 @@ QUANTIZATION_CONFIG='{"linear":{"weight":"mxfp8"},"ignore":["re:.*visual\\..*","
 #                         -> 4/6 criteria. The only profile with PP >= 7000.
 #   fidelity              all-trellis.  PP 2987.7+/-4.4   TG fox 228.3+/-0.4
 #                         essay 104.1   KLD 0.003405  p99 0.03489 ctx 238,400
-#   balanced              gate_up FP6.  PP 3290.5         TG fox 203.7
+#   balanced              gate_up FP6.  PP 3923.0         TG fox 206.0
 #                         essay 96.3    KLD 0.005672  p99 0.05991 ctx 199,104
 #                         -> also 5/6, but fails ctx instead of PP: 1.7x the
 #                         prefill of `fidelity` and the best TG-essay measured
@@ -140,6 +140,9 @@ case "${PROFILE}" in
     : "${VLLM_EXL3_PREFILL_RECONSTRUCT_CACHE:=0}"
     : "${VLLM_EXL3_FOLD_FP32_BUDGET_MB:=48}"
     : "${VLLM_EXL3_B12X_MIN_M:=128}"
+    # Same cure as fidelity: K5/K4 through B12X. Measured +20.7% PP here
+    # (3250.6 -> 3923.0), fox 206.0 [acc 1.000], vision OK.
+    : "${VLLM_EXL3_B12X_ANY_BITS:=1}"
     : "${VLLM_EXL3_SKIP_TRELLIS_PREP:=0}"
     : "${GPU_MEMORY_UTILIZATION:=0.945}"
     : "${MAX_MODEL_LEN:=199104}"

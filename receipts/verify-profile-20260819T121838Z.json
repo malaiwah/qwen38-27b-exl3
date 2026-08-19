@@ -1,0 +1,139 @@
+{
+  "schema": "qwen38-profile-verify/1",
+  "timestamp": "2026-08-19T12:20:28Z",
+  "baseline_path": "tools/baseline-flagship.json",
+  "baseline_schema": "qwen38-profile-baseline/1",
+  "base_url": "http://localhost:8000",
+  "boot": false,
+  "pass": true,
+  "gpu_before": {
+    "clocks_sm": 2542.0,
+    "power_draw": 79.1,
+    "temperature_gpu": 48.0
+  },
+  "gpu_after": {
+    "clocks_sm": 2910.0,
+    "power_draw": 421.55,
+    "temperature_gpu": 69.0
+  },
+  "metrics": {
+    "pp_tok_s": {
+      "baseline": 9638.9,
+      "measured": 9389.520695449635,
+      "threshold": ">= 9157 (9638.9 * 0.95)",
+      "verdict": "PASS",
+      "description": "Prefill prompt throughput, 2051-tok prompt, max_tokens=1, temperature=0, median of 5 reps after warmup."
+    },
+    "tg_essay_tok_s": {
+      "baseline": 94.3,
+      "measured": 94.45710617988463,
+      "threshold": ">= 89.58 (94.3 * 0.95)",
+      "verdict": "PASS",
+      "description": "Decode throughput on the essay prompt, max_tokens=500, temperature=0, median of 3 reps."
+    },
+    "tg_fox_tok_s": {
+      "baseline": 187.4,
+      "measured": 186.2956632661339,
+      "threshold": ">= 178 (187.4 * 0.95)",
+      "verdict": "PASS",
+      "description": "Decode throughput on the fox prompt, max_tokens=200, temperature=0, median of 3 reps."
+    },
+    "max_model_len": {
+      "baseline": 250000,
+      "measured": 250000,
+      "threshold": ">= 250000",
+      "verdict": "PASS",
+      "description": "Served max_model_len from /v1/models; must not have shrunk below the flagship FP8-KV context."
+    },
+    "acceptance_essay": {
+      "baseline": 0.298,
+      "measured": 0.297951582867784,
+      "threshold": ">= 0.25",
+      "verdict": "PASS",
+      "description": "MTP acceptance rate on the essay prompt, differenced spec_decode_num_accepted/draft counters before vs after the TG-essay run."
+    },
+    "sanity_paris": {
+      "baseline": true,
+      "measured": true,
+      "threshold": "== true",
+      "verdict": "PASS",
+      "description": "Model answers 'The capital of France is' with text containing 'Paris'."
+    },
+    "vision_red_blue": {
+      "baseline": true,
+      "measured": true,
+      "threshold": "== true",
+      "verdict": "PASS",
+      "description": "Model identifies left=red, right=blue on a 256x128 red/blue PNG fixture."
+    },
+    "long_ctx_200k": {
+      "baseline": true,
+      "measured": true,
+      "threshold": "== true",
+      "verdict": "PASS",
+      "description": "A >200k-token prompt completes with HTTP 200 (max_tokens=1)."
+    },
+    "acceptance_fox": {
+      "baseline": 0.93,
+      "measured": 0.9301075268817204,
+      "threshold": ">= 0.79",
+      "verdict": "PASS",
+      "description": "MTP acceptance rate on the fox prompt, differenced spec_decode_num_accepted/draft counters before vs after the TG-fox run. Tracked separately from the essay figure because acceptance is strongly prompt-dependent."
+    }
+  },
+  "raw": {
+    "sanity_paris": {
+      "measured": true,
+      "raw": "Paris.\nThe capital"
+    },
+    "max_model_len": {
+      "measured": 250000
+    },
+    "vision_red_blue": {
+      "measured": true
+    },
+    "long_ctx_200k": {
+      "measured": true
+    },
+    "pp_tok_s": {
+      "measured": 9389.520695449635,
+      "all": [
+        9507.930037437105,
+        9389.139258716032,
+        9389.520695449635,
+        9398.878050635798,
+        9344.343159475873
+      ],
+      "prompt_tokens": 2051
+    },
+    "tg_fox_tok_s": {
+      "measured": 186.2956632661339,
+      "all": [
+        191.42801761351694,
+        186.2956632661339,
+        185.9689210674376
+      ],
+      "completion_tokens": 200,
+      "acceptance": 0.9301075268817204
+    },
+    "acceptance_fox": {
+      "measured": 0.9301075268817204,
+      "draft_delta": 558,
+      "accepted_delta": 519
+    },
+    "tg_essay_tok_s": {
+      "measured": 94.45710617988463,
+      "all": [
+        94.79401104413208,
+        94.45317342701725,
+        94.45710617988463
+      ],
+      "completion_tokens": 500
+    },
+    "acceptance_essay": {
+      "measured": 0.297951582867784,
+      "draft_delta": 3222,
+      "accepted_delta": 960
+    }
+  }
+}

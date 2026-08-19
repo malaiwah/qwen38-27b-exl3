@@ -1,0 +1,127 @@
+{
+  "schema": "qwen38-profile-verify/1",
+  "timestamp": "2026-08-19T07:15:06Z",
+  "baseline_path": "tools/baseline-fidelity.json",
+  "baseline_schema": "qwen38-profile-baseline/1",
+  "base_url": "http://localhost:8000",
+  "boot": false,
+  "pass": false,
+  "gpu_before": {
+    "clocks_sm": 2542.0,
+    "power_draw": 78.51,
+    "temperature_gpu": 48.0
+  },
+  "gpu_after": {
+    "clocks_sm": 2842.0,
+    "power_draw": 393.72,
+    "temperature_gpu": 67.0
+  },
+  "metrics": {
+    "pp_tok_s": {
+      "baseline": 1630.0,
+      "measured": 7449.510913442761,
+      "threshold": ">= 1548 (1630 * 0.95)",
+      "verdict": "PASS",
+      "description": "Prefill prompt throughput, 2051-tok prompt, max_tokens=1, temperature=0, median of 5 reps after warmup."
+    },
+    "tg_essay_tok_s": {
+      "baseline": 89.8,
+      "measured": 93.19641018368256,
+      "threshold": ">= 85.31 (89.8 * 0.95)",
+      "verdict": "PASS",
+      "description": "Decode throughput on the essay prompt, max_tokens=500, temperature=0, median of 3 reps."
+    },
+    "tg_fox_tok_s": {
+      "baseline": 210.2,
+      "measured": 184.89175341570123,
+      "threshold": ">= 199.7 (210.2 * 0.95)",
+      "verdict": "FAIL",
+      "description": "Decode throughput on the fox prompt, max_tokens=200, temperature=0, median of 3 reps."
+    },
+    "max_model_len": {
+      "baseline": 238400,
+      "measured": 250000,
+      "threshold": ">= 238400",
+      "verdict": "PASS",
+      "description": "Served max_model_len from /v1/models; must not have shrunk below the flagship FP8-KV context."
+    },
+    "acceptance_essay": {
+      "baseline": 0.281,
+      "measured": 0.297951582867784,
+      "threshold": ">= 0.25",
+      "verdict": "PASS",
+      "description": "MTP acceptance rate on the essay prompt, differenced spec_decode_num_accepted/draft counters before vs after the TG-essay run."
+    },
+    "sanity_paris": {
+      "baseline": true,
+      "measured": true,
+      "threshold": "== true",
+      "verdict": "PASS",
+      "description": "Model answers 'The capital of France is' with text containing 'Paris'."
+    },
+    "vision_red_blue": {
+      "baseline": true,
+      "measured": true,
+      "threshold": "== true",
+      "verdict": "PASS",
+      "description": "Model identifies left=red, right=blue on a 256x128 red/blue PNG fixture."
+    },
+    "long_ctx_200k": {
+      "baseline": true,
+      "measured": true,
+      "threshold": "== true",
+      "verdict": "PASS",
+      "description": "A >200k-token prompt completes with HTTP 200 (max_tokens=1)."
+    }
+  },
+  "raw": {
+    "sanity_paris": {
+      "measured": true,
+      "raw": "Paris.\nThe capital"
+    },
+    "max_model_len": {
+      "measured": 250000
+    },
+    "vision_red_blue": {
+      "measured": true
+    },
+    "long_ctx_200k": {
+      "measured": true
+    },
+    "pp_tok_s": {
+      "measured": 7449.510913442761,
+      "all": [
+        7413.305682261647,
+        7559.861461115958,
+        7354.43821382435,
+        7449.510913442761,
+        7654.061069534246
+      ],
+      "prompt_tokens": 2051
+    },
+    "tg_fox_tok_s": {
+      "measured": 184.89175341570123,
+      "all": [
+        189.91179738630947,
+        184.6089720407502,
+        184.89175341570123
+      ],
+      "completion_tokens": 200,
+      "acceptance": 0.9301075268817204
+    },
+    "tg_essay_tok_s": {
+      "measured": 93.19641018368256,
+      "all": [
+        93.66851601976225,
+        93.19641018368256,
+        93.18393280841222
+      ],
+      "completion_tokens": 500
+    },
+    "acceptance_essay": {
+      "measured": 0.297951582867784,
+      "draft_delta": 3222,
+      "accepted_delta": 960
+    }
+  }
+}
