@@ -81,3 +81,51 @@ The p99 values track the means (all-FP4 0.7010, gate_up+down 0.4700,
 balanced 0.638, all-FP6 0.111, trellis 0.0275), so the tail criterion
 (p99 <= 0.15) fails and passes together with the mean criterion. Only all-FP6
 (0.111) and trellis (0.0275) satisfy it.
+
+
+## CORRECTION (same day): the floor was measured, and the numbers shift
+
+Everything above used a *derived* floor of 0.00468 (trellis 0.0027 published +
+an inferred 0.0020 for int6 embeddings). The floor has since been **measured
+directly**: the all-trellis profile with int6 embeddings gives
+**0.003412** (ci95 0.003171-0.003680, p99 0.03488, 512 contexts,
+`/tmp/kld-data/reports/report-alltrellis-int6emb.json`). So int6 embeddings cost
+only ~0.0007, not 0.0020, and every per-group contribution must be restated:
+
+| group | contribution (measured floor) | share of quant error | was |
+|---|---|---|---|
+| `mlp.gate_up_proj` | 0.025463 | 42.2% | 0.0242 / 38% |
+| `linear_attn.` (GDN) | 0.016423 | 27.2% | 0.0152 / 24% |
+| `mlp.down_proj` | 0.013970 | 23.1% | 0.0127 / 20% |
+| `self_attn` | **0.004491** | **7.4%** | 0.0070 / 11% |
+| floor | 0.003412 | — | 0.00468 |
+| **sum** | **0.063759** | vs 0.063759 measured | — |
+
+The model still validates against the held-out run: predicted
+`0.003412 + 0.025463 + 0.013970 = 0.042845` vs **0.042044 measured**, error
+**-1.9%** (was +1.1% with the derived floor). Both are inside the CI, so
+additivity holds either way; the corrected floor simply makes the split exact
+(sum matches all-FP4 to 6 decimal places by construction of self_attn).
+
+### What changes materially
+
+The budget after the measured floor is `0.012 - 0.003412 = 0.008588`, and
+**`self_attn` in FP4 now fits it** (0.004491):
+
+| FP4 on | cost | verdict |
+|---|---|---|
+| `self_attn` only | 0.004491 | **fits** -> predicted total 0.007903 |
+| `down_proj` | 0.013970 | exceeds |
+| GDN | 0.016423 | exceeds |
+| `gate_up_proj` | 0.025463 | exceeds |
+
+So the earlier statement "the smallest single FP4 group already exceeds the
+budget" was an artifact of the inflated floor. The corrected statement is:
+**only `self_attn` (7% of parameters) can be FP4 within the KLD budget.** That
+does not rescue criterion 1, because PP needs the MLP (63% of parameters)
+resident in a GEMM-ready format, and MLP in FP4 costs 0.039433 -- 4.6x the whole
+budget. Measured confirmation: the all-trellis profile, whose MLP is decoded per
+chunk, runs PP 1080.6 +/- 2.2.
+
+The conclusion of this receipt is therefore unchanged, and now rests on a
+measured rather than a derived floor.

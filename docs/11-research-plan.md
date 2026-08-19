@@ -153,3 +153,83 @@ bytes.
 - Unvalidated b12x tile paths (the 16-row FP4 tile) carry silent-NaN risk;
   any such work must be gated on bit-comparison, never on "it ran".
 - 4-bit KV may cost more KLD at long context than the context is worth.
+
+---
+
+# STATUS PASS — 2026-08-19 (read this before acting on anything above)
+
+This plan was written before the stack was profiled. Several of its central
+predictions were **disproven by measurement**, so the sections above are kept
+for provenance but are **not** a current work list. Outcome of every item:
+
+## Phase 0 — instrumentation: DONE
+- `tools/bench_lib.py`, `tools/bench-profile.sh` (n>=3 boots, CI), 
+  `tools/verify-profile.sh` + `tools/baseline-flagship.json` /
+  `tools/baseline-fidelity.json`, `tools/boot-cfg.sh` (asserts effective config),
+  `tools/stress-gate.py`, `tools/prefill-ladder.py`, `tools/kernel-bakeoff.py`,
+  `tools/shape-inventory.py`, `tools/kld-run*.sh`. Both gates run and exit 0
+  (`receipts/verify-throughput-2026-08-19.json`, `verify-fidelity-2026-08-19.json`).
+- Profiling done with the torch profiler AND nsys:
+  `receipts/prefill-profile-2026-08-19.md`, `receipts/nsys-utilization-2026-08-19.md`,
+  `receipts/traces/`. `receipts/memory-ledger.md` tracks 12 unaccounted-memory items.
+
+## Section 1 — "the big swing: fused reconstruct -> UE8M0-FP8": REFUTED
+The headline prediction (PP 6-9k, KLD 0.006-0.010, one weight copy) does not
+hold. Gate 1.1 measured the post-processing at **32%** of per-call cost, not the
+>60% required to proceed, and `tools/kernel-bakeoff.py` then bounded every
+decode-per-chunk variant at M=2051: fused `exl3_gemm` 1081 (measured in
+production), fused reconstruct+UE8M0 fp8dg **~2958**, cached fp8dg 9301,
+resident FP4 12452. The 6-9k figure assumed 8192-token chunks (est. 6209 at
+M=8192), which the 2051-token benchmark prompt cannot fill. Killed by a
+20-minute gate instead of 2-4 days of CUDA work. See
+`receipts/banded-head-conversion-2026-08-18.md` and `frontier-2026-08-19.md`.
+
+## Section 2 — decode/TG levers: PARTLY DONE, two items retired
+- **2.1 draft-loop CUDA graph: DONE, +32% TG** — but not by writing a graph. nsys
+  showed the MTP draft phase was 88% of every decode step and running eager
+  because `speculator.capture` exists only in the V2 model runner. Enabling
+  `VLLM_USE_V2_MODEL_RUNNER=1` plus two 7-line zero-depth fixes
+  (`patches/autoregressive_speculator_patch.py`,
+  `patches/spec_decode_utils_patch.py`) got TG essay 70.9->93.5, fox 141.9->185.6.
+  `receipts/tg-v2-runner-2026-08-19.md`.
+- **2.2 draft-vocab pruning / 2.3 FP8 draft head: RETIRED** — decode GPU sits at
+  **2% utilisation**, so cutting decode GPU bytes buys nothing.
+- **b12x #234 (16-row skinny-M FP4 tile): DE-PRIORITISED** for the same reason.
+
+## Section 3 — prefill/PP levers: DONE, and the premise was wrong
+Prefill is **92% GPU-utilised**, not launch-bound. That retroactively explains
+three null results (usage telemetry off: no effect; fold launches 2880->448: no
+effect; removing the fold: -10%). PP moved 6413 -> **7665.6 +/- 20.4** by making
+kernels cheaper (all-FP4, which also deleted the pathological per-call
+reconstruct+fold path), not by overhead engineering.
+
+## Section 4 — memory/context: DONE, better than planned
+`max_num_batched_tokens 8192 -> 3072` was a **correctness** fix (the shipped
+config took an engine-fatal OOM on any prompt >~4k tokens) and it *freed*
+0.93 GiB of KV, taking context 238,400 -> **262,144** on the throughput profile.
+4-bit KV was not needed. `receipts/robustness-context-2026-08-19.md`.
+
+## Section 5 — KLD: CLOSED WITH A PROOF
+Additivity validated against a held-out prediction (-1.9%). Measured floor
+0.003412. Only `self_attn` (7% of params) can be FP4 within the 0.012 budget, so
+PP's requirement (MLP resident in a GEMM-ready format) and the KLD budget are
+mutually exclusive on 31.4 GiB. Layer-wise sweep de-scoped as the arithmetic
+answers it. `receipts/kld-axis-conclusion-2026-08-19.md`.
+
+## Section 6 — upstream: DONE
+Filed `vllm-project/vllm#52871` (forward-pass OOM kills the EngineCore) and
+`#52872` (hybrid profiled peak activation under-predicts; `mnbt` also sizes the
+CUDA-graph pool). Opened `local-inference-lab/vllm#439` (1 file, +13 lines,
+DCO-signed, ruff-clean) after closing my own #438, which I had branched from the
+wrong base (3035-file diff), and #437 as superseded. b12x #232/#233/#234 carry
+our measurements.
+
+## Net result: two measured profiles, 5/6 and 4/6
+
+`PROFILE=fidelity` reaches **5 of 6** criteria (KLD 0.003412, p99 0.03488,
+TG 205.1/91.8, ctx 238,400 + 200k prompt OK, vision OK) and fails only
+PP (1058). `PROFILE=throughput` reaches 4 of 6 and is the only profile with
+PP >= 7000. No single profile reaches 6/6, and `receipts/frontier-2026-08-19.md`
+proves why from three directions. The remaining blocker is memory, not kernel
+quality: trellis-grade fidelity in a GEMM-resident format does not fit in
+31.4 GiB.
