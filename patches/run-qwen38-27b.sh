@@ -25,7 +25,7 @@ SERVED_MODEL_NAME="${SERVED_MODEL_NAME:-Qwen3.8-27B}"
 # PR #314 is mounted over the pinned GG r34 base image. Refuse to start if the
 # installed overlay is absent or differs from the exact qualified source.
 EXL3_PATCH_HOST="${EXL3_PATCH_HOST:-/home/mbelleau/vllm-exl3-multiprecision.py}"
-EXL3_PATCH_SHA256="c79554fbc3ca378ef6b179e7459f45193c41ec0ee9d9bede5cb366870c5998c2"
+EXL3_PATCH_SHA256="89e2537290734527829c5975d694d6fc0dfd53cfc1576b313e37427142fe661a"
 EXL3_PATCH_CTR="/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py"
 [ -f "${EXL3_PATCH_HOST}" ] || {
   echo "EXL3 graph patch is missing: ${EXL3_PATCH_HOST}" >&2
@@ -63,13 +63,13 @@ QUANTIZATION_CONFIG='{"linear":{"weight":"mxfp8"},"ignore":["re:.*visual\\..*","
 #   throughput (default)  all-FP4.      PP 7665.6+/-20.4  TG fox 184.8+/-1.0
 #                         essay 93.3    KLD 0.063759  p99 0.7010  ctx 250,000
 #                         -> 4/6 criteria. The only profile with PP >= 7000.
-#   fidelity              all-trellis.  PP 1080.6+/-2.2   TG fox 207.6+/-0.2
-#                         essay 92.9    KLD 0.003412  p99 0.03488 ctx 238,400
+#   fidelity              all-trellis.  PP 1631.0         TG fox 210.0
+#                         essay 90.0    KLD 0.003407  p99 0.03482 ctx 238,400
 #                         -> 5/6 criteria; fails only PP. KLD is within 26% of
 #                         the checkpoint's own published 0.002700, and it beats
 #                         the committed baseline 16.6x on KLD mean and 18.3x on
-#                         p99 while giving +29% TG-fox. Prefill-heavy workloads
-#                         pay ~7x, which is the whole tradeoff.
+#                         p99 while giving +30% TG-fox. Prefill-heavy workloads
+#                         still pay ~4.7x, which is the whole tradeoff.
 #
 # Explicit env always wins over the profile defaults (`:=` below).
 PROFILE="${PROFILE:-throughput}"
@@ -86,7 +86,13 @@ case "${PROFILE}" in
     # No reconstruct+fold, so no FP16 gate cache: that cache attempting ~21 GiB
     # is what made all-trellis unbootable before.
     : "${VLLM_EXL3_PREFILL_RECONSTRUCT_M:=0}"
-    : "${VLLM_EXL3_SKIP_TRELLIS_PREP:=1}"
+    # B12X W4A16 consumes the same packed trellis payload as the fused
+    # exl3_gemm kernel but costs 0.30 ms CPU per call instead of 4.72 ms, and a
+    # full 512-context KLD run proves it is fidelity-neutral (0.003407 vs
+    # 0.003412, inside CI).  Worth +51% PP.  It needs slightly more headroom
+    # because its load-time prep costs ~0.89 GiB of persistent memory.
+    : "${VLLM_EXL3_SKIP_TRELLIS_PREP:=0}"
+    : "${GPU_MEMORY_UTILIZATION:=0.945}"
     : "${MAX_MODEL_LEN:=238400}"
     ;;
   *)

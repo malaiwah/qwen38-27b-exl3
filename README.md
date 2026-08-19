@@ -59,17 +59,17 @@ KLD is 512 contexts of shard-0000 against the BF16 reference.
 | | `PROFILE=throughput` | `PROFILE=fidelity` |
 |---|---|---|
 | weights | all-FP4 | all-trellis (K5K6 as shipped) |
-| PP, 2051-tok | **7665.6 ± 20.4** tok/s | 1080.6 ± 2.2 tok/s |
-| TG fox / essay | 184.8 ± 1.0 / 93.3 ± 0.0 | **207.6 ± 0.2** / 92.9 ± 0.1 |
-| KLD mean | 0.063759 | **0.003412** [0.003171, 0.003680] |
-| KLD p99 | 0.7010 | **0.03488** |
+| PP, 2051-tok | **7665.6 ± 20.4** tok/s | 1630.0 ± 3.6 tok/s |
+| TG fox / essay | 184.8 ± 1.0 / 93.3 ± 0.0 | **210.2 ± 0.2** / 89.8 ± 0.1 |
+| KLD mean | 0.063759 | **0.003407** [0.003167, 0.003673] |
+| KLD p99 | 0.7010 | **0.034823** |
 | max context | **250,000** | 238,400 |
 | vision + MTP | pass | pass |
 
-`fidelity` serves the checkpoint at **KLD 0.003412 — within 26% of this
-collection's own published trellis fidelity (0.002700)** — with TG 207.6 tok/s
+`fidelity` serves the checkpoint at **KLD 0.003407 — within 26% of this
+collection's own published trellis fidelity (0.002700)** — with TG 210.2 tok/s
 and full 238,400 context; the residual over the checkpoint is the int6 embedding
-table (~0.0007), not any GEMM approximation. It costs ~7x prefill.
+table (~0.0007), not any GEMM approximation. It costs ~4.7x prefill.
 `throughput` is the only profile above 7000 tok/s prefill.
 
 No single profile reaches every target simultaneously, and

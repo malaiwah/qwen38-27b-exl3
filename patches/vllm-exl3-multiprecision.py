@@ -1594,6 +1594,59 @@ def _b12x_trellis_c_tmp_elements(
     return min(columns * padded_rows, _B12X_TRELLIS_C_TMP_CAP)
 
 
+_B12X_C_TMP_SHARED: dict = {}
+# Rows at or below this use the per-shape buffer cache: decode (including the
+# MTP draft loop) is CUDA-graph captured and must be allocation free.  Prefill
+# chunks are far larger and are not graphed.
+_B12X_TRELLIS_BUF_CACHE_MAX_ROWS = 128
+
+
+def _b12x_trellis_c_tmp_shared(device: torch.device) -> torch.Tensor:
+    """Return the one scratch accumulator shared by every B12X matrix.
+
+    ``packed_gemm_scratch_elements`` returns
+    ``min(size_n * route_slots, sms * 4 * moe_block_size * 256)``, and on this
+    card the right-hand cap binds for every matrix in the checkpoint, so the
+    requirement is *shape independent*: one buffer at the cap (~11.1M fp32
+    elements, 42.5 MiB on 170 SMs) satisfies the largest legal request.  c_tmp
+    is a transient GEMM accumulator, so sharing it across matrices is safe -
+    calls inside a forward pass are serialised on one stream.
+
+    Sizing it per (m, k, n, bits) shape - which is what the buffer cache below
+    used to do - pays that 42.5 MiB once per *distinct shape*.  Across 409
+    matrices with a 3072-row prefill chunk that reached tens of GiB and OOM'd
+    the engine on the first real prefill, which is why B12X prep looked
+    unusable for prefill.
+
+    Allocated once and never grown, so a pointer captured into a CUDA graph
+    stays valid for the process lifetime.
+    """
+
+    idx = -1 if device.index is None else int(device.index)
+    buf = _B12X_C_TMP_SHARED.get(idx)
+    if buf is not None:
+        return buf
+    need = _B12X_TRELLIS_C_TMP_CAP
+    try:
+        from b12x.moe._shared.kernels.w4a16.host import (
+            _W4A16_ALLOWED_ROUTED_SIZES,
+        )
+
+        sms = int(torch.cuda.get_device_properties(device).multi_processor_count)
+        need = min(
+            need,
+            max(
+                sms * 4 * int(block) * 256 * (2 if int(block) == 8 else 1)
+                for block in _W4A16_ALLOWED_ROUTED_SIZES
+            ),
+        )
+    except Exception:
+        pass
+    buf = torch.empty((int(need),), dtype=torch.float32, device=device)
+    _B12X_C_TMP_SHARED[idx] = buf
+    return buf
+
+
 @torch.library.custom_op(
     "vllm::b12x_trellis_linear_out",
     mutates_args=("output", "gemm_output", "c_tmp", "rotated_f16"),
@@ -1647,21 +1700,23 @@ def _b12x_trellis_linear(
     m = x.shape[0]
     n = trellis.shape[1] * 16
     bits = int(trellis.shape[2]) // 16
-    key = (x.shape[0], x.shape[1], n, bits, x.dtype, x.device.index)
-    if not hasattr(_b12x_trellis_linear, '_buf_cache'):
-        _b12x_trellis_linear._buf_cache = {}  # type: ignore[attr-defined]
-    buf = _b12x_trellis_linear._buf_cache.get(key)  # type: ignore[attr-defined]
-    if buf is None:
+    c_tmp = _b12x_trellis_c_tmp_shared(x.device)
+    if m <= _B12X_TRELLIS_BUF_CACHE_MAX_ROWS:
+        key = (x.shape[0], x.shape[1], n, bits, x.dtype, x.device.index)
+        if not hasattr(_b12x_trellis_linear, '_buf_cache'):
+            _b12x_trellis_linear._buf_cache = {}  # type: ignore[attr-defined]
+        buf = _b12x_trellis_linear._buf_cache.get(key)  # type: ignore[attr-defined]
+        if buf is None:
+            output = torch.empty(m, n, dtype=x.dtype, device=x.device)
+            buf = (output, torch.empty_like(output), torch.empty_like(x))
+            _b12x_trellis_linear._buf_cache[key] = buf  # type: ignore[attr-defined]
+        output, gemm_output, rotated_f16 = buf
+    else:
+        # Prefill: let the caching allocator recycle these.  Retaining one
+        # m x n pair per distinct chunk shape is what exhausted the GPU.
         output = torch.empty(m, n, dtype=x.dtype, device=x.device)
         gemm_output = torch.empty_like(output)
-        c_tmp = torch.empty(
-            (_b12x_trellis_c_tmp_elements(m, n, bits=bits),),
-            dtype=torch.float32, device=x.device,
-        )
         rotated_f16 = torch.empty_like(x)
-        buf = (output, gemm_output, c_tmp, rotated_f16)
-        _b12x_trellis_linear._buf_cache[key] = buf  # type: ignore[attr-defined]
-    output, gemm_output, c_tmp, rotated_f16 = buf
     _b12x_trellis_linear_out(
         x, trellis, suh, svh,
         output, gemm_output, c_tmp, rotated_f16,

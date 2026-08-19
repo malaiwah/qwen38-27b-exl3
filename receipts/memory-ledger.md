@@ -124,3 +124,42 @@ Same config, only `VLLM_USE_V2_MODEL_RUNNER` differing: available KV cache
 per-phase workspaces, the speculator's own captured graphs and static buffers).
 Note its first failure mode is a *clean* KV-sizing ValueError with a suggested
 max length, not an OOM, so it is easy to mistake for an incompatibility.
+
+## L13 — our B12X buffer cache paid a shape-independent 42.5 MiB *per shape*
+
+**Found:** 2026-08-19, while asking why `PROFILE=fidelity` disabled B12X.
+
+`_b12x_trellis_linear` cached `(output, gemm_output, c_tmp, rotated_f16)` under
+`key = (m, k, n, bits, dtype, device)`. B12X sizes the `c_tmp` accumulator as
+`min(size_n * route_slots, sms * 4 * moe_block_size * 256)`
+(`b12x/moe/_shared/kernels/w4a16/host.py:254`) and on a 170-SM card the
+**right-hand cap binds for every matrix in this checkpoint** — 11,141,120 fp32
+elements = **42.5 MiB, independent of shape**. Retaining that per distinct shape,
+across 409 matrices and several distinct `n`, plus two `m × n` tensors and one
+`m × k` tensor per shape, reached tens of GiB and OOM'd the engine on the first
+real prefill (31.27 of 31.40 GiB in use, dying 134 MiB short).
+
+**Fix:** one shared, never-grown `c_tmp` per device sized at the cap
+(`_b12x_trellis_c_tmp_shared`, safe because it is a transient accumulator and
+calls serialise on one stream; never grown so CUDA-graph-captured pointers stay
+valid), and per-shape retention only for `m <= 128` where CUDA graphs require
+allocation-free buffers. Prefill buffers now go through the caching allocator.
+
+**Worth:** +0.83 GiB of KV at equal utilisation (9.16 → 9.99 GiB at util 0.967)
+and it unblocked B12X on the fidelity profile for **+50.8% PP** at fidelity
+parity. `receipts/b12x-shared-scratch-2026-08-19.md`.
+
+**Ledger lesson:** a per-shape cache is only cheap if the cached size *scales
+with* the shape. Here the dominant term was a constant, so the cache multiplied
+a fixed cost by the number of shapes. Worth auditing any other shape-keyed cache
+in the patch for the same mistake.
+
+## L14 — B12X load-time prep costs ~0.89 GiB of persistent memory
+
+Separate from L13, and it partially rehabilitates the retraction in **L9**.
+With `SKIP_TRELLIS_PREP=0`, `Available KV cache memory` drops **8.89 → 8.00 GiB**
+at identical utilisation, while the reported model-weights figure stays
+18.83 GiB. So B12X prep does **not** copy the trellis payload (L9's retraction
+was right about that) but it is **not free** either (the original L9 suspicion
+was not entirely wrong). The fidelity profile therefore runs at util 0.945 rather
+than 0.93. Still unattributed: which prep allocation holds the 0.89 GiB.

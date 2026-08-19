@@ -1296,3 +1296,16 @@ returning `content: null`; `long_ctx_check` overshot the target by 20% and so
 reported a false capability gap on the 238,400 profile); and closed my own PR
 #438 after branching it from the wrong base (3035-file diff), replaced by #439.
 `receipts/peer-review-2026-08-18.md`, `receipts/memory-ledger.md` (12 items).
+
+**+51% prefill on the fidelity profile, at fidelity parity.** The profile had
+B12X disabled, which was inherited from a debugging session rather than chosen.
+Turning it on OOM'd the engine on the first real prefill — root cause was in our
+own patch: a buffer cache keyed by `(m, k, n, bits)` paid B12X's *shape
+independent* 42.5 MiB scratch once per distinct shape (`min(size_n *
+route_slots, sms*4*block*256)` — the cap binds for every matrix here), which
+across 409 matrices reached tens of GiB. One shared, never-grown accumulator
+plus per-shape retention only for graph-captured decode rows fixed it: PP
+1080.6 ± 2.2 → **1630.0 ± 3.6** (+50.8%), TG fox 207.6 → 210.2, and a full
+512-context KLD run confirms parity (0.003412 → **0.003407**, −0.16%, inside CI;
+p99 0.034886 → 0.034823). Also worth +0.83 GiB of KV. Both profiles re-gated
+8/8. `receipts/b12x-shared-scratch-2026-08-19.md`, ledger L13/L14.
