@@ -92,6 +92,13 @@ case "${PROFILE}" in
     : "${VLLM_EXL3_PREFILL_RECONSTRUCT_M:=1}"
     : "${VLLM_EXL3_PREFILL_RECONSTRUCT_MAX_MB:=512}"
     : "${VLLM_EXL3_PREFILL_RECONSTRUCT_CACHE:=0}"
+    # The fold is now on the per-chunk hot path, so its FP32 chunk size is a
+    # throughput knob.  Measured curve (PP, 2051-tok bench): 24->1955, 32->1960,
+    # 48->1964, 64->1865, 96->1858, 192->1790, 384->1711 - a sharp cliff between
+    # 48 and 64.  48 MB is the peak, +5.7% over the 96 MB default.  The fold
+    # operates on independent 128x128 blocks so every budget is bit-identical
+    # (verified: max_abs_diff 0.000e+00), making this a free win.
+    : "${VLLM_EXL3_FOLD_FP32_BUDGET_MB:=48}"
     # B12X W4A16 consumes the same packed trellis payload as the fused
     # exl3_gemm kernel but costs 0.30 ms CPU per call instead of 4.72 ms, and a
     # full 512-context KLD run proves it is fidelity-neutral (0.003407 vs
