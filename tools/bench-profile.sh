@@ -154,8 +154,14 @@ run_one_boot() {
     stop_service
     say "Boot ${boot_idx}/${BOOTS}: launching..."
 
-    local launch_rc=0
+    # Time the launcher itself. bench_lib.wait_healthy() cannot measure boot:
+    # run-qwen38-27b.sh already blocks until /health is green before it
+    # returns, so wait_healthy() afterwards always saw an up server and
+    # reported ~0.0s (the "Boot time: 0.0+/-0.0s" bug).
+    local launch_t0 launch_rc=0
+    launch_t0=$(date +%s.%N)
     start_with_env || launch_rc=$?
+    BOOT_WALL_SECONDS=$(awk -v a="$launch_t0" -v b="$(date +%s.%N)" 'BEGIN{printf "%.2f", b-a}')
 
     if [[ $launch_rc -ne 0 ]]; then
         say "Boot ${boot_idx}: launcher exited ${launch_rc}"
@@ -179,8 +185,10 @@ boot_idx = ${boot_idx}
 result = {'boot_index': boot_idx, 'status': 'ok'}
 
 try:
-    boot_seconds = bench_lib.wait_healthy(timeout_s=600)
-    result['boot_seconds'] = round(boot_seconds, 2)
+    # Confirm health (cheap here, the launcher already waited) and report the
+    # launcher's own wall time as boot_seconds.
+    bench_lib.wait_healthy(timeout_s=600)
+    result['boot_seconds'] = float('${BOOT_WALL_SECONDS:-0}')
     result['gpu_telemetry_boot'] = bench_lib.gpu_telemetry()
 
     try:

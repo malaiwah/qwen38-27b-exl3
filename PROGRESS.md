@@ -1244,3 +1244,55 @@ b12x/trellis kernels. The three goals are in fundamental tension:
    (requires dequantizing 4-bit weights in-register while feeding BF16 MMA,
     essentially a Marlin-style kernel for trellis codes on SM120)
 3. Accept that PP≥10k and KLD parity are mutually exclusive on this hardware
+
+## 2026-08-19
+
+**Serving work on one RTX 5090.** Two measured profiles now exist, selected by
+`PROFILE=` in `patches/run-qwen38-27b.sh`; both pass `tools/verify-profile.sh`
+(exit 0, 8/8 checks each, including a 200k-token prompt). Numbers are the
+`tools/bench-profile.sh` harness at n=3 boots; KLD is 512 contexts, shard-0000.
+
+| | `throughput` (all-FP4) | `fidelity` (all-trellis) |
+|---|---|---|
+| PP, 2051-tok | **7665.6 ± 20.4** | 1080.6 ± 2.2 |
+| TG fox / essay | 184.8 ± 1.0 / 93.3 ± 0.0 | **207.6 ± 0.2** / 92.9 ± 0.1 |
+| KLD mean / p99 | 0.063759 / 0.7010 | **0.003412** / **0.03488** |
+| max context | 250,000 | 238,400 |
+
+**Fixed an engine-fatal bug: the shipped config could not serve a prompt over
+~4k tokens.** 4001 tokens was fine, 6000 killed the EngineCore with a CUDA OOM
+inside the GDN linear-attention prefill. Every prior benchmark prompt was
+≤2561 tokens, so the advertised 238,400 context had never been exercised.
+`max_num_batched_tokens` 8192 → 3072 bounds the peak *and* shrinks the
+CUDA-graph pool, together freeing 0.93 GiB of KV — which bought full native
+262,144 context on the throughput profile at unchanged PP. Verified to
+200,001 tokens. `receipts/robustness-context-2026-08-19.md`.
+
+**+32% decode throughput.** nsys showed a decode step doing 7.0 ms of GPU work
+in 344.8 ms of wall (2% utilisation), with 88% of the step in an MTP draft loop
+that was running fully eager — the speculator's CUDA graphs are only captured by
+the V2 model runner. Enabling it plus two 7-line zero-depth fixes took TG essay
+70.9 → 93.3 and fox 141.9 → 184.8. `receipts/tg-v2-runner-2026-08-19.md`,
+filed as local-inference-lab/vllm#440.
+
+**First profile of this stack** (nobody had traced it): prefill is **92%
+GPU-bound**, not launch-bound, which retroactively explained three null results
+and redirected the work to making kernels cheaper.
+`receipts/nsys-utilization-2026-08-19.md`, `receipts/prefill-profile-2026-08-19.md`.
+
+**KLD closed with a proof.** Additive attribution validated against a held-out
+prediction (−1.9%): with the measured floor of 0.003412, contributions are
+gate_up 0.025463, GDN 0.016423, down 0.013970, self_attn 0.004491. Only
+`self_attn` (7% of parameters) fits the 0.008588 post-floor budget, so
+prefill-grade throughput and trellis-grade fidelity are mutually exclusive on
+31.4 GiB. `receipts/kld-axis-conclusion-2026-08-19.md`,
+`receipts/frontier-2026-08-19.md`.
+
+**Self-corrections worth recording:** retracted a circular additivity claim and
+an inflated non-torch memory estimate (vLLM reports 0.30 GiB, not 1.29);
+retracted ledger L9 after proving b12x's prep really is zero-copy; found and
+fixed two bugs in my own harness (`vision_check` failed on a reasoning model
+returning `content: null`; `long_ctx_check` overshot the target by 20% and so
+reported a false capability gap on the 238,400 profile); and closed my own PR
+#438 after branching it from the wrong base (3035-file diff), replaced by #439.
+`receipts/peer-review-2026-08-18.md`, `receipts/memory-ledger.md` (12 items).

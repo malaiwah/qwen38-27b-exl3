@@ -48,6 +48,45 @@
 > replaces it is [docs/27](docs/27-graph-decode-drift-control.md). Open items are tracked in
 > [docs/29](docs/29-plan-and-loose-ends.md).
 
+## Serving on one RTX 5090 (measured 2026-08-19)
+
+Two profiles, selected by `PROFILE=` in
+[`patches/run-qwen38-27b.sh`](patches/run-qwen38-27b.sh). Both pass
+`tools/verify-profile.sh` (exit 0, 8/8 checks each, including a 200k-token
+prompt). PP/TG are the `tools/bench-profile.sh` harness at **n=3 boots**;
+KLD is 512 contexts of shard-0000 against the BF16 reference.
+
+| | `PROFILE=throughput` | `PROFILE=fidelity` |
+|---|---|---|
+| weights | all-FP4 | all-trellis (K5K6 as shipped) |
+| PP, 2051-tok | **7665.6 ± 20.4** tok/s | 1080.6 ± 2.2 tok/s |
+| TG fox / essay | 184.8 ± 1.0 / 93.3 ± 0.0 | **207.6 ± 0.2** / 92.9 ± 0.1 |
+| KLD mean | 0.063759 | **0.003412** [0.003171, 0.003680] |
+| KLD p99 | 0.7010 | **0.03488** |
+| max context | **250,000** | 238,400 |
+| vision + MTP | pass | pass |
+
+`fidelity` serves the checkpoint at **KLD 0.003412 — within 26% of this
+collection's own published trellis fidelity (0.002700)** — with TG 207.6 tok/s
+and full 238,400 context; the residual over the checkpoint is the int6 embedding
+table (~0.0007), not any GEMM approximation. It costs ~7x prefill.
+`throughput` is the only profile above 7000 tok/s prefill.
+
+No single profile reaches every target simultaneously, and
+[`receipts/frontier-2026-08-19.md`](receipts/frontier-2026-08-19.md) proves why
+from three directions: prefill-grade throughput needs the MLP resident in a
+GEMM-ready format, trellis-grade fidelity needs weights that are decoded per
+prefill chunk, and GEMM-resident FP8 for all 24.3e9 quantized parameters is
+22.6 GiB — which cannot coexist with a 238,400-token KV cache in 31.4 GiB. The
+blocker is memory, not kernel quality.
+
+Fixes landed while getting here, with receipts: an **engine-fatal OOM on any
+prompt over ~4k tokens** (`max_num_batched_tokens` 8192 → 3072, which also
+*freed* 0.93 GiB of KV), **+32% TG** by discovering the MTP draft loop ran eager
+on the V1 model runner, and the first profile of this stack (prefill is 92%
+GPU-bound; decode was 2%). Upstream: vllm-project/vllm#52871, #52872,
+local-inference-lab/vllm#439, #440, b12x #232/#233/#234.
+
 # Qwen3.8-27B EXL3 mixed-precision quants (`K4`, `EXL3-K5K6`)
 
 Research materials and progress log for building a dense EXL3 quant of
