@@ -1309,3 +1309,18 @@ plus per-shape retention only for graph-captured decode rows fixed it: PP
 512-context KLD run confirms parity (0.003412 → **0.003407**, −0.16%, inside CI;
 p99 0.034886 → 0.034823). Also worth +0.83 GiB of KV. Both profiles re-gated
 8/8. `receipts/b12x-shared-scratch-2026-08-19.md`, ledger L13/L14.
+
+**ParoQuant assessed and filed.** Investigated [`z-lab/Qwen3.8-27B-PARO`](https://huggingface.co/z-lab/Qwen3.8-27B-PARO)
+(Pairwise Rotation Quantization, [arXiv:2511.10645](https://arxiv.org/abs/2511.10645),
+ICLR 2026; code [`github.com/z-lab/paroquant`](https://github.com/z-lab/paroquant)).
+It is a pre-quantization transform — K=8 learned Givens rotations per 128-channel
+group plus channel scaling before INT4 — not a storage format. Verdict (c): the
+transform is orthogonal to EXL3 and worth trialling as a pre-step (its learned
+rotation could replace our fixed Hadamard and push KLD below 0.002700), but the
+checkpoint is not a comparator — it is INT4-linear (AWQ-Marlin), its card reports no
+quality metrics, and the paper's PPL/accuracy protocol on Qwen3-8B is not comparable
+to our v5 KLD suite. It needs vLLM 0.19.1, not our r34 fork, but fits 31.4 GiB
+(~16.6 GiB lang-only weights) at 262k context. Full analysis in
+`receipts/paro-comparison-2026-08-19.md`; citable summary in
+[docs/14-paro-assessment.md](docs/14-paro-assessment.md); feasibility study in
+progress at [docs/13-learned-rotations-feasibility.md](docs/13-learned-rotations-feasibility.md).
