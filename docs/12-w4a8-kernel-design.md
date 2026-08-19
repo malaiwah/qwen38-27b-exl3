@@ -392,25 +392,102 @@ based on the `w4a8_phase2` MoE kernel, adapted for dense GEMM:
 - **Epilogue:** BF16 store, no alpha (UE8M0 scales are absolute)
 - **K-iteration:** loop over `K/128` K-tiles, double-buffered
 
-### Compile/verify cycle plan (8 cycles)
+## Compile/verify plan (8 cycles max)
 
-| Cycle | Goal |
-|---|---|
-| 1 | Import + JIT compile on tiny shape (M=64, N=128, K=128) |
-| 2 | Correctness on tiny shape: random data, cos ≥ 0.999 |
-| 3 | Correctness on real shape (5120×17408): random data |
-| 4 | Correctness on real shape (17408×5120): random data |
-| 5 | Correctness on (5120×12288) and (5120×1024) |
-| 6 | Performance: TFLOP/s vs W4A4 baseline on prefill shapes |
-| 7 | Performance: decode (M=1) latency vs W4A4 |
-| 8 | Stress: 1000-iteration stability (no memory leaks, no drift) |
+Budget: at most 8 compile/verify cycles on the serving container (RTX 5090,
+SM120). Each cycle is one `python3 selftest.py` GPU run after a kernel edit;
+JIT compilation takes 30–120 s on the first call for a given (N, K) shape and
+is cached per shape thereafter (`@functools.cache` on `_get_compiled`).
 
-### Most likely first-compile failure mode
+### Most likely first-compile failure mode (cycle 1)
 
-**B nibble ordering mismatch.** The `e2m1x8_to_qmma_e2m1x8` intrinsic expects
-8 packed e2m1 nibbles in a specific byte order (nibble i in bits [5:2] of
-byte i). If the global→smem staging rearranges nibbles (e.g., transposition
-from (N, K/2) row-major to the MMA's expected B-column-major), the MMA will
-compute with wrong values. The selftest will catch this as low cosine
-similarity (not a crash). The fix is to match the nibble ordering exactly
-to what `w4a8_phase2` produces from its tile-major workspace.
+**B-fragment shared load unpacks a 2-tuple into four names.** `_kernel.py:257`
+reads:
+
+```python
+w0, w1, w2, w3 = intr["ld_shared_v2_u32"](b_base + ...)
+```
+`ld_shared_v2_u32` returns `Tuple[Uint32, Uint32]` (a 2-tuple), so unpacking
+into `w0, w1, w2, w3` raises `ValueError: not enough values to unpack
+(expected 4, got 2)` while the CuTe DSL executes the kernel body to build
+IR — i.e. the JIT *compile* aborts before any PTX is emitted. The proven
+`w4a8_phase2.py:340` uses `ld_shared_v4_u32` (a 4-tuple) at the same site.
+`_kernel.py` imports/registers only `ld_shared_v2_u32` (line 49/70), not
+`ld_shared_v4_u32`.
+
+*Fix (one cycle, mechanical):* import `ld_shared_v4_u32` from
+`b12x._lib.intrinsics`, register it in `_intrinsics`, and replace the call at
+line 257 with `intr["ld_shared_v4_u32"](...)`. No numerics change. This is
+distinct from the four risk modes reserved for cycles 5–8 below.
+
+### Cycle plan
+
+| Cycle | Goal | Pass criterion |
+|---|---|---|
+| 1 | Kernel JIT-compiles **and** `(M,N,K)=(64,256,256)` correctness | compiles; `cos ≥ 0.999`, `max_rel ≤ 0.05` vs `compute_reference` |
+| 2 | All four real shapes at `M=128` | each of the 4 `REAL_SHAPES` passes the cos/max_rel thresholds |
+| 3 | `M ∈ {1, 2051, 3072}` on the real shapes | passes at every M (exercises the M-tiling / decode path) |
+| 4 | Performance vs the **557 TFLOP/s** W4A4 reference at `M=2051` | measured effective TFLOP/s reported; target ≥ W4A4 parity class |
+| 5 | Reserved — **SF layout mismatch** | see below |
+| 6 | Reserved — **tile_m pin** | see below |
+| 7 | Reserved — **smem overflow at doubled A bytes** | see below |
+| 8 | Reserved — **epilogue alpha format** | see below |
+
+Cycles 5–8 are reserved for the four most-likely *remaining* failure modes
+surfaced by the diagnosis. Each is a correctness/performance defect, not a
+compile crash; the cycle is spent only if the mode actually triggers.
+
+### Reserved failure modes (cycles 5–8)
+
+**Cycle 5 — SF (scale-factor) layout mismatch.** The SFB staging
+(`_stage_ktile`, `_kernel.py:388`) loads one UE8M0 u32 per N8 group from the
+*first* N-row of the group (`n_idx = n_start + n8*8`) and replicates it 8×.
+`prepare_b` (`_quant.py`) does **not** N8-merge (it stores per-N-row UE8M0),
+contradicting design §2.3 step 3 which requires taking the `max` of the 8
+N-row scales per N8×K32 block. The `mxf8f6f4` MMA with `tid_b=0` consumes
+one SFB per N8×K32 block, so feeding it the first row's scale (instead of the
+N8-max) scales 7 of every 8 rows by the wrong factor. Symptom: output is
+non-zero and non-NaN but `cos` well below 0.999. Fix: either N8-max-merge in
+`prepare_b`, or load all 8 N-row scales in the kernel and pick per the MMA's
+`tid_b` convention (matching `w4a8_phase2`'s prepared-B layout).
+
+**Cycle 6 — tile_m pin.** The launch grid is `(n_tiles, 1, 1)` — N-tiles only;
+M is a runtime arg guarded by `if row < m` / `if row_lo < m` in the epilogue.
+There is **no M-tile loop**: each CTA writes at most `TILE_M=64` rows. For
+`M ∈ {2051, 3072}` (cycle 3) only the first 64 rows are computed and the rest
+are left as the uninitialised `out` buffer → garbage in rows 64+. The design
+text (§5 "Kernel architecture") claims a grid of `ceil(M/64)` M-tiles, but the
+code emits none. Fix: add an M-tile dimension to the grid (`(n_tiles,
+ceil(M/TILE_M), 1)`) and offset the A/SFA loads and C stores by
+`m_tile * TILE_M`, or loop M-tiles inside the CTA.
+
+**Cycle 7 — smem overflow at doubled A bytes.** W4A8 doubles A traffic vs
+W4A4 (e4m3 is 1 B/element vs FP4's 0.5 B). At the default tile (64,128,128)
+with 2 stages the kernel uses 34,816 B (`SHARED_BYTES`, well under the 100 KB
+SM120 budget). The risk appears only when raising `TILE_M` to 128 to address
+cycle 6: `A_PAYLOAD_BYTES` doubles to 16,384 B/stage and, combined with the B
+and SFB regions across 2 stages, can approach the per-CTA smem ceiling and
+reduce occupancy. Fix: recompute `SHARED_BYTES` for the new tile and drop to
+1 stage or lower `TILE_K` if it exceeds the budget; verify occupancy with the
+`_compute_stages` formula from §2.4.
+
+**Cycle 8 — epilogue alpha format.** W4A8 has **no scalar alpha**: the
+per-tensor `global_scale` is absorbed into the UE8M0 SFB exponents in
+`prepare_b` (step 1), and the MMA accumulates `SFA × SFB × A × B` directly.
+If a fix for cycle 5 re-introduces an alpha (or double-applies
+`global_scale`), the output is off by exactly the `global_scale` factor —
+`cos` may stay high but `max_rel` is a constant ratio. Fix: confirm the
+epilogue stores raw fp32 accumulators cast to BF16 with no multiplier, and
+that `global_scale` appears exactly once (in `prepare_b`).
+
+### Cycle economics
+
+Cycle 1 is expected to fail on the `ld_shared_v2_u32` unpack bug (mechanical
+fix). Cycles 2–4 then validate compile + correctness + perf in order. The four
+reserved modes (5–8) are ranked by likelihood of surfacing during 2–4:
+cycle 6 (tile_m pin) will certainly trigger at cycle 3's `M=2051`; cycle 5
+(SF layout) will likely trigger at cycle 1's correctness check if the unpack
+fix leaves the SFB layout untouched; cycles 7–8 are lower-probability and
+only relevant after the tile is enlarged. The 8-cycle budget therefore covers
+the unpack fix (1), the three validation gates (2–4), and one pass at each of
+the four reserved modes (5–8).

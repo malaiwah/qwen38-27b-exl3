@@ -63,11 +63,11 @@ KLD is 512 contexts of shard-0000 against the BF16 reference.
 | | `PROFILE=throughput` | `PROFILE=fidelity` | `PROFILE=balanced` |
 |---|---|---|---|
 | weights | all-FP4 | all-trellis (K5K6 as shipped) | trellis + gate_up MXFP6 |
-| PP, 2051-tok | **9638.9 ± 18.3** tok/s | 1965.9 ± 1.3 tok/s | 3250.6 ± 1.2 tok/s |
-| TG fox / essay | 187.4 ± 0.6 / 94.3 ± 0.0 | **208.3 ± 0.4** / 93.2 ± 0.1 | 202.8 ± 0.2 / **95.5 ± 0.1** |
+| PP, 2051-tok | **9638.9 ± 18.3** tok/s | 2987.7 ± 4.4 tok/s | 3250.6 ± 1.2 tok/s |
+| TG fox / essay | 187.4 ± 0.6 / 94.3 ± 0.0 | **228.3 ± 0.4** / **104.1 ± 0.1** | 202.8 ± 0.2 / 95.5 ± 0.1 |
 | MTP acceptance fox / essay | 0.930 / 0.298 | **1.000** / 0.304 | **1.000** / **0.324** |
-| KLD mean | 0.063759 | **0.003437** [0.003196, 0.003706] | 0.005672 [0.005302, 0.006087] |
-| KLD p99 | 0.7010 | **0.035204** | 0.059908 |
+| KLD mean | 0.063759 | **0.003405** [0.003166, 0.003672] | 0.005672 [0.005302, 0.006087] |
+| KLD p99 | 0.7010 | **0.034889** | 0.059908 |
 | max context | **250,000** | 238,400 | 199,104 |
 | vision + MTP | pass | pass | pass |
 

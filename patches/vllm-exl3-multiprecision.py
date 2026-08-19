@@ -320,8 +320,6 @@ _EXL3_GEMM_PRIMED_SIGNATURES: set[tuple[int, int, int, int, int, int]] = set()
 # Warmed (device_index, bits) pairs; bits matters because b12x initialises a
 # separate mixed-Trellis plan per bit width.
 _B12X_TRELLIS_WARMED_DEVICES: set[tuple[int, int]] = set()
-# Guards the one-shot warning for the known-broken VLLM_EXL3_B12X_ANY_BITS path.
-_B12X_ANY_BITS_WARNED: set[int] = set()
 # One-shot B12X-vs-exl3_gemm agreement check on real served tensors.
 _B12X_SELFTEST = os.environ.get("VLLM_EXL3_B12X_SELFTEST", "0") == "1"
 _B12X_SELFTEST_DONE: set[tuple] = set()
@@ -1632,18 +1630,17 @@ def _b12x_trellis_k6_supported(
             return False
     n_words = int(trellis.shape[2])
     if os.environ.get("VLLM_EXL3_B12X_ANY_BITS", "0") == "1":
-        if not _B12X_ANY_BITS_WARNED:
-            _B12X_ANY_BITS_WARNED.add(1)
-            logger.warning(
-                "VLLM_EXL3_B12X_ANY_BITS=1 is KNOWN BROKEN end-to-end: it "
-                "raises prefill to 2457.7 tok/s (from 1630.0) but the served "
-                "model emits garbage (sanity 'Fonilet...', MTP acceptance "
-                "0.000, vision fail). B12X's bits=5 dense GEMM is *correct in "
-                "isolation* (cos 1.000000, max_rel 9.5e-4 vs "
-                "exllamav3 reconstruct on real gate_proj weights), so the "
-                "fault is in this integration, not B12X. Do not serve with "
-                "this. See receipts/b12x-k5-parked-2026-08-19.md."
-            )
+        # CURED 2026-08-19. This flag used to serve garbage (sanity
+        # 'Fonilet...', MTP acceptance 0.000, vision fail) while B12X's bits=5
+        # GEMM was provably correct in isolation.  Root cause was ours:
+        # _warm_b12x_trellis_device keyed on device alone, so bits=4/5
+        # mixed-Trellis plans initialised lazily on first real call - inside
+        # decode CUDA-graph capture, taking their buffers from that graph's
+        # private pool.  Warming per (device, bits) fixed it.  Now verified:
+        # 0 selftest mismatches (cos >= 0.999996 at prefill and decode row
+        # counts, bits 4/5/6), KLD 0.003405 vs 0.003437 without it, and n=3
+        # PP 2987.7 (+52.0%), TG-fox 228.3, TG-essay 104.1.
+        # See receipts/b12x-k5-cured-2026-08-19.md.
         bits_ok = n_words in (48, 64, 80, 96)
     else:
         bits_ok = n_words == 96

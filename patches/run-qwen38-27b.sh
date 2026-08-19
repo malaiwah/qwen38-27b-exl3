@@ -25,7 +25,7 @@ SERVED_MODEL_NAME="${SERVED_MODEL_NAME:-Qwen3.8-27B}"
 # PR #314 is mounted over the pinned GG r34 base image. Refuse to start if the
 # installed overlay is absent or differs from the exact qualified source.
 EXL3_PATCH_HOST="${EXL3_PATCH_HOST:-/home/mbelleau/vllm-exl3-multiprecision.py}"
-EXL3_PATCH_SHA256="e84e3143bfeba494e618037c96cc0f8ae518b53b3e788da5592337c8cad6a965"
+EXL3_PATCH_SHA256="96628273f1ad1f822c8df0927a635fb6ca3b852184a0a04470ae951b8a00134e"
 EXL3_PATCH_CTR="/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py"
 [ -f "${EXL3_PATCH_HOST}" ] || {
   echo "EXL3 graph patch is missing: ${EXL3_PATCH_HOST}" >&2
@@ -63,8 +63,8 @@ QUANTIZATION_CONFIG='{"linear":{"weight":"mxfp8"},"ignore":["re:.*visual\\..*","
 #   throughput (default)  all-FP4.      PP 7665.6+/-20.4  TG fox 184.8+/-1.0
 #                         essay 93.3    KLD 0.063759  p99 0.7010  ctx 250,000
 #                         -> 4/6 criteria. The only profile with PP >= 7000.
-#   fidelity              all-trellis.  PP 1965.4+/-2.1   TG fox 207.7+/-0.1
-#                         essay 93.1    KLD 0.003437  p99 0.03520 ctx 238,400
+#   fidelity              all-trellis.  PP 2987.7+/-4.4   TG fox 228.3+/-0.4
+#                         essay 104.1   KLD 0.003405  p99 0.03489 ctx 238,400
 #   balanced              gate_up FP6.  PP 3290.5         TG fox 203.7
 #                         essay 96.3    KLD 0.005672  p99 0.05991 ctx 199,104
 #                         -> also 5/6, but fails ctx instead of PP: 1.7x the
@@ -113,6 +113,12 @@ case "${PROFILE}" in
     # TG-fox 207.7 vs 211.1, which still clears its 190 threshold by 9.3%.
     # Set VLLM_EXL3_B12X_MIN_M=0 to prefer B12X at every row count instead.
     : "${VLLM_EXL3_B12X_MIN_M:=128}"
+    # K5/K4 payloads through B12X as well.  Was broken until the b12x warm was
+    # keyed per (device, bits) - lazily-initialised bit-width plans were taking
+    # buffers from a CUDA graph's private pool.  Verified: 0 selftest mismatches,
+    # KLD 0.003405 (vs 0.003437 without), n=3 PP 2987.7 (+52.0%), TG-fox 228.3,
+    # TG-essay 104.1.  receipts/b12x-k5-cured-2026-08-19.md
+    : "${VLLM_EXL3_B12X_ANY_BITS:=1}"
     # B12X W4A16 consumes the same packed trellis payload as the fused
     # exl3_gemm kernel but costs 0.30 ms CPU per call instead of 4.72 ms, and a
     # full 512-context KLD run proves it is fidelity-neutral (0.003407 vs
