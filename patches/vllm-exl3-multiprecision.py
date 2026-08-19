@@ -256,6 +256,9 @@ _EXL3_GEMM_PRIMED_SIGNATURES: set[tuple[int, int, int, int, int, int]] = set()
 _B12X_TRELLIS_WARMED_DEVICES: set[int] = set()
 # Guards the one-shot warning for the known-broken VLLM_EXL3_B12X_ANY_BITS path.
 _B12X_ANY_BITS_WARNED: set[int] = set()
+# One-shot B12X-vs-exl3_gemm agreement check on real served tensors.
+_B12X_SELFTEST = os.environ.get("VLLM_EXL3_B12X_SELFTEST", "0") == "1"
+_B12X_SELFTEST_DONE: set[tuple] = set()
 # The dense W4A16 kernel caps its temporary accumulation arena at
 # SMs * 4 * block_m * 256 fp32 elements.  SM120/SM121 devices supported by
 # this path have at most 192 SMs, and block_m never exceeds 64.  Keeping this
@@ -3576,25 +3579,67 @@ class Exl3LinearMethod(LinearMethodBase):
         else:
             output = None
         if output is None:
-            if _b12x_trellis_k6_supported(
+            use_b12x = _b12x_trellis_k6_supported(
                 trellis,
                 has_mcg=has_mcg,
                 has_mul1=has_mul1,
+            )
+            suh = layer.suh.exl3_tensors[shard_id]
+            svh = layer.svh.exl3_tensors[shard_id]
+            if (
+                use_b12x
+                and _B12X_SELFTEST
+                and x.shape[0] > 0
+                and x.abs().amax().item() > 0
             ):
-                output = _b12x_trellis_linear(
-                    x,
-                    trellis,
-                    layer.suh.exl3_tensors[shard_id],
-                    layer.svh.exl3_tensors[shard_id],
+                # One-shot per (layer, shard, shape): run BOTH routes on the
+                # real served tensors and report agreement.  The standalone
+                # harness (tools/b12x-k5-selftest.py) compares checkpoint
+                # tensors, which cannot see padding, merged-shard views or
+                # loader transforms; this sees exactly what serving uses.
+                # m is part of the key: prefill and decode take different
+                # kernels inside b12x (the cooperative small-M path vs the
+                # scratch-consuming one), so testing only the first shape seen
+                # would leave the decode route unverified.
+                key = (
+                    getattr(layer, "prefix", ""),
+                    shard_id,
+                    int(x.shape[0]),
+                    int(x.shape[1]),
+                    int(trellis.shape[1]) * 16,
+                    int(trellis.shape[2]),
                 )
-            else:
-                output = _exl3_gemm(
-                    x,
-                    trellis,
-                    layer.suh.exl3_tensors[shard_id],
-                    layer.svh.exl3_tensors[shard_id],
-                    has_mcg,
-                    has_mul1,
+                if key not in _B12X_SELFTEST_DONE:
+                    _B12X_SELFTEST_DONE.add(key)
+                    got = _b12x_trellis_linear(x, trellis, suh, svh)
+                    ref = _exl3_gemm(
+                        x, trellis, suh, svh, has_mcg, has_mul1
+                    )
+                    a = got.float().flatten()
+                    b = ref.float().flatten()
+                    cos = torch.nn.functional.cosine_similarity(
+                        a, b, dim=0
+                    ).item()
+                    rel = (
+                        (a - b).abs().max() / b.abs().max().clamp_min(1e-6)
+                    ).item()
+                    logger.warning(
+                        "B12X trellis selftest %s[%r] bits=%d m=%d K=%d "
+                        "Npacked=%d suh=%d svh=%d: cos=%.6f max_rel=%.4g %s",
+                        key[0], shard_id, int(trellis.shape[2]) // 16,
+                        int(x.shape[0]), key[3], key[4],
+                        int(suh.numel()), int(svh.numel()), cos, rel,
+                        "OK" if (cos > 0.999 and rel < 0.05)
+                        else "*** MISMATCH ***",
+                    )
+                    output = ref  # serve the reference on the selftest call
+            if output is None:
+                output = (
+                    _b12x_trellis_linear(x, trellis, suh, svh)
+                    if use_b12x
+                    else _exl3_gemm(
+                        x, trellis, suh, svh, has_mcg, has_mul1
+                    )
                 )
         logical_n = Exl3LinearMethod._output_shard_size(layer, shard_id)
         if output.shape[-1] < logical_n:
