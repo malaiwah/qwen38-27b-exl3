@@ -41,8 +41,9 @@ __omp_shell("[Fidelity vs other quants](charts/fidelity-vs-quants.png)")
 `PROFILE=fidelity` serves at **0.003437** — within 27 % of this checkpoint's own
 offline figure (0.002700) and **35 % below** the official
 [`Qwen/Qwen3.8-27B-FP8`](https://huggingface.co/Qwen/Qwen3.8-27B-FP8) (0.005294)
-while resident in 18.8 GiB instead of 28.6 GiB. `PROFILE=balanced` (0.005672) is
-statistically level with official FP8 at 1.7x the prefill of `fidelity`.
+while resident in 18.8 GiB instead of 28.6 GiB. `PROFILE=balanced` (0.005672) lands in the same range as official FP8 — though the two
+numbers come from different-sized suites, so no statistical equivalence is claimed —
+at 1.7x the prefill of `fidelity`.
 `PROFILE=throughput` trades that away: at 0.063759 it is 2x worse than
 third-party NVFP4 (0.031059), which is the honest price of 4-bit activations.
 
