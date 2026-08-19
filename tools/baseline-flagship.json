@@ -1,10 +1,10 @@
 {
   "schema": "qwen38-profile-baseline/1",
-  "provenance": "PROFILE=throughput (all-FP4), adopted 2026-08-19: util 0.93 / mnbt 3072 / max-model-len 250000 / VLLM_USE_V2_MODEL_RUNNER=1. Numbers are Phase-0 harness n=3 boots (receipts/bench-v2-allfp4-default-2026-08-19.json). See receipts/frontier-2026-08-19.md for the PROFILE=fidelity alternative (5/6 criteria, KLD 0.003412).",
+  "provenance": "PROFILE=throughput (all-FP4), adopted 2026-08-19: util 0.93 / mnbt 3072 / max-model-len 250000 / VLLM_USE_V2_MODEL_RUNNER=1. Numbers are Phase-0 harness n=3 boots (receipts/bench-v2-allfp4-default-2026-08-19.json). See receipts/frontier-2026-08-19.md for the PROFILE=fidelity alternative (5/6 criteria, KLD 0.003412). Refreshed 2026-08-19 with per-prompt MTP acceptance (receipts/bench-throughput-acc-fox-2026-08-19.json, n=3): PP 7694.9+/-21.8, TG-fox 185.0+/-0.6 [acc 0.930+/-0.000], TG-essay 93.3+/-0.1 [acc 0.298+/-0.000], boot 56.0+/-0.0s.",
   "note": "PP/TG are single-request overhead-inclusive metrics (receipts/peer-review-2026-08-18.md section C). acceptance_essay is high-variance across configs; threshold deliberately loose. Robustness is NOT covered by this gate - run tools/stress-gate.py. This baseline gates the throughput profile only; the fidelity profile has its own baseline JSON.",
   "metrics": {
     "pp_tok_s": {
-      "baseline": 7665.6,
+      "baseline": 7694.9,
       "rule": "min_ratio",
       "min_ratio": 0.95,
       "description": "Prefill prompt throughput, 2051-tok prompt, max_tokens=1, temperature=0, median of 5 reps after warmup."
@@ -16,7 +16,7 @@
       "description": "Decode throughput on the essay prompt, max_tokens=500, temperature=0, median of 3 reps."
     },
     "tg_fox_tok_s": {
-      "baseline": 184.8,
+      "baseline": 185.0,
       "rule": "min_ratio",
       "min_ratio": 0.95,
       "description": "Decode throughput on the fox prompt, max_tokens=200, temperature=0, median of 3 reps."
@@ -47,6 +47,12 @@
       "baseline": true,
       "rule": "boolean_true",
       "description": "A >200k-token prompt completes with HTTP 200 (max_tokens=1)."
+    },
+    "acceptance_fox": {
+      "baseline": 0.93,
+      "rule": "min_absolute",
+      "min_absolute": 0.79,
+      "description": "MTP acceptance rate on the fox prompt, differenced spec_decode_num_accepted/draft counters before vs after the TG-fox run. Tracked separately from the essay figure because acceptance is strongly prompt-dependent."
     }
   }
 }

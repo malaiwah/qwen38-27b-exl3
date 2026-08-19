@@ -233,6 +233,15 @@ try:
         'completion_tokens': fox['completion_tokens'],
         'acceptance': fox['acceptance'],
     }
+    # Acceptance is strongly prompt-dependent (fox ~0.93-1.00, essay ~0.28-0.30),
+    # so it is gated per prompt rather than reported once.  A drop here is an
+    # early warning that weight fidelity regressed: FP4 weights draft the fox
+    # prompt at 0.930 where trellis weights draft it at 1.000.
+    results['acceptance_fox'] = {
+        'measured': fox['acceptance'],
+        'draft_delta': fox['draft_delta'],
+        'accepted_delta': fox['accepted_delta'],
+    }
 
     # 7. TG-essay + acceptance (max_tokens=500, median of 3)
     essay = bench_lib.measure_tg(prompt=bench_lib.TG_ESSAY_PROMPT, max_tokens=500, reps=3)

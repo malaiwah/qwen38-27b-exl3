@@ -222,6 +222,15 @@ try:
     else:
         result['acceptance_essay'] = None
 
+    # The objective requires MTP acceptance alongside EVERY TG number, and
+    # acceptance is prompt-dependent: the fox prompt is highly predictable
+    # (~0.93 accepted) while the essay prompt is not (~0.28-0.30).  Reporting
+    # only the essay figure next to a fox throughput number is misleading.
+    if result.get('tg_fox') and result['tg_fox'].get('acceptance') is not None:
+        result['acceptance_fox'] = result['tg_fox']['acceptance']
+    else:
+        result['acceptance_fox'] = None
+
     try:
         result['max_model_len'] = bench_lib.max_model_len()
     except Exception as e:
@@ -304,6 +313,7 @@ pp_tok_s = []
 tg_fox_tok_s = []
 tg_essay_tok_s = []
 acceptance_essay = []
+acceptance_fox = []
 boot_seconds = []
 clocks_sm = []
 power_draw = []
@@ -321,6 +331,10 @@ for r in results:
         acc = r['tg_essay'].get('acceptance')
         if acc is not None:
             acceptance_essay.append(acc)
+    if r.get('tg_fox'):
+        accf = r['tg_fox'].get('acceptance')
+        if accf is not None:
+            acceptance_fox.append(accf)
     if r.get('boot_seconds') is not None:
         boot_seconds.append(r['boot_seconds'])
     for telo_key in ('gpu_telemetry_boot', 'gpu_telemetry_after'):
@@ -347,6 +361,7 @@ receipt = {
         'tg_fox_tok_s': safe_stats(tg_fox_tok_s),
         'tg_essay_tok_s': safe_stats(tg_essay_tok_s),
         'acceptance_essay': safe_stats(acceptance_essay),
+        'acceptance_fox': safe_stats(acceptance_fox),
         'boot_seconds': safe_stats(boot_seconds),
         'telemetry_range': {
             'clocks_sm': safe_stats(clocks_sm),
@@ -381,15 +396,18 @@ def fmt(key, unit=''):
         return 'N/A'
     return f\"{s['mean']:.1f}+/-{s['sd']:.1f} {unit} (n={s['n']})\"
 
-print(f\"  PP:          {fmt('pp_tok_s', 'tok/s')}\")
-print(f\"  TG-fox:      {fmt('tg_fox_tok_s', 'tok/s')}\")
-print(f\"  TG-essay:    {fmt('tg_essay_tok_s', 'tok/s')}\")
+def accfmt(key):
+    a = agg.get(key, {})
+    if a.get('n', 0) > 0:
+        return f\"  [MTP acc {a['mean']:.3f}+/-{a['sd']:.3f}]\"
+    return '  [MTP acc N/A]'
 
-acc = agg.get('acceptance_essay', {})
-if acc.get('n', 0) > 0:
-    print(f\"  Acceptance:  {acc['mean']:.3f}+/-{acc['sd']:.3f} (n={acc['n']})\")
-else:
-    print(f\"  Acceptance:  N/A\")
+
+print(f\"  PP:          {fmt('pp_tok_s', 'tok/s')}\")
+print(f\"  TG-fox:      {fmt('tg_fox_tok_s', 'tok/s')}\"
+      f\"{accfmt('acceptance_fox')}\")
+print(f\"  TG-essay:    {fmt('tg_essay_tok_s', 'tok/s')}\"
+      f\"{accfmt('acceptance_essay')}\")
 
 bs = agg.get('boot_seconds', {})
 if bs.get('n', 0) > 0:
