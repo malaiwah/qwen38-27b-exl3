@@ -80,10 +80,14 @@ were really the 8192 default. All config experiments must
 `systemctl --user stop` first and then **assert** the effective args from the
 engine's own `non-default args:` dump (`/tmp/boot_cfg.sh` does this).
 
-## L9. b12x prepared trellis weights cost ~2 GiB (docstring says "zero-copy views")
-Measured 2026-08-19 on an all-trellis config routed through b12x
-(`VLLM_EXL3_B12X_ANY_BITS=1`): vLLM reports **18.83 GiB for weight** where the
-raw trellis payload is 16.82 GiB (`tools/shape-inventory.py`). Peak activation
+## L9. RETRACTED - b12x prepared trellis weights really are zero-copy
+**This entry was wrong and is retracted.** I attributed a 2 GiB gap to b12x's
+prepare step, but a later all-trellis run with `VLLM_EXL3_SKIP_TRELLIS_PREP=1`
+(b12x bypassed entirely, fused `ext.exl3_gemm` only) reported the **same
+18.83 GiB for weight**. So the gap over the 16.82 GiB raw trellis payload
+(`tools/shape-inventory.py`) is not prep at all - it is the int6 embedding table
+(~0.95 GiB) plus the unquantized vision tower (~1.2 GiB), which the inventory
+does not count. b12x prep is zero-copy as documented. Peak activation
 also rose to 3.25 GiB (vs 2.32 for the balanced FP4/trellis mix), leaving only
 **6.28 GiB KV = max ctx 158,304**, and the instance still died on the first
 2051-token prefill (same underprofiled-peak pattern as L1). Consequence:
