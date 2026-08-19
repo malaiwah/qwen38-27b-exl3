@@ -254,6 +254,8 @@ _EXL3_ONLINE_WARMED_SIGNATURES: set[tuple[int, int, int, int]] = set()
 # same geometry.
 _EXL3_GEMM_PRIMED_SIGNATURES: set[tuple[int, int, int, int, int, int]] = set()
 _B12X_TRELLIS_WARMED_DEVICES: set[int] = set()
+# Guards the one-shot warning for the known-broken VLLM_EXL3_B12X_ANY_BITS path.
+_B12X_ANY_BITS_WARNED: set[int] = set()
 # The dense W4A16 kernel caps its temporary accumulation arena at
 # SMs * 4 * block_m * 256 fp32 elements.  SM120/SM121 devices supported by
 # this path have at most 192 SMs, and block_m never exceeds 64.  Keeping this
@@ -1510,6 +1512,18 @@ def _b12x_trellis_k6_supported(
             return False
     n_words = int(trellis.shape[2])
     if os.environ.get("VLLM_EXL3_B12X_ANY_BITS", "0") == "1":
+        if not _B12X_ANY_BITS_WARNED:
+            _B12X_ANY_BITS_WARNED.add(1)
+            logger.warning(
+                "VLLM_EXL3_B12X_ANY_BITS=1 is KNOWN BROKEN end-to-end: it "
+                "raises prefill to 2457.7 tok/s (from 1630.0) but the served "
+                "model emits garbage (sanity 'Fonilet...', MTP acceptance "
+                "0.000, vision fail). B12X's bits=5 dense GEMM is *correct in "
+                "isolation* (cos 1.000000, max_rel 9.5e-4 vs "
+                "exllamav3 reconstruct on real gate_proj weights), so the "
+                "fault is in this integration, not B12X. Do not serve with "
+                "this. See receipts/b12x-k5-parked-2026-08-19.md."
+            )
         bits_ok = n_words in (48, 64, 80, 96)
     else:
         bits_ok = n_words == 96
