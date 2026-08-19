@@ -164,6 +164,13 @@ def parse_args() -> argparse.Namespace:
         help="Offload device for sequential pipeline (default: cpu)",
     )
     ap.add_argument(
+        "--tracing-ignore",
+        default=None,
+        help="Comma-separated extra function names for llmcompressor's "
+        "sequential tracer to wrap opaquely (appended to its defaults). "
+        "Qwen3.5 GDN needs its chunked-scan helpers here.",
+    )
+    ap.add_argument(
         "--no-trust-remote-code",
         action="store_true",
         help="Disable trust_remote_code (Qwen3.5 normally needs it)",
@@ -245,6 +252,13 @@ def main() -> None:
         # This keeps peak VRAM at ~1 layer's weights + activations + Hessian
         # rather than the full 27B model.
         pipeline=args.pipeline,
+        **({"tracing_ignore": [
+            "_update_causal_mask", "create_causal_mask", "_update_mamba_mask",
+            "make_causal_mask", "get_causal_mask", "mask_interface",
+            "mask_function", "_prepare_4d_causal_attention_mask",
+            "_prepare_4d_causal_attention_mask_with_cache_position",
+            "_update_linear_attn_mask", "project_per_layer_inputs",
+        ] + args.tracing_ignore.split(",")} if args.tracing_ignore else {}),
         sequential_targets=sequential_targets,
         sequential_offload_device=args.sequential_offload,
         sequential_prefetch=False,
