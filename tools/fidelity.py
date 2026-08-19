@@ -548,6 +548,10 @@ def cmd_capture(args) -> int:
         kwargs["quantization"] = args.quantization
     if args.quantization_config:
         kwargs["quantization_config"] = json.loads(args.quantization_config)
+    if args.attention_backend:
+        kwargs["attention_backend"] = args.attention_backend
+    if args.block_size:
+        kwargs["block_size"] = args.block_size
     llm = LLM(**kwargs)
 
     identity = model_identity(args.model, args.hash_shards)
@@ -1265,6 +1269,10 @@ def main() -> int:
     c.add_argument("--quantization", default="auto")
     c.add_argument("--quantization-config", default=None)
     c.add_argument("--kv-cache-dtype", default="auto")
+    c.add_argument("--attention-backend", default=None,
+                   help="attention backend (e.g. TRITON_ATTN, B12X_ATTN)")
+    c.add_argument("--block-size", type=int, default=None,
+                   help="KV cache block size (B12X_ATTN needs 64 or 128)")
     c.add_argument("--gpu-memory-utilization", type=float, default=0.9)
     c.add_argument("--filter", default="all",
                    help="all | analysis | qualification | sentinel")
