@@ -259,6 +259,10 @@ _B12X_ANY_BITS_WARNED: set[int] = set()
 # One-shot B12X-vs-exl3_gemm agreement check on real served tensors.
 _B12X_SELFTEST = os.environ.get("VLLM_EXL3_B12X_SELFTEST", "0") == "1"
 _B12X_SELFTEST_DONE: set[tuple] = set()
+# Opt-out for the FP16 reconstruct cache on the prefill reconstruct+hgemm path.
+_PREFILL_RECONSTRUCT_CACHE = (
+    os.environ.get("VLLM_EXL3_PREFILL_RECONSTRUCT_CACHE", "1") == "1"
+)
 # The dense W4A16 kernel caps its temporary accumulation arena at
 # SMs * 4 * block_m * 256 fp32 elements.  SM120/SM121 devices supported by
 # this path have at most 192 SMs, and block_m never exceeds 64.  Keeping this
@@ -1216,7 +1220,21 @@ def _exl3_gemm(
     n = trellis.shape[1] * 16
     k = x.shape[1]
 
-    if m >= 128 and not os.environ.get("VLLM_EXL3_PREFILL_RECONSTRUCT_M", "1") == "0":
+    # Reconstruct+hgemm needs a full FP16 copy of the weight live at once.  For
+    # the lm_head that is 5120 x 248320 x 2 = 2.37 GiB, which OOMs any profile
+    # without spare headroom (the fidelity profile has ~0 after B12X prep).
+    # Bound the route by reconstructed size; the default is high enough to keep
+    # existing profiles on their measured path, and a profile that is tight on
+    # memory opts into a smaller cap.
+    _recon_max_mb = int(
+        os.environ.get("VLLM_EXL3_PREFILL_RECONSTRUCT_MAX_MB", "4096")
+    )
+    _recon_mb = (int(trellis.shape[0]) * 16) * n * 2 / 1024 / 1024
+    if (
+        m >= 128
+        and not os.environ.get("VLLM_EXL3_PREFILL_RECONSTRUCT_M", "1") == "0"
+        and _recon_mb <= _recon_max_mb
+    ):
         # Reconstruct trellis codes to FP16 weight matrix (K, N)
         # Cache large weights (gate_up, >150 MB) to skip reconstruct on repeat calls
         t_k = int(trellis.shape[0]) * 16
@@ -1229,7 +1247,14 @@ def _exl3_gemm(
         weight = None
         if weight_size_mb > 150:
             weight = _gate_cache.get(cache_key)
-        # Skip caching during profiling (determine_available_memory)
+        # NOTE: an earlier comment here claimed this skipped caching during
+        # vLLM's profiling forward (determine_available_memory).  No such check
+        # existed.  The cache is therefore populated *during* profiling, so the
+        # profiler both reads an inflated peak and cannot count the cached bytes
+        # as free -- on a memory-tight profile that ends in "No available memory
+        # for the cache blocks" with zero KV.  Caching is now explicitly
+        # controllable; the default preserves the measured behaviour of the
+        # profiles that have headroom for it.
         if weight is None:
             weight = torch.empty(t_k, t_n, dtype=torch.float16, device=x.device)
             trellis_k = int(trellis.shape[2]) // 16
@@ -1243,7 +1268,7 @@ def _exl3_gemm(
             # context and gpu_util=0.92 to fit.
             # Persistent cache: cache any large weight if memory allows.
             # Check free memory to avoid OOM (limits cache to available space).
-            if weight_size_mb > 150:
+            if weight_size_mb > 150 and _PREFILL_RECONSTRUCT_CACHE:
                 free_mb = torch.cuda.mem_get_info()[0] / 1024 / 1024
                 if free_mb > weight_size_mb + 500:  # Leave 500 MB headroom
                     _gate_cache[cache_key] = weight
