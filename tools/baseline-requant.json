@@ -1,0 +1,36 @@
+{
+  "schema": "qwen38-requant-baseline/1",
+  "provenance": "RTN FP8attn+NVFP4mlp mixed requant, measured 2026-08-19 (receipts/requant-rtn-first-serve-2026-08-19.md, receipts/requant-gptq-w4a4-2026-08-19.md). KLD on the 512-ctx shard-0 suite via fidelity.py capture+replay (receipts/kld-reports/report-rtn-fp8attn-nvfp4mlp.json). PP crude single-request. GPTQ variant measured worse (0.028548 [0.026393, 0.031012]) with CIs disjoint from RTN -- see receipt for the concatenate_data starvation diagnosis (512 samples -> 42 sequences). This baseline gates the requant lane; the flagship trellis checkpoint has its own baseline-flagship.json.",
+  "note": "No requant artifact currently meets the public-promotion gate (KLD mean <= 0.012 AND ci95 upper <= 0.012). RTN at 0.022121 is the best measured but is 1.84x over the bar. The gate is recorded here so a future calibrated artifact can be checked against it. KLD protocol: 512-context shard-0 suite, 2047 scored positions x 512 contexts, full 248,320 vocab, body-only shared BF16 LM-head replay.",
+  "metrics": {
+    "kld_mean": {
+      "baseline": 0.022121,
+      "rule": "min_absolute",
+      "min_absolute": 0.012,
+      "description": "Token mean KLD on the 512-ctx shard-0 suite. North-star criterion 3: must be <= 0.012 for public promotion."
+    },
+    "kld_ci95_upper": {
+      "baseline": 0.023824,
+      "rule": "min_absolute",
+      "min_absolute": 0.012,
+      "description": "Upper bound of the 95% bootstrap CI on context-macro mean KLD. Public-promotion gate requires this <= 0.012."
+    },
+    "kld_p99": {
+      "baseline": 0.2450,
+      "rule": "min_absolute",
+      "min_absolute": 0.15,
+      "description": "p99 KLD. North-star criterion 4: must be <= 0.15."
+    },
+    "pp_tok_s": {
+      "baseline": 4142.0,
+      "rule": "min_ratio",
+      "min_ratio": 0.80,
+      "description": "Crude single-request prefill throughput at 2051 tokens. The W4A4-MLP RTN variant measured 8876.8 but produced garbage output from an uncalibrated static activation scale."
+    },
+    "sanity_paris": {
+      "baseline": true,
+      "rule": "boolean_true",
+      "description": "Model answers 'The capital of France is' with text containing 'Paris'."
+    }
+  }
+}
