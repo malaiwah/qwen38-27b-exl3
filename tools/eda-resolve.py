@@ -53,6 +53,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import re
 import sys
 from collections import defaultdict
 from pathlib import Path
@@ -93,6 +94,43 @@ def weight_fn(kind: str):
     raise ValueError(f"unknown weighting {kind!r}")
 
 
+LAYER_RE = re.compile(r"layers\.(\d+)\.")
+
+
+def layer_index(name: str) -> int | None:
+    m = LAYER_RE.search(name)
+    return int(m.group(1)) if m else None
+
+
+def depth_factor(name: str, amp: float, n_layers: int) -> float:
+    """Downstream-amplification factor for error injected at this module's layer.
+
+    Error injected at layer L is subsequently transformed by layers L+1..n-1.
+    If each downstream layer amplifies injected error by a mean factor (1+amp),
+    the injected error's contribution at the readout scales as
+    (1+amp)**(n-1-L) -- exponential in REMAINING depth, so early layers are
+    weighted more heavily than late ones.
+
+    amp = 0.0 reproduces the depth-blind behaviour exactly (factor 1 for every
+    module), which is what the published solver and every weighting in the
+    plan's objective table do: the ladder's proxy_err is module-local, measured
+    with fixed hydrated propagation, so it carries no inter-layer accumulation
+    (plan `predicted.note`, docs/57 SS1).
+
+    amp is NOT calibrated by any measurement in this repository. Every
+    layer-range fidelity experiment we have (receipts/layer-range-dial-2026-08-19.md)
+    converted ranges starting at layer 0, so there is no early-vs-late contrast
+    to fit against, and that receipt's 13-layer KLD was predicted rather than
+    measured. Treat any amp > 0 as a sensitivity probe, never as a result.
+    """
+    if amp == 0.0:
+        return 1.0
+    L = layer_index(name)
+    if L is None:
+        return 1.0
+    return (1.0 + amp) ** (n_layers - 1 - L)
+
+
 def load_inputs(ladder_path: Path, plan_path: Path):
     ladder = json.loads(ladder_path.read_text())
     plan = json.loads(plan_path.read_text())
@@ -131,15 +169,16 @@ def role_bytes(mods: dict, widths: dict, fixed: dict) -> dict:
     return {r: int(round(v)) for r, v in out.items()}
 
 
-def objective(mods: dict, widths: dict, wfn) -> float:
+def objective(mods: dict, widths: dict, wfn, amp: float = 0.0, n_layers: int = 64) -> float:
     tot = 0.0
     for name, m in mods.items():
         eps = m["ladder"][str(widths[name])]
-        tot += wfn(m["out_energy"]) * eps
+        tot += wfn(m["out_energy"]) * depth_factor(name, amp, n_layers) * eps
     return tot
 
 
-def solve(mods: dict, fixed: dict, body_budget: int, wfn, grid: int):
+def solve(mods: dict, fixed: dict, body_budget: int, wfn, grid: int,
+          amp: float = 0.0, n_layers: int = 64):
     """Exact DP: minimise sum_m w_m*eps(m,K) subject to total body bytes <= budget.
 
     Byte cost per module is numel*K/8; the grid quantises the knapsack axis.
@@ -155,7 +194,8 @@ def solve(mods: dict, fixed: dict, body_budget: int, wfn, grid: int):
         m = mods[name]
         cands = sorted(int(k) for k in m["ladder"])
         costs = [(k, int((m["numel"] * k / 8.0) // grid)) for k in cands]
-        gains = {k: wfn(m["out_energy"]) * m["ladder"][str(k)] for k in cands}
+        df = depth_factor(name, amp, n_layers)
+        gains = {k: wfn(m["out_energy"]) * df * m["ladder"][str(k)] for k in cands}
         ndp = [NEG] * (slots + 1)
         pick: dict[int, int] = {}
         for c, cur in enumerate(dp):
@@ -195,6 +235,11 @@ def main() -> None:
                     choices=("rel", "abs", "sqrt_energy"))
     ap.add_argument("--grid", type=int, default=None,
                     help="knapsack grid in bytes (default: plan's grid_unit_bytes)")
+    ap.add_argument("--depth-amp", type=float, default=0.0,
+                    help="per-layer downstream amplification of injected error; "
+                         "module weight *= (1+amp)**(n_layers-1-layer). 0 (default) "
+                         "reproduces the depth-blind published behaviour. UNCALIBRATED "
+                         "- sensitivity probe only.")
     ap.add_argument("--out", required=True, help="allocation artifact JSON")
     args = ap.parse_args()
 
@@ -244,7 +289,9 @@ def main() -> None:
     body_budget -= sum(int(round(fixed[r])) for r in dp_roles)
 
     wfn = weight_fn(args.weighting)
-    dp_widths, obj_dp = solve(dp_mods, fixed, body_budget, wfn, grid)
+    n_layers = 1 + max(v for v in (layer_index(n) for n in dp_mods) if v is not None)
+    dp_widths, obj_dp = solve(dp_mods, fixed, body_budget, wfn, grid,
+                              args.depth_amp, n_layers)
     widths = dict(dp_widths)
     for n, m in pinned.items():
         widths[n] = m["recipe_bits"]
@@ -253,17 +300,33 @@ def main() -> None:
     # value to 15 significant figures (0.07535511617344567 vs 0.07535511617344577),
     # which pins the domain beyond doubt. lm_head and the MTP draft carry no
     # out_energy in the ladder and are pinned anyway.
-    obj_new = objective(dp_mods, widths, wfn)
-    obj_hyd = objective(dp_mods, hyd_widths, wfn)
+    obj_new = objective(dp_mods, widths, wfn, args.depth_amp, n_layers)
+    obj_hyd = objective(dp_mods, hyd_widths, wfn, args.depth_amp, n_layers)
 
     moved = {n: (hyd_widths[n], widths[n]) for n in mods if widths[n] != hyd_widths[n]}
     roles_new = role_bytes(mods, widths, fixed)
     role_delta = {r: roles_new[r] - hydrated_roles[r] for r in roles_new}
 
+    # byte delta by depth quartile, so a depth-weighted solve's effect is visible
+    bands = {"L00-15": (0, 15), "L16-31": (16, 31), "L32-47": (32, 47), "L48-63": (48, 63)}
+    band_delta = {}
+    for bname, (lo, hi) in bands.items():
+        d = 0.0
+        for n, m in dp_mods.items():
+            L = layer_index(n)
+            if L is None or not (lo <= L <= hi):
+                continue
+            d += m["numel"] * (widths[n] - hyd_widths[n]) / 8.0
+        band_delta[bname] = int(round(d))
+
     scale = plan["objective"].get("kld_per_objective_unit")
     art = {
         "schema": "qwen38-eda-resolve/1",
         "weighting": args.weighting,
+        "depth_amp": args.depth_amp,
+        "depth_weight_form": "(1+amp)**(n_layers-1-layer_index)",
+        "depth_amp_calibrated": False,
+        "byte_delta_by_depth_band": band_delta,
         "grid_unit_bytes": grid,
         "budget_bytes": budget,
         "body_budget_bytes": body_budget,
@@ -281,6 +344,11 @@ def main() -> None:
         "widths": widths,
         "moved": {n: {"from": a, "to": b} for n, (a, b) in sorted(moved.items())},
         "caveats": [
+            "depth_amp is NOT calibrated by any measurement in this repo: every "
+            "layer-range fidelity experiment converted ranges starting at layer 0 "
+            "(receipts/layer-range-dial-2026-08-19.md), so there is no early-vs-late "
+            "contrast to fit, and that receipt's 13-layer KLD was predicted not "
+            "measured. Any amp>0 allocation is a sensitivity probe.",
             "First-order and layer-local: the proxy sees no inter-layer error "
             "accumulation, and the ladder was measured under hydrated-recipe "
             "propagation.",
@@ -301,6 +369,9 @@ def main() -> None:
     print("role byte deltas vs hydrated (bytes):")
     for r in sorted(role_delta, key=lambda r: role_delta[r]):
         print(f"  {r:<18} {role_delta[r]:+,}")
+    print("byte deltas by depth band (bytes):")
+    for b in sorted(band_delta):
+        print(f"  {b:<8} {band_delta[b]:+,}")
     print(f"artifact -> {args.out}")
 
 
