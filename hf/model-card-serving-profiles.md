@@ -17,35 +17,57 @@ __omp_shell("[What each profile delivers](charts/profiles-throughput.png)")
 | | `PROFILE=fidelity` | `PROFILE=balanced` | `PROFILE=throughput` |
 |---|---|---|---|
 | **weights** | all-trellis (K5/K6 as shipped) | trellis + `mlp.gate_up_proj` MXFP6 | all-FP4 (NVFP4) |
-| **prefill** (2051-tok) | 1,966 ± 1 tok/s | 3,251 ± 1 tok/s | **9,639 ± 18 tok/s** |
-| **decode**, short prompt | **208.3 ± 0.4** (acc 1.000) | 202.8 ± 0.2 (acc 1.000) | 187.4 ± 0.6 (acc 0.930) |
-| **decode**, 500-tok generation | 93.2 ± 0.1 (acc 0.304) | **95.5 ± 0.1** (acc 0.324) | 94.3 ± 0.0 (acc 0.298) |
-| **KLD** vs BF16 | **0.003437** [0.003196, 0.003706] | 0.005672 [0.005302, 0.006087] | 0.063759 |
-| **KLD p99** | **0.035204** | 0.059908 | 0.7010 |
+| **prefill** (2051-tok) | 2,987.7 ± 4.4 tok/s | 3,925.2 ± 13.1 tok/s | **9,638.9 ± 18.3 tok/s** |
+| **decode**, short prompt | **228.3 ± 0.4** (acc 1.000) | 215.6 ± 0.2 (acc 1.000) | 187.4 ± 0.6 (acc 0.930) |
+| **decode**, 500-tok generation | **104.1 ± 0.1** (acc 0.304) | 103.7 ± 0.1 (acc 0.324) | 94.3 ± 0.0 (acc 0.298) |
+| **KLD** vs BF16 | **0.003405** [0.003166, 0.003672] | 0.005672 [0.005302, 0.006087] | 0.063759 |
+| **KLD p99** | **0.034889** | 0.059908 | 0.7010 |
 | **max context** | 238,400 | 199,104 | **250,000** |
 | **weights resident** | 18.8 GiB | 21.2 GiB | **15.9 GiB** |
 | vision + MTP | pass | pass | pass |
-| **use it when** | fidelity is the product: RAG over long documents, agents, eval harnesses, anything where the quant must not change answers | mixed traffic: you want 1.7x the prefill and the best decode, and 199k context is enough | prompt-heavy batch work: reranking, classification, bulk summarisation, where 4-bit drift is acceptable |
-| **the catch** | prefill is 4.9x slower than `throughput` | 39,296 fewer context tokens | 19x the divergence of `fidelity`; measurably worse draft agreement (0.930 vs 1.000) |
+| **criteria met** | 5/6 (fails PP ≥ 7000) | 5/6 (fails ctx) | 4/6 (fails KLD) |
+| **use it when** | fidelity is the product: RAG over long documents, agents, eval harnesses, anything where the quant must not change answers | mixed traffic: you want 1.3x the prefill of `fidelity` with strong decode (fox 215.6, essay 103.7 at MTP acc 0.324), and 199k context is enough | prompt-heavy batch work: reranking, classification, bulk summarisation, where 4-bit drift is acceptable |
+| **the catch** | prefill is 3.2x slower than `throughput` | 39,296 fewer context tokens | 19x the divergence of `fidelity`; measurably worse draft agreement (0.930 vs 1.000) |
 
 ```bash
 PROFILE=fidelity   ./run-qwen38-27b.sh   # most faithful, full context
-PROFILE=balanced   ./run-qwen38-27b.sh   # best decode, 1.7x prefill, 199k ctx
+PROFILE=balanced   ./run-qwen38-27b.sh   # strong decode, 1.3x prefill, 199k ctx
 PROFILE=throughput ./run-qwen38-27b.sh   # fastest prefill  (default)
 ```
+
+### Reproducible container image
+
+A baked serving image is on Docker Hub at
+`docker.io/malaiwah/qwen38-27b-exl3-gg:r34-p2-41a5d16` (also `:latest`), built
+from [`docker/Containerfile`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/docker/Containerfile).
+All 10 patches are baked in on top of the digest-pinned Gilded Gnosis r34 base
+(`voipmonitor/vllm:gilded-gnosis-v20-vllm4d006a4-b12xcd3ce19-fi1ac6942-cu132-20260810-r34`,
+sha256 `820181fbb…df20592b`), so `podman run` plus a Hugging Face cache mount
+is sufficient — the repo is not required at runtime. Gated **9/9 mount-free**
+(`NO_PATCH_MOUNTS=1`): PP 2933.0, fox 229.1, essay 103.7, ctx 238,400, 200k
+prompt OK, vision OK, MTP acceptance\_fox 1.000. See the repo README for a
+copy-pasteable `podman run` example with the full flag set.
 
 ### How the fidelity compares to other quantisations
 
 __omp_shell("[Fidelity vs other quants](charts/fidelity-vs-quants.png)")
 
-`PROFILE=fidelity` serves at **0.003437** — within 27 % of this checkpoint's own
+`PROFILE=fidelity` serves at **0.003405** — within 26 % of this checkpoint's own
 offline figure (0.002700) and **35 % below** the official
-[`Qwen/Qwen3.8-27B-FP8`](https://huggingface.co/Qwen/Qwen3.8-27B-FP8) (0.005294)
-while resident in 18.8 GiB instead of 28.6 GiB. `PROFILE=balanced` (0.005672) lands in the same range as official FP8 — though the two
-numbers come from different-sized suites, so no statistical equivalence is claimed —
-at 1.7x the prefill of `fidelity`.
+[`Qwen/Qwen3.8-27B-FP8`](https://huggingface.co/Qwen/Qwen3.8-27B-FP8) (0.005294,
+measured on a different 10.48 M-position protocol — not comparable to our
+512-context serving numbers) while resident in 18.8 GiB instead of 28.6 GiB.
+`PROFILE=balanced` (0.005672) lands in the same range as official FP8 — though
+the two numbers come from different protocols, so no statistical equivalence is
+claimed — at 1.3x the prefill of `fidelity`.
 `PROFILE=throughput` trades that away: at 0.063759 it is 2x worse than
 third-party NVFP4 (0.031059), which is the honest price of 4-bit activations.
+
+Long-context needle retrieval on the `fidelity` profile (fixed harness, single
+needle per context): **8/8 at 2k, 8/8 at 100k, 8/8 at 195k — 24/24**. This is
+an easy proxy — finding a planted needle does not establish unimpaired
+long-context reasoning, only that the attention window and KV cache are intact
+to 195k.
 
 ### Other combinations that were measured
 
@@ -83,7 +105,7 @@ Same runner, same draft depth, same scheduler — only the weight format differs
 
 | weights | MTP acceptance (short prompt) | decode |
 |---|---|---|
-| trellis (K5/K6) | **1.000** | **208.3** tok/s |
+| trellis (K5/K6) | **1.000** | **228.3** tok/s |
 | trellis + `self_attn` FP4 | 0.967 | 199.5 tok/s |
 | all-FP4 | 0.930 | 187.4 tok/s |
 

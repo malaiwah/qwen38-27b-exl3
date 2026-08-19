@@ -54,8 +54,8 @@
 
 ![What each profile delivers](charts/profiles-throughput.png)
 
-Two profiles, selected by `PROFILE=` in
-[`patches/run-qwen38-27b.sh`](patches/run-qwen38-27b.sh). Both pass
+Three profiles, selected by `PROFILE=` in
+[`patches/run-qwen38-27b.sh`](patches/run-qwen38-27b.sh). All three pass
 `tools/verify-profile.sh` (exit 0, 8/8 checks each, including a 200k-token
 prompt). PP/TG are the `tools/bench-profile.sh` harness at **n=3 boots**;
 KLD is 512 contexts of shard-0000 against the BF16 reference.
@@ -63,22 +63,34 @@ KLD is 512 contexts of shard-0000 against the BF16 reference.
 | | `PROFILE=throughput` | `PROFILE=fidelity` | `PROFILE=balanced` |
 |---|---|---|---|
 | weights | all-FP4 | all-trellis (K5K6 as shipped) | trellis + gate_up MXFP6 |
-| PP, 2051-tok | **9638.9 ± 18.3** tok/s | 2987.7 ± 4.4 tok/s | 3250.6 ± 1.2 tok/s |
-| TG fox / essay | 187.4 ± 0.6 / 94.3 ± 0.0 | **228.3 ± 0.4** / **104.1 ± 0.1** | 202.8 ± 0.2 / 95.5 ± 0.1 |
+| PP, 2051-tok | **9638.9 ± 18.3** tok/s | 2987.7 ± 4.4 tok/s | 3925.2 ± 13.1 tok/s |
+| TG fox / essay | 187.4 ± 0.6 / 94.3 ± 0.0 | **228.3 ± 0.4** / **104.1 ± 0.1** | 215.6 ± 0.2 / 103.7 ± 0.1 |
 | MTP acceptance fox / essay | 0.930 / 0.298 | **1.000** / 0.304 | **1.000** / **0.324** |
 | KLD mean | 0.063759 | **0.003405** [0.003166, 0.003672] | 0.005672 [0.005302, 0.006087] |
 | KLD p99 | 0.7010 | **0.034889** | 0.059908 |
 | max context | **250,000** | 238,400 | 199,104 |
 | vision + MTP | pass | pass | pass |
+| criteria met | 4/6 (fails KLD) | 5/6 (fails PP) | 5/6 (fails ctx) |
 
-`fidelity` serves the checkpoint at **KLD 0.003437 — within 27% of this
-collection's own published trellis fidelity (0.002700)** — with TG 210.2 tok/s
+`fidelity` serves the checkpoint at **KLD 0.003405 — within 26% of this
+collection's own published trellis fidelity (0.002700)** — with TG 228.3 tok/s
 and full 238,400 context; the residual over the checkpoint is the int6 embedding
-table (~0.0007), not any GEMM approximation. It costs ~3.9x prefill.
+table (~0.0007), not any GEMM approximation. It costs ~3.2x prefill.
 `throughput` is the only profile above 7000 tok/s prefill.
 
-No single profile reaches every target simultaneously, and
-[`receipts/frontier-2026-08-19.md`](receipts/frontier-2026-08-19.md) proves why
+Long-context needle retrieval on the `fidelity` profile (fixed harness, single
+needle per context): **8/8 at 2k, 8/8 at 100k, 8/8 at 195k — 24/24**. This is
+an easy proxy — finding a planted needle does not establish unimpaired
+long-context reasoning, only that the attention window and KV cache are intact
+to 195k.
+
+No single profile meets all six north-star criteria. Concretely: `throughput`
+fails KLD (0.063759, well above the 0.012 budget); `fidelity` fails the 7000 tok/s
+prefill criterion (2987.7); `balanced` fails the context criterion (199,104
+tokens, below the 238,400 that `fidelity` achieves). The other two profiles each
+clear five of six.
+
+[`receipts/frontier-2026-08-19.md`](receipts/frontier-2026-08-19.md) shows why
 from three directions: prefill-grade throughput needs the MLP resident in a
 GEMM-ready format, trellis-grade fidelity needs weights that are decoded per
 prefill chunk, and GEMM-resident FP8 for all 24.3e9 quantized parameters is
@@ -91,6 +103,88 @@ prompt over ~4k tokens** (`max_num_batched_tokens` 8192 → 3072, which also
 on the V1 model runner, and the first profile of this stack (prefill is 92%
 GPU-bound; decode was 2%). Upstream: vllm-project/vllm#52871, #52872,
 local-inference-lab/vllm#439, #440, b12x #232/#233/#234.
+
+### Reproducible container image
+
+A baked serving image is published at
+`docker.io/malaiwah/qwen38-27b-exl3-gg:r34-p2-41a5d16` (also tagged `:latest`).
+It layers every patch this project bind-mounts on top of the digest-pinned
+Gilded Gnosis r34 base (`voipmonitor/vllm:gilded-gnosis-v20-vllm4d006a4-b12xcd3ce19-fi1ac6942-cu132-20260810-r34`,
+sha256 `820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b`),
+so the repo is **not required at runtime** — `podman run` plus a Hugging Face
+cache mount is sufficient. All 10 patches (7 vLLM source overlays and 3
+conversion modules) are baked in by [`docker/Containerfile`](docker/Containerfile),
+which also bakes the CUDA `lib64` symlink the B12X JIT needs as real links and
+carries OCI provenance labels (`org.opencontainers.image.source`, `.revision`,
+`.description`, `ai.malaiwah.base-digest`).
+
+The image was gated **9/9 mount-free** (`NO_PATCH_MOUNTS=1`, every patch
+bind-mount disabled): PP 2933.0, fox 229.1, essay 103.7, ctx 238,400, 200k-token
+prompt OK, vision OK, MTP acceptance\_fox 1.000 — confirming the image is
+self-contained.
+
+`PROFILE=throughput|balanced|fidelity` selects the serving profile;
+`NO_PATCH_MOUNTS=1` is what makes the baked image run mount-free. The full flag
+set is in [`patches/run-qwen38-27b.sh`](patches/run-qwen38-27b.sh). A
+standalone `fidelity` invocation — every flag below is taken from that script —
+is:
+
+```bash
+podman run --replace -d \
+  --name qwen38-27b \
+  --device nvidia.com/gpu=all --ipc=host --network host \
+  --tmpfs /usr/local/cuda-13.2/lib64:rw,size=16m \
+  -e HF_HUB_OFFLINE=1 \
+  -e CUTE_DSL_ARCH=sm_120a -e FLASHINFER_CUDA_ARCH_LIST=12.0f \
+  -e OMP_NUM_THREADS=8 -e CUDA_DEVICE_MAX_CONNECTIONS=32 \
+  -e PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True -e SAFETENSORS_FAST_GPU=1 \
+  -e VLLM_WORKER_MULTIPROC_METHOD=spawn \
+  -e VLLM_USE_V2_MODEL_RUNNER=1 -e VLLM_NO_USAGE_STATS=1 -e DO_NOT_TRACK=1 \
+  -e XDG_CACHE_HOME=/cache/jit -e CUDA_CACHE_PATH=/cache/jit \
+  -e TRITON_CACHE_DIR=/cache/jit/triton -e TORCHINDUCTOR_CACHE_DIR=/cache/jit/torchinductor \
+  -e FLASHINFER_WORKSPACE_BASE=/cache/jit/flashinfer \
+  -e VLLM_EXL3_MULTIPRECISION=1 -e VLLM_EXL3_GRAPH_DECODE=1 \
+  -e VLLM_EXL3_FP4_TRITON_DECODE=0 -e VLLM_EXL3_FP4_PER_ROW_GS=0 -e VLLM_EXL3_FP4_DRAFT_HEAD=0 \
+  -e VLLM_EXL3_ONLINE_TRELLIS_BITS=6 \
+  -e VLLM_EXL3_ONLINE_CACHE_DIR=/cache/jit/exl3-online -e VLLM_EXL3_ONLINE_CACHE_MODE=readwrite \
+  -e VLLM_EXL3_EMBED_ONLINE_BITS=6 -e B12X_PACKED_B_MIN_N=1024 \
+  -e VLLM_EXL3_B12X_ANY_BITS=1 -e VLLM_EXL3_B12X_MIN_M=128 -e VLLM_EXL3_SKIP_TRELLIS_PREP=0 \
+  -e VLLM_EXL3_PREFILL_RECONSTRUCT_M=1 -e VLLM_EXL3_PREFILL_RECONSTRUCT_MAX_MB=512 \
+  -e VLLM_EXL3_PREFILL_RECONSTRUCT_CACHE=0 -e VLLM_EXL3_FOLD_FP32_BUDGET_MB=48 \
+  -e VLLM_EXL3_FP4_LAYERS=, \
+  -e VLLM_EXL3_EXT_PATH=/opt/exllamav3 \
+  -e HF_HOME=/root/.cache/huggingface \
+  -v ~/.cache/huggingface/hub:/root/.cache/huggingface:ro \
+  -v ~/.cache/jit:/cache/jit \
+  --entrypoint /bin/bash \
+  docker.io/malaiwah/qwen38-27b-exl3-gg:r34-p2-41a5d16 \
+  -lc 'set -euo pipefail; \
+       ln -sf /usr/local/cuda-13.2/targets/x86_64-linux/lib/* /usr/local/cuda-13.2/lib64/ 2>/dev/null || true; \
+       exec vllm serve \
+         /root/.cache/huggingface/models--malaiwah--Qwen3.8-27B-EXL3-K5K6-hydrated/snapshots/ab3a91a13813df8096cb4c1d560ed3669035d0cf \
+         --served-model-name Qwen3.8-27B --trust-remote-code \
+         --host 0.0.0.0 --port 8000 \
+         --quantization exl3 \
+         --quantization-config "{\"linear\":{\"weight\":\"mxfp8\"},\"ignore\":[\"re:.*visual\\..*\",\"re:.*in_proj_a$\",\"re:.*in_proj_b$\",\"re:.*mtp\\..*\",\"lm_head\"]}" \
+         --attention-backend TRITON_ATTN \
+         --gpu-memory-utilization 0.945 --kv-cache-dtype fp8_e4m3 \
+         --max-model-len 238400 --max-num-seqs 4 --max-num-batched-tokens 3072 \
+         --compilation-config "{\"mode\":\"NONE\",\"cudagraph_mode\":\"FULL_DECODE_ONLY\"}" \
+         --mm-processor-kwargs "{\"truncation\":false}" --mm-processor-cache-type shm \
+         --default-chat-template-kwargs "{\"preserve_thinking\": true}" \
+         --enable-chunked-prefill --reasoning-parser qwen3 \
+         --enable-auto-tool-choice --tool-call-parser qwen3_coder \
+         --speculative-config "{\"method\":\"mtp\",\"num_speculative_tokens\":6}"'
+```
+
+Flags taken from `run-qwen38-27b.sh`: `--tmpfs` + `ln -sf` symlink (B12X JIT
+workaround, lines 225/296 — the baked image already carries these symlinks, so
+the `--tmpfs` is redundant with the baked image but harmless), `--device` /
+`--ipc` / `--network` (line 226), the `-e` environment block (lines 231–280),
+the HF cache mount `-v …/huggingface:ro` (line 281), the JIT cache volume
+`-v …/cache/jit:/cache/jit` (line 288), and the `vllm serve` argument list
+(lines 303–322). For `balanced` or `throughput`, change the profile env vars
+per the `case` block in the script (lines 83–154).
 
 # Qwen3.8-27B EXL3 mixed-precision quants (`K4`, `EXL3-K5K6`)
 
