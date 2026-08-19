@@ -76,6 +76,13 @@ def main() -> None:
                     help="dir holding mtp_weights.safetensors and visual_weights.safetensors")
     ap.add_argument("--shard-name", default="model-extra-mtp-vision.safetensors",
                     help="filename for the added BF16 shard")
+    ap.add_argument("--base-snapshot", default=None,
+                    help="base model snapshot dir; multimodal PROCESSOR configs are "
+                         "copied from it. llmcompressor saves via "
+                         "AutoModelForCausalLM and therefore omits "
+                         "preprocessor_config.json / video_preprocessor_config.json, "
+                         "without which vLLM refuses to load the vision tower "
+                         "(OSError: Can't load image processor).")
     args = ap.parse_args()
 
     from safetensors import safe_open
@@ -135,6 +142,18 @@ def main() -> None:
     qc["ignore"] = ig + added
     cfg_path.write_text(json.dumps(cfg, indent=2) + "\n")
     print(f"ignore: {len(ig)} -> {len(qc['ignore'])} (+{len(added)} patterns for BF16 extras)")
+
+    # 4b. multimodal processor configs (absent from any text-only save)
+    if args.base_snapshot:
+        base = Path(args.base_snapshot)
+        copied = []
+        for name in ("preprocessor_config.json", "video_preprocessor_config.json",
+                     "processor_config.json", "chat_template.jinja"):
+            src_f, dst_f = base / name, dst / name
+            if src_f.is_file() and not dst_f.is_file():
+                shutil.copy2(src_f, dst_f)
+                copied.append(name)
+        print(f"processor configs copied: {copied or 'none needed'}")
 
     # 5. verify every tensor resolves
     by_file: dict[str, list[str]] = {}
