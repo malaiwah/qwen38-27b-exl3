@@ -1324,3 +1324,21 @@ to our v5 KLD suite. It needs vLLM 0.19.1, not our r34 fork, but fits 31.4 GiB
 `receipts/paro-comparison-2026-08-19.md`; citable summary in
 [docs/14-paro-assessment.md](docs/14-paro-assessment.md); feasibility study in
 progress at [docs/13-learned-rotations-feasibility.md](docs/13-learned-rotations-feasibility.md).
+
+**EDA allocation revisit.** Assessed whether the error-driven allocation from
+[`malaiwah/Qwen3.8-27B-EXL3-EDA-research`](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-EDA-research)
+should fold into the next trellis build of the flagship K5K6. The EDA solver
+(exact DP over a byte grid, `rel` objective = `sum_m eps(m,K)`, budget-neutral
+at 21,586,964,548 B) moved bits **from attention/GDN to MLP** (full_attention
+−0.148 GB, linear_attention −0.309 GB, gate+up +0.513 GB) — the opposite of
+our attribution physics (MLP error additive at −1.9%/−6.0%, attention compounds
+via KV at +46%). The `rel` objective got the sign wrong: predicted −0.000251,
+measured +0.000366 KLD (hydrated wins 470/512). On a third-party Discord
+harness EDA ranks 8.7% better KLD than the *online* K5/K6 build (0.007461 vs
+0.008170) — but that is EDA-vs-online, not EDA-vs-hydrated; on our suite EDA is
+13.6% worse than hydrated. Recommendation: fold the *methodology* (re-solve
+with the sign-correct `sqrt_energy` weighting, ~1 s, no GPU, from an existing
+log) into any future trellis rebuild that happens for other reasons, but do
+not schedule a rebuild solely for EDA while the mixed GPTQ requant lane
+(0.002666 third-party) is unmeasured on our suite. Full analysis in
+[docs/57-eda-allocation-revisit.md](docs/57-eda-allocation-revisit.md).
