@@ -33,13 +33,13 @@ FAMILIES = [
     ("exl3_gemm_kernel",          re.compile(r"exl3_gemm_kernel")),
     # Attention
     ("unified_attention",         re.compile(r"unified_attention")),
-    ("flash_attn\|flashinfer",    re.compile(r"flash_attn|flash_attn_varlen|flashinfer")),
+    ("flash_attn/flashinfer",    re.compile(r"flash_attn|flash_attn_varlen|flashinfer")),
     ("attention (other)",         re.compile(r"attention|attn")),
     # Activation quantization support
-    ("act-quant: MaxNan/amax",    re.compile(r"MaxNan|amax")),
+    ("act-quant: MaxNan/amax/Abs",re.compile(r"MaxNan|amax|AbsFunctor")),
     ("act-quant: Bf16ToFp4",      re.compile(r"Bf16ToFp4|Fp4")),
-    ("act-quant: copy/convert",   re.compile(r"CopyKernel|copy.*quant|quantize.*copy")),
-    ("act-quant: div/scale",      re.compile(r"elementwise.*div|scale.*kernel|div.*kernel")),
+    ("act-quant: copy/convert",   re.compile(r"CopyKernel|direct_copy_kernel|vectorized_elementwise.*BFloat16.*array")),
+    ("act-quant: div/scale",      re.compile(r"elementwise.*Mul|BinaryFunctor.*Mul|div.*kernel")),
     ("act-quant (other)",         re.compile(r"quantiz|dequantiz|cast.*type|ConvertKernel")),
     # Tensor concat (CatArrayBatchedCopy)
     ("CatArrayBatchedCopy",       re.compile(r"CatArrayBatchedCopy")),
