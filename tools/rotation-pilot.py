@@ -138,42 +138,49 @@ def build_parser() -> argparse.ArgumentParser:
 # ---------------------------------------------------------------------------
 
 def import_exllamav3(exllama_path: str):
-    """Insert exllama_path's parent on sys.path and import exllamav3 modules.
+    """Import ONLY exllamav3.ext and the exl3_lib quantize module.
 
-    exllama_path is the path to the exllamav3 *package* directory (e.g.
-    /opt/exllamav3-python/exllamav3).  We add its parent to sys.path so that
-    ``import exllamav3`` resolves correctly.
+    The real ``exllamav3/__init__`` transitively imports the generator stack
+    (flash_attn, kbnf/formatron, ...) which the serving image does not ship
+    and the pilot never uses.  Instead of stubbing that ever-growing list,
+    register synthetic parent packages whose __path__ points at the real
+    directories, so ``exllamav3.ext`` and the quantize leaf load from disk
+    WITHOUT executing any package __init__ above them.  Relative imports
+    inside quantize.py (....ext, ....util.*) resolve through the synthetic
+    parents onto the real files; util/__init__ and ext.py are light
+    (torch + stdlib only) and safe to execute.
     """
-    parent = os.path.dirname(os.path.normpath(exllama_path))
-    for p in (parent, os.path.normpath(exllama_path)):
-        if p and p not in sys.path:
-            sys.path.insert(0, p)
-
-    # exllamav3/__init__ pulls modules/attn.py which imports flash_attn at
-    # module scope. The pilot only uses quantize_tiles() and never dispatches
-    # attention, and the serving image ships without flash_attn (vLLM uses its
-    # own backends). Stub it so the package import succeeds; any actual USE of
-    # the stub raises loudly instead of silently faking results.
+    import importlib
     import types
-    if "flash_attn" not in sys.modules:
-        _stub = types.ModuleType("flash_attn")
-        def _unavailable(*_a, **_k):
-            raise RuntimeError(
-                "flash_attn stubbed for the rotation pilot; attention "
-                "dispatch must not be reached from quantize_tiles()"
-            )
-        _stub.flash_attn_func = _unavailable
-        _stub.flash_attn_with_kvcache = _unavailable
-        _stub.flash_attn_varlen_func = _unavailable
-        sys.modules["flash_attn"] = _stub
+
+    root = os.path.normpath(exllama_path)
+    if not os.path.isdir(root):
+        raise RuntimeError(f"exllamav3 package directory not found: {root}")
+
+    def synthetic(name: str, path: str) -> None:
+        if name in sys.modules:
+            return
+        m = types.ModuleType(name)
+        m.__path__ = [path]
+        m.__package__ = name
+        sys.modules[name] = m
+
+    synthetic("exllamav3", root)
+    synthetic("exllamav3.modules", os.path.join(root, "modules"))
+    synthetic("exllamav3.modules.quant", os.path.join(root, "modules", "quant"))
+    synthetic(
+        "exllamav3.modules.quant.exl3_lib",
+        os.path.join(root, "modules", "quant", "exl3_lib"),
+    )
 
     try:
-        from exllamav3.ext import exllamav3_ext as ext  # noqa: F401
-        from exllamav3.modules.quant.exl3_lib import quantize as qmod
+        importlib.import_module("exllamav3.ext")  # JIT-builds exllamav3_ext
+        qmod = importlib.import_module(
+            "exllamav3.modules.quant.exl3_lib.quantize"
+        )
     except ImportError as exc:
         raise RuntimeError(
-            f"Cannot import exllamav3 from {exllama_path} "
-            f"(parent added to sys.path: {parent}).  "
+            f"Cannot import exllamav3 quantize from {root}.  "
             f"Ensure the script runs inside the container or pass "
             f"--exllama-path pointing to the exllamav3 package directory.  "
             f"Original error: {exc}"
@@ -437,6 +444,31 @@ def apply_givens_right(w, angles, pair_indices, group_size=128):
     """Apply K Givens rotations to dimension 1 (columns / output dimension)."""
     return _apply_givens(w, angles, pair_indices, group_size, dim_axis=1)
 
+def _apply_givens_inverse(w, angles, pair_indices, group_size, dim_axis):
+    """Apply the inverse of _apply_givens.
+
+    A product R = R_{K-1} . R_{K-2} . ... . R_0 applied stage 0..K-1 is
+    inverted by applying each stage's transpose (negated angle) in REVERSED
+    order: R_0^T . R_1^T . ... . R_{K-1}^T, i.e. feed stage K-1 first.  We
+    achieve that by flipping both *angles* and *pair_indices* on the stage
+    axis and negating the angles, then reusing the forward _apply_givens loop
+    (which iterates stage 0..K-1, so it now visits original stage K-1 first).
+    """
+    import torch
+    inv_angles = -angles.flip(0)
+    inv_pairs = pair_indices.flip(0)
+    return _apply_givens(w, inv_angles, inv_pairs, group_size, dim_axis)
+
+
+def apply_givens_inverse_left(w, angles, pair_indices, group_size=128):
+    """Inverse of apply_givens_left (rows / input dimension)."""
+    return _apply_givens_inverse(w, angles, pair_indices, group_size, dim_axis=0)
+
+
+def apply_givens_inverse_right(w, angles, pair_indices, group_size=128):
+    """Inverse of apply_givens_right (columns / output dimension)."""
+    return _apply_givens_inverse(w, angles, pair_indices, group_size, dim_axis=1)
+
 
 # ---------------------------------------------------------------------------
 # Global scale (g_scale) search -- golden section, matching EXL3's g_scale_gss
@@ -505,12 +537,47 @@ def compute_full_mse(weight, qmod, quant_args, perm, g_scale=1.0):
     mse = ((qw / g_scale - tiles) ** 2).mean().item()
     return mse
 
+def reconstruct_weight_from_tiles(qtiles, inv_perm, K, N):
+    """Inverse of extract_all_tiles: rebuild a (K, N) weight from (total, 256) tiles.
+
+    extract_all_tiles does:  reshape (tk,16,tn,16) -> permute(0,2,1,3) -> reshape
+    (total,256) -> [:, perm].  We undo the perm with inv_perm (= argsort(perm)),
+    then reverse the reshape/permute.  permute(0,2,1,3) is its own inverse (it only
+    swaps axes 1 and 2).
+    """
+    import torch
+    tiles_k = K // TILE
+    tiles_n = N // TILE
+    tiles = qtiles[:, inv_perm]
+    tiles = tiles.reshape(tiles_k, tiles_n, TILE, TILE)
+    tiles = tiles.permute(0, 2, 1, 3).reshape(K, N)
+    return tiles.contiguous()
+
+
+def quantize_reconstruct_weight(weight, qmod, quant_args, perm, inv_perm,
+                                g_scale=1.0):
+    """Quantize every tile of *weight* and rebuild the quantized (K, N) matrix.
+
+    The returned matrix lives in the SAME domain as *weight*: the g_scale is
+    multiplied into the tiles before quantization and divided back out after,
+    exactly as compute_full_mse does.  Callers then apply the arm's inverse
+    transform chain to land back in the original (untransformed) weight space,
+    so every arm's error is measured against one common reference.
+    """
+    import torch
+    K, N = weight.shape
+    tiles = extract_all_tiles(weight, perm)
+    with torch.no_grad():
+        qw, _ = qmod.quantize_tiles(tiles * g_scale, quant_args)
+    qw = qw / g_scale
+    return reconstruct_weight_from_tiles(qw, inv_perm, K, N)
+
 
 # ---------------------------------------------------------------------------
 # Arm 1: Hadamard baseline (EXL3's regularize path)
 # ---------------------------------------------------------------------------
 
-def run_hadamard_baseline(weight, qmod, quant_args, perm, device, seed):
+def run_hadamard_baseline(weight, qmod, quant_args, perm, inv_perm, device, seed):
     """Replicate EXL3's regularize() without the Hessian-dependent parts.
 
     Steps (matching quantize.py:889-929):
@@ -518,15 +585,24 @@ def run_hadamard_baseline(weight, qmod, quant_args, perm, device, seed):
       2. Per-channel RMS scaling (output dim, then input dim).
       3. Blockwise Hadamard on both dimensions.
       4. Golden-section g_scale search.
-      5. Full MSE.
+      5. Full MSE (in the transformed domain).
+      6. Reconstruct the quantized weight and invert the EXACT transform chain
+         to measure MSE in original weight space (mse_original_space).
+
+    The transform chain is non-orthogonal overall because of the per-channel
+    RMS scalings (sv, su), so the transformed-domain MSE is on a different
+    magnitude scale than the other arms.  mse_original_space undoes:
+        forward: W -> /sv -> H_r -> /su -> H_l
+        inverse: Q -> H_l -> *su -> H_r -> *sv   (Hadamard is normalised => self-inverse)
     """
     import torch
     K, N = weight.shape
     w = weight.clone().to(torch.float32)
+    w_orig = weight.to(torch.float32)
 
     torch.manual_seed(seed)
     sv = (torch.randn(N, device=device).sign() + 1e-5).sign().to(torch.float).unsqueeze(0)
-    su = (torch.randn(K, device=device).sign() + 1e-5).sign().to(torch.float).unsqueeze(0)
+    su = (torch.randn(K, device=device).sign() + 1e-5).sign().to(torch.float).unsqueeze(1)
 
     # Output channel RMS (dim=0 -> one scale per column).
     out_rms = qmod.block_rms(w, dim=0, keepdim=True)
@@ -550,32 +626,45 @@ def run_hadamard_baseline(weight, qmod, quant_args, perm, device, seed):
     # Left Hadamard (rows).
     qmod.blockwise_preapply_had_l_(w, HAD_BLOCK)
 
-    # Global scale search + MSE.
+    # Global scale search + MSE in the transformed domain.
     g_scale = find_optimal_gscale(w, qmod, quant_args, perm, device)
     mse = compute_full_mse(w, qmod, quant_args, perm, g_scale)
-    return {"mse": mse, "g_scale": g_scale}
+
+    # Reconstruct the quantized weight and invert the transform chain to measure
+    # error against the ORIGINAL untransformed weight (shared metric domain).
+    q_w = quantize_reconstruct_weight(w, qmod, quant_args, perm, inv_perm, g_scale)
+    q_orig = q_w.clone()
+    qmod.blockwise_preapply_had_l_(q_orig, HAD_BLOCK)   # inverse left Hadamard (self-inverse)
+    q_orig = q_orig * su                                # undo /su
+    qmod.blockwise_preapply_had_r_(q_orig, HAD_BLOCK)   # inverse right Hadamard (self-inverse)
+    q_orig = q_orig * sv                                # undo /sv
+    mse_original_space = ((q_orig - w_orig) ** 2).mean().item()
+
+    return {"mse": mse, "g_scale": g_scale, "mse_original_space": mse_original_space}
 
 
 # ---------------------------------------------------------------------------
 # Arm 2: Identity control (no transform)
 # ---------------------------------------------------------------------------
-
-def run_identity_control(weight, qmod, quant_args, perm, device):
+def run_identity_control(weight, qmod, quant_args, perm, inv_perm, device):
     """No pre-transform; only g_scale search and MSE.
 
-    If the Hadamard and learned-rotation arms do not both beat this, the
-    harness is broken.
+    The transform is trivial, so mse_original_space must equal the transformed-
+    domain mse exactly -- this is the harness invariant check: both are the MSE
+    of quantize(W) vs W over the same K*N elements, just computed via different
+    code paths (per-tile vs full-matrix reconstruction).
     """
     g_scale = find_optimal_gscale(weight, qmod, quant_args, perm, device)
     mse = compute_full_mse(weight, qmod, quant_args, perm, g_scale)
-    return {"mse": mse, "g_scale": g_scale}
-
+    q_w = quantize_reconstruct_weight(weight, qmod, quant_args, perm, inv_perm, g_scale)
+    mse_original_space = ((q_w - weight) ** 2).mean().item()
+    return {"mse": mse, "g_scale": g_scale, "mse_original_space": mse_original_space}
 
 # ---------------------------------------------------------------------------
 # Arm 3: Learned Givens rotations (STE + AdamW optimisation)
 # ---------------------------------------------------------------------------
 
-def run_learned_rotation(weight, qmod, quant_args, perm, device,
+def run_learned_rotation(weight, qmod, quant_args, perm, inv_perm, device,
                           k_rotations, epochs, lr, n_samples, seed):
     """K=8 Givens rotations + per-channel scaling on both dimensions.
 
@@ -583,19 +672,44 @@ def run_learned_rotation(weight, qmod, quant_args, perm, device,
     output is detached, so the gradient of ||Q(W') - W'||^2 flows through
     W' to the rotation angles and channel scales.
 
-    After optimisation, a g_scale search and full MSE are computed.
+    After optimisation, a g_scale search and full MSE are computed, and the
+    quantized weight is inverted back to original space (mse_original_space):
+        forward:  W -> *alpha_n -> G_n -> *alpha_k -> G_k
+        inverse:  Q -> G_k^-1 -> /alpha_k -> G_n^-1 -> /alpha_n
+    where G^-1 applies the same Givens stages in reversed order with negated
+    angles (each stage is orthogonal, so its inverse is its transpose).
     """
     import torch
     K, N = weight.shape
+    w_orig = weight.to(torch.float32)
 
     # Fixed pair indices (not learned).
     pairs_k = init_pair_indices(K, k_rotations, HAD_BLOCK, device, seed)
     pairs_n = init_pair_indices(N, k_rotations, HAD_BLOCK, device, seed + 1)
 
     # Learnable parameters.
+    #
+    # Angles are initialised with small SEEDED random values rather than zeros.
+    # At angle == 0 every Givens stage is the identity, so the whole rotation
+    # collapse to a single high-symmetry point.  The STE gradient there is NOT
+    # identically zero -- d/dtheta ||Q.detach() - f(theta)||^2 =
+    # -2 (Q - f) . df/dtheta, and f(theta) (the sampled tiles of the rotated
+    # weight) is a fully differentiable function of the angles with NO
+    # accidental .detach() on the tiles path (sample_tiles reads straight from
+    # the autograd-tracked w_t built from angles/scales each step, lines below).
+    # But the per-pair gradient at theta=0 is a cross-correlation of the
+    # (small) quantization error with the partner channel's weights; averaged
+    # over 128 samples and 10 epochs at lr=1e-3 the net angular movement is
+    # negligible, so a zero init lets the arm drift back to ~identity (which is
+    # exactly what the GPU run showed: g_scale matched identity to full
+    # precision).  Small random init breaks that symmetry and gives AdamW a
+    # non-degenerate starting point.
     torch.manual_seed(seed)
-    angles_k = torch.zeros(k_rotations, K // 2, device=device, requires_grad=True)
-    angles_n = torch.zeros(k_rotations, N // 2, device=device, requires_grad=True)
+    angle_init_scale = 0.01
+    angles_k = torch.randn(k_rotations, K // 2, device=device) * angle_init_scale
+    angles_n = torch.randn(k_rotations, N // 2, device=device) * angle_init_scale
+    angles_k.requires_grad_(True)
+    angles_n.requires_grad_(True)
 
     # Initialise channel scales from inverse normalised RMS (analogous to 1/su, 1/sv
     # in regularize, but without random signs -- the rotation handles incoherence).
@@ -618,12 +732,13 @@ def run_learned_rotation(weight, qmod, quant_args, perm, device,
         optimizer.zero_grad()
 
         # Forward: W' = R_k @ diag(alpha_k) @ R_n @ diag(alpha_n) @ W
+        # w_t is a differentiable function of angles/scales (no detach here).
         w_t = w_const * alpha_n.unsqueeze(0)       # column scaling
         w_t = apply_givens_right(w_t, angles_n, pairs_n)
         w_t = w_t * alpha_k.unsqueeze(1)            # row scaling
         w_t = apply_givens_left(w_t, angles_k, pairs_k)
 
-        # Sample tiles (differentiable).
+        # Sample tiles (differentiable -- advanced indexing on w_t).
         sampled = sample_tiles(w_t, n_samples, perm, gen)
 
         # Quantize (detached -- CUDA kernel, no autograd).
@@ -647,7 +762,19 @@ def run_learned_rotation(weight, qmod, quant_args, perm, device,
 
     g_scale = find_optimal_gscale(w_final, qmod, quant_args, perm, device)
     mse = compute_full_mse(w_final, qmod, quant_args, perm, g_scale)
-    return {"mse": mse, "g_scale": g_scale}
+
+    # Invert the transform chain to measure error in original weight space.
+    # Wrapped in no_grad: the angles/scales still carry requires_grad=True from
+    # training, but we only need the forward value of the inverse here.
+    with torch.no_grad():
+        q_w = quantize_reconstruct_weight(w_final, qmod, quant_args, perm, inv_perm, g_scale)
+        q_orig = apply_givens_inverse_left(q_w, angles_k, pairs_k)
+        q_orig = q_orig / alpha_k.unsqueeze(1)
+        q_orig = apply_givens_inverse_right(q_orig, angles_n, pairs_n)
+        q_orig = q_orig / alpha_n.unsqueeze(0)
+        mse_original_space = ((q_orig - w_orig) ** 2).mean().item()
+
+    return {"mse": mse, "g_scale": g_scale, "mse_original_space": mse_original_space}
 
 
 # ---------------------------------------------------------------------------
@@ -711,62 +838,88 @@ def main():
 
     # Arm 1: Hadamard baseline.
     print("Arm 1: Hadamard baseline (EXL3 regularize path) ...")
-    res_had = run_hadamard_baseline(weight, qmod, quant_args, perm, device, args.seed)
-    print(f"  MSE = {res_had['mse']:.10f}  (g_scale = {res_had['g_scale']:.6f})")
+    res_had = run_hadamard_baseline(weight, qmod, quant_args, perm, inv_perm, device, args.seed)
+    print(f"  MSE (transformed domain) = {res_had['mse']:.10f}  (g_scale = {res_had['g_scale']:.6f})")
+    print(f"  MSE (original space)     = {res_had['mse_original_space']:.10f}")
     print()
 
     # Arm 2: Learned rotation.
     print(f"Arm 2: Learned Givens rotations (K={args.k_rotations}, "
           f"epochs={args.epochs}, samples={args.samples}) ...")
     res_rot = run_learned_rotation(
-        weight, qmod, quant_args, perm, device,
+        weight, qmod, quant_args, perm, inv_perm, device,
         args.k_rotations, args.epochs, args.lr, args.samples, args.seed,
     )
-    print(f"  MSE = {res_rot['mse']:.10f}  (g_scale = {res_rot['g_scale']:.6f})")
+    print(f"  MSE (transformed domain) = {res_rot['mse']:.10f}  (g_scale = {res_rot['g_scale']:.6f})")
+    print(f"  MSE (original space)     = {res_rot['mse_original_space']:.10f}")
     print()
 
     # Arm 3: Identity control.
     print("Arm 3: Identity control (no transform) ...")
-    res_id = run_identity_control(weight, qmod, quant_args, perm, device)
-    print(f"  MSE = {res_id['mse']:.10f}  (g_scale = {res_id['g_scale']:.6f})")
+    res_id = run_identity_control(weight, qmod, quant_args, perm, inv_perm, device)
+    print(f"  MSE (transformed domain) = {res_id['mse']:.10f}  (g_scale = {res_id['g_scale']:.6f})")
+    print(f"  MSE (original space)     = {res_id['mse_original_space']:.10f}")
+    # Invariant: identity's transform is trivial, so the two MSEs must match.
+    inv_diff = abs(res_id['mse'] - res_id['mse_original_space'])
+    print(f"  invariant |domain - original| = {inv_diff:.3e} (must be ~0)")
     print()
 
-    # Decision.
-    mse_had = res_had["mse"]
-    mse_rot = res_rot["mse"]
-    mse_id = res_id["mse"]
+    # Decision -- all comparisons use mse_original_space (the shared metric
+    # domain).  The transformed-domain "mse" fields are retained in each arm's
+    # dict for diagnostics but are NOT comparable across arms (the Hadamard
+    # arm's per-channel RMS scaling changes the tensor magnitude).
+    mse_had = res_had["mse_original_space"]
+    mse_rot = res_rot["mse_original_space"]
+    mse_id = res_id["mse_original_space"]
+
+    # Sanity check: Hadamard (an orthogonal rotation + codebook-tuned scaling)
+    # must not be dramatically worse than no transform at all.  had_vs_id > 0
+    # means Hadamard reduces MSE vs identity (good); < 0 means it is worse.
+    had_vs_id = (mse_id - mse_had) / mse_id if mse_id > 0 else 0.0
+    had_vs_id_pct = had_vs_id * 100.0
+
+    invalid = had_vs_id < -0.10  # Hadamard >10% worse than identity => broken
+
     improvement = (mse_had - mse_rot) / mse_had if mse_had > 0 else 0.0
     improvement_pct = improvement * 100.0
 
-    if improvement > 0.05:
+    if invalid:
+        verdict = "INVALID"
+    elif improvement > 0.05:
         verdict = "GO"
     elif improvement < 0.02:
         verdict = "NO-GO"
     else:
         verdict = "AMBIGUOUS"
 
-    had_vs_id = (mse_id - mse_had) / mse_id if mse_id > 0 else 0.0
-
     print("=" * 72)
-    print("RESULTS")
+    print("RESULTS (original weight space)")
     print("=" * 72)
     print(f"  Hadamard baseline MSE : {mse_had:.10f}")
     print(f"  Learned rotation  MSE : {mse_rot:.10f}")
     print(f"  Identity control  MSE : {mse_id:.10f}")
-    print(f"  Hadamard vs identity   : {had_vs_id * 100:.2f}% reduction "
+    print(f"  Hadamard vs identity   : {had_vs_id_pct:.2f}% reduction "
           f"(harness sanity check)")
     print(f"  Learned vs Hadamard    : {improvement_pct:.2f}% reduction")
     print()
+    if invalid:
+        print("SANITY CHECK FAILED: Hadamard is >10% worse than identity in")
+        print("original weight space.  A correct orthogonal pre-transform")
+        print("cannot do worse than no transform for a codebook tuned for")
+        print("rotated weights -- the harness measurement is broken.")
+        print()
     print("DECISION RULE:")
+    print(f"  INVALID  if Hadamard is >10% worse than identity (sanity fail)")
     print(f"  GO       if learned rotation reduces MSE by >5%  vs Hadamard")
     print(f"  NO-GO    if reduction is <2%")
     print(f"  AMBIGUOUS if between 2% and 5%")
     print()
     print(f"  >>> VERDICT: {verdict}  "
-          f"(improvement = {improvement_pct:.2f}%)")
+          f"(improvement = {improvement_pct:.2f}%, had_vs_id = {had_vs_id_pct:.2f}%)")
     print("=" * 72)
 
-    # JSON output.
+    # JSON output.  Per-arm dicts carry both "mse" (transformed domain,
+    # diagnostic only) and "mse_original_space" (the comparable metric).
     results = {
         "config": {
             "layer": args.layer,
@@ -785,8 +938,12 @@ def main():
         "hadamard": res_had,
         "learned_rotation": res_rot,
         "identity": res_id,
+        "mse_hadamard_original_space": mse_had,
+        "mse_learned_original_space": mse_rot,
+        "mse_identity_original_space": mse_id,
         "improvement_pct": improvement_pct,
-        "hadamard_vs_identity_pct": had_vs_id * 100,
+        "hadamard_vs_identity_pct": had_vs_id_pct,
+        "identity_invariant_diff": inv_diff,
         "verdict": verdict,
     }
 
@@ -794,6 +951,9 @@ def main():
         with open(args.json_out, "w") as f:
             json.dump(results, f, indent=2)
         print(f"\nJSON results written to {args.json_out}")
+
+    if invalid:
+        sys.exit(1)
 
 
 if __name__ == "__main__":
