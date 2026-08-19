@@ -65,6 +65,13 @@ QUANTIZATION_CONFIG='{"linear":{"weight":"mxfp8"},"ignore":["re:.*visual\\..*","
 #                         -> 4/6 criteria. The only profile with PP >= 7000.
 #   fidelity              all-trellis.  PP 1965.4+/-2.1   TG fox 207.7+/-0.1
 #                         essay 93.1    KLD 0.003437  p99 0.03520 ctx 238,400
+#   balanced              gate_up FP6.  PP 3290.5         TG fox 203.7
+#                         essay 96.3    KLD 0.005672  p99 0.05991 ctx 199,104
+#                         -> also 5/6, but fails ctx instead of PP: 1.7x the
+#                         prefill of `fidelity` and the best TG-essay measured
+#                         anywhere (96.3, MTP acceptance 0.324), at KLD still
+#                         2.1x inside the 0.012 budget.  Pick this when 199k
+#                         context is enough.
 #                         -> 5/6 criteria; fails only PP. KLD is within 26% of
 #                         the checkpoint's own published 0.002700, and it beats
 #                         the committed baseline 16.6x on KLD mean and 18.3x on
@@ -115,8 +122,24 @@ case "${PROFILE}" in
     : "${GPU_MEMORY_UTILIZATION:=0.945}"
     : "${MAX_MODEL_LEN:=238400}"
     ;;
+  balanced)
+    # Same trellis kernel stack as `fidelity`, but mlp.gate_up_proj is converted
+    # to MXFP6 so the largest matrices become GEMM-resident.  Costs ~2.4 GiB more
+    # than their trellis form, which is why the context ceiling is 199,104 rather
+    # than 238,400 - that is the whole trade.
+    : "${VLLM_EXL3_FP4_LAYERS:=,}"
+    : "${VLLM_EXL3_FP6_LAYERS:=mlp.gate_up_proj}"
+    : "${VLLM_EXL3_PREFILL_RECONSTRUCT_M:=1}"
+    : "${VLLM_EXL3_PREFILL_RECONSTRUCT_MAX_MB:=512}"
+    : "${VLLM_EXL3_PREFILL_RECONSTRUCT_CACHE:=0}"
+    : "${VLLM_EXL3_FOLD_FP32_BUDGET_MB:=48}"
+    : "${VLLM_EXL3_B12X_MIN_M:=128}"
+    : "${VLLM_EXL3_SKIP_TRELLIS_PREP:=0}"
+    : "${GPU_MEMORY_UTILIZATION:=0.945}"
+    : "${MAX_MODEL_LEN:=199104}"
+    ;;
   *)
-    echo "Unknown PROFILE='${PROFILE}' (expected: throughput | fidelity)" >&2
+    echo "Unknown PROFILE='${PROFILE}' (expected: throughput | fidelity | balanced)" >&2
     exit 4
     ;;
 esac

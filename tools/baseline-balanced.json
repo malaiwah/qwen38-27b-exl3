@@ -1,0 +1,58 @@
+{
+  "schema": "qwen38-profile-baseline/1",
+  "provenance": "PROFILE=balanced (all-trellis + mlp.gate_up_proj MXFP6), 2026-08-19: util 0.945 / mnbt 3072 / max-model-len 199104 / VLLM_USE_V2_MODEL_RUNNER=1 / RECONSTRUCT_M=1 MAX_MB=512 CACHE=0 / FOLD 48 MB / B12X_MIN_M=128 / SKIP_TRELLIS_PREP=0. Phase-0 harness n=3 boots (receipts/bench-balanced-2026-08-19.json): PP 3266.3+/-13.9, TG-fox 203.3+/-0.5 [acc 1.000+/-0.000], TG-essay 95.7+/-0.2 [acc 0.324+/-0.000]. KLD mean 0.005672 ci95 [0.005302,0.006087], p95 0.017638, p99 0.059908, 512 contexts shard-0000 (/tmp/kld-data/reports/report-gateup-fp6-hybrid.json). 5/6 north-star criteria: passes TG, KLD mean, KLD p99, vision+MTP; FAILS criterion 5 (context 199,104 < 238,400) and criterion 1 (PP 3266 < 7000). This is the second distinct 5/6-class profile and it fails a DIFFERENT criterion than PROFILE=fidelity. See receipts/balanced-profile-2026-08-19.md.",
+  "note": "Balanced profile: mlp.gate_up_proj in MXFP6 makes the largest matrices GEMM-resident, buying 1.66x the prefill of PROFILE=fidelity and the best TG-essay measured anywhere (95.7), at KLD still 2.1x inside the 0.012 budget. Costs ~2.4 GiB over the trellis form, hence the 199,104 context ceiling. This gate guards THIS profile only.",
+  "metrics": {
+    "pp_tok_s": {
+      "baseline": 3266.3,
+      "rule": "min_ratio",
+      "min_ratio": 0.95,
+      "description": "Prefill prompt throughput, 2051-tok prompt, max_tokens=1, temperature=0, median of 5 reps after warmup."
+    },
+    "tg_essay_tok_s": {
+      "baseline": 95.7,
+      "rule": "min_ratio",
+      "min_ratio": 0.95,
+      "description": "Decode throughput on the essay prompt, max_tokens=500, temperature=0, median of 3 reps."
+    },
+    "tg_fox_tok_s": {
+      "baseline": 203.3,
+      "rule": "min_ratio",
+      "min_ratio": 0.95,
+      "description": "Decode throughput on the fox prompt, max_tokens=200, temperature=0, median of 3 reps."
+    },
+    "max_model_len": {
+      "baseline": 199104,
+      "rule": "min_absolute",
+      "min_absolute": 199104,
+      "description": "Served max_model_len from /v1/models. 199,104 is this profile's memory ceiling with gate_up in MXFP6; it is BELOW the 238,400 north-star and that is the profile's known tradeoff."
+    },
+    "acceptance_essay": {
+      "baseline": 0.324,
+      "rule": "min_absolute",
+      "min_absolute": 0.25,
+      "description": "MTP acceptance rate on the essay prompt, differenced spec_decode_num_accepted/draft counters before vs after the TG-essay run."
+    },
+    "sanity_paris": {
+      "baseline": true,
+      "rule": "boolean_true",
+      "description": "Model answers 'The capital of France is' with text containing 'Paris'."
+    },
+    "vision_red_blue": {
+      "baseline": true,
+      "rule": "boolean_true",
+      "description": "Model identifies left=red, right=blue on a 256x128 red/blue PNG fixture."
+    },
+    "long_ctx_200k": {
+      "baseline": true,
+      "rule": "boolean_true",
+      "description": "A long prompt just under the served context completes with HTTP 200 (max_tokens=1). Target is clamped to max_model_len-64, so on this profile it probes ~199k, not 200k."
+    },
+    "acceptance_fox": {
+      "baseline": 1.0,
+      "rule": "min_absolute",
+      "min_absolute": 0.85,
+      "description": "MTP acceptance rate on the fox prompt, differenced spec_decode_num_accepted/draft counters before vs after the TG-fox run. Tracked separately from the essay figure because acceptance is strongly prompt-dependent."
+    }
+  }
+}

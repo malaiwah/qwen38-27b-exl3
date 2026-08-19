@@ -56,16 +56,16 @@ Two profiles, selected by `PROFILE=` in
 prompt). PP/TG are the `tools/bench-profile.sh` harness at **n=3 boots**;
 KLD is 512 contexts of shard-0000 against the BF16 reference.
 
-| | `PROFILE=throughput` | `PROFILE=fidelity` |
-|---|---|---|
-| weights | all-FP4 | all-trellis (K5K6 as shipped) |
-| PP, 2051-tok | **7694.9 ± 21.8** tok/s | 1965.4 ± 2.1 tok/s |
-| TG fox / essay | 185.0 ± 0.6 / 93.3 ± 0.1 | **207.7 ± 0.1** / 93.1 ± 0.1 |
-| MTP acceptance fox / essay | 0.930 / 0.298 | **1.000** / 0.304 |
-| KLD mean | 0.063759 | **0.003437** [0.003196, 0.003706] |
-| KLD p99 | 0.7010 | **0.035204** |
-| max context | **250,000** | 238,400 |
-| vision + MTP | pass | pass |
+| | `PROFILE=throughput` | `PROFILE=fidelity` | `PROFILE=balanced` |
+|---|---|---|---|
+| weights | all-FP4 | all-trellis (K5K6 as shipped) | trellis + gate_up MXFP6 |
+| PP, 2051-tok | **7694.9 ± 21.8** tok/s | 1965.4 ± 2.1 tok/s | 3266.3 ± 13.9 tok/s |
+| TG fox / essay | 185.0 ± 0.6 / 93.3 ± 0.1 | **207.7 ± 0.1** / 93.1 ± 0.1 | 203.3 ± 0.5 / **95.7 ± 0.2** |
+| MTP acceptance fox / essay | 0.930 / 0.298 | **1.000** / 0.304 | **1.000** / **0.324** |
+| KLD mean | 0.063759 | **0.003437** [0.003196, 0.003706] | 0.005672 [0.005302, 0.006087] |
+| KLD p99 | 0.7010 | **0.035204** | 0.059908 |
+| max context | **250,000** | 238,400 | 199,104 |
+| vision + MTP | pass | pass | pass |
 
 `fidelity` serves the checkpoint at **KLD 0.003437 — within 27% of this
 collection's own published trellis fidelity (0.002700)** — with TG 210.2 tok/s
