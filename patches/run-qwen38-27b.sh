@@ -143,6 +143,10 @@ podman run "${RUN_ARGS[@]}" --replace \
   -e VLLM_EXL3_FP8DG_PREFILL_M="${VLLM_EXL3_FP8DG_PREFILL_M:-0}" \
   -e VLLM_EXL3_FP8DG_SELFTEST="${VLLM_EXL3_FP8DG_SELFTEST:-0}" \
   -e VLLM_EXL3_FP8DG_CACHE="${VLLM_EXL3_FP8DG_CACHE:-0}" \
+  -e VLLM_NO_USAGE_STATS="${VLLM_NO_USAGE_STATS:-1}" \
+  -e DO_NOT_TRACK="${DO_NOT_TRACK:-1}" \
+  -e VLLM_EXL3_PREFILL_RECONSTRUCT_M="${VLLM_EXL3_PREFILL_RECONSTRUCT_M:-1}" \
+  -e PROFILER_CONFIG="${PROFILER_CONFIG:-}" \
   -e VLLM_EXL3_FP4_LAYERS="${VLLM_EXL3_FP4_LAYERS:-mlp.gate_up_proj,mlp.down_proj,linear_attn.}" \
   -e VLLM_EXL3_FP6_LAYERS="${VLLM_EXL3_FP6_LAYERS:-}" \
     -e VLLM_EXL3_B12X_N_RANGE="${VLLM_EXL3_B12X_N_RANGE:-5120-36864}" \
@@ -165,6 +169,7 @@ podman run "${RUN_ARGS[@]}" --replace \
   -lc "set -euo pipefail; cd /; \
        ln -sf /usr/local/cuda-13.2/targets/x86_64-linux/lib/* /usr/local/cuda-13.2/lib64/ 2>/dev/null || true; rm -f /opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/__pycache__/exl3*.pyc /opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/__pycache__/linear*.pyc; \
        SPEC_ARGS=(); if [ -n \"\${SPEC_CONFIG:-}\" ]; then SPEC_ARGS=(--speculative-config \"\${SPEC_CONFIG}\"); fi; \
+       PROF_ARGS=(); if [ -n \"\${PROFILER_CONFIG:-}\" ]; then PROF_ARGS=(--profiler-config \"\${PROFILER_CONFIG}\"); fi; \
        exec vllm serve '${MODEL_IN_CTR}' \
          --served-model-name '${SERVED_MODEL_NAME}' --trust-remote-code \
          --host 0.0.0.0 --port '${PORT}' \
@@ -184,7 +189,7 @@ podman run "${RUN_ARGS[@]}" --replace \
         --enable-chunked-prefill \
          --reasoning-parser qwen3 \
          --enable-auto-tool-choice --tool-call-parser qwen3_coder \
-         \"\${SPEC_ARGS[@]}\""
+         \"\${SPEC_ARGS[@]}\" \"\${PROF_ARGS[@]}\""
 
 [ "${FOREGROUND:-0}" = "1" ] && exit 0
 
