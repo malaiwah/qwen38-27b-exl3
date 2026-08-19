@@ -217,7 +217,13 @@ def main() -> None:
     # activations live across the full layer). Per-Linear granularity is the
     # pipeline's own recommendation for dense models and bounds live memory to
     # one projection at a time.
-    sequential_targets = ["Linear"]
+    # Per-Linear cuts slice MID-module: GDN cache values (None at calibration)
+    # cross subgraph boundaries and detonate as `Tensor + NoneType` downstream.
+    # Module-class boundaries are the documented pattern for untraceable-mixer
+    # models and keep peak memory to one submodule + activations.
+    sequential_targets = [
+        "Qwen3_5GatedDeltaNet", "Qwen3_5Attention", "Qwen3_5MLP",
+    ]
 
     # Qwen3.8-27B is multimodal (Qwen3_5ForConditionalGeneration); llmcompressor's
     # pre_process cannot auto-initialize its processor and aborts when a dataset is
