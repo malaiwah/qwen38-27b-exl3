@@ -167,3 +167,14 @@ KLD(early) > KLD(middle) > KLD(late); U-shape predicts middle < both ends...
 inverted: converting the MIDDLE to FP6 should hurt LEAST under the U-hypothesis
 (middle layers are least sensitive) and converting EARLY should hurt most under
 the exp-hypothesis. Three arms discriminate the two forms; two arms cannot.
+
+### How much of hydrated's KLD the objective can even see
+
+Un-anchored absolute extrapolation (objective at hydrated widths x fitted scale)
+vs the measured offline 0.002700: global scale gives **0.001614 (59.8%)**,
+per-class scales **0.001851 (68.6%)**. A third to 40% of real KLD is invisible to
+the module-local ladder under any scale fitted from it — that mass lives in KV
+compounding, cross-module interaction and propagation, which the one-module-at-a-
+time, frozen-propagation ladder structurally cannot contain. Delta accuracy by
+regime: single-class ±19–23% (global scale); cross-class reallocation wrong-sign.
+The tool is a ~±20% within-class ranking instrument, not a KLD estimator.
