@@ -2706,7 +2706,6 @@ class Exl3OnlineLinearMethod(_Fp8OnlineLinearBase):
 _FP8DG_PREFILL_M = int(os.environ.get("VLLM_EXL3_FP8DG_PREFILL_M", "0"))
 _FP8DG_SELFTEST_ARMED = os.environ.get("VLLM_EXL3_FP8DG_SELFTEST", "0") == "1"
 _FP8DG_SCRATCH: dict = {}
-_FP8DG_WCACHE: dict = {}
 _FP8DG_HAD: dict = {}
 _FP8DG_DISABLED = False  # set on first hard failure (e.g. no SM120 kernel)
 
@@ -2770,7 +2769,14 @@ def _fp8dg_prefill_apply(
 
     use_cache = os.environ.get("VLLM_EXL3_FP8DG_CACHE", "0") == "1"
     if use_cache:
-        cached = _FP8DG_WCACHE.get((id(layer), shard_id))
+        # Cache lives ON the layer: a module-global dict keyed by id(layer)
+        # is unsafe because CPython reuses object addresses after GC, which
+        # could alias one layer's fp8 weights onto another module.
+        wcache = getattr(layer, "_fp8dg_cache", None)
+        if wcache is None:
+            wcache = {}
+            layer._fp8dg_cache = wcache  # type: ignore[attr-defined]
+        cached = wcache.get(shard_id)
         if cached is not None:
             return _fp8dg_gemm(layer, x, shard_id, cached[0], cached[1])
 
@@ -2806,7 +2812,7 @@ def _fp8dg_prefill_apply(
         q_nt, w_scales, (128, 128), use_e8m0=True
     )
     if use_cache:
-        _FP8DG_WCACHE[(id(layer), shard_id)] = (q_nt, w_scales_dg)
+        layer._fp8dg_cache[shard_id] = (q_nt, w_scales_dg)  # type: ignore[attr-defined]
     return _fp8dg_gemm(layer, x, shard_id, q_nt, w_scales_dg)
 
 
