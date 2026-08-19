@@ -158,7 +158,7 @@ def parse_args() -> argparse.Namespace:
         help="Calibration pipeline (default: sequential; use datafree for "
         "RTN QuantizationModifier recipes - no calibration, no tracing)",
     )
-    parser.add_argument(
+    ap.add_argument(
         "--sequential-offload",
         default="cpu",
         help="Offload device for sequential pipeline (default: cpu)",
