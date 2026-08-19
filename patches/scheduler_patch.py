@@ -394,10 +394,17 @@ class Scheduler(SchedulerInterface):
             last_cache_position = max(last_cache_position - block_size, 0)
 
         end = start + num_new_tokens
-        # Until `last_cache_position`, chunk ends must land on block
-        # boundaries. May yield an empty chunk (budget cannot reach the next
-        # boundary); the caller then skips the request.
-        if end < last_cache_position:
+        # Upstream #51113 (ported 2026-08-19, defensive - mamba_cache_mode is
+        # "none" in our serving so this path is currently unreachable):
+        # invariant is that slot p holds the state after exactly
+        # (p + 1) * block_size tokens and state is written at chunk ends, so
+        # chunk ends must be block-aligned until the TRUE prefill end, not
+        # merely until the cacheable-range bound. Gating on
+        # last_cache_position let a chunk end mid-block past the cacheable
+        # range and a later chunk publish a truncated state: wrong tokens,
+        # HTTP 200, no crash (upstream #43559, fork issue #392).
+        prefill_end = max(request.num_prompt_tokens, request.num_tokens - 1)
+        if end < prefill_end:
             end = end // block_size * block_size
 
         next_block_boundary = (start // block_size + 1) * block_size
@@ -410,9 +417,10 @@ class Scheduler(SchedulerInterface):
             # Resumed mid-block (fine-grained partial hash hit): re-align to
             # the block grid before running on, so the crossed boundary's
             # state is materialized (unless it is past the cacheable range).
-            next_block_boundary
-            if start % block_size != 0 and next_block_boundary <= last_cache_position
-            else 0,
+            # #51113: a chunk starting mid-block stops at the boundary
+            # unconditionally (same invariant; the old
+            # `<= last_cache_position` gate let it run past).
+            next_block_boundary if start % block_size != 0 else 0,
             # Never run past the last cacheable block boundary mid-chunk.
             last_cache_position,
             # Fine-grained hits: the prompt's partial-tail entry can only be

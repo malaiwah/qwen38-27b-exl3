@@ -3698,6 +3698,11 @@ class Exl3LinearMethod(LinearMethodBase):
                 has_mcg=has_mcg,
                 has_mul1=has_mul1,
             ) and (_B12X_MIN_M == 0 or x.shape[0] >= _B12X_MIN_M)
+            # NOTE (PR #318's warning applies): this is a Python-level branch.
+            # Safe under shape-specialised CUDA graphs (m is fixed per captured
+            # graph) and with compile=NONE; if torch.compile with dynamic shapes
+            # is ever enabled, move this dispatch INSIDE the custom op or it
+            # will bake one branch into the traced graph.
             suh = layer.suh.exl3_tensors[shard_id]
             svh = layer.svh.exl3_tensors[shard_id]
             if (

@@ -25,7 +25,7 @@ SERVED_MODEL_NAME="${SERVED_MODEL_NAME:-Qwen3.8-27B}"
 # PR #314 is mounted over the pinned GG r34 base image. Refuse to start if the
 # installed overlay is absent or differs from the exact qualified source.
 EXL3_PATCH_HOST="${EXL3_PATCH_HOST:-/home/mbelleau/vllm-exl3-multiprecision.py}"
-EXL3_PATCH_SHA256="4a453232253b69ef4a674e2ea8a4e734472b5f6a2f655c4ef489c575f42136b6"
+EXL3_PATCH_SHA256="9496769fe93bcba2b82e79208eeef0fdb0fec7196905bb592de5f4fb4477eb9f"
 EXL3_PATCH_CTR="/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py"
 [ -f "${EXL3_PATCH_HOST}" ] || {
   echo "EXL3 graph patch is missing: ${EXL3_PATCH_HOST}" >&2
@@ -150,6 +150,10 @@ GPU_MEMORY_UTILIZATION="${GPU_MEMORY_UTILIZATION:-0.93}"
 MAX_MODEL_LEN="${MAX_MODEL_LEN:-250000}"
 MAX_NUM_SEQS="${MAX_NUM_SEQS:-4}"
 MAX_NUM_BATCHED_TOKENS="${MAX_NUM_BATCHED_TOKENS:-3072}"
+# fp8_e4m3 is the measured default; turboquant_k8v4 etc. are the fork-shipped
+# sub-8-bit formats (own Triton backend, supports_spec_as_decode=False - measure
+# MTP behaviour before trusting TG numbers on them).
+KV_CACHE_DTYPE="${KV_CACHE_DTYPE:-fp8_e4m3}"
 
 # Graph-captured prefill has produced Xid 31 on short sm_120 prefills.
 # FULL_DECODE_ONLY keeps prefill out of graphs. The pinned PR primes every
@@ -264,6 +268,7 @@ podman run "${RUN_ARGS[@]}" --replace \
   -v "${HF_CACHE_HOST}":/root/.cache/huggingface:ro \
   -v "${EXL3_PATCH_HOST}":"${EXL3_PATCH_CTR}":ro \
   -v /home/mbelleau/scheduler_patch.py:/opt/venv/lib/python3.12/site-packages/vllm/v1/core/sched/scheduler.py:ro \
+  -v /home/mbelleau/qwen_gdn_linear_attn_patch.py:/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py:ro \
   -v /home/mbelleau/spec_decode_utils_patch.py:/opt/venv/lib/python3.12/site-packages/vllm/v1/worker/gpu/spec_decode/utils.py:ro \
   -v /home/mbelleau/autoregressive_speculator_patch.py:/opt/venv/lib/python3.12/site-packages/vllm/v1/worker/gpu/spec_decode/autoregressive/speculator.py:ro \
   -v /home/mbelleau/qwen3_5_mtp_patch.py:/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5_mtp.py:ro \
@@ -290,7 +295,7 @@ podman run "${RUN_ARGS[@]}" --replace \
          --attention-backend '${ATTN_BACKEND}' \
          \
          --gpu-memory-utilization '${GPU_MEMORY_UTILIZATION}' \
-        --kv-cache-dtype fp8_e4m3 \
+        --kv-cache-dtype '${KV_CACHE_DTYPE}' \
          --max-model-len '${MAX_MODEL_LEN}' \
         --max-num-seqs '${MAX_NUM_SEQS}' \
         --max-num-batched-tokens '${MAX_NUM_BATCHED_TOKENS}' \
