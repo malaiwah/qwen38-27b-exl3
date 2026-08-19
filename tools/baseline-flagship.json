@@ -4,39 +4,34 @@
   "note": "PP/TG are single-request overhead-inclusive metrics (see receipts/peer-review-2026-08-18.md section C). ~142.5 ms of each request is fixed per-engine-step overhead. acceptance_essay is high-variance (0.29-0.52 observed on identical configs); threshold is deliberately loose. Robustness is NOT covered by this gate - run tools/stress-gate.py.",
   "metrics": {
     "pp_tok_s": {
-      "baseline": 6413,
+      "baseline": 6460,
       "rule": "min_ratio",
       "min_ratio": 0.95,
-      "description": "Prefill prompt throughput, 2051-tok prompt, max_tokens=1, temperature=0, median of 5 reps after warmup.",
-      "value": 6460
+      "description": "Prefill prompt throughput, 2051-tok prompt, max_tokens=1, temperature=0, median of 5 reps after warmup."
     },
     "tg_essay_tok_s": {
-      "baseline": 75.2,
+      "baseline": 74.8,
       "rule": "min_ratio",
       "min_ratio": 0.95,
-      "description": "Decode throughput on the essay prompt, max_tokens=500, temperature=0, median of 3 reps.",
-      "value": 74.8
+      "description": "Decode throughput on the essay prompt, max_tokens=500, temperature=0, median of 3 reps."
     },
     "tg_fox_tok_s": {
-      "baseline": 160.6,
+      "baseline": 158.7,
       "rule": "min_ratio",
       "min_ratio": 0.95,
-      "description": "Decode throughput on the fox prompt, max_tokens=200, temperature=0, median of 3 reps.",
-      "value": 158.7
+      "description": "Decode throughput on the fox prompt, max_tokens=200, temperature=0, median of 3 reps."
     },
     "max_model_len": {
-      "baseline": 238400,
+      "baseline": 262144,
       "rule": "min_absolute",
       "min_absolute": 262144,
-      "description": "Served max_model_len from /v1/models; must not have shrunk below the flagship FP8-KV context.",
-      "value": 262144
+      "description": "Served max_model_len from /v1/models; must not have shrunk below the flagship FP8-KV context."
     },
     "acceptance_essay": {
-      "baseline": 0.517,
+      "baseline": 0.29,
       "rule": "min_absolute",
       "min_absolute": 0.25,
-      "description": "MTP acceptance rate on the essay prompt, differenced spec_decode_num_accepted/draft counters before vs after the TG-essay run.",
-      "value": 0.29
+      "description": "MTP acceptance rate on the essay prompt, differenced spec_decode_num_accepted/draft counters before vs after the TG-essay run."
     },
     "sanity_paris": {
       "baseline": true,
