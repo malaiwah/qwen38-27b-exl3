@@ -321,6 +321,7 @@ podman run "${RUN_ARGS[@]}" --replace \
          \"\${LMO_ARGS[@]}\" \
          --quantization-config \"\${QUANTIZATION_CONFIG}\" \
          --attention-backend '${ATTN_BACKEND}' \
+        ${BLOCK_SIZE:+--block-size ${BLOCK_SIZE}} \\
          \
          --gpu-memory-utilization '${GPU_MEMORY_UTILIZATION}' \
         --kv-cache-dtype '${KV_CACHE_DTYPE}' \
