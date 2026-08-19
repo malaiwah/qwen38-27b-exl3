@@ -152,6 +152,14 @@ def parse_args() -> argparse.Namespace:
         help="Model loading precision (default: auto, uses config dtype)",
     )
     ap.add_argument(
+        "--no-concatenate",
+        action="store_true",
+        help="Do not concatenate calibration samples into full-length "
+        "sequences. concatenate_data=True collapsed 512 ultrachat samples into "
+        "42 sequences (~86k tokens), starving the GPTQ Hessians; off gives 512 "
+        "distinct (padded) sequences.",
+    )
+    ap.add_argument(
         "--pipeline",
         default="sequential",
         choices=["sequential", "basic", "datafree", "independent"],
@@ -248,8 +256,8 @@ def main() -> None:
         num_calibration_samples=args.samples,
         max_seq_length=args.seq_len,
         batch_size=args.batch_size,
-        concatenate_data=True,
-        pad_to_max_length=False,
+        concatenate_data=not args.no_concatenate,
+        pad_to_max_length=bool(args.no_concatenate),
         text_column="messages",
 
         # Sequential pipeline for memory-efficient GPTQ on large models.
