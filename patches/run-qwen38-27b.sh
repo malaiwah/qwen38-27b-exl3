@@ -108,6 +108,10 @@ if [ "${FOREGROUND:-0}" = "1" ]; then
 else
   RUN_ARGS=(-d)
 fi
+# nsys needs perf-counter access for CUDA tracing inside the container.
+if [ "${NSYS_PROFILE:-0}" = "1" ]; then
+  RUN_ARGS+=(--cap-add=SYS_ADMIN)
+fi
 
 podman run "${RUN_ARGS[@]}" --replace \
   --name "${NAME}" \
@@ -147,6 +151,8 @@ podman run "${RUN_ARGS[@]}" --replace \
   -e DO_NOT_TRACK="${DO_NOT_TRACK:-1}" \
   -e VLLM_EXL3_PREFILL_RECONSTRUCT_M="${VLLM_EXL3_PREFILL_RECONSTRUCT_M:-1}" \
   -e PROFILER_CONFIG="${PROFILER_CONFIG:-}" \
+  -e NSYS_PROFILE="${NSYS_PROFILE:-0}" -e NSYS_TAG="${NSYS_TAG:-run}" \
+  -e VLLM_NVTX_SCOPES_FOR_PROFILING="${VLLM_NVTX_SCOPES_FOR_PROFILING:-1}" \
   -e VLLM_EXL3_FP4_LAYERS="${VLLM_EXL3_FP4_LAYERS:-mlp.gate_up_proj,mlp.down_proj,linear_attn.}" \
   -e VLLM_EXL3_FP6_LAYERS="${VLLM_EXL3_FP6_LAYERS:-}" \
   -e VLLM_EXL3_B12X_ANY_BITS="${VLLM_EXL3_B12X_ANY_BITS:-0}" \
@@ -171,7 +177,11 @@ podman run "${RUN_ARGS[@]}" --replace \
        ln -sf /usr/local/cuda-13.2/targets/x86_64-linux/lib/* /usr/local/cuda-13.2/lib64/ 2>/dev/null || true; rm -f /opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/__pycache__/exl3*.pyc /opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/__pycache__/linear*.pyc; \
        SPEC_ARGS=(); if [ -n \"\${SPEC_CONFIG:-}\" ]; then SPEC_ARGS=(--speculative-config \"\${SPEC_CONFIG}\"); fi; \
        PROF_ARGS=(); if [ -n \"\${PROFILER_CONFIG:-}\" ]; then PROF_ARGS=(--profiler-config \"\${PROFILER_CONFIG}\"); fi; \
-       exec vllm serve '${MODEL_IN_CTR}' \
+       NSYS=(); if [ \"\${NSYS_PROFILE:-0}\" = \"1\" ]; then mkdir -p /cache/jit/nsys; \
+         NSYS=(nsys profile --trace=cuda,nvtx,osrt --sample=none --cuda-graph-trace=node \
+               --capture-range=cudaProfilerApi --capture-range-end=stop --force-overwrite=true \
+               -o /cache/jit/nsys/\${NSYS_TAG:-run}); fi; \
+       exec \"\${NSYS[@]}\" vllm serve '${MODEL_IN_CTR}' \
          --served-model-name '${SERVED_MODEL_NAME}' --trust-remote-code \
          --host 0.0.0.0 --port '${PORT}' \
          --quantization exl3 \

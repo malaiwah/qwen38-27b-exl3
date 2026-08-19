@@ -1,0 +1,60 @@
+===== cuda_api_sum =====
+Time (%),Total Time (ns),Num Calls,Avg (ns),Med (ns),Min (ns),Max (ns),StdDev (ns),Name
+44.6,210142822,3344,62841.8,6280.0,1376,19051647,1030116.4,cudaMemcpyAsync
+28.8,135565600,32848,4127.1,2010.0,1496,740195,28022.3,cudaLaunchKernel
+12.1,57202435,43,1330289.2,3848.0,2036,28942593,6052768.2,cudaEventSynchronize
+4.1,19143400,3,6381133.3,60682.0,33512,19049206,10970881.2,cuModuleLoadData
+3.4,15940750,11,1449159.1,1173402.0,1051256,3484517,693794.9,cudaGraphLaunch_v10000
+3.0,13950533,3665,3806.4,3575.0,2015,32635,1703.8,cudaLaunchKernelExC_v11060
+1.2,5644103,1731,3260.6,2528.0,1773,285131,8856.5,cuLaunchKernelEx
+1.1,5082574,976,5207.6,4256.5,1644,529790,18294.9,cudaMemsetAsync
+0.7,3171873,36284,87.4,69.0,54,26002,154.3,cuKernelGetName
+0.4,1812804,8,226600.5,24063.5,15983,1637620,570214.2,cudaHostAlloc
+0.1,637167,158,4032.7,3585.5,3221,22447,2034.1,cudaLaunchCooperativeKernel
+0.1,619162,196,3159.0,2389.0,1475,30252,3504.6,cuLaunchKernel
+0.1,365599,1263,289.5,198.0,131,2782,264.0,cudaStreamIsCapturing_v10000
+0.1,337361,309,1091.8,641.0,311,7680,1053.8,cudaEventRecordWithFlags_v11010
+0.1,316286,253,1250.1,796.0,426,8633,1120.1,cudaEventQuery
+0.0,175279,2,87639.5,87639.5,35154,140125,74225.7,cuModuleLoad
+0.0,124291,6,20715.2,16993.0,414,53973,23313.2,cudaKernelSetAttributeForDevice_v12060
+0.0,102760,3,34253.3,30794.0,28697,43269,7877.9,cudaLibraryLoadData_v12060
+===== cuda_gpu_kern_sum =====
+Time (%),Total Time (ns),Instances,Avg (ns),Med (ns),Min (ns),Max (ns),StdDev (ns),Name
+19.2,154129603,554,278212.3,287153.0,19680,489346,147329.7,kernel_cutlass_kernel_b12x_libdense_gemmDenseGemmKernel_object_at__CopyAtom_ThrID10_TVLayoutSrc11638401_TVLayoutDst11638401_Valuetypef4E2M1FN_tensor00o5120111100_tensorptrf4E2M1FNgmemalig_0
+10.1,81177125,3624,22399.9,22208.0,7808,33248,9144.0,kernel_cutlass_kernel_b12x_libdense_gemmDenseGemmKernel_object_at__CopyAtom_ThrID10_TVLayoutSrc1819201_TVLayoutDst1819201_Valuetypef4E2M1FN_tensor00o5120111100_tensorptrf4E2M1FNgmemalign1_0
+6.7,53417528,86,621134.0,619201.5,608161,745121,16628.0,"void exl3_gemm_kernel<(int)6, (bool)0, (int)1, (int)16, (int)16, (int)512, (int)4, (int)3>(const __half *, const unsigned short *, void *, int, int, int, int *, const __half *, __half *, const __half *)"
+6.0,47882104,130,368323.9,368400.5,313120,426273,32431.5,kernel_cutlass_kernel_b12x_libdense_gemmDenseGemmKernel_object_at__CopyAtom_ThrID10_TVLayoutSrc11638401_TVLayoutDst11638401_Valuetypef4E2M1FN_tensor00o17408111100_tensorptrf4E2M1FNgmemali_0
+4.5,36394103,13418,2712.3,1408.0,640,39136,6106.8,"void at::native::unrolled_elementwise_kernel<at::native::direct_copy_kernel_cuda(at::TensorIteratorBase &)::[lambda() (instance 3)]::operator ()() const::[lambda() (instance 7)]::operator ()() const::[lambda(float) (instance 1)], std::array<char *, (unsigned long)2>, (int)4, TrivialOffsetCalculator<(int)1, unsigned int>, TrivialOffsetCalculator<(int)1, unsigned int>, at::native::memory::LoadWithCast<(int)1>, at::native::memory::StoreWithCast<(int)1>>(int, T1, T2, T4, T5, T6, T7)"
+4.3,34482584,6118,5636.3,3968.0,1664,27328,3248.3,"void at::native::reduce_kernel<(int)512, (int)1, at::native::ReduceOp<c10::BFloat16, at::native::func_wrapper_t<c10::BFloat16, at::native::MaxNanFunctor<c10::BFloat16>>, unsigned int, c10::BFloat16, (int)4, (int)4>>(T3)"
+3.8,30585241,2014,15186.3,800.0,672,167136,41767.6,"void at::native::<unnamed>::CatArrayBatchedCopy_vectorized<at::native::<unnamed>::OpaqueType<(unsigned int)2>, unsigned int, (int)2, (int)128, (int)1, (int)16, (int)8>(char *, at::native::<unnamed>::CatArrInputTensorMetadata<T1, T2, T4, T5>, at::native::<unnamed>::TensorSizeStride<T2, (unsigned int)4>, int, T2)"
+3.7,29689163,840,35344.2,36432.0,31808,38432,2004.4,kernel_cutlass_kernel_b12x_libdense_gemmDenseGemmKernel_object_at__CopyAtom_ThrID10_TVLayoutSrc1819201_TVLayoutDst1819201_Valuetypef4E2M1FN_tensor00o17408111100_tensorptrf4E2M1FNgmemalign_0
+2.8,22169461,224,98970.8,3712.0,3456,751138,234612.0,kernel_unified_attention
+2.5,19994778,5272,3792.6,928.0,800,34881,7691.3,"void at::native::elementwise_kernel<(int)128, (int)2, void at::native::gpu_kernel_impl_nocast<at::native::BinaryFunctor<float, float, float, at::native::binary_internal::MulFunctor<float>>>(at::TensorIteratorBase &, const T1 &)::[lambda(int) (instance 1)]>(int, T3)"
+2.4,19549033,6118,3195.3,576.0,512,73408,9509.2,"void at::native::vectorized_elementwise_kernel<(int)4, at::native::AbsFunctor<c10::BFloat16>, std::array<char *, (unsigned long)2>>(int, T2, T3)"
+2.4,18931798,3624,5224.0,4960.0,4800,9760,588.2,kernel_cutlass_kernel_b12xquantizationnvfp4_kernelBf16ToFp4TmaKernel_object_at__tensorptrbf16gmemalign16o128512051201_CopyAtom_ThrID10_TVLayoutSrc11638401_TVLayoutDst11638401_Valuetypef4E_0
+2.0,15690104,130,120693.1,118704.5,100576,139840,9477.3,kernel_cutlass_kernel_b12x_libdense_gemmDenseGemmKernel_object_at__CopyAtom_ThrID10_TVLayoutSrc11638401_TVLayoutDst11638401_Valuetypef4E2M1FN_tensor00o6144111100_tensorptrf4E2M1FNgmemalig_0
+1.8,14454272,130,111186.7,111552.5,106496,115616,2232.0,"void vllm::act_and_mul_kernel<c10::BFloat16, __nv_bfloat162, &vllm::silu_kernel<c10::BFloat16>, &vllm::packed_silu_kernel<__nv_bfloat162>, (bool)1, (bool)1, (bool)0, (bool)1>(T1 *, const T1 *, int, float, float, float)"
+1.7,13219450,1940,6814.1,704.0,672,50880,15513.2,"void at::native::vectorized_elementwise_kernel<(int)4, at::native::CUDAFunctor_add<float>, std::array<char *, (unsigned long)3>>(int, T2, T3)"
+1.5,11917009,554,21510.8,21232.0,17600,26816,2307.3,kernel_cutlass_kernel_b12xquantizationnvfp4_kernelBf16ToFp4TmaKernel_object_at__tensorptrbf16gmemalign16o2176512051201_CopyAtom_ThrID10_TVLayoutSrc11638401_TVLayoutDst11638401_Valuetypef4_0
+1.4,10944048,130,84185.0,83024.0,74752,92704,3898.1,kernel_cutlass_kernel_b12xquantizationnvfp4_kernelBf16ToFp4TmaKernel_object_at__tensorptrbf16gmemalign16o217617408174081_CopyAtom_ThrID10_TVLayoutSrc11638401_TVLayoutDst11638401_Valuetype_0
+1.3,10728959,4792,2238.9,1248.0,576,33696,5235.9,"void at::native::elementwise_kernel<(int)128, (int)4, void at::native::gpu_kernel_impl_nocast<at::native::direct_copy_kernel_cuda(at::TensorIteratorBase &)::[lambda() (instance 3)]::operator ()() const::[lambda() (instance 12)]::operator ()() const::[lambda(c10::BFloat16) (instance 1)]>(at::TensorIteratorBase &, const T1 &)::[lambda(int) (instance 1)]>(int, T3)"
+===== nvtx_sum =====
+Time (%),Total Time (ns),Instances,Avg (ns),Med (ns),Min (ns),Max (ns),StdDev (ns),Style,Range
+25.7,627038178,14,44788441.3,1322491.0,1072932,225845834,86593481.1,PushPop,:gpu_model_runner: forward
+19.6,478152143,14,34153724.5,40882890.5,8149851,42637552,12455364.9,PushPop,:gpu_model_runner: draft
+18.0,439995506,2,219997753.0,219997753.0,210552896,229442610,13357044.9,PushPop,:execute_context_1(2051)_generation_0(0)
+14.1,344776367,11,31343306.1,4147470.0,3934996,303186063,90160298.1,PushPop,:execute_context_0(0)_generation_1(7)
+13.9,339645385,19,17876072.9,2653645.0,97359,299386955,68187085.6,PushPop,:gpu_model_runner: preprocess
+7.6,184405135,1,184405135.0,184405135.0,184405135,184405135,0.0,PushPop,:execute_context_1(14)_generation_0(0)
+1.0,23245949,14,1660424.9,211463.0,57887,20073674,5301181.3,PushPop,:gpu_model_runner: sample
+0.1,2056409,14,146886.4,137100.0,120291,203237,24477.4,PushPop,:gpu_model_runner: postprocess
+0.0,931678,14,66548.4,66949.0,59947,76353,5444.7,PushPop,:gpu_model_runner: AsyncGPUModelRunnerOutput
+0.0,852368,5,170473.6,121966.0,105974,280167,81048.9,PushPop,:execute_context_0(0)_generation_0(0)
+0.0,497269,11,45206.3,49705.0,23276,58546,12598.9,PushPop,:schedule: allocate_slots
+0.0,432615,14,30901.1,26238.0,22173,48148,10085.1,PushPop,:gpu_model_runner: bookkeep
+0.0,106361,19,5597.9,5061.0,3022,11770,2031.0,PushPop,:schedule: make_cached_request_data
+0.0,71760,19,3776.8,3243.0,1798,10067,1797.3,PushPop,:schedule: update_after_schedule
+0.0,54766,14,3911.9,3847.5,3218,4653,459.9,PushPop,:gpu_model_runner: ModelRunnerOutput
+0.0,25995,19,1368.2,1026.0,592,3738,779.4,PushPop,:schedule: get_num_common_prefix_blocks
+0.0,13173,14,940.9,925.0,750,1263,131.1,PushPop,:gpu_model_runner: eplb
+0.0,12810,14,915.0,851.5,635,1364,211.9,PushPop,:gpu_model_runner: set_async_sampled_token_ids
