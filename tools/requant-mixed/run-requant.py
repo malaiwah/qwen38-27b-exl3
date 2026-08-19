@@ -201,8 +201,18 @@ def main() -> None:
     # the rest to CPU, keeping VRAM usage bounded to ~1-2 layers on GPU.
     sequential_targets = ["re:model\\.language_model\\.layers\\.\\d+$"]
 
+    # Qwen3.8-27B is multimodal (Qwen3_5ForConditionalGeneration); llmcompressor's
+    # pre_process cannot auto-initialize its processor and aborts when a dataset is
+    # supplied. Text-only calibration needs only the tokenizer, so build it
+    # explicitly and hand it over.
+    from transformers import AutoTokenizer
+    processor = AutoTokenizer.from_pretrained(
+        args.model, trust_remote_code=not args.no_trust_remote_code
+    )
+
     oneshot(
         model=args.model,
+        processor=processor,
         recipe=str(recipe_path),
         trust_remote_code_model=not args.no_trust_remote_code,
         precision=args.precision,
