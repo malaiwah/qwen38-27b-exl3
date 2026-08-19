@@ -196,7 +196,11 @@ fi
 # container, measured 77.8% acceptance at 3.33 mean length.
 MTP="${MTP:-6}"
 SPECULATIVE_TOKENS="${SPECULATIVE_TOKENS:-6}"
-if [ "${MTP}" != "0" ]; then
+# A caller-provided SPEC_CONFIG (e.g. method dspark with an external draft)
+# wins over the MTP default; MTP=0 alone still disables speculation entirely.
+if [ -n "${SPEC_CONFIG:-}" ]; then
+  :
+elif [ "${MTP}" != "0" ]; then
   SPEC_CONFIG="$(printf '{"method":"mtp","num_speculative_tokens":%s}' "${SPECULATIVE_TOKENS}")"
 else
   SPEC_CONFIG=""
@@ -245,6 +249,7 @@ podman run "${RUN_ARGS[@]}" --replace \
   -e QUANTIZATION_CONFIG="${QUANTIZATION_CONFIG}" \
   -e MM_PROCESSOR_KWARGS="${MM_PROCESSOR_KWARGS}" \
   -e SPEC_CONFIG="${SPEC_CONFIG}" \
+  -e LANGUAGE_MODEL_ONLY="${LANGUAGE_MODEL_ONLY:-0}" \
   -e VLLM_EXL3_ONLINE_TRELLIS_BITS=6 \
   -e VLLM_EXL3_ONLINE_CACHE_DIR=/cache/jit/exl3-online \
   -e VLLM_EXL3_ONLINE_CACHE_MODE=readwrite \
@@ -301,6 +306,7 @@ podman run "${RUN_ARGS[@]}" --replace \
   -lc "set -euo pipefail; cd /; \
        ln -sf /usr/local/cuda-13.2/targets/x86_64-linux/lib/* /usr/local/cuda-13.2/lib64/ 2>/dev/null || true; rm -f /opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/__pycache__/exl3*.pyc /opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/__pycache__/linear*.pyc; \
        SPEC_ARGS=(); if [ -n \"\${SPEC_CONFIG:-}\" ]; then SPEC_ARGS=(--speculative-config \"\${SPEC_CONFIG}\"); fi; \
+       LMO_ARGS=(); if [ \"\${LANGUAGE_MODEL_ONLY:-0}\" = \"1\" ]; then LMO_ARGS=(--language-model-only); fi; \
        PROF_ARGS=(); if [ -n \"\${PROFILER_CONFIG:-}\" ]; then PROF_ARGS=(--profiler-config \"\${PROFILER_CONFIG}\"); fi; \
        NSYS=(); if [ \"\${NSYS_PROFILE:-0}\" = \"1\" ]; then mkdir -p /cache/jit/nsys; \
          NSYS=(nsys profile --trace=cuda,nvtx,osrt --sample=none --cuda-graph-trace=node \
@@ -310,6 +316,7 @@ podman run "${RUN_ARGS[@]}" --replace \
          --served-model-name '${SERVED_MODEL_NAME}' --trust-remote-code \
          --host 0.0.0.0 --port '${PORT}' \
          --quantization exl3 \
+         \"\${LMO_ARGS[@]}\" \
          --quantization-config \"\${QUANTIZATION_CONFIG}\" \
          --attention-backend '${ATTN_BACKEND}' \
          \
