@@ -35,19 +35,31 @@ printf '%s  %s\n' "${EXL3_PATCH_SHA256}" "${EXL3_PATCH_HOST}" | sha256sum -c -
 
 QUANTIZATION_CONFIG='{"linear":{"weight":"mxfp8"},"ignore":["re:.*visual\\..*","re:.*in_proj_a$","re:.*in_proj_b$","re:.*mtp\\..*","lm_head"]}'
 
-# Qualified production profile for K5K6 hydrated on RTX 5090 (32 GB):
-#   - gpu-memory-utilization 0.955: measured per-card value from physical 5090
-#     qualification (docs/34, receipts/qualification-5090-context.json).
-#   - max-model-len 180000: the hydrated build's demonstrated context with MTP-3
-#     on a 5090 (docs/29). The sibling online K5K6 reaches ~185,600; the context
-#     edition reaches 262,144 at K5 attention.
-#   - max-num-batched-tokens 8192: vLLM warns that 4096 is suboptimal with
-#     MTP-3 (draft token slots need headroom); 8192 accommodates the 3 draft
-#     tokens per sequence across 8 concurrent seqs.
+# Qualified production profile for K5K6 hydrated on RTX 5090 (32 GB).
+#
+# max-num-batched-tokens 3072 (was 8192) — MEASURED 2026-08-19, this is a
+# correctness/robustness setting, not a tuning knob:
+#   At mnbt 8192 the engine took an unrecoverable CUDA OOM (EngineDeadError)
+#   inside the GDN linear-attention prefill (fla chunk_o.py: o =
+#   torch.empty_like(v)) on any prompt >~4k tokens: 4001 tok OK, 6000 tok
+#   killed the engine. vLLM's profiled "peak activation" (2.84 GiB @8192)
+#   under-predicts the real GDN-hybrid peak, leaving ~40-100 MiB of true
+#   headroom, and a large prefill raises the allocator high-water mark so a
+#   LATER large prefill dies even after an identical one succeeded.
+#   Lowering the chunk budget bounds peak activation (2.32 GiB) AND shrinks
+#   the CUDA-graph pool (0.89 -> 0.52 GiB), which together freed 0.93 GiB of
+#   KV cache — so this buys full native context as a side effect.
+#   3072 (not 2048) keeps the 2051-token PP bench inside ONE chunk; at 2048 it
+#   spills into a second engine step and PP drops 6460 -> 4590 (the per-step
+#   fixed overhead is ~130-142 ms, paid per chunk).
+#   Evidence: receipts/robustness-context-2026-08-19.md (mixed stress gate:
+#   24k prefill + vision + decode interleaved = ROBUST).
+# max-model-len 262144 — full native context, unlocked by the KV freed above
+#   (9.82 GiB KV vs 8.89 GiB at mnbt 8192). Was 238,400.
 GPU_MEMORY_UTILIZATION="${GPU_MEMORY_UTILIZATION:-0.93}"
-MAX_MODEL_LEN="${MAX_MODEL_LEN:-238400}"
+MAX_MODEL_LEN="${MAX_MODEL_LEN:-262144}"
 MAX_NUM_SEQS="${MAX_NUM_SEQS:-4}"
-MAX_NUM_BATCHED_TOKENS="${MAX_NUM_BATCHED_TOKENS:-8192}"
+MAX_NUM_BATCHED_TOKENS="${MAX_NUM_BATCHED_TOKENS:-3072}"
 
 # Graph-captured prefill has produced Xid 31 on short sm_120 prefills.
 # FULL_DECODE_ONLY keeps prefill out of graphs. The pinned PR primes every
