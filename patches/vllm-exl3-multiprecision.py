@@ -317,7 +317,9 @@ _EXL3_ONLINE_WARMED_SIGNATURES: set[tuple[int, int, int, int]] = set()
 # over weight pointers, so priming one shard primes every later shard with the
 # same geometry.
 _EXL3_GEMM_PRIMED_SIGNATURES: set[tuple[int, int, int, int, int, int]] = set()
-_B12X_TRELLIS_WARMED_DEVICES: set[int] = set()
+# Warmed (device_index, bits) pairs; bits matters because b12x initialises a
+# separate mixed-Trellis plan per bit width.
+_B12X_TRELLIS_WARMED_DEVICES: set[tuple[int, int]] = set()
 # Guards the one-shot warning for the known-broken VLLM_EXL3_B12X_ANY_BITS path.
 _B12X_ANY_BITS_WARNED: set[int] = set()
 # One-shot B12X-vs-exl3_gemm agreement check on real served tensors.
@@ -1638,12 +1640,25 @@ def _warm_b12x_trellis_device(
     suh: torch.Tensor,
     svh: torch.Tensor,
 ) -> None:
-    """Build the runtime extension before any CUDA graph starts capturing."""
+    """Build the runtime extension before any CUDA graph starts capturing.
+
+    Keyed on (device, bits), not device alone.  B12X compiles/initialises a
+    separate mixed-Trellis plan per bit width; warming only the first shard per
+    device (the old behaviour) left bits=4/5 payloads to initialise lazily on
+    their first real call - and if that first call happens inside CUDA-graph
+    capture, their internal buffers are allocated from that graph's private
+    pool, which is the exact provenance hazard suspected in the K5 corruption
+    (receipts/b12x-k5-parked-2026-08-19.md, second pass).  The GLM-5.2 r34 notes
+    show b12x's own MoE path pre-initialises scratch before capture for every
+    tier, which is the pattern this now follows.
+    """
 
     device_index = trellis.device.index
     if device_index is None:
         device_index = torch.cuda.current_device()
-    if device_index in _B12X_TRELLIS_WARMED_DEVICES:
+    bits = int(trellis.shape[2]) // 16
+    key = (device_index, bits)
+    if key in _B12X_TRELLIS_WARMED_DEVICES:
         return
     source = torch.zeros(
         (1, int(trellis.shape[0]) * 16),
@@ -1652,7 +1667,7 @@ def _warm_b12x_trellis_device(
     )
     _b12x_trellis_linear(source, trellis, suh, svh)
     torch.cuda.synchronize(trellis.device)
-    _B12X_TRELLIS_WARMED_DEVICES.add(device_index)
+    _B12X_TRELLIS_WARMED_DEVICES.add(key)
 
 
 def _b12x_trellis_c_tmp_elements(
