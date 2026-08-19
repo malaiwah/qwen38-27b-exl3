@@ -600,3 +600,45 @@ Qwen3.8-27B would be a first.
 - NVIDIA DFlash Blackwell blog: `developer.nvidia.com/blog/boost-inference-performance-up-to-15x-on-nvidia-blackwell-using-dflash-speculative-decoding/`
 - vLLM DFlash docs: `docs.vllm.ai/projects/speculators/en/latest/user_guide/algorithms/dflash/`
 - vLLM DSpark docs: `docs.vllm.ai/projects/speculators/en/latest/user_guide/algorithms/dspark/`
+
+---
+
+## Decision on §7.4 (EXL3-targeted DSpark training): NOT PURSUED — 2026-08-19
+
+Recorded so the option is not silently dropped and can be revived with numbers.
+
+**Decision: do not train.** The lane is documentation-only; no training run was or
+will be executed under the current objective.
+
+**What the measurements say.** The ceiling such a draft must beat is now known
+precisely, because the off-the-shelf FP8-trained DSpark draft was measured against
+our EXL3 target on this exact stack (`receipts/dspark-ab-2026-08-19.md`, 50k ctx,
+auto KV, single stream):
+
+| | PP | fox | essay |
+|---|---|---|---|
+| DSpark (BF16 draft, block 7) | 8,976.6 | 183.0 [acc 0.857] | 74.8 [acc 0.147] |
+| built-in MTP-6 | 9,495.9 | 175.0 [acc 0.944] | **76.7 [acc 0.221]** |
+
+An EXL3-target-trained DSpark would have to close the essay-acceptance gap
+(0.147 -> beyond 0.221) to be worth its 2.7 GB and 5.5% prefill. The published
+evidence on quant-matched drafter training puts the gain at **0-2%**
+(arXiv:2607.04244 Table 4: 4.92 -> 4.97; SpecForge FP8 serving 7.10 -> 7.11), and
+§5.3's architectural argument for why it is small (RMSNorm after the fusion
+projection absorbs magnitude drift; shared frozen embedding/head makes readout
+error common-mode) applies to our target too — more strongly, since our K6 head is
+the lowest-divergence readout in this comparison set.
+
+**Cost against that.** §5.6 estimates 20-40 GPU-hours end to end (data
+regeneration 12-24 h, hidden-state capture 6-12 h, training 8-16 h, fine-tune
+2-4 h) on a card that is exclusive-process and is the only card. That is the same
+budget as the entire mixed-requant lane, which attacks the one criterion we
+actually fail (prefill), whereas decode is already met on `fidelity`
+(228.3 fox / 104.1 essay vs the 190/83 bars).
+
+**What would revive it.** Any of: (a) decode becomes the binding constraint after
+a requant checkpoint takes over the flagship slot; (b) a second GPU removes the
+serial-time conflict; (c) someone publishes an EXL3-targeted speculator recipe
+with a measured gain above ~5%, making the 0-2% prior obsolete. The publication
+angle alone ("no one has published a speculator trained against an EXL3 target",
+§7.4) is real but is not worth 20-40 h of the critical path.

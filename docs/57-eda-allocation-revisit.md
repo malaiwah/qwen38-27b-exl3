@@ -376,3 +376,50 @@ remains the serving path and an EDA re-solve is the best in-family lever.
 - `PROGRESS.md` 2026-08-19 — KLD proof, additive attribution, per-group budget.
 - `docs/54-multi-precision-strategy.md` — multi-precision FP4/FP6 strategy
   context.
+
+---
+
+## Re-solve status (2026-08-19, goal session): DEFERRED — input lost, recovery recipe below
+
+The `sqrt_energy` re-solve recommended above was scheduled and then **deferred by
+decision**, because its input does not exist any more.
+
+**What is missing.** The solve is a dynamic program over a per-module ladder of
+`(proxy_err, out_energy)` at each candidate width for all 409 body modules. The plan
+records the ladder only by reference — `ladder.source =
+/var/tmp/work/kld6/ladder.json` — with `ladder.modules = 409` and `meta.elapsed_sec
+= 7473.2`. That path is gone, the ladder is **not** among the published EDA-research
+artifacts (the repo ships the plan, `solved-fixed`, `solved-override`, the convert
+log and the weights, but not the ladder), and the only surviving `ladder.json` on
+the build host belongs to an unrelated project (msrt-work, different schema). So
+docs/57's "the solve costs ~1 s and no GPU" is true *given the ladder* and false
+without it: regeneration is **7,473 s ~= 2.08 h of GPU**.
+
+**Why deferred rather than regenerated.** Weighed against the requant lane
+(calibration -> W4A4 -> MTP merge), which is on the critical path for the one
+unmet north-star criterion, the EDA lane's expected value is low by this
+document's own analysis: the gain is bounded above by the 8.7% same-harness
+ordering, of **unknown sign** against the hydrated recipe until measured, and the
+`sqrt_energy` weighting is itself a factor of 2.47x uncertain and was selected
+knowing this run's answer. Spending 2.08 h of exclusive GPU on that ahead of the
+criterion-critical lane is the wrong trade.
+
+**Recovery recipe (for whoever runs the next trellis rebuild, which needs the
+ladder anyway).**
+
+1. Regenerate the ladder with the same propagation recipe recorded in
+   `ladder.meta.propagation_recipe`: hydrated (attention K6, mlp gate/up K5, down
+   K6, head K6/mcg, MTP as `-mb 4` plus the fixed/override regexes, BF16
+   embed+vision), candidate widths `{big: [3,4,5,6,7], small: [4,5,6,7,8]}` with
+   `big_numel_threshold = 52,000,000`. Metric: `proxy_err = tr(EᵀHE)/tr(WᵀHW)`
+   (exllamav3's own per-module Hessian-weighted relative error) and `out_energy =
+   tr(WᵀHW)/count` on the raw accumulated Hessian. Budget ~2.1 h GPU.
+2. **Persist the ladder as a published artifact this time** — it is the expensive
+   input and the only non-reproducible one; the DP over it is seconds.
+3. Re-solve with `w_m = sqrt(out_energy)` under the same byte law
+   (`bytes(role,K) = fixed(role) + params(role)*K/8`) and budget
+   (21,586,964,548 B, the hydrated serialized payload).
+4. Validate as a **paired** comparison against hydrated on shard 0 and ship only if
+   the paired interval excludes zero in EDA's favour — the `rel` solve's failure
+   (predicted −0.000251, measured +0.000366) is exactly what an unpaired,
+   sign-unvalidated objective buys.
