@@ -1,6 +1,6 @@
 {
   "schema": "qwen38-profile-baseline/1",
-  "provenance": "PROFILE=throughput (all-FP4), adopted 2026-08-19: util 0.93 / mnbt 3072 / max-model-len 250000 / VLLM_USE_V2_MODEL_RUNNER=1. Numbers are Phase-0 harness n=3 boots (receipts/bench-v2-allfp4-default-2026-08-19.json). See receipts/frontier-2026-08-19.md for the PROFILE=fidelity alternative (5/6 criteria, KLD 0.003412). Refreshed 2026-08-19 with per-prompt MTP acceptance (receipts/bench-throughput-acc-fox-2026-08-19.json, n=3): PP 7694.9+/-21.8, TG-fox 185.0+/-0.6 [acc 0.930+/-0.000], TG-essay 93.3+/-0.1 [acc 0.298+/-0.000], boot 56.0+/-0.0s. Re-measured 2026-08-19 at the card's 600 W default after removing lactd's 400 W power_cap (receipts/power-limit-2026-08-19.md, receipts/bench-throughput-600w-2026-08-19.json, n=3): PP 7694.9+/-21.8 -> 9638.9+/-18.3 (+25.3%), TG-fox 187.4+/-0.6 [acc 0.930], TG-essay 94.3+/-0.0 [acc 0.298]. Every earlier number in this repo was measured under the 400 W cap.",
+  "provenance": "PROFILE=throughput (all-FP4), adopted 2026-08-19: util 0.93 / mnbt 3072 / max-model-len 250000 / VLLM_USE_V2_MODEL_RUNNER=1. Numbers are Phase-0 harness n=3 boots (receipts/bench-v2-allfp4-default-2026-08-19.json). See receipts/frontier-2026-08-19.md for the PROFILE=fidelity alternative (5/6 criteria, KLD 0.003412). Refreshed 2026-08-19 with per-prompt MTP acceptance (receipts/bench-throughput-acc-fox-2026-08-19.json, n=3): PP 7694.9+/-21.8, TG-fox 185.0+/-0.6 [acc 0.930+/-0.000], TG-essay 93.3+/-0.1 [acc 0.298+/-0.000], boot 56.0+/-0.0s. Re-measured 2026-08-19 at the card's 600 W default after removing lactd's 400 W power_cap (receipts/power-limit-2026-08-19.md, receipts/bench-throughput-600w-2026-08-19.json, n=3): PP 7694.9+/-21.8 -> 9638.9+/-18.3 (+25.3%), TG-fox 187.4+/-0.6 [acc 0.930], TG-essay 94.3+/-0.0 [acc 0.298]. Every earlier number in this repo was measured under the 400 W cap. CONTEXT 250,000 -> 249,600 on 2026-08-19 (late): boot became deterministically impossible at 250,000 (9.26 GiB KV needed vs 9.25 available, vLLM estimate 249,696) after ~10 MiB of load/profile-time memory moved in the post-gates600 window; GDN spec-row gate un-slicing (LIVE correctness fix) is the prime suspect and is kept. Criterion 5 needs >= 238,400. See receipts/ctx-249600-2026-08-19.md.",
   "note": "PP/TG are single-request overhead-inclusive metrics (receipts/peer-review-2026-08-18.md section C). acceptance_essay is high-variance across configs; threshold deliberately loose. Robustness is NOT covered by this gate - run tools/stress-gate.py. This baseline gates the throughput profile only; the fidelity profile has its own baseline JSON.",
   "metrics": {
     "pp_tok_s": {
@@ -22,9 +22,9 @@
       "description": "Decode throughput on the fox prompt, max_tokens=200, temperature=0, median of 3 reps."
     },
     "max_model_len": {
-      "baseline": 250000,
+      "baseline": 249600,
       "rule": "min_absolute",
-      "min_absolute": 250000,
+      "min_absolute": 249600,
       "description": "Served max_model_len from /v1/models; must not have shrunk below the flagship FP8-KV context."
     },
     "acceptance_essay": {

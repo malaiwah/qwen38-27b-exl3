@@ -22,7 +22,7 @@ __omp_shell("[What each profile delivers](charts/profiles-throughput.png)")
 | **decode**, 500-tok generation | **104.1 ± 0.1** (acc 0.304) | 103.7 ± 0.1 (acc 0.324) | 94.3 ± 0.0 (acc 0.298) |
 | **KLD** vs BF16 | **0.003405** [0.003166, 0.003672] | 0.005672 [0.005302, 0.006087] | 0.063759 |
 | **KLD p99** | **0.034889** | 0.059908 | 0.7010 |
-| **max context** | 238,400 | 199,104 | **250,000** |
+| **max context** | 238,400 | 199,104 | **249,600** |
 | **weights resident** | 18.8 GiB | 21.2 GiB | **15.9 GiB** |
 | vision + MTP | pass | pass | pass |
 | **criteria met** | 5/6 (fails PP ≥ 7000) | 5/6 (fails ctx) | 4/6 (fails KLD) |

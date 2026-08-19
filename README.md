@@ -68,7 +68,7 @@ KLD is 512 contexts of shard-0000 against the BF16 reference.
 | MTP acceptance fox / essay | 0.930 / 0.298 | **1.000** / 0.304 | **1.000** / **0.324** |
 | KLD mean | 0.063759 | **0.003405** [0.003166, 0.003672] | 0.005672 [0.005302, 0.006087] |
 | KLD p99 | 0.7010 | **0.034889** | 0.059908 |
-| max context | **250,000** | 238,400 | 199,104 |
+| max context | **249,600** | 238,400 | 199,104 |
 | vision + MTP | pass | pass | pass |
 | criteria met | 4/6 (fails KLD) | 5/6 (fails PP) | 5/6 (fails ctx) |
 

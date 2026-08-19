@@ -85,7 +85,13 @@ case "${PROFILE}" in
     : "${VLLM_EXL3_FP4_LAYERS:=mlp.gate_up_proj,mlp.down_proj,linear_attn.,self_attn.}"
     : "${VLLM_EXL3_PREFILL_RECONSTRUCT_M:=1}"
     : "${VLLM_EXL3_SKIP_TRELLIS_PREP:=0}"
-    : "${MAX_MODEL_LEN:=250000}"
+    # 2026-08-19: 250,000 now fails boot deterministically -- "9.26 GiB KV
+    # needed ... 9.25 GiB available; estimated maximum model length 249696".
+    # ~10 MiB of load/profile-time memory moved in the post-gates600 window
+    # (GDN spec-row gate un-slicing is the prime suspect; it fixes a LIVE
+    # correctness bug under MTP+concurrency, so context yields, not the fix).
+    # Criterion is >= 238,400; 249,600 keeps margin below the 249,696 estimate.
+    : "${MAX_MODEL_LEN:=249600}"
     ;;
   fidelity)
     # A single comma means "no FP4 layers" (empty would fall back to defaults).
