@@ -111,13 +111,102 @@ def solver_frontier(ladder: Path, plan: Path, solved: list[str], tool: Path,
     return sorted(pts)
 
 
+# Measured KV cost on our card: 9.29 GiB of KV serves 238,400 context on the
+# fidelity profile => 0.00003897 GiB/token. Usable VRAM is 31.40 GiB of the 32 GB
+# nameplate (driver/context overhead), measured.
+USABLE_GIB = 31.40
+KV_GIB_PER_TOKEN = 9.29 / 238_400
+CTX_LINES = [32_768, 131_072, 199_104, 238_400, 262_144]
+
+# Contexts we have actually served and gated. Runtime-converted profiles differ
+# in RESIDENT size from their disk payload, so these override any estimate.
+MEASURED_CTX = {
+    "fidelity (as served)": 238_400,
+    "balanced (gate_up MXFP6)": 199_104,
+    "throughput all-FP4": 249_600,
+    "self_attn-FP4 (runtime)": 238_400,
+    "all-FP6 (runtime)": 99_000,
+}
+
+
+def chart_5090_zoom(path: str) -> None:
+    """One card, one question: at what context does each artifact still fit?"""
+    fig, ax = plt.subplots(figsize=(14.5, 9.0))
+
+    # Weight budget shrinks as target context grows: budget = usable - KV(ctx).
+    for ctx in CTX_LINES:
+        budget = USABLE_GIB - ctx * KV_GIB_PER_TOKEN
+        ax.axvline(budget, color="tab:blue", ls="--", lw=1.5, alpha=0.75)
+        ax.text(budget, 0.0019, f" {ctx:,} ctx\n weights <= {budget:.2f} GiB",
+                rotation=90, va="bottom", ha="right", fontsize=9.2,
+                color="tab:blue", weight="bold")
+    max_budget = USABLE_GIB - CTX_LINES[0] * KV_GIB_PER_TOKEN
+    ax.axvspan(0, max_budget, color="tab:blue", alpha=0.05)
+
+    ax.axhline(CRITERION_KLD, color="crimson", ls="--", lw=1.8, alpha=0.9)
+    ax.text(18.15, CRITERION_KLD * 1.07, "criterion 3: KLD <= 0.012",
+            color="crimson", fontsize=11, weight="bold")
+
+    styles = {"ckpt": dict(marker="o", s=170, edgecolor="black", linewidth=1.2),
+              "serve": dict(marker="^", s=140, edgecolor="black", linewidth=0.9)}
+    order = sorted(OURS, key=lambda r: r[2])
+    lo, hi = 0.00215, 0.092
+    for i, (label, size, kld, kind) in enumerate(order):
+        c = "tab:green" if kld <= CRITERION_KLD else "tab:red"
+        ax.scatter([size], [kld], color=c, zorder=6, **styles[kind])
+        frac = i / max(len(order) - 1, 1)
+        y_lab = lo * (hi / lo) ** frac
+        # Measured served context where we have one; otherwise a weights-only
+        # estimate. Runtime-converted profiles change the RESIDENT footprint
+        # (FP4/FP6 conversion shrinks weights in VRAM), so a disk-derived
+        # estimate would be wrong for them - hence measured values take priority.
+        if label in MEASURED_CTX:
+            ctx_txt = f"serves {MEASURED_CTX[label]:,} ctx (measured)"
+        else:
+            room = USABLE_GIB - size
+            ctx_txt = f"~{max(int(room / KV_GIB_PER_TOKEN), 0):,} ctx (est, weights-only)"
+        ax.annotate(f"{label}   KLD {kld:.6f}   →  {ctx_txt}",
+                    xy=(size, kld), xytext=(22.9, y_lab), fontsize=10.0,
+                    va="center",
+                    arrowprops=dict(arrowstyle="-", color=c, lw=1.0, alpha=0.8,
+                                    shrinkA=0, shrinkB=5,
+                                    connectionstyle="arc3,rad=0.05"))
+
+    ax.set_yscale("log")
+    ax.set_xlim(18, 29.5)
+    ax.set_ylim(0.0020, 0.10)
+    ax.set_xlabel("serialized weight payload on disk (GiB)", fontsize=12)
+    ax.set_ylabel("mean KLD vs BF16  (log scale)", fontsize=12)
+    ax.set_title("RTX 5090 32 GB, zoomed: the weight budget IS a function of target "
+                 "context\n"
+                 f"usable {USABLE_GIB} GiB of 32 GB nameplate (measured) · KV costs "
+                 f"{KV_GIB_PER_TOKEN*1e6:.1f} MiB per 1k tokens (measured: 9.29 GiB "
+                 "at 238,400 ctx)\n"
+                 "dashed lines = the weight ceiling for each target context; "
+                 "everything left of a line fits at that context",
+                 fontsize=12.5, weight="bold", loc="left")
+    ax.grid(alpha=0.25, which="both")
+    fig.text(0.5, 0.007,
+             "All KLD values on ONE protocol (512-context shard-0 suite, 1,048,064 "
+             "scored positions, shared BF16 head). 'fits ~N ctx' is weights-only "
+             "arithmetic from the measured KV rate; it ignores the ~0.4 GiB boot "
+             "margin a profile needs, so treat it as an upper bound.",
+             ha="center", fontsize=9.0, color="#333333")
+    fig.savefig(path, dpi=155, bbox_inches="tight")
+    print(f"wrote {path}")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--ladder")
     ap.add_argument("--plan")
     ap.add_argument("--solved", action="append", default=[])
     ap.add_argument("--out", required=True)
+    ap.add_argument("--zoom-out", default=None,
+                    help="also write the RTX 5090 32 GB zoom panel here")
     args = ap.parse_args()
+    if args.zoom_out:
+        chart_5090_zoom(args.zoom_out)
 
     fig = plt.figure(figsize=(16, 13))
     gs = fig.add_gridspec(3, 1, height_ratios=[3.0, 1.9, 1.5], hspace=0.42)
