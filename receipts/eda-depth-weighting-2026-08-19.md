@@ -80,3 +80,17 @@ If `KLD(early) > KLD(late)`, early layers matter more, accumulation is real, and
 depth weighting is justified with a measured exponent. If they are
 indistinguishable, the depth term should stay at `amp=0` and this receipt is the
 reason why.
+
+---
+
+## SUPERSEDED (same day) by measurement
+
+The `exp` early-heavy form proposed above **has the sign backwards**, and this
+receipt's central claim — that depth-blind objectives "rob early layers" in the
+harmful direction — is **refuted**. Measured: converting a 13-layer band to FP6
+costs 0.003600 (L0-12) < 0.003838 (L26-38) < 0.004395 (L51-63), early-vs-late CIs
+disjoint. Late layers are the most precision-sensitive, so shifting bytes toward
+L48-63 (which `abs` did at amp=0) was correct. See
+`receipts/eda-depth-calibration-2026-08-19.md`. The tables above remain valid as a
+record of what each weighting DOES; only the interpretation of which direction is
+desirable was wrong.

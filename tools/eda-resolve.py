@@ -130,7 +130,14 @@ def depth_factor(name: str, amp: float, n_layers: int, form: str = "exp") -> flo
     L = layer_index(name)
     if L is None:
         return 1.0
+    if form == "late":
+        # MEASURED FORM (receipts/eda-depth-calibration-2026-08-19.md): converting
+        # a 13-layer band to FP6 costs KLD 0.003600 (L0-12) < 0.003838 (L26-38)
+        # < 0.004395 (L51-63), early-vs-late CIs disjoint. LATE layers are the
+        # most precision-sensitive, so weight grows WITH depth.
+        return (1.0 + amp) ** L
     if form == "exp":
+        # REFUTED early-heavy form, kept for reproducing the superseded sweep.
         return (1.0 + amp) ** (n_layers - 1 - L)
     if form == "u":
         # U-shaped: both ends weighted above the middle. Prior art: llama.cpp
@@ -345,10 +352,12 @@ def main() -> None:
     ap.add_argument("--depth-amp", type=float, default=0.0,
                     help="per-layer downstream amplification; weight *= "
                          "(1+amp)**(n_layers-1-layer). UNCALIBRATED - probe only.")
-    ap.add_argument("--depth-form", default="exp", choices=("exp", "u"),
-                    help="exp: early-heavy (downstream amplification). u: both "
-                         "ends heavy (llama.cpp use_more_bits + exllamav3 "
-                         "allocation.py prior art, docs/58).")
+    ap.add_argument("--depth-form", default="late", choices=("late", "exp", "u"),
+                    help="late (default, MEASURED): weight grows with depth; late "
+                         "layers are most precision-sensitive (KLD 0.003600 early "
+                         "< 0.003838 mid < 0.004395 late, disjoint CIs). exp: "
+                         "REFUTED early-heavy form. u: both-ends (llama.cpp / "
+                         "exllamav3 prior art, docs/58) - also not what we measure.")
     ap.add_argument("--max-width", type=int, default=None,
                     help="serving-aware cap: b12x ANY_BITS prefill supports K3..K6 "
                          "only (n_words 48/64/80/96); K7/K8 fall off the fast path.")
@@ -461,8 +470,10 @@ def main() -> None:
         "class_scales": class_scales if args.weighting == "class-kld" else None,
         "depth_amp": args.depth_amp,
         "depth_form": args.depth_form,
-        "depth_weight_form": ("(1+amp)**(n_layers-1-L)" if args.depth_form == "exp"
-                              else "(1+amp)**((n-1)/2 - min(L, n-1-L))"),
+        "depth_weight_form": {"late": "(1+amp)**L",
+                              "exp": "(1+amp)**(n_layers-1-L)",
+                              "u": "(1+amp)**((n-1)/2 - min(L, n-1-L))"}[args.depth_form],
+        "depth_form_measured": args.depth_form == "late",
         "depth_amp_calibrated": False,
         "max_width": args.max_width,
         "modules_over_k6": over_cap,
@@ -484,7 +495,9 @@ def main() -> None:
             "held-out test against the published cross-class solve is the only "
             "out-of-sample check. Scales fold KV compounding and unit conversion "
             "into one number per class.",
-            "depth_amp is NOT calibrated (no early-vs-late measurement exists).",
+            "depth_form=late is MEASURED (early/mid/late 13-layer FP6 bands: "
+            "0.003600 / 0.003838 / 0.004395, early-vs-late CIs disjoint). The "
+            "amp MAGNITUDE remains uncalibrated; only the ordering is measured.",
             "All objectives remain first-order and layer-local at the ladder "
             "level; predicted KLD deltas are pre-registrable candidates requiring "
             "paired shard-0 validation before any build ships.",
