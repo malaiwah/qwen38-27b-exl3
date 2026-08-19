@@ -25,7 +25,7 @@ SERVED_MODEL_NAME="${SERVED_MODEL_NAME:-Qwen3.8-27B}"
 # PR #314 is mounted over the pinned GG r34 base image. Refuse to start if the
 # installed overlay is absent or differs from the exact qualified source.
 EXL3_PATCH_HOST="${EXL3_PATCH_HOST:-/home/mbelleau/vllm-exl3-multiprecision.py}"
-EXL3_PATCH_SHA256="9496769fe93bcba2b82e79208eeef0fdb0fec7196905bb592de5f4fb4477eb9f"
+EXL3_PATCH_SHA256="e84e3143bfeba494e618037c96cc0f8ae518b53b3e788da5592337c8cad6a965"
 EXL3_PATCH_CTR="/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py"
 [ -f "${EXL3_PATCH_HOST}" ] || {
   echo "EXL3 graph patch is missing: ${EXL3_PATCH_HOST}" >&2
@@ -149,6 +149,10 @@ export VLLM_EXL3_SKIP_TRELLIS_PREP MAX_MODEL_LEN
 GPU_MEMORY_UTILIZATION="${GPU_MEMORY_UTILIZATION:-0.93}"
 MAX_MODEL_LEN="${MAX_MODEL_LEN:-250000}"
 MAX_NUM_SEQS="${MAX_NUM_SEQS:-4}"
+# NO_PATCH_MOUNTS=1 skips every patch bind-mount - for verifying a BAKED image
+# (docker/Containerfile) that already contains them. With the stock base image
+# this flag serves the UNPATCHED fork and will fail the gates; that is the point.
+NO_PATCH_MOUNTS="${NO_PATCH_MOUNTS:-0}"
 MAX_NUM_BATCHED_TOKENS="${MAX_NUM_BATCHED_TOKENS:-3072}"
 # fp8_e4m3 is the measured default; turboquant_k8v4 etc. are the fork-shipped
 # sub-8-bit formats (own Triton backend, supports_spec_as_decode=False - measure
@@ -266,17 +270,17 @@ podman run "${RUN_ARGS[@]}" --replace \
   -e HF_HOME=/root/.cache/huggingface \
   -e PYTHONUNBUFFERED=1 -e PYTHONDONTWRITEBYTECODE=1 \
   -v "${HF_CACHE_HOST}":/root/.cache/huggingface:ro \
-  -v "${EXL3_PATCH_HOST}":"${EXL3_PATCH_CTR}":ro \
-  -v /home/mbelleau/scheduler_patch.py:/opt/venv/lib/python3.12/site-packages/vllm/v1/core/sched/scheduler.py:ro \
-  -v /home/mbelleau/qwen_gdn_linear_attn_patch.py:/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py:ro \
-  -v /home/mbelleau/spec_decode_utils_patch.py:/opt/venv/lib/python3.12/site-packages/vllm/v1/worker/gpu/spec_decode/utils.py:ro \
-  -v /home/mbelleau/autoregressive_speculator_patch.py:/opt/venv/lib/python3.12/site-packages/vllm/v1/worker/gpu/spec_decode/autoregressive/speculator.py:ro \
-  -v /home/mbelleau/qwen3_5_mtp_patch.py:/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5_mtp.py:ro \
+  $([ "${NO_PATCH_MOUNTS:-0}" = "1" ] || echo "-v ${EXL3_PATCH_HOST}:${EXL3_PATCH_CTR}:ro") \
+  $([ "${NO_PATCH_MOUNTS:-0}" = "1" ] || echo "-v /home/mbelleau/scheduler_patch.py:/opt/venv/lib/python3.12/site-packages/vllm/v1/core/sched/scheduler.py:ro") \
+  $([ "${NO_PATCH_MOUNTS:-0}" = "1" ] || echo "-v /home/mbelleau/qwen_gdn_linear_attn_patch.py:/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py:ro") \
+  $([ "${NO_PATCH_MOUNTS:-0}" = "1" ] || echo "-v /home/mbelleau/spec_decode_utils_patch.py:/opt/venv/lib/python3.12/site-packages/vllm/v1/worker/gpu/spec_decode/utils.py:ro") \
+  $([ "${NO_PATCH_MOUNTS:-0}" = "1" ] || echo "-v /home/mbelleau/autoregressive_speculator_patch.py:/opt/venv/lib/python3.12/site-packages/vllm/v1/worker/gpu/spec_decode/autoregressive/speculator.py:ro") \
+  $([ "${NO_PATCH_MOUNTS:-0}" = "1" ] || echo "-v /home/mbelleau/qwen3_5_mtp_patch.py:/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5_mtp.py:ro") \
   -v /home/mbelleau/.cache/jit:/cache/jit \
-  -v /home/mbelleau/qwen38-27b-exl3/patches/exl3_fp4_conversion.py:/opt/fp4/exl3_fp4_conversion.py:ro \
-  -v /home/mbelleau/qwen38-27b-exl3/patches/triton_fp4_quant.py:/opt/fp4/triton_fp4_quant.py:ro \
-  -v /home/mbelleau/qwen38-27b-exl3/patches/exl3_fp6_conversion.py:/opt/fp6/exl3_fp6_conversion.py:ro \
-  -v /home/mbelleau/vllm-exl3-linear-ba.py:/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/linear.py:ro \
+  $([ "${NO_PATCH_MOUNTS:-0}" = "1" ] || echo "-v /home/mbelleau/qwen38-27b-exl3/patches/exl3_fp4_conversion.py:/opt/fp4/exl3_fp4_conversion.py:ro") \
+  $([ "${NO_PATCH_MOUNTS:-0}" = "1" ] || echo "-v /home/mbelleau/qwen38-27b-exl3/patches/triton_fp4_quant.py:/opt/fp4/triton_fp4_quant.py:ro") \
+  $([ "${NO_PATCH_MOUNTS:-0}" = "1" ] || echo "-v /home/mbelleau/qwen38-27b-exl3/patches/exl3_fp6_conversion.py:/opt/fp6/exl3_fp6_conversion.py:ro") \
+  $([ "${NO_PATCH_MOUNTS:-0}" = "1" ] || echo "-v /home/mbelleau/vllm-exl3-linear-ba.py:/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/linear.py:ro") \
   --entrypoint /bin/bash \
   "${IMAGE}" \
   -lc "set -euo pipefail; cd /; \

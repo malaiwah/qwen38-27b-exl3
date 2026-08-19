@@ -44,8 +44,16 @@ FILLER = (
 
 
 def post(payload, timeout=1800):
+    """Chat completions with thinking disabled.
+
+    v1: raw /v1/completions with max_tokens=24 - a MISS was usually the model
+    opening a <think> block and burning the whole budget before the answer
+    (the control level missed 1/8 exactly this way), so misses measured the
+    token budget, not retrieval. This is a reasoning model; the vision check
+    learned the same lesson. Retrieval is scored on the post-think content.
+    """
     req = urllib.request.Request(
-        BASE + "/v1/completions", data=json.dumps(payload).encode(),
+        BASE + "/v1/chat/completions", data=json.dumps(payload).encode(),
         headers={"Content-Type": "application/json"})
     with urllib.request.urlopen(req, timeout=timeout) as r:
         return json.loads(r.read())
@@ -75,9 +83,10 @@ def run_level(target_tokens):
                         "Answer with only the exact value.\nAnswer:")
         t0 = time.perf_counter()
         try:
-            r = post({"model": MODEL, "prompt": prompt, "max_tokens": 24,
-                      "temperature": 0.0})
-            txt = r["choices"][0]["text"]
+            r = post({"model": MODEL, "max_tokens": 48, "temperature": 0.0,
+                      "chat_template_kwargs": {"enable_thinking": False},
+                      "messages": [{"role": "user", "content": prompt}]})
+            txt = r["choices"][0]["message"]["content"] or ""
             ptoks = r["usage"]["prompt_tokens"]
             hit = val.lower() in txt.lower()
         except Exception as e:

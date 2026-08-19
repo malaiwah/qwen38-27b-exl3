@@ -325,6 +325,8 @@ _B12X_ANY_BITS_WARNED: set[int] = set()
 # One-shot B12X-vs-exl3_gemm agreement check on real served tensors.
 _B12X_SELFTEST = os.environ.get("VLLM_EXL3_B12X_SELFTEST", "0") == "1"
 _B12X_SELFTEST_DONE: set[tuple] = set()
+# One persistent fp16 reconstruct buffer per device (PR #397, minimal form).
+_RECON_ARENA: dict[int, torch.Tensor] = {}
 # Opt-out for the FP16 reconstruct cache on the prefill reconstruct+hgemm path.
 _PREFILL_RECONSTRUCT_CACHE = (
     os.environ.get("VLLM_EXL3_PREFILL_RECONSTRUCT_CACHE", "1") == "1"
@@ -1325,7 +1327,28 @@ def _exl3_gemm(
         # controllable; the default preserves the measured behaviour of the
         # profiles that have headroom for it.
         if weight is None:
-            weight = torch.empty(t_k, t_n, dtype=torch.float16, device=x.device)
+            # Arena (PR #397's idea, minimal form): the reconstruct route's
+            # only uncached users share one persistent fp16 buffer per device
+            # instead of paying a fresh full-size torch.empty per call - on the
+            # fidelity profile that was 128 x ~340 MB alloc/free per prefill
+            # chunk.  Safe because ext.reconstruct overwrites every element of
+            # the view (dense fill), prefill is never CUDA-graph captured, and
+            # a cached weight (below) still gets its own real tensor so the
+            # cache never aliases the arena.
+            will_cache = weight_size_mb > 150 and _PREFILL_RECONSTRUCT_CACHE
+            if will_cache:
+                weight = torch.empty(
+                    t_k, t_n, dtype=torch.float16, device=x.device
+                )
+            else:
+                dev = -1 if x.device.index is None else int(x.device.index)
+                arena = _RECON_ARENA.get(dev)
+                if arena is None or arena.numel() < t_k * t_n:
+                    arena = torch.empty(
+                        t_k * t_n, dtype=torch.float16, device=x.device
+                    )
+                    _RECON_ARENA[dev] = arena
+                weight = arena[: t_k * t_n].view(t_k, t_n)
             trellis_k = int(trellis.shape[2]) // 16
             ext.reconstruct(weight, trellis, trellis_k, mcg, mul1)
             import sys; sys.path.insert(0, '/opt/fp4')
