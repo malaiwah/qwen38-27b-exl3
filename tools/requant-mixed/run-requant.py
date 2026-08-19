@@ -119,7 +119,7 @@ def parse_args() -> argparse.Namespace:
     )
     ap.add_argument(
         "--dataset",
-        default="HuggingFaceH4/ultrachat_200k",
+        default="ultrachat-200k",
         help="HF dataset name for calibration (default: "
         "HuggingFaceH4/ultrachat_200k)",
     )
@@ -220,7 +220,6 @@ def main() -> None:
 
         # Dataset
         dataset=args.dataset,
-        dataset_config_name=args.dataset_split,
         splits=f"{args.dataset_split}[:{args.samples}]",
         num_calibration_samples=args.samples,
         max_seq_length=args.seq_len,
