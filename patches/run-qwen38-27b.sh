@@ -25,7 +25,7 @@ SERVED_MODEL_NAME="${SERVED_MODEL_NAME:-Qwen3.8-27B}"
 # PR #314 is mounted over the pinned GG r34 base image. Refuse to start if the
 # installed overlay is absent or differs from the exact qualified source.
 EXL3_PATCH_HOST="${EXL3_PATCH_HOST:-/home/mbelleau/vllm-exl3-multiprecision.py}"
-EXL3_PATCH_SHA256="628e6a453b4299b29b905238c8b722a4aff7ac804d54d9dd1953c75ef2542b08"
+EXL3_PATCH_SHA256="9e8883b7503e8d3acbbf67656783f9a488f421232bb2e7e1001783e9d5930d78"
 EXL3_PATCH_CTR="/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py"
 [ -f "${EXL3_PATCH_HOST}" ] || {
   echo "EXL3 graph patch is missing: ${EXL3_PATCH_HOST}" >&2
@@ -126,6 +126,7 @@ podman run "${RUN_ARGS[@]}" --replace \
   -e VLLM_EXL3_EMBED_ONLINE_BITS=6 \
   -e B12X_PACKED_B_MIN_N=1024 \
   -e VLLM_EXL3_FP4_PER_ROW_GS=0 \
+  -e VLLM_EXL3_FP4_DRAFT_HEAD=0 \
     -e VLLM_EXL3_B12X_N_RANGE="${VLLM_EXL3_B12X_N_RANGE:-5120-36864}" \
   -e VLLM_EXL3_EXT_PATH=/opt/exllamav3 \
   -e VLLM_EXL3_ENCODER_SOURCE=/opt/exllamav3-python/exllamav3 \
@@ -135,6 +136,7 @@ podman run "${RUN_ARGS[@]}" --replace \
   -v "${HF_CACHE_HOST}":/root/.cache/huggingface:ro \
   -v "${EXL3_PATCH_HOST}":"${EXL3_PATCH_CTR}":ro \
   -v /home/mbelleau/scheduler_patch.py:/opt/venv/lib/python3.12/site-packages/vllm/v1/core/sched/scheduler.py:ro \
+  -v /home/mbelleau/qwen3_5_mtp_patch.py:/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5_mtp.py:ro \
   -v /home/mbelleau/.cache/jit:/cache/jit \
   -v /home/mbelleau/qwen38-27b-exl3/patches/exl3_fp4_conversion.py:/opt/fp4/exl3_fp4_conversion.py:ro \
   -v /home/mbelleau/qwen38-27b-exl3/patches/triton_fp4_quant.py:/opt/fp4/triton_fp4_quant.py:ro \

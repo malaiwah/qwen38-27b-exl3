@@ -2793,6 +2793,33 @@ class Exl3LinearMethod(LinearMethodBase):
             # Skip lm_head (ParallelLMHead) — too large to convert (4.74 GiB temp)
             if "lm_head" in prefix.lower() or "ParallelLMHead" in type(layer).__name__:
                 logger.info("Skipping multi-precision for %s (too large)", prefix)
+                # FP4 draft-only lm_head copy (VLLM_EXL3_FP4_DRAFT_HEAD=1):
+                # at MTP=6 the K6 head streams 7x/step (6.37 GB = 29% of step
+                # bytes). A draft-only FP4 copy (0.64 GB vs 0.91 GB) trims the
+                # 6 draft streams; the verify pass keeps the exact K6 trellis
+                # (a draft argmax flip only costs a rejected token, never a
+                # wrong sample — fp8_draft_head.py precedent). Routed via the
+                # _use_fp4_draft flag set by the MTP model's compute_logits.
+                if os.environ.get("VLLM_EXL3_FP4_DRAFT_HEAD", "0") == "1":
+                    try:
+                        ext = _load_exl3_ext()
+                        conv = _load_fp4_conversion()
+                        if conv is not None:
+                            _mem_b = torch.cuda.memory_allocated() / 1024**3
+                            draft_w = conv.convert_all_shards_to_fp4(layer, ext)
+                            # Keep trellis tensors: verify path stays K6-exact.
+                            layer.fp4_draft_weights = draft_w  # type: ignore[attr-defined]
+                            torch.cuda.empty_cache()
+                            _mem_a = torch.cuda.memory_allocated() / 1024**3
+                            logger.info(
+                                "EXL3 FP4 draft head built for %s (%d shards) "
+                                "%.2f→%.2f GiB (Δ%.2f)",
+                                prefix, len(draft_w), _mem_b, _mem_a, _mem_a - _mem_b,
+                            )
+                    except Exception as exc:
+                        logger.warning(
+                            "FP4 draft head build failed for %s: %s", prefix, exc
+                        )
             else:
                 precision = _layer_precision(prefix)
                 if precision == "skip":
@@ -3185,6 +3212,18 @@ class Exl3LinearMethod(LinearMethodBase):
         # Multi-precision dispatch: direct calls (same pattern as FP6-only patch)
         # b12x _STATE_LOCK is patched to nullcontext, so dynamo can trace
         # through b12x's runtime_control functions without errors.
+        # Draft-only FP4 lm_head: the MTP model's compute_logits sets
+        # _use_fp4_draft around its logits call; verify never sets it, so the
+        # target's sampling path stays K6-exact. Draft and verify are captured
+        # as separate CUDA graphs, so the flag bakes correctly into each.
+        if getattr(layer, "_use_fp4_draft", False):
+            draft_w = getattr(layer, "fp4_draft_weights", None)
+            if draft_w is not None and shard_id in draft_w:
+                conv = _load_fp4_conversion()
+                if conv is not None:
+                    return conv.fp4_apply(
+                        x.to(torch.bfloat16), draft_w[shard_id]
+                    )
         mp_weights = getattr(layer, "mp_weights", None)
         if mp_weights is not None and shard_id in mp_weights:
             precision = getattr(layer, "mp_precision", "fp6")
