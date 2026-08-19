@@ -1,0 +1,57 @@
+# DATA-FREE RTN variant of the W4A4-MLP middle SKU. Activations quantize
+# dynamically at runtime (dynamic: local per-group scales); the static global
+# activation scale normally calibrated is defaulted - KLD will be poor, but the
+# artifact answers the SKU's gating question: does W4A4-MLP reach the 6-8k
+# prefill window on this stack at all.
+quantization_stage:
+  quantization_modifiers:
+    QuantizationModifier:
+      config_groups:
+        # Group 0: FP8 W8A16 weight-only on attention + linear-attention
+        fp8_attn:
+          targets:
+            - "re:.*self_attn\\.(q_proj|k_proj|v_proj|o_proj)$"
+            - "re:.*linear_attn\\.(in_proj_qkv|in_proj_z|in_proj_a|in_proj_b|out_proj)$"
+          weights:
+            num_bits: 8
+            type: float
+            strategy: channel
+            symmetric: true
+            dynamic: false
+          input_activations: null
+          output_activations: null
+
+        # Group 1: NVFP4 W4A4 group-16 on all MLP modules (weights + activations)
+        nvfp4_w4a4_mlp:
+          targets:
+            - "re:.*mlp\\.(gate_proj|up_proj|down_proj)$"
+          weights:
+            num_bits: 4
+            type: float
+            strategy: tensor_group
+            symmetric: true
+            dynamic: false
+            group_size: 16
+            scale_dtype: float8_e4m3fn
+            zp_dtype: float8_e4m3fn
+          input_activations:
+            num_bits: 4
+            type: float
+            strategy: tensor_group
+            symmetric: true
+            dynamic: local
+            group_size: 16
+            observer: static_minmax
+            scale_dtype: float8_e4m3fn
+            zp_dtype: float8_e4m3fn
+          output_activations: null
+
+      ignore:
+        - "lm_head"
+        - "re:.*embed_tokens$"
+        - "re:.*norm\\.weight$"
+        - "re:.*layernorm\\.weight$"
+        - "re:.*linear_attn\\.(conv1d|A_log|dt_bias|norm)$"
+        - "re:.*self_attn\\.(q_norm|k_norm)$"
+        - "re:.*visual\\..*"
+        - "re:^mtp\\..*"
