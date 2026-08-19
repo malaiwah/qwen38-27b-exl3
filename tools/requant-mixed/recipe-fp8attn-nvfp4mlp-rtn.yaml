@@ -1,0 +1,60 @@
+# SPDX-License-Identifier: Apache-2.0
+# DATA-FREE variant of recipe-fp8attn-nvfp4mlp.yaml: identical config_groups,
+# QuantizationModifier (RTN) instead of GPTQModifier. No calibration, no
+# sequential tracing - runs in minutes and sidesteps the fx-untraceable GDN
+# mixer (HFProxy integer error) that blocks GPTQ until a traceable model
+# definition is ported. Quality is strictly below GPTQ (no Hessian
+# compensation); this checkpoint exists to (a) prove the mixed
+# compressed-tensors serving path end-to-end incl. the GDN in_proj fusion
+# hazard documented by SPARK_Qwen3.5-122B-A10B-NVFP4, and (b) give the scheme
+# shape a first measured KLD point tonight.
+quantization_stage:
+  quantization_modifiers:
+    QuantizationModifier:
+      # config_groups with two groups enables mixed-precision output.
+      # QuantizationMixin.resolve_quantization_config (mixin.py:344-383)
+      # builds a QuantizationConfig from config_groups; QuantizationConfig.
+      # from_pretrained (quant_config.py:148-252) infers mixed_precision
+      # format when >=2 distinct per-module formats exist.
+      config_groups:
+        # Group 0: FP8 W8A16 weight-only on attention + linear-attention
+        fp8_attn:
+          targets:
+            - "re:.*self_attn\\.(q_proj|k_proj|v_proj|o_proj)$"
+            - "re:.*linear_attn\\.(in_proj_qkv|in_proj_z|in_proj_a|in_proj_b|out_proj)$"
+          weights:
+            num_bits: 8
+            type: float
+            strategy: channel
+            symmetric: true
+            dynamic: false
+          # No input_activations  →  weight-only (W8A16)
+          input_activations: null
+          output_activations: null
+
+        # Group 1: NVFP4 W4A16 group-16 on all MLP modules
+        nvfp4_mlp:
+          targets:
+            - "re:.*mlp\\.(gate_proj|up_proj|down_proj)$"
+          weights:
+            num_bits: 4
+            type: float
+            strategy: tensor_group
+            symmetric: true
+            dynamic: false
+            group_size: 16
+            scale_dtype: float8_e4m3fn
+            zp_dtype: float8_e4m3fn
+          input_activations: null
+          output_activations: null
+
+      # Keep these unquantized
+      ignore:
+        - "lm_head"
+        - "re:.*embed_tokens$"
+        - "re:.*norm\\.weight$"
+        - "re:.*layernorm\\.weight$"
+        - "re:.*linear_attn\\.(conv1d|A_log|dt_bias|norm)$"
+        - "re:.*self_attn\\.(q_norm|k_norm)$"
+        - "re:.*visual\\..*"
+        - "re:^mtp\\..*"

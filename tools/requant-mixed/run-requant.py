@@ -152,6 +152,13 @@ def parse_args() -> argparse.Namespace:
         help="Model loading precision (default: auto, uses config dtype)",
     )
     ap.add_argument(
+        "--pipeline",
+        default="sequential",
+        choices=["sequential", "basic", "datafree", "independent"],
+        help="Calibration pipeline (default: sequential; use datafree for "
+        "RTN QuantizationModifier recipes - no calibration, no tracing)",
+    )
+    parser.add_argument(
         "--sequential-offload",
         default="cpu",
         help="Offload device for sequential pipeline (default: cpu)",
@@ -237,7 +244,7 @@ def main() -> None:
         # processes all calibration samples through it, then offloads to CPU.
         # This keeps peak VRAM at ~1 layer's weights + activations + Hessian
         # rather than the full 27B model.
-        pipeline="sequential",
+        pipeline=args.pipeline,
         sequential_targets=sequential_targets,
         sequential_offload_device=args.sequential_offload,
         sequential_prefetch=False,
