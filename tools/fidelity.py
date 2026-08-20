@@ -543,7 +543,7 @@ def cmd_capture(args) -> int:
                   max_model_len=ctx_len + 64,
                   max_num_batched_tokens=args.max_batched_tokens or ctx_len,
                   max_num_seqs=1, enable_prefix_caching=False, disable_log_stats=True,
-                  enforce_eager=True)
+                  enforce_eager=not args.attention_backend or args.attention_backend == 'TRITON_ATTN')
     if args.quantization.lower() not in ("", "auto", "none", "null"):
         kwargs["quantization"] = args.quantization
     if args.quantization_config:
