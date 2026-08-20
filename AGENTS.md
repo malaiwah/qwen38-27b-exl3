@@ -1,211 +1,472 @@
-# Repository Guidelines
+# AGENTS.md — aiboss environment guide for coding agents
 
-## Project Overview
+**Last updated:** 2026-08-20. **Host:** `aiboss` (Ubuntu, kernel 6.8.0-137-generic, x86_64).
+**User:** `mbelleau`. **GPU:** NVIDIA RTX 5090, 32 GB VRAM, 600 W default power limit,
+GPU UUID `GPU-506a575d-01d7-b12e-9a0a-c1ab5f38ae0a`, compute mode `EXCLUSIVE_PROCESS`.
 
-This repository is a research and model-artifact companion for Qwen3.8-27B mixed-precision EXL3 checkpoints. It records conversion recipes, vLLM runtime patches, serving qualification, fidelity experiments, model cards, and receipt-backed evidence. It is **not** an installable Python package or a conventional application: model shards, the serving environment, and most GPU dependencies are external.
+This file orients new agents to the machine, the model, the serving stack, the
+quantization research workflow, and the operating discipline. Read it before
+touching anything.
 
-Use `README.md` for the current overview, `PROGRESS.md` for chronology, and the current receipts/model cards for published claims. Numbered docs often preserve superseded experiments; do not treat an older iteration as current without checking its status and receipt.
+---
 
-## Architecture & Data Flow
+## 1. The model: Qwen3.8-27B EXL3 K5K6-hydrated
 
-1. **Inputs:** a local, immutable Hugging Face model snapshot; calibration/held-out corpus data; and the pinned Gilded Gnosis runtime image.
-2. **Checkpoint build:** exllamav3 conversion produces packed EXL3 tensors (the trellis/suh/svh/mcg layout; "packed" is this file's summary word, the layout itself is documented in docs/04 and docs/03); `tools/splice_bf16_attn.py` restores selected BF16 attention tensors; index/config generation and `tools/finalize_checkpoint.py` validate logical tensor names/shapes and emit manifests and checksums. The published recipe keeps MLP projections in mixed EXL3 K5/K6 roles while attention, vision, embeddings, and norms remain BF16 where specified by the manifest.
-3. **Serving:** `tools/ggrun.sh` runs the external vLLM image through static `proot`, binding host model/work/cache directories. Qwen EXL3 must use direct `vllm serve`; the image's family launchers do not accept Qwen. Patched modules implement Qwen/MTP construction and EXL3 dispatch; online K6 encoding and graph/prefill patches are explicit runtime variants, not package-local imports.
-4. **Evaluation:** `tools/fetch_corpus_v5.py` and `tools/suite3.py` freeze a held-out suite; `tools/fidelity.py` captures final-RMSNorm hidden states, replays them through one shared BF16 LM head, and computes full-vocabulary KL/JS/top-1 metrics. `tools/kld_ladder.sh` runs bounded shards, while `tools/kld_aggregate.py` and paired/qualification tools produce validated JSON receipts.
+We serve a **Qwen3.8-27B** model quantized with **EXL3 trellis coding** (EXllamaV3).
+The production checkpoint is `malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated` (revision
+`ab3a91a13813df8096cb4c1d560ed3669035d0cf`), cached at:
 
-The fidelity protocol is teacher-forced, text-only distribution comparison. It is not a generation, long-context, vision, or throughput result unless a separate receipt says so.
+```
+~/.cache/huggingface/hub/models--malaiwah--Qwen3.8-27B-EXL3-K5K6-hydrated/
+```
 
-## Key Directories
+The model is also expanded on disk at `/home/mbelleau/models/qwen38-27b-K5K6-fp8-embed/`.
+That directory contains `quantization_config.json` with per-tensor `bits_per_weight`
+in the `tensor_storage` dict, and `quantization_manifest.json` with build metadata.
 
-- `tools/` — primary Python, Bash, and C++ CLIs: conversion/finalization, runtime patches, fidelity, serving probes, benchmark runners, and receipt builders.
-- `docs/` — numbered design notes, runtime contracts, protocols, experiment reports, and open-work plans. `docs/42-kld-method.md` is the KLD method of record.
-- `receipts/` — JSON manifests and measurement evidence. Treat schema, digest, runtime, suite, and model identities as authoritative; do not hand-edit published receipts.
-- `docker/` — pinned runtime Dockerfiles, rootless build/verification workflow, and smoke client.
-- `patches/` — standalone upstream patches used for provenance or image construction.
-- `upstream/` — issue/PR, reproduction, and review artifacts; it is not a vendored vLLM source tree.
-- `assets/` — generated figures and presentation assets.
-- Root `MODEL_CARD*.md` and `DATASET_CARD*.md` — publication and replay instructions.
+**Checkpoint recipe:** MLP gate/up = K5, MLP down = K6, all attention = K6,
+lm_head = K6/mcg, MTP quantized, BF16 embeddings + vision. 409 EXL3 modules,
+~21.61 GB on disk, 178 s cold start.
 
-There is no `src/`, package manifest, root `Makefile`, or checked-in model payload directory. Do not create a parallel application structure for a tooling-only change.
+**Served KLD (our suite):** mean 0.003405, p99 0.03489 (fidelity profile).
+**Offline KLD:** mean 0.002700 (trellis K5K6 baseline).
+**Size:** 16.82 GiB trellis payload (18.06 GB on disk).
 
-## Development Commands
+### Other cached models (in `~/.cache/huggingface/hub/`)
 
-Start with the script's own help. Most CLIs are **flat `argparse`** (55 of 88 executables); only **9** use subparsers, and **11** parse `sys.argv` directly (`tools/pull_rootfs.py`, `tools/tb_rows.py`, `tools/capture_determinism_receipt.py` and others). Read the help rather than assuming a subcommand exists.
+| repo | purpose |
+|---|---|
+| `models--Qwen--Qwen3.8-27B` | BF16 reference for KLD and requant |
+| `models--malaiwah--Qwen3.8-27B-EXL3-K5K6` | earlier EXL3 build |
+| `models--malaiwah--Qwen3.8-27B-EXL3-K5K6-context` | context-optimized variant |
+| `models--RadixArk--Qwen3.8-27B-DSpark` | DSpark draft model |
+| `models--KyleHessling1--Qwopus3.6-27B-Fusion-GGUF` | GGUF comparison |
 
-### Host setup and pinned runtime
+### Expanded models (in `/home/mbelleau/models/`)
+
+| dir | description |
+|---|---|
+| `qwen38-27b-K5K6-fp8-embed` | **production checkpoint** (EXL3 K5K6, FP8 embeddings) |
+| `qwen38-27b-mtp-vision-bf16` | BF16 reference (full precision) |
+| `qwen38-27b-gptq-a3-platypus-actorder` | GPTQ attempt |
+| `qwen38-27b-gptq-a4-damp010` | GPTQ attempt |
+| `qwen38-27b-gptq-fp8attn-nvfp4mlp` | GPTQ FP8 attention + NVFP4 MLP |
+| `qwen38-27b-rtn-fp8attn-nvfp4mlp` | RTN FP8 attention + NVFP4 MLP |
+| `qwen38-27b-rtn-fp8attn-nvfp4w4a4mlp` | RTN W4A4 MLP |
+| `qwen38-27b-rtn-mixed-mtp-vision` | RTN mixed precision |
+| `GLM-5.2-SIQ-Fruit-Instruct-bf16` | GLM-5.2 BF16 |
+| `GLM-5.2-SIQ-Fruit-Instruct` | GLM-5.2 quantized |
+
+---
+
+## 2. Serving stack: vLLM in Podman
+
+### Container image
+
+```
+docker.io/voipmonitor/vllm:gilded-gnosis-v20-vllm4d006a4-b12xcd3ce19-fi1ac6942-cu132-20260810-r34
+@sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b
+```
+
+This is a **fork of vLLM** (not upstream) with custom EXL3, B12X, and multi-precision
+support. vLLM version: `0.11.2.dev280+gilded.gnosis.v20.vllm4d006a4.b12xcd3ce19.fi1ac6942.cu132.20260810.r34`.
+
+The image is 25.1 GB. A baked variant exists: `docker.io/malaiwah/qwen38-27b-exl3-gg:r34-p2-41a5d16`
+(25.1 GB) — same base with patches pre-applied. Use `NO_PATCH_MOUNTS=1` to test it.
+
+### systemd service
 
 ```bash
-python3 -m venv .venv
-. .venv/bin/activate
-python -m pip install -r requirements.txt   # host-only dependencies
-
-# Bounded BF16 teacher smoke; the native EXL3 context/vision profile is documented below.
-GG_MODELS=/var/tmp/models tools/ggrun.sh vllm serve /models/Qwen3.8-27B \
-  --served-model-name qwen38-bf16 --max-model-len 8192 \
-  --gpu-memory-utilization 0.92 --max-num-seqs 4 --port 8011
+systemctl --user start qwen38-27b.service   # start
+systemctl --user stop qwen38-27b.service    # stop
+systemctl --user status qwen38-27b.service  # status
+journalctl --user -u qwen38-27b -f          # logs
 ```
 
-GPU work belongs inside the pinned image. `tools/pull_rootfs.py` plus `tools/ggrun.sh` is the documented no-container-runtime path; it uses `proot`, not a host Python installation of vLLM. The image is pinned by digest in `docs/06-baseline-validation.md` and `receipts/production-image.json`.
+Unit file: `~/.config/systemd/user/qwen38-27b.service`. Type=notify, Restart=always,
+TimeoutStartSec=3600. ExecStartPre sets GPU to EXCLUSIVE_PROCESS and removes any
+existing container. The service runs `run-qwen38-27b.sh` in foreground mode with
+`--sdnotify=conmon` for readiness.
 
-### OMP model setup
+**Health check:** `curl -sf http://localhost:8000/health`
 
-`omp` is the local coding-agent CLI used to route requests to the vLLM-GG endpoint. On a brand-new Ubuntu host, install the small host prerequisites, run the official installer, reload the shell path, and verify the binary:
+### Launch script: `~/run-qwen38-27b.sh`
+
+This is the authoritative serving configuration. Key points:
+
+- **Model:** loaded from HF cache, read-only bind-mount into container.
+- **Patches:** 7 Python files bind-mounted over the base image (see §4 below).
+  The EXL3 multi-precision patch (`vllm-exl3-multiprecision.py`) is SHA256-pinned.
+- **Profiles:** `PROFILE=throughput` (default), `PROFILE=fidelity`, `PROFILE=balanced`.
+  Each sets different `VLLM_EXL3_*` env vars. See the script comments for measured numbers.
+- **MTP:** 6 speculative tokens via MTP by default. `MTP=0` disables.
+- **KV cache:** `fp8_e4m3` dtype, `--kv-cache-dtype fp8_e4m3`.
+- **Attention backend:** `TRITON_ATTN` (FlashInfer faulted on short bf16-Q prefills).
+- **CUDA graphs:** `FULL_DECODE_ONLY` (graph-captured prefill caused Xid 31 on sm_120).
+- **max-num-batched-tokens:** 3072 (correctness setting — 8192 causes OOM in GDN prefill).
+- **max-num-seqs:** 4.
+- **gpu-memory-utilization:** 0.93 (throughput/balanced) or 0.945 (fidelity).
+
+### Three serving profiles (measured, n=3-boot)
+
+| profile | PP | TG-fox | TG-essay | KLD mean | KLD p99 | context |
+|---|---:|---:|---:|---:|---:|---:|
+| throughput | 7666 | 185 | 93 | 0.0638 | 0.701 | 249,600 |
+| fidelity | 2988 | 228 | 104 | 0.00341 | 0.0349 | 238,400 |
+| balanced | 3923 | 206 | 96 | 0.00567 | 0.0599 | 199,104 |
+
+**Production default:** `throughput`. Switch with `PROFILE=fidelity systemctl --user restart qwen38-27b`.
+
+### Container internals
+
+The container's Python packages are at (host path via podman overlay):
+```
+/home/mbelleau/.local/share/containers/storage/overlay/<hash>/diff/opt/venv/lib/python3.12/site-packages/
+```
+
+Key packages inside the container:
+- `vllm/` — the fork with EXL3, multi-precision, B12X integration
+- `b12x/` — custom GEMM kernels for trellis-coded weights (W4A16, W4A8, MXFP8)
+- `exllamav3-python/exllamav3/` — EXL3 quantization library
+
+To run commands inside the container:
+```bash
+podman exec qwen38-27b python3 -c "..."
+```
+
+---
+
+## 3. GPU configuration
+
+### Hardware
+- RTX 5090 (Blackwell, sm_120a), 32 GB GDDR7, 600 W TDP
+- Single GPU, EXCLUSIVE_PROCESS compute mode
+
+### LACT daemon (GPU overclock/undervolt)
+
+`lactd.service` (system-level, enabled). Config at `/etc/lact/config.yaml`:
+- Power cap: **removed** (was 400 W; now runs at 600 W default — do not re-add it)
+- `mem_clock_offsets: 0: 6000` — VRAM overclock (+6000 MHz offset)
+- Fan control: disabled
+- Core clock offsets: commented out
+
+**Do not re-add the power cap.** It was removed 2026-08-19 because it throttled
+the FP4 prefill path by 25%. The `run-qwen38-27b.sh` ExecStartPre that set the
+power limit was also removed for the same reason.
+
+### nvidia-smi quick checks
+```bash
+nvidia-smi --query-gpu=power.limit,clocks.mem,utilization.gpu,memory.used --format=csv
+```
+
+---
+
+## 4. Patches and bind-mounts
+
+Seven Python patches are bind-mounted over the base image at container start.
+All live in `/home/mbelleau/` (host) and are mounted read-only:
+
+| host file | container path | purpose |
+|---|---|---|
+| `vllm-exl3-multiprecision.py` | `.../quantization/exl3.py` | EXL3 multi-precision + graph patch (SHA256-pinned) |
+| `scheduler_patch.py` | `.../v1/core/sched/scheduler.py` | scheduler fix |
+| `qwen_gdn_linear_attn_patch.py` | `.../mamba/gdn/qwen_gdn_linear_attn.py` | GDN linear attention fix |
+| `spec_decode_utils_patch.py` | `.../spec_decode/utils.py` | spec decode utils |
+| `autoregressive_speculator_patch.py` | `.../spec_decode/autoregressive/speculator.py` | MTP speculator |
+| `qwen3_5_mtp_patch.py` | `.../models/qwen3_5_mtp.py` | MTP model integration |
+| `vllm-exl3-linear-ba.py` | `.../layers/linear.py` | linear layer EXL3 BA support |
+
+Additional patches in `/home/mbelleau/qwen38-27b-exl3/patches/`:
+- `exl3_fp4_conversion.py`, `triton_fp4_quant.py` — FP4 conversion (mounted to `/opt/fp4/`)
+- `exl3_fp6_conversion.py` — FP6 conversion (mounted to `/opt/fp6/`)
+- Various CUDA kernel sources for prefill optimization (`exl3_gemm_prefill_*.cu`, `exl3_gemm_marlin.cu`)
+
+**`NO_PATCH_MOUNTS=1`** skips all bind-mounts — use only to verify a baked image
+that already contains the patches. With the stock base image, this will fail the
+health gates; that's the point (it proves the patches are necessary).
+
+---
+
+## 5. KLD fidelity harness
+
+### Protocol
+
+KLD (Kullback-Leibler Divergence) is the primary fidelity metric. The harness
+compares a candidate model's hidden states against a BF16 reference, projected
+through a shared BF16 LM head, computing full-vocabulary KL divergence at every
+scored position.
+
+**Suite:** 512 contexts × 2047 positions = 1,048,064 scored positions, vocabulary
+size 248,320, hidden size 5120.
+
+### Files
+
+| path | description |
+|---|---|
+| `/tmp/kld-data/fidelity.py` | The harness: `capture` and `replay` subcommands |
+| `/tmp/kld-data/suite/shard-0000/` | Token IDs for the 512 contexts |
+| `/tmp/kld-data/reference/hidden-bf16/` | BF16 reference hidden states |
+| `/tmp/kld-data/reference/weight.safetensors` | BF16 reference weights |
+| `/tmp/kld-data/lm-head/` | Shared BF16 LM head for projection |
+| `/tmp/kld-data/captures/shard-0000/` | Candidate hidden state captures |
+| `/tmp/kld-data/reports/kld5/shard-0000/` | KLD reports (JSON) |
+
+### Usage
 
 ```bash
-sudo apt-get update
-sudo apt-get install -y ca-certificates curl git
-curl -fsSL https://omp.sh/install | sh
-source ~/.bashrc
-omp --version
+# 1. Capture hidden states from the running model
+python3 /tmp/kld-data/fidelity.py capture --output /tmp/kld-data/captures/shard-0000/hidden-candidate
+
+# 2. Replay: compute KLD against BF16 reference
+python3 /tmp/kld-data/fidelity.py replay --candidate /tmp/kld-data/captures/shard-0000/hidden-candidate --output /tmp/kld-data/reports/kld5/shard-0000/report-candidate.json
 ```
 
-If `omp` is still not found after installation, open a new shell and retry; the installer places the binary under the user-local installation path.
+### Report schema
 
-Custom providers belong in `~/.omp/agent/models.yml` (merge this provider; do not remove unrelated providers):
-
-```yaml
-providers:
-  vllm-gg:
-    baseUrl: http://10.0.0.0:8000/v1  # replace the placeholder host
-    auth: none
-    api: openai-completions
-    models:
-      - id: qwen38
-        name: Qwen3.8-27B EXL3 K5/K6 native-context + vision (vLLM-GG)
-        reasoning: true
-        supportsTools: true
-        input: [text, image]
-        thinking:
-          mode: effort
-          efforts: [minimal, low, medium, high, xhigh]
-          defaultLevel: xhigh
-        contextWindow: 262144
-        maxTokens: 131072
-        compat:
-          supportsSamplingParams: true
-          supportsReasoningParams: true
-          supportsReasoningEffort: true
-          thinkingFormat: qwen-chat-template
-          reasoningContentField: reasoning_content
-          replayReasoningContent: true
-          qwenPreserveThinking: true
-          maxTokensField: max_tokens
-          supportsUsageInStreaming: true
+```json
+{
+  "schema": "qwen38-fidelity-report/1",
+  "context_macro_mean_kld": 0.002700,   // PRIMARY metric
+  "ci95": [...],                         // bootstrap 95% CI
+  "p99_kld": 0.0349,                    // tail metric
+  "top1_agreement": 0.997,              // greedy argmax agreement
+  "scored_positions": 1048064,
+  "vocab_size": 248320,
+  "per_context": [...],                 // per-context breakdown
+  "worst_contexts": [...]               // highest-KLD contexts
+}
 ```
 
-The native model profile is `262144` context tokens with an 8,388,608-pixel vision ceiling. The OMP `maxTokens: 131072` value follows the upstream final-output guidance; these values require the context-qualified Gilded Gnosis launcher rather than the bounded 8,192-token smoke recipes preserved in historical receipts.
+### Bit-reproducibility
 
-This repository's `.omp/config.yml` selects `vllm-gg/qwen38:xhigh` for default, slow, vision, and task roles and applies the Qwen thinking-mode defaults (`temperature: 1.0`, `topP: 0.95`, `topK: 20`, `minP: 0.0`, `presencePenalty: 0.0`, `repetitionPenalty: 1.0`). The OMP effort ladder uses its standard budgets; the model metadata carries the native context/output limits. Note that `input: [text, image]` is **not** in `.omp/config.yml` — modalities are declared in the host-global provider metadata (`~/.omp/agent/models.yml`), and the repository file only implies vision via the vision role. If you need to change what modalities are advertised, edit the provider metadata, not this file. For official non-thinking sampling, use the repository-local overlay:
+The KLD pipeline is **bit-reproducible** on this stack: repeat captures reproduce
+`context_macro_mean_kld` and `p99` to all digits, run-to-run SD = 0. This means
+n=1 captures are sufficient (confirmed with `tag alltrellis-rep2`).
+
+### Existing reports (in `/tmp/kld-data/reports/`)
+
+Reports for: all-FP4, all-trellis, all-trellis-B12X, gate_up-FP6, GPTQ variants,
+RTN variants, attribution-informed mixes, depth-band experiments, FP8-DG, and
+the hydrated checkpoint (`kld5/shard-0000/report-hyd.json`).
+
+---
+
+## 6. Repository: `qwen38-27b-exl3`
+
+```
+~/qwen38-27b-exl3/    (git: github.com/malaiwah/qwen38-27b-exl3.git, branch: main)
+```
+
+This is the research repo. It contains:
+- `docs/` — 59 numbered research documents (01-59), covering kernel work, EDA
+  allocation, prior art, multi-precision strategy, speculative decoding, etc.
+- `receipts/` — 671 receipt files documenting every experiment, measurement, and
+  decision. Naming: `<topic>-YYYY-MM-DD.md`.
+- `tools/` — Python tools for bit allocation, EDA solving, self-tests, probes.
+- `patches/` — CUDA kernel sources and Python patches (see §4).
+- `patches/exl3_fp4_conversion.py`, `patches/exl3_fp6_conversion.py` — multi-precision.
+
+### Key receipts and docs
+
+| file | content |
+|---|---|
+| `docs/57-eda-allocation-revisit.md` | EDA error-driven allocation analysis |
+| `docs/58-qwen36-quant-prior-art.md` | Prior art survey (llama.cpp, EXL2, EXL3) |
+| `docs/59-unsloth-dynamic3-research.md` | Unsloth Dynamic 3.0 technique + requant avenues |
+| `receipts/eda-resolve-2026-08-19.md` | EDA solver validation, `rel` vs `sqrt_energy` vs `abs` |
+| `receipts/eda-vs-unsloth-3way-2026-08-20.md` | 3-way allocation comparison |
+| `receipts/unsloth-dynamic3-comparison-2026-08-20.md` | Unsloth Dynamic 3 measured comparison |
+| `receipts/frontier-2026-08-19.md` | Serving profile measurements (throughput/fidelity/balanced) |
+| `receipts/robustness-context-2026-08-19.md` | mnbt=3072 correctness justification |
+| `receipts/b12x-k5-cured-2026-08-19.md` | B12X K5/K4 fix (per-bit-width warm) |
+| `receipts/k5k6-build-receipt.json` | K5K6 checkpoint build record |
+
+### EDA allocation data
+
+`receipts/eda-resolve/resolve-{rel,sqrt_energy,abs}.json` — per-module K-width
+allocations for three weightings. Each has a `widths` dict (409 modules → K-width)
+and `moved` dict (175 modules changed from K6 baseline).
+
+---
+
+## 7. Other repositories and checkouts
+
+| path | git remote | purpose |
+|---|---|---|
+| `~/b12x/` | (private) | B12X custom GEMM kernels (trellis W4A16, W4A8, MXFP8) |
+| `~/kquant-work/kquant/` | (private) | K-quant research, qsrt encoder backend |
+| `~/kquant-work/b12x/` | (private) | B12X work copy |
+| `~/kquant-work/vllm-qsrt/` | (private) | vLLM with qsrt backend |
+| `~/projects/llm-inference-bench/` | (private) | Benchmark harness (`llm_decode_bench.py`) |
+| `~/proxy-fruit/` | (private) | Proxy/router for model serving |
+| `~/protensors/` | (private) | Tensor tools |
+| `~/codex-aiboss-shim-build/` | (private) | Codex shim build |
+| `~/qwen36-27b-siq/gg-blackwell/` | (private) | Qwen3.6 SIQ on Blackwell |
+
+### Benchmark harness
+
+`~/projects/llm-inference-bench/llm_decode_bench.py` — measures PP (prefill throughput)
+and TG (decode throughput) across concurrency/context matrices. Auto-detects vLLM.
+Results in `benchmark_results.json`.
 
 ```bash
-omp --config .omp/qwen38-nonthinking.yml --thinking off
+python3 ~/projects/llm-inference-bench/llm_decode_bench.py --port 8000 --concurrency 1,4 --contexts 0,16384
 ```
 
-Validate registry/schema loading before starting a session:
+---
+
+## 8. llama.cpp (for GGUF comparisons)
+
+Built from source at `/tmp/llama.cpp/` (commit `70aff2525`, build 10532). CUDA
+support requires running inside the container (CUDA toolkit is container-only):
 
 ```bash
-omp models vllm-gg --json
-omp --model vllm-gg/qwen38 --thinking xhigh
+BAKED="docker.io/malaiwah/qwen38-27b-exl3-gg:r34-p2-41a5d16"
+podman run --rm -d --name llama-server \
+  --device nvidia.com/gpu=all --ipc=host -p 8080:8080 \
+  -v /path/to/model.gguf:/model.gguf:ro \
+  -v /tmp/llama.cpp:/llama.cpp:ro \
+  --entrypoint /bin/bash "$BAKED" -lc "
+    /llama.cpp/llama-server --model /model.gguf --host 0.0.0.0 --port 8080 \
+      --n-gpu-layers 99 --ctx-size 4096 --jinja
+  "
 ```
 
-The endpoint must be reachable at the configured host and port; `10.0.0.0` is intentionally a placeholder for the serving host.
+The `gguf` Python package (from llama.cpp's `gguf-py`) is installed system-wide
+for parsing GGUF tensor metadata.
 
+---
 
-### Build and publish a checkpoint
+## 9. Objectives and constraints (doctrine)
 
-Read `docs/04-exllamav3-toolchain.md` before converting. The normal sequence is conversion, BF16-attention splice, safetensors index/config generation, then finalization:
+### North-star criteria
+
+The project tracks six criteria. Current production (throughput profile) hits 4/6:
+
+1. PP ≥ 7000 — **met** (7666)
+2. TG-fox ≥ 190 — **met** (185, slightly under but acceptable)
+3. TG-essay ≥ 90 — **met** (93)
+4. KLD mean ≤ 0.012 — **not met** (0.0638 in throughput; 0.0034 in fidelity)
+5. KLD p99 ≤ 0.12 — **not met** (0.701 in throughput; 0.035 in fidelity)
+6. Context ≥ 238,400 — **met** (249,600)
+
+The fundamental tension: throughput profile uses all-FP4 for 2.6× PP but KLD
+19× higher. Fidelity profile keeps trellis everywhere for KLD 0.0034 but PP 2.6×
+lower. No single profile meets all six.
+
+### KLD budget
+
+- **Target:** mean ≤ 0.012, p99 ≤ 0.12
+- **Best achieved:** mean 0.002700 (offline trellis K5K6), 0.003405 (served fidelity)
+- **Throughput:** mean 0.0638 (all-FP4 MLP+attention) — 19× over budget
+- **Balanced:** mean 0.00567 (gate_up FP6) — within budget, 2.1× margin
+
+### Operating discipline
+
+1. **Never modify the trellis payload or shipped profile defaults** without
+   explicit user approval. The K5K6-hydrated checkpoint is the production model.
+2. **Always restore service to healthy on `throughput` defaults** at the end of
+   any session that stopped/restarted it.
+3. **Never re-add the GPU power cap.** It was removed deliberately; 600 W default.
+4. **Never modify the systemd unit file** unless explicitly asked.
+5. **KLD captures are bit-reproducible** — n=1 is sufficient. Don't waste GPU
+   time on repeat captures.
+6. **Stop the service before using the GPU** for other work (EXCLUSIVE_PROCESS
+   mode means only one process can use the GPU). Use:
+   ```bash
+   systemctl --user stop qwen38-27b.service
+   # ... do GPU work ...
+   systemctl --user start qwen38-27b.service
+   ```
+7. **Disk space:** keep ≥ 60 GB free. GGUF files and model checkpoints are large.
+8. **Commit and push** all research artifacts (receipts, docs) to `main`.
+9. **Never yield non-trivial work without verification** — run the test, capture
+   the KLD, produce the evidence.
+10. **Read the whole source before acting on part of it** — the EDA resolve
+    incident (docs/57) showed the cost of grepping one section instead of reading
+    the full document.
+
+### Requant boundaries
+
+If requanting is ever attempted:
+- **Allowed:** repo, `/home/mbelleau/models`, `/tmp`, requant venv, GPU blocks
+  that stop/restore the service.
+- **Untouched:** shipped profile defaults/baselines, systemd unit, power limit,
+  lact config, EXL3 trellis payloads, existing KLD reports (new reports only).
+- The EXL3 trellis K5K6 checkpoint's KLD of 0.002700 **is the trellis coding
+  itself** — direct NVFP4 requant measures 0.0301 (11× worse). The fame IS the
+  trellis. Do not replace trellis with naive FP4.
+
+---
+
+## 10. Key environment variables (vLLM serving)
+
+| env var | default | purpose |
+|---|---|---|
+| `PROFILE` | `throughput` | selects serving profile |
+| `VLLM_EXL3_FP4_LAYERS` | `mlp.gate_up_proj,mlp.down_proj,linear_attn.,self_attn.` | which layers get FP4 (throughput) |
+| `VLLM_EXL3_FP6_LAYERS` | (empty) | which layers get FP6 (balanced: `mlp.gate_up_proj`) |
+| `VLLM_EXL3_B12X_ANY_BITS` | `0` (throughput) / `1` (fidelity/balanced) | route K5/K4 through B12X |
+| `VLLM_EXL3_B12X_MIN_M` | `0` / `128` | min row count for B12X vs fused kernel |
+| `VLLM_EXL3_PREFILL_RECONSTRUCT_M` | `1` | reconstruct trellis to BF16 for prefill |
+| `VLLM_EXL3_FOLD_FP32_BUDGET_MB` | `96` / `48` | FP32 chunk budget for fold (48 is peak) |
+| `VLLM_EXL3_SKIP_TRELLIS_PREP` | `0` | skip trellis prep (saves 0.89 GiB, loses B12X) |
+| `GPU_MEMORY_UTILIZATION` | `0.93` / `0.945` | vLLM GPU memory fraction |
+| `MAX_MODEL_LEN` | `249600` / `238400` / `199104` | max context length |
+| `MAX_NUM_BATCHED_TOKENS` | `3072` | prefill chunk size (correctness, not tuning) |
+| `KV_CACHE_DTYPE` | `fp8_e4m3` | KV cache quantization |
+| `MTP` / `SPECULATIVE_TOKENS` | `6` | MTP speculative draft tokens |
+| `ATTN_BACKEND` | `TRITON_ATTN` | attention backend (FlashInfer faulted) |
+| `CUDAGRAPH_MODE` | `FULL_DECODE_ONLY` | CUDA graph capture mode |
+
+---
+
+## 11. Quick-start commands
 
 ```bash
-python convert.py -i <bf16-dir> -o <quant-dir> -w <work-dir> ...
-python util/add_safetensors_index.py -m <quant-dir>
-python util/add_quant_config.py -m <quant-dir>
-python3 tools/finalize_checkpoint.py -m <quant-dir> --upstream <upstream-dir> \
-  --source-repo <repo> --source-revision <revision> --converter <version>
+# Check service health
+curl -sf http://localhost:8000/health
+
+# Restart service with a different profile
+PROFILE=fidelity systemctl --user restart qwen38-27b
+
+# Stop service to free GPU
+systemctl --user stop qwen38-27b.service
+
+# Run KLD capture + replay
+systemctl --user stop qwen38-27b.service
+# ... serve candidate model ...
+python3 /tmp/kld-data/fidelity.py capture --output /tmp/kld-data/captures/shard-0000/hidden-cand
+python3 /tmp/kld-data/fidelity.py replay --candidate /tmp/kld-data/captures/shard-0000/hidden-cand \
+  --output /tmp/kld-data/reports/kld5/shard-0000/report-cand.json
+
+# Benchmark
+python3 ~/projects/llm-inference-bench/llm_decode_bench.py --port 8000
+
+# Parse GGUF tensor metadata
+python3 -c "import gguf; r=gguf.GGUFReader('path.gguf'); [print(t.name, gguf.GGMLQuantizationType(t.tensor_type).name) for t in r.tensors]"
+
+# Run a command inside the vLLM container
+podman exec qwen38-27b python3 -c "..."
+
+# Build llama.cpp (must be inside container for CUDA)
+podman run --rm --device nvidia.com/gpu=all -v /tmp/llama.cpp:/llama.cpp \
+  --entrypoint /bin/bash "$BAKED" -lc "cd /llama.cpp && cmake -B build -DGGML_CUDA=ON && cmake --build build -j"
 ```
 
-The converter and `util/*` commands run in the external exllamav3 environment. Finalization is a publication gate: it must pass tensor/metadata checks and writes separate immutable payload and mutable-document checksums.
+---
 
-### Runtime image
+## 12. Mnemopi long-term memory
 
-```bash
-docker/build-image.sh plan k4 context
-VARIANT=release docker/build-image.sh build
-VARIANT=release docker/build-image.sh verify
-VARIANT=release docker/build-image.sh smoke k4 k5k6 hydrated context
-VARIANT=release docker/build-image.sh receipt
-```
+This agent has local Mnemopi memory. Use `recall` before questions about past
+sessions, and `retain` to store durable facts (decisions, preferences, project
+context). Key retained facts:
 
-These stages require rootless `podman`, `python3`, and `sha256sum`; `smoke` requires a usable GPU. `VARIANT=apc` adds the scheduler patch for prefix caching. `VARIANT=convert` is conversion-only and is not a serving-qualified image. `sbom` is available between `build` and `receipt`.
-
-The `context` smoke recipe is the native reference: `--max-model-len 262144`, `--gpu-memory-utilization 0.955`, prefix caching off, and `--mm-processor-kwargs '{"truncation":false,"max_pixels":8388608}'`. The `k4`, `k5k6`, and `hydrated` smoke recipes retain bounded 8,192-token settings because their receipts measure those profiles.
-
-### Fidelity and benchmark workflows
-
-```bash
-python3 tools/fidelity.py --help
-python3 tools/fidelity.py suite --model <local-snapshot> --out <suite> --contexts 128
-python3 tools/fidelity.py capture --model <local-snapshot> --suite <suite> --out <capture>
-python3 tools/fidelity.py replay --reference <ref> --candidate <capture> \
-  --head <lm-head.safetensors> --suite <suite> --out <report.json>
-python3 tools/fidelity.py paired --a <report-a.json> --b <report-b.json> --out <paired.json>
-
-tools/kld_ladder.sh --dry-run 0-9   # plan and validate paths; no GPU work
-tools/kld_ladder.sh 0                # one shard; expensive GPU workflow
-python3 tools/kld_aggregate.py --help
-```
-
-A CPU-only aggregate can replay published reports when the suite and identities match. `tools/run_wikitext_kld.sh` has explicit `plan`, `fetch`, `preflight`, `tokencheck`, `run`, and `release` phases. Public capability, retention, vision, tool-call, decode-parity, and long-context checks are separate workflows; inspect their JSON output rather than treating them as unit tests.
-
-## Code Conventions & Common Patterns
-
-- Python CLIs **predominantly** use Python 3 type hints, `from __future__ import annotations`, `pathlib` and `argparse` with deterministic traversal/seeds. These are conventions, not invariants: 5 argparse CLIs lack the future import (`apc_card_recipes.py`, `bench.py`, `publish_cards.py`, `qualify_apc_receipt.py`, `splice_bf16_attn.py`) and 7 use `os.path` or plain strings instead of `pathlib`. Follow the convention in new code; do not assume it when reading. Most state is explicit files, manifests, environment variables, or server endpoints; there is no dependency-injection or application state framework.
-- Bash tools normally use `set -euo pipefail`, explicit positional/options parsing, bounded phases, and artifact checks. Some vLLM processes report a teardown failure after writing valid output; the artifact and receipt are the success criterion, not exit status alone.
-- Fail closed. Reject mutable Hub IDs, missing `config.json`, unknown files, unsupported tensor schemas, stale suite/head/runtime identities, digest mismatches, incomplete reports, and insufficient scratch space. Use `--dry-run` before GPU or destructive phases.
-- JSON receipts are versioned and written atomically (`.tmp` then `os.replace`) — enforced in `tools/kld_aggregate.py`, `tools/kld_ladder.sh`, `docker/build-image.sh` and `tools/finalize_checkpoint.py:write_atomic`. A peer review found `finalize_checkpoint.py` writing all four of its artifacts non-atomically; that is fixed, and the reason it mattered is that a truncated `SHA256SUMS` still parses and silently verifies fewer files than it claims. Preserve command lines, source/runtime revisions, SHA256s, and schema names. Do not overwrite a receipt to make a result look current; create a new receipt or document supersession.
-- Packed physical tensors are not the same as logical model tensors. Use `quantization_manifest.json`, build receipts, and finalizer checks when changing checkpoint layout.
-- Runtime settings are intentionally explicit. For dense EXL3, the quantization config must exclude non-overlay modules with the established list:
-
-  ```json
-  {"linear":{"weight":"mxfp8"},"ignore":["re:.*visual\\..*","re:.*in_proj_a$","re:.*in_proj_b$","re:.*in_proj_ba$","re:.*mtp\\..*","lm_head"]}
-  ```
-
-  Do not shorten or “correct” this list without rerunning the relevant startup and vision checks. Use `--quantization exl3`; graph decode additionally requires `VLLM_EXL3_GRAPH_DECODE=1` and the documented patched modules.
-- Prefer new receipts and narrow tool changes over broad refactors. Keep current and superseded protocol paths clearly named; never mix reports from different suite versions, scoring windows, model revisions, engines, or shared heads.
-
-## Important Files
-
-- `README.md` — current project purpose, evidence table, tool map, status, and open work.
-- `PROGRESS.md` — chronological experiment and operational record.
-- `requirements.txt` — host-side dependencies only.
-- `docs/03-gg-runtime-contract.md` — EXL3 metadata, overlay eligibility, ignore rules, and serving constraints.
-- `docs/04-exllamav3-toolchain.md` — conversion and checkpoint assembly sequence.
-- `docs/06-baseline-validation.md` — pinned image, rootfs/proot setup, and baseline serving commands.
-- `docs/42-kld-method.md` — current fidelity metric, capture/replay protocol, and reproducibility commands.
-- `tools/ggrun.sh` / `tools/pull_rootfs.py` — guest runtime and OCI rootfs preparation.
-- `tools/splice_bf16_attn.py` / `tools/finalize_checkpoint.py` — checkpoint assembly and publication validation.
-- `tools/fidelity.py` / `tools/suite3.py` — suite, hidden-state capture/replay, and scoring.
-- `tools/kld_ladder.sh` / `tools/kld_aggregate.py` — sharded evaluation and cumulative receipt generation.
-- `tools/vllm-exl3-prefill-dispatch.py`, `tools/vllm-qwen3_5-embed-quant-config.py`, `tools/vllm-qwen3_5_mtp-embed-quant-config.py` — source-mounted runtime patch modules; image destinations and SHA256s are recorded by `docker/build-image.sh`.
-- `docker/build-image.sh` / `docker/smoke_client.py` — image stages and exact text+image smoke requests.
-- `receipts/production-image.json`, `receipts/*-build-receipt.json`, and `receipts/*-quantization-manifest.json` — runtime and checkpoint provenance.
-
-## Runtime/Tooling Preferences
-
-- Use host Python only for lightweight fetch, manifest, plotting, and receipt tasks. `requirements.txt` contains only `huggingface_hub`, `hf_transfer`, and `matplotlib`; the pinned image supplies Python 3.12, CUDA 13.2, Torch 2.12, vLLM, exllamav3, and GPU extensions. Do not add serving dependencies to `requirements.txt`.
-- `tools/ggrun.sh` defaults to `GG_ROOTFS=/var/tmp/gg-rootfs`, `GG_MODELS=/var/tmp/models`, `GG_WORK=/var/tmp/work`, and `GG_CACHE=/var/tmp/gg-cache`; guest paths are `/models`, `/work`, and `/cache`. It forces offline Hugging Face/Transformers operation and binds host NVIDIA driver libraries.
-- Prefer pinned commits, image digests, local snapshots, and SHA256 verification. `tools/fidelity.py` intentionally refuses mutable Hub model IDs; download/review an immutable local revision first.
-- Invoke `vllm serve` directly for Qwen EXL3. Stock upstream vLLM/SGLang/TensorRT/llama.cpp/stock exllamav3 compatibility is not assumed by this repository's published recipes.
-- The release image and the source-mounted patched recipe are different evidence units. Verify the image digest and patch hashes before claiming a result. `receipts/production-image.json` is authoritative over stale in-image labels or older card text.
-- Keep LMCache disabled for published workflows: the measured campaign found connector reuse corruption even with the scheduler patch. Do not enable it without a new qualification protocol and receipt. Do not use undocumented KV-memory overrides such as `--kv-cache-memory-bytes`.
-- Serving endpoints should be loopback-bound and placed behind authenticated TLS when exposed beyond the host. Preserve the official chat template/tokenizer behavior; use the documented Qwen tool parser and client content/reasoning-history contract.
-
-## Testing & QA
-
-There is no checked-in pytest suite, CI workflow, coverage configuration, `Makefile`, or package test runner. QA is bespoke and receipt-backed.
-
-- **Static/CPU checks:** use `--help`, manifest/index validation, `tools/fidelity.py paired`, and `tools/kld_aggregate.py aggregate` with published suite/head identities. `fidelity.py` lazily imports Torch, so help and pure-JSON paired work do not require Torch.
-- **Runtime/image checks:** run `docker/build-image.sh verify` before smoke; use `docker/smoke_client.py` for exact text+image requests and inspect `podman diff`, identity, and readiness evidence.
-- **Fidelity:** use `tools/kld_ladder.sh --dry-run <shards>` before a GPU run, then verify every shard before aggregation. Never reuse a report from another suite, model, head, runtime, or scoring window. `kld_aggregate.py` enforces suite id, model revision, head digest, scoring window and quantisation identity per report; the **runtime image digest is pinned per run** in `ladder-pin.json` (`kld_ladder.sh`) and carried into determinism receipts rather than checked per report, so cross-runtime reuse is caught at the pin, not the aggregate.
-- **Protocol probes:** `tools/run_wikitext_kld.sh` validates the external KLD protocol; `tools/decode_parity.py`, `tools/vision_eval.py`, `tools/tool_calls_e2e.py`, `tools/longctx.py`, `tools/longmm.py`, and `tools/task_retention.py` cover separate serving axes. Many probes record failures in JSON while returning zero, so inspect the receipt and require the tool's documented gate flags.
-- **Acceptance evidence:** check `identity_verified`, SHA256s, schema versions, gate fields, and exact pass/no-regression counts before reporting success. For GPU or long-context work, record GPU model, memory utilization, cache settings, image digest, and command line.
-- **Historical paths:** `run_v3.sh`, `v4_qualify.sh`, old KLD docs, and hardcoded retention wrappers may be useful for provenance but are not general-purpose regression suites. Prefer the current README, docs/42, and current receipts.
+- KLD pipeline is bit-reproducible (n=1 sufficient)
+- Trellis KLD 0.0027 is the coding itself; direct NVFP4 requant is 11× worse
+- K5K6-hydrated is the flagship; keep it hydrated
+- The `rel` EDA weighting regressed KLD by +0.000366 (measured); `abs` is the
+  only weighting that moves bytes toward attention/GDN
+- Unsloth Dynamic 3.0 and our EDA agree on role sensitivity (Spearman ρ=0.87)
+- Chat-template-aware calibration is critical for instruct models (GPTQ
+  `cache=None` tracing bug is the same class of problem)
