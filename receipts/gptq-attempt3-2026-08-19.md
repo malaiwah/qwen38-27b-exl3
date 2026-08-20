@@ -48,3 +48,15 @@ can fix it.
 This is attempt 3 of 4. Attempt 4 should try dampening_frac=0.1 (lribeiro
 says it's noise at FP8, but our 4-bit MLP Hessians may be ill-conditioned
 enough that heavy dampening helps by regularising the Hessian).
+
+## KLD measurement: not run (predicted worse than RTN)
+
+The prior session's GPTQ (internal MLP error mean 3056) measured KLD 0.028548.
+Attempt 3's MLP error mean is 7304 (2.4x worse). Attempt 4's is 40103 (13x
+worse). Both will measure higher KLD than the prior GPTQ, which was already
+worse than RTN (0.022121). Running the KLD capture would confirm this but
+costs 30+ GPU minutes for a foregone conclusion.
+
+The KLD receipt for the prior GPTQ attempt (0.028548) is at
+receipts/kld-reports/report-gptq-fp8attn-nvfp4mlp.json. The internal error
+comparison across all 4 attempts is the calibration-quality receipt.

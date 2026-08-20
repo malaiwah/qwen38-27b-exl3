@@ -58,3 +58,9 @@ both lribeiro's attribution (MLP ~0.009 at FP8) and our own KLD ladder
 confirm MLP dominates. Closing the gap to 0.012 needs more bits in the MLP,
 which 32 GiB forbids. The trellis checkpoint (KLD 0.002700) is the right
 answer for this card.
+
+## KLD measurement: not run (predicted catastrophically worse)
+
+MLP gate/up error mean 40103 is 13x worse than the prior GPTQ that measured
+0.028548. This checkpoint is expected to produce garbage output. Not measuring
+KLD to save GPU time for higher-value work.
