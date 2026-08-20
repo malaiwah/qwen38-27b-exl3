@@ -45,13 +45,13 @@ means**.
 
 ## Determinism controls
 
-`enforce_eager=True`, `enable_prefix_caching=False`, `max_num_seqs=1`,
-`max_num_batched_tokens=256`, `kv_cache_memory_bytes=512MiB`,
-`gpu_memory_utilization=0.95`, `max_logprobs=-1`, `dtype=bfloat16`,
-`load_format=safetensors`, `VLLM_WORKER_MULTIPROC_METHOD=spawn`. No RNG seed:
-nothing is sampled. The runner asserts `token_ids[:16] == manifest["token_first16"]`
-to catch tokenizer drift, and refuses to emit results on any non-finite logit or
-KLD.
+The superseded runner used `enforce_eager=True`, prefix caching off,
+`max_num_seqs=1`, `max_num_batched_tokens=256`, an internal
+`kv_cache_memory_bytes=512MiB` clamp, `gpu_memory_utilization=0.95`,
+`max_logprobs=-1`, bfloat16, safetensors, and spawn. The KV-memory override is
+historical provenance, not a current serving or evaluation recommendation;
+repository-head workflows leave it unset. No RNG seed was needed because
+nothing was sampled. Token-prefix and finite-value assertions caught drift.
 
 ## Adaptation for this effort
 
@@ -63,10 +63,10 @@ KLD.
 | regenerate the token window with the Qwen tokenizer and freeze it | vocab 248320, and the committed GLM window is tokenizer-specific |
 | teacher and candidates share one KV dtype | the r34 receipt's own stated limitation was an FP8-KV teacher vs NVFP4-KV serving |
 
-Reference logits are `2047 x 248320 x 4 B = 2.03 GiB` fp32 per window. Teacher
-and candidates load sequentially, never together, so 96 GB is sufficient; keep
-`kv_cache_memory_bytes` clamped because full-vocab prompt-logprob extraction
-allocates several V-wide temporaries.
+Reference logits are `2047 x 248320 x 4 B = 2.03 GiB` fp32 per window.
+Teacher and candidates loaded sequentially. Full-vocabulary extraction required
+substantial temporary memory; current workflows rely on profiled allocation
+rather than an undocumented KV-memory override.
 
 Candidates to score: BF16 teacher (control), `nvidia/Qwen3.6-27B-NVFP4` is a
 different generation so the same-generation control is `unsloth/Qwen3.8-27B-NVFP4`,

@@ -83,9 +83,11 @@ prevent end-of-block draft decay, and a bidirectional attention mask. Citation:
 | `Qwen3.8-27B-DFlash2-Q8_0.gguf` | 2.0 GB | 5.13 |
 | `Qwen3.8-27B-DFlash2-Q4_K_M.gguf` | 1.1 GB | 5.39 |
 
-The Q4_K_M acceptance (5.39) is within noise of BF16 (5.28), confirming that draft
-quantization barely affects acceptance — the target verifies all drafts losslessly, so
-draft quantization only affects drafting latency, not output quality.
+The card reports one Q4_K_M acceptance value (5.39) near its BF16 value
+(5.28), but publishes no repetitions or uncertainty, so "within noise" is not
+established. Draft quantization changes proposal efficiency; exact speculative
+verification is intended to preserve target output semantics, but that
+property belongs to the verifier implementation and must be tested.
 
 ### 1.4 DSpark — DFlash + Markov head + confidence head
 
@@ -211,19 +213,14 @@ fork interprets as a DeepSeek-V4 DSpark draft and rewrites `model_type` to
 `"deepseek_v4"`. Fix: change the draft's `config.json` architectures to
 `["Qwen3DSparkModel"]`, or add a `model_type != "qwen3"` guard to the rewrite condition.
 
-### 3.3 EXL3 draft serving — already proven
+### 3.3 EXL3 draft serving precedent
 
-The fork already supports loading an EXL3-quantized draft alongside an EXL3 target. The
-v20 integration patches add `_runtime_scope_id` separation so the draft gets its own
-`Exl3Config` runtime distinct from the target's. The draft's Trellis
-`MIN_CAPTURABLE_TRELLIS_M` must be ≤ 1 (vs target default 4) or CUDA-graph capture fails.
-
-Config trap: a draft inherits the target's `--quantization` unless its
-`SpeculativeConfig` overrides it.
-
-Evidence: the GLM-5.2 turnkey appliance (`glm52-exl3-turnkey`) serves an EXL3 3bpw MTP
-layer 78 draft alongside an EXL3 target, measured at acceptance parity with BF16 (see
-§6.2).
+The fork has runtime-scope separation for an EXL3 target and EXL3 draft, and
+the GLM-5.2 appliance served an EXL3-quantized MTP layer alongside an EXL3
+target. This proves that specific MTP path, not arbitrary DFlash/DSpark custom
+architectures or converter compatibility. A draft must override inherited
+`--quantization`, and capturable trellis row limits remain configuration
+constraints.
 
 ---
 
@@ -231,19 +228,14 @@ layer 78 draft alongside an EXL3 target, measured at acceptance parity with BF16
 
 ### 4.1 Source and scope
 
-Throughput numbers are from the DFlash2 model card (BF16 `Qwen/Qwen3.8-27B`, SGLang,
-H200, 7 draft tokens per verification step, temp 1.0, top-p 0.95, top-k 20). These are
-not our EXL3 quant on RTX 5090, but the relative speedup ratios transfer because
-speculative decoding's benefit is in reducing sequential forward passes, which is
-hardware-independent.
+The DFlash2 card numbers are BF16 Qwen3.8-27B under SGLang on one H200, with
+seven draft tokens and its stated sampling. They are useful prior art but do
+**not** transfer as ratios to EXL3 on an RTX 5090: draft/target kernel cost,
+memory bandwidth, batching, verifier implementation and acceptance all depend
+on hardware/runtime.
 
-Our card does not publish tok/s throughput numbers — its RTX 5090 MTP-3 references are
-context-capacity tests (~180k context for the hydrated build at MTP-3), not throughput
-benchmarks.
-
-MTP3 is not directly benchmarked in the DFlash2 card. [INFERENCE] Estimate from typical
-MTP scaling: MTP3 predicts 4 tokens/pass vs MTP6's 7; acceptance length scales
-sublinearly with draft depth, so MTP3 gives roughly 60–70% of MTP6's speedup.
+MTP-3 is not in that card. No numeric MTP-3 row is interpolated here; the local
+vLLM receipts are the authority for local MTP depth effects.
 
 ### 4.2 Concurrency 1 (interactive / single-user)
 
@@ -277,10 +269,10 @@ positive even at concurrency 32.
 | MBPP | 3.99 | 3.51 | **4.79** |
 | MT-Bench | 3.74 | 3.01 | **4.10** |
 
-DSpark's acceptance is lower than MTP's because DSpark was trained against FP8 (not BF16)
-and uses a simpler intra-block dependency (Markov head vs MTP's native sequential
-drafting). DSpark's throughput advantage comes from lower drafting cost (single
-block-parallel pass vs 6 sequential MTP steps), not higher acceptance.
+DSpark has lower acceptance than MTP in the card's table and lower drafting
+cost through one block-parallel pass. Training target, architecture and
+runtime all differ, so the acceptance gap is not causally assigned to FP8 or
+the Markov head.
 
 ### 4.5 KV cost on 32 GB RTX 5090
 
@@ -312,16 +304,14 @@ EXL3:
 | | SpecForge (SGLang) | vLLM Speculators (Red Hat) |
 |---|---|---|
 | Repo | `github.com/sgl-project/SpecForge` | `github.com/vllm-project/speculators` |
-| Target capture backend | SGLang only (`target_backend: Literal["sglang"]`) | vLLM (`scripts/launch_vllm.py`) |
-| EXL3 support | ✗ (SGLang cannot load EXL3) | ✓ (vLLM loads EXL3 via our fork) |
-| DSpark training | ✓ (disaggregated + offline) | ✓ (online via vLLM server) |
-| DFlash training | ✓ | ✓ |
-| DFlash2 training | ✗ | ✗ |
-| Published models | SpecBundle collection | 32+ RedHatAI models |
+| Target capture backend | SGLang only | vLLM |
+| EXL3 target | unsupported by SGLang | plausible through our fork; unverified training integration |
+| DSpark / DFlash training | supported | supported |
+| DFlash2 training | unsupported | unsupported |
 
-**The vLLM speculators library is the path for EXL3.** Its `launch_vllm.py` accepts any
-vLLM args after `--`, so we can pass `--quantization exl3` and our ignore list. RedHatAI
-used this library for every model they published.
+`launch_vllm.py` forwards vLLM arguments, which is necessary but not sufficient
+for EXL3 hidden-state capture/training compatibility. No command below was run
+against the pinned library revision.
 
 ### 5.2 The training pipeline (vLLM speculators)
 
@@ -358,19 +348,14 @@ Published A/B comparisons of matched-vs-unmatched drafter training:
 | SpecForge (poolside ladder) | INT4 | — | 6.273 | — |
 | SpecForge serving FP8 | FP8 | 7.10 | 7.11 | +0.1% |
 
-**The improvement from quant-matched training is 0–2%.** The architectural reason
-(from `satgeze/Qwen3.6-27B-DSpark` model card):
+Only two rows are matched A/Bs, and they report +1.0% and +0.1% in their own
+protocols. The poolside FP8/NVFP4/INT4 rows are different targets, not a
+matched-training experiment. No universal 0–2% prior follows.
 
-> The drafter applies RMSNorm immediately after the fusion projection
-> (`H_ctx = RMSNorm(W_c[H^(l1); ...; H^(lm)])`), which absorbs magnitude drift in the
-> captured target features, and the drafter shares the target's frozen embedding and
-> lm_head, so readout quantization error is common-mode between drafting and
-> verification.
-
-In the vLLM DSpark implementation (RedHatAI), the draft has its own lm_head — so the
-common-mode argument partially breaks down. But the competition paper (arXiv:2607.04244)
-used DFlash with a separate draft lm_head and still found only +1.0% from matched
-training.
+RMSNorm can remove scalar magnitude drift but not directional feature error.
+Shared embeddings/heads can make some readout error common-mode only for
+architectures that actually share them; the RedHatAI DSpark implementation has
+its own head. These are hypotheses for small effects, not a bound.
 
 ### 5.4 The two-stage quantized-target training procedure
 
@@ -391,10 +376,11 @@ From the competition paper (arXiv:2607.04244, "Efficient Qwen Competition", 3rd 
 
 Code: `github.com/nota-github/adaptfm-quant-dflash`.
 
-### 5.5 Concrete training commands for our EXL3 quant
+### 5.5 Illustrative, unvalidated command sketch
 
-Using the vLLM speculators library (Red Hat), adapted from RedHatAI's GLM-5.2 DSpark
-recipe:
+The following was adapted from a RedHatAI recipe but was **not executed** and
+must not be treated as copy-pasteable until each CLI option is verified against
+a pinned `vllm-project/speculators` revision:
 
 ```bash
 # 1. Launch our EXL3 quant as the hidden-states target server
@@ -433,15 +419,11 @@ For the two-stage procedure, warm-start Stage 2 from Stage 1 via
 
 ### 5.6 Hardware and time estimates [INFERENCE]
 
-| Step | Hardware | Time |
-|---|---|---|
-| Data regeneration | 1× GPU (RTX 5090 or rental H100) | ~12–24 hours (27B generating ~100K responses) |
-| Hidden state capture | same GPU | ~6–12 hours |
-| Training (Stage 1) | 1× 24 GB+ GPU | ~8–16 hours (3–10 epochs, ~4000 optimizer steps) |
-| Fine-tuning (Stage 2) | same GPU | ~2–4 hours (1–2 epochs at lower LR) |
-| Draft quantization | same GPU | < 1 hour |
-
-The draft is only 1.36B params — trains comfortably on a single 24 GB+ GPU.
+The original 20–40 GPU-hour schedule is a planning estimate with no pilot.
+A 1.36B BF16 drafter does not automatically train "comfortably" on 24 GB:
+parameters, gradients, optimizer/master states and activations can exceed that
+without sharding, checkpointing or reduced-state optimizers. Hardware and time
+must be sized from the actual training configuration.
 
 ---
 
@@ -493,11 +475,10 @@ layer 78 quantized to EXL3 3bpw:
 | **EXL3 3bpw override** (3.7 GB) | **3.548** | **84.9%** | **49.9** | 8.92 GiB |
 | NVFP4 (lukealonso/GLM-5.2-NVFP4 MTP shards) | 3.531 | 84.4% | 49.5 | 8.5 GiB |
 
-The EXL3 3bpw override draft achieved **better acceptance than BF16** (84.9% vs 84.3%)
-while being **5.2× smaller** (19.3 → 3.7 GB). Two serving modes documented in
-`entrypoint.sh:714-728`: graft (in-place surgery on target layer 78) vs override
-(separate draft dir via `--speculative-config`, measured slightly better). Full
-methodology: `https://gist.github.com/malaiwah/4bbb16bef2e336e94af165076cdba955`.
+The EXL3 override **observed** 84.9% acceptance versus BF16's 84.3% while
+being 5.2× smaller. No repeat count or interval supports "better"; the
+defensible conclusion is no detected material acceptance loss in that QC run.
+Two serving modes are documented in the cited appliance.
 Published draft model: `malaiwah/GLM-5.2-EXL3-TR3-MTP78`.
 
 ### 6.3 satgeze/Qwen3.6-27B-DSpark — the target-quantization A/B study
@@ -520,9 +501,10 @@ The head was trained against BF16 and achieves full acceptance against Q4_K_M (4
 > At 27B scale, what decides low-bit draft acceptance is not the head, it is the
 > quantization quality of the target.
 
-Our K6 lm_head has KLD 0.002760 from BF16 — 48% lower divergence than FP8 (0.005294).
-The train/serve mismatch is smaller than in any published quantized-target speculator
-experiment.
+The cited 0.002760 is the hydrated **body** KLD, not the K6 `lm_head` error.
+The head-specific v5 measurement is about +0.000143 KLD. These values do not
+establish that this train/serve mismatch is smaller than every published
+speculator experiment.
 
 ### 6.4 Complete prior art map
 
@@ -545,33 +527,28 @@ experiment.
 
 ### 7.1 Immediate deployment (zero training)
 
-**MTP-3** is the zero-effort baseline: already baked in, ~180k context on RTX 5090,
-2.0–2.6× speedup at concurrency 1.
+**MTP** is the zero-integration baseline because it is baked into the target.
+Local speedup depends on prompt and concurrency; the H200 card's 2.0–2.6×
+ratios are not used for RTX 5090 planning.
 
-**RadixArk DSpark** can be loaded with a one-line config fix (change architectures from
-`DSparkDraftModel` to `Qwen3DSparkModel`). The fork's full DSpark runtime is ready:
-FP8 draft head, dynamic draft depth, SPS curve profiling, confidence threshold. Expected
-acceptance is slightly lower than MTP at concurrency 1 (DSpark was trained against FP8,
-not our K6), but DSpark's adaptive features help on 32 GB.
+**RadixArk DSpark** booted only after a config rewrite and with an auto-KV
+concession; issue #442 records two runtime incompatibilities. It is an
+experiment, not a one-line deployment recommendation.
 
 ### 7.2 Custom-trained draft (if acceptance matters)
 
-Use the vLLM speculators library (not SpecForge — SGLang cannot load EXL3). Follow
-RedHatAI's GLM-5.2 DSpark recipe as the template, replacing the target with our EXL3
-quant.
-
-Expected improvement from quant-matched training: **0–2%** (published evidence from
-arXiv:2607.04244, SpecForge, satgeze). The bigger win is quantizing the draft itself
-(EXL3 or FP8 head), which frees VRAM for KV — proven in our GLM-5.2 work (5.2× smaller
-at better-than-BF16 acceptance).
+The vLLM speculators route is the plausible training path, but EXL3 capture and
+the command surface remain unverified. The cited matched-target A/Bs show
+roughly 0.1–1.0% acceptance changes in their own protocols; they do not define
+a universal 0–2% expectation. Draft quantization can free VRAM, while the
+GLM QC run only establishes an observed no-material-loss result.
 
 ### 7.3 DFlash2 (if raw throughput matters)
 
-DFlash2 gives the highest throughput (3.1–3.4× at concurrency 1, still positive at
-concurrency 32), but requires porting the selector + two-tap conv into our fork. The
-DFlash v1 infrastructure (proposer, KV injection, non-causal attention) is already there;
-the gap is ~3 components. No training code is published for DFlash2 (Inco AI keeps it
-closed).
+DFlash2 has the highest throughput in its H200/SGLang card (3.1–3.4× at
+concurrency 1 and positive at 32). Porting and measuring it on this fork is
+required before making a local throughput claim; "three components" is a
+source-map summary, not an effort estimate.
 
 ### 7.4 What no one has done
 
@@ -620,25 +597,17 @@ auto KV, single stream):
 | DSpark (BF16 draft, block 7) | 8,976.6 | 183.0 [acc 0.857] | 74.8 [acc 0.147] |
 | built-in MTP-6 | 9,495.9 | 175.0 [acc 0.944] | **76.7 [acc 0.221]** |
 
-An EXL3-target-trained DSpark would have to close the essay-acceptance gap
-(0.147 -> beyond 0.221) to be worth its 2.7 GB and 5.5% prefill. The published
-evidence on quant-matched drafter training puts the gain at **0-2%**
-(arXiv:2607.04244 Table 4: 4.92 -> 4.97; SpecForge FP8 serving 7.10 -> 7.11), and
-§5.3's architectural argument for why it is small (RMSNorm after the fusion
-projection absorbs magnitude drift; shared frozen embedding/head makes readout
-error common-mode) applies to our target too — more strongly, since our K6 head is
-the lowest-divergence readout in this comparison set.
+An EXL3-target-trained DSpark would need to close the measured essay-acceptance
+gap (0.147 versus MTP's 0.221) while paying 2.7 GB and 5.5% prefill. The two
+published matched-training A/Bs show small gains in other systems (+1.0% and
++0.1%), which lowers the priority but does not bound this target.
 
-**Cost against that.** §5.6 estimates 20-40 GPU-hours end to end (data
-regeneration 12-24 h, hidden-state capture 6-12 h, training 8-16 h, fine-tune
-2-4 h) on a card that is exclusive-process and is the only card. That is the same
-budget as the entire mixed-requant lane, which attacks the one criterion we
-actually fail (prefill), whereas decode is already met on `fidelity`
-(228.3 fox / 104.1 essay vs the 190/83 bars).
+The 20–40 GPU-hour schedule is an unpiloted planning estimate and the 24 GB
+training fit is unresolved. The decision not to train is therefore a
+priority/risk choice: decode already clears the current profile bars, while
+the mixed-requant lane attacks the failed prefill criterion with direct
+measurements.
 
-**What would revive it.** Any of: (a) decode becomes the binding constraint after
-a requant checkpoint takes over the flagship slot; (b) a second GPU removes the
-serial-time conflict; (c) someone publishes an EXL3-targeted speculator recipe
-with a measured gain above ~5%, making the 0-2% prior obsolete. The publication
-angle alone ("no one has published a speculator trained against an EXL3 target",
-§7.4) is real but is not worth 20-40 h of the critical path.
+Revisit if decode becomes binding, suitable training hardware removes the
+serial conflict, or a matched Qwen3.8/EXL3 pilot demonstrates a material gain.
+The publication-first angle alone is not enough.

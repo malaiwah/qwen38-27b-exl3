@@ -145,14 +145,14 @@ quantisation; the checkpoint is not added to the comparator set.** The transform
 the valuable artefact, the INT4-linear checkpoint is not, and a direct v5 KLD run on
 it would answer a format question rather than the transform question we care about.
 
-The transform trial is the open item: adapt ParoQuant's rotation optimisation to
-target trellis-quantization KLD, apply the learned rotations to Qwen3.8-27B weights
-before our EXL3 K5K6 quantization, and measure with the v5 suite. The feasibility
-study — whether the optimisation can be retargeted, how the group alignment and
-runtime cost shake out, and whether the Hadamard-replacement hypothesis survives the
-counter-arguments above — is in progress at
-[`docs/13-learned-rotations-feasibility.md`](13-learned-rotations-feasibility.md).
-The standing todo is: **trial learned rotations before EXL3 quant**.
+The specified first trial is complete; see
+[`docs/13-learned-rotations-feasibility.md`](13-learned-rotations-feasibility.md)
+and `receipts/rotation-pilot-2026-08-19.md`. Its one-matrix, fixed-pair K=8
+weight-MSE arm was a bounded NO-GO, so learned rotations are not a standing
+production todo. Reopening the method would require a materially redesigned
+experiment—at minimum an original-space or activation/output-error training
+objective, scale regularisation, and cross-layer validation—not a replay of the
+completed pilot.
 
 ## Sources
 

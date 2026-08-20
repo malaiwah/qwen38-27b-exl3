@@ -43,10 +43,14 @@ rest of the recipe.
 
 | recipe | disk | VRAM | vs nvidia 21.92 | vs unsloth 23.42 |
 |---|---:|---:|---:|---:|
-| **A** MLP K4, attn BF16→K6, head K6, MTP BF16 | 28.83 | **19.28** | −2.64 | −4.14 |
-| **B** = A + all 64 `down_proj` at K6 | 30.26 | **20.71** | −1.21 | −2.71 |
-| **C** = B + last-8-layer MLP BF16→K6 | 33.29 | 21.07 | −0.85 | −2.35 |
+| **A** MLP K4, attn BF16→K6, head K6, MTP BF16 | 28.31 | **19.28** | −2.64 | −4.14 |
+| **B** = A + all 64 `down_proj` at K6 | 29.74 | **20.71** | −1.21 | −2.71 |
+| **C** = B + last-8-layer MLP BF16→K6 | 32.77 | 21.07 | −0.85 | −2.35 |
 | **D** all-K4 MLP, attention serialized K6 (no online quant) | **19.29** | 19.29 | −2.63 | −4.13 |
+
+Iteration 1 measured recipe A at 28.31 GB on disk
+([10-results-iteration-1.md](10-results-iteration-1.md)); the original draft
+carried an extra 0.52 GB into A–C. B and C retain the same promotion deltas.
 
 Headroom exchange rates, for spending the gap to NVFP4 parity:
 
@@ -57,7 +61,7 @@ Headroom exchange rates, for spending the gap to NVFP4 parity:
 | `lm_head`, K6 → BF16 | +1.589 GB |
 
 **Ship A first.** It is the literal reading of "everything else in K4", is
-3.17 GB under the NVFP4 baseline, and every role is at equal or higher effective
+2.64 GB under the NVFP4 baseline, and every role is at equal or higher effective
 precision than NVIDIA's. B is the follow-up once KLD is measured, because
 `down_proj` sums 17408 quantization errors per output element and is the
 projection most likely to dominate the residual; reaching B requires either two

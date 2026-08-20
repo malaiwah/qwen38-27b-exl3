@@ -83,25 +83,28 @@ live-vs-replay error (the reference protocol reports 1.23e-06). **Result: it is 
 | replay qualification, `KL(live ‖ replayed)` | 6.54e-04 | 6.25e-04 | **−4.5 %** |
 | candidate KLD on the same 32 sentinels | 0.007998 | 0.007550 | −5.6 % |
 
-Operand rounding accounts for only ~5 % of the floor. The rest is the **implementation
-difference between vLLM's own logit path and our replay** — two different fp16 matmul
-orderings over the same weights, which is precisely what the patched-vs-unpatched parity
-number above (9.17e-04) independently measures.
+BF16 operand storage explains only ~5 % of the live-versus-replay gap. The
+remaining difference is consistent with the distinct vLLM-live and chunked-replay
+logit implementations, but this experiment did not isolate one mechanism. The
+patched-versus-unpatched 9.17e-04 result changes body summation order and is not
+an independent measurement of the head-path difference.
 
 ### What that means for every number we publish
 
-- **Paired candidate comparisons are unaffected.** Both arms go through the identical
-  replay path, so the implementation offset is common-mode and cancels. Every headline
-  here is a paired comparison.
-- **Absolute values carry two systematics**: ~5 % from BF16 storage and an
-  implementation offset of order 6e-04. Differences smaller than ~1e-3 in *absolute* terms
-  are not resolvable; differences measured *pairwise* are, down to the bootstrap CI.
-- The iteration-1 head-attribution result (6.8e-05, CI [4.6e-05, 9.0e-05]) is a paired
-  measurement, so it stands as a relative result — but it is below the absolute floor and
-  must not be quoted as an absolute divergence.
-- Chasing 1e-05 would require capturing live logits through the same kernel we replay
-  with, i.e. a runtime patch, not a storage change. Given that it does not affect any
-  ranking, it drops from P0 to a nice-to-have.
+- **Paired replay comparisons avoid mixing live and replay kernels.** They define
+  a consistent replay-domain metric on shared contexts. The qualification offset
+  is not an additive constant, however, and model-dependent numerical effects
+  need not cancel exactly; bootstrap intervals do not cover that systematic.
+- **Absolute served-logit equivalence remains bounded by qualification.** Effects
+  below roughly 1e-3 should not be presented as live-serving divergences without
+  a same-kernel control.
+- The iteration-1 head-attribution result (6.8e-05, CI
+  [4.6e-05, 9.0e-05]) stands as a paired replay-domain result, not an absolute
+  served-logit divergence.
+- Reaching 1e-05 live-versus-replay agreement likely requires capturing live
+  logits through the same projection implementation used by replay, or an
+  explicit cross-kernel error model. Because current ranking margins are much
+  larger, this is a protocol-hardening item rather than a ranking blocker.
 
 ## Net effect on the scorecard
 

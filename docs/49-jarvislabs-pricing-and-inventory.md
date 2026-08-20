@@ -40,7 +40,7 @@ Observed behaviour of the auth layer:
 | `GET backendc/users/balance`, no `Authorization` header | `403` | `{"message":"Not authenticated"}` |
 | `GET backendc/users/balance`, `Authorization: Bearer not-a-real-key` | `401` | `{"message":"Invalid token"}` |
 | `GET backendc/users/balance`, `X-API-Key: <JARVIS_API_KEY>` only | `403` | `{"message":"Not authenticated"}` — **the key is not accepted in an `X-API-Key` header** |
-| `GET backendc/users/balance`, `Authorization: Bearer <JARVIS_API_KEY>` | `200` | `{"balance":19.8768,"grants":0.0}` |
+| `GET backendc/users/balance`, `Authorization: Bearer <JARVIS_API_KEY>` | `200` | balance returned; exact account value redacted |
 
 ### 1.4 Every endpoint called, with observed status
 
@@ -48,23 +48,23 @@ All calls `GET`, all with `Authorization: Bearer <JARVIS_API_KEY>` unless noted.
 
 | Endpoint | Host | Status | Notes |
 |---|---|---|---|
-| `/users/balance` | backendn, backendc | `200` | `{"balance":19.8768,"grants":0.0}` (USD) |
-| `/users/user_info` | backendn | `200` | account `michel.belleau@malaiwah.com`, created 2026-06-21 |
+| `/users/balance` | backendn, backendc | `200` | balance returned; account value redacted |
+| `/users/user_info` | backendn | `200` | account identity returned; PII redacted |
 | `/users/fetch` | backendn, backendc, backendeu | `200` | full instance list; **identical across all three hosts** — the list is account-global, not region-scoped |
-| `/users/fetch/473501` | backendc | `200` | single-instance detail |
-| `/users/fetch/473296` | backendc | `200` | single-instance detail |
-| `/users/fetch/471041` | backendc | `200` | single-instance detail |
+| `/users/fetch/<production-id>` | backendc | `200` | single-instance detail |
+| `/users/fetch/<driver-id>` | backendc | `200` | single-instance detail |
+| `/users/fetch/<local-id>` | backendc | `200` | single-instance detail |
 | `/misc/server_meta` | backendn, backendc, backendeu | `200` | the pricing + availability catalogue. backendn ≡ backendc byte-identical (md5 `c3d4ed31…`); backendeu differs (md5 `fd6eb505…`), see §3.4 |
 | `/misc/resource_metrics` | backendn | `200` | `{"running_instances":1,"paused_instances":0,"running_vms":2,"paused_vms":0,"deployments":0,"filesystems":0}` |
 | `/misc/frameworks` | backendn | `200` | 11 templates: `pytorch fastai automatic axolotl comfyui fooocus ollama ollama_serverless tensorflow vllm vm` |
-| `/misc/status?machine_id=473501` | backendc | `200` | `{"status":"Running","error":"None","code":"None"}` |
+| `/misc/status?machine_id=<production-id>` | backendc | `200` | `{"status":"Running","error":"None","code":"None"}` |
 | `/misc/status` (no query) | backendn | `422` | `{"detail":[{"loc":["query","machine_id"],"msg":"field required","type":"value_error.missing"}]}` |
 | `/misc/` | backendn | `200` | `{"success":false}` — SDK uses this as the INR-vs-USD flag; `false` ⇒ **billed in USD** |
 | `/filesystem/list` | backendn | `200` | `[]` — no shared filesystems provisioned |
-| `/vpc/list` | backendn | `200` | 1 VPC: `vpc-4f9a1298ead51a9f`, "DEFAULT VPC", `india-chennai-01`, CIDR `10.0.0.0/16`, gw `10.0.0.1`, active |
-| `/vpc/vpc-4f9a1298ead51a9f/ports` | backendc | `200` | 2 attached ports: `10.0.0.2`→473296, `10.0.0.5`→473501 |
+| `/vpc/list` | backendn | `200` | one active Chennai VPC; identifier and CIDR redacted |
+| `/vpc/<redacted>/ports` | backendc | `200` | two attached ports; addresses and machine ids redacted |
 | `/scripts/` | backendc | `200` | `{"success":true,"script_meta":[]}` |
-| `/ssh/` | backendc | `200` | 3 registered public keys (`m4max`, `aiboss`, `rental`) |
+| `/ssh/` | backendc | `200` | three registered public keys; labels redacted |
 | `/management/list` | backendc | `404` | `{"detail":"Not Found"}` — wrong host; deployments live on the serverless hosts |
 | `/management/list` | serverlessc | `200` | `{"deployments":[]}` |
 | `https://api.jarvislabs.ai/v1{,/instances,/gpus,/gpu_types,/account,/user,/me,/templates,/filesystems,/status}` | api.jarvislabs.ai | **no response** | curl exit "000", TCP connect never completes (25 s timeout each). Host is not reachable from this workstation on 80 or 443. |
@@ -79,30 +79,33 @@ Public HTML sources also used: <https://jarvislabs.ai/pricing>, <https://docs.ja
 
 Source: `GET https://backendn.jarvislabs.net/users/fetch` (and per-machine `GET /users/fetch/{id}`), sampled 12:43–12:50 UTC 2026-08-17.
 
-| machine_id | name | GPU | n | vCPU | RAM | disk | status | region | VPC / private IP | public IP | uptime | accrued cost |
-|---|---|---|---:|---:|---|---|---|---|---|---|---|---:|
-| **473501** | `vllm-gg-qwen38-27b-flagship-8x` | RTX-PRO6000 (96 GB) | 8 | 224 | 1280 GB | 1000 GB ssd | **Running** | india-chennai-01 | `vpc-4f9a1298ead51a9f` / 10.0.0.5 | 151.185.34.106 | 7 h 41 m | $117.502 |
-| **473296** | `terminal-bench-load-1` | CPU (no GPU) | 0 | 32 | 128 GB | 1000 GB ssd | **Running** | india-chennai-01 | `vpc-4f9a1298ead51a9f` / 10.0.0.2 | 151.185.34.98 | 15 h 29 m | $14.471 |
-| **471041** | `main-omp-session` | RTX-PRO6000 (96 GB) | 1 | 28 | 160 GB | 100 GB ssd | **Running** | india-chennai-01 | none / 10.200.74.36 | 151.185.34.36 | 3 d 9 h 21 m | $154.922 |
+| alias | role | GPU | n | vCPU | RAM | disk | status | region | uptime |
+|---|---|---|---:|---:|---|---|---|---|---|
+| **production** | 8-GPU serving host | RTX-PRO6000 (96 GB) | 8 | 224 | 1280 GB | 1000 GB ssd | **Running** | india-chennai-01 | 7 h 41 m |
+| **driver** | benchmark load driver | CPU | 0 | 32 | 128 GB | 1000 GB ssd | **Running** | india-chennai-01 | 15 h 29 m |
+| **local** | single-GPU research container | RTX-PRO6000 (96 GB) | 1 | 28 | 160 GB | 100 GB ssd | **Running** | india-chennai-01 | 3 d 9 h 21 m |
 
 All three are `framework:"vm"`/`"pytorch"` on-demand (`is_spot: false`, `frequency: "hour"`, `committed_resource_id: null`, `reservation_info: null`). `paused_instances: 0`, `paused_vms: 0` — **nothing is paused; all three are RUNNING and billing.** No filesystems, no serverless deployments.
 
-- **473501 = the 8× RTX PRO 6000 production server.** BUSY serving production load. Not touched; only `GET /users/fetch/473501` and `GET /misc/status?machine_id=473501` were issued against it.
-- **473296 = the driver VM** (`terminal-bench-load-1`, 32 vCPU / 128 GB CPU-only VM on the same VPC, 10.0.0.2). Not touched.
-- **471041 = `main-omp-session`**, a 1× RTX PRO 6000 `pytorch` *container* (not a VM) with JupyterLab/VS Code endpoints exposed. It is the oldest and most expensive line item to date ($154.92 over 3.4 days).
+- **production** was busy serving load and was queried read-only.
+- **driver** was the CPU-only load VM on the same VPC and was not modified.
+- **local** was the single-GPU research container. Public/private addresses,
+  machine identifiers, account identity and accrued line-item costs are
+  deliberately omitted from this public research record.
 
 ### 2.1 Burn rate (measured)
 
 Method: lifetime accrued `cost` ÷ reported `duration` from `users/fetch` at 12:50 UTC. (A 397 s delta-sample was also taken but is too noisy to publish — per-minute billing quantisation swings the 8-GPU line between $16.1 and $17.2/hr; the lifetime average is the sound measurement.)
 
-| machine_id | measured $/hr | catalogue-expected $/hr | expected build-up |
+| alias | measured $/hr | catalogue-expected $/hr | expected build-up |
 |---|---:|---:|---|
-| 473501 | **15.293** | 15.260 | 8 × $1.89 GPU + 1000 GB × $0.00014 |
-| 473296 | **0.935** | 0.934 | $0.7936 (32 vCPU/128 GB plan) + 1000 GB × $0.00014 |
-| 471041 | **1.904** | 1.904 | 1 × $1.89 GPU + 100 GB × $0.00014 |
+| production | **15.293** | 15.260 | 8 × $1.89 GPU + 1000 GB × $0.00014 |
+| driver | **0.935** | 0.934 | $0.7936 (32 vCPU/128 GB plan) + 1000 GB × $0.00014 |
+| local | **1.904** | 1.904 | 1 × $1.89 GPU + 100 GB × $0.00014 |
 | **TOTAL** | **$18.13 / hr** | $18.10 / hr | ≈ **$435 / day** |
 
-Account balance at snapshot: **$19.8768** (`users/balance`), grants $0.00 — i.e. **about 66 minutes of runway at the current burn rate.** Per the FAQ, when the balance hits zero instances auto-pause and *data is permanently deleted*. This is the single most urgent operational fact in this document.
+At the snapshot, account runway was **about one hour** at the measured burn rate; the exact
+balance is redacted. Per the FAQ, zero balance auto-pauses instances and may delete data.
 
 The measured-vs-catalogue agreement (≤0.25 %) independently confirms three things: multi-GPU pricing is strictly linear, storage is billed **on top of** the GPU rate while running, and the published per-GPU rates are what the account is actually charged.
 
@@ -172,7 +175,7 @@ Formula on the public page: "$0.012 / vCPU + $0.0032 / GB RAM per hour" — whic
 |---|---|---|
 | Billing granularity | **Per minute.** "Instances are billed per-minute. You are only charged for the total number of minutes used." | FAQ; pricing page ("per-minute billing") |
 | Instance disk (`/home`) | **$0.00014 / GB / hour** = $0.1008 / GB / 30-day month | FAQ ("Your data is safely stored at a rate of $0.00014 per GB per hour… 50 GB = $5.04/month"); pricing page quotes "$0.10/GB · month" |
-| Disk billed while **running** | **Yes, on top of the GPU rate.** Measured: 473501 pays 8×1.89 **+** 1000 GB×0.00014 | measured, §2.1 |
+| Disk billed while **running** | **Yes, on top of the GPU rate.** Measured production rate matches 8×1.89 **+** 1000 GB×0.00014 | measured, §2.1 |
 | Disk billed while **paused** | **Yes.** "Pausing an instance frees up compute… You will still be charged for the storage, so if you do not plan to use the instance anytime soon, consider deleting it." | <https://docs.jarvislabs.ai/getting_started/> |
 | Compute while paused | **$0** — GPU/CPU/RAM released to other users | getting_started; FAQ |
 | Shared filesystems | $0.00014/GB/hr on **provisioned** capacity regardless of use; size can only grow; up to 10 TB | <https://docs.jarvislabs.ai/filestorage/> |

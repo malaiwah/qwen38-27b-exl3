@@ -57,11 +57,11 @@ for the `tb21-ladder-*` arms, **5** for `ab-ladder-A/B`); recomputing medians fr
    because the server was torn down mid-cell to reclaim the host. It is excluded from every number here
    (`invalidated_cell` in the analysis receipt; docs/46 §28).
 
-**Every ladder number below is a strict prefix-cache-COLD floor.** The harness synthesises "seeded word
-filler, unique per (shape,conc,repeat,slot) so prefix caching cannot inflate throughput", and the engine
-counters prove it worked: the DP8 512x256 C128 cell records `prefix_cache_queries 240,956` and
-**`prefix_cache_hits 0`** in `metric_deltas`. Real agent traffic with shared system prompts will do better
-than these cells, never worse (§8).
+**Every ladder number below is prefix-cache cold.** Unique seeded filler and
+server counters (240,956 queries, 0 hits in the DP8 C128 cell) establish that
+fact. Shared-prefix agent traffic may benefit from APC, but neither the benefit
+nor APC overhead at this topology is measured here; "never worse" is not
+claimed.
 
 ---
 
@@ -70,14 +70,12 @@ than these cells, never worse (§8).
 Knee rule (harness-fixed): *largest concurrency whose median per-request tok/s is ≥ 50 % of single-stream.*
 Peak = the rung with the highest median aggregate **within that arm's measured rung range**.
 
-**Why there is no TP8 row: TP8 is architecturally impossible for this model, not merely untested.** EXL3
-shards trellis tensors only on 128-element boundaries, and `lm_head`'s output dim is the padded vocab
-248320 = 128 × 1940 with 1940 = 2² × 5 × 97, so only TP ∈ {1, 2, 4} give 128-aligned slices. The engine
-refuses at load with `ValueError: EXL3 TP output slice must be 128-aligned, got start=62080, size=31040`
-(`exl3.py:2848 _slice_exl3_tensor`, via `_shard_tensors_for_tensor_parallel:2904`). **TP width is capped at
-4 on any GPU count** — `tb21-8x-topology-ladder.json` → `tp8_refusal`, log at `receipts/tb21-tp8-refusal.log`.
-Every wider host must therefore scale by adding data-parallel replicas, which is exactly what the knee law
-(§3) rewards.
+**Why there is no TP8 row in this runtime/checkpoint.** The current loader
+shards trellis tensors only on 128-element boundaries, and padded vocab 248320
+does not split into eight aligned slices. It refuses with
+`EXL3 TP output slice must be 128-aligned`. This is a measured implementation
+ceiling at TP4, not an architectural impossibility: padding/format or loader
+changes could support wider TP. On the tested bytes, wider hosts must use DP.
 
 | arm | GPUs | DP | shape | knee C | agg tok/s | per-req tok/s | **GPU-h/Mtok @knee** | peak C | agg tok/s | per-req tok/s | **GPU-h/Mtok @peak** | receipt |
 |---|---:|---:|---|---|---:|---:|---:|---|---:|---:|---:|---|
@@ -121,20 +119,16 @@ Caveats attached to specific cells:
 
 ### What the table says about cost, before any price is applied
 
-1. **Cheapest output tokens come from ONE GPU, not eight.** At the knee, one GPU is **0.840** (512x256) /
-   **0.707** (4kx1k) / **1.665** (30kx2k) GPU-h/Mtok. DP8 at its knee is **1.141 / 1.383** — i.e. **+35.9 %
-   and +95.7 % more expensive per output token**. Multi-GPU is a *latency and concurrency* purchase, never a
-   cost-per-token purchase.
-2. **TP width is a pure cost multiplier at the knee.** On the same 8 GPUs: DP8 1.141 → TP2×DP4 2.068
-   (+81 %) → TP4×DP2 4.619 (**4.05× DP8**). At peak the spread collapses to 1.61× (0.626 → 1.008) because
-   over-knee batching hides the TP tax. Choose TP only to buy single-stream latency, and only at the prompt
-   lengths where the topology ladder shows it wins (512x256 C1: TP2×DP4 153.2 > TP4×DP2 146.5 > DP8 135.2;
-   4kx1k C1 inverts to TP4×DP2 109.3 > TP2×DP4 105.8 > DP8 90.1 — `tb21-8x-topology-ladder.json` findings
-   T2/T3).
-3. **Long prompts are the expensive axis, not concurrency.** 30kx2k on one GPU is 1.665 GPU-h/Mtok versus
-   0.707 at 4kx1k — **2.36× the cost per output token for the same box**, because prefill dominates the wall.
-   On TP4×DP2 the same shape costs 8.587. Every 30k-token subagent prompt you can shrink to 4k is a 2.4×
-   cost cut on that call.
+1. **One GPU is cheapest at the measured knees.** It costs 0.840/0.707/1.665
+   GPU-h/Mtok for the three shapes; DP8 costs 1.141/1.383 on the two measured
+   shapes. This does not generalize to all load levels or workloads.
+2. **TP costs more at these knees.** On eight GPUs, DP8 1.141 → TP2×DP4 2.068
+   → TP4×DP2 4.619. TP may still buy latency at the prompt lengths where the
+   ladder shows it.
+3. **Long prompts are expensive on the tested one-GPU cells.** 30kx2k costs
+   2.36× the 4kx1k output-token denominator because more prefill is amortized
+   over each output. The multiplier is shape-specific, not a universal prompt
+   shortening law.
 
 ---
 
@@ -178,14 +172,12 @@ inference, therefore not used anywhere else in this document.
 
 ## 3. Sizing for ~32 concurrent subagents
 
-**The measured law:** knee concurrency = **4 × data-parallel degree**, verified independently at two shapes
-across three 8-GPU arms — DP8→C32, TP2×DP4→C16, TP4×DP2→C8 (`tb21-8x-topology-ladder.json` finding T4) — and
-consistent with DP2→C8 and DP4→C16 on the 2× and 4× receipts. TP width inside a replica does **not** raise
-the knee.
-
-**Therefore ~32 concurrent subagents at the per-request floor requires DP = 8**, and since each replica needs
-its own GPU (21 GB of weights on a 96 GB card, so TP is never needed for capacity), **DP8 = 8 GPUs = the
-whole `jl-vm-473501`-class host, TP1.** `[MEASURED law → arithmetic]`
+**Measured pattern, not a law:** the discrete 50%-throughput knee lands at
+approximately `4 × DP` for the tested shapes and rungs. DP8→C32,
+TP2×DP4→C16 and TP4×DP2→C8; DP2/DP4 are consistent. This empirical rule is
+useful for planning the measured profile but is not invariant to workload,
+scheduler, prompt mix or a finer concurrency sweep. For the tested 32-way
+target, DP8 is the only arm above the chosen 50% floor.
 
 ### Every measured C32 cell, ranked by cost
 
@@ -208,30 +200,26 @@ whole `jl-vm-473501`-class host, TP1.** `[MEASURED law → arithmetic]`
 | 1x `jl-vm-473319` | 1 | 1 | 30kx2k | 185.1 | 6.3 | 8.1 % | **1.501** |
 | 8x TP4×DP2 | 8 | 2 | 30kx2k | 479.6 | 16.0 | 16.3 % | **4.633** |
 
-Read that table as the actual decision. **DP8 is the only measured configuration that holds a subagent above
-the 50 % floor at C32** (59.0 % at 512x256, 79.0 % at 4kx1k). DP4 at C32 delivers 43.2 % — visibly over its
-own C16 knee, exactly as the law predicts. So the *quality* of a 32-subagent fan-out is a step function in DP
-degree, and 8 is the step you need.
+At C32, **DP8 is the only measured configuration above the chosen 50 %
+per-request-throughput floor** for both measured shapes. This is a latency
+threshold, not model or task "quality", and the transition is not a physical
+step function.
 
-`[INFERENCE — cross-host ratio, flagged]` Against the 1-GPU C32 cell (different host, same GPU model), DP8
-buys **3.37× the per-request speed (79.8 vs 23.7 tok/s) for 2.73× the GPU-h/Mtok (1.141 vs 0.418)**. That is
-super-proportional and is the one regime where multi-GPU is a genuinely good buy. It is cross-host, so treat
-the ratio as inference; both cells individually are measured.
+The cross-host 1-GPU/DP8 ratio remains an inference: DP8 buys 3.37×
+per-request speed for 2.73× GPU-h/Mtok at those two cells.
 
-### The invariant worth remembering: **GPUs per concurrent subagent at the floor = TP / 4**
+### Empirical GPU-per-request relationship
 
-Since knee = 4·DP and GPUs = TP·DP, GPUs/knee = TP/4, exactly. Checked against every arm:
+For the measured rungs where knee≈4·DP, arithmetic gives GPUs/knee≈TP/4.
+The table below documents that fit; it is not a workload-independent invariant.
 
-| arm | TP | predicted GPU/subagent | measured knee | measured GPU/subagent |
+| arm | TP | fitted GPU/subagent | measured knee | measured GPU/subagent |
 |---|---:|---:|---|---:|
-| 1x arm A (512x256), 2x DP2, 4x DP4, 8x DP8 | 1 | **0.25** | C4 / C8 / C16 / C32 | 0.25 / 0.25 / 0.25 / 0.25 |
-| 2x TP2, 4x TP2×DP2, 8x TP2×DP4 | 2 | **0.50** | C4 / C8 / C16 | 0.50 / 0.50 / 0.50 |
-| 4x TP4 (512x256), 8x TP4×DP2 (512x256) | 4 | **1.00** | C4 / C8 | 1.00 / 1.00 |
+| 1x/DP2/DP4/DP8 | 1 | 0.25 | C4/C8/C16/C32 | 0.25 |
+| TP2/TP2×DP2/TP2×DP4 | 2 | 0.50 | C4/C8/C16 | 0.50 |
+| TP4/TP4×DP2 | 4 | 1.00 | C4/C8 | 1.00 |
 
-Holds exactly in all eight arms with DP ≥ 2. The two DP=1 arms land one rung high at 4kx1k (arm A C8 —
-flagged `knee_at_cap`; 4x TP4 C8), which makes them cheaper than the law predicts, not more expensive.
-**Consequence: DP topology does not change what a concurrent subagent costs in GPUs — 0.25 GPU each. TP
-width multiplies that by the TP width, buying nothing at C32.**
+Use this only inside the measured 50%-floor profile.
 
 ### The measured cost of oversubscription (over-knee penalty)
 
@@ -286,27 +274,26 @@ GPU-hours, so balance subagent work or over-shard.
 
 ---
 
-## 5. The reasoning-effort lever — the largest single knob, quantified
+## 5. Reasoning-effort probe — large effect, narrow evidence
 
-`receipts/reasoning-effort-1x.json` (1 GPU, 2 repeats, 32,768-token budget so nothing is cap-truncated —
-`truncated_by_cap: 0` in every arm; both repeats returned the correct Manacher implementation in every valid
-arm).
+`receipts/reasoning-effort-1x.json` contains **one prompt, two repeats, one
+GPU**. The 32,768-token cap did not truncate any valid arm and every arm
+returned the correct Manacher implementation.
 
 | `reasoning_effort` | median completion tokens | median latency | ×tokens vs medium | ×wall vs medium |
 |---|---:|---:|---:|---:|
 | *(unset)* | 18,085 | 168.9 s | 5.263 | 6.447 |
-| `xhigh` (documented default) | 18,085 | 168.8 s | **5.263** | **6.443** |
+| `xhigh` | 18,085 | 168.8 s | 5.263 | 6.443 |
 | `medium` | 3,436 | 26.2 s | 1.000 | 1.000 |
-| `low` | 3,517 | 27.0 s | 1.024 | **1.031** |
-| `none` | — | — | HTTP 400 ×2, unusable | — |
+| `low` | 3,517 | 27.0 s | 1.024 | 1.031 |
+| `none` | — | — | HTTP 400 ×2 | — |
 
-**The $/task multiplier for `xhigh` over `medium` is 5.26× if you are billed by token share and 6.44× if you
-are billed by wall-clock occupancy.** On rented GPUs you are billed by occupancy, so **use 6.44×.**
-Unset ≡ xhigh (byte-identical token and latency medians), so **the default is the expensive mode** and
-silence costs 6.44×. **`low` is 2.4 % more tokens and 3.1 % more wall than `medium`** — there is no cheaper
-setting below medium; medium is the floor.
+For this prompt, xhigh costs 5.26× tokens and 6.44× wall versus medium.
+Two repeats cannot establish that medium is universally cheaper than low or
+that this multiplier transfers to TB2.1. Treat it as a strong hypothesis and
+run a task-paired effort sweep before making fleet policy.
 
-### Where it dominates topology entirely
+### Probe-scale comparison with topology
 
 | decision | measured cost spread |
 |---|---:|
@@ -317,13 +304,10 @@ setting below medium; medium is the floor.
 | shape: 30kx2k → 4kx1k on one GPU | 2.36× |
 | C32 → C128 over-knee discount on DP8 | 0.55× |
 
-**`reasoning_effort` is the largest lever in this table — bigger than every hardware decision available,
-including the worst-to-best tier spread at C32 (6.44× vs 5.22×) — and it is free.** Concretely: `medium` on
-**one** GPU is cheaper per delivered task than
-`xhigh` on **eight** — 6.44× effort saving against a 1.36× DP8 knee penalty is a **4.7× net win for the
-single GPU**, and that is before the 8× idle-billing penalty at low concurrency (§2). **Set the effort knob
-before you pick the box.** Any deliberation about DP8 vs TP2×DP4 while shipping unset/xhigh is optimising the
-smaller term.
+Within this one-prompt table, reasoning effort spans more than the measured
+topology choices. That prioritizes a broader effort experiment; it does not
+license the claimed 4.7× task-cost saving or a universal "set medium first"
+rule.
 
 Applied to the measured TB2.1 arm: `[INFERENCE]` at 0.2111 GPU-h/task at xhigh, medium would land near
 **0.0328 GPU-h/task** (wall-bound, ÷6.44) to **0.0401** (token-bound, ÷5.26) — an **81–84 % cost cut per
@@ -492,20 +476,18 @@ divide it by your `$/GPU-hr` to get **tok/s per dollar-per-hour**; and **tokens 
 Anchored on the **real** agentic workload instead of the microbenchmark (§4's measured 2.816 GPU-h/Mtok at
 xhigh on DP8 C32): FP8 `[INFERENCE]` **3.72–3.97** and BF16 `[INFERENCE]` **6.30–7.30** GPU-h/Mtok.
 
-**The quantisation decision and the topology decision are separable and both are smaller than the effort
-knob.** Ranked spreads, all from this document: `reasoning_effort` **6.44×** > BF16→EXL3 **2.24–2.59×**
-(plus 2.03× the KV capacity) > worst-to-best 8-GPU topology at the knee **4.05×** at the pathological end but
-**1.81×** for the realistic DP8-vs-TP2×DP4 choice > FP8→EXL3 **1.32–1.41×**. So: quantise (BF16 costs you
-~2.4× per token *and* half your concurrency), prefer EXL3 over FP8 (~1.36× per token and +16 % KV), pick DP8
-for a 32-way fan-out — and set `reasoning_effort: medium` before any of it.
+The inference-only dtype and topology spreads rank numerically as: worst→best
+8-GPU topology **4.05×**, BF16→EXL3 **2.24–2.59×**, realistic
+DP8→TP2×DP4 **1.81×**, and FP8→EXL3 **1.32–1.41×**. The 6.44× effort-probe
+ratio is larger, but comes from one prompt and is not a decision-grade rank
+against these ladders.
 
-**Two honesty limits on this section.** (1) The throughput scaling assumes decode-bound behaviour, so it
-**overstates** the BF16 penalty at prefill-heavy shapes like 30kx2k, where FLOPs rather than weight bytes
-dominate and EXL3 additionally pays dequantisation cost. (2) Capability is not in scope here and is not
-traded away silently: `tb21-8x-2xclock-arm.json` withdrew all seven previously "quantization-suspect" TB2.1
-tasks — they resolve **on the quantised model** once the clock is doubled — so **zero tasks in the suite
-remain attributable to quantisation**. The cheap way to convert all of §7 from inference to measurement is one
-`tb21_ladder.py` run per dtype at DP8; nothing else about the harness would change.
+Two limits govern §7. First, decode-byte scaling overstates BF16 penalties at
+prefill-heavy shapes. Second, longer timeouts made the seven previously
+"quantization-suspect" TB2.1 tasks resolve on the quantized model; that rules
+out a simple incapability claim but does **not** identify quantization's causal
+contribution. One DP8 ladder per dtype is still required to convert throughput
+inference into measurement.
 
 ---
 
@@ -583,8 +565,9 @@ needs changing to collect it.
 - Our decode numerator 20.52 GB/step decomposed (body 15.90, `lm_head` 0.9535 × 4, draft 0.27 × 3) and the
   achievable bandwidth ceiling 1462–1525 GB/s — docs/47 F6/F2. `lm_head` at 5.9997 bits/weight is exact
   arithmetic on 5120 × 248320, not a scaling assumption.
-- Zero TB2.1 tasks remain attributable to quantisation (all seven ex-"quantization-suspect" tasks resolve on
-  the quantised model at 2× clock — `tb21-8x-2xclock-arm.json` → `attribution_update`).
+- Seven formerly "quantization-suspect" TB2.1 tasks resolve on the quantized
+  model at 2× clock. This weakens an incapability interpretation but does not
+  isolate quantization's causal effect.
 
 ### INFERENCE (labelled, never presented as measurement)
 - Same-host 1→DP8 **peak** ratio. 7.66× is an upper bound (arm A's ladder stops at C8); ~4.3× is the likely
@@ -612,29 +595,26 @@ needs changing to collect it.
 
 ---
 
-## 10. Recommendation, in cost order
+## 10. Bounded recommendations
 
-1. **Set `reasoning_effort: medium` before touching hardware.** 6.44× wall / 5.26× tokens, free, and larger
-   than every topology decision below. Unset means xhigh — the expensive default. Do not use `low`; it is
-   3.1 % *worse* than medium.
-2. **If you can tolerate ~24 tok/s per subagent, one 96 GB GPU is the cheapest way to run 32 subagents**
-   (0.418 GPU-h/Mtok at 512x256 C32; KV holds 32 sequences up to 58,740 tokens each). Budget 2.8 GPU-h/Mtok
-   for real agent traffic, not 1.1.
-3. **If subagents must stay near single-stream speed at 32-way fan-out, DP8 on 8 GPUs, TP1, is the only
-   measured configuration that holds the floor** (79.8 tok/s = 59 % of single-stream at 512x256; 71.2 =
-   79 % at 4kx1k). It costs 1.141–1.383 GPU-h/Mtok at the knee, +36 %/+96 % over one GPU, and 2.816 on the
-   real TB2.1 workload. **Admit at most 32; queue the rest** — C128 halves per-agent speed for a 45 % token
-   discount you do not want.
-4. **Never use TP for capacity, and never TP4 for this workload.** 21 GB fits one card; TP4×DP2 at the knee
-   costs 4.05× DP8 and 4x TP4 at C32 costs 4.2× a single GPU. TP2×DP4 is defensible only to buy short-prompt
-   single-stream latency (153.2 vs 135.2 tok/s), at +81 % per token.
-5. **Shorten prompts before buying GPUs.** 30k → 4k prompts is a 2.36× cost cut per output token on the same
-   box; a 10:1 input:output ratio means prefill is where the money goes.
-6. **Quantise — BF16 is the most expensive choice available after `reasoning_effort`.** `[INFERENCE]` BF16
-   costs **2.24–2.59× per output token** *and* leaves **0.493×** the KV tokens per GPU (3.54 vs 7.17
-   sequences at 262k; it cannot hold even one 1M sequence on a 96 GB card). FP8 costs 1.32–1.41× per token
-   and 0.862× the KV. Ours is the cheapest on both channels simultaneously, and TB2.1 attribution says the
-   capability price is zero. One `tb21_ladder.py` run per dtype at DP8 would turn all of §7 into measurement.
+1. **Run a task-paired effort sweep before setting policy.** The one-prompt
+   probe makes effort the highest-priority uncertainty, not a proven mandate
+   for `medium`.
+2. **One GPU is cheapest at the measured 512x256 C32 cell** if ~24 tok/s per
+   request is acceptable. Do not transfer the 2.8 GPU-h/Mtok real-workload
+   number to a different topology without measurement.
+3. **DP8 is the only tested C32 arm above the chosen 50% floor on both
+   shapes.** Queueing above C32 is a latency/SLA choice; C128 is cheaper per
+   token and slower per request.
+4. **Avoid TP4 for this measured workload unless its latency benefit is the
+   objective.** This is workload guidance, not a capacity or architecture law.
+5. **Shorten prompts when the application permits.** The 30k→4k cell is 2.36×
+   cheaper per output token here; semantic task requirements may prevent that
+   substitution.
+6. **Quantization is promising but §7 is inference.** The byte model predicts
+   BF16 at 2.24–2.59× and FP8 at 1.32–1.41× the EXL3 output-token cost, plus
+   lower KV capacity. No same-topology BF16/FP8 throughput run exists, and
+   TB2.1 does not establish zero capability cost.
 7. **Keep the 262k window as the default and put 1M behind a separate endpoint.** 1M costs 30.5 GiB of pool
    per sequence, caps an 8-GPU host at 15 concurrent sequences, and Qwen warn static YaRN hurts short-text
    quality.
@@ -679,19 +659,19 @@ u*  =  (GPUs × $/GPU-hr)  /  (Mtok_in_per_busy_hour × API_$/Mtok_in  +  Mtok_o
 
 i.e. *self-hosting beats the API only if the box is busy more than `u*` of the hour you pay for.*
 
-**Retrieved API list prices** (2026-08-17; these are published prices, not estimates):
+**Retrieved list prices, refreshed 2026-08-20** (published prices, not
+measurements of delivered service):
 
 | hosted offer | $/Mtok in | $/Mtok out | cached in | source |
 |---|---:|---:|---:|---|
-| **`Qwen3.8-27B` — our exact model, OpenRouter, 3 providers, 262,144 ctx** | **0.40** | **3.00** | not published | <https://openrouter.ai/qwen/qwen3.8-27b> (retrieved 2026-08-17) |
-| `Qwen3-32B` open-weight commodity floor (cheapest of 7 providers, DeepInfra) | 0.080 | 0.280 | 0.145 | <https://pricepertoken.com/pricing-page/model/qwen-qwen3-32b> (page states "Last updated: August 17, 2026") |
-| `Qwen3.8-Max` frontier, Alibaba Model Studio, International (Singapore) | 2.00 | 6.00 | **0.25** | <https://developer.puter.com/tutorials/qwen-api-pricing/> (Aug 2026); Model Studio implicit-cache rate corroborated by <https://windowsforum.com/windows-news.4/qwen3-8-max-costs-2-6-per-million-tokens-still-unproven-for-coding-agents.441542/> |
+| **`Qwen3.8-27B` on OpenRouter** | **0.40** | **3.00** | **0.04 cache read** | <https://openrouter.ai/qwen/qwen3.8-27b> |
+| `Qwen3-32B` commodity floor | 0.080 | 0.280 | 0.145 | <https://pricepertoken.com/pricing-page/model/qwen-qwen3-32b> |
+| `Qwen3.8-Max` frontier | 2.00 | 6.00 | not verified from this source | <https://developer.puter.com/tutorials/qwen-api-pricing/> |
 
 **No Qwen-operated hosted endpoint for `Qwen3.8-27B` was found** — Model Studio publishes per-token prices for
-the Max/Plus/Flash tiers, not for the 27B open-weight checkpoint. The OpenRouter line is the closest thing to a
-list price for *this* model and is what the tables below use; the Chinese-Mainland (Beijing) Model Studio
-endpoint is reported 60–70 % cheaper than the Singapore rates quoted above, which would move the frontier row
-but not the 27B row.
+the Max/Plus/Flash tiers, not the 27B open-weight checkpoint. The OpenRouter
+line is the direct list price for this exact model and is what the break-even
+tables use.
 
 **Break-even against the two MEASURED workloads.** Both numerators are measured token counts, not assumptions.
 
@@ -881,9 +861,9 @@ $2.169 vs $0.1074 at the DP8 knee). Any pricing intuition imported from commerci
 output:input ratio is 7.5:1 on OpenRouter and 3:1 on Model Studio — **understates how output-skewed a
 self-hosted box is**, which is the arithmetic reason prefill-heavy traffic self-hosts so much better (§11.1).
 
-**The $43.03/Mtok row is the whole argument of §11.1 in one cell.** One request in flight on a DP8 box costs
-**49× the same request's output on one GPU** ($43.03 vs $0.879), purely because seven replicas are billed and
-idle. Buy DP8 for concurrency you actually have.
+**The $43.03/Mtok row is the occupancy argument in one cell.** Compare like
+with like: DP8 C1 is **8.2×** the one-GPU C1 row ($43.03 vs $5.25), not 49×.
+The earlier 49× figure incorrectly compared DP8 C1 with the one-GPU C8 knee.
 
 **Spot is marked but not usable.** $0.99/GPU-hr is real in the catalogue and on the public pricing page
 ("Spot · save up to 56 %"), but docs/49 §3.2 retrieved two blocking constraints from the SDK: spot is **GPU
@@ -948,63 +928,44 @@ receipt: "omp subagents share system prompts and tool schemas".
 > tokens. 48.0 % is a block-level hit rate and is NOT the fraction of prompt tokens skipped. Do not convert it
 > to a token discount without a token-level measurement."*
 
-So the price below is built in two separable steps, only the second of which is inference.
+**Step 1 — measured warm-request cost, not a per-hit-token price.** Arm E
+reports total warm wall time and how many prompt tokens were recomputed:
 
-**Step 1 — the price of one cached input token. MEASURED, token-level, from `apc-poison-repro.json` arm E**
-(§8), which reports both wall and recomputed-token counts and therefore needs no unit conversion:
+| prefix | cold TTFT | warm TTFT | warm ÷ cold | recomputed fraction |
+|---|---:|---:|---:|---:|
+| 32,842 tok | 12.071 s | 1.044 s | **0.0865** | 0.0744 |
+| 131,146 tok | 67.597 s | 2.309 s | **0.0342** | 0.0240 |
 
-| prefix | cold TTFT | warm TTFT | warm ÷ cold | prompt tokens recomputed warm | recompute fraction |
-|---|---:|---:|---:|---:|---:|
-| 32,842 tok | 12.071 s | 1.044 s | **0.0865** | 2,442 / 32,842 | 0.0744 |
-| 131,146 tok | 67.597 s | 2.309 s | **0.0342** | 3,146 / 131,146 | 0.0240 |
+The warm/cold ratio includes recomputing the uncached tail, fixed request
+overhead and cache lookup. It is therefore the cost per original prompt token
+for these two warm requests, **not** the marginal cost of one cache-hit token.
+Multiplying cold input price by 0.0865/0.0342 gives warm-request averages:
 
-The wall ratio tracks the recompute fraction to within 1.2 points on both prefixes, which is the check that the
-time really did go where the token accounting says. **Take the conservative (shorter-prefix) figure: a cache-hit
-input token costs 0.0865× a cold one.**
-
-| cached-input line item | $1.89 | $1.19 | *$0.99* |
+| warm-request average | $1.89 | $1.19 | *$0.99* |
 |---|---:|---:|---:|
-| cold input, prompts ≥ 4k (from §11.5) | $0.1108 | $0.0697 | *$0.0580* |
-| **cached input, 0.0865× (32.8k-prefix anchor)** | **$0.0096** | **$0.0060** | *$0.0050* |
-| cached input, 0.0342× (131k-prefix anchor) | $0.0038 | $0.0024 | *$0.0020* |
-| lower bound (pure KV reuse, zero prefill compute) | $0 | $0 | $0 |
+| 32.8k anchor, 0.0865× | $0.0096 | $0.0060 | *$0.0050* |
+| 131k anchor, 0.0342× | $0.0038 | $0.0024 | *$0.0020* |
 
-So **cached input on this stack prices at $0.004–$0.010/Mtok on-demand** — against OpenRouter's unpublished
-cached rate, Model Studio's $0.25/Mtok implicit-cache rate, and the $0.145/Mtok commodity 32B cache-read rate.
-**Cached input is the one token class where self-hosting wins by more than an order of magnitude, at 15–65×.**
+Do not compare these averages directly with a provider's billed
+"cache-hit-token" SKU without matching its denominator and occupancy.
 
-**Step 2 — applying the 48.0 % fleet hit rate. `[INFERENCE]`, and here is the exact assumption.**
-Converting a block-level rate to a token-level rate is only valid if every counted query covers a full
-`block_size` window of prompt tokens and the queries partition the prompt — then `hits/queries` equals
-`hit tokens/prompt tokens` because the same constant `block_size` cancels top and bottom. Reality deviates
-through partial trailing blocks and through queries that are not prompt-prefix lookups, and the direction of
-the error is **not measured**. `[INFERENCE]` treating 48.0 % as a token-level rate:
+**Fleet-level price is not identified.** The 48.0 % value counts block
+lookups, not tokens, while 0.0865/0.0342 are whole-request factors from two
+different prefix lengths. Combining them as
+`0.52 + 0.48 × 0.0865 = 0.5615` mixes denominators and is withdrawn. The
+production hit rate makes shared-prefix caching a plausible first-order lever;
+a DP8 arm must report token-level skipped/recomputed counts and wall time
+before assigning an effective fleet input price.
 
-```
-effective input factor  =  0.52  +  0.48 × 0.0865  =  0.5615
-```
+### 11.8 Long-context surcharge — input tokens are not flat-priced
 
-| effective input price, 48 % token-equivalent hit rate `[INFERENCE]` | $1.89 | $1.19 | *$0.99* |
-|---|---:|---:|---:|
-| prompts ≥ 4k, 0.5615 × cold | **$0.0622** | **$0.0392** | *$0.0326* |
-
-**In production, cached input is very likely the DOMINANT input class**, and that is the single most important
-consequence of this subsection. The measured hit rate nearly doubled (26.9 → 48.0 %) the moment real subagent
-traffic replaced a single-agent campaign, for a structural reason that gets *stronger* with fan-out: 32
-subagents share one system prompt and one tool-schema block. §8's arm E already shows the effect growing with
-concurrency (1.718× whole-schedule speed-up at `max-num-seqs 1` → 2.183× at 4). **Every input price in §11.5
-is therefore a cold-cache ceiling, and the 48 % row is the closer estimate for a fan-out workload** — while
-remaining inference until someone runs a DP8 ladder arm with a shared prefix instead of unique filler, which
-§8 already names as the cheap way to close this.
-
-### 11.8 Long-context surcharge — input tokens are NOT flat-priced
-
-`receipts/1m-context-effects.json` fits `prefill wall ~ n^k` on four measured needle rungs and finds **k rising
-monotonically: 1.506 (262k→524k), 1.744 (524k→786k), 2.144 (786k→1M)**, crossing 2 at the top of the window.
-Mechanism, from the receipt: 48 of 64 layers are linear attention, cost O(n); 16 of 64 are full attention, cost
-O(n²) — the quadratic minority takes over as n grows. A single global exponent (k=1.584 fitted on the first
-three rungs) **under-predicted the 1M wall by 15.5 %** (1043 s predicted vs 1205 s measured), which is the
-receipt's own warning against flat or single-exponent pricing.
+Four contended needle rungs measure walls of 125/355/720/1205 s at
+259k/521k/782k/995k tokens, with local segment exponents 1.506/1.744/2.144.
+The increasing cost is **consistent with** the model's mixture of O(n) linear
+attention and O(n²) full attention, but four rungs under shared contention do
+not isolate that mechanism. A single exponent fitted to the first three
+under-predicts the 1M wall by 15.5%; use the measured relative surcharge, not
+a causal fit.
 
 | window | doc tokens | wall (s) | effective prefill tok/s | **per-token cost, relative to 262k** | segment k into this rung | **input $/Mtok @ $1.89, one replica** | input $/Mtok, 8 GPUs billed for one request |
 |---|---:|---:|---:|---:|---:|---:|---:|
@@ -1033,26 +994,26 @@ Three things to keep straight:
 ### 11.9 Blended $/Mtok at both measured traffic ratios
 
 To compare against a single commercial per-token price you need the ratio. Both ratios below are **measured**:
-**9.94:1** on the TB2.1 text-agent campaign (§4, 66,329,299 : 6,670,376) and **29.8:1** on the live mixed
-multimodal DP8 endpoint (§11.6), with a text-agent window at **15.5:1** inside that same period — so the
-9.94–29.8 span is the honest planning range, not a worst case.
+**9.94:1** is measured on the TB2.1 text-agent campaign; **29.8:1** is a
+different mixed multimodal endpoint. They are scenario rows, not endpoints of
+one text-agent planning range.
 
 `$/Mtok_output = r × input + output`; `blended $/Mtok(any token) = (r × input + output) / (r + 1)`.
 
-| topology / tier | r | cold input | output | **$/Mtok of OUTPUT** | **blended $/Mtok, any token** | with 48 % cache `[INF]`: $/Mtok out | blended |
-|---|---:|---:|---:|---:|---:|---:|---:|
-| 1 GPU knee 4kx1k, **$1.89** | 9.94 | 0.1108 | 0.879 | **$1.980** | **$0.1809** | $1.497 | $0.1368 |
-| 1 GPU knee 4kx1k, **$1.89** | 29.8 | 0.1108 | 0.879 | **$4.179** | **$0.1357** | $2.732 | $0.0887 |
-| 1 GPU knee 4kx1k, **$1.19** | 9.94 | 0.0697 | 0.553 | $1.246 | $0.1139 | $0.942 | $0.0861 |
-| 1 GPU knee 4kx1k, **$1.19** | 29.8 | 0.0697 | 0.553 | $2.631 | $0.0854 | $1.720 | $0.0558 |
-| DP8 knee 4kx1k, **$1.89** | 9.94 | 0.1074 | 2.169 | **$3.236** | **$0.2958** | $2.768 | $0.2530 |
-| DP8 knee 4kx1k, **$1.89** | 29.8 | 0.1074 | 2.169 | **$5.370** | **$0.1743** | $3.966 | $0.1288 |
-| DP8 peak 4kx1k C128, **$1.89** | 9.94 | 0.1074 | 1.065 | $2.132 | $0.1949 | $1.664 | $0.1521 |
-| DP8 peak 4kx1k C128, **$1.89** | 29.8 | 0.1074 | 1.065 | $4.265 | $0.1385 | $2.862 | $0.0929 |
-| DP8 knee 4kx1k, **$1.19** | 9.94 | 0.0676 | 1.366 | $2.038 | $0.1863 | $1.743 | $0.1593 |
-| DP8 knee 4kx1k, **$1.19** | 29.8 | 0.0676 | 1.366 | $3.381 | $0.1098 | $2.497 | $0.0811 |
-| **live production DP8, $1.89** | 29.8 | 0.1604 | 4.784 | **$9.564** | **$0.3105** | — | — |
-| **real TB2.1 agent DP8, $1.89** (§4) | 9.94 | — | — | **$5.322** | **$0.4865** | — | — |
+| topology / tier | r | cold input | output | **$/Mtok of OUTPUT** | **blended $/Mtok, any token** |
+|---|---:|---:|---:|---:|---:|
+| 1 GPU knee 4kx1k, **$1.89** | 9.94 | 0.1108 | 0.879 | **$1.980** | **$0.1809** |
+| 1 GPU knee 4kx1k, **$1.89** | 29.8 | 0.1108 | 0.879 | **$4.179** | **$0.1357** |
+| 1 GPU knee 4kx1k, **$1.19** | 9.94 | 0.0697 | 0.553 | $1.246 | $0.1139 |
+| 1 GPU knee 4kx1k, **$1.19** | 29.8 | 0.0697 | 0.553 | $2.631 | $0.0854 |
+| DP8 knee 4kx1k, **$1.89** | 9.94 | 0.1074 | 2.169 | **$3.236** | **$0.2958** |
+| DP8 knee 4kx1k, **$1.89** | 29.8 | 0.1074 | 2.169 | **$5.370** | **$0.1743** |
+| DP8 peak 4kx1k C128, **$1.89** | 9.94 | 0.1074 | 1.065 | $2.132 | $0.1949 |
+| DP8 peak 4kx1k C128, **$1.89** | 29.8 | 0.1074 | 1.065 | $4.265 | $0.1385 |
+| DP8 knee 4kx1k, **$1.19** | 9.94 | 0.0676 | 1.366 | $2.038 | $0.1863 |
+| DP8 knee 4kx1k, **$1.19** | 29.8 | 0.0676 | 1.366 | $3.381 | $0.1098 |
+| **live production DP8, $1.89** | 29.8 | 0.1604 | 4.784 | **$9.564** | **$0.3105** |
+| **real TB2.1 agent DP8, $1.89** (§4) | 9.94 | — | — | **$5.322** | **$0.4865** |
 
 Compare the single commercial prices for the same ratios: at 9.94:1 OpenRouter costs
 `3.00 + 9.94×0.40 = $6.976` per Mtok of output ($0.6376 blended); at 29.8:1, `3.00 + 29.8×0.40 = $14.920`
@@ -1064,32 +1025,21 @@ figure at the same 9.94:1 is $3.236**, so the input-inclusive reality tax is **1
 than §4's 2.47× because that comparison charged the microbenchmark nothing for the 9.94:1 prefill it never ran.
 **§4's 2.47× is the right tax on an output-only denomination; 1.64× is the right one once input is priced.**
 
-### 11.10 The 6.443× lever still dominates every cell above
+### 11.10 Price-lever scale, with evidence grades
 
-Nothing in this section comes close to `reasoning_effort` (§5: xhigh = **5.263× output tokens and 6.443× wall**
-versus medium; unset ≡ xhigh; `low` is 1.024×/1.031× and so never cheaper than medium; only xhigh/medium/low
-exist). Ranked against the price levers introduced here:
+| lever | multiplier | evidence |
+|---|---:|---|
+| occupancy 100 % → 15 % | 6.67× | arithmetic |
+| `reasoning_effort` xhigh → medium | 6.443× | one prompt, two repeats |
+| worst → best 8-GPU topology at the knee | 4.05× | measured ladder |
+| 262k → 1M input-token surcharge | 2.53× | four contended rungs |
+| $1.89 → $0.99 spot | 1.909× | price only; unavailable |
+| $1.89 → $1.19 reserved | 1.588× | price only |
 
-| lever | multiplier on $/task |
-|---|---:|
-| **`reasoning_effort` xhigh → medium** | **6.443× (occupancy-billed, which is how rentals bill)** |
-| occupancy 100 % → 15 % on the same box | 6.67× |
-| worst → best 8-GPU topology at the knee (§5) | 4.05× |
-| on-demand $1.89 → reserved-1y $1.19 | 1.588× |
-| 262k → 1M window, per input token (§11.8) | 2.53× |
-| cold → 48 %-cached input `[INF]` (§11.7) | 1.78× on the input leg only |
-| $1.89 → $0.99 spot, if it were purchasable | 1.909× |
-
-**And effort interacts with the buy-vs-rent decision, against self-hosting.** An API bills you 5.263× for
-xhigh (tokens); a rental bills you 6.443× (wall). Running xhigh therefore **tilts the comparison 1.224× in the
-API's favour** — you pay a 22 % premium for the same verbosity purely because you rent by the clock.
-`[INFERENCE]`, carrying §5's two caveats forward (the ratios come from one prompt × 2 repeats × 1 GPU, and
-changing effort changes which tasks pass): the measured TB2.1 arm at medium would cost **$5.51** of DP8
-on-demand against **≤$30.33** of OpenRouter — **5.50× cheaper, break-even occupancy 18.2 %** instead of 76.3 %.
-**Setting `reasoning_effort: medium` does more for the buy-vs-rent case than every pricing tier and topology
-choice in this document combined.** The API-side figure is an upper bound because only its output leg was
-divided by 5.263 while its input leg was held fixed; a shorter reasoning loop also shortens the transcript that
-the next turn re-reads, so the real API saving is larger and the real `u*` lower still.
+The effort row is large enough to prioritize a task-paired experiment, but it
+does not support the derived 18.2 % break-even or claim that effort dominates
+every topology in general. Cached-input fleet pricing is omitted because §11.7
+shows its block-hit and warm-request denominators cannot be combined.
 
 ### 11.11 What is measured and what is inference in this section
 
@@ -1108,8 +1058,9 @@ the next turn re-reads, so the real API saving is larger and the real `u*` lower
   recomputed.
 - TB2.1 real workload token counts and GPU-hours (66,329,299 / 6,670,376 / 18.787), giving every break-even
   number in §11.1 without an assumed constant.
-- 1M-context prefill law: walls 125/355/720/1205 s at 259,303/520,528/781,653/994,755 tokens; k = 1.506 /
-  1.744 / 2.144; relative per-token cost 1.00 / 1.42 / 1.92 / 2.53.
+- 1M-context measurements: walls 125/355/720/1205 s at
+  259,303/520,528/781,653/994,755 tokens; local segment exponents
+  1.506/1.744/2.144 and relative per-token cost 1.00/1.42/1.92/2.53.
 - Prices: $1.89 / $1.19 / $0.99 per GPU-hour, per-minute billing, linear multi-GPU (docs/49, catalogue +
   accrual-measured to ≤0.25 %).
 - API list prices as retrieved 2026-08-17, with URLs in §11.1. These are *published prices*, i.e. measured
@@ -1118,12 +1069,11 @@ the next turn re-reads, so the real API saving is larger and the real `u*` lower
 **INFERENCE (labelled where used):**
 - `min(C, DP) × input_rate_C1` as the saturated prefill capacity of a DP group (§11.4). Supported by the
   DP8 4kx1k C16 cell at 4840.7 tok/s/replica, not proven at C128.
-- Treating the 48.0 % **block-level** hit rate as a token-level rate (§11.7). The block-size cancellation
-  argument is given; the deviation from partial blocks and non-prefix queries is unmeasured and its sign is
-  unknown. Every "48 %" price is labelled `[INFERENCE]` and the cold price is always shown beside it.
-- Applying arm E's 0.0865× cache-hit factor to DP8: arm E is one RTX 5090, `max-num-seqs` ≤ 4, the *context*
-  edition, on a document-reuse pattern (§8's standing caveat).
-- The medium-effort break-even (18.2 %) and the 1.224× effort tilt, carrying §5's caveats.
+- No token-level DP8 cache-hit price is inferred: the block-level 48 % hit
+  rate and whole-request 0.0865×/0.0342× factors have incompatible
+  denominators.
+- No medium-effort break-even or 1.224× tilt is retained; the source probe has
+  one prompt and two repeats.
 - The input/output *allocation* of the live box-hour (§11.6). The all-token $0.1552/Mtok and the $15.12/box-hour
   are invariant; the split between legs follows from the measured phase rates and is a decomposition, not a
   second measurement.

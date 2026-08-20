@@ -80,9 +80,10 @@ checkpoint that converts but will not load.
    cleanly.
 3. `python util/add_safetensors_index.py -m <out>` then
    `python util/add_quant_config.py -m <out>`.
-4. Fix `config.json`: `quantization_config.bits` still reads 4.00, and
-   `update_config()` force-sets `tied_word_embeddings = true` whenever the key is
-   present — this model is untied and must stay untied.
+4. Inspect, but do not hand-repair, `config.json`: upstream utilities may leave
+   `quantization_config.bits = 4.00` and may force
+   `tied_word_embeddings = true` on this untied model. Step 5 owns the
+   deterministic repair and records it in the build receipt.
 5. [`tools/finalize_checkpoint.py`](../tools/finalize_checkpoint.py): the publication gate, and the
    step that must not be skipped. It validates logical tensor names and shapes against the recipe,
    repairs `quantization_config`, and emits `quantization_manifest.json`, `SHA256SUMS`,

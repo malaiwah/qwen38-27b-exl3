@@ -45,11 +45,11 @@ Three reasons, in order of how much they are worth to someone else:
    four candidate weightings on *sign*, and left the best survivor a factor of 2.5 uncertain in
    magnitude — not good enough to authorise a 1e-4 fidelity claim. See
    [the calibration table](#the-calibration-that-kills-the-objective).
-3. **The five-rung ladder is reusable.** The measurement pass behind this build produced a
-   per-module error curve at five widths for all 409 quantized modules, and from it a law
-   (§ [the 3.73x-per-bit law](#the-373x-per-bit-law)) and an exact closed-form allocation rule that
-   between them let *anyone* quantizing this family skip the two-hour measurement entirely and
-   allocate from an ordinary conversion log. That part stands whether or not this checkpoint does.
+3. **The five-rung ladder is reusable for this checkpoint family.** The
+   measurement pass produced a per-module curve at five widths for all 409
+   quantized modules and a 3.73x-per-bit fit. It can seed another allocation of
+   this same model/quantizer setup from a conversion log. One model does not
+   establish a quantizer-universal law.
 
 Publishing the loser is also what makes the winner's claim checkable. The hydrated recipe now
 stands not because nothing better was tried, but because the best available alternative was built,
@@ -133,15 +133,16 @@ rung-pair ratios. Per class it ranges from 3.661 (`linear_attn.in_proj_z`) to 3.
 layer-octets it is flat (3.7225 … 3.7365), so there is no "late layers behave differently" effect
 in the *shape*, only in the constant `a_m`.
 
-Held out: predicting an unseen rung from one anchor rung plus the universal shape has median error
+Held out within this model: predicting an unseen rung from one anchor rung plus the fitted shape has median error
 **+0.00 %** and mean absolute **1.175 %** over 8,000 held-out predictions; the single constant
 instead of the shape is 2.6x worse at 3.03 %. The worst cases are all long extrapolations (K8→K4,
 K7→K3); adjacent-width prediction, which is what an allocator actually needs, is the ~1 % case.
 
-**Why 3.73 and not 4.** A pure information argument — one extra bit halves the quantization step,
-quartering a squared error — gives 4.0. Nothing measured here reaches it, and the deficit widens
-monotonically with width. It is stable across classes and flat across depth, so it is a property of
-the quantizer, not of this model's layers. **We do not know why**, and this card declines to guess.
+**Why 3.73 and not 4.** A pure information argument — one extra bit halves the
+quantization step, quartering squared error — gives 4.0. This model's measured
+ratios are lower and decline with width. The data are stable across its classes
+and depth, but no second model was measured, so the cause and transferability
+remain unknown.
 
 Not measured for: `lm_head` and the eight MTP draft modules (recipe-pinned by `-hb`/`-mb`, one rung
 each; the draft additionally quantizes through the uncalibrated fallback, which reports `rmse` and
@@ -191,11 +192,13 @@ is precisely why this build lost, and the pre-registered selection rule could no
 both validation deltas available beforehand were *uniform* role-group moves, and neither tested a
 reallocation **between** roles — which is the only thing the optimizer does.
 
-`sqrt_energy` is the least-bad and the only rule inside a factor of ~2.5 everywhere, but a rule that
-is a factor of two-and-a-half uncertain cannot decide a 1e-4 fidelity claim, which is the decision
-it would have to support. It was also selected knowing this run's answer, so it is a
-*pre-registrable candidate*, not a result. If it is tried, its validation must include a
-between-role reallocation delta — and this run is now that third calibration point.
+**Correction after the 2026-08-19 re-solve.** `sqrt_energy` is not the
+least-bad allocation candidate: it still strips 156 MB from attention/GDN, the
+same direction as the failed `rel` solve. Only `abs` moves bytes toward
+attention/GDN, and it has the worst scale consistency (2.52x). None of the
+three first-order, layer-local weightings models recurrent or KV propagation.
+See `receipts/eda-resolve-2026-08-19.md`; no replacement KLD prediction is
+attached to any weighting.
 
 One number bounds how much of fidelity any width rule can even address: hydrated versus the
 published online-K5/K6 build is **+0.000441 [+0.000412, +0.000474]** at *identical widths* — pure

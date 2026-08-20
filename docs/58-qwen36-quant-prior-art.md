@@ -404,33 +404,30 @@ module but does not by itself decide which modules to quantize.
 
 ## 4. Whether anyone found our two asymmetries
 
-### 4.1 Attention-dominance / KV-cache compounding
+### 4.1 Attention dominance and the KV-compounding hypothesis
 
-**Partially found, by Unsloth — direction yes, mechanism no.** Unsloth's
-150+ KLD benchmarks on Qwen3.5 found that "Quantizing any attn_\* is especially
-sensitive for hybrid architectures" and published a Pareto plot showing
-attention tensors dominate KLD when quantized. This matches our direction.
+Unsloth independently measured the direction: attention tensors are more
+sensitive than MLP tensors on this hybrid architecture. Our receipts add a
+plausible mechanism — attention state is reused across later positions — and
+show a +46 % failure of a first-order additive prediction for `self_attn`.
+That residual is **consistent with** KV compounding; it does not isolate it.
+A causal claim needs an intervention on reuse length/state propagation while
+holding the quantized weights fixed. No prior source we found states this
+hypothesis, but novelty of an unisolated mechanism is not claimed.
 
-**Not found: the KV-cache compounding mechanism.** No source we found — paper,
-model card, forum post, or source code — diagnoses **why** attention
-quantization error is disproportionately harmful. Our measured mechanism
-(attention error propagates through the KV cache and is re-read at every later
-position, compounding over the scored window; `self_attn` under-predicted by
-+46%; `receipts/glm52-transfer-2026-08-19.md`;
-`receipts/selfattn-fp4-additivity-failure-2026-08-19.md`) appears to be novel.
-The llama.cpp heuristic (`category_is_attn_v` comment: "more sensitive to
-quantization") states the fact without the mechanism. EXL2 and EXL3's
-optimizers capture the effect implicitly (measurement-based allocation would
-naturally give attention more bits if it measurably hurts more) but do not
-isolate or name the compounding mechanism.
+EXL2/EXL3 measurement-based allocation can capture sensitivity empirically.
+At the pinned EXL3 revision, `measure_model.py` substitutes one candidate
+group and propagates it through the remaining reference modules to final
+outputs before computing KL, so its signal is end-to-end for one-group
+marginals even though the later greedy combination can still interact.
 
-**Not found: the MLP-is-free measurement.** Our finding that MLP quantization
-error is nearly free and additive (−1.9%, −6.0% on held-out predictions;
-quantizing all 64 MLP layers to NVFP4 costs the third-party harness nothing:
-0.002666 vs 0.002670 attn-only, `receipts/discord-leaderboard-2026-08-19.md` §1)
-is corroborated by Unsloth's finding that "ffn_up_exps and ffn_gate_exps are
-generally ok to quantize to 3bit" — but Unsloth did not measure the additivity
-property (that MLP error stacks linearly without compounding).
+**MLP additivity is measured only in the tested combinations.** Held-out
+predictions miss the additive estimate by −1.9 % and −6.0 %, and one
+third-party comparison reads 0.002666 versus 0.002670 for all-MLP versus
+attention-only. Without an interval on the latter, "costs nothing" is too
+strong; the supported statement is that MLP damage was small relative to
+attention in these tests. Unsloth independently reports MLP projections as
+cheaper to quantize.
 
 ### 4.2 Early-layer sensitivity
 
@@ -464,11 +461,11 @@ and let a depth-blind optimizer run free.
 
 Stated conservatively:
 
-1. **The KV-cache compounding mechanism for attention-dominance.** Prior art
-   (Unsloth, llama.cpp) found that attention is more sensitive to quantization.
-   We measured **why**: attention error propagates through the KV cache and
-   compounds across positions, while MLP error is per-position and additive.
-   This is a mechanism, not just a ranking.
+1. **A testable KV-compounding hypothesis for attention dominance.** Prior art
+   found the sensitivity ranking. Our +46 % additive-model miss and the
+   architecture's state reuse motivate a propagation mechanism, but no
+   intervention isolates it yet. The novel contribution is the explicit,
+   falsifiable hypothesis and evidence envelope, not a proven causal mechanism.
 
 2. **The measured negative: a depth-blind, role-blind proxy objective regresses
    fidelity.** Prior art (EXL2, EXL3) uses measurement-based allocation that
@@ -478,11 +475,10 @@ Stated conservatively:
    the regression (+0.000366 KLD, hydrated wins 470/512). This is a falsification
    of the proxy-to-KLD monotonicity assumption, not just a negative result.
 
-3. **The depth-direction measurement.** Prior art (llama.cpp's `use_more_bits`,
-   EXL3's `allocation.py`) builds in a U-shaped layer heuristic. We measured
-   that a depth-blind optimizer strips early layers specifically, and that the
-   direction is harmful if error accumulates with depth. The U-shape's
-   last-1/8 promotion is not justified by any measurement we found.
+3. **The depth-blind optimizer's direction.** The solve measurably strips early
+   layers and overfeeds late ones. Whether that direction is harmful remains a
+   hypothesis until a controlled early/middle/late KLD experiment is run; the
+   U-shape's last-1/8 promotion likewise lacks a published ablation.
 
 4. **The 3.73×-per-bit law and the closed-form allocation rule.** Our measured
    exponential error-per-bit law (`eps(m,K) = c_m * 3.73^(-K)`,
@@ -516,24 +512,21 @@ Stated conservatively:
 
 ### 6.1 EXL3's direct-KLD optimizer vs our proxy-error solver
 
-**Idea:** Replace our `rel` proxy objective with EXL3's direct-KLD measurement
-pass. EXL3's `measure_model.py` computes `F.kl_div` between quantized and
-reference model outputs per module group, and `optimize_model.py` does greedy
-marginal improvement. This would avoid the proxy-to-KLD sign error we measured
-(the `rel` objective predicted −0.000251, measured +0.000366).
+**Idea:** use EXL3's direct-KLD measurement pass rather than the `rel` proxy.
+At the pinned source revision, `measure_model.py` substitutes a quantized
+module group, propagates that state through all later reference modules and
+computes final-output KL. `optimize_model.py` then applies greedy marginal
+improvements. This directly measures each one-group effect and avoids the
+proxy-to-KLD sign assumption, while still not measuring interactions among
+multiple selected groups.
 
-**Cost:** Requires a GPU measurement pass. EXL3's measurement needs multiple
-pre-quantized model variants and a streaming forward pass over calibration
-data. [INFERENCE] Based on EXL2's measurement pass taking hours on large models,
-this is likely 2–4 hours of serial GPU time for a 27B model, plus the
-conversion time for the input quantized variants.
+**Cost:** multiple pre-quantized variants plus a GPU streaming pass; 2–4 hours
+for a 27B model is an unmeasured planning estimate.
 
-**Falsification:** If the direct-KLD optimizer still moves bits attention→MLP
-(the wrong direction), the problem is not the metric but the
-module-local-measurement paradigm: any per-module measurement that doesn't model
-cross-module KV propagation will underweight attention. Our `sqrt_energy`
-weighting candidate (which got the sign right on all four calibration pairs,
-`docs/57` §4) would then be the cheaper path.
+**Falsification:** if direct-KLD marginals still select an allocation that
+regresses when combined, the failure is interaction/greedy composition rather
+than the per-group metric. The later re-solve in `docs/57` refuted
+`sqrt_energy`; no scalar proxy weighting is an approved fallback.
 
 ### 6.2 EXL3's U-shaped layer-position heuristic
 
@@ -577,10 +570,9 @@ version of our attribution direction. Running this recipe through our KLD suite
 would give us a measured baseline for "attention entirely unquantized, MLP at
 4-bit" — the upper bound on what attention preservation can buy.
 
-**Cost:** Requires a GPTQ conversion (~30–60 min GPU) and a KLD capture (~6
-min). No weight download if we use the existing `raydelossantos/Qwen3.6-27B-GPTQ-Int4`
-checkpoint — but that is Qwen3.6, not Qwen3.8, so it would need our cross-model
-KLD methodology or a fresh conversion of Qwen3.8.
+**Cost:** Requires a fresh Qwen3.8 conversion plus KLD capture. The existing
+Qwen3.6 checkpoint can only be compared against its own Qwen3.6 BF16 reference;
+there is no valid cross-model KLD that puts it on the Qwen3.8 axis.
 
 **Falsification:** If the MLP-only-Int4 baseline has KLD indistinguishable from
 our hydrated K5/K6 build, then our K6 attention serialization is already
@@ -634,11 +626,11 @@ by EXL3's GPTQ, making this inspiration a no-op for our format.
    specifically.
 
 4. **Did anyone previously publish the attention-dominance or early-layer
-   findings?** Attention-dominance: **partially** — Unsloth found the direction
-   (attn sensitive, MLP cheap) empirically via 150+ KLD benchmarks, but did not
-   diagnose the KV-cache compounding mechanism. Early-layer sensitivity:
-   **partially** — llama.cpp and EXL3 have U-shaped heuristics that protect
-   early layers, but no one measured the direction or magnitude of the depth
-   effect, and no one published a controlled early-vs-late KLD experiment. The
-   MLP-is-free/additive measurement and the depth-blind-objective-regresses
-   measurement appear to be genuinely novel to our project.
+   findings?** Attention dominance: **yes in direction** — Unsloth measured
+   attention-sensitive/MLP-cheap rankings. Our KV-compounding explanation is a
+   falsifiable hypothesis consistent with a +46 % additive-model miss, not yet
+   an isolated mechanism. Early-layer sensitivity: prior art has U-shaped
+   heuristics, while our solver measurably strips early layers; the quality
+   consequence still needs the controlled early/middle/late experiment. The
+   proxy-objective regression itself is measured and remains the strongest
+   novel negative.

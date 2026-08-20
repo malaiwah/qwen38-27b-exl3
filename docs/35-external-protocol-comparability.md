@@ -6,11 +6,11 @@ model. The numbers are still not interchangeable, because the two protocols diff
 scoring geometry, reference numerics, what is inside the measured path, and how uncertainty is
 computed. Neither protocol is wrong. They measure different things, and this file says exactly
 which things, so that both numbers can be published side by side without either being quoted
-as a refutation of the other. Three of the differences it lists are no longer arguments: the
-scoring window (D1), the cross-engine term, and tokenizer identity (D10) have all been measured
-on our own data. And their protocol has now been run here in full, so the two axes can be
-compared directly: the ordering agrees, the level differs by 1.1-1.6×, and the delta table
-below says which differences account for that and in which direction each one runs.
+as a refutation of the other. The scoring window (D1), tokenizer identity (D10),
+and the scale of the cross-engine discrepancy have since been measured on our
+data. Running their protocol here reproduces the same GGUF ordering. Absolute
+levels remain protocol- and pipeline-specific: the 0.000507 BF16 cross-engine
+control cannot be subtracted as a KL component or bound.
 
 Every external number below carries a source tag defined in [Sources](#sources). Every
 internal number carries a receipt path. Every byte size is serialized bytes on disk — never
@@ -107,16 +107,14 @@ from the stored file is 6.532929 [U-LOG-Q5] against 6.5353 measured directly dur
 [U-LOG-B], a -0.037 % shift. At their Q8-class mean of 0.002562 [U-LOG-Q8] that floor is only
 ~20-50x below signal.
 
-Ours replays float64 through one shared BF16 head over all 248,320 entries in two passes
-(pass 1 accumulates `logsumexp` normalizers and argmax; pass 2 accumulates KL and
-Jensen-Shannon), never top-k and never truncated
-([`tools/fidelity.py`](../tools/fidelity.py) `cmd_replay`, described in
-[14-fidelity-protocol-v2.md](14-fidelity-protocol-v2.md)). Our own floor is separately
-measured, not assumed: replaying a model against its own live logits gives mean
-`KL(live ‖ replayed)` = **6.54e-04** with top-1 98.999 % and max 0.0913
-([`receipts/v3-qualification-bf16.json`](../receipts/v3-qualification-bf16.json)) — the
-capture/replay path is the weak link on our side and is disclosed as such in
-[18-results-fidelity-v3.md](18-results-fidelity-v3.md).
+Ours uses one shared BF16 head over all 248,320 entries in two passes, with
+float32 operations within vocabulary chunks and float64 aggregation across
+chunks. It never truncates to top-k
+([`tools/fidelity.py`](../tools/fidelity.py) `cmd_replay`). Live-versus-replay
+qualification on six v3 contexts measures **6.54e-04** mean, 98.999 % top-1 and
+0.0913 max (`receipts/v3-qualification-bf16.json`). That is a measured
+served-logit discrepancy for our capture/replay path, not an additive offset;
+its v5 re-derivation remains open.
 
 ### What is inside the measured path
 
@@ -148,7 +146,7 @@ comparable to ours, which is a bootstrap over 842 source clusters with 10,000 re
 | corpus | 941 documents, **70,348,971 bytes**, five strata (code 241 / encyclopedic 323 / literary 59 / multilingual 276 / scientific 42) | [`kld5-corpus-fetch-log.json`](../receipts/kld5-corpus-fetch-log.json) |
 | contamination policy | whole-document exclusion on any exact NFKC-casefold 12-word shingle match against 859,426 calibration shingles, 10,772,868 corpus shingles scanned, **44 of 941 documents excluded before selection**, 897 eligible | [`kld5-suite-manifest.json`](../receipts/kld5-suite-manifest.json) `document_scan`, `contamination_scan` |
 | prior-suite disjointness | 0 of the v4 suite's 160 context token hashes reachable | [`kld5-suite-manifest.json`](../receipts/kld5-suite-manifest.json) `prior_suite_exclusion` |
-| metric | exact two-pass full-vocabulary `KL(BF16 ‖ candidate)` in float64, vocab 248,320, both operands through one shared BF16 head | [`tools/fidelity.py`](../tools/fidelity.py), [`kld5-10M-hyd.json`](../receipts/kld5-10M-hyd.json) |
+| metric | exact two-pass full-vocabulary `KL(BF16 ‖ candidate)`, float32 within chunks and float64 across chunk aggregates, vocab 248,320, shared BF16 head | [`tools/fidelity.py`](../tools/fidelity.py), [`kld5-10M-hyd.json`](../receipts/kld5-10M-hyd.json) |
 | interval | cluster bootstrap, 842 clusters, 10,000 resamples | [`kld5-10M-hyd.json`](../receipts/kld5-10M-hyd.json) |
 
 Current ladder on that suite, cumulative over all ten shards:
@@ -161,19 +159,16 @@ Current ladder on that suite, cumulative over all ten shards:
 | official FP8 | 0.005294 | [0.004927, 0.005728] | 96.79 % | 10.714 | [`kld5-10M-fp8.json`](../receipts/kld5-10M-fp8.json) |
 | K4 | 0.010604 | [0.009640, 0.011746] | 95.76 % | 14.283 | [`kld5-10M-k4.json`](../receipts/kld5-10M-k4.json) |
 
-**How closely these absolute numbers may be read.** Each mean is a body-only replay value, and
-the replay path is not the engine's own logit path: replaying the unquantized model against its
-own live logits measures 6.54e-04
-([`receipts/v3-qualification-bf16.json`](../receipts/v3-qualification-bf16.json)), and BF16→fp32
-hidden-state storage moves a candidate's KLD by 5.6 % ([docs/24](24-p0-results.md)). Absolute
-values are within-suite numbers — a ~6e-4 implementation offset plus a ~5 % storage systematic,
-so absolute differences below ~1e-3 are not resolvable, and cross-protocol comparisons of
-absolute levels inherit that floor on top of every delta in the table below. Both offsets are
-common-mode across candidates, so paired differences are the resolvable quantity: hydrated −
-online K5/K6 is −0.000450 [−0.000469, −0.000433] on 4,922 of 5,120 contexts
-([`receipts/kld5-10M-paired.json`](../receipts/kld5-10M-paired.json)), smaller than the replay
-floor and resolved *because* the floor cancels in the pairing. The floor was measured on six v3
-contexts; its v5 re-derivation is an open measurement. Method of record:
+**How closely these absolute numbers may be read.** Each mean is a body-only
+replay value, not the engine's own logit path. Live-versus-replay on six v3
+contexts measures 6.54e-04, and changing BF16 hidden-state storage to fp32 moved
+one candidate's replay KLD by 5.6 % (`docs/24`). These are measured
+served-equivalence systematics, not additive offsets. Paired candidates use one
+replay implementation and therefore define a consistent replay-domain metric,
+but model-dependent numerical effects need not cancel exactly. The
+hydrated-minus-online result, −0.000450 [−0.000469, −0.000433], is resolved in
+that paired replay metric rather than by subtracting the live/replay result. Its
+v5 re-derivation remains open. Method of record:
 [docs/42](42-kld-method.md).
 
 The GGUFs are no longer absent from our protocol, but they cannot join *that* table: they were
@@ -194,7 +189,7 @@ measurement.
 |---|---|---|---|---|---|
 | **D1** | scoring floor on positions | positions 256-510 of each 512-token window only; every scored token has ≥256 tokens of left context [LC:541-544] | positions 0-2046 of a 2,048-token window; low-context positions are scored | **theirs lower** | largest structural difference; **now measured** on our own data with `--score-from` — worth 1.3-2.1 % at their absolute floor and 3.9-4.9 % at their proportional one ([below](#d1-resolved-the-scoring-window-moves-every-mean-by-at-most-about-5-percent)) |
 | **D2** | corpus | WikiText-2 raw test only: English encyclopedic, 1,290,590 B [HF-WT2] | 941 documents, 70,348,971 B, five strata ([`kld5-corpus-fetch-log.json`](../receipts/kld5-corpus-fetch-log.json)) | **theirs lower** | their own NVFP4 rows span 4.7x across domains, 0.0124 → 0.05818 [U-Q38]; our own encyclopedic stratum sits below our all-strata mean, 0.004889 vs 0.005197 on the first shard ([`kld5-1M-tail-fp8.json`](../receipts/kld5-1M-tail-fp8.json)) |
-| **D3** | reference numerics | BF16 GGUF in llama.cpp, logits stored `uint16` over a 16-nat span [LC:79-100]; observed `Minimum KLD: -0.000140` [U-LOG-Q8], so floor ≥5e-5 nats/token | float64 two-pass replay of BF16 hidden states ([`tools/fidelity.py`](../tools/fidelity.py)); own floor 6.54e-04 measured, not assumed ([`v3-qualification-bf16.json`](../receipts/v3-qualification-bf16.json)) | unknown, bounded | a noise floor, not a bias: it can push individual positions negative. Matters only near Q8-class means |
+| **D3** | reference numerics | BF16 GGUF logits stored `uint16` over a 16-nat span; negative minima down to −0.000140 expose encoding error | float32 chunk operations with float64 aggregation; 6.54e-04 live/replay discrepancy on six v3 contexts | unknown | neither observed discrepancy is an additive correction or directional bias |
 | **D4** | vocabulary coverage | all 248,320 entries **minus** base-side terms with `log p ≤ -16` [LC:224-240] | exact, all 248,320 entries, no truncation | theirs lower (small, unproved) | the dropped region carries positive divergence when a quantization under-represents rare tokens, which is the usual failure mode; the operator is not the one we call "full vocabulary" |
 | **D5** | output head | candidate's own head is in the loop, and its precision varies by quant recipe | both operands through one shared BF16 head, body-only by construction | **theirs higher** | opposite sign to D1/D2, and **now measured on our own corpus, not just signed**: putting a candidate's own head in the path costs **≤5.28 %** of its mean (hydrated +5.01 % of head-inclusive divergence, context +4.06 %, K4 +1.17 %, unsloth NVFP4 +2.64 %, official FP8 exactly 0 % because its head is byte-identical to the shared one), 512 contexts, 1,048,064 positions, every interval excluding zero ([`head-attribution-v5.json`](../receipts/head-attribution-v5.json); earlier off-corpus number in [16-head-attribution.md](16-head-attribution.md)). Bound applies to *our* heads - a GGUF's own `output.weight` width is not measured here |
 | **D6** | window length | 512 [U-LOG-B] | 2,048 ([`kld5-suite-manifest.json`](../receipts/kld5-suite-manifest.json)) | unknown | interacts with D1; their windows never exercise long-range behaviour |
@@ -252,40 +247,34 @@ be computed in either direction. A windowed number of ours is also not a number 
 is our corpus, our window length, our reference numerics and our body-only head, with only the
 position selection changed.
 
-### The cross-engine term resolved: two engines disagree by 0.000507 on identical weights
+### The cross-engine discrepancy measured: 0.000507 on identical weights
 
-Scoring a GGUF on our suite means capturing hidden states in llama.cpp and comparing them against
-a reference captured in vLLM, so a GGUF number carries engine numerics on top of quantization
-error. That term is now measured rather than waved at: the **unquantized BF16 GGUF**
-(`unsloth/Qwen3.8-27B-GGUF@f1bfb127…`, two-part, 54,657,735,616 B) against the vLLM BF16
-reference, identical token ids, the same shared BF16 head, the same 512 contexts.
+Scoring GGUF captures against a vLLM reference mixes artifact and engine
+numerics. The control runs the **same unquantized BF16 weights** in llama.cpp and
+vLLM with identical token ids, contexts, and shared head:
 
 | control | mean KLD | 95 % CI | top-1 | p99.9 | exact max | receipt |
 |---|---:|---|---:|---:|---:|---|
-| llama.cpp BF16 vs vLLM BF16, same weights | **0.000507** | [0.000492, 0.000523] | 99.07 % | 0.0113 | 1.519 | [`gguf-report-engine-floor.json`](../receipts/gguf-report-engine-floor.json) |
+| llama.cpp BF16 vs vLLM BF16 | **0.000507** | [0.000492, 0.000523] | 99.07 % | 0.0113 | 1.519 | [`gguf-report-engine-floor.json`](../receipts/gguf-report-engine-floor.json) |
 
-That is the floor of this comparison: two engines running the *same unquantized weights* disagree
-by 0.000507 mean and 0.93 points of top-1. **Every GGUF row below contains that term; no vLLM row
-— ours or official FP8's — does.** It is the asymmetry that had to be measured before any
-cross-engine ranking could be published at all.
+This quantifies the engine-path discrepancy. It does not define an additive
+"floor": candidate quantization and engine errors can reinforce or cancel in
+KL. Every cross-engine GGUF row must therefore be read as a complete
+artifact-plus-engine pipeline result.
 
-The three GGUF targets, on shard 0 of our suite, through the same shared BF16 head, with the naive
-net-of-floor estimate beside each measured value
-([`receipts/cross-engine-comparator.json`](../receipts/cross-engine-comparator.json); per-candidate
-reports `receipts/gguf-report-{q8_0,q6_k,q5_k_xl}.json`):
+The three GGUF pipelines on shard 0 of our suite
+([`receipts/cross-engine-comparator.json`](../receipts/cross-engine-comparator.json)):
 
-| GGUF | measured mean KLD | net of the 0.000507 floor | top-1 | p99.9 | serialized bytes | GiB |
-|---|---:|---:|---:|---:|---:|---:|
-| `Q8_0` | 0.001087 | ~0.000579 | 98.53 % | 0.0351 | 29,047,086,048 | 27.052 |
-| `Q6_K` | 0.002035 | ~0.001528 | 97.98 % | 0.0794 | 22,884,408,288 | 21.313 |
-| `UD-Q5_K_XL` | 0.004444 | ~0.003936 | 97.20 % | 0.2144 | 20,218,178,624 | 18.830 |
+| GGUF | measured mean KLD | top-1 | p99.9 | serialized bytes | GiB |
+|---|---:|---:|---:|---:|---:|
+| `Q8_0` | 0.001087 | 98.53 % | 0.0351 | 29,047,086,048 | 27.052 |
+| `Q6_K` | 0.002035 | 97.98 % | 0.0794 | 22,884,408,288 | 21.313 |
+| `UD-Q5_K_XL` | 0.004444 | 97.20 % | 0.2144 | 20,218,178,624 | 18.830 |
 
-**KL is not additive, so the net column is an estimate, not an identity.** The measured value is
-an upper bound on each GGUF's quantization error and the net figure is the naive lower one; the
-truth is between them, and `Q8_0`'s measured 0.001087 is only about twice the floor, so its own
-number sits near the resolution limit of any cross-engine comparison: **no ordering closer than a
-factor of two should be pressed against `Q8_0`**. Sizes above are serialized
-disk bytes [HF-GGUF] — never VRAM, resident weights or KV.
+No quantization-only value or bound is derived by subtracting 0.000507. The
+control says that engine attribution becomes especially weak near `Q8_0`'s
+scale; it does not license a "truth between" two arithmetic endpoints. Sizes are
+serialized disk bytes [HF-GGUF], never resident memory or KV.
 
 Harness provenance, so the capture point is auditable rather than asserted:
 [`tools/gguf_capture.cpp`](../tools/gguf_capture.cpp) reads the **post-final-norm** state
@@ -298,22 +287,18 @@ values**.
 
 ### What the two measurements change about the reading
 
-Net of the floor, `Q6_K` reads ~0.001528 at 21.31 GiB against our hydrated build's 0.002700 at
-20.12 GiB of payload, and `UD-Q5_K_XL` reads ~0.003936 at 18.83 GiB against our context edition's
-0.003409 at 19.27 GiB. Our two payload figures are `immutable_payload_bytes` from
-[`receipts/collection-index.json`](../receipts/collection-index.json) — hydrated 21,610,916,123 B =
-20.127 GiB, context 20,696,033,532 B = 19.275 GiB, quoted above truncated to two decimals —
-serialized disk bytes on the same axis as the GGUF sizes, and never
-resident weights. **At the 6-bit operating point GGUF is genuinely better than our best
-build; at the 5-bit operating point ours is about 13 % better than theirs.** The full eight-row
-comparison, including official FP8 and K4, is in
-[29-plan-and-loose-ends.md](29-plan-and-loose-ends.md) F2 and on every model card. The format
-advantage at this bitrate is therefore real at 5 bits and negative at 6 bits on this suite — far
-short of the "about a bit ahead" that turboderp's own chart shows on *his* protocol, which is a
-difference between protocols and not a contradiction to settle by division. What none of this
-settles: it is text-only teacher-forced fidelity, and it says nothing about serving 262,144 tokens
-with vision and MTP on a 32 GB card, nor about llama.cpp KV-quant behaviour, prefill or decode
-speed, which are separate axes.
+The measured pipeline comparison is still useful. `Q6_K` under llama.cpp reads
+0.002035 at 21.31 GiB versus hydrated EXL3 under vLLM at 0.002700 and 20.12
+GiB payload. At the lower point, context EXL3 reads 0.003409 at 19.27 GiB versus
+`UD-Q5_K_XL`'s composite 0.004444 at 18.83 GiB. Those are end-to-end
+artifact-plus-engine operating points, not proof of a GGUF-versus-EXL3 format
+advantage.
+
+The full pipeline table, including official FP8 and K4, is in
+[29-plan-and-loose-ends.md](29-plan-and-loose-ends.md) F2. Same-engine stock
+EXL3 controls there are the evidence for allocation questions. Nothing here
+settles 262,144-token serving with vision/MTP, llama.cpp KV behavior, prefill,
+or decode speed.
 
 ## What they actually publish for this model family
 
@@ -631,18 +616,16 @@ Our three GGUF rows on our own axis are Run B — v5 suite shard 0, 512 contexts
 positions, one shared BF16 head, reference captured in vLLM
 ([`cross-engine-comparator.json`](../receipts/cross-engine-comparator.json)). Side by side:
 
-| quant | Run A, their protocol | Run B measured, ours | Run B net of the 0.000507 engine floor | A ÷ B-net |
-|---|---:|---:|---:|---:|
-| `Q8_0` | 0.000926 | 0.001087 | ~0.000579 | 1.60× |
-| `Q6_K` | 0.002286 | 0.002035 | ~0.001528 | 1.50× |
-| `UD-Q5_K_XL` | 0.004426 | 0.004444 | ~0.003936 | 1.12× |
+| quant | Run A, their protocol | Run B, our composite pipeline | A ÷ B |
+|---|---:|---:|---:|
+| `Q8_0` | 0.000926 | 0.001087 | 0.85× |
+| `Q6_K` | 0.002286 | 0.002035 | 1.12× |
+| `UD-Q5_K_XL` | 0.004426 | 0.004444 | 1.00× |
 
-**The ordering is identical on both axes**, and so is the spacing to within a factor of 1.43
-across a 4.8× range of quality. Two protocols that disagree about corpus, window length,
-scoring geometry, vocabulary coverage, reference engine and what is inside the measured path
-still rank `Q8_0` < `Q6_K` < `UD-Q5_K_XL` and still separate them by similar multiples. That is
-what makes a cross-citation defensible, and it is the strongest form the result could have
-taken.
+The ordering is identical on both axes. The levels differ by candidate, from
+−15 % to +12 %, rather than by one scale factor. That agreement supports a
+cross-citation of ordering; it does not make either column a correction or
+decomposition of the other.
 
 What a reader must **not** do is convert one column into the other. The differences are
 enumerated as D1-D12 above; the ones that matter here run in opposite directions and are not a
@@ -655,11 +638,10 @@ single scale factor:
 - **Their number is pushed *up*** by D5: the candidate's own output head is inside their measured
   path, while both of our operands go through one shared BF16 head, so ours is body-only by
   construction. **This one is now measured rather than signed, and it is small** - see below.
-- **Only our number carries the cross-engine term.** Our GGUF rows are llama.cpp captures scored
-  against a vLLM reference, which the engine-floor control measures at 0.000507 mean
-  ([`gguf-report-engine-floor.json`](../receipts/gguf-report-engine-floor.json)). Run A has both
-  operands in one engine and carries none of it. That is why the honest comparison is against
-  our net-of-floor column, not our measured one.
+- **Run B alone mixes engines.** Its GGUF captures come from llama.cpp and its
+  reference from vLLM. The BF16 control measures a 0.000507 discrepancy, but KL
+  does not permit subtracting it. Run B's measured column is therefore the
+  honest pipeline comparison; quantization-only attribution remains open.
 
 Two of these are now quantified rather than signed, and **both are small**.
 
@@ -690,26 +672,18 @@ interval excludes zero, and 486-505 of 512 contexts get worse with the candidate
 is real and signed exactly as this table has always said - it is just far too small to be the
 dominant term.
 
-**Consequence, and it is a correction to what this section previously said.** The earlier text
-read "the residual is dominated by D5, the head. [INFERENCE]". That inference is now falsified on
-our own corpus: D1 moves means by ≤4.9 %, D5 by ≤5.3 %, and the cross-engine floor is already
-netted out in the comparison column, so the enumerated deltas cannot account for a 1.1-1.6×
-level difference. **The residual is unexplained.** What remains unmeasured, in the order we would
-test it: D2/D6 jointly (their 512-token windows on English encyclopedic text against our
-2,048-token windows across five strata - the corpus and the window are confounded in their
-protocol and cannot be separated by any control of ours), the precision of a **GGUF's** own head
-specifically (llama.cpp stores `output.weight` at its own width, which is not the EXL3 K6 or FP8
-head measured above, so the ≤5.3 % bound is a bound on *our* heads, not on theirs), and
-llama.cpp's prefill numerics. Anyone reading the two columns should treat the level difference as
-protocol-in-general, not as a known decomposition.
+**Consequence, correcting the earlier head-dominance inference.** D1 moves means
+by at most 4.9 % and D5 by at most 5.3 % on our corpus. Run A versus Run B
+differs by −15 % to +12 % depending on candidate, and Run B additionally mixes
+engines. There is no valid residual obtained by floor subtraction. Corpus/window
+(D2/D6), each GGUF's own head, and llama.cpp prefill numerics remain
+undecomposed.
 
-The publishable sentence is therefore: *on Unsloth's own protocol, on their corpus and their
-geometry, the three GGUF quants measure 0.000926 / 0.002286 / 0.004426 mean KLD, in the same
-order and with similar spacing as on our suite, where net of the cross-engine floor they
-measure ~0.000579 / ~0.001528 / ~0.003936; the roughly 1.1-1.6× difference in level is protocol,
-not disagreement about which quantization is better - and the two protocol terms we have
-quantified, scoring geometry (≤4.9 %) and output-head inclusion (≤5.3 %, measured), are together
-too small to account for it, so the level difference is not yet decomposed.*
+The publishable sentence is: *on Unsloth's protocol the three GGUFs measure
+0.000926 / 0.002286 / 0.004426; on our shard-0 composite pipeline they measure
+0.001087 / 0.002035 / 0.004444. Both protocols order Q8_0 < Q6_K <
+UD-Q5_K_XL. Absolute levels are protocol- and engine-specific, and the measured
+0.000507 BF16 engine discrepancy is diagnostic rather than subtractable.*
 
 What Run A does not do is put our EXL3 builds on their axis. That would need our builds scored
 by `llama-perplexity`, which cannot read them. The comparison that does place both families on
@@ -718,7 +692,7 @@ one axis is Run B, and it stays the primary one.
 ### Run B — our v5 suite, for placement on our axis (**done**, shard 0)
 
 Score the same three GGUFs through `tools/fidelity.py` against the same BF16 teacher, shared
-BF16 head, exact float64 two-pass, on the frozen v5 suite
+BF16 head, float32 within chunks and float64 across chunk aggregates, on the frozen v5 suite
 ([`receipts/kld5-suite-manifest.json`](../receipts/kld5-suite-manifest.json)) so they land in
 the same table as hydrated / online K5-K6 / context / official FP8 / K4, with cluster-bootstrap
 intervals and paired per-context differences. This requires the llama.cpp-side loader to expose
@@ -811,14 +785,13 @@ their absolute context floor, 3.9-4.9 % at their proportional one, no ordering c
 published mean would be consistent with the remaining deltas cancelling, not evidence that they
 are absent; disagreement bounds the residue that D2-D11 must account for.
 
-All three are done. Run A is the only one of the three that yields a number citable against
-Unsloth's own table, and it lands in the same order as B with a level difference of 1.1-1.6×
-that the delta table accounts for; B places the GGUFs on our axis against everything we ship;
-C measures the one delta that could be isolated without leaving our own data. That is
-the entire claim. Neither
-protocol is being corrected here; the only defect worth naming is publishing a KLD without the
-corpus, position count, context floor, reference precision and engine that produced it, and
-that is the defect this document exists to avoid on our side.
+All three runs are complete. Run A is citable against Unsloth's table; Run B
+places the GGUF pipelines on our shard-0 axis; Control C isolates scoring
+geometry. A and B preserve the same ordering while their measured levels differ
+candidate-by-candidate (−15 % to +12 %). Neither protocol corrects the other,
+and the cross-engine discrepancy is not subtractable. Every published KLD must
+carry its corpus, position count, context floor, reference precision, engine,
+and head treatment.
 
 ## Sources
 

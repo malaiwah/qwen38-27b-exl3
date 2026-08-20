@@ -37,17 +37,19 @@ Body-only, both operands through one shared BF16 head, cumulative over all ten s
 | official FP8 | 0.005294 | [0.004927, 0.005728] | 96.79 % | 10.714 |
 | K4 | 0.010604 | [0.009640, 0.011746] | 95.76 % | 14.283 |
 
-**How closely these absolute numbers may be read.** Each mean is a body-only replay value, and
-the replay path is not the engine's own logit path: replaying the unquantized model against its
-own live logits measures 6.54e-04
-([`receipts/v3-qualification-bf16.json`](../receipts/v3-qualification-bf16.json)), and BF16→fp32
-hidden-state storage moves a candidate's KLD by 5.6 % ([docs/24](24-p0-results.md)). Absolute
-values are within-suite numbers — a ~6e-4 implementation offset plus a ~5 % storage systematic,
-so absolute differences below ~1e-3 are not resolvable. Both offsets are common-mode across
-candidates, so paired differences are the resolvable quantity: the hydrated − online row below,
-−0.000450, is smaller than the replay floor and resolved *because* the floor cancels in the
-pairing. The floor was measured on six v3 contexts; its v5 re-derivation is an open measurement.
-Method of record: [docs/42](42-kld-method.md).
+**How closely these absolute numbers may be read.** Each mean is a body-only
+replay value, and replay is not the engine's own logit path: on six v3 contexts,
+unquantized live-versus-replay measures 6.54e-04
+([`receipts/v3-qualification-bf16.json`](../receipts/v3-qualification-bf16.json)),
+while BF16→fp32 hidden-state storage moved one candidate's KLD by 5.6 %
+([docs/24](24-p0-results.md)). These observations bound served-logit equivalence;
+they are not additive offsets. Paired candidates use one replay implementation
+and therefore define a consistent replay-domain comparison, but
+candidate-dependent numerical effects need not cancel exactly. The
+hydrated-minus-online difference below is resolved *within that replay metric* by
+its paired interval, not by subtracting the qualification floor. A v5
+live-versus-replay qualification remains open. Method of record:
+[docs/42](42-kld-method.md).
 
 Paired per context, 10,000 cluster resamples
 ([`receipts/kld5-10M-paired.json`](../receipts/kld5-10M-paired.json)):
@@ -106,8 +108,9 @@ independent documents, not more tokens.
 
 ## The tail
 
-Mean and top-1 hide the positions that actually break a generation, which is the second
-criticism the release thread raised. The replay harness now accumulates every scored
+Mean and top-1 hide positions with the largest teacher-forced distribution
+shift. Those tails are important diagnostics, but they do not by themselves
+show that free-running generation breaks. The replay harness now accumulates every scored
 position into a 560-bin log-spaced histogram
 (`KLD_HIST_LOG10_LOW=-12.0`, `KLD_HIST_LOG10_HIGH=2.0`, `KLD_HIST_BINS_PER_DECADE=40` in
 [`tools/fidelity.py`](../tools/fidelity.py)), and the aggregator turns summed bins into
@@ -130,19 +133,23 @@ measured quantile, and K4 is heavier than FP8 at every one. Quantiles are bin-bo
 
 ## What this run still does not give
 
-- **Absolute KLD is suite-specific.** v5 numbers are not comparable to v3 numbers: the same
-  K4 checkpoint reads 0.029679 on the corrected v3 subset and 0.010604 here. Only ordering and
-  paired differences transfer between suites.
-- **No published captures.** The ten shards' hidden states were deleted as each shard verified,
-  because keeping them all would need ~640 GB. Reproduction runs through the pinned corpus
-  fetch log and suite manifest, not through downloadable captures as with the v3 dataset.
-- **The tail is one shard of ten.** The ten-shard run predates the histogram; re-running the
-  other nine with the newer harness is about six hours of GPU time.
-- **Every window is 2,048 tokens.** Long-context fidelity at 32k/64k/128k is a separate suite
-  and remains unmeasured.
-- **Comparator breadth.** FP8 is a throughput-oriented format; GGUF `Q5_K_XL`/`Q6_K`/`Q8_0`
-  and stock uniform-bitrate EXL3 controls are the comparisons that would settle where these
-  builds really sit. See [29](29-plan-and-loose-ends.md) F2.
+- **Absolute KLD is suite-specific.** The same K4 checkpoint reads 0.029679 on
+  corrected v3 and 0.010604 here. No numeric mean or paired difference transfers
+  between suites; the ordering happened to remain stable for the measured
+  candidates.
+- **The full ten-shard hidden-state set was not retained.** Selected shard-0
+  references/candidate captures and 79 reports were later published in
+  `malaiwah/qwen38-27b-fidelity-suite-v5`, but the deleted shards must be
+  recaptured from the published corpus/suite identities.
+- **The cumulative tail now covers two shards of ten.**
+  `receipts/kld5-2M-tail-*.json` spans 1,024 contexts; the other eight shards
+  still lack histograms.
+- **Every window is 2,048 tokens.** Long-context fidelity at 32k/64k/128k is a
+  separate suite and remains unmeasured.
+- **Comparator breadth was later expanded.** GGUF and stock uniform-bitrate EXL3
+  controls are in [29](29-plan-and-loose-ends.md) F2. Cross-engine GGUF values
+  remain pipeline comparisons; the measured engine floor cannot be subtracted
+  as a KL bound.
 
 ## Appendix: benchmark leakage scan
 

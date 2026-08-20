@@ -226,15 +226,14 @@ structurally inapplicable.
 **Cost for Qwen3.8 on RTX 5090: not config, not a fork patch — vendor kernel work.** The plain
 nvfp4 path consumes closed trtllm-gen cubins that exist for SM100/SM103 only; the fork's own
 SM120 attention stack (FLASHINFER-on-5090 per our startup logs) has no fp4-KV kernels. GDN
-layers are unaffected either way (Mamba-style state, `MambaDType`, `cache.py:38`). The r34
-`--kv-cache-dtype` registry also carries `turboquant_*` (own Triton backend,
-`turboquant_attn.py`, head-256 explicitly supported) — but its slot layout stores **values at
-fp16**: "For turboquant_k3v4_nc head_dim=256: [100 bytes key | 512 bytes value] = 612"
-(`turboquant_attn.py:16`) → 612 B/token/head vs fp8's 512 B: a capacity *regression* against
-our fp8 baseline, only a win against bf16. `KvDtypeSweep` is measuring the actual refusal/start
-behavior and kv law per dtype on the card right now; capacity verdicts defer to
-`receipts/kv-dtype-sweep-5090.json` (not landed at writing time — this doc states layout
-arithmetic and gate locations only).
+layers are unaffected either way (Mamba-style state, `MambaDType`, `cache.py:38`).
+The subsequent KV sweep closes the runtime half
+([38](38-kv-dtype-sweep.md), `receipts/kv-dtype-sweep-5090.json`): plain
+`nvfp4` and `nvfp4_ds_mla` still refuse because no backend advertises them;
+`int4_per_token_head` starts and nearly doubles fp8 capacity, but costs 2.78×
+prefill and 3.6× fp8's error on the bounded long-context top-20 diagnostic.
+TurboQuant presets remain unreachable because the image fails to map them into
+`KVQuantMode`. `fp8` stays the default.
 
 ## 6. Everything else shareable at runtime
 
@@ -256,22 +255,18 @@ arithmetic and gate locations only).
 | # | lever | 32 GB | 24 GB | 16 GB | KLD risk | build cost | verdict |
 |---|---|---:|---:|---:|---|---|---|
 | 1 | R1: single reconstruct-scratch arena (`exl3.py` dict→arena) | **measured +17,874 tok MTP-3 / +0.60 GiB KV pool** (265,122 → 282,996; predicted +620 MiB ≈ +18.7k = 95.7 %) | same measured bytes; window 24,576 → 42,450 raw headroom, supports 40,960 \[P] — arithmetic only | **+0.60 GiB** measured on 32 GB, class-independent bytes, but see below | none (byte-exact; deterministic vision suite byte-identical across arms) | 2-hunk `exl3.py` patch, as forecast; precedent issue #203/PR #270 (MoE variant only) | **built, measured on the 5090, PR'd — fork PR #397, `receipts/scratch-arena.json`** |
-| 2 | KV dtype (fp8→?) | defer | defer | defer | measured elsewhere | n/a | **defer to `receipts/kv-dtype-sweep-5090.json`**; turboquant is −100 B/token vs fp8 by layout; nvfp4 hard-refused on SM120 |
+| 2 | KV dtype | fp8 stays default; int4 nearly doubles capacity but costs 2.78× prefill and 3.6× fp8's bounded KV diagnostic | class effects remain predictions | class effects remain predictions; fixed MTP term still blocks MTP-3 | measured in `receipts/kv-dtype-sweep-5090.json` | none | measured; no default change |
 | 3 | R2: fp8-prefill scratch arena (pre-req for `VLLM_EXL3_PREFILL_FP8=1`) | avoids +555 MiB | same | same | none | trivial once R1 exists | build with R1 if fp8 prefill ships |
 | 4 | vision MXFP8 runtime overlay | +439 MiB | +439 MiB | +439 MiB | unmeasured (vision path) | moderate (extend overlay policy) | opt-in variant, measure first |
 | 5 | embed int8→int4 overlay | +592 MiB | +592 MiB | +592 MiB | unmeasured | small | opt-in variant, measure first |
 | 6 | shared-H (suh/svh) on this model | ≤13.69 MiB | ≤13.69 MiB | ≤13.69 MiB | real mechanism (§4), unmeasured | converter + loader | **do not build**; MoE-only lever |
 | 7 | nvfp4 KV port to SM120 | — | — | — | n/a | vendor trtllm-gen cubins / upstream kernel work | out of reach for this project |
 
-**The 16 GB question, answered explicitly.** No stack of runtime-sharing levers makes 16 GB
-usable: resident weights alone are 18.19 GiB, and the *entire* runtime-recoverable inventory
-above (R1 + vision overlay + int4 embed ≈ 1.6 GiB) lands at ~16.6 GiB resident — still above
-the class's whole 12.49 GiB weights+KV budget (`receipts/vram-class-verdict.json`,
-`card_budget_model.classes.16_gib`). The class flips only on serialized bytes: the S16-V
-candidate (full-attn K4, GDN K3, MLP K3/K3/K3, head K4, 12.77 GiB serialized — all predictions)
-plus int8 embed. What must be measured first, in order: **(1)** the flip condition already on
-file — a sub-4-bit shard-0 KLD (one conversion + one shard-0 score ≈ 1 h GPU, protocol exists);
-**(2)** `KvDtypeSweep`'s receipt for whatever KV dtype the 16 GB context budget would use;
-**(3)** R1's pool gain, now **measured** at +17,874 tokens / +0.60 GiB on 32 GB
-(`receipts/scratch-arena.json`) — at 16 GB those class-independent bytes are the difference between
-a toy window and a usable one *after* (1) passes. Runtime sharing is margin, not the door.
+**The 16 GB question is now closed negatively on fidelity.** Runtime sharing
+still cannot make the published weights fit that class; S16-V therefore rebuilt
+the body below four bits. Its payload landed exactly on prediction and measured
+11.626 GiB resident, but shard-0 fidelity was **0.045374** [0.041959,
+0.049351], failing the pre-registered 0.030 gate and losing 512/512 contexts to
+K4 (`receipts/sixteen-flip-kld.json`). `int4_per_token_head` KV does not rescue
+the MTP-3 row because the fixed 0.62 GiB term exceeds the whole pool. R1 remains
+useful margin for viable profiles, not the door to a 16 GB SKU.

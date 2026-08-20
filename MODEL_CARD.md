@@ -115,7 +115,7 @@ docker run --rm --gpus '"device=0"' --ipc host -p 127.0.0.1:8000:8000 \
     --served-model-name qwen38-k4 \
     --quantization exl3 \
     --enforce-eager \
-    --quantization-config '{"linear":{"weight":"mxfp8"},"ignore":["re:.*visual\\..*","re:.*in_proj_a$","re:.*in_proj_b$","re:.*mtp\\..*","lm_head"]}' \
+    --quantization-config '{"linear":{"weight":"mxfp8"},"ignore":["re:.*visual\\..*","re:.*in_proj_a$","re:.*in_proj_b$","re:.*in_proj_ba$","re:.*mtp\\..*","lm_head"]}' \
     --max-model-len 8192 \
     --gpu-memory-utilization 0.85 \
     --max-num-seqs 4 \
@@ -227,7 +227,7 @@ parity 0.000000. **Replay qualification is the weak link at 6.54e-04** mean
 ranking depends on it, but differences below ~1e-3 are not resolvable with these
 artifacts.
 
-### Head attribution### Head attribution: the K6 `lm_head` is nearly free
+### Head attribution: the K6 `lm_head` is nearly free
 
 Replaying the identical stored hidden states through the BF16 head and through the
 reconstructed K6 head (exllamav3's own `reconstruct_had_slice`, so it is the exact

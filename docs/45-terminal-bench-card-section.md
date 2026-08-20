@@ -1,14 +1,10 @@
 # Card section for MODEL_CARD-K5K6-hydrated.md — Terminal-Bench 2.1
 
-**Status: METHOD HALF FINAL, RESULTS PENDING PASS 1.** Prepared by `TerminalBench2` for Main to place
-on the hydrated card (this agent does not edit cards). Committed *before* any result exists on
-purpose: it is the same pre-registration argument applied to the write-up that the two-stage harness
-validation applies to the plumbing — the method cannot be quietly reshaped to flatter a number that
-has not been measured yet. The
-results table and the attribution table are filled from
-`receipts/terminal-bench-2.1-{hyd,healing,bf16-attribution}.json` the moment each pass lands; every
-other sentence below is already backed by `receipts/terminal-bench-2.1-pins.json` and
-`docs/45-terminal-bench.md`. Do not place the results rows until they carry measured numbers.
+**Status: RESULTS LANDED.** This section was pre-registered before pass 1 and
+then filled only from
+`receipts/terminal-bench-2.1-{hyd,healing,bf16-attribution}.json`. The method
+text remains the frozen pre-result framing; the result and attribution tables
+below are measured. Full protocol: [45-terminal-bench.md](45-terminal-bench.md).
 
 ---
 

@@ -147,12 +147,15 @@ mix a windowed report (schema `qwen38-fidelity-report/3`) with full-context repo
 
 ## 6. Determinism controls
 
-`enforce_eager=True`, `enable_prefix_caching=False`, `max_num_seqs=1`, one context per
-forward with `max_num_batched_tokens = context_length` (one prefill chunk per context),
-`kv_cache_memory_bytes = 512 MiB` bfloat16, `gpu_memory_utilization = 0.85`, runtime image
+The published ladder used `enforce_eager=True`, prefix caching off,
+`max_num_seqs=1`, one full 2,048-token prefill chunk, bfloat16 KV,
+`gpu_memory_utilization=0.85`, and runtime image
 `voipmonitor/vllm@sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b`.
-Nothing is sampled, so there is no RNG seed in the measurement path; the only seed is the
-bootstrap's.
+Its historical harness also passed the undocumented internal
+`kv_cache_memory_bytes=512 MiB`; that fact remains provenance for the pinned
+harness digest, not a serving recommendation. Repository-head harnesses leave
+KV-memory sizing unset; preserve the startup log separately when allocation is
+material to a claim. Nothing is sampled; the only seed is the bootstrap's.
 
 Under exactly that configuration,
 [`receipts/capture-determinism.json`](../receipts/capture-determinism.json) records
@@ -178,11 +181,12 @@ resamples, **seed 1**, and the interval is the 2.5th/97.5th percentile of the re
 pooled means (`bootstrap()` in `fidelity.py`, reused by `kld_aggregate.py`). The cluster is
 the independence unit because contexts drawn from one document family are not independent.
 
-**Paired comparison.** The per-context difference `A - B` on the identical context set,
-with the same cluster bootstrap and a win count. `a_wins` counts strict improvements and
-`b_wins` is the remainder, so an exact tie is counted as a b-win — a convention that has
-misled a reader before, kept unchanged so the published receipts stay reproducible, and
-stated here rather than left in a receipt footnote.
+**Paired comparison.** The per-context difference `A - B` on the identical
+context set, with the same cluster bootstrap. Current schemas count strict
+`a_wins`, strict `b_wins`, and `ties` separately
+(`qwen38-fidelity-paired/3`, `qwen38-kld-ladder-paired/2`). Historical `/2` and
+`/1` paired receipts counted ties in `b_wins`; those immutable receipts retain
+that documented convention.
 
 **Tail.** Per-shard percentiles cannot be recombined, so `replay` also counts every scored
 position into a **fixed 560-bin log-spaced histogram** — `log10` from -12.0 to 2.0, 40 bins
@@ -312,27 +316,27 @@ Nothing below is hypothetical; each is a measurement in this repository.
 | term | size | what it bounds | receipt |
 |---|---|---|---|
 | runtime-repeat / capture-replay determinism | exactly 0 | re-running the same capture+replay changes nothing | `capture-determinism.json` |
-| replay versus the engine's own logits | `KL(live ‖ replayed)` = 0.000654177503134738, top-1 0.9899853444064485, over **6 contexts** of the v3 suite | the **absolute** level of every number: our replay path is not vLLM's logit path | `v3-qualification-bf16.json` |
-| hidden-state storage precision | fp32 storage moved that floor to 0.0006249375925433911 (-4.5 %) and a candidate's KLD by -5.6 % on 32 sentinels | ~5 % of the absolute level is BF16 storage; the rest is the two implementations' matmul ordering | `v3-qualification-fp32.json`, [`24-p0-results.md`](24-p0-results.md) |
-| head exclusion | body-only versus body+K6-head, paired: -6.778619846896359e-05, CI [-9.014223019177851e-05, -4.632939580981435e-05], 74 contexts / 23 clusters, v2 suite | what the shared head leaves out, for one head recipe on a superseded suite | `paired-head-e2e.json`, [`16-head-attribution.md`](16-head-attribution.md) |
-| cross-engine (llama.cpp vs vLLM) | 0.0005073550588083691 mean, top-1 0.9906713712139716, on identical unquantized BF16 weights | every GGUF row and no vLLM row | `gguf-report-engine-floor.json`, `cross-engine-comparator.json` |
-| scored-position window | requiring 256 tokens of left context lowers each mean by 1.306-2.059 %; second-half-only by 3.876-4.874 % | how much of a gap to an external protocol is position selection | `scored-window-offset.json` |
-| suite hardness | the same six checkpoints read 2.4624986758761565x to 3.0790651709420223x higher on v5 than on corrected v3, a 1.2503824676561468x band, ordering identical | absolute values do not travel between suites; ordering does | `nvfp4-v5-measurement.json` |
+| replay versus engine logits | 0.000654 mean, 98.999 % top-1, **6 v3 contexts** | served-logit equivalence on that small v3 control; v5 re-derivation open | `v3-qualification-bf16.json` |
+| hidden-state storage precision | fp32 moved live/replay to 0.000625 (−4.5 %) and one candidate replay KLD by −5.6 % on 32 sentinels | storage contributes; the experiment does not isolate the remaining mechanism | `v3-qualification-fp32.json`, [`24-p0-results.md`](24-p0-results.md) |
+| head exclusion | on v5 shard 0, candidate-own heads add 1.225e-04 to 8.161e-04 for the four quantized-head rows; official FP8 adds exactly 0 | body-only numbers omit a candidate-dependent served head term | `head-attribution-v5.json` |
+| cross-engine (llama.cpp vs vLLM) | 0.000507 mean, 99.07 % top-1 on identical BF16 weights | scale of the engine-path discrepancy; not an additive component or bound | `gguf-report-engine-floor.json`, `cross-engine-comparator.json` |
+| scored-position window | a 256-token left-context floor lowers means 1.306–2.059 %; second-half-only 3.876–4.874 % | position-selection effect on this suite | `scored-window-offset.json` |
+| suite hardness | six checkpoints read 2.46× to 3.08× higher on v5 than corrected v3; measured ordering unchanged | numeric results do not transfer; ordering stability is observed for these six only | `nvfp4-v5-measurement.json` |
 
 Consequences, stated once:
 
-* **Differences below roughly 1e-3 in absolute terms are not resolvable; the same
-  differences measured pairwise are**, because both arms traverse the identical capture and
-  replay path and the implementation offset is common-mode. Every headline comparison in
-  this project is a paired one for that reason.
-* A GGUF-versus-EXL3 comparison carries the 0.000507 cross-engine term on the GGUF side
-  only. Net-of-floor figures are estimates, not identities — KL is not additive — and no
-  ordering closer than a factor of two should be pressed against `Q8_0`, whose measured
-  0.001087 is about twice the floor.
-* Volume does not buy precision here. Across a tenfold increase in positions every mean
-  moved by less than 2.3 % of itself while relative interval width did not fall (hydrated
-  14.6 % at 1,048,064 positions, 17.4 % at 10,480,640), because the estimator resamples
-  documents. **More independent documents narrow the interval; more tokens do not**
+* The six-context v3 control does not resolve absolute served-logit equivalence
+  below roughly 1e-3. Paired reports can resolve smaller differences **inside
+  the shared replay metric** when their cluster interval excludes zero; this is
+  not proof that every live/replay systematic cancels.
+* The 0.000507 BF16 cross-engine result cannot be subtracted from GGUF KLD. KL
+  is not additive and has no triangle inequality. Cross-engine rows compare
+  complete artifact-plus-engine pipelines; quantization-only ordering remains
+  unattributed.
+* In this ladder, tenfold more positions moved each mean by under 2.3 % while
+  interval width did not fall. The bootstrap resamples documents, so additional
+  within-document tokens bought little precision here. More independent
+  documents are the relevant lever; neither outcome is a universal law
   ([`33-evidence-volume-and-intervals.md`](33-evidence-volume-and-intervals.md)).
 
 ## 12. What these numbers support, and what they do not
@@ -345,13 +349,14 @@ unchanged by moving the scored window to 256 or 1,024 tokens of left context.
 
 They do not support:
 
-* **any absolute magnitude to better than ~1e-3**, per §11;
-* **any cross-suite absolute comparison.** A v3 and a v5 number must never appear in the
-  same sentence; the same checkpoint reads 2.46-3.08x apart between them;
-* **any cross-protocol ratio.** Different corpus, window, reference numerics, head
-  treatment and scoring floor — see
-  [`35-external-protocol-comparability.md`](35-external-protocol-comparability.md) for the
-  twelve enumerated deltas, of which two are measured;
+* **served-logit equivalence below roughly 1e-3**, pending the v5 control in
+  §11; replay-domain values remain the defined metric;
+* **an unlabeled cross-suite comparison.** v3 and v5 values may be shown together
+  only to demonstrate protocol sensitivity, never subtracted or treated as one
+  scale; the same checkpoints read 2.46–3.08× apart;
+* **a cross-protocol ratio or floor subtraction.** Different corpus, window,
+  reference numerics, head treatment, and engine prevent conversion between
+  protocols; see [35](35-external-protocol-comparability.md);
 * **generation quality.** Teacher forcing scores one fixed token sequence; it says nothing
   about what the model emits when it drives its own context. The task-level evidence for
   that is a separate, much smaller measurement (`public-capability-*.json`, 70 MMLU-Pro

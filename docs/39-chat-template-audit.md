@@ -621,20 +621,20 @@ bytes against 8,952. The claim-by-claim breakdown is in
 | Document that clients must merge multiple `system` messages into one leading message, and that a `developer` role is safe because vLLM folds and consolidates it (vllm#43590). | docs only |
 | Document that echoing `reasoning_content` back on assistant history turns is what buys the 100% prefix-cache hit, with the numbers from §9. | docs only |
 | Document the artifact-precedence footgun from §3, and that overriding via `tokenizer_config.json` is a no-op — use `--chat-template <file>`. | docs only |
+| Validate tool-call arguments before replaying assistant history and reject values containing literal `</parameter>` / `<parameter=` delimiters. The Qwen XML wire format has no escaping, and all audited templates misparse such values (§8 `c32`). Treat tool outputs and replayed calls as untrusted data. | client validation |
 | File the K3 rejection upstream with Qwen (alias `high`→`xhigh`, tolerate `minimal`/`max`, exactly as unsloth already does). | none to us |
 
 ### If we ever did change it
 
 **Would need re-running:**
 
-- **The 40-task deterministic downstream retention suite.** `tools/task_retention.py` sends
-  `chat_template_kwargs={'enable_thinking': True, 'reasoning_effort': 'low'}` at temperature 0;
-  the template is applied server-side, so any edit changes the prompt tokens and therefore the
-  greedy outputs. Note for accuracy: that suite's `tool_call` family does **not** use the OpenAI
-  `tools` parameter — it embeds a pseudo-tool spec in the user message and checks a JSON object
-  in the plain-text answer — so it would have to be re-run, but it is not evidence about
-  tool-call *rendering* either way. Nothing we publish currently exercises the template's
-  `# Tools` block.
+- **The 40-task deterministic retention suite.** Its `tool_call` family embeds
+  a pseudo-tool spec in user text and checks plain JSON; it does not exercise the
+  OpenAI `tools` field.
+- **The live tool-call suite.** `tools/tool_calls_e2e.py` now covers eight served
+  single, parallel, whitespace-bearing, and multi-turn cases through the real
+  `qwen3_coder` parser (`receipts/tool-calls-e2e.json`). This closes the earlier
+  `# Tools` coverage gap and must be rerun after any template edit.
 - **The 70-item MMLU-Pro capability matrix** (`receipts/public-capability-*.json`). Same
   mechanism: same `chat_template_kwargs`, temperature 0, five-shot prefixes rendered through the
   template.

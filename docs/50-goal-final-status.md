@@ -2,12 +2,12 @@
 
 ## Summary
 
-| Lever | Code | Peer Review | Speed | KLD | Status |
-|-------|------|-------------|-------|-----|--------|
-| 1 (b12x gate) | ✅ pushed | ✅ PASS (0.93) | ❌ +1.0% (threshold +3%) | ⚠️ unmeasurable | FAIL speed |
-| 2 (in_proj_ba transpose) | ✅ pushed | ✅ PASS | ✅ +4.4% (threshold +3%) | ⚠️ unmeasurable | PASS speed |
-| 3 (fused kernel) | ✅ pushed | ✅ PASS (4 fixes) | ❌ infeasible (stop #3) | ✅ rel_diff < 0.4% | INFEASIBLE |
-| Combined 1+2 | — | — | ✅ +5.4% | ⚠️ unmeasurable | PASS speed |
+| Lever | Code | Peer Review | Speed | Numerical check | Status |
+|-------|------|-------------|-------|-----------------|--------|
+| 1 (b12x gate) | pushed | reviewed | +1.0% (threshold +3%) | full KLD unavailable then | FAIL speed |
+| 2 (in_proj_ba transpose) | pushed | reviewed | +4.4% (threshold +3%) | full KLD unavailable then | PASS speed only |
+| 3 (fused kernel) | pushed | reviewed (4 fixes) | slower than reconstruct+cuBLAS | rel_diff <0.4%, not parity | INFEASIBLE for speed target |
+| Combined 1+2 | — | — | +5.4% | full KLD unavailable then | PASS speed only |
 
 ## Speed Results (local RTX 5090, C1 decode, 3×200 tokens)
 
@@ -16,23 +16,21 @@
 - Both levers: 150.2 tok/s (+5.4%)
 - Lever 1 marginal: +1.0% (below +3% threshold)
 
-## KLD Parity
+## Fidelity status at this checkpoint in the chronology
 
-Cannot be measured: the v5 suite, BF16 reference hidden states, and shared
-lm-head weight are on the NFS vault (`/mnt/vault/`) which is down. The
-fidelity tool (`tools/fidelity.py`) exists but has no data to run against.
+The v5 suite/reference/head were unavailable on the local host, so levers 1
+and 2 had no KLD qualification at this point. Later receipts must be read
+before shipping either path.
 
-For lever 3, per-GEMM parity was verified: rel_diff < 0.4% across 8 diverse
-layer shapes (bits 4/5/6, K 5120-17408, N 1024-17408).
+Lever 3 passed only a per-GEMM relative-difference tolerance (<0.4% across
+eight shapes). That is not numerical parity or an end-to-end fidelity gate.
 
-## Lever 3 (Fused Kernel) — Stop Condition #3
+## Lever 3 stop condition
 
-The fused dequant-in-epilogue GEMM kernel achieves:
-- Numerical parity: ✅ (rel_diff < 0.4%)
-- 2x speedup vs cooperative exl3_gemm at M≥128
-- BUT: existing reconstruct+cuBLAS path is faster at M≥256
-- The existing prefill strategy is already near-optimal
-- A Marlin-scale persistent kernel would be needed (multi-month effort)
+The prototype is ~2× faster than cooperative `exl3_gemm` at M≥128 but slower
+than the actual reconstruct+cuBLAS path at M≥256. The result rejects this
+prototype for the speed target; it does not prove the existing dispatch is
+globally optimal.
 
 Report: `docs/48-lever3-fused-kernel-report.md`
 

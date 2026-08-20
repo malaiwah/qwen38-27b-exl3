@@ -1,5 +1,10 @@
 # What is left, ordered by evidence value
 
+> **Chronology, not current queue.** This file accumulated plans and outcomes
+> append-only. The current reconciled findings and prioritized open work live
+> in `docs/60-retrospective-peer-review.md`; later sections here often
+> supersede earlier ones.
+
 State on 2026-08-16 after four published builds, two independent reviews, a physical
 RTX 5090 qualification, a source-disjoint qualification, a contamination re-audit, paired
 downstream smoke testing, a 10,480,640-position held-out ladder, a cross-engine GGUF
@@ -23,8 +28,9 @@ as interchangeable.
 | K4 | 17.89 GiB | 0.010604 | [0.009640, 0.011746] | 95.76 % | **262,144, MTP-3** | physical RTX 5090 |
 | `unsloth/Qwen3.8-27B-NVFP4` | 21.34 GiB | 0.031059 | [0.027916, 0.034795] | 92.90 % | not measured here | — |
 
-Every one of our builds beats official FP8 on this suite, and NVFP4 — the only other
-4-bit-weight row — loses **5,120 of 5,120 contexts** to both the context edition and FP8.
+All three K5/K6-class EXL3 builds beat official FP8 on this suite; K4 does not.
+NVFP4—the only other 4-bit-weight row—loses **5,120 of 5,120 contexts** to both
+the context edition and FP8.
 Ten times the positions did not move any mean by more than 2.9 % of its own value and
 changed no ordering: the interval is governed by source diversity, not by scored positions
 (`receipts/kld5-ladder-convergence.json`).
@@ -115,7 +121,7 @@ same 1,048,064 scored positions every other candidate saw**. Receipt
 [`receipts/cross-engine-comparator.json`](../receipts/cross-engine-comparator.json),
 per-candidate reports `receipts/gguf-report-{q8_0,q6_k,q5_k_xl}.json`.
 
-| candidate | engine | measured mean KLD | net of engine floor | top-1 | p99.9 | serialized |
+| candidate | engine | measured mean KLD | floor subtraction (diagnostic only) | top-1 | p99.9 | serialized |
 |---|---|---:|---:|---:|---:|---:|
 | GGUF `Q8_0` | llama.cpp | 0.001087 | ~0.000579 | 98.53 % | 0.0351 | 27.05 GiB |
 | GGUF `Q6_K` | llama.cpp | 0.002035 | ~0.001528 | 97.98 % | 0.0794 | 21.31 GiB |
@@ -127,14 +133,17 @@ per-candidate reports `receipts/gguf-report-{q8_0,q6_k,q5_k_xl}.json`.
 | K4 EXL3 | vLLM | 0.010345 | n/a, same engine | 95.91 % | 0.5576 | — |
 | `unsloth/Qwen3.8-27B-NVFP4` | vLLM | 0.030115 | n/a, same engine | 93.16 % | 1.6228 | 22.57 GB checkpoint |
 
-The **cross-engine floor** is measured the same way, not assumed: the unquantized BF16 GGUF
-against the vLLM BF16 reference, identical tokens, identical shared head, the same 512 contexts,
-reads **0.000507** mean, 99.07 % top-1, p99.9 0.0113
-([`receipts/gguf-report-engine-floor.json`](../receipts/gguf-report-engine-floor.json)). Every
-GGUF row above contains that term; no vLLM row does. KL is not additive, so the net column is an
-estimate, not an identity — the measured GGUF value is an upper bound and the net figure is the
-naive lower one. The two `—` cells are the two builds that ship BF16 attention for the runtime to
-encode at load, so their disk bytes are not a like-for-like payload; the payload figures are
+The **cross-engine floor** is measured, not assumed: unquantized BF16 GGUF
+against the vLLM BF16 reference, on identical tokens through the shared head,
+reads **0.000507** mean, 99.07 % top-1 and p99.9 0.0113
+([`receipts/gguf-report-engine-floor.json`](../receipts/gguf-report-engine-floor.json)).
+That establishes the scale of the engine-path confound. KL has neither
+additivity nor a triangle inequality, so subtracting 0.000507 does **not**
+decompose quantization from engine error and supplies no upper or lower bound.
+The subtraction column is diagnostic arithmetic only; cross-engine rows compare
+complete artifact-plus-engine pipelines.
+The two `—` serialized cells are builds that ship BF16 attention for the runtime to
+encode at load, so their disk bytes are not like-for-like; the payload figures are
 `immutable_payload_bytes` from
 [`receipts/collection-index.json`](../receipts/collection-index.json) (hydrated 21,610,916,123 B =
 20.127 GiB, context 20,696,033,532 B = 19.275 GiB; the table truncates both to two decimals) and are
@@ -148,22 +157,25 @@ names. The two differ by construction, not by measurement.
 
 **What it found, including the half that is not flattering.**
 
-- **At the 6-bit operating point we lose.** GGUF `Q6_K` is genuinely better than our best build:
-  0.001528 net at 21.31 GiB against hydrated's 0.002700 at 20.12 GiB of payload. That is a
-  1.186 GiB-larger file measuring better, on our own suite, and it is the first published
-  measurement in this project where an off-the-shelf artifact beats the recipe.
-- **At the 5-bit operating point we win.** The context edition reads 0.003409 at 19.27 GiB
-  against `UD-Q5_K_XL`'s 0.003936 net at 18.83 GiB — about 13 % better fidelity for
-  **0.445 GiB** more payload.
-- **`Q8_0` is the fidelity leader**, 0.001087 at 27.05 GiB, and its measured value is only about
-  twice the engine floor, so its own number sits near the resolution limit of any cross-engine
-  comparison: the net column is an estimate and not an identity, so **no ordering closer than a
-  factor of two should be pressed against `Q8_0`**. Anyone who can spare 27 GiB of weights and does
-  not need a long context on a 32 GB card should use it.
-- **Official FP8 is a weak bar.** Every GGUF point at or above 5 bits beats it. Our published
-  "34-48 % below FP8" is true and a weaker achievement than it sounds.
-- **K4 is the weakest of our own builds**, 0.010345 mean and 0.5576 at p99.9 — worse than every
-  GGUF measured here and worse than official FP8. The one row it beats is `unsloth`'s NVFP4.
+- **At the 6-bit operating point the Q6_K pipeline measures lower.** GGUF
+  `Q6_K` under llama.cpp reads 0.002035 at 21.31 GiB versus hydrated EXL3 under
+  vLLM at 0.002700 and 20.12 GiB payload. This is the first off-the-shelf
+  artifact-plus-engine pipeline measured below the recipe here; it is not a
+  same-engine proof that the GGUF quantization format is better.
+- **At the 5-bit operating point our context pipeline measures lower.** Context
+  EXL3 reads 0.003409 at 19.27 GiB versus `UD-Q5_K_XL`'s composite 0.004444 at
+  18.83 GiB—lower measured divergence for 0.445 GiB more payload, with the
+  engine confound still present.
+- **`Q8_0` has the lowest composite measurement**, 0.001087 at 27.05 GiB. It
+  sits only about twice the measured engine floor, so it is a strong
+  short-context llama.cpp pipeline result but does not isolate Q8 quantization
+  error or establish a universal deployment recommendation.
+- **Official FP8 is a weak same-engine bar.** Every K5/K6-class EXL3 build beats
+  it under vLLM. The GGUF composites are also lower, but that comparison remains
+  pipeline-level.
+- **K4 is the weakest of our own builds**, 0.010345 mean and 0.5576 at p99.9;
+  it is worse than same-engine FP8 and every measured GGUF pipeline. The one
+  row it beats is `unsloth`'s NVFP4.
 - **The other 4-bit-weight artifact is far behind.** `unsloth/Qwen3.8-27B-NVFP4` reads 0.030115
   with 93.16 % top-1 on this same shard, under the same engine so with **no** cross-engine term:
   2.9x K4 at the same weight class, 8.8x the context edition, 27.7x `Q8_0`, and it loses **512 of
@@ -186,20 +198,19 @@ names. The two differ by construction, not by measurement.
   remains its own unverified claim; we measured fidelity and resident bytes
   (`receipts/gittensor-nvfp4-rtx5090.json`, mirror
   `malaiwah/Qwen3.8-27B-NVFP4-RTX5090-archival-69274a0d`).
-- **The Q6_K loss is a byte gap, not an engineering gap — and that is testable.** Q6_K spends
-  **+1.183 GiB** over hydrated's payload across ~25.6B quantized weights = **+0.397 bpw**; our
-  own 3.73x-per-bit law predicts a **1.69x** KLD advantage for that spend, and the observed
-  advantage is **1.77x** (net-of-floor) / 1.33x (measured upper bound) — Q6_K sits on our own
-  scaling curve, within the floor estimate's slack. The test is the **K6-parity build**:
-  hydrated with gate/up promoted K5→K6 (+1.328 GiB, landing 21.45 GiB vs Q6_K's 21.31),
-  law-predicted mean ≈ **0.0016** against Q6_K's measured 0.002035 / net ~0.001528. A uniform
-  role-group promotion is exactly the prediction class the EDA calibration validated, unlike
-  the between-role reallocation that failed. Queued as `Q6K parity` in the todo list;
-  pre-register the prediction before converting.
-- So the format advantage at this bitrate is real at 5 bits, negative at 6 bits, and far short of
-  a full bit. turboderp's own chart reads "about a bit ahead" on *his* protocol
-  ([35](35-external-protocol-comparability.md)); that is a difference between protocols, not a
-  contradiction to settle by dividing one by the other.
+- **The Q6_K pipeline result motivated a byte-parity test; it did not explain
+  the gap.** Q6_K spends 1.183 GiB more payload than hydrated, but neither the
+  measured composite ratio nor the floor subtraction can be mapped onto the
+  EXL3 per-bit law. The subsequently measured same-engine controls are the
+  defensible evidence: K6-parity reaches 0.001634 at byte-matched body size,
+  while stock uniform 6.00-bpw EXL3 reaches 0.001583
+  (`receipts/shortlist-shard0.json`). That small gap concerns EXL3 allocation
+  and calibration; it does not isolate a GGUF-versus-EXL3 format effect.
+- Therefore the cross-engine rows establish pipeline-level operating points,
+  not a format advantage at five or six bits. turboderp's "about a bit ahead"
+  chart uses another protocol ([35](35-external-protocol-comparability.md));
+  neither protocol can be converted into the other by subtracting an engine
+  floor or dividing headline means.
 
 **Scope, stated with the result.** This is text-only teacher-forced fidelity on one shard, and it
 says nothing about serving 262,144 tokens with vision and MTP on a 32 GB card, which is where
@@ -226,9 +237,10 @@ scoring floor explains at most about 5 % of any cross-protocol gap, and none of 
   `llama-perplexity --kl-divergence`, 147,900 scored positions, base PPL 6.950230 ± 0.044933:
   `Q8_0` **0.000926** ± 0.000042 (98.761 % top-1), `Q6_K` **0.002286** ± 0.000108 (97.875 %),
   `UD-Q5_K_XL` **0.004426** ± 0.000167 (97.178 %)
-  ([`receipts/wikitext-kld-run-a.json`](../receipts/wikitext-kld-run-a.json)). **Same ordering as
-  our suite**, at 1.60x / 1.50x / 1.12x our net-of-floor values, which is the cross-citation the
-  objection asked for. Three by-products: their harness floor measured on our hardware at
+  ([`receipts/wikitext-kld-run-a.json`](../receipts/wikitext-kld-run-a.json)).
+  It reproduces the ordering of our composite GGUF rows. Absolute ratios are not
+  interpreted across the two protocols, and no floor-subtracted value is used as
+  a bound. Three by-products: their harness floor measured on our hardware at
   5.6e-5 to 8.0e-5 rather than inferred from their log; tokenisation eliminated as an explanation
   (GGUF BPE and our HF tokenizer produce bit-identical 297,194-token streams, same sha256); and
   **PPL does not reproduce the KLD ordering** — `Q6_K` has the smallest PPL delta (+0.00079) while
@@ -1370,12 +1382,14 @@ above **0.90**, and no category losing more than two BF16 passes — resolves li
 | hydrated | 56/70 | 54/57 | 85.6 % | not met |
 | online K5/K6 | 55/70 | 54/57 | 85.6 % | not met |
 
-The category condition is met by all five (worst per-category loss is two passes, hydrated and
-online K5/K6 in philosophy); the retention bound is what fails. **The reason is item count, not
-build quality.** With 57 BF16 passes as the paired denominator, 56/57 is the smallest count
-whose Wilson lower bound clears 0.90 — a single paired miss fails — so a 70-item suite cannot
-certify this bar for anything, and **official FP8 misses it on the same items under the same
-scorer**. Exact-output agreement is 0/70 for every EXL3 candidate and 1/70 for official FP8, so
+The category condition is met by all five (worst per-category loss is two
+passes, hydrated and online K5/K6 in philosophy); the retention bound is what
+fails. With only 57 BF16 passes in the paired denominator, 56/57 is the smallest
+count whose Wilson lower bound clears 0.90, making this bar extremely brittle at
+70 items. That limits certification and discrimination; it does not establish
+that build quality played no role. Official FP8 also misses the bar on the same
+items and scorer. Exact-output agreement is 0/70 for every EXL3 candidate and
+1/70 for official FP8, so
 the pass/fail outcome is the only meaningful pairing. This is a first public,
 licence-compatible, item-paired benchmark, not a leaderboard claim.
 
@@ -1504,9 +1518,11 @@ What is reusable, and is the actual result: `log eps(m,K) = a_m + s(K)` — one 
 all 400 body modules, per-bit ratio declining 3.860 → 3.559, held-out width prediction within 1.2 %
 mean — so **one rung per module from an ordinary teed conversion log reproduces the same allocation
 (396 of 400 widths, 99.98 % of the objective improvement) in ~25 min instead of a 2 h measurement
-pass**. `tools/allocate_bits.py --ladder-from-log` is that path. Also settled: at equal width
-`down_proj` really does carry 1.79× `gate_proj`'s proxy error, so the shipped K6-down choice is
-right — though the justification originally given for it compared widths rather than tensors.
+pass**. `tools/allocate_bits.py --ladder-from-log` is that path. At equal width,
+`down_proj` carries 1.79× `gate_proj`'s proxy error. Because the experiment above
+shows that proxy error is not a monotone KLD surrogate, this fact cannot by
+itself establish that K6-down is fidelity-optimal; the shipped recipe's observed
+quality remains real, while role attribution needs a direct ablation.
 
 **Do not reopen this on the same objective.** A next attempt needs a calibrated surrogate first, and
 none of the four weightings tested is calibrated: `rel` and `numel` get the sign of the reallocation

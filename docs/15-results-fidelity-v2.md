@@ -44,7 +44,7 @@ is largest exactly there.
 ## Tails, which the mean hides
 
 Ours: median 0.0026, p99 0.252, p99.9 4.567, max 22.95.
-NVFP4: median 0.0094, p99 0.399, p99.9 10.291.
+NVFP4: median 0.0094, p99 1.040, p99.9 10.291.
 
 Heavily tail-dominated, which is why top-1 agreement matters: **96.03 %** versus
 92.62 % means disagreeing with BF16's greedy choice on 1 token in 25 rather than 1
@@ -84,9 +84,10 @@ gap is real. Plainly:
 - Against its own size class (NVFP4, 23.4 GB) this quant wins decisively: 2.78x
   lower KLD **and** 4.2 GB smaller.
 - Against 8-bit at 1.6x the memory it loses by 0.0069 KLD and 0.65 points of top-1.
-- The ordering `FP8 < K4-mixed < NVFP4` reproduces the independently published
-  Qwen3.6 ordering (FP8 0.017, 4-bit GGUF 0.013-0.035, NVFP4 0.039-0.044) from
-  Quesma — an external cross-check that our harness ranks formats correctly.
+- The ordering `FP8 < K4-mixed < NVFP4` is directionally consistent with the
+  independently published Qwen3.6 ordering (FP8 0.017, 4-bit GGUF
+  0.013-0.035, NVFP4 0.039-0.044) from Quesma. Different models and protocols
+  mean this agreement is a cross-check, not validation of either harness.
 
 That **0.0069** is the concrete iteration-2 target, and the budget for it is the
 2.7 GB still unspent under the NVFP4-equivalent ceiling.

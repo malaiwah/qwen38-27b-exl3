@@ -15,6 +15,14 @@ better than the +31 % estimated below — **but only at 131,072 / 0.95, because 
 prefill.** So the lever is real, it costs 14.1 % of KV tokens today, and W1 below carries the full
 measurement.
 
+> **Later prefill attribution supersedes §5 and W8.** [47](47-kernel-gap-analysis.md)
+> found that `ext.hgemm` parity rules out only a GEMM replacement, not
+> launch/copy overhead across the full prefill path. Re-reconstruction per chunk,
+> 18–26 GB of shard concatenation copies, and 528 GDN Triton launches leave
+> roughly 20–30 % of configuration-level prefill headroom before any new fused
+> kernel. The fused dequant/GEMM kernel remains a larger project, not the only
+> remaining lever.
+
 This is a build-plan document, not a benchmark. **Nothing in it was measured during this work**: the
 physical RTX 5090 was held by a sibling agent for the whole window, so every number here is either a
 re-quotation of an existing receipt (labelled **measured**), a statement by the kernel authors

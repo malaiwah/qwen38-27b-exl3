@@ -1,20 +1,19 @@
 #!/usr/bin/env python3
 """Fill the K6-parity card from its receipt, and refuse to emit a card with a hole in it.
 
-Two rules this tool exists to enforce.
+The renderer preserves two invariants:
 
-1. **No measured figure is typed by hand.**  Every numeric token comes out of
-   `receipts/k6-parity-kld.json`, and any `{{TOKEN}}` still present at the end is a fatal
-   error, so a card cannot ship with an unfilled placeholder or a hand-copied number.
+1. Run-specific measurements come from `receipts/k6-parity-kld.json`; byte-axis
+   anchors come from `receipts/cross-candidate-byte-accounting.json`. Any
+   `{{TOKEN}}` left after substitution is fatal.
+2. The historical receipt remains immutable, including its pre-registered
+   BEATS/MATCHES/MISSES branch. Publication text always withdraws that branch
+   because it used invalid cross-engine KL subtraction, and reports only the
+   observed complete-pipeline comparison.
 
-2. **The claim cannot be reshaped around the result.**  The headline and the outcome sentence
-   are not written after seeing the number: all three branches of the pre-registered decision
-   rule are written out below, before the conversion runs, and the tool selects one by the
-   receipt's own `verdict.outcome`.  The commit that adds this file predates the conversion
-   log, which is what makes that checkable.
-
-    parity_card.py --receipt receipts/k6-parity-kld.json \\
-        --body parity-card-body.md --out MODEL_CARD-K6-parity.md
+    parity_card.py --receipt receipts/k6-parity-kld.json \
+        --byte-accounting receipts/cross-candidate-byte-accounting.json \
+        --body tools/parity-card-body.md --out MODEL_CARD-K6-parity.md
 """
 from __future__ import annotations
 
@@ -25,64 +24,58 @@ import sys
 from pathlib import Path
 
 GIB = 2 ** 30
-HYD_PAYLOAD = 21_586_964_548
-Q6K_NET = 0.0015278671188742878
-Q6K_MEASURED = 0.002035222177682657
-Q6K_BODY_GIB = 19.3599
 
-# Written before the measurement exists. One is selected by the receipt's verdict.
-HEADLINE = {
-    "BEATS_Q6K": "At equal file bytes, this EXL3 recipe beats GGUF `Q6_K` — the 6-bit loss was "
-                 "a byte gap, and it is now closed",
-    "MATCHES_Q6K": "At equal file bytes, this EXL3 recipe matches GGUF `Q6_K` — the 6-bit loss "
-                   "was a byte gap, not an engineering one",
-    "MISSES": "At equal file bytes, GGUF `Q6_K` still wins — a pre-registered prediction that "
-              "missed, published as it stands",
-}
-OUTCOME = {
-    "BEATS_Q6K":
-        "It is below the net-of-floor figure, so the answer to the pre-registered acceptance "
-        "question is BEATS. Spending the byte surplus our own 3.73x-per-bit law said `Q6_K` was "
-        "spending closes the 6-bit-class gap that `receipts/cross-engine-comparator.json` "
-        "recorded against us — and closes it while carrying about 2.3 GiB less transformer body "
-        "than the artifact it is measured against.",
-    "MATCHES_Q6K":
-        "It lands between the net and the measured `Q6_K` figures, so the answer to the "
-        "pre-registered acceptance question is MATCHES: at equal file bytes the two are "
-        "indistinguishable once the cross-engine floor's own slack is admitted, which is what "
-        "the byte-gap decomposition predicted. The 6-bit-class loss recorded in "
-        "`receipts/cross-engine-comparator.json` was a byte gap and not an engineering one, and "
-        "this build reaches that result carrying about 2.3 GiB less transformer body than `Q6_K`.",
-    "MISSES":
-        "It is above `Q6_K`'s measured upper bound, so the answer to the pre-registered "
-        "acceptance question is MISSES and the prediction is wrong in magnitude by the ratio "
-        "stated below. Spending `Q6_K`'s byte surplus did not buy `Q6_K`'s fidelity, so part of "
-        "the 6-bit-class gap is not the budget. Note what that does and does not license: this "
-        "build still carries about 2.3 GiB less transformer body than `Q6_K`, so the byte-gap "
-        "decomposition is falsified at file parity and not at body parity, which is a separate "
-        "and unrun experiment. The checkpoint and this card are published anyway, because a "
-        "pre-registration is only worth what is done with its misses.",
-}
+
+def corrected_headline(mean: float, q6k_mean: float) -> str:
+    return (
+        f"Near-equal file bytes: EXL3 measures {mean:.6f} and GGUF `Q6_K` "
+        f"{q6k_mean:.6f} on the same suite, with engine confounding explicit"
+    )
+CORRECTED_OUTCOME = (
+    "The pre-registered BEATS/MATCHES/MISSES rule subtracted a cross-engine "
+    "BF16 control from candidate KL. That operation is invalid: KL is neither "
+    "additive nor a metric. The receipt remains immutable, but its parity "
+    "verdict is withdrawn. The observable result is a complete-pipeline "
+    "comparison: this EXL3 build measures lower KL than the llama.cpp `Q6_K` "
+    "pipeline on these contexts, while the engine mismatch prevents a "
+    "format-only or byte-gap attribution."
+)
 
 
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--receipt", type=Path, required=True)
     ap.add_argument("--body", type=Path, required=True)
+    ap.add_argument(
+        "--byte-accounting",
+        type=Path,
+        default=Path(__file__).resolve().parent.parent
+        / "receipts/cross-candidate-byte-accounting.json",
+    )
     ap.add_argument("--out", type=Path, required=True)
     a = ap.parse_args()
 
     r = json.loads(a.receipt.read_text())
+    byte_accounting = json.loads(a.byte_accounting.read_text())
+    if byte_accounting.get("schema") != "qwen38-cross-candidate-byte-accounting/1":
+        raise SystemExit("unexpected byte-accounting schema")
     s, b = r["score"], r["build"]
     outcome = r["verdict"]["outcome"]
-    if outcome not in HEADLINE:
-        raise SystemExit("unknown verdict outcome %r; this tool's branches were fixed before the "
-                         "measurement and must not be invented now" % outcome)
+    if outcome not in {
+        "BEATS_Q6K",
+        "MATCHES_Q6K",
+        "MISSES",
+        "CROSS_ENGINE_COMPLETE_PIPELINE_ONLY",
+    }:
+        raise SystemExit("unknown historical verdict outcome %r" % outcome)
     roles = b["quantization_manifest_roles"]
     payload_b = b["measured_role_payload_bytes"]
     body_b = (payload_b - roles["embed_tokens"]["bytes"] - roles["lm_head"]["bytes"]
               - roles["vision_tower"]["bytes"] - roles["mtp_draft"]["bytes"])
     mean = s["token_mean_kld"]
+    q6k_mean = r["paired"]["q6k"]["a_mean"]
+    q6k_body_gib = byte_accounting["rows"]["GGUF Q6_K"]["body_bytes"] / GIB
+    hyd_payload = byte_accounting["rows"]["hydrated K5/K6"]["tensor_bytes"]
     check = r["prediction_check"]
 
     def paired_sentence(row: dict, other: str) -> str:
@@ -95,13 +88,13 @@ def main() -> int:
                    row["b_wins"], row["contexts"]))
 
     reg = check["registered_primary"]
-    where = ("below `Q6_K`'s net-of-floor %.6f" % Q6K_NET if mean < Q6K_NET else
-             "between `Q6_K`'s net-of-floor %.6f and its measured %.6f" % (Q6K_NET, Q6K_MEASURED)
-             if mean <= Q6K_MEASURED else
-             "above `Q6_K`'s measured %.6f" % Q6K_MEASURED)
+    where = ("below `Q6_K`'s measured complete-pipeline value %.6f; the "
+             "comparison is cross-engine and does not isolate format" % q6k_mean
+             if mean < q6k_mean else
+             "above `Q6_K`'s measured complete-pipeline value %.6f" % q6k_mean)
     tok = {
-        "HEADLINE": HEADLINE[outcome],
-        "OUTCOME_SENTENCE": OUTCOME[outcome],
+        "HEADLINE": corrected_headline(mean, q6k_mean),
+        "OUTCOME_SENTENCE": CORRECTED_OUTCOME,
         "MEAN": "%.6f" % mean,
         "CI": "[%.6f, %.6f]" % tuple(s["ci95"]),
         "P999": "%.6f" % s["p999_kld"],
@@ -111,11 +104,11 @@ def main() -> int:
         "MEASURED_PAYLOAD_GIB": "%.3f" % (payload_b / GIB),
         "MEASURED_TREE": "{:,}".format(b["tree"]["total_bytes"]),
         "MEASURED_BODY_GIB": "%.3f" % (body_b / GIB),
-        "BODY_DEFICIT_GIB": "%.3f" % (Q6K_BODY_GIB - body_b / GIB),
-        "BODY_DEFICIT_PCT": "%.1f" % (100 * (Q6K_BODY_GIB - body_b / GIB) / (body_b / GIB)),
+        "BODY_DEFICIT_GIB": "%.3f" % (q6k_body_gib - body_b / GIB),
+        "BODY_DEFICIT_PCT": "%.1f" % (100 * (q6k_body_gib - body_b / GIB) / (body_b / GIB)),
         "MTP_GIB": "%.4f" % (roles["mtp_draft"]["bytes"] / GIB),
         "PARITY_GIB": "%.3f" % (payload_b / GIB),
-        "PARITY_SURPLUS_GIB": "%.3f" % ((payload_b - HYD_PAYLOAD) / GIB),
+        "PARITY_SURPLUS_GIB": "%.3f" % ((payload_b - hyd_payload) / GIB),
         "CONVERT_LOG_LINES": "{:,}".format(r["toolchain"]["convert_log"]["lines"]),
         "PAIRED_HYD": paired_sentence(r["paired"]["hyd"], "hydrated"),
         "PAIRED_Q6K": paired_sentence(r["paired"]["q6k"], "GGUF `Q6_K` as measured"),
@@ -127,8 +120,8 @@ def main() -> int:
              % (reg, mean / reg,
                 "inside" if check.get("registered_interval_contains_measured") else "outside",
                 check["registered_interval"][0], check["registered_interval"][1], where,
-                Q6K_BODY_GIB - body_b / GIB,
-                100 * (Q6K_BODY_GIB - body_b / GIB) / (body_b / GIB))),
+                q6k_body_gib - body_b / GIB,
+                100 * (q6k_body_gib - body_b / GIB) / (body_b / GIB))),
     }
 
     text = a.body.read_text()

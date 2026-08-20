@@ -57,12 +57,13 @@ gate + up + down = 3.69 ms, so 64 layers = 236 ms, i.e. an MLP-only ceiling of
 **8.7k tok/s**, and we measure 5.6k with attention, GDN, KV and sampling on top.
 
 Even a *perfect* fused kernel that made reconstruct free would give 64 x 2.70 ms =
-173 ms, or 11.8k tok/s MLP-only - call it 7-8k end to end. Official FP8 serves 10,667
-tok/s and NVFP4 14,528 tok/s on this box, and neither pays a decode step at all.
+173 ms, or 11.8k tok/s MLP-only—roughly 7-8k end to end under the measured
+non-MLP overhead. Official FP8 serves 10,667 tok/s and NVFP4 14,528 tok/s on
+this box; neither pays the EXL3 reconstruct transform.
 
-**Conclusion, stated as a limit rather than a task:** prefill parity with FP8 is not
-reachable for a 4-bit-class trellis format in this runtime by kernel tuning. It needs a
-Marlin-style fused dequant-in-the-GEMM-epilogue kernel, which is a new kernel, not a
+**Conclusion, bounded to the measured implementation:** tuning the existing
+unfused reconstruct-plus-hgemm path cannot reach FP8 prefill parity. Closing the
+gap requires a Marlin-style fused dequantization/GEMM kernel—a new kernel, not a
 dispatch change. Two things remain worth doing and are cheap: amortise the reconstruct
 over larger prefill chunks (config-only), and keep the reconstruct scratch resident so
 repeated chunks skip the allocation.

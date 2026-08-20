@@ -12,7 +12,7 @@ leaves 99.2 % of the supported window unmeasured (262,144 native).
 
 Costs per context, measured or computed from measured rates:
 
-| context length | hidden state per candidate | replay time per context | KV cache during capture (16 full-attn layers x 4 kv heads x 256 dim x 2 B) |
+| context length | hidden state per candidate | replay time per context | KV cache during capture (16 full-attn layers × 4 KV heads × 256 dim × 2 B × 2 for K+V) |
 |---:|---:|---:|---:|
 | 2,048 | 21 MB | 2.2 s | 0.13 GiB |
 | 8,192 | 84 MB | 8.8 s | 0.5 GiB |

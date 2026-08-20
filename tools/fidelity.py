@@ -538,7 +538,7 @@ def cmd_capture(args) -> int:
     kwargs = dict(model=args.model, trust_remote_code=args.trust_remote_code,
                   tensor_parallel_size=1,
                   gpu_memory_utilization=args.gpu_memory_utilization,
-                  kv_cache_memory_bytes=512 * 1024 * 1024, dtype="bfloat16",
+                  dtype="bfloat16",
                   kv_cache_dtype=args.kv_cache_dtype, load_format="safetensors",
                   max_model_len=ctx_len + 64,
                   max_num_batched_tokens=args.max_batched_tokens or ctx_len,
@@ -1138,7 +1138,7 @@ def cmd_qualify(args) -> int:
     kwargs = dict(model=args.model, trust_remote_code=args.trust_remote_code,
                   tensor_parallel_size=1,
                   gpu_memory_utilization=args.gpu_memory_utilization,
-                  kv_cache_memory_bytes=512 * 1024 * 1024, dtype="bfloat16",
+                  dtype="bfloat16",
                   kv_cache_dtype=args.kv_cache_dtype, load_format="safetensors",
                   max_model_len=ctx_len + 64, max_num_batched_tokens=256,
                   max_num_seqs=1, enable_prefix_caching=False, disable_log_stats=True,
@@ -1226,8 +1226,10 @@ def cmd_paired(args) -> int:
     diffs = [ai[i]["mean_kld"] - bi[i]["mean_kld"] for i in shared]
     clusters = [ai[i]["source_cluster"] for i in shared]
     wins_a = sum(1 for d in diffs if d < 0)
+    wins_b = sum(1 for d in diffs if d > 0)
+    ties = len(diffs) - wins_a - wins_b
     out = {
-        "schema": "qwen38-fidelity-paired/2",
+        "schema": "qwen38-fidelity-paired/3",
         "suite_token_sha256": a["suite_token_sha256"],
         "filter": a["filter"],
         "head_sha256": a["head_sha256"],
@@ -1237,13 +1239,13 @@ def cmd_paired(args) -> int:
         "difference_a_minus_b": statistics.fmean(diffs),
         "median_difference": statistics.median(diffs),
         "bootstrap_difference": bootstrap(diffs, clusters, args.bootstrap_samples, 1),
-        "a_wins": wins_a, "b_wins": len(shared) - wins_a,
+        "a_wins": wins_a, "b_wins": wins_b, "ties": ties,
         "largest_a_advantage": sorted(zip(shared, diffs), key=lambda x: x[1])[:10],
         "largest_b_advantage": sorted(zip(shared, diffs), key=lambda x: -x[1])[:10],
     }
     atomic_write_json(Path(args.out), out)
     print("paired_done " + json.dumps({k: out[k] for k in (
-        "contexts", "difference_a_minus_b", "a_wins", "b_wins")}), flush=True)
+        "contexts", "difference_a_minus_b", "a_wins", "b_wins", "ties")}), flush=True)
     return 0
 
 

@@ -204,8 +204,10 @@ def summarise(positions: list[dict], resamples: int, seed: int) -> dict:
         "reference's own choice? A disagreement on a near-tie is a coin flip either arm could lose; a "
         "disagreement on a confident reference token is a substantive change of answer.",
         "n": len(dis),
-        "mean_ref_top1_prob": mean([p["ref_top1_prob"] for p in dis]),
-        "mean_ref_top1_minus_top2_prob": mean([p["ref_top1_minus_top2_prob"] for p in dis]),
+        "mean_ref_top1_prob": mean([p["ref_top1_prob"] for p in dis]) if dis else None,
+        "mean_ref_top1_minus_top2_prob": (
+            mean([p["ref_top1_minus_top2_prob"] for p in dis]) if dis else None
+        ),
         "n_with_ref_margin_below_0p01": sum(
             1 for p in dis if p["ref_top1_minus_top2_prob"] < 0.01
         ),
@@ -361,7 +363,7 @@ def main() -> None:
     ratio_phrase = ", ".join(f"{ratio_by_bucket[b]:.1f}x at {b}" for b in ratio_by_bucket)
 
     payload = {
-        "schema": "yarn-short-context-penalty-1",
+        "schema": "yarn-short-context-penalty-2",
         "title": "MEASURED: what static YaRN costs at SHORT context on "
         "Qwen3.8-27B-EXL3-K5K6-hydrated, on one idle RTX PRO 6000",
         "headline": f"Static YaRN is NOT free at short context. Against the incumbent default - native "
@@ -370,11 +372,12 @@ def main() -> None:
         f"{penalty['top1_agreement_rate'] * 100:.1f} % and "
         f"{48 - sum(1 for f in free if f['identical'])} of 48 prompts producing a different 8-token "
         f"greedy continuation at temperature 0. Three controls bound what else could have caused that: a "
-        f"same-server replicate is exactly {replicate['mean_kld']:.1e} (bit-identical) and a cold "
-        f"cross-boot replicate at the same window is {reboot['mean_kld']:.1e}, while raising the window "
-        f"to 1,000,000 with native rope costs {window['mean_kld']:.3e} on its own. With the window held "
-        f"at 1M in both arms the rope change alone is still {rope_only['mean_kld']:.3e}, so rope - not "
-        f"the window - carries the great majority of the cost. The penalty is {m / altcal:.0f}x our "
+        f"same-server replicate is exactly {replicate['mean_kld']:.1e} (bit-identical), a cold "
+        f"cross-boot replicate at the same window is {reboot['mean_kld']:.1e}, and the separately booted "
+        f"1M-native comparison is {window['mean_kld']:.3e}. With the window held at 1M in both arms, "
+        f"the separately booted rope comparison is {rope_only['mean_kld']:.3e}. The rope-associated "
+        f"difference is much larger than the observed boot/window background, but the design does not "
+        f"identify a zero causal window effect. The penalty is {m / altcal:.0f}x our "
         f"adversarial calibration-corpus swap and {m / hyd:.1f}x the entire published quantization KLD "
         f"of this build. The registered hypothesis - that static YaRN costs MORE at short lengths - is "
         f"REFUTED: the two short buckets are the two cheapest measured "
@@ -439,12 +442,11 @@ def main() -> None:
             "engine_kv_pool_tokens": {
                 **{a: kv_pool_tokens(W, a) for a in ("NATIVE", "YARN", "NATIVE1M")},
                 "read_from": "each arm's own server log, kv_cache_utils 'GPU KV cache size' line",
-                "note": "every pool exceeds every window used and the longest request in this probe "
-                "set is 32,776 tokens, so no arm was KV-starved. The pools differ by ~3 % because the "
-                "engine profiles memory against the window; that is a window effect, not a rope "
-                "effect, and the NATIVE1M control - which carries the long window, the long-window env "
-                "var and a pool 3 % larger than NATIVE's - is nevertheless bit-identical to NATIVE. "
-                "That is what rules the pool and the window out as explanations.",
+                "note": "every pool exceeds the longest request in this probe set (32,776 tokens), so "
+                "no arm was KV-starved. The pools differ by ~3 % because the engine profiles memory "
+                "against the configured window. The NATIVE1M arm also came from a separate boot: its "
+                "nonzero comparison therefore bundles window, pool and boot effects. Its observed KLD "
+                "is close to the separate cross-boot control, but neither factor is ruled out.",
             },
             "served_model": {
                 "NATIVE": json.loads((W / "models-NATIVE.json").read_text()),
@@ -613,21 +615,22 @@ def main() -> None:
                 f"agreement {reboot['top1_agreement_rate'] * 100:.1f} %.",
                 **reboot,
             },
-            "control_window_only_native1m": {
-                "what": "arm NATIVE versus arm NATIVE1M: native rope served at the YaRN arm's "
-                "1,000,000-token window with VLLM_ALLOW_LONG_MAX_MODEL_LEN=1. Isolates window, KV pool "
-                "and block-table effects from the rope.",
+            "control_native1m_with_cross_boot_confound": {
+                "what": "arm NATIVE versus a separately booted NATIVE1M arm: native rope in both, but "
+                "the latter uses a 1,000,000-token window, VLLM_ALLOW_LONG_MAX_MODEL_LEN=1 and a different "
+                "profiled KV pool. This comparison bundles window, pool and boot effects; the separate "
+                "same-launch reboot is the empirical background control.",
                 "verdict": f"mean KLD {window['mean_kld']:.3e}, max {window['max_kld']:.3e}, top-1 "
-                f"agreement {window['top1_agreement_rate'] * 100:.1f} %. NOT null: the window alone is "
-                f"worth {window['mean_kld'] / altcal:.1f}x the adversarial calibration swap. The engine "
-                "logged identical shapes for all three arms (FLASHINFER backend, attention block size "
-                "1568, mamba page padding 0.13 %, chunked prefill 8192, one FULL cudagraph capture), so "
-                "this is not a backend or block-size switch; see INFERENCE for the likely cause.",
+                f"agreement {window['top1_agreement_rate'] * 100:.1f} %, versus "
+                f"{reboot['mean_kld']:.3e} for the separately measured same-launch reboot. The similar "
+                "magnitudes and overlapping marginal bootstrap intervals do not prove equivalence or "
+                "a zero window effect; this design does not estimate their paired causal difference.",
                 **window,
             },
-            "rope_only_at_matched_window": {
-                "what": "arm NATIVE1M as reference P against arm YARN as Q: window, env var and long "
-                "window code path identical, rope the only intended difference.",
+            "rope_at_matched_window_with_cross_boot_confound": {
+                "what": "arm NATIVE1M as reference P against arm YARN as Q: window, env var and intended "
+                "long-window code path match, while rope differs. The arms were separately booted, so "
+                "the measured cross-boot background remains a confound.",
                 **rope_only,
             },
             "free_running_greedy_agreement": {
@@ -719,15 +722,16 @@ def main() -> None:
             },
             "in_metric_same_server_floor": {
                 "value": replicate["mean_kld"],
-                "reading": "exactly zero. Request-to-request nondeterminism contributes nothing; the "
-                "1.18e-03 cross-boot floor is entirely a boot-to-boot effect.",
+                "reading": "the same-server comparison was exactly zero in this run; the nonzero "
+                "same-launch reboot comparison therefore measures boot-associated variation in this setup.",
             },
-            "window_change_alone": {
+            "native1m_comparison_with_cross_boot_confound": {
                 "value": window["mean_kld"],
                 "penalty_multiple": m / window["mean_kld"],
-                "reading": f"raising --max-model-len to 1,000,000 with native rope costs "
-                f"{window['mean_kld']:.3e}, statistically indistinguishable from the "
-                f"{reboot['mean_kld']:.3e} cross-boot floor. The window is free; the rope is not.",
+                "reading": f"the separately booted 1M-native arm differs from NATIVE by "
+                f"{window['mean_kld']:.3e}, close to the {reboot['mean_kld']:.3e} same-launch reboot "
+                "control. Overlapping marginal intervals are not an equivalence test: the experiment "
+                "does not identify a zero causal window or KV-pool effect.",
             },
             "converter_nondeterminism_envelope": {
                 "value": floor_env,
@@ -792,9 +796,9 @@ def main() -> None:
             "generalisation": "one probe set, one build, one card, 48 prompts, 384 positions, prose and "
             "JSON drawn from our own repository. Do not read the exact mean as a universal constant for "
             "Qwen3.8, and do not read the bucket ordering as settled.",
-            "direction_of_the_truncation_bias": "top-20 truncation and shared-support intersection both "
-            "discard divergence rather than create it, so the true full-vocabulary penalty is more "
-            "likely larger than this number than smaller.",
+            "direction_of_the_truncation_bias": "Top-k truncation plus separate "
+            "renormalization can move KL in either direction; the omitted tail "
+            "mass is reported, but no full-vocabulary bound is claimed.",
         },
         "recommendation": {
             "verdict": "Run the production endpoint at 262,144 NATIVE by default. Do not make 1M-YaRN "
@@ -804,14 +808,14 @@ def main() -> None:
             "justified_by": [
                 f"Measured: flipping the default to Qwen's 1M-YaRN recipe moves the next-token "
                 f"distribution by {m:.3e} mean top-20 KLD, p99 {penalty['p99_kld']:.3e}, on prompts of "
-                "512 to 32,768 tokens - the range our own traffic actually uses. That is "
+                "512 to 32,768 tokens - the range this probe measures. That is "
                 f"{m / reboot['mean_kld']:.1f}x the cross-boot resolution floor of the same estimator, "
                 "so it is a resolved effect and not noise.",
-                f"Measured: the cost is the rope, not the window. Native rope at the 1M window costs "
-                f"{window['mean_kld']:.3e}, on top of a {reboot['mean_kld']:.3e} floor; the rope change "
-                f"at a matched 1M window costs {rope_only['mean_kld']:.3e}. So the 1M WINDOW is free and "
-                "there is no fidelity argument against a long-window endpoint as such - only against "
-                "static YaRN on the default path.",
+                f"Measured: native rope in the separately booted 1M-window arm differs by "
+                f"{window['mean_kld']:.3e}, close to the {reboot['mean_kld']:.3e} same-launch reboot "
+                f"control; the rope comparison at a matched 1M window is {rope_only['mean_kld']:.3e}. "
+                "The rope-associated difference is clearly larger than the observed background, but "
+                "the experiment does not prove that changing the window has zero causal effect.",
                 f"Measured: top-1 token agreement falls to "
                 f"{penalty['top1_agreement_rate'] * 100:.1f} % against "
                 f"{reboot['top1_agreement_rate'] * 100:.1f} % for a plain reboot, and "
@@ -830,14 +834,14 @@ def main() -> None:
                 "open-source framework implements it statically. This measurement is consistent with "
                 "that advice and puts a number behind it.",
             ],
-            "why_not_yarn_by_default": "it taxes 100 % of traffic to serve the fraction of requests "
-            "above 262,144 tokens, and the tax is resolved, length-independent and comparable to our "
-            "worst deliberate calibration regression. The dual-endpoint alternative costs routing, not "
-            "fidelity.",
-            "why_not_native_only": "requests above 262,144 tokens cannot be served at all without YaRN, "
-            "and this receipt found the 1M window itself to be free. If such requests exist, refusing "
-            "them is a product decision, not a fidelity one - hence dual endpoints rather than "
-            "native-only.",
+            "why_not_yarn_by_default": "the measured short-context distribution shift applies to every "
+            "request sent through static YaRN in this probe range. A separately routed long-context "
+            "endpoint confines that measured shift to traffic that deliberately selects it; the "
+            "operational cost of dual endpoints was not measured.",
+            "why_not_native_only": "the NATIVE1M arm proves that this engine starts with native rope and "
+            "a 1,000,000-token configured window, but no request above 262,144 tokens was tested. It "
+            "therefore does not establish long-context quality for native extrapolation. YaRN is Qwen's "
+            "documented extension; either method still needs task-level qualification above 262,144.",
             "what_would_change_this": "a downstream task measurement showing the top-1 disagreement does "
             "not degrade task success (plausible, given that every disagreement landed on a position the "
             "reference itself was unconfident about), or a >262k workload large enough that routing "
@@ -899,8 +903,11 @@ def main() -> None:
             },
         },
     }
-    Path(args.out).write_text(json.dumps(payload, indent=1))
-    print(f"wrote {args.out}")
+    out_path = Path(args.out)
+    tmp_path = out_path.with_name(out_path.name + ".tmp")
+    tmp_path.write_text(json.dumps(payload, indent=1, allow_nan=False))
+    tmp_path.replace(out_path)
+    print(f"wrote {out_path}")
     print(
         json.dumps(
             {

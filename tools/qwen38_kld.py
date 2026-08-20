@@ -105,9 +105,6 @@ def build_llm(args, **overrides) -> LLM:
         trust_remote_code=args.trust_remote_code,
         tensor_parallel_size=args.tensor_parallel_size,
         gpu_memory_utilization=args.gpu_memory_utilization,
-        # Full prompt-logprob extraction needs several full-vocabulary
-        # temporaries; do not let KV eat the spare VRAM.
-        kv_cache_memory_bytes=512 * 1024 * 1024,
         dtype="bfloat16",
         kv_cache_dtype=args.kv_cache_dtype,
         load_format="safetensors",

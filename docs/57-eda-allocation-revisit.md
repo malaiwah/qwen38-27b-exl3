@@ -10,12 +10,13 @@ The question: should the error-driven-allocation (EDA) approach from
 be folded into the next trellis build of the flagship checkpoint
 ([`malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated`](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated))?
 
-**Short answer.** Fold the *methodology*, not the *solved allocation*. The
-published EDA allocation regresses fidelity against hydrated by +0.000366 mean
-KLD (our suite), and its bit-shift direction contradicts our attribution
-physics. A future rebuild should re-solve with the sign-correct weighting
-candidate, but should not be scheduled solely for EDA while the mixed-GPTQ
-requant lane is unmeasured on our suite.
+**Short answer.** Fold the *measurement infrastructure*, not the solved
+allocation or any currently proposed reweighting. The published `rel`
+allocation regresses fidelity against hydrated by +0.000366 mean KLD, and the
+later re-solve shows `sqrt_energy` moves bytes in the same harmful
+attention→MLP direction. `abs` reverses that direction but has 2.52x scale
+uncertainty. A future build needs a propagation-aware objective and an
+independent validation split.
 
 ---
 
@@ -149,31 +150,21 @@ similar speed.
 
 ---
 
-## 3. Does the solved allocation agree with our attribution physics?
+## 3. Does the solved allocation agree with the measured role sensitivity?
 
-This is the key analytical question. **No — it contradicts it, and the
-contradiction is the most informative thing about the experiment.**
+No. The useful comparison is empirical, not a proof of one propagation
+mechanism:
 
-### Our attribution physics (measured, multiple receipts)
-
-- **MLP error is nearly free / additive.** The additive KLD model validated on
-  held-out predictions at -1.9% and -6.0% for MLP groups
-  (`receipts/glm52-transfer-2026-08-19.md`; `receipts/balanced-profile-2026-08-19.md`
-  §"Third validation of the additivity model"). Quantizing all 64 MLP layers to
-  NVFP4 costs the third-party harness nothing (0.002666 vs 0.002670 attn-only,
-  `receipts/discord-leaderboard-2026-08-19.md` §1).
-- **Attention/GDN error dominates KLD via KV compounding.** `self_attn`
-  under-predicted by +46% because attention error propagates through the KV
-  cache and is re-read at every later position, compounding over the scored
-  window instead of staying per-position
-  (`receipts/glm52-transfer-2026-08-19.md`; `receipts/selfattn-fp4-additivity-failure-2026-08-19.md`).
-  MTP acceptance also couples to attention fidelity
-  (`receipts/discord-leaderboard-2026-08-19.md` §1).
-- **The budget consequence:** with a measured floor of 0.003412, only
-  `self_attn` (7% of parameters) fits the post-floor KLD budget;
-  prefill-grade throughput and trellis-grade fidelity are mutually exclusive on
-  31.4 GiB (`receipts/kld-axis-conclusion-2026-08-19.md`; PROGRESS.md
-  2026-08-19).
+- MLP-group additivity predictions miss held-out combinations by −1.9 % and
+  −6.0 %. A third-party all-MLP versus attention-only comparison differs by
+  0.000004 without a published interval, so MLP damage is **small in these
+  tests**, not proven free.
+- `self_attn` misses a first-order additive prediction by +46 %. Reuse through
+  KV state is a plausible explanation, but the experiment does not isolate it;
+  a context/reuse intervention is still required.
+- The 31.4 GiB frontier conclusion is conditional on the tested formats and
+  additive attribution model. It is a strong negative for those paths, not an
+  architectural impossibility proof.
 
 ### What the solver actually did
 
@@ -187,40 +178,28 @@ At the role level, the solver moved bytes **from attention to MLP**:
 | mlp_up_proj | +0.390 GB |
 | mlp_down_proj | −0.056 GB |
 
-Attention (full + linear) lost ~0.46 GB; MLP (gate + up) gained ~0.51 GB. This
-is the **opposite** of what attribution physics predicts: the solver invested
-bits where error is nearly free (MLP) and withdrew bits from where error
-compounds (attention/GDN).
+Attention (full + linear) lost ~0.46 GB; MLP (gate + up) gained ~0.51 GB.
+That direction conflicts with the measured role-level sensitivity: attention
+changes were costlier than MLP changes in the tested combinations.
 
 The within-attention split is nuanced — q_proj and in_proj_qkv were demoted
 while k/v/o were promoted in some layers — but the net role flow is
 unambiguous: attention shrank, MLP grew.
 
-### Why: the `rel` objective is blind to KV compounding
+### Why the `rel` objective fails this reallocation
 
-The `rel` objective weights every module equally in *relative* error. It
-cannot see that attention error compounds through the KV cache while MLP error
-is per-position. The calibration in the HF model card ("The calibration that
-kills the objective") makes this exact: the `rel` rule predicted **−0.000251**
-for the reallocation against a measured **+0.000366** — a **sign error**. Two
-of four candidate weightings (`rel` and `numel`) got the sign wrong on the
-reallocation; only `abs` (out_energy) and `sqrt_energy` (sqrt(out_energy)) got
-the sign right on all four calibration pairs.
+The `rel` objective weights every module equally in relative proxy error. It
+has no role, depth, downstream-state or multi-module interaction term. On the
+measured reallocation it predicted **−0.000251** against an observed
+**+0.000366**: an empirical sign error. `out_energy` spans 26,000x across roles,
+so weighting is not cosmetic, but the later re-solve also shows no scalar
+weighting is a validated repair.
 
-`out_energy` spans 26,000x across roles (HF model card README), so the
-weighting choice is not cosmetic. The `rel` rule, by giving every module equal
-weight, systematically over-values large-MLP modules (high parameter count,
-large absolute error term) and under-values the compounding effect of attention
-error.
-
-### The resolution: the two lines of evidence are in tension, and the tension resolves against the solver
-
-The EDA experiment is, in effect, an unintended independent test of the
-attribution physics. A solver that did not model KV compounding moved bits the
-wrong way — from attention to MLP — and lost by a bounded, interval-excluding
-margin. That is exactly what "attention error dominates, MLP error is nearly
-free" would predict. The build's failure corroborates the attribution physics;
-the solver's allocation direction does not.
+The EDA build therefore falsifies the claim that minimizing this proxy
+monotonically improves final KLD at fixed bytes. Its attention→MLP direction is
+consistent with the separate role-sensitivity results and the KV-compounding
+hypothesis; it does not independently prove that hypothesis or identify which
+of the 175 module changes caused the loss.
 
 ---
 
@@ -248,18 +227,14 @@ The only same-harness ordering we have for EDA is the 8.7% win over the
 flagship), EDA is **worse** on our suite by 13.6%. So the current `rel`-solved
 allocation has a negative expected gain against the incumbent.
 
-The realistic opportunity is a **re-solve with the `sqrt_energy` weighting**
-(w_m = sqrt(out_energy)), the only candidate that got the sign right on all
-four calibration pairs. `[INFERENCE]` A `sqrt_energy` solve would shift bits
-toward high-out_energy modules — which, given attention's KV-compounding, is
-the direction the attribution physics favours. But `sqrt_energy` is a factor of
-2.5 uncertain in magnitude (worst leave-one-out ratio 2.47x, HF model card
-calibration table) and was selected knowing this run's answer, so it is a
-*pre-registrable candidate*, not a result. Its validation must include a
-between-role reallocation delta — and this experiment is now that third
-calibration point. The expected gain from a `sqrt_energy` rebuild is therefore
-bounded above by the 8.7% ordering (against online) and is of unknown sign
-against hydrated until measured.
+The no-GPU re-solve in `receipts/eda-resolve-2026-08-19.md` closes the
+`sqrt_energy` idea: it still removes 156 MB from attention/GDN, the same
+direction as the failed `rel` allocation. `abs` is the only tested weighting
+that moves bytes toward attention/GDN (+100 MB), but it has the worst
+scale-consistency error (2.52x) and funds the move by stripping 1.34 GB from
+`down_proj`. No KLD prediction transfers across these objective units. The
+real opportunity is therefore a propagation-aware objective, not another
+scalar reweighting of the same module-local proxy.
 
 ### Cost of a full requant
 
@@ -316,38 +291,30 @@ remains the serving path and an EDA re-solve is the best in-family lever.
    physics, and the calibration diagnosed the `rel` objective's sign error as
    the cause. Shipping it would be a measured step backwards.
 
-2. **Fold the EDA methodology into any future trellis rebuild that happens for
-   other reasons.** If a rebuild is already scheduled (e.g. for a new base
-   revision, a codebook change, or a ParoQuant pre-rotation trial per
-   `docs/14-paro-assessment.md`), re-solve the allocation with the
-   `sqrt_energy` weighting instead of `rel`, validate against the hydrated
-   recipe on shard 0, and ship only if the paired interval excludes zero in
-   EDA's favour. The solve costs ~1 s and no GPU; the conversion is the only
-   marginal cost and would happen anyway.
+2. **Reuse the EDA infrastructure, not `sqrt_energy`, in any future trellis
+   rebuild.** The ladder parser, exact byte law, solver and paired validation
+   remain useful. The objective must model downstream propagation or be
+   measured end-to-end; none of `rel`, `sqrt_energy` or `abs` is a validated
+   shipping rule.
 
-3. **Do not schedule a rebuild solely for EDA while the GPTQ-mixed lane is
-   unmeasured on our suite.** GPU time is serial. GPTQ-mixed measured 0.002666
-   on the third-party harness — below hydrated's 0.002700 — and addresses the
-   procedure-level error that EDA cannot. Measuring GPTQ-mixed on our own
-   suite is the higher-value next GPU slot. If GPTQ-mixed fails our PP or
-   context criteria, the trellis family remains the serving path and an EDA
-   re-solve becomes the best in-family fidelity lever at that point.
+3. **Do not schedule a rebuild solely for EDA while the GPTQ-mixed lane remains
+   the higher-value format/procedure experiment.** If the trellis family is
+   revisited, pre-register an independent calibration/validation split and a
+   between-role reallocation falsifier.
 
-4. **If a `sqrt_energy` re-solve is run, pre-register it with a between-role
-   reallocation delta in the validation set.** The `rel` objective failed
-   precisely because its two validation deltas were both uniform role-group
-   moves and neither tested a reallocation between roles — the only thing the
-   optimizer does. This experiment is now the third calibration point; a
-   `sqrt_energy` run must include it.
+4. **Do not reuse the scored v5 contexts to tune a replacement objective.**
+   The existing negative remains valid because it loses on the measured set,
+   but a future positive claim needs held-out contexts not used to select the
+   objective or allocation.
 
 ### Conditions summary
 
 | condition | action |
 |---|---|
-| rebuild already scheduled for another reason | re-solve with `sqrt_energy`, validate vs hydrated, ship only if paired CI excludes zero in favour |
+| rebuild already scheduled for another reason | reuse the tooling, but require a propagation-aware or direct-KLD objective and held-out validation |
 | no rebuild otherwise scheduled, GPTQ-mixed unmeasured on our suite | do not schedule a rebuild for EDA; measure GPTQ-mixed first |
-| GPTQ-mixed measured and fails PP/context on our suite | EDA `sqrt_energy` re-solve becomes the best in-family lever; schedule it |
-| GPTQ-mixed measured and passes all criteria on our suite | trellis family is superseded for fidelity; EDA re-solve is lower priority |
+| GPTQ-mixed fails PP/context | trellis remains relevant, but no current EDA weighting is approved |
+| GPTQ-mixed passes all criteria | trellis allocation work is lower priority |
 
 ---
 

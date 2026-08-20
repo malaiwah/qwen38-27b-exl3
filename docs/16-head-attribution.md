@@ -56,11 +56,11 @@ Two caveats worth keeping:
 
 ## Consequence for the budget
 
-The 2.7 GB under the NVFP4-equivalent ceiling should go entirely to the **MLP
-stack**, which owns ~99 % of the measured divergence. `down_proj` K4 to K6 costs
-1.426 GB and targets the projection with the largest per-tensor proxy error
-(2.5e-3 versus 1.1e-3 for `gate_proj`); the remainder buys `gate`/`up` promotions
-on the layers an error-driven allocator picks.
+This ablation rules out spending the 2.7 GB headroom on `lm_head`; it does not
+partition the remaining body error between MLP and attention. The proposed
+`down_proj` promotions were separately motivated by the largest per-tensor proxy
+error (2.5e-3 versus 1.1e-3 for `gate_proj`) and therefore still required direct
+body ablations or an error-driven allocation measurement.
 
 ## Correction (independent review, 2026-08-14)
 

@@ -24,11 +24,13 @@
 >
 > **Two more artifacts published 2026-08-16, both from pre-registered conversions.**
 > [`malaiwah/Qwen3.8-27B-EXL3-K6-parity`](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K6-parity)
-> spends the bytes GGUF `Q6_K` spends on the body - the hydrated recipe with `gate_proj`/`up_proj`
-> promoted K5 -> K6 - and **matches it**: mean KLD **0.001634** [0.001541, 0.001742], between
-> `Q6_K`'s net-of-floor 0.001528 and its measured 0.002035, beating our hydrated build on 511 of
-> 512 contexts (-39.5 % for +1.348 GiB) while carrying **2.31 GiB less transformer body** than
-> `Q6_K`. So the 6-bit-class loss was a byte gap, not an engineering one.
+> uses nearly the same file-byte budget as GGUF `Q6_K` by promoting
+> `gate_proj`/`up_proj` K5 → K6. It measures **0.001634** [0.001541, 0.001742]
+> under vLLM versus `Q6_K` at **0.002035** under llama.cpp, while beating hydrated
+> on 511/512 contexts (-39.5 % for +1.348 GiB) and carrying **2.31 GiB less
+> transformer body** than `Q6_K`. The cross-engine control proves these are
+> complete-pipeline results; it cannot be subtracted to establish format parity
+> or prove that the earlier gap was caused by bytes.
 > [`malaiwah/Qwen3.8-27B-EXL3-S16-V-research`](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-S16-V-research)
 > is the opposite: the **rejected** sub-4-bit 16 GB candidate at **0.045374** [0.041959, 0.049351],
 > 1.5x its pre-registered NO threshold, losing 512/512 contexts to K4 (4.39x) and to the context
@@ -165,7 +167,7 @@ podman run --replace -d \
          --served-model-name Qwen3.8-27B --trust-remote-code \
          --host 0.0.0.0 --port 8000 \
          --quantization exl3 \
-         --quantization-config "{\"linear\":{\"weight\":\"mxfp8\"},\"ignore\":[\"re:.*visual\\..*\",\"re:.*in_proj_a$\",\"re:.*in_proj_b$\",\"re:.*mtp\\..*\",\"lm_head\"]}" \
+         --quantization-config "{\"linear\":{\"weight\":\"mxfp8\"},\"ignore\":[\"re:.*visual\\..*\",\"re:.*in_proj_a$\",\"re:.*in_proj_b$\",\"re:.*in_proj_ba$\",\"re:.*mtp\\..*\",\"lm_head\"]}" \
          --attention-backend TRITON_ATTN \
          --gpu-memory-utilization 0.945 --kv-cache-dtype fp8_e4m3 \
          --max-model-len 238400 --max-num-seqs 4 --max-num-batched-tokens 3072 \
@@ -261,24 +263,25 @@ contexts and the same 1,048,064 positions every candidate above saw** (`tools/gg
 `tools/build_llamacpp.sh`; receipt `receipts/cross-engine-comparator.json`, per-candidate reports
 `receipts/gguf-report-{q8_0,q6_k,q5_k_xl}.json`).
 
-| candidate | engine | measured mean KLD | net of engine floor | top-1 | p99.9 | serialized |
-|---|---|---:|---:|---:|---:|---:|
-| GGUF `Q8_0` | llama.cpp | 0.001087 | ~0.000579 | 98.53 % | 0.0351 | 27.05 GiB |
-| GGUF `Q6_K` | llama.cpp | 0.002035 | ~0.001528 | 97.98 % | 0.0794 | 21.31 GiB |
-| hydrated EXL3 | vLLM | **0.002700** | n/a, same engine | 97.80 % | 0.1313 | 20.12 GiB payload |
-| online K5/K6 EXL3 | vLLM | **0.003141** | n/a, same engine | 97.61 % | 0.1447 | — |
-| context EXL3 | vLLM | **0.003409** | n/a, same engine | 97.55 % | 0.1632 | 19.27 GiB payload |
-| GGUF `UD-Q5_K_XL` | llama.cpp | 0.004444 | ~0.003936 | 97.20 % | 0.2144 | 18.83 GiB |
-| official FP8 | vLLM | 0.005197 | n/a, same engine | 96.92 % | 0.2440 | 28.51 GiB resident |
-| K4 EXL3 | vLLM | 0.010345 | n/a, same engine | 95.91 % | 0.5576 | — |
-| `unsloth/Qwen3.8-27B-NVFP4` | vLLM | 0.030115 | n/a, same engine | 93.16 % | 1.6228 | 22.57 GB checkpoint |
+| candidate | engine | measured mean KLD | top-1 | p99.9 | serialized |
+|---|---|---:|---:|---:|---:|
+| GGUF `Q8_0` | llama.cpp | 0.001087 | 98.53 % | 0.0351 | 27.05 GiB |
+| GGUF `Q6_K` | llama.cpp | 0.002035 | 97.98 % | 0.0794 | 21.31 GiB |
+| hydrated EXL3 | vLLM | **0.002700** | 97.80 % | 0.1313 | 20.12 GiB payload |
+| online K5/K6 EXL3 | vLLM | **0.003141** | 97.61 % | 0.1447 | — |
+| context EXL3 | vLLM | **0.003409** | 97.55 % | 0.1632 | 19.27 GiB payload |
+| GGUF `UD-Q5_K_XL` | llama.cpp | 0.004444 | 97.20 % | 0.2144 | 18.83 GiB |
+| official FP8 | vLLM | 0.005197 | 96.92 % | 0.2440 | 28.51 GiB resident |
+| K4 EXL3 | vLLM | 0.010345 | 95.91 % | 0.5576 | — |
+| `unsloth/Qwen3.8-27B-NVFP4` | vLLM | 0.030115 | 93.16 % | 1.6228 | 22.57 GB checkpoint |
 
-The **cross-engine floor** is measured the same way, not assumed: the unquantized BF16 GGUF
-against the vLLM BF16 reference, identical tokens, identical shared head, the same 512 contexts,
-reads **0.000507** mean, 99.07 % top-1, p99.9 0.0113
-(`receipts/gguf-report-engine-floor.json`). Every GGUF row carries that term; no vLLM row does.
-KL is not additive, so the net column is an estimate and not an identity — the measured GGUF value
-is an upper bound, the net figure the naive lower one. The two `—` cells are the builds that ship
+The **cross-engine BF16 control** is measured the same way, not assumed:
+llama.cpp against the vLLM BF16 reference on identical tokens, the shared head
+and the same 512 contexts reads **0.000507** mean, 99.07 % top-1 and p99.9
+0.0113 (`receipts/gguf-report-engine-floor.json`). It proves the engine is a
+confounder. KL is neither additive nor a metric, so this value cannot be
+subtracted from a candidate KL and provides no quantization-only upper or lower
+bound. The two `—` cells are builds that ship
 BF16 attention for the runtime to encode at load, so their disk bytes are not a like-for-like
 payload; payload figures are `immutable_payload_bytes` from `receipts/collection-index.json`
 (hydrated 21,610,916,123 B = 20.127 GiB, context 20,696,033,532 B = 19.275 GiB; the table truncates
@@ -290,15 +293,15 @@ tail table above quotes the **bin-bounded cumulative estimate** from the 560-bin
 about 5.6 % wide), which is why hydrated reads 0.1319 there and 0.1313 here — each exact value lies
 inside the bin its estimate names. The two differ by construction, not by measurement.
 
-What that table says, in the order that matters:
+What the table supports is complete-pipeline ordering, not format attribution:
 
-- **At the 6-bit operating point GGUF `Q6_K` is genuinely better than our best build** — 0.001528
-  net at 21.31 GiB against hydrated's 0.002700 at 20.12 GiB of payload. We lose that comparison
-  on our own suite, and it is the first measurement here where an off-the-shelf artifact beats
-  the recipe.
-- **At the 5-bit operating point our context edition wins** — 0.003409 at 19.27 GiB against
-  `UD-Q5_K_XL`'s 0.003936 net at 18.83 GiB, about 13 % better fidelity for **0.445 GiB** more
-  payload.
+- At the nominal 6-bit point, llama.cpp `Q6_K` measures **0.002035** and vLLM
+  hydrated measures **0.002700** on the same contexts.
+- At the nominal 5-bit point, vLLM context measures **0.003409** and llama.cpp
+  `UD-Q5_K_XL` measures **0.004444**.
+
+Both comparisons are cross-engine. They are evidence about the tested
+artifact-plus-engine pipelines; neither isolates the quantization format.
 
 **Correction, 2026-08-16 — the byte axis in the table above is not one axis, and every mixed
 comparison flattered us.** A GGUF row is the **whole file** of a **text-only** artifact; our row is
@@ -323,27 +326,27 @@ two for us:
 
 1. **6 bits, `Q6_K` against hydrated: our sentence understated their byte spend roughly threefold.**
    "+1.186 GiB more file" is +1.198 on tensors and **+3.634 GiB of transformer body (23.1 % more than
-   ours)**. Their fidelity win at 6 bits stands exactly as published - it is the *price* we
-   mis-stated, in our own favour.
+   ours)**. Their lower complete-pipeline KL remains measured; the engine-confounded
+   comparison does not establish a format-only fidelity win.
 2. **6 bits, deployed: a multimodal `Q6_K` deployment is 22.18 GiB against our 20.13 GiB whole tree,
    so ours is 2.053 GiB smaller** and needs no second file.
-3. **5 bits, `UD-Q5_K_XL` against the context edition: this claim was wrong against us.** We do not
-   pay "0.445 GiB more" for the win - on transformer body **they** carry 2.148 GiB more (+14.4 %),
-   and our deployed multimodal artifact is 0.422 GiB **smaller**.
+3. **5 bits, `UD-Q5_K_XL` against the context edition: the old byte claim was wrong against us.**
+   We do not pay "0.445 GiB more" for the lower complete-pipeline KL — on transformer body
+   **they** carry 2.148 GiB more (+14.4 %), and our deployed multimodal artifact is
+   0.422 GiB **smaller**. The KL comparison remains engine-confounded.
 4. **8 bits, `Q8_0` against online K5/K6: the bodies agree to 1.7 %** (24.526 against 24.119), the
-   most format-comparable pair on the table, and **they win it cleanly**. That row is the reason the
-   others are worth reading: this is not a table where every axis favours the author.
+   most byte-comparable pair on the table, and the `Q8_0` complete pipeline measures lower KL.
+   Format attribution still requires a same-engine capture.
 
 **Rule from here on, and it is printed rather than footnoted:** "at equal file bytes", "at equal
 tensor bytes", "at equal transformer body" and "as a deployed multimodal artifact" are four different
 claims, and whichever one a sentence means is written into the sentence. No fidelity number changes.
-- **`Q8_0` is the fidelity leader**, 0.001087 at 27.05 GiB, and only about twice the engine floor,
-  so its own number sits near the resolution limit of any cross-engine comparison: the net column is
-  an estimate and not an identity, so **no ordering closer than a factor of two should be pressed
-  against `Q8_0`**. Anyone who can spare 27 GiB of weights and does not need a long context on a
-  32 GB card should use it.
-- **Official FP8 is beaten by every GGUF point at or above 5 bits**, so our published "34-48 %
-  below FP8" is true and a weaker achievement than it sounds.
+- **`Q8_0` has the lowest measured complete-pipeline KL**, 0.001087 at 27.05 GiB.
+  Its engine differs from every vLLM row, so no quantization-only ordering is
+  inferred from the 0.000507 BF16 control.
+- **Every GGUF point at or above 5 bits measures lower complete-pipeline KL than
+  official FP8.** This makes our "34-48 % below FP8" headline a weaker
+  achievement than it sounds, while remaining a cross-engine observation.
 - **K4 is the weakest of our own builds**, worse than every GGUF measured here and worse than
   official FP8. The one row it beats is `unsloth`'s NVFP4.
 - **The other 4-bit-weight artifact is far behind.** `unsloth/Qwen3.8-27B-NVFP4` reads
@@ -464,7 +467,7 @@ See [PROGRESS.md](PROGRESS.md) for the full session record.
 | [docs/39-chat-template-audit.md](docs/39-chat-template-audit.md) | every chat template in this model family captured with revision and sha256, diffed by named construct, and the verdict that ours is byte-identical to official; the community "fixed" template measured losing tool-call arguments under `qwen3_coder`, and the loudest complaint traced to the 2.4T flagship's template rather than the 27B's |
 | [docs/42-kld-method.md](docs/42-kld-method.md) | **the KLD method of record**: the metric, the shared BF16 head and why, the capture point, the suite and its contamination policy, the ladder, the bootstrap and the tail histogram, the harness-revision pin, how to re-derive a published number on a CPU in seconds, every floor that bounds an absolute value, and the claim boundary |
 | [docs/14-paro-assessment.md](docs/14-paro-assessment.md) | ParoQuant (Pairwise Rotation Quantization, [arXiv:2511.10645](https://arxiv.org/abs/2511.10645)) assessed: a pre-quantization transform orthogonal to EXL3, not a comparator; the checkpoint is INT4-linear and protocol-incomparable, the learned rotation could replace our fixed Hadamard — follow-up in [docs/13](docs/13-learned-rotations-feasibility.md) |
-| [docs/57-eda-allocation-revisit.md](docs/57-eda-allocation-revisit.md) | should the error-driven allocation from `Qwen3.8-27B-EXL3-EDA-research` fold into the next trellis build of the flagship K5K6: the solver's `rel` objective, the 8.7% third-party ordering, the contradiction with attribution physics (solver moved bits attention→MLP, the wrong direction), and the recommendation to fold the methodology (re-solve with `sqrt_energy`) but not schedule a rebuild solely for it while the GPTQ-mixed lane is unmeasured |
+| [docs/57-eda-allocation-revisit.md](docs/57-eda-allocation-revisit.md) | the error-driven allocation revisit, including the later re-solve that refuted `sqrt_energy` and left a compounding-aware objective as the next defensible in-family method |
 | [docs/58-qwen36-quant-prior-art.md](docs/58-qwen36-quant-prior-art.md) | prior art of per-module bitrate attribution in the Qwen 3.5/3.6 generation: llama.cpp `use_more_bits` U-shaped layer heuristic (first+last 1/8 promoted, attn_v special-cased as "more sensitive"), EXL2 Frobenius-norm simulated annealing vs EXL3 direct-KLD greedy optimizer with U-shaped `allocation.py` layer term, GDN-at-higher-precision as standard NVFP4 practice (driven by correctness bug not measurement), Unsloth finding attn sensitive for hybrid archs (direction matches our physics, mechanism not diagnosed), no published early-vs-late KLD experiment, and five concrete inspirations with cost and falsification |
 
 Tooling in [tools/](tools/) is what produced the evidence: an unprivileged OCI image
@@ -515,9 +518,9 @@ collection index are these files:
 - [x] Exact tail now aggregable for future runs: a fixed log-spaced KLD histogram in `tools/fidelity.py` (`qwen38-fidelity-report/2`) plus bin-bounded cumulative quantiles in `tools/kld_aggregate.py`; this run kept only per-shard percentiles and the exact global maximum, and says so in its receipts
 - [x] First public-benchmark matrix, all six models: paired MMLU-Pro (70 questions, pinned `TIGER-Lab/MMLU-Pro@b189ec76`) — BF16 **57/70**, context **58/70** at **56/57** retention (Wilson lower **90.7 %**, the only candidate clearing the pre-registered 0.90 bar), K4 **57/70** and official FP8 **56/70** at **55/57** (88.1 %), hydrated **56/70** and online K5/K6 **55/70** at **54/57** (85.6 %); the four shortfalls are a 70-item power limit — 56/57 is the smallest count that can clear 0.90 — not a broken build, so the next step is item volume and task diversity
 - [x] Collection index published: `receipts/collection-index.json` from `tools/collection_index.py`, four immutable rows, receipt-traced fields, one disclosed divergence left unfixed rather than rewriting a published receipt
-- [x] Comparator breadth (F2) closed by measurement, including the unflattering half: GGUF `Q8_0` **0.001087**, `Q6_K` **0.002035** and `UD-Q5_K_XL` **0.004444** scored on shard 0 of the v5 suite through the same shared BF16 head, against a measured llama.cpp-versus-vLLM engine floor of **0.000507** — so at the 6-bit point `Q6_K` (0.001528 net, 21.31 GiB) **beats our best build** (0.002700, 20.12 GiB payload), at the 5-bit point our context edition (0.003409, 19.27 GiB) is ~13 % better than `UD-Q5_K_XL` (0.003936 net, 18.83 GiB), and `Q8_0` leads on fidelity at 27.05 GiB (`receipts/cross-engine-comparator.json`)
+- [x] Comparator breadth (F2) closed by measurement: GGUF `Q8_0` **0.001087**, `Q6_K` **0.002035** and `UD-Q5_K_XL` **0.004444** were scored on shard 0 of the v5 suite through the shared BF16 head. The unquantized llama.cpp-versus-vLLM control is **0.000507** and is diagnostic, not subtractable; cross-engine rows therefore compare complete pipelines and do not isolate quantization format (`receipts/cross-engine-comparator.json`)
 - [x] The largest cross-protocol objection bounded instead of argued: restricting scoring to their 256-token left-context floor lowers every candidate's mean by 1.3-2.1 % and second-half-only by 3.9-4.9 %, uniformly, changing no ordering (`receipts/scored-window-offset.json`)
-- [x] **Their protocol run for cross-citation**: `llama-perplexity --kl-divergence` on wikitext-2 raw at ctx 512, 147,900 scored positions, base PPL 6.950230 ± 0.044933 — `Q8_0` **0.000926**, `Q6_K` **0.002286**, `UD-Q5_K_XL` **0.004426**, the **same ordering** as our suite at 1.60x / 1.50x / 1.12x our net-of-floor values, with their harness floor measured on our own hardware at 5.6e-5 to 8.0e-5 and tokenisation eliminated as an explanation (bit-identical 297,194-token streams). Also found: **PPL does not reproduce the KLD ordering** (`receipts/wikitext-kld-run-a.json`, [docs/35](docs/35-external-protocol-comparability.md))
+- [x] **Their protocol run for cross-citation**: `llama-perplexity --kl-divergence` on wikitext-2 raw at ctx 512, 147,900 scored positions, base PPL 6.950230 ± 0.044933 — `Q8_0` **0.000926**, `Q6_K` **0.002286**, `UD-Q5_K_XL` **0.004426**, with the **same ordering** as our suite. The absolute values and ratios are protocol-specific; their harness floor was measured on our hardware at 5.6e-5 to 8.0e-5 and tokenisation was bit-identical over 297,194 tokens. PPL does **not** reproduce the KLD ordering (`receipts/wikitext-kld-run-a.json`, [docs/35](docs/35-external-protocol-comparability.md))
 - [x] **`unsloth/Qwen3.8-27B-NVFP4` measured on our suite**, the comparator readers ask for most: **0.031059** [0.027916, 0.034795] at 92.90 % top-1 over 10,480,640 positions, losing **5,120 of 5,120** contexts to both the context edition and official FP8; 2.9x K4 at the same 4-bit weight class (`receipts/kld5-10M-nvfp4.json`, `receipts/kld5-1M-paired-nvfp4.json`)
 - [x] **Capture and replay are bit-reproducible**: 5,240,320 scored positions identical across independent runs, separate model loads and three harness generations, under eager single-sequence capture — which makes every published KLD number re-derivable rather than merely re-runnable (`receipts/capture-determinism.json`)
 - [x] **The converter is not deterministic, and it does not matter for fidelity.** A fresh conversion of the published hydrated recipe returns 13 of 16 pinned files identical and three safetensors shards differing in tensor bytes only — 399 of 409 quantized modules, 97.6 %, at 41-92 % of bytes each — with identical headers, offsets, shard sizes and per-role byte totals. That *sibling* then scored **-3.755e-06** paired against the published checkpoint, 95 % [-2.854e-05, +2.062e-05] bracketing zero, 257 contexts to 255. So the recipe determines fidelity to within this protocol's resolution and the published bytes are the artifact (`receipts/converter-determinism.json`, `receipts/sibling-rebuild-fidelity.json`)

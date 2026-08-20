@@ -8,9 +8,9 @@ physical RTX 5090 (32 GB, 600 W) with the Gilded Gnosis vLLM fork, `n=3` boots p
 profile, MTP acceptance reported beside every decode number, and KLD measured on
 512 held-out contexts against the BF16 reference.
 
-__omp_shell("[Speed vs fidelity](charts/profiles-tradeoff.png)")
+![Speed vs fidelity](assets/profiles-tradeoff.png)
 
-__omp_shell("[What each profile delivers](charts/profiles-throughput.png)")
+![What each profile delivers](assets/profiles-throughput.png)
 
 ### The three profiles
 
@@ -50,18 +50,14 @@ copy-pasteable `podman run` example with the full flag set.
 
 ### How the fidelity compares to other quantisations
 
-__omp_shell("[Fidelity vs other quants](charts/fidelity-vs-quants.png)")
+![Fidelity vs other quants](assets/fidelity-vs-quants.png)
 
-`PROFILE=fidelity` serves at **0.003405** — within 26 % of this checkpoint's own
-offline figure (0.002700) and **35 % below** the official
-[`Qwen/Qwen3.8-27B-FP8`](https://huggingface.co/Qwen/Qwen3.8-27B-FP8) (0.005294,
-measured on a different 10.48 M-position protocol — not comparable to our
-512-context serving numbers) while resident in 18.8 GiB instead of 28.6 GiB.
-`PROFILE=balanced` (0.005672) lands in the same range as official FP8 — though
-the two numbers come from different protocols, so no statistical equivalence is
-claimed — at 1.3x the prefill of `fidelity`.
-`PROFILE=throughput` trades that away: at 0.063759 it is 2x worse than
-third-party NVFP4 (0.031059), which is the honest price of 4-bit activations.
+On the same 512-context shard-0 protocol, `PROFILE=fidelity` measures
+**0.003405** versus official `Qwen/Qwen3.8-27B-FP8` at **0.005197** and
+Unsloth NVFP4 at **0.030115**. `PROFILE=balanced` measures 0.005672.
+`PROFILE=throughput` trades fidelity for speed at 0.063759. These comparisons
+use identical contexts and the shared BF16 head; do not substitute the
+different 10.48M-position cumulative values into their ratios.
 
 Long-context needle retrieval on the `fidelity` profile (fixed harness, single
 needle per context): **8/8 at 2k, 8/8 at 100k, 8/8 at 195k — 24/24**. This is
@@ -96,7 +92,7 @@ profiles, with the reason:
 | `VLLM_EXL3_FOLD_FP32_BUDGET_MB=48` | **+5.9 %** (1,858 → 1,967), **bit-identical** output | measured optimum; 64 MB and above fall off a cliff (L2 residency). Bigger is *worse* |
 | `VLLM_EXL3_B12X_MIN_M=128` | essay **+3.4 %**, MTP acceptance **+8.2 %** (0.281 → 0.304), prefill unchanged | B12X wins prefill, the fused kernel wins decode; route by row count |
 | `VLLM_EXL3_FP6_LAYER_RANGE=lo-hi` | ~**0.029 GiB** of KV per converted layer | turns precision into a continuous memory dial instead of all-or-nothing |
-| MTP depth 4 / 6 / 8 / 10 | flat: 185.3 / 185.0 / 185.2 / 184.8 | draft depth is **not** the decode limiter |
+| MTP depth 4 / 6 / 8 / 10 | flat on the tested short prompt: 185.3 / 185.0 / 185.2 / 184.8 | no general depth-independence claim |
 
 ### One measured relationship worth knowing
 
@@ -109,6 +105,23 @@ Same runner, same draft depth, same scheduler — only the weight format differs
 | trellis + `self_attn` FP4 | 0.967 | 199.5 tok/s |
 | all-FP4 | 0.930 | 187.4 tok/s |
 
-A less faithful target model disagrees with its own draft head more often, and every
-rejected draft token is a wasted verify slot. Quantising harder does not only cost
-accuracy — past a point it costs throughput too.
+Lower-fidelity weight formats showed lower draft acceptance and decode in this
+controlled profile matrix. That association is consistent with rejected drafts
+costing verify slots; the three-format comparison does not isolate causality.
+Quantising harder can therefore cost throughput as well as fidelity on this
+stack.
+
+### Chat-template and client contract
+
+- The repo ships the official Qwen3.8-27B template in both
+  `chat_template.jinja` and `tokenizer_config.json`; Transformers 5.15 gives the
+  standalone file precedence. Override with `--chat-template`, not by editing
+  only the tokenizer config.
+- The template accepts `reasoning_effort` values `xhigh` (default), `medium`
+  and `low`. Echo assistant `reasoning_content` into subsequent history turns
+  to preserve the reusable prefix.
+- Only a leading system message is accepted. Merge later system instructions
+  into the first system message before rendering history.
+- Tool-call argument values use an unescaped XML wire format. Reject literal
+  `</parameter>` and `<parameter=` delimiters before replaying assistant
+  history, and treat replayed calls and tool output as untrusted data.

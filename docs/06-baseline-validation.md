@@ -25,10 +25,11 @@ So a user-namespace chroot is impossible. Two pieces solve it:
 Image pulled: `voipmonitor/vllm@sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b`
 (the r34 registry digest), 36 layers, 12.53 GB compressed, 22 GB flattened.
 
-Only syscalls are traced, so GPU throughput is unaffected — measured inside the
-proot rootfs: `torch 2.12.0+cu132`, device `NVIDIA RTX PRO 6000 Blackwell Server
-Edition` capability `(12, 0)`, 20 chained 4096x4096 BF16 matmuls in 0.16 s,
-100.5/102.0 GB free.
+`proot` intercepts syscalls through `ptrace`; GPU kernels still execute on the
+device, but this smoke did not compare end-to-end native and `proot` serving
+overhead. CUDA access was measured inside the rootfs: `torch 2.12.0+cu132`,
+device `NVIDIA RTX PRO 6000 Blackwell Server Edition` capability `(12, 0)`,
+20 chained 4096x4096 BF16 matmuls in 0.16 s, 100.5/102.0 GB free.
 
 ## Baseline 1 — `unsloth/Qwen3.8-27B-NVFP4`: PASS
 

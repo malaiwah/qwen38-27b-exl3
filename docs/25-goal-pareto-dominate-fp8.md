@@ -108,9 +108,9 @@ Measured after the PR #316 prefill dispatch landed and after the attribution wor
 | axis | gate (beat FP8) | measured | verdict |
 |---|---|---|---|
 | fidelity, mean KLD | < 0.013126 | **0.008157** | **pass**, 38 % better |
-| resident weights | < 30.61 GB | **21.82 GB** | **pass**, 29 % smaller |
-| decode C1 | > 56.5 tok/s | **56.5** | pass at parity |
-| decode with MTP-3 | - | **113.8 tok/s** | **pass**, 2.0x FP8 |
+| resident weights | <= 21.92 GB | **21.82 GB** | **pass**, inside the declared NVFP4-equivalent ceiling |
+| decode C1 | > 46.3 tok/s | **56.5** | **pass**, 22 % faster than FP8 |
+| decode with MTP-3 | — | **113.8 tok/s** | bonus; FP8 MTP was not measured |
 | prefill 2k | > 10,667 tok/s | **5,050** | **fail, 2.11x short** |
 | serving portability | - | custom fork + eager-free | partial |
 

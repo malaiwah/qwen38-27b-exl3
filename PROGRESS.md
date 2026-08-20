@@ -1045,12 +1045,15 @@ which grew five pre-conversion addenda as the prep turned up problems.
   12.5031, top-1 91.73 %. The pre-registered range [0.03, 0.10] and the independent surrogate
   bracket [0.0318, 0.0585] both contained it; the registered point estimate 0.0689 was 1.52x too
   high. Receipt `receipts/sixteen-flip-kld.json`.
-- **K6-parity: 0.001634 [0.001541, 0.001742] — MATCHES GGUF `Q6_K` at equal file bytes.** Between
-  Q6_K net 0.001528 and measured 0.002035; better than hydrated by 0.001066 (511/512) and better
-  than Q6_K measured by 0.000401 (493/512). docs/29 predicted 0.0016 in advance — within 2.1 %.
-  The registered interval [0.001175, 0.001601] MISSED, 2.0 % low. Receipt
-  `receipts/k6-parity-kld.json`, card `MODEL_CARD-K6-parity.md`.
-- **The byte law is exact below 4 bits and at parity**: both payloads predicted to the byte
+- **K6 near-file-byte comparison: 0.001634 [0.001541, 0.001742] under vLLM versus
+  GGUF `Q6_K` at 0.002035 under llama.cpp.** It beats hydrated by 0.001066
+  (511/512) and the measured `Q6_K` pipeline by 0.000401 (493/512). The earlier
+  `MATCHES` verdict depended on subtracting the 0.000507 cross-engine BF16
+  control; KL is not additive, so that verdict and the byte-gap causal claim are
+  withdrawn. The registered interval [0.001175, 0.001601] also missed 2.0 % low.
+  Receipt `receipts/k6-parity-kld.json` remains immutable; corrected card:
+  `MODEL_CARD-K6-parity.md`.
+- **The byte law is exact below 4 bits and for the K6 build**: both payloads predicted to the byte
   (13,711,503,428 and 23,035,310,148, zero error).
 - **The 3.73x-per-bit law holds one rung below its fit**: realised K3 proxy errors match the
   extrapolation at median 1.0164 for the 96 modules with no measured rung.
@@ -1231,19 +1234,15 @@ fidelity by 4500x. Measured via fidelity.py capture (512 contexts, shard-0000)
 - FP4 W4A4: TG=71.0 (with MTP-3)
 - Target: TG≥151.9
 
-**Conclusion:** Achieving PP≥10k AND TG≥151.9 AND KLD parity simultaneously
-appears architecturally impossible on RTX 5090 (31.4 GiB, SM120) with current
-b12x/trellis kernels. The three goals are in fundamental tension:
-1. KLD parity ⟹ W4A16 ⟹ PP≤5050 (not 10k)
-2. PP≥10k ⟹ W4A4 ⟹ KLD=12.38 (not 0.0027)
-3. TG≥151.9 not met by either path (max 93.7 with trellis+MTP-3)
+**Conclusion at this stage:** neither tested path met PP, TG and KLD together.
+That is a measured negative for these implementations, not an architectural
+impossibility proof. Later profiles reached ~9.64k PP with FP4 and ~0.0034 KLD
+with trellis, still in separate arms.
 
-**Path forward** (if user wants to continue):
-1. Implement PR #316 reconstruct+hgemm in our patch → trellis PP 1591→5050, KLD PASS
-2. Write custom W4A16 CUDA kernel at FP4 MMA throughput → potential PP 10k, KLD PASS
-   (requires dequantizing 4-bit weights in-register while feeding BF16 MMA,
-    essentially a Marlin-style kernel for trellis codes on SM120)
-3. Accept that PP≥10k and KLD parity are mutually exclusive on this hardware
+**Path forward:** profile and remove bytes/overhead in a weight-only W4A16
+path, or change the memory/format tradeoff. A W4A16 kernel feeds BF16
+activations to BF16-capable MMA after weight dequantization; it cannot be
+assumed to inherit FP4 W4A4 MMA throughput.
 
 ## 2026-08-19
 
@@ -1280,12 +1279,14 @@ GPU-bound**, not launch-bound, which retroactively explained three null results
 and redirected the work to making kernels cheaper.
 `receipts/nsys-utilization-2026-08-19.md`, `receipts/prefill-profile-2026-08-19.md`.
 
-**KLD closed with a proof.** Additive attribution validated against a held-out
-prediction (−1.9%): with the measured floor of 0.003412, contributions are
-gate_up 0.025463, GDN 0.016423, down 0.013970, self_attn 0.004491. Only
-`self_attn` (7% of parameters) fits the 0.008588 post-floor budget, so
-prefill-grade throughput and trellis-grade fidelity are mutually exclusive on
-31.4 GiB. `receipts/kld-axis-conclusion-2026-08-19.md`,
+**KLD frontier bounded for the tested profile set.** A held-out combination
+missed the additive prediction by −1.9 %, and the fitted group contributions
+were gate_up 0.025463, GDN 0.016423, down 0.013970 and self_attn 0.004491 above
+the all-trellis baseline. Under that additive model, only the tested self-attn
+conversion fits the 0.012 budget. This explains the measured arms; it is not a
+proof that all future formats/kernels make prefill-grade throughput and
+trellis-grade fidelity mutually exclusive on 31.4 GiB.
+`receipts/kld-axis-conclusion-2026-08-19.md`,
 `receipts/frontier-2026-08-19.md`.
 
 **Self-corrections worth recording:** retracted a circular additivity claim and

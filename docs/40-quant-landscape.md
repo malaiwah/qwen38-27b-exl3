@@ -385,9 +385,10 @@ cites us:**
   0.013201 against our published 0.013126, **+0.6 %**, with SHA-256-identical inputs;
 - a capture-environment floor of **+0.000164**, CI [−0.000096, +0.000434] — includes zero.
 
-That is an independent party reproducing our harness on different hardware (RTX 6000 Ada)
-and getting our number back to within 0.6 %. It is the strongest external validation of
-the v3 protocol we have, and it arrived without us asking.
+That is an external reproducibility check of our published v3 pipeline on
+different hardware, returning the FP8 number within 0.6 %. Because it reuses
+`tools/fidelity.py` and the same captures, it is not an independent validation
+of the method's implementation or assumptions.
 
 One near-miss was rejected: `Honkware/Qwen3.8-27B-exl3-4.5bpw` matches a naive
 `qwen38-27b-exl3` search only because of their own collection slug

@@ -1,9 +1,9 @@
 # 46. TB2.1 speed run on a multi-GPU Jarvis host: the execution plan
 
-**Status: PLAN, written 2026-08-16 for an independent executor session. Nothing in this document has
-been run on the target host. Every number labelled *measured* has a receipt in this repo; every number
-without one is arithmetic or a target, labelled as such. The executor runs with a different model and
-zero conversation context: this document is the entire brief.**
+**Status: EXECUTED CAMPAIGN LOG.** Sections 0–12 preserve the pre-registered
+plan; sections 13–35 append measured outcomes, corrections, and retractions from
+2026-08-16/17. Read the later section for any item before acting on its original
+plan entry.
 
 ## 0. The objective, in one paragraph
 
@@ -388,12 +388,12 @@ rather than asserted from the plan.
 - **LMCache**: corruption reproduced 38/38 on restart-over-warm-L2; the real root cause turned out to be
   our own scheduler (see docs/29), whose fix is CPU-proven only. Stays out until the 4-arm ladder reads
   clean on the 2x lab.
-- **`reasoning_effort`**: the chat template exposes `low|medium|high|xhigh`, and lowering it would cut
-  the reasoning bursts that cause **93 % of our TB failures** - making it arguably the largest
-  TB-score lever available. **Owner's ruling: the speed run runs at DEFAULT** so results stay comparable
-  with passes 1-3; reasoning-effort behaviour is to be characterised separately for the card. A probe at
-  4096 max_tokens was inconclusive (truncated mid-reasoning; `high` returned null, matching the known
-  "upstream raises on high" note) - any real characterisation needs ≥32k output budget and an idle card.
+- **`reasoning_effort`**: the upstream template accepts only
+  `low|medium|xhigh`; `high` is rejected. Lower effort may shorten reasoning
+  bursts, but timeout incidence does not isolate that mechanism. The owner kept
+  the speed run at the default for comparability. A 4,096-token probe truncated
+  mid-reasoning; a real characterization needs a valid effort value, an idle
+  card, and at least a 32k output budget.
 - **`VLLM_EXL3_PREFILL_FP8`** (+31 % prefill): costs **+0.0141 mean KLD**, 4.4× this artifact's entire
   quantization error. Never for a fidelity-carrying run.
 - **`custom_ops:["all"]`** (2.2-5.2 % worse, not bit-exact), **`--attention-backend FLASHINFER`**
@@ -1122,20 +1122,20 @@ that pointed at our own weights.
 | `capability` | 1 | 0 | 1 |
 | `harness-void` | 2 | 0 | 2 |
 
-So *"BF16 passes it and the quant does not, at equal timeout"* **does not establish a fidelity deficit** if
-the quant passes the same task given more clock. Those seven failures were **budget-bound, not
-fidelity-bound**, and the inference we drew from them was wrong. **Zero tasks in this suite now remain
-attributable to quantization.** The single remaining genuine capability failure is `query-optimize`, which
-neither clock nor tier moves.
+The matched stock-clock result still supports the protocol label
+`quantization-suspect`: BF16 passed where the quant did not under equal
+conditions. The 2×-clock DP8 arm shows that label is **not stable to additional
+resources**—all seven can pass—but it changes timeout and hardware/topology and
+has no matched BF16 arm. It therefore cannot prove the failures were
+fidelity-free or erase quantization as a contributor. The defensible update is
+that zero tasks remain uniquely persistent across all tested quant conditions.
 
 ### What this arm is not
 
-**56/89 is not a Terminal-Bench score and must never be quoted as one** - the agent timeout is non-stock.
-The published numbers stand exactly as they were: **31/89** single pass at stock clock, **44/89** best-of-2
-at stock clock as the permanent lower bound. The clean one-variable pair is **31 -> 56**, both single pass;
-the +25 comes from the doubled clock **and** the 8x tier together. We do not split it, because both act
-through the *same* channel - tokens available before the deadline - and, decisively for the argument above,
-**neither channel is a fidelity channel.**
+**56/89 is not a Terminal-Bench score**: timeout is non-stock. Published 31/89
+single-pass and 44/89 best-of-two stock-clock results remain. The 31→56 pair
+changes both timeout and tier, so the +25 cannot be assigned to either factor or
+used as a quantization-fidelity attribution.
 
 ### Five regressions, reported not netted out
 
@@ -1149,11 +1149,10 @@ a gain against 44/89 owes the same decomposition.
 
 ## §27 - The topology ladder is complete, and one of its four arms does not exist
 
-**Receipt: [`tb21-8x-topology-ladder.json`](../receipts/tb21-8x-topology-ladder.json).** Same host, same
-image, same knobs, one variable. Four arms were planned. **Three ran; the fourth is architecturally
-impossible**, and finding out *why* is the most useful thing in this section.
+**Receipt: [`tb21-8x-topology-ladder.json`](../receipts/tb21-8x-topology-ladder.json).**
+Three planned arms ran; the current checkpoint/runtime refused TP8.
 
-### TP8 cannot exist for this model
+### The current EXL3 checkpoint refuses TP8
 
 ```
 ValueError: EXL3 TP output slice must be 128-aligned, got start=62080, size=31040
@@ -1170,10 +1169,11 @@ slice: `31040 x 8 = 248320 = 128 x 1940`, and **`1940 = 2^2 x 5 x 97`**.
 | 4 | 62080 | 485.00 | aligned |
 | **8** | **31040** | **242.50** | **refused** |
 
-The tile count divides by 4 but not by 8, because 485 is odd. **The maximum tensor-parallel width for
-Qwen3.8-27B EXL3 is exactly 4, on any GPU count.** An 8-GPU host therefore *cannot* be driven as a single
-tensor-parallel replica: every 8x configuration must spend at least a factor of 2 on data parallelism. This
-is a property of the weights' dimensions, so no engine flag will move it.
+The tile count divides by four but not eight. **TP4 is the largest width this
+checkpoint and loader can shard.** An eight-GPU deployment therefore needs at
+least two data-parallel replicas unless a future checkpoint pads the head or a
+runtime implements a different sharding strategy; no flag changes the current
+bytes.
 
 ### The three real arms (512x256 / 4kx1k, all three arms ran both)
 
@@ -1378,13 +1378,11 @@ Fit `wall ~ n^k` across the four rungs:
 | 524k → 786k | 1.500 | 2.028 | **1.744** |
 | 786k → 1M | 1.272 | 1.674 | **2.144** |
 
-**k rises monotonically and crosses 2 at the top of the window**, and that is the hybrid architecture
-becoming visible: with 48 linear layers at O(n) and 16 full-attention layers at O(n²), the linear majority
-sets the cost at short n while the quadratic minority takes over by 1M.
-
-I registered a prediction before the last point landed — **1,043 s**, from a single global k = 1.584 fitted on
-the first three rungs. The actual was **1,205 s**, so I **under-shot by 15.5 %**, for the instructive reason
-that *k is not a constant*: any single exponent under-predicts the tail.
+The segment exponents rise and cross 2. That is consistent with a hybrid of 48
+linear-attention layers and 16 quadratic full-attention layers, but these
+contended end-to-end wall times do not isolate that mechanism. A pre-registered
+single-exponent prediction of 1,043 s missed the 1,205 s result by 15.5 %;
+one global exponent is inadequate for this measured ladder.
 
 **The consequence for pricing long context:**
 
@@ -1393,16 +1391,16 @@ that *k is not a constant*: any single exponent under-predicts the tail.
 | 262,144 | 1.00× | 1.00× | 1.00× |
 | 1,000,000 | 9.64× | 3.81× | **2.53×** |
 
-**A 1M prompt costs 2.53× more per token to prefill than a 262k prompt.** Long context is not linearly
-priced on this architecture, and any per-token cost model that ignores window size understates long-context
-traffic by up to ~2.5×.
+The 1M request consumed 2.53× more wall time per prompt token than the 262k
+request in this contended needle run. The measurement includes decode, HTTP,
+scheduling, and varying co-tenant load; it is not an engine-only prefill price.
 
 **Limits, stated plainly.** Every wall-clock figure was measured while a TB2.1 arm ran at C16 on the same
 endpoint, so absolute rates are depressed by contention, and the longer rungs span more wall clock and
 therefore more varied contention. **The monotone rise is robust; the exact k values are not good to three
 digits.** One needle position, one document generator — this is retrieval, not long-context reasoning.
 
-## §31 - MEASURED: what static YaRN costs at SHORT context, and why the window is fidelity-free but the rope is not
+## §31 - MEASURED: static YaRN costs at short context; the window-only effect is unresolved
 
 **Receipt: [`yarn-short-context-penalty.json`](../receipts/yarn-short-context-penalty.json).** Probe-set
 index: [`yarn-short-context-probes-index.json`](../receipts/yarn-short-context-probes-index.json).
@@ -1467,20 +1465,18 @@ bfloat16**. So a null result here would have meant "tolerated", never "ignored".
 95 % CI on the headline, bootstrapping whole prompts (the 8 positions inside a prompt are not independent):
 **[8.42e-03, 1.29e-02]**, 10,000 resamples, 48 clusters.
 
-**Two things fall out immediately.** First, **request-to-request nondeterminism is exactly zero** at
-`--max-num-seqs 1` - 384 positions, bit-identical, 20-of-20 shared support at every one - which settles the
-question §29 leaves hanging: engine nondeterminism at concurrency 1 is *not* a thing on this card, so the
-7-of-8 divergence §29 found under production load is **batch composition**, not the engine. The raw
-per-position data for that claim is committed at
-[`raw-NATIVE-p1.json`](../receipts/yarn-short-context-raw/raw-NATIVE-p1.json) and
-[`raw-NATIVE-p2.json`](../receipts/yarn-short-context-raw/raw-NATIVE-p2.json) - full top-20 distributions,
-384 positions each. **Its scope, stated so §29 does not overdraw on it:** same server, same process,
-concurrency 1, greedy, 262,144 window, prefix cache warm. It says nothing about concurrency > 1, which is
-exactly the variable §29 is left holding; what it removes is the *alternative* explanation, not the need to
-measure that variable. Second, **the 1M window is fidelity-free**: arm B sits at
-1.248e-03 against a 1.180e-03 cold-reboot floor, indistinguishable. Widening `--max-model-len` costs nothing
-measurable on requests that stay inside the native window - the whole fidelity cost is the rope. (Compute is
-a separate ledger: §30 measures prefill at 2.53x per token at 1M.)
+Two bounded findings follow. First, the same-server concurrency-1 replicate is
+bit-identical over these 384 positions. That rules out same-process variation
+for this probe set; it does not prove vLLM deterministic in general. The
+production-load divergence is associated with batch composition/load because
+that is the changed condition, but its magnitude still needs the dedicated
+control in §34.
+
+Second, the **window-only effect is unresolved**: native rope at a 1M configured
+window measures 1.248e-03 against a 1.180e-03 cold-reboot control. The experiment
+cannot distinguish that delta from its floor. The matched rope change is
+resolved at 1.071e-02, so static YaRN—not merely raising `max_model_len`—is the
+load-bearing measured difference. Compute cost remains separate.
 
 ### Per-bucket: the registered hypothesis is REFUTED
 
@@ -1513,24 +1509,15 @@ escapes the penalty**.
 
 ### Against our own yardsticks - and this is where we decline to overclaim
 
-The published KLD work uses a **full-vocabulary hidden-state replay** estimator with a converter
-nondeterminism envelope of **±2.9e-05**; this receipt uses a **top-20 serving-API** estimator whose own
-cold-reboot floor we measured at **1.18e-03**. Absolute magnitudes across the two are order-of-magnitude
-statements only, so both framings are given:
+The published body-fidelity ladder uses full-vocabulary hidden-state replay; this
+receipt uses a top-20 serving-API diagnostic with a 1.18e-03 cold-reboot floor.
+Those estimators have different support, references, and systematics. Their
+absolute values and floor-relative ratios cannot be used to rank YaRN against
+weight quantization, calibration changes, or converter variance.
 
-| | absolute KLD | vs its own estimator's floor |
-|---|---:|---:|
-| **static YaRN penalty (this receipt)** | **1.057e-02** | **9.0x** |
-| published hydrated build, shard 0 | 2.7e-03 | 93x |
-| adversarial calibration-corpus swap | 4.54e-04 | 16x |
-| converter nondeterminism envelope | 2.9e-05 | 1x |
-
-In absolute terms the YaRN penalty is **23x the calibration swap** and **3.9x this build's entire
-quantization divergence against bf16**. In floor-relative terms it is **9x its floor against the swap's 16x**
-- so the two are the **same order of fidelity event**, and quantization remains the larger one. **Verdict:
-real, comfortably resolved, comparable in size to the worst fidelity regression we have ever manufactured on
-purpose, and smaller than the quantization step itself. Not negligible, and not a null result - but not a
-catastrophe either.**
+Within **this** diagnostic, the static-YaRN delta is 1.057e-02—about 9× its own
+control—and is comfortably resolved. That supports "real and non-negligible on
+this probe," not "larger/smaller than the quantization step."
 
 The user-visible version: **19 of 48 prompts change their 8-token greedy continuation** under YaRN at
 temperature 0, against **7 of 48 for a plain reboot** of the identical configuration. And a caveat that cuts
@@ -1679,7 +1666,7 @@ shape reproduces too, including the counter-intuitive part — worst in the **mi
 Rope is per-layer arithmetic, so topology-independence was the *expectation*; the point of measuring was that
 this project does not ship expectations as results. §31 is now a two-machine, two-topology result.
 
-### P2 — concurrency does NOT cost fidelity, and that retires a worry
+### P2 — no concurrency cost resolved on this production-load probe
 
 Same config (1M-YaRN), same probe set, **quiet versus real production load** (a TB2.1 arm at C16 plus
 interactive traffic):
@@ -1691,23 +1678,19 @@ interactive traffic):
 | **quiet vs LOADED on DP8** | **1.278e-03** | **1.08× the floor** |
 | the static-YaRN rope change | 1.071e-02 | 8.4× larger |
 
-**Concurrency's fidelity cost sits on the floor.** Top-1 agreement **98.70 %**, and **59 of 384 positions were
-bit-identical even under load**. This is an *upper bound*, not a point estimate — sitting at the floor means
-the true value could be zero.
+Quiet-versus-loaded measures 1.278e-03, essentially the 1.180e-03 cross-boot
+control, with 98.70 % top-1. No additional concurrency effect is resolved on
+these 48 prompts/384 positions. This is a bounded negative result for this load
+shape, not a blanket claim that every throughput or topology setting is
+fidelity-neutral.
 
-**Why this mattered enough to measure.** §29 found real divergence under load (7 of 8 frozen prompts
-reproduced) and I could not then attribute it. The answer is that batch-composition nondeterminism is real but
-**fidelity-neutral at this resolution**, so **no throughput or topology recommendation in this project needs a
-fidelity caveat attached to it.** That is a load-bearing negative result: had it gone the other way, every
-tok/s number here would have carried an unquoted price.
+### The decision this supported
 
-### The decision this justified
-
-**The production endpoint was migrated to 262k native.** The two results settle it: the 1M **window** is
-fidelity-free (§31: 1.248e-03 against a 1.180e-03 floor) while the **rope** costs ~1.03e-02 on the 512–32k
-traffic agents actually send. Serving YaRN by default taxed every real request to buy a window almost nothing
-used. If a request genuinely needs more than 262k, run a **second** endpoint on the same weights and route to
-it explicitly.
+The production endpoint migrated to 262k native because static YaRN has a
+resolved ~1.03e-02 penalty on the measured 512–32k traffic, while the
+window-only comparison is unresolved at the reboot floor. Native 262k covered
+the observed default workload; requests that genuinely exceed it should route
+to a separately qualified YaRN endpoint.
 
 
 ## §35 - The rope penalty scales with the factor, and Qwen's advice is now quantified
@@ -1735,9 +1718,10 @@ extrapolate from.
 The **worst-in-the-middle bucket shape reproduces** at factor 2.0 (8k most expensive at 6.26e-03, 512 cheapest
 at 2.90e-03) — the same ordering as both factor-4.0 measurements, so whatever produces it is factor-independent.
 
-**Practical consequence: set the factor to the window you need, not to the maximum.** 512k at factor 2.0 buys a
-window covering the overwhelming majority of long-context requests for 41 % of the fidelity cost of 1M at
-factor 4.0. Qwen's guidance was right; this is the number behind it.
+**Practical consequence: set the factor to the window required, not automatically
+to the maximum.** Factor 2.0 buys a 512k window at 41 % of factor 4.0's measured
+top-20 diagnostic delta. This project did not measure request-length prevalence,
+so it makes no claim about what fraction of traffic 512k covers.
 
 ### A config defect caught before it could corrupt the result
 

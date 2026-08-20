@@ -284,22 +284,24 @@ To weld per-shard reports into a cumulative number the way the published receipt
 **Shard 0 alone** — 512 contexts, 1,048,064 scored positions, the exact contexts
 `reference/hidden-bf16` covers. These are the numbers a new candidate lands beside:
 
-| candidate | mean KLD | net of the cross-engine floor |
-|---|---:|---:|
-| llama.cpp GGUF `Q8_0` | 0.001087 | ~0.000579 |
-| llama.cpp GGUF `Q6_K` | 0.002035 | ~0.001528 |
-| EXL3 K5/K6 hydrated | 0.002700 | — |
-| EXL3 K5/K6 online | 0.003141 | — |
-| EXL3 context + int8 input | 0.003409 | — |
-| llama.cpp GGUF `UD-Q5_K_XL` | 0.004444 | ~0.003936 |
-| official Qwen FP8 | 0.005197 | — |
-| EXL3 K4 | 0.010345 | — |
+| candidate | measured mean KLD | capture engine |
+|---|---:|---|
+| llama.cpp GGUF `Q8_0` | 0.001087 | llama.cpp |
+| llama.cpp GGUF `Q6_K` | 0.002035 | llama.cpp |
+| EXL3 K5/K6 hydrated | 0.002700 | vLLM |
+| EXL3 K5/K6 online | 0.003141 | vLLM |
+| EXL3 context + int8 input | 0.003409 | vLLM |
+| llama.cpp GGUF `UD-Q5_K_XL` | 0.004444 | llama.cpp |
+| official Qwen FP8 | 0.005197 | vLLM |
+| EXL3 K4 | 0.010345 | vLLM |
 
-**Cross-engine floor: 0.000507** (99.07 % top-1, p99.9 0.0113) — llama.cpp against vLLM on
-the *same unquantized BF16 weights*, `reports/gguf/report-engine-floor.json`. Every llama.cpp
-number above is measured against a vLLM BF16 reference and therefore carries this floor; the
-"net of floor" column subtracts it and is an estimate, not a measurement. The EXL3 and FP8
-numbers are vLLM-against-vLLM and carry no such floor.
+The unquantized-BF16 cross-engine control is **0.000507** mean (99.07 %
+top-1, p99.9 0.0113), measured from llama.cpp against the vLLM BF16 reference
+on the same contexts (`reports/gguf/report-engine-floor.json`). It proves that
+engine numerics confound every cross-engine candidate comparison. KL is neither
+additive nor a metric, so the control cannot be subtracted and supplies no
+quantization-only upper or lower bound. Read cross-engine rows as complete
+artifact-plus-engine pipelines.
 
 **Full ten-shard ladder** — 10,480,640 scored positions over 842 clusters, bootstrap
 intervals over clusters. This is what `reports/kld5/` aggregates to:
@@ -321,9 +323,9 @@ does not depend on the scored window.
 
 * Reference model: `Qwen/Qwen3.8-27B`, unquantized BF16, served by vLLM.
 * Runtime image: `voipmonitor/vllm@sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b`.
-* Capture hardware: 1x RTX PRO 6000 Blackwell Server Edition (rental box). Fidelity numbers
-  are hardware-independent; throughput numbers elsewhere in the project are not, and are
-  never differenced across cards.
+* Capture hardware: 1x RTX PRO 6000 Blackwell Server Edition (rental box).
+  These receipts pin the hardware and runtime because floating-point kernels
+  can vary by build and device; no hardware-independence claim is made.
 * Harness digest, shared-head digest and quantization config: `suite/ladder-pin.json`.
 * Corpus: held-out public text (Project Gutenberg, CPython `Lib/`, arXiv abstracts,
   Wikipedia), token-disjoint from the v4 suite, with any document containing an exact

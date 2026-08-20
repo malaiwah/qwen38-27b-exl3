@@ -1,11 +1,12 @@
 # Iteration 4: the context edition, and two kernels on the wrong side of a threshold
 
-> **Later result.** This document records the pre-overlay iteration. Per-row int8 input
-> embeddings subsequently reduced resident weights to 18.13 GiB and reached native 262,144
-> under a 30.24 GiB engine budget. An explicit image-pixel ceiling then recovered enough
-> activation memory for MTP-3 at the same native window. The physical RTX 5090 rerun remains
-> open; see [docs/32](32-native-context-embedding-overlay.md) and
-> [docs/29](29-plan-and-loose-ends.md).
+> **Later result.** This document records the pre-overlay iteration. Per-row int8
+> input embeddings subsequently reduced resident weights, and the physical RTX
+> 5090 qualification then passed native 262,144 with MTP-3, the 8.4 MP ceiling,
+> and `--gpu-memory-utilization 0.955`. See
+> [docs/32](32-native-context-embedding-overlay.md),
+> [docs/29](29-plan-and-loose-ends.md), and
+> `receipts/qualification-5090-context.json`.
 
 Goal for this iteration, from [docs/29](29-plan-and-loose-ends.md): a build that reaches
 native context on a 32 GB card while still beating official FP8. That goal was **not** met,
@@ -109,8 +110,9 @@ Two traps found inside that work, both worth knowing:
 30 deterministic synthetic images with exactly known answers, scored by exact match: 6-digit
 bitmap codes **8/10**, tallest-bar-by-index **9/10**, colour-grid counting **7/10**,
 **24/30 overall**. The generator is published so any candidate can be scored on the same cases.
-All builds here carry a BF16 vision tower, so this characterises the model, not the
-quantization — it is the baseline for a paired comparison when one exists.
+All tested builds retain a BF16 vision tower, but their quantized language bodies
+can still change multimodal answers. This 24/30 result is a baseline for a paired
+comparison, not evidence that quantization is irrelevant to multimodal quality.
 
 Also measured and abandoned: **quantizing the vision tower** (`-vb 6`) saves 0.58 GB but the
 converter splits upstream's fused `visual.blocks.N.attn.qkv` into q/k/v, so the checkpoint no

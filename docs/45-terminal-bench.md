@@ -31,13 +31,13 @@ whether that *system* made a container's verifier pass. Two consequences we hold
 | 2 | `tb21-pass2-hyd-healing` | pass-1 failures only | `K5K6-hydrated` | Which failures were one-off, and which are persistent? |
 | 3 | `tb21-pass3-bf16-attribution` | twice-failed only | BF16 `Qwen/Qwen3.8-27B` | Of the persistent failures, which are the quantisation's fault? |
 
-Pass 3 runs on the **same card, same agent, same sampling, same eager mode, same tunnel** — the
-weights are the only thing that changes. Each twice-failed task then lands in exactly one bucket:
+Pass 3 runs on the same card, agent, sampling, eager mode, and tunnel; only the
+weights change. Each twice-failed task is classified as:
 
-- **`capability`** — BF16 fails it too. The failure belongs to the agent+model system at this
-  scale; the quantisation is exonerated for that task.
-- **`quantization-suspect`** — BF16 passes it. The quantisation is implicated for that task, and
-  the published BF16 transcript is the evidence.
+- **`quantization-suspect`** — BF16 completes and passes.
+- **`capability`** — BF16 completes to a verdict and also fails.
+- **`inconclusive-timeout`** — neither arm completes within the stock budget.
+- **`harness-void`** — the environment fails before a model request.
 
 The two-pass filter before attribution matters: without pass 2, a single flaky failure would be
 promoted into a "quantisation suspect" and then spend a BF16 run to be disproved.
@@ -158,9 +158,10 @@ Three consequences, all of which shaped the design:
 - **It is a time-to-first-token cost, not a per-token cost.** Tokens after the first arrive inside
   the same stream. A task using 100 agent turns pays ~58 s of pure latency, against per-task agent
   timeouts of 360–12,000 s (most are 900–3,600 s).
-- **It cannot corrupt the attribution.** Passes 1–2 and pass 3 cross the *same* tunnel and pay the
-  *same* penalty, so latency is common-mode and cannot move a task between the `capability` and
-  `quantization-suspect` buckets.
+- **It is shared infrastructure, not arm-specific.** All passes pay the same
+  per-request tunnel latency, so it does not preferentially favor one weight
+  set. It still consumes fixed task budgets and can push both arms into the
+  inconclusive-timeout bucket; attribution is conditional on this topology.
 - **Throughput is therefore read server-side.** tok/s comes from vLLM's own `/metrics` counters on
   the rental's loopback, never from agent-side wall clock, so the tunnel cannot depress the
   reported number.
@@ -371,12 +372,12 @@ Receipt: `receipts/terminal-bench-2.1-hyd.json`. Artifacts: `passes/pass1-hydrat
 |  of which `RuntimeError` | 2 |
 |  ran to completion and still answered wrong | **2** |
 
-**93 % of the failures (54/58) ran out of clock, not out of ability.** At stock 1.0 timeouts on this
-hardware, the binding constraint on this agent+model system is **decode speed**, not task difficulty.
-
-The mechanism is long reasoning bursts against a ~42.5 tok/s single-stream decode: the dry run's
-turn 1 alone spent **15,577 completion tokens** — 1.9× the `max_output_tokens` declared in LiteLLM's
-`model_info`, which is metadata and clamps nothing — roughly six minutes of decode for one turn.
+**93 % of failures ended in `AgentTimeoutError`.** That says the system did not
+finish inside stock budgets, not that it possessed the missing capability or
+that decode speed was the sole cause. Long reasoning bursts against ~42.5 tok/s
+decode are one measured contributor: one dry-run turn emitted 15,577 completion
+tokens, roughly six minutes of decode. Task difficulty, agent retries, and the
+per-turn tunnel latency remain entangled.
 
 The timeouts were deliberately **not** raised and output was **not** capped. A TB score is comparable
 to other TB runs only if the agent's configuration is stock; capping would have made this number
@@ -429,11 +430,15 @@ timeout risk are better than the agent-side metric implies. No serving flag was 
 CPU-only was re-verified for this pass: all four checks passed and **all 89 trials** record
 `config.environment.override_gpus` as null/0.
 
-### Passes 2 and 3
+### Passes 2 and 3 — completed
 
-Pass 2 (retry of the 58 pass-1 failures) and pass 3 (BF16 attribution on the twice-failed set) are
-open; each lands here and in its receipt as it completes, published at the same time rather than at
-the end. An owner-approved diagnostic sits beside pass 3 if the window allows: re-run the
-`inconclusive-timeout` subset alone at `--timeout-multiplier 2.0`, labelled **not comparable to any
-other TB run** and reported apart from the headline — if a task resolves at 2.0× the failure was our
-clock and this hardware; if it still fails, the model genuinely could not do it.
+Pass 2 resolved 13 of the 58 retries, for cumulative best-of-two **44/89**.
+Pass 3 ran BF16 on the 45 twice-failed tasks and resolved 7. The corrected
+classification is **7 quantization-suspect, 1 capability, 35
+inconclusive-timeout, and 2 harness-void**; see
+`receipts/terminal-bench-2.1-{healing,bf16-attribution}.json` and
+`receipts/terminal-bench-2.1-attribution.json`.
+
+Only 8 persistent failures are attributable by this protocol. No 2×-timeout
+diagnostic was run. Even if one still failed at 2×, that would bound this
+agent/system under a larger clock; it would not prove the model incapable.

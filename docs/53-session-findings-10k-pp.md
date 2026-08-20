@@ -8,23 +8,25 @@
 
 ## Key Findings
 
-### Theoretical Analysis (CONFIRMED)
-- FP16 MMA: 4527 tok/s theoretical, 1650 actual = 33% efficiency
-- FP6 MMA (mxf8f6f4 m16n8k32): 9055 tok/s theoretical (2x), needs 99% eff for 10k
-- FP4 MMA (mxf4nvf4 m16n8k64): 18131 tok/s theoretical (4x), needs 55% eff for 10k ← PATH TO 10k
-- Prefill is COMPUTE-BOUND (not memory-bound) for M>41
-- PP is flat at ~1700 from M=800 to M=12000 — bottleneck is per-layer overhead, not tile size
+### Theoretical analysis (roofline estimates, not confirmation)
+- FP16 MMA-only bound: 4527 tok/s; observed 1650 is 36.4 % of that bound.
+- FP6 MMA peak is 2× FP16 and FP4 peak 4×, but end-to-end speed does not
+  inherit those multipliers because activation quantization, dequantization,
+  launches and non-GEMM work remain.
+- Flat PP over the tested M range localizes a fixed/per-layer cost; it does not
+  by itself identify which component owns it.
 
-### b12x trellis K6 is already very well optimized
-- 33% MMA utilization — 2/3 of time spent on trellis dequant ALU (codebook decode, bitstream extraction)
-- Warp-spec kernel (our custom): 1022 tok/s — SLOWER than b12x trellis
-- FP6 path (b12x dense_gemm): 1655 tok/s — same as trellis (activation quant overhead cancels 2x MMA gain)
+### b12x trellis K6 baseline
+- Observed throughput is ~36 % of the MMA-only bound.
+- The original "two thirds is dequant ALU" split was inferred from the gap, not
+  profiled, and is withdrawn.
+- Warp-specialized prototype: 1022 tok/s; FP6 dense path: 1655 tok/s.
 
 ### FP6 Path (WORKING but no speed improvement)
 - exl3_fp6_conversion.py: Hadamard fold + quantize_dense_weight_to_fp6
 - CPU reconstruction avoids GPU OOM for large layers
-- 1044/1578 shards converted (MoE OOM'd — 4.74 GiB temporaries)
-- Correctness: PASS, PP=1655, TG=105.8
+- 1044/1578 tensors converted; large-tensor conversion temporaries OOMed.
+  This is a dense model, so the earlier "MoE OOM" label was wrong.
 - vllm-exl3-fp6.py: integrated into vLLM EXL3 patch
 
 ### FP4 Path (THE PATH TO 10k — not yet implemented)
@@ -32,9 +34,9 @@
 - b12x has quantization/nvfp4/ module for NVFP4 quantization
 - FP4 weights: 0.5 bytes/weight (33% LESS than trellis K6's 0.75 bytes) — NO OOM expected
 - FP4 scales: UE8M0 per 32 elements (MXFP4) or UE4M3 per 16 elements (NVFP4)
-- Hadamard folding HELPS FP4 quantization (makes distribution more Gaussian)
-- Risk: ~6-12% per-weight error vs K6's ~0%. KLD test essential.
-- Fp4Conversion subagent was writing exl3_fp4_conversion.py — check agent://Fp4Conversion
+- Hadamard transforms redistribute outliers; they do not guarantee a Gaussian distribution.
+- Cross-format error and KLD were unmeasured at this point; no "K6 ~0 %" baseline is valid.
+- The completed implementation is preserved as `patches/exl3_fp4_conversion.py`.
 
 ### sm_120a Features
 - compute_120a (not sm_120) unlocks: setmaxnreg, PDL, CLC, 256b loads, TMA
@@ -48,13 +50,13 @@
 - Also: LIBRARY_PATH=/usr/local/cuda-13.2/targets/x86_64-linux/lib
 - Also: TORCH_EXTENSIONS_DIR=/cache/jit/torch_extensions + persistent volume
 
-## Next Steps (PRIORITY ORDER)
-1. Check agent://Fp4Conversion for exl3_fp4_conversion.py
-2. Integrate FP4 path into vllm-exl3-fp6.py (rename to vllm-exl3-fp4.py)
-3. Test FP4: correctness, PP (target 10k), TG (target >=101), KLD
-4. If KLD fails with FP4: try hybrid FP4/FP6 (FP4 for MLP, FP6 for attention)
-5. If FP4 PP < 10k: optimize activation quantization (remove per-row scaling overhead)
-6. If still < 10k: try warp-spec with trellis→FP6 dequant fused in producer warps
+## Next steps (historical)
+
+1. Review and integrate `patches/exl3_fp4_conversion.py`.
+2. Test FP4 correctness, PP, TG and paired KLD.
+3. If KLD fails, test a pre-registered hybrid role map rather than tuning on the evaluation set.
+4. Profile activation quantization before attributing any remaining PP gap.
+5. Treat warp-specialized trellis→FP6 work as a separate, profiler-gated experiment.
 
 
 ### MXFP4 vs NVFP4 (Explorer Recommendation)
@@ -65,10 +67,8 @@
 - Weight read: 6.8ms (vs 8.9ms for K6)
 - Runtime: 3 ops per GEMM (activation quantize, blockscaled.mm, output scale)
 
-### Fp4Conversion Subagent
-- Was writing exl3_fp4_conversion.py — check agent://Fp4Conversion for results
-- If incomplete, write it manually using MXFP4 path (option b from explorer):
-  1. Reuse hadamard_fold_weight from exl3_fp6_conversion.py
-  2. Quantize to FP4: _ue8m0_scale_from_block_max + nearest_fp4 lookup
-  3. Pack 2 codes per byte
-  4. Call dense_gemm(ab_dtype="float4_e2m1fn", sf_dtype="float8_e8m0fnu", sf_vec_size=32)
+### FP4 conversion artifact
+- `patches/exl3_fp4_conversion.py` is the durable implementation.
+- Its quantization and serving outcomes are recorded in the later 2026-08-18/19
+  receipts and PROGRESS entries; the session-local agent URI is not durable
+  evidence.

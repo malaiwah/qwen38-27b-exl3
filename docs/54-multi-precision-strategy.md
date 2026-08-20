@@ -15,13 +15,14 @@ Apply the SAME principle to tensor core precision:
   - GDN in_proj/out_proj (hybrid architecture, critical for correctness)
   - These are smaller GEMMs → less speedup benefit from FP4, more fidelity risk
 
-## Expected Throughput (weighted)
-- MLP weights: ~70% of total FLOPs at 4x → effective 3.3x
-- Attention/GDN: ~30% of total FLOPs at 2x → effective 1.5x
-- Weighted average: 0.7×4 + 0.3×2 = 3.4x over FP16
-- FP16 theoretical: 4527 tok/s → Multi-precision: 4527 × 3.4 = ~15,400 tok/s
-- At 55% efficiency: ~8,500 tok/s (close to 10k)
-- At 65% efficiency: ~10,000 tok/s ← TARGET
+## Expected Throughput (weighted upper bound)
+- If MLP is 70 % of serial FP16 work and speeds up 4× while the remaining
+  30 % speeds up 2×, Amdahl gives
+  `1 / (0.7/4 + 0.3/2) = 3.077×`, not the arithmetic mean 3.4×.
+- Applied to the 4,527 tok/s MMA-only estimate: ~13,930 tok/s before
+  quantization, launch and non-GEMM overhead.
+- 55 % of that bound is ~7,660 tok/s; 65 % is ~9,055. Reaching 10k requires
+  ~71.8 % of the bound and remains an experiment, not a prediction.
 
 ## Fidelity Preservation
 - FP6 for attention preserves the precision-sensitive projections

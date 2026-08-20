@@ -1,6 +1,6 @@
 # Our KLD numbers vs published measurements
 
-## The "FP8 is at 0.5" claim does not hold up
+## An uncited "FP8 = 0.5" baseline is contradicted by published family data
 
 The best public dataset for this exact architecture family is Quesma's
 [*Do Qwen3.6 27B quantizations break the pelican?*](https://quesma.com/blog/qwen-quantization-quality/)
@@ -34,12 +34,11 @@ identical architecture. Values read from the published chart data:
 | **NVFP4 (NVIDIA)** | 21.9 GB | **0.039** |
 | **NVFP4 (Unsloth)** | 23.3 GB | **0.044** |
 
-**FP8 measures 0.017, not 0.5.** A KLD of 0.5 is far outside anything published
-for this family — Quesma's *2-bit* 9.6 GB quant only reaches 0.28. If a 0.5
-figure is circulating, it is either a different metric (per-token cross-entropy
-delta, or KLD scaled by 1e6 as in
-[arXiv:2510.25602](https://arxiv.org/pdf/2510.25602) Table 12), a different
-corpus, or a broken run. It should not be used as an FP8 baseline.
+**Quesma measures FP8 at 0.017, not 0.5.** No source for the 0.5 baseline was
+identified, so this document does not attribute it to a person or paper. It is
+incompatible with the cited family table: even the 9.6 GB 2-bit point is 0.28.
+A 0.5 value could be another metric, scaling convention, corpus or a broken
+run; without protocol identity it must not be used as an FP8 baseline.
 
 The same source independently confirms the shape of our result: **both NVFP4
 builds (0.039, 0.044) are 2-3x worse than 4-bit GGUF quants of the same or
@@ -73,18 +72,18 @@ Two things to be careful about before comparing across sources:
 
 ## Harness validation
 
-`run SD = 0.000000` across 3 repeats for every candidate shows the pipeline is
-deterministic. The stronger check — scoring the **BF16 teacher against its own
-captured logits**, which must return ~0 — is recorded in
-[10-results-iteration-1.md](10-results-iteration-1.md) as `self-bf16`. Any
-non-trivial value there would indicate harness bias (wrong window, wrong
-densification, dtype drift) rather than quantization error.
+`run SD = 0.000000` across three repeats for every candidate shows deterministic
+repetition. Scoring the **BF16 teacher against the same captured logits** returns
+zero, as recorded in [10-results-iteration-1.md](10-results-iteration-1.md), but
+that control validates scoring arithmetic and file identity only. It cannot
+detect a capture, densification, or position-alignment error shared by both
+sides.
 
-Known asymmetry to keep in mind: the teacher logits are captured through the same
-`prompt_logprobs=-1, flat_logprobs=True` path as the candidates, so any bias in
-that extraction is common-mode and cancels in the comparison. It does not cancel
-against *other people's* numbers, which is the second reason not to compare
-absolutes across sources.
+The teacher and candidate logits use the same
+`prompt_logprobs=-1, flat_logprobs=True` extraction path, reducing one source of
+protocol asymmetry. Common-path extraction is not an independent validation,
+and model-dependent extraction defects need not cancel. This is another reason
+not to compare absolute values across sources.
 
 ## What would make our numbers directly comparable to Quesma's
 

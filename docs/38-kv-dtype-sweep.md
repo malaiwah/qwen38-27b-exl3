@@ -3,11 +3,11 @@
 **Decision: keep `fp8`. It is confirmed as the right default for the context edition's
 native-window profile, and the alternatives are now measured rather than assumed.**
 
-[docs/29](29-plan-and-loose-ends.md) §F5 has carried this as an open item: the pinned r34 build
-advertises seventeen `--kv-cache-dtype` values, **every number this project publishes used
-`fp8`**, and no 4-bit scheme had ever been measured here for capacity, retrieval or fidelity. A
-reader in the release megathread asked directly whether quantized KV destroys long-context
-quality. Both questions are answered below.
+[docs/29](29-plan-and-loose-ends.md) §F5 carried this as an open item: every
+published **serving/capacity** profile used `fp8`, while the text-only fidelity
+captures resolved KV to bfloat16, and no 4-bit serving arm had been measured for
+capacity, retrieval, or KV-specific fidelity. A release-thread reader asked
+whether quantized KV destroys long-context quality. The bounded answers follow.
 
 Everything was measured on the user's own AIBoss host, one physical **GeForce RTX 5090**
 (32,607 MiB, driver 610.57.04, `GPU-506a575d-01d7-b12e-9a0a-c1ab5f38ae0a`), on the promoted
@@ -162,31 +162,33 @@ only while both arms conditioned on an identical prefix.
 
 Three things follow.
 
-**The shipped default is not the weak link.** `fp8` keeps 95.60 % top-1 agreement with an
-unquantized KV cache at a 98k context. Quantized KV does not destroy long-context quality on this
-model, and that is the answer to the megathread question.
+**The shipped default is not catastrophic on this probe.** Across four
+98k-context prompts, `fp8` retains 95.60 % top-1 against bfloat16 KV with
+0.001655 truncated top-20 KL. That rejects the claim that quantized KV destroys
+these continuations; it is not a broad long-context quality result.
 
-**4-bit costs 3.6x the shipped default's error while passing every needle.** 0.005948 nats against
-0.001655. It is the single clearest demonstration in this document that a needle table would have
-called 4-bit free.
+**4-bit costs 3.6× the shipped default on the same diagnostic while every needle
+still passes**: 0.005948 versus 0.001655. Needle retrieval alone would have
+missed the difference.
 
-**Two arms are more faithful than `fp8`, not less.** Both 8-bit per-token-head schemes sit closer
-to the bfloat16 reference than `fp8` does, which is what dynamic per-token-head scales are
-supposed to buy over static per-tensor fp8 scales. They also hold more tokens. They lose on
-prefill, and only on prefill.
+**The per-token-head 8-bit arms improve the diagnostic but not the whole serving
+frontier.** `int8_per_token_head` is closer to bfloat16 and keeps decode near
+baseline, but costs ~3× prefill. `fp8_per_token_head` is also closer in this
+diagnostic, yet loses 9.1 % decode here through lower MTP acceptance and pays the
+same prefill penalty.
 
-**Resolution, stated plainly.** These are **not** KLD on the v5 fidelity suite and must never be
-differenced against 0.003409, 0.010604 or any other published KLD figure — those are
-full-distribution divergences over millions of positions against a **weight** reference; these are
-truncated top-20 divergences over at most 173 positions against a **KV-cache** reference. The KL
-is restricted to the reference arm's top-20 support with missing mass floored at the arm's 20th
-logprob, which *under*-estimates divergence, so every KL above is a lower bound; the floor was
-used on 1.10–4.36 % of entries. The paired-position count varies by arm and is quoted for that
-reason. What the numbers do carry is a clean control: every arm re-ran prompt 0 in its own server
-process and returned byte-identical text, identical token ids and a **maximum absolute logprob
-difference of exactly 0.0**, so this harness has no run-to-run noise and every difference above is
-the dtype and its backend. Four prompts at 64 tokens ranks the arms by an order of magnitude; it
-does not put a confidence interval on any one of them.
+**Resolution, stated plainly.** These are not v5 KLD and must never be
+differenced against the body-fidelity ladder. They are truncated top-20
+diagnostics over at most 173 common-prefix positions against a KV-cache
+reference. Omitting reference-tail support and flooring missing candidate
+logprobs does **not** produce a guaranteed lower or upper KL bound; individual
+omitted terms need not share a sign. The floor was used on 1.10–4.36 % of
+entries, and paired-position counts differ by arm.
+
+Repeating prompt 0 returned byte-identical tokens and logprobs, establishing
+determinism for that control prompt. The arms change KV dtype **and** attention
+backend. Four prompts × 64 tokens provide a useful ranking on this diagnostic,
+without a confidence interval or a general long-context fidelity claim.
 
 ## 6. The affine law, re-derived per dtype
 

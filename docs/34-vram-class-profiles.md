@@ -26,7 +26,7 @@ in the receipt's `supersedes` block.
 | class | decision | artifact | context | fidelity |
 |---|---|---|---|---|
 | **24 GB** | **GO** | the published `-context` edition, **no conversion** | **24,576 [P]** MTP-3 + fp8 KV; **45,056 [P]** MTP off — predictions validated by the §10 capped-budget proxy, physical-board gate still **open** | **0.003409, measured**, carried unchanged (`receipts/kld5-1M-tail-ctx.json`) |
-| **16 GB** | **NO-GO as a SKU — publish §6 as a design study** | none exists; every reachable point needs a sub-4-bit width | **28,672 [P]** MTP off; **MTP-3 impossible at any window** | **none, and none obtainable from anything published** |
+| **16 GB** | **NO-GO as a SKU — keep §6 as a rejected design study** | measured S16-V research artifact, not a release | **28,672 [P]** MTP off; **MTP-3 impossible at any window** | **0.045374 measured** on v5 shard 0; fails the pre-registered 0.030 gate |
 
 **24 GB: go, because no new checkpoint is required.** The context edition's resident weights are
 *measured* at **18.41 GiB** (`receipts/native-mtp-8mp-amendment.json`, as run; the physical 5090
@@ -39,12 +39,12 @@ a range: **24,576 [P]** with MTP-3. With MTP off the CUDA-graph pool vanishes al
 weights, so overheads drop to `1.68 + 0.27 + 0.00 = 1.95 GiB` and resident to 18.158, giving
 `22.49 − 1.95 − 18.158 = 2.38 GiB [P]` of KV and a published window of **45,056 [P]** — the length
 §10 actually started and passed.
-Fidelity is the already-published 0.003409 on shard 0 / 0.003509 over 10,480,640 positions,
-unchanged, because it is the same weights — the 24 GB class carries **no new fidelity risk at
-all**, which is the finding that makes it a go. What "go" licenses: publishing a 24 GB serving
-profile of an existing artifact with its window labelled a bounded prediction, and running the
-qualification. It does **not** license a fit claim; "predicted" and "allocated" are still
-different sentences.
+Fidelity is the published 0.003409 on shard 0 / 0.003509 over 10,480,640
+positions because M24 reuses the same checkpoint bytes. The serving profile
+therefore introduces no **new checkpoint-weight** fidelity risk; runtime,
+hardware, KV, and multimodal behavior still require their own board
+qualification. "Go" licenses publishing a predicted 24 GB profile and running
+that qualification. It does **not** license a physical fit claim.
 
 **§4's per-token KV model is retired, and two of the four lengths it produced move.** Reading the
 pinned engine's own sizing code (`vllm/v1/core/kv_cache_utils.py`) shows that
@@ -84,38 +84,26 @@ would: any startup logging a second window pins `a` and `M`, and §10.2 logged f
 24 GB board throughout, so the **class** verdict never depended on any of this — only the
 **window** did.
 
-**16 GB: no-go as a SKU.** The byte law says the cheapest multimodal build that keeps the MLP at
-4 bits is **13.58 GiB resident [P]** (payload 13.235 + 0.35 loader allowance) against a **12.70
-GiB** budget — **0.88 GiB over before a single KV byte**, and 1.09 GiB over once the measured
-0.955 utilisation and 2.50 GiB overheads are used instead (`13.58 − 12.49`), so today's result
-*hardens* the conclusion. Every remaining path is therefore sub-4-bit, and **no width below 4 bits
-has ever been measured for KLD in this family, at any role, on any suite.** The S16-V candidate is
-entirely predicted: **11.94 GiB resident [P]** (= 11.586 payload + 0.35) and **28,672 tokens [P]
-with MTP off** — more than twice §6.2's original figure, because the measured law charges MTP-off
-only a 0.14 GiB fixed term and turning MTP off also frees the CUDA-graph pool. Its MTP-3 row is not
-short, it is **gone**: the measured fixed per-request KV term is 0.63 GiB against a total pool of
-0.553 GiB, short by 0.077 GiB, so speculative decode does not fit at this class at any window, and
-S16-V-long's extra bit reaches only 764 tokens of it rather than rescuing it. Its
-fidelity is **unknown**: the nearest measured neighbour below the published set is K4 at 0.010604
-with a p99.9 of 0.5555, already the worst of the five candidates, and S16-V is one bit below it on
-each MLP projection, three on the linear-attention stack, two on full attention and two on the
-head. §6.4's 0.03-0.10 is a range with a shape, not an estimate. Two reader reports point the same
-way and are not ours: a ~12 GB `IQ3_XXS` on a 16 GB RTX 5070 Ti gives "less than 5 tok/s" at 64K
-or 128K (megathread `1voojjz`, `p3ui0np`), and `UD-Q4_K_XL` on a 24 GB 4090 "only leaves me with
-about 18.4k context" (`p3vfwqh`) — self-reported configurations, no KV dtype or engine version,
-never mixed into the arithmetic, but the only external evidence this model has at these classes
-and both negative. So §6 stays published as a **design study**: budgets, bit allocation, the
-error-driven allocator route and the acceptance gates are all useful to whoever attempts it. What
-may not happen is a released 16 GB artifact, a 16 GB row in a model card, a 16 GB context length
-quoted as a capability, or any fidelity number attached to a 16 GB profile.
+**16 GB: no-go as a SKU, now on measured fidelity rather than predicted
+bytes.** The byte law correctly showed that keeping every MLP projection at K4
+cannot fit the class, so S16-V moves the body below four bits. The research
+conversion then landed exactly on its predicted 13,711,503,428-byte payload and
+measured **11.626 GiB resident** with the int8 embedding—inside the weight
+budget.
 
-**What flips 16 GB to go**, in order: (1) a measured KLD for one sub-4-bit width in this family on
-shard 0 of the v5 suite with its tail row — one conversion and one shard, **no 16 GB card
-needed**, and it is the blocking item; (2) a startup on a physical 16 GB board, since the
-activation, non-torch and CUDAGraph figures here are carried from a 32 GB profile; (3) needle
-retrieval and a combined text-plus-image request at the 4.2 MP cap on a K3 body; (4) the
-non-termination check, weighted, because S16-V sits below the Q4 builds two readers describe
-looping to context exhaustion.
+It failed the pre-registered quality gate decisively: **0.045374 mean KLD**
+[0.041959, 0.049351], 91.73 % top-1, p99.9 2.3704, losing 512/512 contexts to
+K4 and the context edition (`receipts/sixteen-flip-kld.json`). The gate was
+0.030. The checkpoint is retained as a rejected research artifact, not a SKU.
+
+The serving arithmetic remains predictive. MTP-3 cannot fit at any window
+because its measured 0.63 GiB fixed per-request term exceeds the class's
+0.553 GiB pool. MTP-off reaches a predicted 28,672-token profile, but no physical
+16 GB board has started it. A different 16 GB recipe can reopen only after it
+beats the measured S16 fidelity failure on the same shard-0 protocol; only then
+do physical startup, retrieval, image-plus-text, and non-termination gates become
+worth running. Until then §6 is a design study and no 16 GB capability row
+belongs on a model card.
 
 ## 1. What this design is built on
 
@@ -702,17 +690,18 @@ interchangeable and are never mixed inside one ratio.
 | MLP → K4 (gate 1 + up 1 + down 2 bits) | 2.656 GiB = 4 × 0.664 | none | — | +0.007394 **unpaired** (0.010604 − 0.003210) | **0.359** = 2.656/7.394 | `receipts/kld5-10M-{k4,k5k6}.json` |
 | attention K6 → K4, 64 L | 1.680 GiB = 2 × (0.195 + 0.645) | +0.019373 [+0.014947, +0.024509] **online** | 0.087 = 1.680/19.373 | none | — | `receipts/v3-paired-attn-k4-vs-k6.json` |
 | `mlp_down_proj` K6 → K5 alone | 0.664 GiB | none | — | none | — | **no measurement exists** |
-| anything at K3 | 0.148-1.992 GiB per bit, by role (§2) | none | — | none | — | **no measurement exists at any width below 4 bits** |
+| any isolated K3 role | 0.148-1.992 GiB per bit, by role (§2) | none | — | no isolated-role delta | — | S16-V's mixed K3/K4 body measures 0.045374 on v5 shard 0 (`receipts/sixteen-flip-kld.json`), but does not isolate one role |
 | int4 input overlay, beyond int8 | 0.574 GiB | none | — | none | — | tensor-domain error 13.1× int8 (`receipts/embedding-quant-error.json`); the earlier int4 embedding claim was retracted ([docs/32](32-native-context-embedding-overlay.md) §"Correction") |
 | CPU-resident embedding, beyond int8 | 1.184 GiB | zero weight error | ∞ | zero | ∞ | **not implemented**: the pinned patch adds only the quantized-embedding hook (`tools/vllm-qwen3_5-embed-quant-config.py`); per-token host gather latency unmeasured |
 | vision tower bit width | 0.858 GiB if it worked | — | — | — | — | **unavailable**: `-vb 6` breaks fused-qkv topology; do-not-reopen ([docs/29](29-plan-and-loose-ends.md) L577) |
-| fp8 → 4-bit KV | ~50 % of KV bytes | — | — | — | — | flags exist in the pinned r34 build; **never measured**, and the fidelity protocol runs `kv_cache_dtype_resolved: bfloat16` (`receipts/kld5-10M-*.json` → `reference_identity`), so it cannot see KV error at all |
+| fp8 → `int4_per_token_head` KV | 48.4 % of per-token KV bytes | — | — | not a v5 measurement | — | measured 502,667 vs 265,122 KV tokens, 3.6× fp8's long-context KV-probe error and 2.78× fp8's prefill time (`receipts/kv-dtype-sweep-5090.json`) |
 
 Reading of the ranking:
 
-1. **The int8 input overlay is two orders of magnitude better than any weight-width knob** and
-   should be on by default in every profile below 32 GB. It is already the reason native context
-   fits at 32 GB.
+1. **The int8 input overlay is at least one order of magnitude more efficient
+   than the measured weight-width knobs** (about 16× to 209× by the table's
+   GiB-per-0.001 ratios) and should be on by default below 32 GB. It is already
+   the reason native context fits at 32 GB.
 2. **Zero-KLD knobs come next**: image cap, MTP-3, single-stream. They cost capability and
    throughput, both of which a card can state precisely.
 3. **Then attention width, and only when serialized and calibrated.** The v3 attention ablations
@@ -741,19 +730,20 @@ clusters** (`receipts/kld5-1M-tail-ctx.json`). Not smaller, and no need for larg
   the context build is 15.1 % at 1M and 18.0 % at 10.48M
   ([docs/33](33-evidence-volume-and-intervals.md), `receipts/kld5-ladder-convergence.json`), so
   the extra nine shards buy confirmation of the mean, not resolution;
-- shard 0 is the **only** shard with published tail histograms for all five existing candidates
-  (`receipts/kld5-1M-tail-{hyd,k5k6,ctx,fp8,k4}.json`), so a new profile gets p50/p95/p99/p99.9
-  and exact exceedance counts against every published sibling without re-running any of them.
+- two shards now publish histograms for all five existing candidates
+  (`receipts/kld5-{1M,2M}-tail-*.json`). Shard 0 remains the smallest complete
+  baseline and the partition used by later profile gates.
 
 Protocol, unchanged: `tools/fidelity.py` captures hidden states at the final norm and replays
 both operands through the one shared BF16 head (`head_sha256`
 `25a30fd5f826da0abc4efc4cc71def9f02bcb8085f7175eee284d221dee4cfff`), full-vocabulary
-`KL(BF16 || candidate)`, float64 accumulation; `tools/kld_aggregate.py` writes the receipt;
-per-context pairing against the published context build with a 10,000-resample bootstrap over
-the 330 clusters. Report the mean, the interval, top-1, and the tail row. The replay resolution
-floor is **0.000654** (`receipts/release-evidence-hydrated.json` →
-`evaluation.controls.live_vs_replay_floor`): any delta below ~1e-3 must be reported as "at or
-below the replay floor", not as a number.
+`KL(BF16 || candidate)`, float32 within vocabulary chunks and float64 across
+chunk aggregates; `tools/kld_aggregate.py` writes the receipt. Per-context
+pairing uses a 10,000-resample bootstrap over 330 clusters. Report mean,
+interval, top-1, and tail. The 0.000654 live-versus-replay result
+(`receipts/release-evidence-hydrated.json`) bounds **absolute served-logit
+equivalence** on six v3 contexts; it does not suppress smaller paired
+replay-domain differences whose intervals resolve them. Label both domains.
 
 ### 8.2 Per-profile gates
 
@@ -801,10 +791,12 @@ Rules that apply to all three, in the F4 spirit:
   engine reports one pool, so the split of `M` between recurrent state, draft KV and page padding
   is inferred rather than measured, and only the MTP-3-minus-MTP-off difference (0.49 GiB) is
   attributable with confidence.
-- No sub-4-bit width of this architecture has ever been measured for fidelity, which makes S16 a
-  design and not a product.
-- The 4-bit KV dtypes are unmeasured, and the current fidelity protocol resolves the KV cache to
-  bfloat16, so it cannot measure them even for the profiles that already ship fp8 KV.
+- S16-V is the first measured sub-4-bit body: 0.045374 on v5 shard 0, a
+  fidelity NO. No isolated K3 role or alternate sub-4-bit allocation has been
+  measured.
+- `int4_per_token_head` KV is measured for capacity, retrieval, long-context
+  top-20 KL and prefill (`receipts/kv-dtype-sweep-5090.json`), but not under the
+  text-only v5 body metric, whose captures resolve KV to bfloat16.
 - Activation, non-torch and CUDA-graph figures are carried unchanged from a 32 GB profile; a
   16 GB profile with a lower image cap and fewer batched tokens should measure its own.
 

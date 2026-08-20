@@ -11,8 +11,8 @@
 ## Recipe and why
 
 The v1 recipe put the whole MLP at K4 and left 2.71 GB of the NVFP4-equivalent budget
-unspent. The head-attribution and per-tensor error data said the residual error lives in
-the MLP, so iteration 2 spends the budget there:
+unspent. The head ablation ruled out spending that budget on `lm_head`; separate
+per-tensor proxy errors motivated testing higher precision in the MLP:
 
 | role | v1 | v2 | on-disk | resident |
 |---|---|---|---:|---:|
@@ -50,10 +50,12 @@ Paired, same contexts:
 | v2 - v1 | **-0.022579** | [-0.03009, -0.01631] | **136/136** v2 |
 | v2 - FP8 | **-0.004969** | [-0.00643, -0.00371] | **136/136** v2 |
 
-**v2 is 38 % lower mean KLD than official FP8 at 71 % of its resident weight**, and
-73 % lower than v1. Both differences are unanimous across all 136 contexts with
-bootstrap intervals excluding zero, and both are three orders of magnitude above the
-measured runtime-repeat noise floor (0.000000). Per-stratum means: code 0.00863, encyclopedic 0.00491, literary 0.01500, multilingual 0.00278, scientific 0.00258.
+**v2 is 38 % lower mean KLD than official FP8 at 71 % of its resident weight**,
+and 73 % lower than v1. Both differences are unanimous across all 136 contexts
+with bootstrap intervals excluding zero. Bit-identical runtime repeats establish
+determinism, while the paired bootstrap—not a zero-valued repeat floor—supports
+the population comparison. Per-stratum means: code 0.00863, encyclopedic 0.00491,
+literary 0.01500, multilingual 0.00278, scientific 0.00258.
 
 ## Performance — every number measured on the same box under the same flags
 
@@ -116,5 +118,5 @@ upstream patch.
 |---|---|---|---|
 | correctness (KLD) | 0.030736 | **0.008157** | 73 % better, and now 38 % better than official FP8 |
 | memory | 19.21 GB | 21.82 GB | +2.61 GB, still **under** the 21.92 GB NVFP4-equivalent ceiling |
-| TG | 55.4 / 190.6 / 428.1 | 56.5 / 199.6 / 402.7, **113.8 with MTP** | best single-stream of every candidate measured |
+| TG | 55.4 / 190.6 / 428.1 | 56.5 / 199.6 / 402.7, **113.8 with MTP** | MTP doubles this profile's C1 result; comparator MTP profiles were not measured |
 | PP | not measured | 2,369 | **worst** of every candidate; cause identified and quantified |

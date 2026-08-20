@@ -4,7 +4,7 @@
 — the owner, or a fresh agent after a rental dies — can resume every open thread without reading the
 transcript. Every claim here is checkable from a committed receipt.
 
-**Task list state: 100 of 102 done, 1 blocked with a written reason, 1 dropped by owner decision.**
+**This campaign's execution list:** 100 of 102 done, 1 blocked with a written reason, 1 dropped by owner decision. This is not the repository-wide research backlog; see [29](29-plan-and-loose-ends.md).
 
 ---
 
@@ -38,9 +38,11 @@ transcript. Every claim here is checkable from a committed receipt.
 | **DP8** | 8 | 135.2 | **3,553 @C128** | **C32** |
 | ~~TP8~~ | 8 | **refused at load** | — | — |
 
-- **Knee = 4 × data-parallel degree**, proven on one host across three arms. TP width *lowers* the knee.
-- **TP8 is architecturally impossible**: `lm_head` is padded vocab 248,320 = 128 × 1940, 1940 = 2²×5×97, so max
-  TP width is **4 on any GPU count**.
+- **Knee = 4 × data-parallel degree** on this host and workload; TP width lowers it.
+- **The current checkpoint/runtime refuses TP8.** The padded vocab 248,320 is
+  divisible by four but not eight under this loader's `lm_head` sharding rule, so TP4 is the
+  largest demonstrated width. This is an implementation/checkpoint constraint, not a proof
+  that every possible runtime must reject TP8.
 - **Cheapest tokens are ONE GPU** (0.707–0.840 GPU-h/Mtok vs DP8's 1.141–1.383). Multi-GPU is a
   **latency-and-concurrency purchase**, not a cost-per-token one.
 - **Output tokens cost 8–20× input** ($0.879 vs $0.111/Mtok at the 1-GPU knee). DP8 with one request in flight
@@ -56,11 +58,11 @@ transcript. Every claim here is checkable from a committed receipt.
 |---|---:|---|
 | same-server replicate, concurrency 1 | **0.0e+00** | engine is deterministic alone |
 | cross-boot replicate | 1.180e-03 | resolution floor |
-| **1M window only** (native rope) | **1.248e-03** | **the window is FREE** |
-| **static YaRN rope**, matched window | **1.071e-02** | **the rope costs all of it** |
+| **1M window only** (native rope) | **1.248e-03** | indistinguishable from the 1.180e-03 cross-boot floor; no window-only cost resolved |
+| **static YaRN rope**, matched window | **1.071e-02** | dominant measured change on this probe |
 | 262k vs 1M-YaRN, 1 GPU (§31) | 1.057e-02 | ~9× floor, 19/48 prompts change output |
-| 262k vs 1M-YaRN, **DP8** (§34) | **1.0265e-02** | **replicates within 3 %** |
-| **quiet vs LOADED, DP8** (§34) | **1.278e-03** | **1.08× floor — concurrency is fidelity-neutral** |
+| 262k vs 1M-YaRN, **DP8** (§34) | **1.0265e-02** | replicates within 3 % |
+| **quiet vs loaded, DP8** (§34) | **1.278e-03** | 1.08× floor; no concurrency cost resolved, only an upper bound at this scale |
 
 Retrieval at 1M works (needle at **994,755 tokens = 99.5 %** of window passes). Prefill is super-linear with a
 **rising** exponent (k = 1.506 → 1.744 → 2.144), so a 1M prompt costs **2.53× more per token**.

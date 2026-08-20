@@ -77,9 +77,9 @@ CONDS = {
     },
     "k6parity": {
         "index": 2,
-        "schema": "qwen38-k6-parity-kld/1",
-        "question": "at byte parity with GGUF Q6_K, does our recipe match or beat it -- i.e. is "
-                    "the 6-bit-class loss a byte gap rather than an engineering gap?",
+        "schema": "qwen38-k6-parity-kld/2",
+        "question": "at near-equal file bytes, how do the EXL3 and GGUF Q6_K complete "
+                    "pipelines compare on the shared suite, with engine confounding explicit?",
         "roles_expected": {"full_attn": 6, "linear_attn": 6, "mlp_gate": 6, "mlp_up": 6,
                            "mlp_down": 6},
         "head_mtp_expected": {"lm_head": 6.0},
@@ -422,26 +422,35 @@ def verdict_k6parity(mean: float, prereg: dict, cond: dict, errors: list) -> dic
     rule = cond["registered_decision_rule"]
     q = prereg["published_anchors"]["gguf_q6_k"]
     net, meas = q["net_of_engine_floor_estimate"], q["token_mean_kld"]
-    require_in_prose(rule["BEATS_Q6K"], "%.6f" % net, errors, "Q6_K net of floor")
+    require_in_prose(rule["BEATS_Q6K"], "%.6f" % net, errors, "historical Q6_K net")
     require_in_prose(rule["MISSES"], "%.6f" % meas, errors, "Q6_K measured")
     if mean < net:
-        out = "BEATS_Q6K"
+        historical_outcome = "BEATS_Q6K"
     elif mean <= meas:
-        out = "MATCHES_Q6K"
+        historical_outcome = "MATCHES_Q6K"
     else:
-        out = "MISSES"
+        historical_outcome = "MISSES"
     return {
-        "outcome": out,
-        "rule_applied": rule[out],
-        "thresholds_used": {"q6k_net_of_floor_estimate": net, "q6k_measured": meas},
-        "cross_engine_caveat": "the Q6_K row was captured in llama.cpp against the same 512 "
-                               "contexts and the same suite token, so the comparison carries "
-                               "the cross-engine term measured at %.6f mean "
-                               "(receipts/gguf-report-engine-floor.json). A GGUF number is an "
-                               "upper bound on its own quantization error and the net figure is "
-                               "a naive subtraction, not an identity, because KL is not "
-                               "additive. The hydrated pairing carries no such term."
-                               % prereg["published_anchors"]["cross_engine_floor"]["token_mean_kld"],
+        "outcome": "CROSS_ENGINE_COMPLETE_PIPELINE_ONLY",
+        "historical_registered_outcome": historical_outcome,
+        "historical_rule_applied": rule[historical_outcome],
+        "registered_thresholds": {
+            "invalid_q6k_net_of_floor_estimate": net,
+            "q6k_complete_pipeline_mean": meas,
+        },
+        "correction": "the registered BEATS/MATCHES/MISSES rule is withdrawn because it "
+                      "subtracts one KL from another. KL is neither additive nor a metric, so "
+                      "the cross-engine BF16 control supplies no format-only correction or bound.",
+        "complete_pipeline_observation": (
+            "the EXL3 pipeline measures lower KL than the llama.cpp Q6_K pipeline on the "
+            "shared contexts" if mean < meas else
+            "the EXL3 pipeline does not measure lower KL than the llama.cpp Q6_K pipeline "
+            "on the shared contexts"
+        ),
+        "cross_engine_caveat": "both candidates use the same 512 contexts, suite token and "
+                               "shared BF16 head, but their captures use different engines. "
+                               "The result compares complete pipelines and cannot isolate "
+                               "format quality or the causal effect of the byte allocation.",
     }
 
 
@@ -621,7 +630,9 @@ def main() -> int:
     payload["content_sha256"] = canonical_sha256(
         {k: v for k, v in payload.items() if k != "content_sha256"})
 
-    args.out.write_text(json.dumps(payload, indent=1) + "\n")
+    tmp_path = args.out.with_name(args.out.name + ".tmp")
+    tmp_path.write_text(json.dumps(payload, indent=1, allow_nan=False) + "\n")
+    tmp_path.replace(args.out)
     print(json.dumps({"out": str(args.out), "mean": mean,
                       "verdict": verdict["outcome"],
                       "prediction_check": payload["prediction_check"],

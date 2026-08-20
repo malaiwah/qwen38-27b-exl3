@@ -251,10 +251,9 @@ pass. The pass earned the law; it does not need to be paid for twice.
 
 ## 5. What the ladder says about the hand-designed recipe
 
-The shipped recipe puts `mlp_down_proj` at K6 while `gate`/`up` sit at K5, justified by down_proj
-carrying the largest per-tensor proxy error in every layer. **The conclusion is right and the
-evidence originally offered for it was not**: that comparison read down_proj at K6 against gate/up
-at K5, which compares widths rather than tensors. At equal width, over all 64 layers:
+The shipped recipe puts `mlp_down_proj` at K6 while gate/up sit at K5. The
+original justification compared down at K6 with gate/up at K5, which confounded
+tensor role and width. At equal width over all 64 layers:
 
 | width | `gate_proj` | `up_proj` | `down_proj` | down/gate | down/up |
 |---|---:|---:|---:|---:|---:|
@@ -263,11 +262,10 @@ at K5, which compares widths rather than tensors. At equal width, over all 64 la
 | K6 | 8.7561e−05 | 1.2284e−04 | 1.5679e−04 | 1.791 | 1.276 |
 | K7 | 2.3880e−05 | 3.3493e−05 | 4.2748e−05 | 1.790 | 1.276 |
 
-down_proj really is the highest-error MLP tensor at equal width, by 1.79× over `gate_proj` and
-1.28× over `up_proj`, and those ratios are constant to three digits across four widths — a direct
-consequence of §3, where the shape is universal and only `a_m` differs. An early reading of layers
-0–2 alone suggested the ordering inverted; over the stack it does not, and the three-layer reading
-was wrong.
+`down_proj` has the largest equal-width **proxy** error. But §7 shows that this
+proxy is not monotone with KLD across role reallocations, so the table does not
+prove K6-down is fidelity-optimal. The shipped recipe's measured quality stands;
+isolating the role choice would require a direct byte-controlled ablation.
 
 ## 6. The candidate
 

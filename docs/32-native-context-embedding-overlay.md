@@ -34,9 +34,10 @@ That proves the engine budget and served paths together. It does **not** reprodu
 
 ## What was done
 
-The input embedding table is **248,320 x 5,120 in BF16 = 2.543 GB resident** —
-second only to the MLP stack, larger than the entire quantized attention stack,
-and pure lookup: one row per token, no accumulation or tensor-core matmul.
+The input embedding table is **248,320 x 5,120 in BF16 = 2.543 GB resident**.
+It is one of the largest individual tensors—larger than `lm_head`, vision, or
+MTP—and performs a pure lookup: one row per token, with no accumulation or
+tensor-core matmul.
 
 `VLLM_EXL3_EMBED_BITS=8` converts it after load to per-row symmetric int8. Each
 row keeps its own scale. int8 rather than FP8 is deliberate: E4M3 has three

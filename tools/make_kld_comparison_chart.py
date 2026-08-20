@@ -7,10 +7,10 @@ Left column is ONE measurement protocol for every family we have measured:
 shard 0 of the v5 held-out suite, the same 512 contexts and the same 1,048,064
 scored positions for every point, KL(BF16 reference || candidate) over the full
 vocabulary with both operands through one shared BF16 head
-(receipts/cross-engine-comparator.json). GGUF points are captured under
-llama.cpp, so they carry the measured cross-engine floor
-(receipts/gguf-report-engine-floor.json) that is drawn as a horizontal
-reference line; vLLM points do not.
+(receipts/cross-engine-comparator.json). GGUF points were captured under
+llama.cpp, while the reference and vLLM points were captured under vLLM. The
+unquantized-BF16 cross-engine control is drawn as a diagnostic reference line;
+it is not subtracted because KL is neither additive nor a metric.
 
 The left column is split into two stacked sub-panels sharing the y-axis because
 the two families do not have one common size measurement: we measured resident
@@ -39,7 +39,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 from matplotlib.lines import Line2D  # noqa: E402
 
-OUT = Path("/var/tmp/work/charts")
+OUT = Path(__file__).resolve().parent.parent / "assets"
 RECEIPTS = Path(__file__).resolve().parent.parent / "receipts"
 
 # ---------------------------------------------------------------- our protocol
@@ -112,18 +112,6 @@ SERIALIZED = [
 ]
 SERIALIZED_TABLE = (21.9, 0.85)
 
-# The two crossings that decide the honest reading, both inside the serialized
-# sub-panel so no cross-axis comparison is implied.
-# (id, which y) pairs, text box anchor, arrow shrink at each end, arc. The
-# shrink at a mean end has to clear that point's interval caps, which are
-# wider, and the 5-bit pair is close enough together that a straight arrow
-# between them collapses into its own two heads, so it gets an arc.
-CROSSINGS = [
-    ("6-bit crossing — GGUF Q6_K wins", ("hyd", "mean"), ("gguf-q6_k", "net"),
-     (22.4, 0.00190), (13, 9), 0.0),
-    ("5-bit crossing — our context edition wins",
-     ("gguf-q5_k_xl", "net"), ("ctx", "mean"), (17.88, 0.00190), (5, 6), 1.1),
-]
 
 # Our five vLLM builds also have full-suite means over ten shards. The left
 # column plots shard 0 only, because that is the shard every GGUF candidate was
@@ -272,8 +260,10 @@ def draw_table(ax, c: dict, anchor: tuple[float, float], rows: list) -> None:
 def draw_resident(ax, c: dict) -> None:
     """Upper left sub-panel: x = weights measured resident under vLLM."""
     style_axes(ax, c)
-    rows = [(None, f"{'resident weights':<23}{'mean':<10}"
-                   f"{'p99.9':<8}{'top-1':<9}{'GiB':<7}")]
+    rows: list[tuple[str | None, str]] = [
+        (None, f"{'resident weights':<23}{'mean':<10}"
+         f"{'p99.9':<8}{'top-1':<9}{'GiB':<7}")
+    ]
     for cid, gib, mean_off, tail_off, cap in RESIDENT:
         name, _short, key, _engine = IDENTITY[cid]
         d = CAND[cid]
@@ -307,88 +297,40 @@ def draw_resident(ax, c: dict) -> None:
 def draw_serialized(ax, c: dict) -> None:
     """Lower left sub-panel: x = serialized bytes, same y as the panel above."""
     style_axes(ax, c)
-    xs: dict[str, float] = {}
-    rows = [(None, f"{'serialized bytes':<18}{'mean':<10}{'net of floor':<14}"
-                   f"{'p99.9':<8}{'top-1':<9}{'GiB':<7}")]
+    rows: list[tuple[str | None, str]] = [
+        (None, f"{'serialized bytes':<18}{'mean':<10}"
+         f"{'p99.9':<8}{'top-1':<9}{'GiB':<7}")
+    ]
     for cid, receipt, mean_off, tail_off, cap in SERIALIZED:
-        name, _short, key, engine = IDENTITY[cid]
+        name, _short, key, _engine = IDENTITY[cid]
         raw, gib = serialized_gib(cid, receipt)
-        xs[cid] = gib
         d = CAND[cid]
         mean = d["mean_kld"]
-        net = d.get("engine_floor_subtracted_estimate")
         print(f"  {cid}: {raw:,} B serialized = {gib:.4f} GiB, "
-              f"mean {mean:.6f}" + (f", net {net:.6f}" if net else ""))
+              f"mean {mean:.6f}")
         draw_point(ax, c, cid, gib, cap, mean_off, tail_off)
         top1 = f"{d['top1_agreement'] * 100:.2f} %"
-        net_txt = f"≈{net:.6f}" if net else "—"
-        rows.append((key, f"{name:<18}{mean:<10.6f}{net_txt:<14}"
+        rows.append((key, f"{name:<18}{mean:<10.6f}"
                           f"{d['p999_kld']:<8.4f}{top1:<9}{gib:<7.3f}"))
-        if net is not None:
-            # Measured value is an upper bound; the open square is the naive
-            # floor subtraction. Dotted, so it cannot be read as an interval.
-            ax.plot([gib, gib], [net, mean], color=c[key], lw=1.3,
-                    ls=(0, (1.6, 1.6)), zorder=3)
-            ax.scatter([gib], [net], s=58, marker=MARKER[engine],
-                       facecolor=c["bg"], edgecolor=c[key], linewidth=1.5,
-                       zorder=4)
-    rows.append((None, "square = llama.cpp: the mean contains the engine floor"))
-    rows.append((None, "hollow square = net of that floor, an estimate, not an "
-                       "identity"))
+    rows.append((None, "square = llama.cpp; circle = vLLM"))
+    rows.append((None, "cross-engine control is diagnostic, not subtractable"))
     draw_table(ax, c, SERIALIZED_TABLE, rows)
 
-    # The measured cross-engine floor: what two engines disagree by on the SAME
-    # unquantized BF16 weights. Every square above carries it; no circle does.
+    # Cross-engine BF16 control: the two implementations disagree even on the
+    # same unquantized weights. It demonstrates confounding but cannot be
+    # algebraically removed from a candidate KL.
     fmean, fp999 = FLOOR["mean_kld"], FLOOR["p999_kld"]
     ax.axhline(fmean, color=c["floor"], lw=1.4, ls=(0, (5, 3)), zorder=1)
     ax.annotate(
-        f"engine floor: llama.cpp ↔ vLLM on the SAME unquantized BF16 weights, "
-        f"mean {fmean:.6f}",
+        f"cross-engine BF16 control: llama.cpp ↔ vLLM on the SAME weights, "
+        f"mean {fmean:.6f}; diagnostic only",
         (17.88, fmean), textcoords="offset points", xytext=(0, -11),
         va="top", fontsize=7.6, color=c["floor"], zorder=5)
     ax.axhline(fp999, color=c["floor"], lw=1.1, ls=(0, (2, 3)), zorder=1)
-    ax.annotate(f"same engine floor, p99.9 {fp999:.4f}", (17.88, fp999),
+    ax.annotate(f"same control, p99.9 {fp999:.4f}", (17.88, fp999),
                 textcoords="offset points", xytext=(0, 5), va="bottom",
                 fontsize=7.6, color=c["floor"], zorder=5)
 
-    def y_of(cid: str, which: str) -> float:
-        d = CAND[cid]
-        return d["mean_kld"] if which == "mean" else \
-            d["engine_floor_subtracted_estimate"]
-
-    def fmt(p) -> str:
-        # Marker labels, not full names: the panel's table carries the long
-        # form, and a wide box here would cover a neighbouring point.
-        cid, which, gib, y = p
-        tag = " net" if which == "net" else ""
-        return f"{IDENTITY[cid][1]} {y:.6f}{tag}, {gib:.3f} GiB"
-
-    for title, a, b, (bx, by), (shrink_a, shrink_b), rad in CROSSINGS:
-        pts = [(cid, which, xs[cid], y_of(cid, which)) for cid, which in (a, b)]
-        (_, _, x0, y0), (_, _, x1, y1) = pts
-        ax.annotate("", xy=(x1, y1), xytext=(x0, y0),
-                    arrowprops=dict(arrowstyle="<|-|>", color=c["ann"], lw=1.2,
-                                    shrinkA=shrink_a, shrinkB=shrink_b,
-                                    alpha=0.85,
-                                    connectionstyle=f"arc3,rad={rad}"),
-                    zorder=6)
-        # Which one wins is the whole point, so the box names both values and
-        # the size difference in the same breath.
-        win, lose = sorted(pts, key=lambda p: p[3])
-        pct = (lose[3] - win[3]) / lose[3] * 100
-        # Both GiB values in this panel print at 3 decimals, so the difference
-        # does too: 0.445 cannot be misread as a rounding of rounded inputs,
-        # where 0.45 invites exactly that reading.
-        dgib = win[2] - lose[2]
-        text = "\n".join([
-            title, fmt(win), fmt(lose),
-            f"{pct:.0f} % lower KL, {abs(dgib):.3f} GiB "
-            f"{'more' if dgib > 0 else 'less'} weight",
-        ])
-        ax.annotate(text, (bx, by), ha="left", va="top", fontsize=7.6,
-                    color=c["fg"], zorder=6,
-                    bbox=dict(boxstyle="round,pad=0.32", facecolor=c["bg"],
-                              edgecolor=c["ann"], alpha=0.94, linewidth=0.8))
 
     ax.set_yscale("log")
     ax.set_xlim(17.8, 27.9)
@@ -532,13 +474,12 @@ def draw(theme: str) -> list[Path]:
         f"the suite: our five vLLM means over {FULL_SUITE_POSITIONS:,} positions "
         f"differ from these shard-0 values by at most {drift:.1f} % and change "
         "no ordering.",
-        "Engine floor, measured the same way: llama.cpp against vLLM on the SAME "
-        f"unquantized BF16 weights is {fmean:.6f} mean, "
+        "Cross-engine control, measured on identical unquantized BF16 weights: "
+        f"llama.cpp versus vLLM is {fmean:.6f} mean, "
         f"{FLOOR['top1_agreement'] * 100:.2f} % top-1, p99.9 "
-        f"{FLOOR['p999_kld']:.4f} (receipts/gguf-report-engine-floor.json).",
-        "Every GGUF value above contains that term and no vLLM value does, so "
-        "the squares are upper bounds; the hollow squares subtract it naively, "
-        "and KL is not additive, so they are estimates and not identities.",
+        f"{FLOOR['p999_kld']:.4f} (receipts/gguf-report-engine-floor.json). "
+        "It proves the engine is a confounder. KL is neither additive nor a "
+        "metric, so the control is not subtracted and supplies no quantization-only bound.",
         "The two left sub-panels share a y-axis and deliberately do NOT share an "
         "x-axis: resident weights and serialized bytes are different quantities, "
         "and merging them would be a false axis.",

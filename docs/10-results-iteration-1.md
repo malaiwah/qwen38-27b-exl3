@@ -47,19 +47,22 @@ Protocol per [05](05-kld-protocol.md): one frozen 2048-token window
 | `k4-bf16-attn` (same checkpoint, overlay off) | 0.036775 | 0.000000 | 0.6210 | 24.63 GB |
 | `unsloth/Qwen3.8-27B-NVFP4` | 0.091457 | 0.000000 | 0.8036 | 23.42 GB |
 
-**The harness is validated**: scoring the BF16 teacher against its own captured
-logits returns exactly 0.000000, so the densification path and the window
-identity introduce no bias. Every candidate above shares that teacher file.
+The `self-bf16` control validates scoring arithmetic and reference-file identity:
+the same captured logits compared with themselves return exactly zero. It does
+**not** independently validate capture, densification, or token/position
+alignment, because any common error is present on both sides. Every candidate
+above shares the same teacher file.
 
-**2.69x closer to BF16 than the same-generation NVFP4 checkpoint**, with 4.2 GB
-less resident weight.
+On this single window, the mixed checkpoint was **2.69x closer to BF16 than the
+same-generation NVFP4 checkpoint**, with 4.2 GB less resident weight.
 
-**Online K6 attention beat BF16 attention** on the identical checkpoint
-(0.034030 vs 0.036775). Not noise: run SD is 0 for both. The K6 encode applies
-out-scales that partly cancel the K4 MLP's systematic shrinkage (`g_sc ~0.895`
-per projection in the conversion log). Consequence for the next iteration:
-attention is not where the remaining error lives, so it is not where bits should
-go.
+The online-K6 configuration also scored lower than the BF16-attention control on
+this window (0.034030 vs 0.036775). Zero run SD establishes deterministic
+repetition, not corpus-level significance or the cause of the difference. The
+conversion-log out-scales (`g_sc ~0.895` per projection) suggested partial
+cancellation of K4 MLP shrinkage, but that was a hypothesis requiring
+multi-context attribution; this result alone did not locate the remaining
+error.
 
 `run_sd = 0` means the three repeats were bit-identical, which is what the eager,
 `max_num_seqs=1`, prefix-cache-disabled configuration is supposed to produce.

@@ -154,7 +154,7 @@ numbers untouched — this section adds evidence, it does not revise theirs.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="assets/kld-all-measurements-dark.svg">
-  <img alt="Every KL divergence this project has measured, four panels on four protocols with deliberately no shared axis. Panel A, top left — our v5 held-out suite, shard 0: 512 contexts, 1,048,064 scored positions, 330 source clusters, identical for every candidate; y is KL(BF16 reference || candidate) in nats per token on a log scale, x is serialized bytes on disk in GiB and never VRAM, resident weights or KV. Ten candidates with source-cluster bootstrap 95 % intervals and their p99.9: GGUF Q8_0 0.001087, GGUF Q6_K 0.002035, hydrated K5/K6 0.002700, online K5/K6 0.003141, context edition 0.003409, GGUF UD-Q5_K_XL 0.004444, official Qwen FP8 0.005197, K4 0.010345, Unsloth NVFP4 0.030115 and gittensor NVFP4 (RTX5090) 0.062163. The measured llama.cpp-versus-vLLM cross-engine floor, 0.000507 mean at 99.07 % top-1, is drawn as a dashed reference line; filled squares are llama.cpp rows that contain that term, hollow squares subtract it naively, circles are vLLM rows that never carried it. The five candidates with no published serialized-byte receipt — online K5/K6, official FP8, K4, NVFP4 and gittensor NVFP4-5090 — sit in a narrow lane at the right of the same panel on the same y-axis, each labelled with the reason instead of being given an invented x. Panel B, top right — the same suite's ladder checkpoints, cumulative 1,048,064 to 10,480,640 scored positions across ten shards, 5,120 contexts and 842 source clusters at 10M, five vLLM builds only because no GGUF candidate ran all ten shards; every mean moves by less than 2.9 % of its own value across the tenfold increase and no ordering changes. Panel C, bottom left — the two prior suites, each on its own y-axis with a hatched 'NOT ONE AXIS' barrier between them: C1, the corrected v3 suite, 127 contexts and 259,969 positions, printing the measured ratio of each candidate's v3 mean to its own v5 shard-0 mean (official FP8 2.46x, online 2.53x, hydrated 2.66x, context 2.75x, K4 2.87x, NVFP4 3.08x — a 1.25x spread, so no single conversion factor exists, while the ordering is identical in both suites); and C2, the source-disjoint v4 qualification, 36 contexts and 73,692 positions. Panel D, bottom right — a protocol we have never run: turboderp's published chart labels read off his own images, OpenWebText 8 x 8192 = 65,536 formatted positions, his BF16 reference and his output head inside the measured path, with two of our builds present only as dashed vertical decoder-weight markers carrying no y-value. The footer states the two rules the figure exists to enforce: RULE 1, the engine term is not shared — every GGUF value in panel A contains the 0.000507 cross-engine floor and every vLLM value does not, so the squares are upper bounds and the floor-subtracted values are estimates and not identities because KL is not additive; RULE 2, no cross-panel ratio is meaningful, because the panels differ in corpus, context length, scored-position selection, reference numerics, vocabulary handling and head placement." src="assets/kld-all-measurements-light.svg">
+  <img alt="Every KL divergence measured by the project, separated into protocol-specific panels. The v5 shard-0 panel shows measured candidate pipelines and an unquantized-BF16 cross-engine diagnostic without subtracting it; other panels show v5 convergence, prior suites and turboderp's unrelated protocol without cross-panel ratios." src="assets/kld-all-measurements-light.svg">
 </picture>
 
 *The widest single view of the evidence: **A** is the only panel where every family appears
@@ -372,34 +372,33 @@ per-candidate reports
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="assets/kld-family-comparison-dark.svg">
-  <img alt="Quantization families: every family we have measured on one protocol with two size axes on the left, and one published protocol we have never run on the right; the columns are not interchangeable and no ratio between them is meaningful. Left column is shard 0 of our v5 held-out suite — the same 512 contexts, the same 1,048,064 scored positions and the same 330 source clusters for every candidate, both operands through one shared BF16 head — split into two sub-panels that share a logarithmic y-axis and deliberately do not share an x-axis. Upper sub-panel, x is weights measured resident under vLLM, with no GGUF point because llama.cpp resident weights were never measured: hydrated K5/K6 0.002700 at 20.31 GiB, online K5/K6 0.003141 at 20.32, context edition 0.003409 at 18.41, official Qwen FP8 0.005197 at 28.51, K4 0.010345 at 17.89, each mean marker joined by a vertical line to a hollow triangle at its p99.9 — 0.1313, 0.1447, 0.1632, 0.2440 and 0.5576 — and a printed value table repeating mean, p99.9, top-1 and GiB for all five, noting that a circle is captured under vLLM and carries no engine term. Lower sub-panel, same suite and same y-axis, x is serialized bytes on disk: filled squares for the three GGUFs measured under llama.cpp, Q8_0 0.001087 at 27.052 GiB, Q6_K 0.002035 at 21.313 and UD-Q5_K_XL 0.004444 at 18.830, each with a hollow square below it for its naive net-of-engine-floor estimate of 0.000579, 0.001528 and 0.003936, plus circles for the two builds of ours that have a published payload receipt, hydrated 0.002700 at 20.127 GiB and the context edition 0.003409 at 19.275; online K5/K6 and K4 are absent here because they ship BF16 attention quantized at load and have no payload receipt. A dashed line at 0.000507 marks the measured llama.cpp-versus-vLLM engine floor on the same unquantized BF16 weights and a dotted line marks that floor’s p99.9 of 0.0113; every square contains that term and no circle does. Two crossings are called out in boxes: at 6 bits GGUF Q6_K wins, 0.001528 net at 21.313 GiB against hydrated 0.002700 at 20.127, 43 percent lower KL for 1.186 GiB more weight; at 5 bits our context edition wins, 0.003409 at 19.275 GiB against UD-Q5_K_XL 0.003936 net at 18.830, 13 percent lower KL for 0.445 GiB more weight. A second printed value table repeats mean, net of floor, p99.9, top-1 and GiB for every point in this sub-panel. Right panel is a different protocol entirely: turboderp’s published chart labels on his own OpenWebText run, 8 x 8192 = 65,536 formatted positions against his own BF16 reference, x is quantized decoder weight with embeddings excluded and the output head included, his EXL3 bpw ladder, GGUF UD ladder, one GGUF-IQ point, Unsloth NVFP4 and Qwen FP8, his two synthetic noise floors at 0.0052 mean and 0.0007 median, and vertical markers where our context and hydrated builds fall on his size axis with no y-value because we have never run his protocol." src="assets/kld-family-comparison-light.svg">
+  <img alt="Quantization families on shard 0 of the v5 suite. GGUF points use llama.cpp and other points use vLLM; the unquantized-BF16 cross-engine control is diagnostic and is not subtracted. Separate panels keep serialized bytes, resident weights and the unrelated turboderp protocol distinct." src="assets/kld-family-comparison-light.svg">
 </picture>
 
-| candidate | engine | measured mean KLD | net of engine floor | top-1 | p99.9 | serialized |
-|---|---|---:|---:|---:|---:|---:|
-| GGUF `Q8_0` | llama.cpp | 0.001087 | ~0.000579 | 98.53 % | 0.0351 | 27.05 GiB |
-| `turboderp/Qwen3.8-27B-exl3` 6.00bpw @ `d32ba0bb` | vLLM | 0.001583 | n/a, same engine | 98.28 % | 0.0668 | 21.37 GiB file / 17.05 body |
-| GGUF `Q6_K` | llama.cpp | 0.002035 | ~0.001528 | 97.98 % | 0.0794 | 21.31 GiB |
-| hydrated | vLLM | 0.002700 | n/a, same engine | 97.80 % | 0.1313 | 20.12 GiB payload |
-| **this build** (online K5/K6, attention K6) | vLLM | **0.003141** | n/a, same engine as the reference | **97.61 %** | **0.1447** | **—** |
-| context edition | vLLM | 0.003409 | n/a, same engine | 97.55 % | 0.1632 | 19.27 GiB payload |
-| `turboderp/Qwen3.8-27B-exl3` 5.00bpw @ `a35e75a7` | vLLM | 0.004005 | n/a, same engine | 97.37 % | 0.2032 | 18.53 GiB file / 14.22 body |
-| GGUF `UD-Q5_K_XL` | llama.cpp | 0.004444 | ~0.003936 | 97.20 % | 0.2144 | 18.83 GiB |
-| official FP8 | vLLM | 0.005197 | n/a, same engine | 96.92 % | 0.2440 | 28.51 GiB resident |
-| K4 | vLLM | 0.010345 | n/a, same engine | 95.91 % | 0.5576 | — |
-| `cyankiwi/Qwen3.8-27B-AWQ-INT4` @ `63768c10` | vLLM | 0.022818 | n/a, same engine | 93.94 % | 1.13 | 19.57 GiB file |
-| `unsloth/Qwen3.8-27B-NVFP4` @ `9c73e2da` | vLLM | 0.030115 | n/a, same engine | 93.16 % | 1.6228 | — |
-| `gittensor-model-hub/Qwen3.8-27B-NVFP4-RTX5090` @ `69274a0d` | vLLM | 0.062163 | n/a, same engine | 89.85 % | 2.5911 | — |
-| `sakamakismile/Qwen3.8-27B-MTP-NVFP4` @ `6d98dc1f` | vLLM | 0.151280 | n/a, same engine | 84.74 % | 5.65 | 19.15 GiB file |
+| candidate | engine | measured mean KLD | top-1 | p99.9 | serialized |
+|---|---|---:|---:|---:|---:|
+| GGUF `Q8_0` | llama.cpp | 0.001087 | 98.53 % | 0.0351 | 27.05 GiB |
+| `turboderp/Qwen3.8-27B-exl3` 6.00bpw @ `d32ba0bb` | vLLM | 0.001583 | 98.28 % | 0.0668 | 21.37 GiB file / 17.05 body |
+| GGUF `Q6_K` | llama.cpp | 0.002035 | 97.98 % | 0.0794 | 21.31 GiB |
+| hydrated | vLLM | 0.002700 | 97.80 % | 0.1313 | 20.12 GiB payload |
+| **this build** (online K5/K6, attention K6) | vLLM | **0.003141** | **97.61 %** | **0.1447** | **—** |
+| context edition | vLLM | 0.003409 | 97.55 % | 0.1632 | 19.27 GiB payload |
+| `turboderp/Qwen3.8-27B-exl3` 5.00bpw @ `a35e75a7` | vLLM | 0.004005 | 97.37 % | 0.2032 | 18.53 GiB file / 14.22 body |
+| GGUF `UD-Q5_K_XL` | llama.cpp | 0.004444 | 97.20 % | 0.2144 | 18.83 GiB |
+| official FP8 | vLLM | 0.005197 | 96.92 % | 0.2440 | 28.51 GiB resident |
+| K4 | vLLM | 0.010345 | 95.91 % | 0.5576 | — |
+| `cyankiwi/Qwen3.8-27B-AWQ-INT4` @ `63768c10` | vLLM | 0.022818 | 93.94 % | 1.13 | 19.57 GiB file |
+| `unsloth/Qwen3.8-27B-NVFP4` @ `9c73e2da` | vLLM | 0.030115 | 93.16 % | 1.6228 | — |
+| `gittensor-model-hub/Qwen3.8-27B-NVFP4-RTX5090` @ `69274a0d` | vLLM | 0.062163 | 89.85 % | 2.5911 | — |
+| `sakamakismile/Qwen3.8-27B-MTP-NVFP4` @ `6d98dc1f` | vLLM | 0.151280 | 84.74 % | 5.65 | 19.15 GiB file |
 
-**The engine floor, measured and not assumed.** A GGUF row carries llama.cpp-versus-vLLM numerics
-on top of quantization error, so that term was measured the same way: the unquantized **BF16
-GGUF** against the vLLM BF16 reference, identical token ids, the same shared head, the same 512
-contexts — **0.000507** mean, 99.07 % top-1, p99.9 0.0113
+**The engine control, measured and not assumed.** The unquantized BF16 GGUF
+captured in llama.cpp against the vLLM BF16 reference on identical tokens, the
+shared head and the same 512 contexts measures **0.000507** mean, 99.07 %
+top-1 and p99.9 0.0113
 ([`receipts/gguf-report-engine-floor.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/gguf-report-engine-floor.json)).
-Every GGUF row above contains that term; no vLLM row — ours or FP8's — does. **KL is not additive,
-so the net column is an estimate, not an identity**: the measured GGUF value is an upper bound and
-the net figure is the naive lower one.
+It proves engine confounding. KL is neither additive nor a metric, so the
+control is not subtracted and supplies no quantization-only bound.
 
 **The p99.9 column, and why it differs from the tail table above.** These p99.9 values are each
 report's **exact** shard-0 p99.9 as the comparator receipt read them; the
@@ -470,16 +469,13 @@ full account with the checkpoint's composition, digests and mirror in
 archival mirror
 [`malaiwah/Qwen3.8-27B-NVFP4-RTX5090-archival-69274a0d`](https://huggingface.co/malaiwah/Qwen3.8-27B-NVFP4-RTX5090-archival-69274a0d)).
 
-**Where this build sits, without spin.** It **loses the 6-bit comparison**: `Q6_K` reads 0.002035
-measured and ~0.001528 net of the floor at 21.31 GiB against this build's 0.003141 — about **51 %
-lower divergence** net, and still **35 %** lower on the measured value that includes the
-cross-engine term, so no treatment of that term rescues this build there. Our own hydrated sibling
-beats it too, at 0.002700, which is what serializing attention offline buys. What this build does
-win on this shard: `UD-Q5_K_XL`, whose net 0.003936 at 18.83 GiB is **25 % higher divergence** than
-this build's — equivalently this build is **20 % below** it — and official FP8, which it sits
-**40 % below** at 28.51 GiB resident. Its tail agrees with its mean: p99.9 **0.1447**, lighter than
-`UD-Q5_K_XL`'s 0.2144 and FP8's 0.2440, heavier than `Q6_K`'s 0.0794. `Q8_0` leads everything at
-27.05 GiB.
+**Where this build sits, without format over-attribution.** Under vLLM it
+measures **0.003141**, below same-engine official FP8 at 0.005197 and above
+same-engine hydrated at 0.002700. Cross-engine, llama.cpp `Q6_K` measures
+0.002035 and `UD-Q5_K_XL` 0.004444. Those are complete-pipeline observations,
+not quantization-format rankings. The p99.9 ordering is 0.0794 (`Q6_K`), 0.1447
+(this build), 0.2144 (`UD-Q5_K_XL`) and 0.2440 (FP8); only same-engine
+differences isolate this runtime.
 
 **Correction, 2026-08-16 — the byte axis in the table above is not one axis, and every mixed
 comparison flattered us.** A GGUF row is the **whole file** of a **text-only** artifact; our row is
@@ -519,18 +515,15 @@ two for us:
 tensor bytes", "at equal transformer body" and "as a deployed multimodal artifact" are four different
 claims, and whichever one a sentence means is written into the sentence. No fidelity number changes.
 
-**Update 2026-08-16 — the 6-bit loss was a byte gap, and closing it closes the gap.** The obvious
-reply to "`Q6_K` wins at 6 bits" is that `Q6_K` spends more bytes on the transformer body, so we
-built the variant that spends them: the hydrated recipe with `gate_proj` and `up_proj` promoted
-K5 -> K6, pre-registered with its acceptance rule and its predicted payload **before** converting.
-It measures **0.001634 mean KLD [0.001541, 0.001742]**, top-1 98.248 % — **between `Q6_K`'s net
-0.001528 and its measured 0.002035**, i.e. parity at the 6-bit operating point
+**Update 2026-08-16 — a near-equal-file-byte K6 build.** The hydrated recipe
+with `gate_proj` and `up_proj` promoted K5 → K6 measures **0.001634 mean KLD
+[0.001541, 0.001742]**, top-1 98.248 %
 ([`k6-parity-kld.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/k6-parity-kld.json)).
-Paired per context it beats this family's hydrated build by 0.001066 [0.000974, 0.001173] on
-**511 of 512** contexts — a **39.5 % cut in mean KLD for +1.348 GiB** — and beats `Q6_K`'s *measured*
-value by 0.000401 [0.000378, 0.000425] on 493 of 512, interval excluding zero. It sits 0.000106 above
-`Q6_K`'s *net-of-floor* estimate, and because KL is not additive that particular ordering is **not**
-pressed. It carries **2.306 GiB (13.5 %) less transformer body** than `Q6_K` while matching it.
+It beats hydrated by 0.001066 [0.000974, 0.001173] on **511 of 512** contexts
+for +1.348 GiB, and its complete vLLM pipeline measures 0.000401 below the
+llama.cpp `Q6_K` pipeline on 493 of 512. The cross-engine control cannot turn
+that into format parity or prove a byte-gap mechanism. It carries **2.306 GiB
+(13.5 %) less transformer body** than `Q6_K`.
 
 Two disciplines this exercise was run under, both worth more than the result: the payload was
 predicted at 23,035,310,148 B and measured at **23,035,310,148 B**, zero error; and the registered
@@ -540,25 +533,19 @@ and the byte-law-at-`Q6_K`'s-surplus form best, the opposite of what the surroga
 implied. The published point prediction of ~0.0016 was within 2.1 % of measurement, the most accurate
 advance prediction this project has made — and the miss is printed beside it rather than dropped.
 
-**The two conclusions worth stating plainly:**
+**The complete-pipeline observations worth stating plainly:**
 
-1. **At the 6-bit operating point GGUF `Q6_K` is genuinely better than our best build** —
-   0.001528 net at 21.31 GiB versus the hydrated sibling's 0.002700 at 20.12 GiB of payload, and
-   further ahead of this build's 0.003141. It is the first measurement in this project where an
-   off-the-shelf artifact beats the recipe, and it is published as such.
-2. **At the 5-bit operating point our context edition wins** — 0.003409 at 19.27 GiB against
-   `UD-Q5_K_XL`'s 0.003936 net at 18.83 GiB, about 13 % better fidelity for **0.445 GiB** more
-   payload.
+1. At the nominal 6-bit point, llama.cpp `Q6_K` measures **0.002035** and
+   vLLM hydrated **0.002700**.
+2. At the nominal 5-bit point, the vLLM context edition measures **0.003409**
+   and llama.cpp `UD-Q5_K_XL` **0.004444**.
 
-So the format advantage at this bitrate is real at 5 bits, negative at 6 bits, and far short of a
-full bit. Two further readings that are not flattering: **`Q8_0` is the fidelity leader** at
-0.001087 for 27.05 GiB, and its measured value is only about twice the engine floor, so its own
-number sits near the resolution limit of any cross-engine comparison — the net column is an
-estimate, not an identity, so **no ordering closer than a factor of two should be pressed against
-`Q8_0`**; and **every GGUF point at or
-above 5 bits beats official FP8**, which makes this card's "lower divergence than official FP8"
-claim true and a weaker achievement than it sounds. **K4 is the weakest of our own builds here, and
-Unsloth's NVFP4 — measured on the identical shard, in the same engine — is 2.9x weaker still.**
+The engine mismatch prevents format attribution. `Q8_0` has the lowest
+measured complete-pipeline KL at 0.001087 for 27.05 GiB, and every GGUF point
+at or above 5 bits measures lower than official FP8. Those cross-engine
+observations make this card's "lower divergence than official FP8" headline a
+weaker achievement than it sounds. Same-engine K4 and Unsloth NVFP4
+comparisons remain directly attributable to the tested vLLM pipeline.
 
 **What this comparison does not settle.** It is text-only teacher-forced fidelity on one shard of
 ten. It says nothing about serving 262,144 tokens with vision and MTP on a 32 GB card, which is
@@ -590,19 +577,17 @@ each candidate's **own output head inside the measured path**, base `Mean PPL 6.
 full protocol, delta by delta, in
 [`docs/35-external-protocol-comparability.md`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/docs/35-external-protocol-comparability.md)).
 
-| quant | their protocol, their corpus | their top-1 | ours, net of the engine floor | theirs ÷ ours-net |
-|---|---:|---:|---:|---:|
-| `Q8_0` | 0.000926 ± 0.000042 | 98.761 % | ~0.000579 | 1.60x |
-| `Q6_K` | 0.002286 ± 0.000108 | 97.875 % | ~0.001528 | 1.50x |
-| `UD-Q5_K_XL` | 0.004426 ± 0.000167 | 97.178 % | ~0.003936 | 1.12x |
+| quant | their protocol, their corpus | their top-1 | our protocol, measured pipeline |
+|---|---:|---:|---:|
+| `Q8_0` | 0.000926 ± 0.000042 | 98.761 % | 0.001087 |
+| `Q6_K` | 0.002286 ± 0.000108 | 97.875 % | 0.002035 |
+| `UD-Q5_K_XL` | 0.004426 ± 0.000167 | 97.178 % | 0.004444 |
 
-**The ordering is identical on both axes**, and the level difference is protocol rather than
-disagreement about which quantization is better: their number is pushed down by scoring only the
-second half of each window, by a single English corpus and by dropping base-side terms below
-`log p ≤ −16`, and pushed up by having the candidate's own output head inside the measured path,
-while both of our operands go through one shared BF16 head. Only our number carries a cross-engine
-term, which is why the honest comparison is against our net column. **Correction, 2026-08-16:** this
-paragraph used to call the output head "the large one". It is now measured on our own corpus and it
+**The ordering is identical, but no ratio or conversion is valid across the
+protocols.** They differ in corpus, scoring window, head and engine; our GGUF
+rows are additionally cross-engine. The 0.000507 BF16 control proves
+confounding and cannot be subtracted.
+**Correction, 2026-08-16:** This paragraph used to call the output head "the large one". It is now measured on our own corpus and it
 is not: replaying each candidate through its own head over all 512 shard-0 contexts and 1,048,064
 positions raises its mean by **at most 5.28 %** (hydrated 5.01 % of head-inclusive divergence,
 context 4.06 %, K4 1.17 %, unsloth NVFP4 2.64 %, and exactly 0 % for the official FP8 export, whose
@@ -1445,6 +1430,13 @@ all three surface as HTTP 400:
 - **Content blocks must be `text`, `image`, `image_url` or `video`.** Anything else, including
   an Anthropic `tool_result` carrying a `tool_reference` item on `/v1/messages`, 400s with
   `Unexpected item type in content.` (vllm#52489, open).
+- **Only the leading system message is accepted.** A second or mid-conversation
+  `system` role raises. Clients must merge system instructions into the first
+  system message before rendering history.
+- **Tool-call argument values are an unescaped XML boundary.** Before replaying
+  assistant history, reject values containing literal `</parameter>` or
+  `<parameter=` delimiters. Treat replayed calls and tool output as untrusted
+  data; the template cannot escape those sequences.
 
 Echoing `reasoning_content` back on assistant history turns is what buys a full prefix-cache
 hit: measured 100 % prefix reuse when the client returns it, 94.7 % at ten turns when it does

@@ -158,9 +158,10 @@ run.
 **Claim.** At TP2 the per-decode-step communication is 138 custom-allreduce calls (~5.47 MB total
 payload) + 7 all_gathers (~1.77 MB, 96 % of it logits) — a ~0.55–1.1 ms/step floor at the measured
 52 GB/s P2P — and the collective vLLM picks is already the right one (C++ one-shot custom AR,
-captured inside the decode CUDA graph). The reason TP2 gives +17.5 % instead of +70–80 % is only
-half comm; the other half is that per-launch floors and non-GEMM time do not shrink when weights
-halve. Full file:line walk: `'/home/mbelleau/.omp/agent/sessions/-qwen38-27b/2026-08-14T14-52-00-820Z_01a000c2-2db4-7000-ba65-0c964868558d/KernelGap/KernelGap.TpTax.md'` (scout report), key cites inline below.
+captured inside the decode CUDA graph). The measured TP2 gap is consistent
+with communication plus non-shrinking launch/non-GEMM floors. The durable
+source evidence is the file:line census below; the original session-local
+source-walk file was not committed and is not a third-party-replay artifact.
 
 **Counts, from the model source** (dense Qwen3_5: `use_attn_reduce_scatter_for_moe` requires
 `is_moe_layer`, `$SP/vllm/model_executor/models/qwen3_5.py:129-133`, so every RowParallelLinear
@@ -187,9 +188,9 @@ Prefill-size ARs (>8 MiB) fall to torch symm-mem two-shot or PyNCCL (`all_reduce
 0.4–0.8 ms; 7 eager-adjacent AGs → 0.1–0.25 ms. **Comm floor ≈ 0.6–1.1 ms per ~8 ms TP2 step
 (~8–14 %).** That alone caps TP2 at ~1.75× even if everything else halved perfectly — and it does
 not: the 209 GEMM launches/step keep their ~17–28 µs cooperative-launch floors when the per-launch
-bytes halve (F2 item 3), so the small-matrix share of the step barely moves. [INFERENCE] Those two
-effects together reproduce the measured +17.5 % to within the noise of the acceptance-length variance;
-no third mechanism is needed.
+bytes halve (F2 item 3). [INFERENCE] Those two effects are sufficient to explain
+the observed scale within acceptance-length variance; the run does not prove
+that no other mechanism contributes.
 
 **Levers.**
 1. *Flag, measurable today:* `speculative_config.use_local_argmax_reduction=True`
@@ -213,11 +214,11 @@ no third mechanism is needed.
 reference **pays the same reconstruct** (upstream `LinearEXL3` switches to reconstruct+hgemm above
 144 rows, `/var/tmp/gg-rootfs/opt/exllamav3-python/exllamav3/modules/quant/exl3.py:9,117-125`). So
 "trellis decode cost" mostly cancels out of the 3.3–3.7k vs 5.0–5.2k comparison; "hybrid geometry"
-survives but is only part of the story. Full walk: `'/home/mbelleau/.omp/agent/sessions/-qwen38-27b/2026-08-14T14-52-00-820Z_01a000c2-2db4-7000-ba65-0c964868558d/KernelGap/KernelGap.PrefillWalk.md'`.
+survives but is only part of the story. The durable source citations are inline below.
 
 **The arithmetic** (per 2048-token chunk; 24.33 B weight elements per body pass = 48.65 GB fp16
 reconstruct writes + 15.92 GB trellis reads):
-- hgemm: 2·2048·24.33e9 ≈ 99.6 TFLOP per 32k prompt's worth of chunks at cuBLAS-typical rates;
+- hgemm: 2·2048·24.33e9 ≈ 99.6 TFLOP **per 2048-token chunk**;
 - reconstruct: ~64.6 GB of traffic per chunk pass, memory-bound (the kernel is an unrolled
   store-bandwidth machine: one 16×128 tile per 256-thread block, coalesced int4 stores,
   `$EXT/quant/reconstruct.cu:12-90`), ≈ 8–11 % of the linear-pair time at M=2048, 3–4 % at 6144.
@@ -284,7 +285,7 @@ measured decode is **69–85 % of the achievable (F2) ceiling depending on opera
 the midpoint pairing (135.8 tok/s, 2.4 accepted/step); wall-clock denominator** — see the reconciled
 F2 gap-share paragraph. The remaining 15–31 points decompose below with an explicit residual.
 
-**Source anatomy** (full walk: `'/home/mbelleau/.omp/agent/sessions/-qwen38-27b/2026-08-14T14-52-00-820Z_01a000c2-2db4-7000-ba65-0c964868558d/KernelGap/KernelGap.DecodeWalk.md'`):
+**Source anatomy** (durable file:line evidence inline; the original session-local walk was not committed):
 - Head: `LogitsProcessor._apply_head` computes all 248,320 columns on the default stream, strictly
   serialized after the body graph — target verify + each of 3 draft samplings; even the draft's
   "local argmax" materializes full logits first (`logits_processor.py:139-185,205`;
@@ -489,13 +490,17 @@ cost on this fork; gains are single-stream unless marked.
 
 ---
 
-*Method note: every microbenchmark in this document ran on this workstation's own RTX PRO 6000
-Blackwell SE through `/var/tmp/work/ggrun.sh` with `nvidia-smi` verified idle first; the rentals and
-AIBoss were not touched. Absolute local tok/s carries a proot dispatch tax (flagged wherever it
-matters); per-kernel GPU times are unaffected. Receipts: `receipts/kernel-gap-gemm-bandwidth.json`,
-`receipts/kernel-gap-profiled-decode.json`, `receipts/kernel-gap-gate-ab.{json,patch}`,
-`receipts/kernel-gap-prefill-phases.json`, `receipts/kernel-gap-profiler-table.txt`. Source walks:
-`'/home/mbelleau/.omp/agent/sessions/-qwen38-27b/2026-08-14T14-52-00-820Z_01a000c2-2db4-7000-ba65-0c964868558d/KernelGap/KernelGap.DecodeWalk.md'`, `'/home/mbelleau/.omp/agent/sessions/-qwen38-27b/2026-08-14T14-52-00-820Z_01a000c2-2db4-7000-ba65-0c964868558d/KernelGap/KernelGap.PrefillWalk.md'`, `'/home/mbelleau/.omp/agent/sessions/-qwen38-27b/2026-08-14T14-52-00-820Z_01a000c2-2db4-7000-ba65-0c964868558d/KernelGap/KernelGap.TpTax.md'`.*
+*Method note: every microbenchmark in this document ran on this workstation's
+RTX PRO 6000 Blackwell SE through `/var/tmp/work/ggrun.sh`, with the GPU
+verified idle first. Absolute local tok/s carries a proot dispatch tax; CUDA
+event kernel timings do not include host dispatch. Durable evidence:
+`receipts/kernel-gap-gemm-bandwidth.json`,
+`receipts/kernel-gap-profiled-decode.json`,
+`receipts/kernel-gap-gate-ab.{json,patch}`,
+`receipts/kernel-gap-prefill-phases.json`, and
+`receipts/kernel-gap-profiler-table.txt`. The uncommitted session source walks
+are intentionally not cited as replayable artifacts; their file:line evidence
+is reproduced inline above.*
 ## P. Execution plan for the findings
 
 Every F10 item, turned into work packages with exact edit sites, validation gates, kill switches,
@@ -973,27 +978,23 @@ none may be quoted as one.**
 §28 measured **+1.44 % median / +2.24 % mean** per-request over 11 valid cells, with a **2.84 %**
 median within-arm CV (13.9–18.0 % in short-prompt cells) and a sign test at p = 0.065.
 
-A ceiling of ~+4.2 % on GPU time — ~+3.2 % on wall clock — and an observation of +1.4…2.2 % **± 2.8 %**
-are not in conflict. The observation's own noise band spans the entire interval between zero and the
-ceiling. §28 did not fail to find the effect because the effect is absent; **it failed because a
-≥2.84 % ruler cannot resolve a ≤4.24 % quantity.** The kernel says the component got 4.58× faster;
-Amdahl says that can only ever be worth ~4 % of the step; the ladder says "somewhere in ±2.8 % of
-+1.4 %". All three statements are the same fact.
+The kernel bound and the noisy server A/B are not contradictory: the A/B point
+estimates are positive and smaller than the bound. But 2.84 % is a median
+within-arm CV, not an error bar on the paired effect, so the receipt does not
+quantify a confidence interval around +1.4…2.2 %. It supports an inconclusive
+server-level result, not the stronger claim that a particular noise band spans
+the bound.
 
-**How many repeats §28 would have needed.** Paired design (each cell is its own control),
-$n = (z_{1-\alpha/2} + z_{1-\beta})^2 (\sigma/\delta)^2$ with $\alpha = 0.05$ two-sided, power 0.80,
-$\sigma = 2.84$ %, so $(1.959964 + 0.841621)^2 = 7.8489$:
-
-| target effect $\delta$ | arithmetic | repeats/cell |
-|---|---|--:|
-| 1.50 % | $7.8489 \times (2.84/1.50)^2 = 28.14$ | **29** ← reproduces §28's own estimate |
-| 1.44 % (observed median) | $7.8489 \times (2.84/1.44)^2 = 30.53$ | **31** |
-| 4.24 % (the Amdahl ceiling) | $7.8489 \times (2.84/4.24)^2 = 3.52$ | **4** |
-
-§28 ran **5**. That is *just* enough to resolve an effect sitting exactly at the ceiling and nowhere
-near enough for the magnitude actually observed — **the design was marginal by construction**, which
-is exactly why the standing method is now: measure the kernel, publish the bound, and do not spend
-ladder time trying to observe an effect smaller than the harness CV.
+**Repeat-count correction.** The earlier table treated the median within-arm
+coefficient of variation (2.84 %) as the standard deviation of paired
+differences. That substitution is invalid: paired power depends on the
+variance of within-cell arm differences and their correlation, neither of
+which the receipt reports in a form that supports this calculation. The
+published 29/31/4 repeat counts are therefore retired. A future power analysis
+must retain per-repeat paired deltas (or run a pilot with the intended pairing)
+and estimate their variance directly. The defensible conclusion from §28 is
+only that five repeats did not resolve the server-level effect; the
+kernel-timing plus Amdahl bound is the higher-resolution evidence.
 
 ### F13.7 The b12x gate, bounded the same way — and it lands *below* the bracket we published
 

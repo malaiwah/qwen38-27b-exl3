@@ -31,9 +31,9 @@ designed as a Marlin-scale kernel with TMA bulk load support.
 
 ## Results
 
-### Parity: PASS
-- All M values (1-2048) pass with rel_diff < 0.4%
-- Same numerical behavior as existing exl3_gemm cooperative kernel
+### Numerical agreement: within the prototype tolerance
+- M=1–2048 cases report relative difference <0.4% against `exl3_gemm`.
+- This is not bit parity, full-model output parity or a KLD qualification.
 
 ### Speed vs existing exl3_gemm (cooperative): 1.92x at M≥128
 | M | exl3_gemm | Marlin | speedup |
@@ -41,10 +41,10 @@ designed as a Marlin-scale kernel with TMA bulk load support.
 | 128 | 0.21ms | 0.11ms | 1.92x |
 | 2048 | 3.33ms | 1.74ms | 1.92x |
 
-### Speed vs reconstruct+cuBLAS (actual prefill path): 0.56x at M=2048
-The inline dequant (dq4 codebook lookup) saturates the integer ALU pipeline,
-making the fused kernel slower than reconstruct+cuBLAS at large M. SH_STAGES=6
-was tested — no improvement, confirming the ALU is the bottleneck.
+### Speed vs reconstruct+cuBLAS: 0.56x at M=2048
+The inline-dequant prototype is slower. `SH_STAGES=6` also failed to improve
+it, but that single null intervention does not prove integer-ALU saturation.
+A profiler counter breakdown is required before assigning the bottleneck.
 
 ## Peer review
 

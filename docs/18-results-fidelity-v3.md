@@ -66,7 +66,7 @@ was never going to be trustworthy.
 | control | result | interpretation |
 |---|---|---|
 | runtime-repeat noise floor, captures 1-2 and 2-3 over 32 sentinels ([`receipts/v3-noise-r1-vs-r2.json`](../receipts/v3-noise-r1-vs-r2.json), [`receipts/v3-noise-r2-vs-r3.json`](../receipts/v3-noise-r2-vs-r3.json)) | **0.000000**, top-1 1.0 | this runtime is bit-deterministic across process restarts; every difference reported above is far outside noise. The reference protocol's TP16 runtime had a floor of 0.0032, which would have swamped our head-attribution result |
-| harness self-check | 0.000000 | no densification or window bias |
+| harness self-check | 0.000000 | validates scoring arithmetic and identical-input handling; it cannot detect capture, densification, or window defects shared by both sides |
 | ~~CUDA-graph parity~~ **withdrawn** | published as 0.000000, top-1 1.0 | not a parity measurement: `fidelity.py capture` takes one **prefill** forward, and `cudagraph_mode=FULL_DECODE_ONLY` captures no prefill graph, so this compared two runs of the same eager prefill. The narrow claim it supports is "enabling graph decode does not change prefill numerics". Replaced by a real decode probe — [27](27-graph-decode-drift-control.md) |
 | **replay qualification** | mean `KL(live \|\| replayed)` = **6.54e-04**, top-1 98.999 %, max 0.0913 | **this is our weakest link**: ~500x worse than the reference protocol's 1.23e-06 |
 
@@ -85,10 +85,12 @@ build's graph decode path, not to the quantisation. Full result in
 ### The replay-qualification caveat, in proportion
 
 6.54e-04 is **2.1 %** of our own candidate's KLD and
-**3.7 %** of the K4-vs-FP8 gap, so no ranking here depends on it. But it
-sets a resolution floor: **differences below ~1e-3 are not measurable with the current
-storage format.** The head-attribution result from iteration 1 (6.8e-05) is *below*
-that floor and must be re-derived at higher precision before it is trusted.
+**3.7 %** of the K4-vs-FP8 gap, so no ranking here depends on it.
+It bounds absolute live-versus-replay agreement at roughly 1e-3. The isolated
+head-only absolute KLD is below that level, but the paired body-only versus
+end-to-end head comparison shares the identical replay path and is a separate
+relative measurement; [24](24-p0-results.md) reran that comparison with fp32
+captures.
 
 Two candidate causes were proposed here: BF16 storage of the hidden states (the operand is
 rounded before replay), and a different logit path on the live side (vLLM's own head kernel

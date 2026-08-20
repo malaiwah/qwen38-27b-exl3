@@ -1017,7 +1017,7 @@ def cmd_aggregate(args: argparse.Namespace) -> int:
 # the published five comparisons from the same five cumulative receipts reproduces
 # every field bit-for-bit, including `content_sha256`.  So "the same way the
 # published paired receipt was built" is now something a reader can re-run.
-PAIRED_SCHEMA = "qwen38-kld-ladder-paired/1"
+PAIRED_SCHEMA = "qwen38-kld-ladder-paired/2"
 
 # What two cumulative receipts must agree on before their per-context means may be
 # subtracted.  Anything here differing means the two numbers were not measured
@@ -1135,19 +1135,9 @@ def pair_one(a_label: str, a: dict, b_label: str, b: dict, samples: int, seed: i
     diffs = [rows_a[i]["mean_kld"] - rows_b[i]["mean_kld"] for i in shared]
     clusters = [rows_a[i]["source_cluster"] for i in shared]
     interval = bootstrap(diffs, clusters, samples, seed)
-    # `a_wins` counts strict improvements and `b_wins` is the remainder, so an exact
-    # TIE is counted as a b-win.  That is the convention `fidelity.py paired` has
-    # always used and it is kept here so the published paired receipt stays
-    # reproducible -- but it makes a zero-difference control read "a_wins 0, b_wins
-    # 512" when the truth is 512 ties, which has already misled one reader.  The
-    # field count is therefore left alone and the tie count is reported on stderr
-    # instead, so a run that CAN tie says so out loud without changing the payload.
     wins_a = sum(1 for d in diffs if d < 0)
-    ties = sum(1 for d in diffs if d == 0.0)
-    if ties:
-        print(f"note: {a_label} vs {b_label}: {ties} of {len(diffs)} contexts are exact "
-              f"ties, and this schema counts a tie as a b-win, so b_wins "
-              f"({len(diffs) - wins_a}) is not a count of losses", file=sys.stderr)
+    wins_b = sum(1 for d in diffs if d > 0)
+    ties = len(diffs) - wins_a - wins_b
     return {
         "a": a_label,
         "b": b_label,
@@ -1156,7 +1146,8 @@ def pair_one(a_label: str, a: dict, b_label: str, b: dict, samples: int, seed: i
         "ci95_low": interval["ci95_low"],
         "ci95_high": interval["ci95_high"],
         "a_wins": wins_a,
-        "b_wins": len(shared) - wins_a,
+        "b_wins": wins_b,
+        "ties": ties,
         "clusters": interval["clusters"],
     }
 
@@ -1257,7 +1248,7 @@ def cmd_paired(args: argparse.Namespace) -> int:
     print(json.dumps({"out": args.out, "comparisons": {
         k: {"difference_a_minus_b": v["difference_a_minus_b"],
             "ci95": [v["ci95_low"], v["ci95_high"]],
-            "a_wins": v["a_wins"], "b_wins": v["b_wins"]}
+            "a_wins": v["a_wins"], "b_wins": v["b_wins"], "ties": v["ties"]}
         for k, v in comparisons.items()},
         "content_sha256": payload["content_sha256"]}), flush=True)
     return 0

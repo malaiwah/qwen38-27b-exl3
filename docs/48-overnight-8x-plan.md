@@ -4,6 +4,14 @@
 verified (marked **[verified]**) or is a named step with its own gate. Nothing scored runs without the
 five-check fidelity gate passing first, and no number enters a card or doc without its receipt.
 
+> **Retrospective correction.** This is the pre-run plan, not current guidance.
+> Later work withdrew the +15.4 % and +8.0 % portable speed claims in favour of
+> +2.23 % and +3.23…4.24 % Amdahl bounds (`docs/47` F13), found LMCache's
+> dominant served-profile defect in fp8 KV transfer plus a separate partial-hit
+> path rather than "never restores GDN state", and showed that a timeout does
+> not prove latent task ability. Use the executed receipts and docs/47, not the
+> predictions below, for current conclusions.
+
 ---
 
 ## 1. Hosts and roles for the night

@@ -14,9 +14,9 @@ panel to another.
      x = serialized bytes on disk, the only size quantity that exists for both
      engines (see SIZE_MEASURE below). Candidates with no published serialized
      size get a separate lane at the right of the same panel rather than an
-     invented x. GGUF points are captured under llama.cpp and therefore carry
-     the measured cross-engine floor, which is drawn as a labelled reference
-     line; vLLM points do not carry it.
+     invented x. GGUF points were captured under llama.cpp while the reference
+     and vLLM points were captured under vLLM. The unquantized-BF16
+     cross-engine control is drawn as a diagnostic line, never subtracted.
   B  The same suite's ladder checkpoints, 1M/2M/5M/10M, for the five vLLM
      builds that ran all ten shards: how far the point estimate moves and what
      the interval does when the scored positions grow tenfold.
@@ -335,12 +335,10 @@ def unsized() -> list[str]:
 
 
 def panel_a_ylim() -> tuple[float, float]:
-    """The data range of panel A, with room below for the floor's own label."""
+    """The data range of panel A, with room below for the control's label."""
     vals = [FLOOR["mean_kld"]]
     for d in CAND.values():
         vals += [d["mean_kld"], d["ci95"][0], d.get("p999_kld") or d["mean_kld"]]
-        if "engine_floor_subtracted_estimate" in d:
-            vals.append(d["engine_floor_subtracted_estimate"])
     return min(vals) * 0.55, max(vals) * 1.15
 
 
@@ -392,13 +390,6 @@ def draw_candidate(ax, c: dict, cid: str, x: float, name_label: bool = True,
     if p999:
         ax.scatter([x], [p999], s=150, marker="v", facecolor=c["bg"],
                    edgecolor=c[key], linewidth=1.5, zorder=4)
-    if carries:
-        # The naive floor-subtracted estimate: an estimate, not an identity.
-        net = d["engine_floor_subtracted_estimate"]
-        ax.plot([x, x], [net, mean], color=c[key], lw=1.0, ls=(0, (1, 2)),
-                alpha=0.75, zorder=2)
-        ax.scatter([x], [net], s=72, marker="s", facecolor=c["bg"],
-                   edgecolor=c[key], linewidth=1.5, zorder=4)
     if name_label:
         ax.annotate(short, (x, mean), textcoords="offset points", xytext=(dx, dy),
                     ha=ha, va=va, fontsize=8.5, color=c[key], zorder=5,
@@ -416,17 +407,18 @@ def draw_candidate(ax, c: dict, cid: str, x: float, name_label: bool = True,
 
 
 def draw_floor(ax, c: dict, label: bool) -> None:
+    """Draw the cross-engine BF16 control as a confounding diagnostic."""
     lo, hi = FLOOR["ci95"]
     ax.axhspan(lo, hi, color=c["floor"], alpha=0.16, zorder=1)
     ax.axhline(FLOOR["mean_kld"], color=c["floor"], lw=1.3, ls=(0, (5, 3)),
                zorder=2)
     if label:
         ax.annotate(
-            f"cross-engine floor {FLOOR['mean_kld']:.6f}, "
+            f"cross-engine BF16 control {FLOOR['mean_kld']:.6f}, "
             f"{FLOOR['top1_agreement'] * 100:.2f} % top-1, "
             f"{FLOOR_REPORT['scored_positions']:,} positions\n"
-            "llama.cpp vs vLLM on the SAME unquantized BF16 weights — "
-            "squares contain this term, circles do not",
+            "llama.cpp vs vLLM on the SAME unquantized weights — diagnostic only; "
+            "KL is not subtractable",
             (0.012, FLOOR["mean_kld"]), xycoords=("axes fraction", "data"),
             textcoords="offset points", xytext=(0, 5), ha="left", va="bottom",
             fontsize=7.0, color=c["floor"], zorder=5)
@@ -456,8 +448,10 @@ def draw_size_panel(ax, c: dict) -> None:
     ax.set_ylabel("KL(BF16 reference || candidate), nats/token (log)",
                   color=c["fg"], fontsize=9.5)
 
-    table = [(None, f"{'candidate':<15}{'GiB':>6}  {'mean':>8}  "
-                    f"{'95 % interval':>19}  {'p99.9':>7}  {'top-1':>7}")]
+    table: list[tuple[str | None, str]] = [
+        (None, f"{'candidate':<15}{'GiB':>6}  {'mean':>8}  "
+         f"{'95 % interval':>19}  {'p99.9':>7}  {'top-1':>7}")
+    ]
     for cid, gib in rows + [(cid, None) for cid in unsized()]:
         name, _short, key = identity(cid)
         d = CAND[cid]
@@ -470,8 +464,8 @@ def draw_size_panel(ax, c: dict) -> None:
                            f"{d['top1_agreement'] * 100:6.2f} %"))
     table.append((None, "— in the GiB column: no published serialized size, so the "
                         "candidate is in the lane at the right, not given an x"))
-    table.append((None, "hollow square = measured value minus the engine floor; "
-                        "KL is not additive, so it is an estimate, not an identity"))
+    table.append((None, "cross-engine BF16 control is diagnostic; no KL subtraction "
+                        "or quantization-only bound is valid"))
     draw_table(ax, c, (0.012, 0.985), table, fontsize=6.6, step=9.4)
 
     handles = [
@@ -479,9 +473,6 @@ def draw_size_panel(ax, c: dict) -> None:
                label="vLLM (pinned r34) — no engine term"),
         Line2D([], [], marker="s", ls="none", color=c["fg"], markersize=7,
                label="llama.cpp — carries the cross-engine floor"),
-        Line2D([], [], marker="s", ls="none", markerfacecolor=c["bg"],
-               markeredgecolor=c["fg"], markersize=7,
-               label="naive floor-subtracted estimate"),
         Line2D([], [], marker="v", ls="none", markerfacecolor=c["bg"],
                markeredgecolor=c["fg"], markersize=8, label="p99.9 of the same run"),
     ]
@@ -596,8 +587,10 @@ def draw_ladder_panel(ax, c: dict) -> None:
 
     first = {r["candidate"]: r for r in rows if r["checkpoint"] == CHECKPOINTS[0]}
     last = {r["candidate"]: r for r in rows if r["checkpoint"] == CHECKPOINTS[-1]}
-    table = [(None, f"{'candidate':<10}{'1M mean':>10}{'10M mean':>11}"
-                    f"{'move':>8}{'rel 95 % width':>17}")]
+    table: list[tuple[str | None, str]] = [
+        (None, f"{'candidate':<10}{'1M mean':>10}{'10M mean':>11}"
+         f"{'move':>8}{'rel 95 % width':>17}")
+    ]
     for cid in cands:
         _name, short, key = identity(cid)
         a, b = first[cid], last[cid]
@@ -816,13 +809,13 @@ def draw(theme: str) -> list[Path]:
         f"{V4['qualification_contexts_after']} contexts, {V4_POSITIONS:,} positions.  "
         f"D — turboderp's protocol: {HIS_POSITIONS:,} positions, his corpus, his "
         "reference, his head.",
-        f"RULE 1 — the engine term is not shared. Every GGUF value in A is measured "
-        f"under llama.cpp and contains the {FLOOR['mean_kld']:.6f} cross-engine floor "
-        f"({FLOOR['top1_agreement'] * 100:.2f} % top-1, p99.9 {FLOOR['p999_kld']:.4f}, "
-        f"{FLOOR_REPORT['scored_positions']:,} positions, "
-        "receipts/gguf-report-engine-floor.json); every vLLM value does not. The "
-        "squares are therefore upper bounds, the hollow squares subtract the floor "
-        "naively, and KL is not additive, so those are estimates and not identities.",
+        f"RULE 1 — engine is a confounder. The unquantized-BF16 control in A "
+        f"measures llama.cpp versus vLLM at {FLOOR['mean_kld']:.6f} mean "
+        f"({FLOOR['top1_agreement'] * 100:.2f} % top-1, p99.9 "
+        f"{FLOOR['p999_kld']:.4f}, {FLOOR_REPORT['scored_positions']:,} positions; "
+        "receipts/gguf-report-engine-floor.json). KL is neither additive nor a "
+        "metric, so this control cannot be subtracted and supplies no "
+        "quantization-only upper or lower bound.",
         "RULE 2 — no cross-panel ratio is meaningful. A/B, C1, C2 and D differ in "
         "corpus, context length, scored-position selection, reference numerics, "
         "vocabulary handling and head placement. Dividing a number in one panel by a "

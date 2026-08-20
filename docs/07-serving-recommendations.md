@@ -108,7 +108,7 @@ vllm serve nvidia/Qwen3.6-27B-NVFP4 --port 8000 --quantization modelopt --max-mo
 | Tool-call parser | `--tool-call-parser qwen3_coder`; vLLM additionally needs `--enable-auto-tool-choice` | absent | **absent** | absent |
 | Speculative / MTP | vLLM `--speculative-config '{"method":"qwen3_next_mtp","num_speculative_tokens":2}'`; SGLang `--speculative-algo NEXTN --speculative-num-steps 3 --speculative-eagle-topk 1 --speculative-num-draft-tokens 4` | absent | **absent** | **absent** |
 | Text-only / skip vision | `--language-model-only` ("skips the vision encoder and multimodal profiling to free up memory for additional KV cache") | absent | absent | absent |
-| Eager vs graph | never mentioned on any card | " | " | " |
+| Eager vs graph | not mentioned | not mentioned | not mentioned | not mentioned |
 
 ### 1.4 Context-length claims
 
@@ -326,11 +326,12 @@ config is a genuinely different kernel target:
 | `quant_method` string | `"modelopt"`, `quant_algo: "MIXED_PRECISION"`, producer `modelopt 0.45.0` | `"compressed-tensors"`, `format: "mixed-precision"`, `version: "0.17.2.a20260716"`, `quantization_status: "compressed"` |
 | Loader flag on card | `--quantization modelopt` | none printed |
 
-Operationally: NV-3.6 is a weight-only 4-bit MLP that runs on any GPU with an INT4/FP4
-*dequantizing* GEMM; UN-3.8's MLP requires a genuine **FP4×FP4** GEMM for 56 of 64 layers. The
-static-vs-dynamic activation split also matters — NVIDIA's FP8 activation scales are frozen at
-calibration time and will clip on distributions unlike its calibration corpus; unsloth's are
-recomputed per token.
+Operationally, NV-3.6's 4-bit MLP is weight-only, while UN-3.8's MLP requests a
+genuine **FP4×FP4** path for 56 of 64 layers. Weight-only quantization permits
+more fallback strategies, but actual GPU support remains runtime-specific;
+NVIDIA's card claims only Hopper and Blackwell. The static-vs-dynamic activation
+split also matters: NVIDIA's frozen FP8 activation scales can clip on
+out-of-calibration distributions, while unsloth recomputes them per token.
 
 ### 3.3 GPU architecture requirements
 
@@ -444,8 +445,8 @@ Three caveats the operator has to notice for themselves:
    harness"; "SkillsBench: Evaluated via OpenCode on 78 tasks … avg of 5 runs"; "SWE-Bench
    Series: Internal agent scaffold (bash + file-edit tools)"; Q3.8: "Evaluated with the Claude
    Code harness at temp=1.0, top_p=0.95, and a 256K context window", "HLE: Judged by GPT-4o").
-3. **Three of the nine deltas favour NVFP4** (MMLU Pro +0.2, HLE +0.1, τ²-Bench +0.2, IFBench
-   +0.4). With no `n` and no error bars, the table cannot distinguish "lossless" from "noise".
+3. **Four of the nine deltas favour NVFP4** (MMLU Pro +0.2, HLE +0.1, τ²-Bench +0.2,
+   IFBench +0.4). With no `n` and no error bars, the table cannot distinguish "lossless" from "noise".
 
 **UN-3.8 publishes no accuracy number for this checkpoint.** Its only quantization-quality
 pointer is "*See [Unsloth Dynamic 2.0 GGUFs](https://unsloth.ai/docs/basics/unsloth-dynamic-v2.0-gguf)
@@ -505,9 +506,11 @@ with flags (`--kv-cache-dtype fp8`, TP1, both parsers) that UN-3.8's own card ne
 
 ### 3.11 Size claims
 
-NV-3.6: "reducing the disk size and GPU memory requirements by approximately 2.5x." Measured
-against our established figures: 55.56 GB → 21.92 GB = **2.535×**. Claim checks out.
-The equivalent unsloth ratio is 55.56 → 23.42 GB = **2.372×**, and UN-3.8 makes no size claim.
+NV-3.6 claims "reducing the disk size and GPU memory requirements by approximately 2.5x."
+The serialized-size half checks out: 55.56 GB → 21.92 GB = **2.535×**. Those
+on-disk figures do not establish the GPU-memory half, which also depends on
+runtime representation and allocator overhead. The equivalent unsloth disk ratio
+is 55.56 → 23.42 GB = **2.372×**, and UN-3.8 makes no size claim.
 [SGL-C] independently quotes "NVFP4 weights ~16.5GB" and [vLLM-R] "NVFP4 in 24.6 GiB" for
 Qwen3.8-27B NVFP4 builds — three different numbers for nominally the same recipe, which is why
 a per-repo VRAM table matters (see §4).

@@ -2,10 +2,17 @@
 
 `generated_utc: 2026-08-17` · read-only sweep · **nothing was posted, commented, closed, opened, labelled or pushed anywhere**
 
-Auth: `gh` had no env token (`gh auth status` → *"To authenticate, please run `gh auth login`"*). Recovered the
-classic PAT from `~/.git-credentials` (mode 0600, user `malaiwah`, 40 chars) and exported it as `GH_TOKEN`.
-`gh api user` → `malaiwah`. Permissions on `local-inference-lab/vllm`: `{admin:false, maintain:false, push:false,
-triage:false, pull:true}` — read-only by construction, so no write was even possible.
+> **Superseded status snapshot.** Current review is `receipts/upstream-audit-2026-08-20.md`
+> plus the retrospective review. Since this file: #406/#407 received corrective
+> comments, PR #397 was retargeted to `dev/gilded-gnosis`, upstream #47272 merged,
+> and the issue/PR inventory expanded. Preserve this chronology, but do not use
+> its action table as current state.
+
+Auth: `gh` initially had no env token. A stored credential was used for the
+read-only sweep. Repository permissions denied code pushes to the target, but
+did **not** make all writes impossible — issue/PR comments can still be posted,
+as later #406/#407 corrections demonstrate. Nothing was modified during this
+sweep by policy, not by an absolute permission boundary.
 
 Tracker repo (from `receipts/vllm-gg-issues-filed.json.repo`): **`local-inference-lab/vllm`**, default branch `main`.
 
@@ -86,10 +93,9 @@ which is slightly comic but harmless on a closed issue — **leave it**.
 - from: `[Bugfix] Gate hybrid+connector divergent local-hit path on connector opt-in`
 - to: `[Bugfix] Gate hybrid+connector divergent local-hit path on connector opt-in [necessary but NOT sufficient — predicted 0/38 refuted, see comment]`
 
-There are **zero** `labeled`/`unlabeled` events. So the docs/46 §22 claim that #403 "has been publicly
-re-labelled rather than left standing" is **true in substance** (title + two correction comments) but
-**"re-labelled" is the wrong word for the receipt** — it was *renamed once and self-corrected twice in comments*.
-Worth fixing in the receipt so the record is exact.
+There are zero label events. The precise correction is "renamed once and
+self-corrected twice in comments." Published receipts remain immutable; record
+this in a later correction/audit rather than editing the original receipt.
 
 **The two self-corrections, and the supersession chain.** This is the detail that matters:
 

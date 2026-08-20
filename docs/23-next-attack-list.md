@@ -13,7 +13,7 @@ Blackwell, TP1, GG r34 image):
 | fidelity (mean KLD) | **0.008157** | FP8 0.013126 | **we lead by 38 %** |
 | resident weights | **21.82 GB** | NVFP4 22.91 GB, FP8 30.61 GB | at the 21.92 GB ceiling, 0.10 GB headroom left |
 | decode C1 / C4 / C8 | **56.5 / 199.6 / 402.7** | NVFP4 48.9 / 171.4 / 369.7 | we lead by 9-16 % |
-| decode C1 with MTP-3 | **113.8** | — | 2.3-2.5x FP8/NVFP4 single-stream |
+| decode C1 with MTP-3 | **113.8** | — | 2.0x this checkpoint's no-MTP C1; comparator MTP profiles unmeasured |
 | **prefill 2k / 6k** | **2,369 / 2,362** | NVFP4 14,528 / 13,468 | **we lose by 4.5-6x** |
 | measurement resolution | 6.54e-04 replay error | reference protocol 1.23e-06 | **530x worse; blocks sub-1e-3 work** |
 
@@ -80,9 +80,10 @@ volume**.
    no reasoning traces, no tool calls, for a thinking multimodal model. Free in VRAM.
    **Acceptance:** measured on held-out data only, never on the calibration text — the
    mistake that produced the retracted v2 headline.
-3. **Free memory to spend elsewhere.** `lm_head` K6->K5 releases 0.16 GB and, per the head
-   ablation, costs little; MTP attention K4->K3 releases ~0.05 GB. Only worth doing if
-   P1.1 shows a layer group that wants those bits.
+3. **Free memory to spend elsewhere.** `lm_head` K6->K5 releases 0.16 GB, but
+   the K6-vs-BF16 head ablation does not predict the K5 cost; a K5 head replay
+   must gate that trade. MTP attention K4->K3 releases ~0.05 GB. Either is worth
+   considering only if P1.1 finds a layer group that can use the recovered bits.
 
 ## P1 — Speculative decoding is under-exploited
 
@@ -181,11 +182,13 @@ measurement floor.
 
 ## Explicitly not doing
 
-- **More bits on attention.** Online K6 measured *better* than BF16 attention on the
-  identical checkpoint; there is nothing to buy.
+- **More bits on attention.** The then-current single-window control put online
+  K6 below BF16 attention, so attention was deprioritized; that observation did
+  not prove that no attention allocation could improve held-out fidelity.
 - **Quantizing the vision tower.** 0.92 GB, not 128-aligned, and both vendors leave it
   alone. Revisit only if a vision-specific fidelity measurement says otherwise.
 - **Activation quantization (W4A4-style).** Not available in EXL3, and the W4A4 comparator
   is the worst KLD we measured (0.094978).
-- **Chasing NVFP4's decode throughput further.** We already lead it by 9-16 %, and by
-  2.3x with speculative decoding.
+- **Chasing NVFP4's no-MTP decode throughput further.** The no-MTP profile
+  already led it by 9-16 %. The 113.8 tok/s MTP result is an internal uplift,
+  not a comparator win, because NVFP4 MTP was not measured.

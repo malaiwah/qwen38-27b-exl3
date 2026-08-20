@@ -102,8 +102,9 @@ third parties can re-derive each published number.
 
 1. P0.1 replay precision (gates the resolution of everything else).
 2. P1.1 second conversion + error-driven allocation -> candidate B.
-3. Measure candidate B on the v3 analysis partition; compare paired against the noise
-   floor (0.000000) and against FP8.
+3. Measure candidate B on the v3 analysis partition; use the paired bootstrap
+   interval and the measured replay-qualification error. Bit-identical repeats
+   do not imply a zero measurement floor.
 4. P0.2 + P0.3 suite expansion, then re-measure the winner.
 5. P2.3 FP8 KV, P1.3 `mcg`, re-measure throughput with graphs.
 6. Freeze the recipe, open the qualification partition **once**, publish with receipts.

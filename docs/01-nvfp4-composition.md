@@ -82,7 +82,8 @@ Target regexes, verbatim:
 
 ## What the two vendors agree on
 
-1. **4-bit is applied only to the MLP.** Attention, embeddings, the vision
+1. **Within the decoder blocks, 4-bit is applied only to the MLP.** NVIDIA
+   separately applies NVFP4 to `lm_head`; attention, embeddings, the vision
    tower and the MTP module are never 4-bit in either recipe.
 2. **The vision tower stays BF16** in both — Unsloth spells it out per block.
 3. They diverge on `lm_head` (NVIDIA 4-bit, Unsloth 8-bit), on MLP activations

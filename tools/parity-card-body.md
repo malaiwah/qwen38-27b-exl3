@@ -22,17 +22,16 @@ tags:
 
 # {{HEADLINE}}
 
-**The outcome, plainly, in the frame that was fixed before the number existed.** On shard 0 of
-the v5 held-out suite — 512 contexts, 1,048,064 scored positions, 330 source clusters, one
-shared BF16 head, one shared BF16 reference — this build measures **{{MEAN}}** mean KL
-divergence, 95 % CI {{CI}}. GGUF `Q6_K` measures **0.002035** on the identical contexts and
-**~0.001528** net of the measured cross-engine floor. The pre-registered prediction was
-**0.001488**, with a registered interval of **[0.001175, 0.001601]** spanned by three
-independent estimators, and the pre-registered acceptance question was whether this build
-lands inside [0.001528, 0.002035] or beats it. {{OUTCOME_SENTENCE}}
+**The corrected outcome.** On shard 0 of the v5 held-out suite — 512 contexts,
+1,048,064 scored positions, 330 source clusters, one shared BF16 head and one
+shared BF16 reference — this build measures **{{MEAN}}** mean KL divergence,
+95 % CI {{CI}}. GGUF `Q6_K` measures **0.002035** on the identical contexts.
+The pre-registered prediction was **0.001488**, with a registered interval of
+**[0.001175, 0.001601]** spanned by three estimators derived from overlapping
+evidence. {{OUTCOME_SENTENCE}}
 
-**The axis, in the claim rather than in a footnote.** This is parity on **file** bytes, and it
-is not parity on the weights that do the multiplying. Counting transformer body only — payload
+**The byte axis, in the claim rather than in a footnote.** The files are near-equal in size, but
+the comparison is not parity on the weights that do the multiplying. Counting transformer body only — payload
 minus embedding, output head, vision tower and MTP draft, which is the set of weights a
 text-only GGUF's body covers — `Q6_K` carries **19.3599 GiB against this build's
 {{MEASURED_BODY_GIB}} GiB**, a deficit of **{{BODY_DEFICIT_GIB}} GiB, {{BODY_DEFICIT_PCT}} % of ours**. Our bytes go
@@ -47,25 +46,24 @@ and it was recorded before this conversion ran. It cuts both ways, which is why 
 
 ## The question this build was made to answer
 
-Across ten candidates on our own held-out suite, the one comparison we lost was the 6-bit
-one: GGUF `Q6_K` measures **0.002035** mean KL against a BF16 reference on the same 512
-contexts where our hydrated K5/K6 build measures **0.002700**, and net of the measured
-cross-engine floor of 0.000507 the GGUF figure is about **0.001528**
+The experiment was designed after GGUF `Q6_K` measured **0.002035** mean KL on
+the same 512 contexts where hydrated K5/K6 measured **0.002700**. The
+unquantized-BF16 cross-engine control measured **0.000507**, proving that the
+llama.cpp and vLLM pipelines differ even before quantization. It does **not**
+provide an additive correction or a quantization-only bound
 ([`receipts/cross-engine-comparator.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/cross-engine-comparator.json)).
-That loss is roughly 1.77x net.
 
-It is also a **byte** gap. `Q6_K` serializes to 21.31 GiB against hydrated's 20.10 GiB of
-payload — **+1.183 GiB** over about 25.6 B quantized weights, i.e. **+0.397 bits per
-weight**. Our own per-module error law says each further bit divides quantization error by
-about **3.73x** ([docs/37](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/docs/37-error-driven-allocation.md)),
-and `3.73^0.397 = 1.69x`. A 1.69x-predicted advantage against a 1.77x observed one means
-`Q6_K` sits on our own scaling curve, within the slack of the floor estimate. Nothing about
-the format was beating us; it was spending more bytes.
+`Q6_K` also serializes to 21.31 GiB against hydrated's 20.10 GiB payload:
+**+1.183 GiB** over about 25.6 B quantized weights, or **+0.397 bits per
+weight**. The pre-registration hypothesized that this byte surplus explained
+the observed pipeline gap by applying the measured 3.73x-per-bit law. That was
+a testable build recipe, but the resulting cross-engine comparison cannot
+establish the causal byte-gap thesis.
 
-**So the test is to spend the bytes.** This checkpoint is the hydrated recipe with exactly
-one change — MLP `gate_proj` and `up_proj` promoted K5 → K6 — which buys back
-**{{PARITY_SURPLUS_GIB}} GiB** and lands at **{{PARITY_GIB}} GiB** of payload against
-`Q6_K`'s 21.31 GiB. Equal bytes, same suite, same reference, same shared head.
+This checkpoint therefore changes exactly one thing — MLP `gate_proj` and
+`up_proj` promoted K5 → K6 — adding **{{PARITY_SURPLUS_GIB}} GiB** and landing
+at **{{PARITY_GIB}} GiB** of payload against `Q6_K`'s 21.31 GiB. The suite and
+reference tokens are shared; the candidate engines are not.
 
 ## What was built
 
@@ -117,18 +115,18 @@ difference, not a difference of two aggregates.
 | **this build** | **{{MEAN}}** | {{CI}} | {{P999}} | {{MAX}} | {{TOP1}} | {{MEASURED_PAYLOAD_GIB}} GiB |
 | hydrated K5/K6 | 0.002700 | [0.002517, 0.002912] | 0.131263 | 3.734847 | 97.797 % | 20.104 GiB |
 | GGUF `Q6_K` (llama.cpp) | 0.002035 | [0.001939, 0.002145] | — | — | 97.980 % | 21.313 GiB |
-| GGUF `Q6_K`, net of the engine floor | ~0.001528 | — | — | — | — | 21.313 GiB |
 
 **Against hydrated**, same engine and same reference capture, no cross-engine term:
 {{PAIRED_HYD}}.
 
-**Against `Q6_K`**: {{PAIRED_Q6K}}. This pairing is across engines and must be read as such —
-the GGUF candidate was captured in llama.cpp while the reference and this build were captured
-in vLLM, so a GGUF number contains engine numerics on top of quantization error. That term is
-itself measured, at 0.000507 mean
-([`receipts/gguf-report-engine-floor.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/gguf-report-engine-floor.json)),
-which makes the GGUF figure an upper bound and the net figure a *naive* subtraction: KL is not
-additive, so the net column is an estimate and not an identity.
+**Against `Q6_K`**: {{PAIRED_Q6K}}. This is a valid comparison of the two
+complete measured pipelines on identical contexts, but it is not a
+format-isolating comparison: the GGUF candidate was captured in llama.cpp while
+the reference and this build were captured in vLLM. The unquantized-BF16
+cross-engine control is **0.000507** mean
+([`receipts/gguf-report-engine-floor.json`](https://github.com/malaiwah/qwen38-27b-exl3/blob/main/receipts/gguf-report-engine-floor.json)).
+KL is neither additive nor a metric, so subtracting that control or treating it
+as an upper/lower bound is invalid.
 
 ## It was pre-registered
 
@@ -138,14 +136,13 @@ decision rule were committed and pushed **before** the conversion ran, in
 
 * registered primary **0.001488**, from the 3.73x-per-bit law charged at this build's own
   byte spend (+0.4526 bpw → 1.81x off hydrated's 0.002700);
-* registered interval **[0.001175, 0.001601]**, spanned by three independent estimators — the
-  same law at `Q6_K`'s +0.397 bpw surplus (0.001601, docs/29's headline figure), a role-share
-  bound from the EDA ladder (0.001175, dividing gate+up's 77.1 % share of the
-  sqrt-energy-weighted proxy error by the measured MLP K5→K6 rung ratio of 3.7390), and the
-  sqrt-energy surrogate scaled by the two uniform role-group moves the published calibration
-  fitted;
-* the acceptance question, unchanged since registration: does this build land within
-  [`Q6_K` net 0.001528, `Q6_K` measured 0.002035], or beat it?
+* registered interval **[0.001175, 0.001601]**, spanned by three estimators
+  derived from the same byte law and EDA calibration evidence — not independent
+  replications;
+* the historical acceptance question classified the result relative to
+  `Q6_K` measured and a floor-subtracted value. That rule is preserved in the
+  immutable pre-registration and receipt, but its floor-subtracted branch is
+  invalid and is not used for the corrected publication verdict.
 
 Measured **{{MEAN}}**: {{PREDICTION_CHECK_SENTENCE}}
 
@@ -170,8 +167,9 @@ Believing the hits requires publishing the misses.
   With the int8 embedding overlay on, the embedding half of that asymmetry would narrow to
   about 0.21 GiB resident — but the fidelity protocol runs no overlay, so the scored artifact
   is the BF16-embedding one.
-* **The GGUF comparison stays cross-engine.** Measuring `Q6_K` inside vLLM would remove the
-  floor term; nobody has done that.
+* **The GGUF comparison stays cross-engine.** Capturing `Q6_K` and the BF16
+  reference under the same engine would remove this engine mismatch; nobody has
+  done that.
 
 ## Reproducing it
 

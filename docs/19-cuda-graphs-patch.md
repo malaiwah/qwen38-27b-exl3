@@ -338,10 +338,11 @@ All five predicted proof points appeared:
 | `unsloth/Qwen3.8-27B-NVFP4` (graphs, Cutlass FP4) | 49.09 | 171.78 | 371.06 |
 | ours vs NVFP4 | **+12.8 %** | **+10.9 %** | **+15.4 %** |
 
-The gain is ~9x larger than the +7.7/+9.0/+11.4 % that graphs buy the BF16 model,
-because eager EXL3 pays per-call dispatch on 193 quantized matmuls where BF16 pays
-cuBLAS once per fused linear. **With graphs this quant is both the smallest and the
-fastest option measured**, and it is 3.1x closer to BF16 than NVFP4.
+The gain is ~9x larger than the +7.7/+9.0/+11.4 % observed for the BF16 model.
+That is consistent with graph capture removing repeated dispatch around 193
+quantized matmuls, but this run did not profile the mechanism. **With graphs this
+quant was both the smallest and fastest option in this measured matrix**, and it
+was 3.1x closer to BF16 than NVFP4 under the then-current fidelity protocol.
 
 ## Correctness under graphs
 
@@ -350,6 +351,11 @@ fastest option measured**, and it is 3.1x closer to BF16 than NVFP4.
 | text, greedy | `Red, Green, Blue` |
 | vision, 96x96 half-red/half-blue PNG | `red, blue` |
 | coherence, 2-sentence explanation | correct and fluent |
-| **distribution parity vs eager** | **KLD 0.000000, top-1 1.000000** over 32 sentinel contexts |
+| **prefill-only capture repeat** | **KLD 0.000000, top-1 1.000000** over 32 sentinel contexts; this did not execute graph decode |
 
-Graphs change throughput, not numerics. The patch is ready to upstream.
+The original claim of decode-exact parity is withdrawn. `fidelity.py capture`
+measured one eager prefill even when `FULL_DECODE_ONLY` was enabled. The direct
+decode probe in [27-graph-decode-drift-control.md](27-graph-decode-drift-control.md)
+found graph/eager exact agreement on 24/32 sequences with mean chosen-token
+`|delta logprob|` 0.0118; BF16 drifted similarly, so the effect belongs to this
+runtime's graph-decode path rather than EXL3 specifically.

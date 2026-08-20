@@ -179,11 +179,13 @@ For a typical Qwen3.8-27B matrix (e.g., gate_proj: 5120 × 17408):
 | Hadamard FWHT | 40 blocks × 448 adds = 17,920 | 136 blocks × 448 adds = 60,928 | **78,848 additions** | No (XOR sign flips) |
 | ParoQuant K=8 | 40 blocks × 2048 flops = 81,920 | 136 blocks × 2048 flops = 278,528 | **360,448 flops** | Yes (fmaf) |
 
-The rotation costs ~4.5× more flops than the Hadamard. But both are **negligible** compared to the GEMM itself (~178M flops for 5120×17408 per token). The rotation overhead is <0.2% of GEMM compute.
-
-ParoQuant's own benchmarks confirm this: <10% total overhead (including dequantisation) on RTX A6000. EXL3's fused kernel would likely see even less overhead since the rotation can be fused into the same GEMM kernel pass, avoiding a separate kernel launch.
-
-**The gains would NOT be erased by runtime cost.**
+The rotation uses ~4.5× more transform flops, but both transform counts are
+small beside the dense GEMM's ~178M nominal flops per token. That arithmetic is
+not a runtime measurement: quantized-GEMM throughput, register pressure,
+occupancy, memory traffic, and fusion feasibility can dominate at small M.
+ParoQuant's <10% AWQ-relative result on RTX A6000 bounds its own implementation,
+not a fused EXL3 kernel on SM120. A kernel benchmark is required before claiming
+that runtime cost preserves the quality gain.
 
 ### 3.3 Would the gain be smaller for trellis than for INT4?
 
@@ -246,11 +248,11 @@ This measures the end-to-end output error, which is what ultimately matters for 
 
 **Recommendation:** Start with the trellis MSE objective for the pilot (no activations needed), then switch to output error if the pilot shows promise.
 
-### 4.3 Calibration data volume
+### 4.3 Data volume
 
-- **Pilot:** 128 samples from WikiText2 (ParoQuant's ablation shows 128 is sufficient)
-- **Full run:** 2048 samples mixed from WikiText2 + C4 + RedPajama (ParoQuant's default)
-- **Validation:** 64 samples from Pile
+- **Weight-MSE pilot:** no corpus or activations; sample 128 weight tiles per epoch.
+- **Output-error follow-up:** 2048 training samples from WikiText2 + C4 +
+  RedPajama, with 64 disjoint validation samples from Pile (ParoQuant's setup).
 
 ### 4.4 Expected search wall-time
 
@@ -274,10 +276,10 @@ With 4 GPUs: ~16-32 hours. The quantisation itself (trellis encoding of the rota
 | **Transforms compared** | (A) Current EXL3: Hadamard H₁₂₈ + per-channel RMS scaling (the existing `regularize()` path) |
 | | (B) Learned rotation: K=8 Givens rotations + per-channel scaling, optimised for trellis MSE |
 | **Metric** | Per-tile trellis MSE: mean over all 16×16 tiles of ‖quantize_tile(W_tile) − W_tile‖² |
-| **Optimisation** | 128 calibration samples, 10 epochs, AdamW lr=1e-3, objective = trellis MSE on the transformed weight |
-| **Implementation** | Pure Python using existing `quantize_tiles()` from `exl3_lib/quantize.py`. No CUDA kernel changes, no model download, no serving. |
+| **Optimisation** | 128 sampled weight tiles per epoch, 10 epochs, AdamW lr=1e-3, objective = trellis MSE on the transformed weight |
+| **Implementation** | Pure Python using existing `quantize_tiles()` from `exl3_lib/quantize.py`. No CUDA kernel changes, additional model download, or serving. |
 | **Decision criterion** | If learned rotation reduces trellis MSE by >5% vs Hadamard → proceed to full experiment. If <2% → NO-GO. |
-| **Estimated time** | ~10 minutes on a single GPU (one matrix, 128 samples, 10 epochs) |
+| **Estimated time** | ~10 minutes on a single GPU (one matrix, 128 sampled weight tiles per epoch, 10 epochs) |
 | **What it tells us** | Whether a learned rotation can reduce trellis quantisation error beyond what the fixed Hadamard + per-channel scaling already achieves — the core uncertainty. |
 
 **Pilot script outline (Python, runs inside the container):**
@@ -362,13 +364,20 @@ This pilot requires GPU access (for `quantize_tiles`) but no kernel changes, no 
 
 ---
 
-## MEASURED OUTCOME (2026-08-19): NO-GO
+## MEASURED OUTCOME (2026-08-19): NO-GO FOR THIS PILOT
 
-The pilot this document specified has run (`tools/rotation-pilot.py`,
+The specified pilot ran (`tools/rotation-pilot.py`,
 `receipts/rotation-pilot-2026-08-19.md`). In original weight space on layer 0
-`mlp.gate_proj`: Hadamard MSE 1.234e-07, identity 8.902e-05, learned K=8 Givens
-8.955e-05 — the learned rotations do not beat identity and trail EXL3's fixed
-Hadamard by 725x. The GO estimate above is superseded by measurement; the
-exllamav3 FWHT path stays. (The harness itself needed a measurement-domain fix
-before it could be trusted — first run was invalid by its own sanity check; see
-the receipt for the full account.)
+`mlp.gate_proj`, Hadamard MSE was 1.234e-07, identity 8.902e-05, and learned K=8
+Givens 8.955e-05. This rejects the tested fixed-pair, 10-epoch,
+128-weight-tile-per-epoch configuration and leaves the FWHT as the production
+default.
+
+The 725× one-matrix margin is not a universal proof against other layers,
+pair-selection strategies, training budgets, or the activation/output-error
+objective proposed above. The learned arm optimises transformed-space STE MSE
+while also learning non-orthogonal channel scales; its final metric is inverted
+to original space, but the training loss has no scale regularisation and is not
+the final metric. That objective mismatch is an additional reason not to
+generalise the result. The first run also required a measurement-domain fix
+after failing its own sanity check; the receipt preserves both rounds.

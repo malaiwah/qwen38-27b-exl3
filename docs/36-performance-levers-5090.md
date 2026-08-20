@@ -31,11 +31,11 @@ Two memory facts came out of building it, both load-bearing:
   **8 captured decode shapes, 0.55 GiB** graph pool versus 0.46 GiB for the single shape of the
   qualification, and KV came out identical at **272,570 tokens**.
 
-Sanity check against the qualification, which used a different prompt: our base step time at
-concurrency 1 is **25.72 ms** against its **25.05 ms** implied — 2.6 % apart. The tok/s gap
-(82.94 versus 107.56) is **entirely acceptance**: 2.14 accepted tokens per step here against
-2.69 there, because our frozen prompts are literary prose and theirs was repetitive technical
-prose. Acceptance is prompt-dependent; step time is not.
+Against the qualification's different prompt, C1 step time is 25.72 ms here
+versus 25.05 ms implied there, a 2.6 % difference. Acceptance length explains
+most of the larger tok/s gap (2.14 versus 2.69 accepted tokens per step) on
+these two prompt sets. Step time can still vary with context length, batching,
+cache state, and kernels; this comparison does not establish prompt independence.
 
 ## What the levers actually did
 
@@ -64,10 +64,11 @@ prompts for every row:
   `Using FLASHINFER attention backend out of potential backends: ['FLASHINFER', 'TRITON_ATTN']`
   with head_size 256 and fp8 KV on SM120, so passing `--attention-backend FLASHINFER` explicitly
   is a no-op (−0.8 % at C1, inside repeat spread) and the real A/B is the *other* direction.
-  Forcing `TRITON_ATTN`, which the live K4 service does, changes **step time by under 1 %** at C1
-  and worsens it by 5.5 % at C8; it looks like a +5.5 % win at temperature 0 and a **−7.3 % loss
-  at temperature 0.6**, i.e. it moves which tokens the drafter proposes, not how fast a step
-  runs. That is acceptance noise, not throughput, so neither direction is worth changing.
+  Forcing `TRITON_ATTN` changes step time by under 1 % at C1 and worsens it by
+  5.5 % at C8. Its accepted-throughput effect reverses from +5.5 % at
+  temperature 0 to −7.3 % at 0.6 because token proposals change. That is a real
+  prompt/sampler-dependent outcome, not a stable kernel-speed win; keep the
+  auto-selected FlashInfer path.
   `VLLM_MEMORY_PROFILE_INCLUDE_ATTN=1` cost nothing measurable and left KV unchanged.
 * **`custom_ops:["all"]` is not a win here.** Step time is **2.2 % worse at C1 and 5.2 % worse at
   C8**; the small C1 tok/s gain is acceptance again, and at temperature 0.6 the row is 3.7-7.5 %
@@ -153,11 +154,13 @@ authenticated proxy.
 
 ## What to change
 
-1. **Nothing, for the shipped single-stream profile.** No lever beat the qualified configuration
-   on the decision metric at concurrency 1 by more than acceptance noise.
-2. **If a deployment serves 8 concurrent streams, set `num_speculative_tokens` to 1**: +30.7 %
-   aggregate throughput, +22.8 % per stream, +10,911 KV tokens, fidelity unchanged. Keep depth 3
-   for interactive single-stream use. At concurrency 4 the choice does not matter.
+1. **Nothing, for the shipped single-stream profile.** No lever produced a
+   stable C1 gain on the decision metric across sampler settings.
+2. **If a deployment serves eight concurrent streams, depth 1 is the measured
+   throughput profile**: +30.7 % aggregate, +22.8 % per stream, and +10,911 KV
+   tokens. The needle and 24/30 image smoke stayed unchanged; no broad
+   capability-retention claim follows from those gates. Keep depth 3 for
+   interactive C1. At concurrency 4 the measured difference is unresolved.
 3. **Do not chase dynamic depth** on this build; it costs CUDA-graph decode.
 4. **Keep `--max-num-seqs 1` at utilisation 0.955** for any vision-capable deployment. The 8-seq
    profile only starts at 0.97, where a large image OOMs in the vision tower.
@@ -270,6 +273,13 @@ logs, probe JSONs, the counter dumps and the frozen prompts are preserved under
 `receipts/gdn-gate-raw/` with digests in the receipt; nothing was deleted.
 
 ## The V2 model runner cannot rescue dynamic depth on this build (2026-08-16)
+
+> **Superseded diagnosis.** The illegal access was later fixed in fork PR #398
+> by admitting only decode-wrapper shapes recorded at capture; the V2 schedule
+> then ran on the RTX PRO 6000 tier. On this 32 GB profile V2 still costs roughly
+> 0.8 GiB and the first 2,048-token reconstruct prefill OOMs at utilisation 0.97,
+> so dynamic depth remains unavailable here for a different, measured reason.
+> See [29](29-plan-and-loose-ends.md) and [46](46-tb21-speedrun-plan.md).
 
 Receipt: `receipts/v2-runner-depth-schedule.json`. This section closes docs/41's rank-1 work item
 (W1: `VLLM_USE_V2_MODEL_RUNNER=1` plus `num_speculative_tokens_per_batch_size=[[1,2,3],[3,8,1]]`,

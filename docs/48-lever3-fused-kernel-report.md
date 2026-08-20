@@ -2,8 +2,8 @@
 
 ## Status: INFEASIBLE for speed target (stop condition #3)
 
-The fused kernel achieves numerical parity but cannot beat the existing
-reconstruct+cuBLAS prefill path for speed.
+The fused kernel meets the prototype's stated numerical tolerance but cannot
+beat the existing reconstruct+cuBLAS prefill path for speed.
 
 ## What was built
 
@@ -28,10 +28,10 @@ by launching M-tiles in parallel across CUDA blocks.
 
 ## Results
 
-### Parity: PASS
+### Numerical agreement: within the prototype tolerance
 - 8 diverse shapes tested (bits 4/5/6, K 5120-17408, N 1024-17408)
-- All pass with rel_diff < 0.4% at M=128
-- Ground truth comparison: max_diff 0.002930 vs reference
+- relative difference <0.4% at M=128; maximum difference 0.002930 versus the
+  chosen reference. This is **not** bit parity or an end-to-end KLD result.
 
 ### Speed vs existing `exl3_gemm` (cooperative): 2x at M≥128
 | M | exl3_gemm | v3 | speedup |
@@ -53,17 +53,18 @@ by launching M-tiles in parallel across CUDA blocks.
 
 ## Why infeasible
 
-The existing exllamav3 code already has an optimal prefill strategy:
-- M ≤ 144: `exl3_gemm` cooperative kernel (fused dequant+MMA+Hadamard)
+Among the tested implementations, the existing exllamav3 dispatch is faster:
+- M ≤ 144: `exl3_gemm` cooperative kernel
 - M > 144: `reconstruct_hgemm` (reconstruct weights to FP16 + cuBLAS hgemm)
 
-The `reconstruct_hgemm` path uses cuBLAS's highly optimized FP16 GEMM, which
-is faster than inline dequant for large M. The fused kernel's inline dequant
-cannot match cuBLAS's large-M performance on SM120.
+The prototype's inline dequant did not match cuBLAS large-M performance on
+SM120. That experiment does not prove global optimality or identify the
+bottleneck without a profiler.
 
-The fused kernel's advantage is **memory** (eliminates 48.65 GB/chunk of FP16
-reconstruct scratch), not speed. This could be valuable for memory-constrained
-scenarios but does not meet the PP2k ≥ 6,000 tok/s speed target.
+The fused kernel's potential advantage is **traffic**, not scratch capacity:
+it avoids about 48.65 GB of cumulative FP16 reconstruct writes per chunk, but
+the reusable scratch allocation is only the largest live reconstructed matrix.
+The prototype did not convert that traffic reduction into speed.
 
 ## What would be needed
 

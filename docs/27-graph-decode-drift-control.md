@@ -1,4 +1,4 @@
-# Eager-vs-graph decode drift is ambient, not EXL3's
+# EXL3 graph-decode drift matches the tested BF16 control
 
 A second party qualified [PR #314](https://github.com/local-inference-lab/vllm/pull/314)
 on an RTX 5090 and found that CUDA-graph decode is internally deterministic but **not
@@ -34,11 +34,12 @@ two servers cannot co-reside on one 96 GB GPU at 0.85 utilisation.
 
 Three conclusions, in order of importance:
 
-1. **The drift is ambient to this vLLM build's graph decode path.** The unquantised BF16
-   checkpoint - which touches no EXL3 kernel, no online overlay, no autotune priming -
-   drifts from eager by the *same* amount (24/32, 0.0128) as the EXL3 checkpoint (24/32,
-   0.0118). PR #314 does not introduce the drift; it makes graphs reachable for dense
-   EXL3, and graphs behave here exactly as they do for BF16.
+1. **The measured EXL3 drift is within the BF16 control's aggregate envelope on
+   this build.** BF16—which touches no EXL3 kernel, online overlay, or EXL3
+   priming—also produced 24/32 exact sequences and a similar mean logprob delta
+   (0.0128 versus 0.0118). This rules out a large EXL3-specific excess in this
+   sample; identical aggregates do not prove the per-prompt drift mechanism is
+   exclusively ambient.
 2. **The zero-priming hypothesis is refuted.** I expected autotune to pick a different
    kernel configuration when primed on an all-zero arena than eager picks on real
    activations. Priming on realistic activations (`0.05 * randn`) changed nothing:
@@ -51,14 +52,13 @@ Three conclusions, in order of importance:
 
 ## What this implies for the production HOLD
 
-The qualification's gate - "keep experimental until maintainers decide whether the
-reproducible near-tie drift is within intended numerical tolerance" - is right to exist
-but is aimed one layer too low. The comparison a graph patch has to pass is not
-"graph == eager bit-exact", because **no** graph path in this build satisfies that,
-BF16 included. It is "graph drift is within the same envelope as an unquantised model on
-the same stack", which is measured, and it is.
+The qualification's gate—"keep experimental until maintainers decide whether the
+reproducible near-tie drift is within intended numerical tolerance"—should compare
+EXL3 graph drift with an unquantized control on the same stack, not demand
+bit-exact graph/eager equality that the tested BF16 path also fails. On these 32
+prompts the EXL3 result lies within that measured control envelope.
 
 Remaining honest caveat: 32 x 32 tokens with greedy sampling is a numerical probe, not a
 task evaluation. Neither this nor the 5090 qualification shows whether the flipped
-near-ties matter downstream. That is the open question, and it is a task-retention
-question for graphs in general - not for EXL3.
+near-ties matter downstream. That is a graph-path task-retention question; this
+sample found no EXL3-specific excess but does not rule one out universally.

@@ -4,11 +4,11 @@
 
 ## Summary
 
-Unsloth Dynamic 3.0 is a PTQ method that assigns per-tensor GGUF quant *types*
-(Q2_K, Q3_K_M, Q4_K_S, Q6_K, IQ4_XS, etc.) using a >1.5M-token chat-aware
-imatrix calibration. Measured head-to-head at the 16 GB tier: UD-Q4_K_M (16.46
-GB) vs our trellis K5K6 (16.82 GiB) → 6/6 top-1 agreement, mean |Δlogprob|
-0.054. Both methods are in the high-fidelity tier at this size.
+Unsloth Dynamic 3.0 is a PTQ method that assigns per-tensor GGUF quant types
+using a >1.5M-token chat-aware imatrix calibration. A six-prompt, top-20
+cross-engine proxy found 6/6 next-token top-1 agreement and mean top-1
+|Δlogprob| 0.054 between UD-Q4_K_M and our trellis build. That sample is a
+sanity check, not evidence that the methods occupy the same fidelity tier.
 
 ## How Dynamic 3.0 differs from our approach
 
@@ -16,10 +16,9 @@ GB) vs our trellis K5K6 (16.82 GiB) → 6/6 top-1 agreement, mean |Δlogprob|
 |---|---|---|
 | encoding | single trellis code, variable K-width (K3–K8) | mixed GGUF types per tensor (Q2_K, Q3_K_M, Q4_K, Q6_K, IQ4_XS…) |
 | allocation | error-driven EDA on 409-module ladder | imatrix-guided per-tensor type selection |
-| calibration | our fidelity suite tokens (512 ctx × 2047) | >1.5M tokens, chat-aware, diverse sources |
-| model-specificity | measured per-module sensitivity (our EDA) | model-specific scheme, different per model |
-| overfitting check | none (suite = calibration) | separate held-out test set, Divergence-300 @32 |
-| metric | full-vocab KL through shared BF16 LM head | KLD + top-1% + Divergence-300 @32 (32-token greedy trajectory) |
+| calibration | exllamav3's default converter calibration corpus | >1.5M tokens, chat-aware, diverse sources |
+| evaluation separation | v5 is lexical-overlap-disjoint from converter calibration; EDA objective selection still reused a small set of measured deltas | separate held-out test set, Divergence-300 @32 |
+| metric | full-vocabulary teacher-forced KL over 2,047 positions/context through a shared BF16 head | KLD + top-1% + Divergence-300 @32 (32-token greedy trajectory) |
 | MTP handling | kept BF16 (0.8 GiB) | dropped below 8.37 GB to save 500 MB |
 
 ## What we should change if we ever requant
@@ -32,28 +31,29 @@ GB) vs our trellis K5K6 (16.82 GiB) → 6/6 top-1 agreement, mean |Δlogprob|
    e.g. K6 for sensitive tensors, K4 with a different codebook for insensitive
    ones. This is the single biggest structural difference.
 
-2. **Chat-template-aware calibration.** Unsloth explicitly warns that
-   text-only calibration is ineffective for instruct models. Our GPTQ
-   `cache=None` tracing bug is the same class of problem. Any future
-   calibration must flow through the model's actual inference path
-   (chat template, GDN state, etc.).
+2. **Chat-template-aware calibration.** Unsloth's warning is relevant to any
+   future activation calibration: data should flow through the actual chat
+   template and model execution path. The GPTQ `cache=None` defect was a
+   separate execution-correctness bug, not evidence about dataset style.
 
-3. **Multi-token divergence metric.** Unsloth's Divergence-300 @32
-   (32-token greedy trajectory comparison vs BF16) is a stronger metric than
-   single-token KLD. We should add this to our fidelity harness — it would
-   catch trajectory drift that single-token KLD misses.
+3. **Multi-token divergence as a complementary metric.** Divergence-300 @32
+   compares 32-token greedy trajectories and can reveal compounding after a
+   branch. Our KLD is not "single-token": it is teacher-forced at every scored
+   continuation position. Trajectory divergence is complementary, not strictly
+   stronger, because it confounds the initial branch with all downstream
+   differences.
 
-4. **Overfitting check with held-out data.** Unsloth tests KLD on data
-   deliberately different from calibration. We should split our fidelity suite
-   into calibration and held-out portions to detect overfitting in any future
-   calibration work.
+4. **Keep objective selection separate from final evaluation.** v5 is held out
+   from the converter calibration corpus, but future allocation/calibration
+   tuning must reserve a second untouched split rather than select and report
+   on the same measured deltas.
 
 ### Medium-value, research needed
 
-5. **MTP removal KLD cost vs context gain.** Unsloth drops MTP below 8.37 GB.
-   Our MTP costs 0.8 GiB. On 32 GiB, that's a meaningful fraction. Measure:
-   what KLD does dropping MTP cost, and how much context does the freed VRAM
-   buy?
+5. **MTP removal throughput cost vs context gain.** MTP does not change the
+   verified target distribution when speculative decoding is implemented
+   correctly, so KLD is the wrong objective. Measure acceptance, decode
+   throughput and context/KV gained when the 0.8 GiB draft is removed.
 
 6. **Dynamic 2.0 same-size comparison.** Unsloth says 3.0 is better for small
    quants but "the bigger ones not so much." Download a Dynamic 2.0 file at

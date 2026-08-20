@@ -187,7 +187,7 @@ raw_stages = (smem_capacity - occupancy × 1024 - mbar(1024) - epi_bytes)
 | mbar | 1,024 |
 
 ```
-raw_stages = (102400 - 1024 - 1024 - 32768) / 25600 = 69632 / 25600 = 2.72
+raw_stages = (102400 - 1024 - 1024 - 32768) / 25600 = 67584 / 25600 = 2.64
 → 2 stages (capped at 4, but smem limits to 2)
 Total = 2 × 25600 + 32768 + 1024 = 84,992 B < 102,400 ✓
 ```
@@ -231,7 +231,8 @@ Per-CTA = 3 × 10816 + 1024 = 33,472 B
 Two CTAs = 2 × 33472 = 66,944 B < 102,400 ✓
 ```
 
-**Fits with 2 resident CTAs, 3 stages each.** Optimal for M=1 decode.
+**Fits with 2 resident CTAs, 3 stages each.** Candidate for M=1 decode;
+performance was not established by the shared-memory calculation.
 
 ### 2.5 Tile sizes to try first
 
@@ -322,10 +323,10 @@ This doubles B HBM traffic but requires no kernel changes.
    *Mitigation:* the asm template is copied verbatim from the proven
    `mxfp8_mma_m16n8k32_f32_e2m1` intrinsic.
 
-5. **cp.async alignment.** B is (N, K/2) uint8; cp.async4 requires 16-byte
-   alignment on both source and destination. With K/2 = K/2, 16-byte
-   alignment requires K/2 % 16 == 0, i.e. K % 32 == 0. All target shapes
-   (K=5120, 17408, 12288, 1024) satisfy this.
+5. **cp.async alignment.** B is `(N, K/2)` uint8; `cp.async4` requires
+   16-byte alignment on both source and destination. A packed row stride of
+   `K/2` bytes is 16-byte aligned when `K/2 % 16 == 0`, i.e. `K % 32 == 0`.
+   All target shapes (K=5120, 17408, 12288, 1024) satisfy this.
    *Mitigation:* validated for all selftest shapes.
 
 6. **A quantisation cost.** v1 quantises A on the host side (torch), not

@@ -66,9 +66,9 @@ Analysis partition, 136 contexts, 278,392 scored positions (iteration 1):
 | `malaiwah/Qwen3.8-27B-K4` | 19.2 GB | 0.030736 | [0.02238, 0.04073] | 0.004218 | 94.50 % |
 | `unsloth/Qwen3.8-27B-NVFP4` | 23.4 GB | 0.094978 | [0.06858, 0.12688] | 0.012911 | 90.53 % |
 
-Paired over the same contexts: K4 beats NVFP4 by 0.064242 (95 % CI
-[-0.08621, -0.04611], **136/136 contexts**); FP8 beats K4 by 0.017611 (95 % CI
-[0.01256, 0.02368], **136/136 contexts**).
+Paired over the same contexts: `K4 − NVFP4 = −0.064242` (95 % CI
+[-0.08621, -0.04611], K4 wins 136/136); `K4 − FP8 = +0.017611`
+([0.01256, 0.02368], FP8 wins 136/136).
 
 ## Layout
 
@@ -224,9 +224,10 @@ gives +0.000132 online and +0.000128 hydrated.
    500x worse than the 1.23e-06 the reference protocol reports on Kimi-K3. This was
    tested: storing the hidden states in **fp32 instead of BF16 moved it only to 6.25e-04**
    (-4.5 %), so operand rounding is ~5 % of the floor and the rest is the implementation
-   difference between the serving runtime's logit path and our replay. Paired comparisons
-   are unaffected because both arms use the identical replay path, but **absolute**
-   differences below ~1e-3 are not resolvable with these artifacts.
+   difference between the serving runtime's logit path and replay. Shared replay
+   removes much of this implementation effect in paired comparisons, but
+   common-mode cancellation is an empirical property to check, not a guarantee;
+   absolute differences below ~1e-3 remain poorly resolved.
 2. 2048-token contexts only. Nothing here measures long context, and the model
    supports 262,144.
 3. No dialogue/instruction, mathematics/reasoning, or structured/tool-call strata —

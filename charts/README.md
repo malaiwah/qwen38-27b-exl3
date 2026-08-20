@@ -26,21 +26,24 @@ Update that table, re-run, commit — never hand-edit a chart.
 
 ## The rule these charts obey
 
-**One axis, one protocol.** KLD is comparable only within a single measurement
-protocol. Our 512-context shard-0 suite (1,048,064 scored positions) and the v5
-suite (10,485,760 positions) score the *same weights* at 0.003405 and 0.002700 —
-a 26% gap from protocol alone. The third-party leaderboard scores our K5K6 weights
-2.6x differently again. So:
+**One axis, one protocol.** KLD is comparable only when corpus, contexts,
+scored positions, reference, shared head and capture/replay implementation
+match. Examples: the same hydrated checkpoint reads 0.002700 on v5 shard 0 and
+0.002760 over all ten v5 shards because the position set grows; corrected-v3
+and v5 means differ much more and must not share an axis.
 
-- `fidelity-vs-quants.png` splits panels by protocol and states the gap numerically.
-- `size-vs-kld.png` keeps our artifacts in panel A and third-party numbers in panel
-  B, with their own axis.
-- The allocation-solver frontier is drawn as **shape only, with no y ticks**: its
-  objective is not in KLD units (it covers 59.8–68.6% of measured KLD and is
-  wrong-signed for cross-class reallocation).
+- `fidelity-vs-quants.png` uses the common 512-context shard-0 protocol for
+  every plotted comparator.
+- `size-vs-kld.png` keeps our KLD measurements separate from the allocation
+  proxy objective, whose frontier is drawn as **shape only, with no y ticks**.
+- Cross-engine points remain complete-pipeline measurements. The
+  unquantized-BF16 control diagnoses engine confounding and is never
+  subtracted.
 
-No third-party checkpoint has ever been measured on our suite. Until one is, no
-chart here may place a competitor on our axis.
+Several third-party checkpoints have now been measured on our suite, including
+official FP8, two NVFP4 exports, AWQ, GGUF and uniform EXL3 rungs. A chart may
+place them on the same KLD axis only when it uses the identical frozen
+contexts and scoring path recorded by their receipts.
 
 ## turboderp-style charts (`tools/plot-turbo-style.py`)
 

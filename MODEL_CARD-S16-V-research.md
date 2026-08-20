@@ -136,10 +136,11 @@ capture. `token_mean_kld`, cluster bootstrap over 330 source clusters, 10,000 re
 carries the token-level vector an exact cumulative percentile would need. This build's row is exact,
 from its own shard-0 report; K4's exact shard-0 p99.9 is 0.5576.
 
-**The tail degrades faster than the mean** — p99.9 of 2.3704 against K4's exact 0.5576 is 4.25x on a
-mean ratio of 4.39x, and the maximum is 12.50 against K4's 7.56 — which is the direction docs/34
-§6.4 predicted and the reason the tail row was made part of the pre-registered report rather than an
-afterthought.
+**The tail degrades with the mean, not faster than it.** p99.9 is 2.3704
+against K4's exact 0.5576, a 4.25x ratio versus the 4.39x mean ratio; the
+maximum rises 12.50/7.56 = 1.65x. The absolute tail is still substantially
+worse, which is why it was pre-registered, but the data do not support a
+superlinear-tail claim.
 
 Paired per context, difference reported as comparator minus this build (positive means this build
 carries more KLD):

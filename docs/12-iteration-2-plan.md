@@ -72,8 +72,9 @@ Two routes to a mixed K4/K5/K6 MLP, both inside EXL3:
 
 - **Upstream tooling, no patch:** convert a second time at `-b 5`, then
   `util/measure.py -i k4 k5 -r bf16` -> `util/optimize.py -m measurement.json -b <target>`.
-  That allocator is genuinely error-driven (`dkld/dbits` greedy) and produces the
-  optimal mix for a bit budget. Cost: ~35 min conversion + ~10 min measure +
+  That allocator ranks discrete upgrades by `dkld/dbits` greedily and produces
+  an error-driven mix for a bit budget; it is not a proof of the globally
+  optimal discrete allocation. Cost: ~35 min conversion + ~10 min measure +
   recompile.
 - **Three-line converter patch:** teach `create_q_strategy` a glob->bpw override
   map, then set `down_proj` to K5/K6 directly.
@@ -89,11 +90,13 @@ Iteration 1 used exllamav3's default calibration: 250 rows x 2048 tokens of a
 generic mix (wiki 50, c4 20, code 20, random 20, multilingual 10, technical 10,
 tiny 5). This model is a **thinking, multimodal, tool-calling** model; none of
 that distribution is in the calibration set, and no chat-template-formatted text
-is either. Replacing the corpus with template-formatted reasoning/tool traces is a
-pure-upside experiment: identical bitrate, identical footprint, different Hessians.
+is either. Replacing the corpus with
+template-formatted reasoning/tool traces is a footprint-neutral experiment:
+identical bitrate and size, different Hessians.
 
-Risk to control: over-fitting calibration to one domain can hurt general KLD, so
-this must be measured on the same window, not assumed.
+Risk to control: calibration-domain over-fitting can hurt general fidelity, so
+selection and evaluation must use disjoint corpora; reusing the tuning window
+would leak the objective.
 
 ### P4 — reclaim VRAM to buy bits: FP8 KV cache
 
