@@ -1,0 +1,23 @@
+{
+  "schema": "qwen38-frontier-autoround-bridge-log/1",
+  "experiment_id": "g1-autoround-bridge",
+  "model": "Intel/Qwen3.8-27B-bpw2.8-AutoRound@03a2e36af5fad7b8eb281ff27bfb081e6216a257",
+  "inputs": {
+    "audit": {"path": "g0/autoround-audit.json", "sha256": "adbd5362590fa1d92ec12a29675aef6abbe05e16af6917f1269af11c2d36650c"},
+    "containerfile": {"path": "docker/Containerfile.frontier-autoround", "sha256": "93bd98615bf9ba2e9117de05ab18ec0c23e4eb3c6e21162c06ab797b43a7ae41"},
+    "build_tool": {"path": "docker/build-frontier-autoround.sh", "sha256": "63db7a36e27a7a36eb2efa67a7c6e489d06bd2a1e34af11afa1eb995d3f210d1"},
+    "available_runtime_environment": {"path": "g0/runtime-environment.json", "sha256": "c68180b85e9d40fbd13264a50587bb60e9d856441f6ff7e03ee2364b9e21869f"}
+  },
+  "preflight": {
+    "pinned_consumer_commit": "b3da8bb8934667d42446614521bc234eaf24f192",
+    "consumer_torch_required": "2.13.0",
+    "containerfile_gate": "python -c assert torch.__version__.split('+')[0] == '2.13.0' before build-wheel installation",
+    "available_immutable_base_torch": "2.12.0+cu132",
+    "required_wheel_lock_present": false,
+    "immutable_torch_2_13_base_present": false,
+    "pinned_consumer_build": false
+  },
+  "failure": "The pinned consumer cannot enter its source build under the authorized immutable base: the Containerfile rejects Torch 2.12 before any locked build wheels are installed, and no immutable Torch 2.13 base plus complete CUDA wheel lock exists in the campaign.",
+  "runtime_smoke_attempted": false,
+  "candidate_opportunities_consumed": 0
+}

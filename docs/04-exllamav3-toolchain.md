@@ -1,4 +1,4 @@
-# exllamav3 conversion: capabilities and the two gaps
+# exllamav3 conversion: capabilities and three gaps
 
 Read at `turboderp-org/exllamav3@5f3c537` (version 1.4.2).
 
@@ -49,7 +49,25 @@ then a `VariantSafetensorsCollection` splice and recompile). It requires the
 inputs to share an identical tensor key set, so it can mix K4 with K5/K6 but
 cannot mix in BF16.
 
-## Gap 2: unquantized decoder linears come out FP16, not BF16
+## Gap 2: stock level-3 measurement drops GDN groups
+
+At this pinned source, `GatedDeltaNet.optimizer_targets()` does not put its
+input and output projection lists at the same nesting depth as `Attention`.
+For split Qwen GDN layers, stock `measure_model.py -l 3` sees no GDN groups:
+`in_proj_qkv` and `in_proj_z` are one level too shallow and `out_proj` is absent.
+The fused layout exposes its input but still omits its output. Those marginals
+are not a valid whole-body allocator control.
+
+Apply
+[`patches/exllamav3-1.4.2-gdn-optimizer-targets.patch`](../patches/exllamav3-1.4.2-gdn-optimizer-targets.patch)
+only to `turboderp-org/exllamav3@5f3c537`, then run
+`python tools/verify_exllamav3_gdn_optimizer_targets.py --source <exllamav3-checkout>`
+from this repository. The verifier rejects the exact unpatched source and
+requires the level-3 oracle: 320 groups covering all 400 Qwen body linears
+exactly once (144 GDN, 48 full-attention, 128 MLP), retaining k+v and gate+up
+groups. Without that pass, `-l 3` is not a valid control.
+
+## Gap 3: unquantized decoder linears come out FP16, not BF16
 
 `Linear.load_fp16` uses `float2half=True` with `allow_bf16` defaulted False, and
 `LinearFP16.get_tensors` re-emits whatever it holds. BF16 survives only on the

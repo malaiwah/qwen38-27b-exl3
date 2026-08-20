@@ -1,0 +1,19 @@
+{
+  "schema_version": "frontier-g01-prereg-v1",
+  "campaign_id": "frontier-g01",
+  "experiment_id": "g1-sparse-options",
+  "parent_experiment_id": "g1-direct-marginals",
+  "kind": "sparse-options",
+  "candidate_id": null,
+  "hypothesis": "The exact sparse registry admits a nondominated allocation shortlist without constructing a Cartesian option bank or mixing QKV widths.",
+  "falsifier": "The registry is incomplete, the exact solver is nondeterministic, no legal allocation exists, or every allocation is dominated by the incumbent.",
+  "changed_variables": {"module_options": "incumbent-adjacent-measured-only"},
+  "held_variables": {"topology": "split_qkv", "maximum_candidate_shortlist": 3, "cartesian_bank": false, "mixed_width_qkv": false},
+  "identities": {"campaign_contract_sha256": "3e3d020fa1e531e44677ceccdbc99d2491cc29c937820f7d5b3ad00427485abc", "solver": "OR-Tools-CP-SAT-pinned-by-environment", "runtime_sha": "b19029d2309b26c4942425e52b74a0e6dd5d141e"},
+  "analysis_code_sha256": "8a1e862199347171f0e93fa9518c2fae8e72515665f87ea69bb050bdc0dfad4a",
+  "candidate_options": ["exact-nondominated-frontier"],
+  "engineering_margins": {"unmeasured_routes_max": 0, "fallbacks_max": 0, "candidate_shortlist_max": 3, "solver_replay_mismatches_max": 0},
+  "decision_rules": {"accept": "Emit only exact nondominated allocations satisfying every resource and route constraint.", "reject": "Reject modeled, incomplete, Cartesian, mixed-QKV, or nondeterministic solutions.", "futility": "Stop if no allocation can improve a frozen objective within remaining resources.", "abort": "Abort on solver identity drift, overflow, timeout without proof, or malformed registry."},
+  "maximum_spend": {"gpu_hours": 0.0, "usd": 0},
+  "planned_output_paths": ["experiments/g1-sparse-options/allocation.json", "experiments/g1-sparse-options/direct-marginals-solver.json", "experiments/g1-sparse-options/solver-lock.json", "experiments/g1-sparse-options/solver-environment.json", "experiments/g1-sparse-options/raw-log.json", "experiments/g1-sparse-options/result.json"]
+}

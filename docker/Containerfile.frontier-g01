@@ -1,0 +1,105 @@
+# syntax=docker/dockerfile:1.7
+FROM docker.io/voipmonitor/vllm@sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b AS source_verified
+
+ARG FRONTIER_RESOLVED_SHA256
+ARG EXPECTED_TORCH_VERSION=2.12.0+cu132
+ARG EXPECTED_CUDA_VERSION=13.2
+ARG EXPECTED_BASE_VLLM_VERSION=0.11.2.dev280+gilded.gnosis.v20.vllm4d006a4.b12xcd3ce19.fi1ac6942.cu132.20260810.r34
+ARG EXPECTED_BASE_B12X_VERSION=1.2.1
+ARG EXPECTED_FLASHINFER_VERSION=0.6.18+cu132
+ARG EXPECTED_NVCC_VERSION=13.2.78
+
+ENV PATH=/opt/venv/bin:/usr/local/bin:/usr/bin:/bin \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_CACHE_DIR=/var/cache/frontier-g01/pip \
+    TORCH_CUDA_ARCH_LIST=12.0a \
+    FLASHINFER_CUDA_ARCH_LIST=12.0f \
+    B12X_COMPILE_CACHE_DIR=/var/cache/frontier-g01/b12x/compile \
+    B12X_CUTE_COMPILE_CACHE_DIR=/var/cache/frontier-g01/b12x-cute \
+    CUTE_DSL_CACHE_DIR=/var/cache/frontier-g01/cute-dsl \
+    FLASHINFER_WORKSPACE_BASE=/var/cache/frontier-g01/flashinfer \
+    TORCH_EXTENSIONS_DIR=/var/cache/frontier-g01/torch-extensions \
+    TRITON_CACHE_DIR=/var/cache/frontier-g01/triton \
+    EXPECTED_TORCH_VERSION=${EXPECTED_TORCH_VERSION} \
+    EXPECTED_CUDA_VERSION=${EXPECTED_CUDA_VERSION} \
+    EXPECTED_BASE_VLLM_VERSION=${EXPECTED_BASE_VLLM_VERSION} \
+    EXPECTED_BASE_B12X_VERSION=${EXPECTED_BASE_B12X_VERSION} \
+    EXPECTED_FLASHINFER_VERSION=${EXPECTED_FLASHINFER_VERSION} \
+    EXPECTED_NVCC_VERSION=${EXPECTED_NVCC_VERSION}
+
+COPY frontier_common.py /opt/frontier/tools/frontier_common.py
+COPY frontier_runtime_source.py /opt/frontier/tools/frontier_runtime_source.py
+COPY frontier-resolved.json /opt/frontier/frontier-resolved.json
+COPY frontier-source-receipt.json /opt/frontier/frontier-source-receipt.json
+COPY frontier-source-sbom.json /opt/frontier/frontier-source-sbom.json
+COPY sources/ /usr/local/src/frontier/
+RUN rm -f /usr/local/cuda-13.2/lib64 \
+ && mkdir -p /usr/local/cuda-13.2/lib64 \
+ && ln -sf /usr/local/cuda-13.2/targets/x86_64-linux/lib/* /usr/local/cuda-13.2/lib64/
+
+
+RUN test -n "${FRONTIER_RESOLVED_SHA256}" \
+ && python -c 'import sys; assert sys.version_info[:2] == (3, 12)' \
+ && python -c 'import os, torch; from importlib.metadata import version; assert torch.__version__ == os.environ["EXPECTED_TORCH_VERSION"]; assert torch.version.cuda == os.environ["EXPECTED_CUDA_VERSION"]; assert version("vllm") == os.environ["EXPECTED_BASE_VLLM_VERSION"]; assert version("b12x") == os.environ["EXPECTED_BASE_B12X_VERSION"]; assert version("flashinfer-python") == os.environ["EXPECTED_FLASHINFER_VERSION"]; assert version("nvidia-cuda-nvcc") == os.environ["EXPECTED_NVCC_VERSION"]' \
+ && PYTHONPATH=/opt/frontier/tools python /opt/frontier/tools/frontier_runtime_source.py verify-tree \
+      --resolved-lock /opt/frontier/frontier-resolved.json \
+      --workspace /usr/local/src/frontier \
+      --report /opt/frontier/frontier-source-verification.json
+
+
+FROM source_verified AS wheel_build
+ENV SETUPTOOLS_SCM_PRETEND_VERSION=0.0.0+frontier.g01.b19029d \
+    SETUPTOOLS_SCM_PRETEND_VERSION_FOR_VLLM=0.0.0+frontier.g01.b19029d \
+    FLASHINFER_LOCAL_VERSION=cu132 \
+    VLLM_TARGET_DEVICE=empty
+COPY sources/ /var/tmp/frontier-build-input/
+RUN mkdir -p \
+      /var/tmp/frontier-build-input/flashinfer/3rdparty/cccl \
+      /var/tmp/frontier-build-input/flashinfer/3rdparty/cutlass \
+      /var/tmp/frontier-build-input/flashinfer/3rdparty/nixl \
+      /var/tmp/frontier-build-input/flashinfer/3rdparty/spdlog \
+ && cp -a /var/tmp/frontier-build-input/flashinfer-cccl/. \
+      /var/tmp/frontier-build-input/flashinfer/3rdparty/cccl/ \
+ && cp -a /var/tmp/frontier-build-input/flashinfer-cutlass/. \
+      /var/tmp/frontier-build-input/flashinfer/3rdparty/cutlass/ \
+ && cp -a /var/tmp/frontier-build-input/flashinfer-nixl/. \
+      /var/tmp/frontier-build-input/flashinfer/3rdparty/nixl/ \
+ && cp -a /var/tmp/frontier-build-input/flashinfer-spdlog/. \
+      /var/tmp/frontier-build-input/flashinfer/3rdparty/spdlog/
+RUN python -m pip wheel --no-deps --no-build-isolation \
+      --wheel-dir /opt/frontier/wheels \
+      /var/tmp/frontier-build-input/exllamav3-runtime \
+      /var/tmp/frontier-build-input/b12x \
+      /var/tmp/frontier-build-input/flashinfer \
+      /var/tmp/frontier-build-input/vllm
+
+FROM source_verified AS runtime
+ARG FRONTIER_RESOLVED_SHA256
+COPY --from=wheel_build /opt/frontier/wheels/ /opt/frontier/wheels/
+RUN rm -rf \
+      /opt/venv/lib/python3.12/site-packages/vllm-*.dist-info \
+      /opt/venv/lib/python3.12/site-packages/b12x \
+      /opt/venv/lib/python3.12/site-packages/b12x-*.dist-info \
+      /opt/venv/lib/python3.12/site-packages/flashinfer \
+      /opt/venv/lib/python3.12/site-packages/flashinfer_jit_cache \
+      /opt/venv/lib/python3.12/site-packages/flashinfer_jit_cache-*.dist-info \
+      /opt/venv/lib/python3.12/site-packages/flashinfer_python-*.dist-info \
+      /opt/venv/lib/python3.12/site-packages/exllamav3 \
+      /opt/venv/lib/python3.12/site-packages/exllamav3-*.dist-info \
+      /opt/exllamav3-python \
+      /opt/exllamav3
+RUN python -m pip install --ignore-installed --no-index --no-deps /opt/frontier/wheels/*.whl \
+ && rm -rf /opt/frontier/wheels
+ENV VLLM_EXL3_ENCODER_SOURCE=/opt/venv/lib/python3.12/site-packages/exllamav3 \
+    VLLM_EXL3_EXT_PATH=/opt/venv/lib/python3.12/site-packages
+
+LABEL org.opencontainers.image.title="Qwen3.8 Final Frontier G0/G1 clean public runtime" \
+      org.opencontainers.image.source="https://github.com/malaiwah/qwen38-27b-exl3" \
+      io.malaiwah.frontier.runtime-source-schema="qwen38-frontier-runtime-source-lock/1" \
+      io.malaiwah.frontier.resolved-source-sha256="${FRONTIER_RESOLVED_SHA256}" \
+      io.malaiwah.frontier.source-bytes-verified="true" \
+      io.malaiwah.frontier.legacy-runtime-packages-removed="true" \
+      io.malaiwah.frontier.toolchain-base="docker.io/voipmonitor/vllm@sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b" \
+      io.malaiwah.frontier.qualification="pending" \
+      io.malaiwah.frontier.excludes="vllm-project/vllm#52530,local-inference-lab/vllm#436"

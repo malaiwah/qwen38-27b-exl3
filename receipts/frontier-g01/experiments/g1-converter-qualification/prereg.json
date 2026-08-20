@@ -1,0 +1,19 @@
+{
+  "schema_version": "frontier-g01-prereg-v1",
+  "campaign_id": "frontier-g01",
+  "experiment_id": "g1-converter-qualification",
+  "parent_experiment_id": "g1-baseline-pilot",
+  "kind": "converter-qualification",
+  "candidate_id": null,
+  "hypothesis": "The pinned public converter deterministically reproduces selected EXL3 payloads, resumes from an interrupted suffix without byte drift, and passes the publication finalizer.",
+  "falsifier": "A/A payload divergence, panel reconstruction failure, resume mismatch, non-atomic finalization, or identity mismatch rejects converter qualification.",
+  "changed_variables": {"converter_commit": "a71fbd8", "panel": "representative-qwen-suffix"},
+  "held_variables": {"bf16_revision": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0", "seed": 1376380199, "codebook": "mcg", "topology": "split_qkv"},
+  "identities": {"campaign_contract_sha256": "3e3d020fa1e531e44677ceccdbc99d2491cc29c937820f7d5b3ad00427485abc", "converter_environment_identity": "6e5df0c1a3a855fb9ebf35ae8f4a331f670cdd92e5f6cb36671446da861c9c46", "converter_branch": "malaiwah/exllamav3@frontier-g01-converter"},
+  "analysis_code_sha256": "46470859803ae840d87cfc28a26c6b99bc36d5e67f9c0a5b493fb6d4e915a37d",
+  "candidate_options": ["a-a", "representative-panel", "suffix-resume", "finalizer"],
+  "engineering_margins": {"payload_byte_mismatches_max": 0, "reconstruction_cosine_min": 0.999, "resume_byte_mismatches_max": 0},
+  "decision_rules": {"accept": "All four converter controls pass with immutable identities.", "reject": "Any deterministic or finalizer control fails.", "futility": "Stop the converter-derived lane after a confirmed deterministic failure.", "abort": "Abort on OOM, source mutation, insufficient reserve, or only-copy risk."},
+  "maximum_spend": {"gpu_hours": 2.5, "usd": 0},
+  "planned_output_paths": ["experiments/g1-converter-qualification/converter-controls.json", "experiments/g1-converter-qualification/finalizer-replay.json", "experiments/g1-converter-qualification/transaction.json", "experiments/g1-converter-qualification/transaction-log.json", "experiments/g1-converter-qualification/raw-log.json", "experiments/g1-converter-qualification/result.json"]
+}

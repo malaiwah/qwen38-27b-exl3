@@ -1,0 +1,122 @@
+{
+  "schema": "qwen38-frontier-campaign-contract/1",
+  "campaign_id": "frontier-g01",
+  "frozen_utc": "2026-08-20T20:12:00Z",
+  "candidate_blind": {
+    "locked_before_candidate_access": true,
+    "candidate_results_accessed": false,
+    "power_inputs": "baseline_only",
+    "sealed_final_opened": false,
+    "declaration_sha256": "0e9c670b06aba63c6e2159206eb77d42a95a4ac6260f07323b16f33bfd0921f6"
+  },
+  "immutable_inputs": {
+    "data_manifest": {"path": "g0/data-manifest.json", "sha256": "1ab0eb042a21bdf8e7624553502f56a4f19fe966902c77ee52f2735d9062ddcb"},
+    "power_plan": {"path": "g0/power-plan.json", "sha256": "75744ba4601a8ca344598f7bf9d11985810d33fbba52a8ac413c1680c9dc93b6"},
+    "resource_ledger": {"path": "g0/resource-ledger.json", "sha256": "3c05b128df84428d36b47009107c36d3f228c6af4be029ff29460e1e706b4776"},
+    "runtime_source": {"path": "g0/runtime-source.json", "sha256": "b03ee6e934f9aad155c928bdfca06534135845019853ca17bb746d672fc3d864"},
+    "runtime_environment": {"path": "g0/runtime-environment.json", "sha256": "c68180b85e9d40fbd13264a50587bb60e9d856441f6ff7e03ee2364b9e21869f"},
+    "converter_environment": {"path": "g0/converter-environment.json", "sha256": "2dede19719282d6d8784153865ab59b40128adfbbff8bc748dfe5740fa80b3db"}
+  },
+  "incumbent": {
+    "model_repo": "malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated",
+    "model_revision": "ab3a91a13813df8096cb4c1d560ed3669035d0cf",
+    "profile": "incumbent-fidelity-int8",
+    "max_model_len": 238400,
+    "mtp_speculative_tokens": 6,
+    "kv_cache_dtype": "fp8_e4m3",
+    "max_num_batched_tokens": 3072,
+    "gpu_memory_utilization": 0.95
+  },
+  "runtime_tuple": {
+    "image_id": "sha256:c946ca8735fea03dc6ea65ced676d1ee474e63531bf3313185ef28a7726b32df",
+    "source_commit": "b19029d2309b26c4942425e52b74a0e6dd5d141e",
+    "base_image": "docker.io/voipmonitor/vllm@sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b",
+    "helper_mounts": [
+      {"path": "patches/exl3_fp4_conversion.py", "sha256": "700baba0b607b9afc2e6dd8f773ff43f5c040be06410ea5ec39e528dedef9055"},
+      {"path": "patches/triton_fp4_quant.py", "sha256": "d373a6d7c06519f3e58b44340d5f0176438afb803d9557dbeb719190c70fd639"},
+      {"path": "patches/exl3_fp6_conversion.py", "sha256": "3363656abe8050e27760ad8cfac77fcfa55e2b41d797f0290486c8dd50fb495b"},
+      {"path": "base-image:/opt/venv/lib/python3.12/site-packages/b12x", "tree_sha256": "ce1e186072ee61b776ac35a8c39bd2a85d998d503cccd38bdf843729a9b7ec92", "version": "1.2.1"}
+    ],
+    "profile_gate_sha256": "5757286c0ebc6214350a9be4f9946ba894ba97325a7295c00c3605ee52d466c2",
+    "profile_baseline_sha256": "9c99f3a375052c92a62f63ce039c413c7c9c8fbe371ffb1db5628e071b4b8a30",
+    "self_contained_image_rebuild_status": "blocked_at_attempt_cap",
+    "source_mounted_runtime_allowed": true
+  },
+  "candidate_sequence": {
+    "maximum_fresh_candidates": 3,
+    "whole_candidates_only": true,
+    "sequential": true,
+    "development_data_only": true,
+    "candidate_ids": ["candidate-01", "candidate-02", "candidate-03"],
+    "stop_after_first_gate_a_pass": true,
+    "negative_trials_retained": true,
+    "unrun_proposals_logged": true,
+    "recipe_or_profile_change_consumes_opportunity": true
+  },
+  "gate_a": {
+    "hardware": {"gpu": "NVIDIA-GeForce-RTX-5090", "uuid": "GPU-506a575d-01d7-b12e-9a0a-c1ab5f38ae0a", "tensor_parallel": 1},
+    "absolute": {
+      "pp_tok_s_min": 7000.0,
+      "tg_fox_tok_s_min": 190.0,
+      "tg_essay_tok_s_min": 83.0,
+      "development_mean_kld_max": 0.012,
+      "configured_context_tokens_min": 238400,
+      "vision_max_pixels_min": 8388608,
+      "mtp_speculative_tokens_min": 1
+    },
+    "paired_noninferiority": {
+      "mean_kld_upper_delta_max": 0.0005,
+      "tail_exceedance_at_0p005_upper_delta_max": 0.02,
+      "tail_exceedance_at_0p01_upper_delta_max": 0.01,
+      "capability_score_lower_delta_min": -0.05,
+      "context_score_lower_delta_min": -0.02,
+      "familywise_alpha": 0.016666666666666666,
+      "bootstrap_repetitions": 8192,
+      "cluster_unit": "source_family"
+    },
+    "required_capabilities": [
+      "text_sanity",
+      "vision",
+      "tool_calls",
+      "thinking_history",
+      "native_mtp",
+      "long_context",
+      "second_request_post_health"
+    ],
+    "fatal_conditions": [
+      "cuda_oom",
+      "engine_death",
+      "silent_fallback",
+      "post_request_unhealthy",
+      "identity_mismatch",
+      "unmeasured_runtime_route",
+      "resource_reserve_violation"
+    ],
+    "all_conditions_required": true
+  },
+  "futility": {
+    "conditional_power_below": 0.2,
+    "interim_information_fraction": 0.5,
+    "nonbinding": true,
+    "action": "stop_for_futility"
+  },
+  "sealed_final_policy": {
+    "development_may_not_open_e_final_v7": true,
+    "g4_role": "generate_and_hash_bf16_reference_and_finalize_payload_without_candidate_scoring",
+    "single_candidate_look_on_5090": true,
+    "sibling_is_nondeterminism_control_not_selectable": true,
+    "candidate_change_after_open_requires": "E-final2"
+  },
+  "terminal_rule": {
+    "gate_a_pass": "select the first candidate whose exact payload, sidecars, runtime, profile, command and evidence satisfy every Gate A condition",
+    "three_candidate_no_go": "require exactly three fresh candidate results, each disposition no_go, with no selected candidate",
+    "other_terminal_states_forbidden": true
+  },
+  "budget": {
+    "external_rental_allowed": false,
+    "external_rental_usd": 0,
+    "maximum_candidates": 3,
+    "build_retry_cap_reached": 15,
+    "aiboss_storage_reserve_bytes": 64424509440
+  }
+}

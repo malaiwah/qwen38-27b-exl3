@@ -1,0 +1,19 @@
+{
+  "schema_version": "frontier-g01-prereg-v1",
+  "campaign_id": "frontier-g01",
+  "experiment_id": "g1-autoround-bridge",
+  "parent_experiment_id": "g1-baseline-pilot",
+  "kind": "autoround-bridge",
+  "candidate_id": null,
+  "hypothesis": "The exact Intel AutoRound artifact can build and serve through its pinned non-speculative vLLM consumer on AIBoss without fallback.",
+  "falsifier": "The pinned consumer cannot build in a public reproducible environment, startup fails, a fallback occurs, or text/image/video routes fail.",
+  "changed_variables": {"model": "Intel/Qwen3.8-27B-bpw2.8-AutoRound@03a2e36af5fad7b8eb281ff27bfb081e6216a257", "speculation": false},
+  "held_variables": {"max_model_len": 4096, "consumer_commit": "b3da8bb8934667d42446614521bc234eaf24f192", "humming": "0.1.12", "compressed_tensors": "0.17.0"},
+  "identities": {"campaign_contract_sha256": "3e3d020fa1e531e44677ceccdbc99d2491cc29c937820f7d5b3ad00427485abc", "audit_path": "g0/autoround-audit.json", "model_revision": "03a2e36af5fad7b8eb281ff27bfb081e6216a257"},
+  "analysis_code_sha256": "63db7a36e27a7a36eb2efa67a7c6e489d06bd2a1e34af11afa1eb995d3f210d1",
+  "candidate_options": ["pinned-consumer-build-and-smoke"],
+  "engineering_margins": {"fallbacks_max": 0, "max_model_len_min": 4096, "required_routes": ["text", "image", "video"]},
+  "decision_rules": {"accept": "Pinned consumer builds and every required AIBoss route passes.", "reject": "Any built runtime or route gate fails.", "futility": "Terminate unsupported only when the pinned consumer itself cannot build.", "abort": "Abort on mutable source, MTP/speculation enablement, OOM, or failed restore."},
+  "maximum_spend": {"gpu_hours": 1.0, "usd": 0},
+  "planned_output_paths": ["experiments/g1-autoround-bridge/raw-log.json", "experiments/g1-autoround-bridge/result.json"]
+}

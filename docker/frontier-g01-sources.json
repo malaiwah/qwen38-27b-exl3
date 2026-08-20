@@ -1,0 +1,216 @@
+{
+  "schema": "qwen38-frontier-runtime-source-lock/1",
+  "lock_id": "frontier-g01-clean-public-runtime",
+  "status": "ready",
+  "source_policy": {
+    "public_https_only": true,
+    "immutable_full_shas": true,
+    "reject_unlocked_submodules": true,
+    "installed_bytes_manifest_required": true
+  },
+  "sources": [
+    {
+      "name": "vllm",
+      "role": "clean public vLLM integration: fa033bd4 lineage plus #47272, EXL3 multiprecision/linear and BF16 overlay resolution, clean int8 embedding ownership, Qwen target/MTP wiring, #51113/#51812, #398 full-signature graph correctness, and speculative correctness sources",
+      "repository": "https://github.com/malaiwah/vllm-voipmonitor.git",
+      "commit": "b19029d2309b26c4942425e52b74a0e6dd5d141e",
+      "tree": "b1d8a19e3b6012f68f8dbeb450dd5253678c3d14",
+      "destination": "vllm"
+    },
+    {
+      "name": "b12x-route-pack",
+      "role": "clean public AIBoss EXL3 route-pack source; measured equivalence to the served cd3ce190 build remains a qualification gate",
+      "repository": "https://github.com/malaiwah/sparkinfer.git",
+      "commit": "c0a36cec766ce529d203f535fcaaa9c76338a551",
+      "tree": "759843ccbd8b9bd003845750158dddafd440cc31",
+      "destination": "b12x"
+    },
+    {
+      "name": "flashinfer",
+      "role": "served FlashInfer source identity",
+      "repository": "https://github.com/flashinfer-ai/flashinfer.git",
+      "commit": "1ac6942776b383c6b03c7a5805a22e72a3e3349f",
+      "tree": "641389e5ae3d06d7e29d22bfd42d78f0d016e78f",
+      "destination": "flashinfer"
+    },
+    {
+      "name": "flashinfer-cccl",
+      "role": "FlashInfer locked 3rdparty/cccl submodule",
+      "repository": "https://github.com/NVIDIA/cccl.git",
+      "commit": "876867684f7fac130e0f5911236e0a92a970d4fd",
+      "tree": "d5ecb273b74f7099c4dc0af7420e827aff0a8e17",
+      "destination": "flashinfer-cccl"
+    },
+    {
+      "name": "flashinfer-cutlass",
+      "role": "FlashInfer locked 3rdparty/cutlass submodule",
+      "repository": "https://github.com/NVIDIA/cutlass.git",
+      "commit": "b46b16d003484063bca4ed365e44095c4c6ed633",
+      "tree": "98b04df169b2807f02667388fd2a49bfb869acb3",
+      "destination": "flashinfer-cutlass"
+    },
+    {
+      "name": "flashinfer-nixl",
+      "role": "FlashInfer locked 3rdparty/nixl submodule",
+      "repository": "https://github.com/ai-dynamo/nixl.git",
+      "commit": "05e4243f5ed305a245912361ace20ba354ec0808",
+      "tree": "43755e672ffd25e6a82ce26ca10993914312b658",
+      "destination": "flashinfer-nixl"
+    },
+    {
+      "name": "flashinfer-spdlog",
+      "role": "FlashInfer locked 3rdparty/spdlog submodule",
+      "repository": "https://github.com/gabime/spdlog.git",
+      "commit": "c3aed4b68373955e1cc94307683d44dca1515d2b",
+      "tree": "42a89afc349ece5bf924c9352fd070f312ceba80",
+      "destination": "flashinfer-spdlog"
+    },
+    {
+      "name": "exllamav3-runtime",
+      "role": "public SM120 runtime fork used by the clean-container recipe",
+      "repository": "https://github.com/brandonmmusic-max/exllamav3.git",
+      "commit": "704aefd743b390af4bd0fb429d1906f9b964c7d8",
+      "tree": "6787f7badcb167654bf6f1f217bf9bcecbd9b57f",
+      "destination": "exllamav3-runtime"
+    },
+    {
+      "name": "exllamav3-control-converter",
+      "role": "public 1.4.2 conversion control; it is not substituted for the runtime fork",
+      "repository": "https://github.com/turboderp-org/exllamav3.git",
+      "commit": "5f3c537ca9d89893d771256f5c43c93656553fbb",
+      "tree": "ffc0a1d31c25d4174b96adffef3727f12a7056c7",
+      "destination": "exllamav3-converter"
+    }
+  ],
+  "patches": [],
+  "submodule_bindings": [
+    {
+      "parent": "flashinfer",
+      "path": "3rdparty/cccl",
+      "source": "flashinfer-cccl"
+    },
+    {
+      "parent": "flashinfer",
+      "path": "3rdparty/cutlass",
+      "source": "flashinfer-cutlass"
+    },
+    {
+      "parent": "flashinfer",
+      "path": "3rdparty/nixl",
+      "source": "flashinfer-nixl"
+    },
+    {
+      "parent": "flashinfer",
+      "path": "3rdparty/spdlog",
+      "source": "flashinfer-spdlog"
+    }
+  ],
+  "public_references": [
+    {
+      "id": "vllm-project/vllm#47272",
+      "repository": "https://github.com/vllm-project/vllm.git",
+      "commit": "76fb6d210a57c7efbb61fa6cb029d1fa1911bfb5",
+      "tree": "fdfffb34f68eba64863aa82fee227b5d9b16ea28",
+      "disposition": "included-by-public-port"
+    },
+    {
+      "id": "vllm-project/vllm#51113",
+      "repository": "https://github.com/vllm-project/vllm.git",
+      "commit": "c56f169d9ae46ca420617e2cf5f0c9135da0f651",
+      "tree": "d4fda13020c2bfb63dd2b184d6b7f05dadad02df",
+      "disposition": "included-by-public-port"
+    },
+    {
+      "id": "vllm-project/vllm#51812",
+      "repository": "https://github.com/vllm-project/vllm.git",
+      "commit": "5af7c8dad798bf899813f8f3c6b9eaf08a748e17",
+      "tree": "793f7aeacf39edfc443dbedb73278972d35030a7",
+      "disposition": "included-by-public-port"
+    },
+    {
+      "id": "local-inference-lab/vllm#398",
+      "repository": "https://github.com/local-inference-lab/vllm.git",
+      "commit": "5723e072e02062d504f2f7172da64804ec97ab36",
+      "tree": "f94a08ac1ccd2c97eac6e33ad880dbb32d814ea5",
+      "disposition": "included-by-public-port"
+    }
+  ],
+  "requirements": [
+    {
+      "id": "kv-null-block-reservation",
+      "behavior": "reserve the KV null block before determining usable cache capacity",
+      "status": "provided-by-vllm-base",
+      "source": "vllm-project/vllm#47272"
+    },
+    {
+      "id": "mamba-align-state",
+      "behavior": "keep align-mode prefill chunks block-aligned past last_cache_position",
+      "status": "provided-by-vllm-base",
+      "source": "vllm-project/vllm#51113"
+    },
+    {
+      "id": "qwen-gdn-spec-gates",
+      "behavior": "gather GDN a/b gates in the same speculative-token order as Q/K/V",
+      "status": "provided-by-vllm-base",
+      "source": "vllm-project/vllm#51812"
+    },
+    {
+      "id": "flashinfer-captured-shape",
+      "behavior": "key persistent decode wrappers by the full capture-time (num_decodes, q_len_per_req) signature",
+      "status": "qualification-required",
+      "source": "malaiwah/vllm-voipmonitor@b19029d2309b26c4942425e52b74a0e6dd5d141e"
+    },
+    {
+      "id": "exl3-runtime",
+      "behavior": "EXL3 loading, per-(device,bits) and full-signature warmup, prefill dispatch, one shared reconstruct arena, independent Q/K/V trellises by default, and B12X routing",
+      "status": "qualification-required",
+      "source": "malaiwah/vllm-voipmonitor@b19029d2309b26c4942425e52b74a0e6dd5d141e"
+    },
+    {
+      "id": "b12x-route-pack-equivalence",
+      "behavior": "the clean c0a36cec route-pack build must match the served cd3ce190 path for required kernels, per-route warmup, numerical outputs, and dispatch decisions on the campaign matrix",
+      "status": "qualification-required",
+      "source": "malaiwah/sparkinfer@c0a36cec766ce529d203f535fcaaa9c76338a551"
+    },
+    {
+      "id": "qwen35-native-path",
+      "behavior": "clean int8 embedding constructor wiring, native MTP/V2/GDN execution, BF16 vision modules, and media processing with truncation=false and max_pixels=8388608",
+      "status": "qualification-required",
+      "source": "malaiwah/vllm-voipmonitor@b19029d2309b26c4942425e52b74a0e6dd5d141e"
+    }
+  ],
+  "toolchain": {
+    "architecture": "linux/amd64",
+    "base_image": "docker.io/voipmonitor/vllm@sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b",
+    "cuda": "13.2",
+    "nvcc_wheel": "nvidia-cuda-nvcc==13.2.78",
+    "torch": "2.12.0+cu132",
+    "torchvision": "0.27.0+cu132",
+    "vllm_build_version": "0.0.0+frontier.g01.b19029d.empty",
+    "flashinfer": "0.6.18+cu132",
+    "exllamav3_runtime": "0.0.43",
+    "b12x_source_version": "1.1.0",
+    "compiler_flags": [
+      "-gencode=arch=compute_120,code=sm_120",
+      "-std=c++20",
+      "-O3",
+      "--use_fast_math"
+    ]
+  },
+  "container": {
+    "status": "ready",
+    "base_reference": "docker.io/voipmonitor/vllm@sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b",
+    "platform": "linux/amd64"
+  },
+  "exclusions": [
+    {
+      "id": "vllm-project/vllm#52530",
+      "reason": "explicitly excluded KV-pool admission port"
+    },
+    {
+      "id": "local-inference-lab/vllm#436",
+      "reason": "explicitly excluded opaque stack"
+    }
+  ],
+  "blockers": []
+}

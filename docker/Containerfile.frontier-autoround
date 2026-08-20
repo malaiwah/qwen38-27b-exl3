@@ -1,0 +1,169 @@
+# syntax=docker/dockerfile:1.7
+ARG FRONTIER_BASE_IMAGE
+FROM ${FRONTIER_BASE_IMAGE} AS vllm-build
+
+ARG VLLM_COMMIT=b3da8bb8934667d42446614521bc234eaf24f192
+ARG VLLM_PARENT=5a4c8d99242e9e069b604d0e9b969e77f7dd501d
+ARG HUMMING_WHEEL_SHA256=cd3ef712a93f3a9075ea99de2c72bcd3ec89dab3759b3a248d869f5507b60331
+ARG COMPRESSED_TENSORS_WHEEL_SHA256=4a1b89b508f7efb8ffb4eee8a6e69e0452d9b080cae130146025c64fbe9fa9aa
+ENV PATH=/opt/venv/bin:/usr/local/bin:/usr/bin:/bin \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONOPTIMIZE=0 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    VLLM_COMMIT=${VLLM_COMMIT} \
+    VLLM_PARENT=${VLLM_PARENT} \
+    HUMMING_WHEEL_SHA256=${HUMMING_WHEEL_SHA256} \
+    COMPRESSED_TENSORS_WHEEL_SHA256=${COMPRESSED_TENSORS_WHEEL_SHA256}
+
+COPY frontier_common.py /opt/frontier/tools/frontier_common.py
+COPY source-lock.json /opt/frontier/source-lock.json
+COPY wheel-lock.json /opt/frontier/wheel-lock.json
+COPY source-sbom.json /opt/frontier/source-sbom.json
+COPY wheelhouse/ /opt/frontier/wheelhouse/
+COPY vllm/ /usr/local/src/vllm/
+
+RUN PYTHONPATH=/opt/frontier/tools python - <<'PY'
+import os
+from pathlib import Path
+from frontier_common import load_strict_json, sha256_file
+
+root = Path('/opt/frontier')
+source = load_strict_json(root / 'source-lock.json')
+wheels = load_strict_json(root / 'wheel-lock.json')
+assert isinstance(source, dict) and source.get('schema') == 'qwen38-frontier-autoround-source-lock/1'
+assert source.get('vllm') == {
+    'repository': 'https://github.com/vllm-project/vllm.git',
+    'commit': os.environ['VLLM_COMMIT'],
+    'parent': os.environ['VLLM_PARENT'],
+    'relationship': 'one_commit_on_parent',
+}
+assert isinstance(wheels, dict) and wheels.get('schema') == 'qwen38-frontier-autoround-wheel-lock/1'
+entries = wheels.get('wheels')
+assert isinstance(entries, list) and entries
+seen_names = set()
+seen_distributions = set()
+runtime_distributions = set()
+for entry in entries:
+    assert set(entry) == {'distribution', 'filename', 'sha256', 'scope'}
+    filename = entry['filename']
+    assert isinstance(filename, str) and filename == Path(filename).name and filename.endswith('.whl')
+    assert filename not in seen_names
+    seen_names.add(filename)
+    distribution = entry['distribution'].lower().replace('_', '-')
+    assert distribution not in seen_distributions
+    seen_distributions.add(distribution)
+    assert entry['scope'] in {'build', 'runtime', 'both'}
+    if entry['scope'] in {'runtime', 'both'}:
+        runtime_distributions.add(distribution)
+    path = root / 'wheelhouse' / filename
+    assert path.is_file() and sha256_file(path) == entry['sha256']
+assert 'llm-compressor' not in seen_distributions
+humming = [item for item in entries if item['distribution'].lower().replace('_', '-') == 'humming-kernels']
+compressed = [item for item in entries if item['distribution'].lower().replace('_', '-') == 'compressed-tensors']
+assert len(humming) == 1 and humming[0]['sha256'] == os.environ['HUMMING_WHEEL_SHA256'] and humming[0]['scope'] in {'runtime', 'both'}
+assert len(compressed) == 1 and compressed[0]['sha256'] == os.environ['COMPRESSED_TENSORS_WHEEL_SHA256'] and compressed[0]['scope'] in {'runtime', 'both'}
+assert {'nvidia-cuda-runtime', 'nvidia-cuda-cccl', 'nvidia-cuda-nvcc', 'nvidia-cuda-nvrtc'} <= runtime_distributions
+for scope in ('build', 'runtime'):
+    selected = [str(root / 'wheelhouse' / item['filename']) for item in entries if item['scope'] in {scope, 'both'}]
+    (root / f'{scope}-wheels.txt').write_text('\n'.join(selected) + '\n', encoding='utf-8')
+PY
+
+RUN test "$(git -C /usr/local/src/vllm rev-parse HEAD)" = "${VLLM_COMMIT}" \
+ && test "$(git -C /usr/local/src/vllm rev-parse HEAD^)" = "${VLLM_PARENT}" \
+ && test "$(git -C /usr/local/src/vllm rev-list --count ${VLLM_PARENT}..${VLLM_COMMIT})" = 1 \
+ && git -C /usr/local/src/vllm diff --quiet \
+ && git -C /usr/local/src/vllm diff --cached --quiet \
+ && python -c 'import torch; assert torch.__version__.split("+")[0] == "2.13.0", torch.__version__' \
+ && python -m pip install --no-index --no-deps --force-reinstall -r /opt/frontier/build-wheels.txt \
+ && python -m build --wheel --no-isolation --outdir /opt/frontier/vllm-wheel /usr/local/src/vllm \
+ && test "$(find /opt/frontier/vllm-wheel -maxdepth 1 -type f -name 'vllm-*.whl' | wc -l)" = 1 \
+ && sha256sum /opt/frontier/vllm-wheel/vllm-*.whl > /opt/frontier/vllm-wheel.sha256
+
+FROM ${FRONTIER_BASE_IMAGE} AS runtime
+ARG VLLM_COMMIT=b3da8bb8934667d42446614521bc234eaf24f192
+ARG VLLM_PARENT=5a4c8d99242e9e069b604d0e9b969e77f7dd501d
+ARG FRONTIER_SOURCE_LOCK_SHA256
+ENV PATH=/opt/venv/bin:/usr/local/bin:/usr/bin:/bin \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONOPTIMIZE=0 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+COPY --from=vllm-build /opt/frontier/tools/ /opt/frontier/tools/
+COPY --from=vllm-build /opt/frontier/source-lock.json /opt/frontier/source-lock.json
+COPY --from=vllm-build /opt/frontier/wheel-lock.json /opt/frontier/wheel-lock.json
+COPY --from=vllm-build /opt/frontier/source-sbom.json /opt/frontier/source-sbom.json
+COPY --from=vllm-build /opt/frontier/runtime-wheels.txt /opt/frontier/runtime-wheels.txt
+COPY --from=vllm-build /opt/frontier/wheelhouse/ /opt/frontier/wheelhouse/
+COPY --from=vllm-build /opt/frontier/vllm-wheel/ /opt/frontier/vllm-wheel/
+COPY --from=vllm-build /opt/frontier/vllm-wheel.sha256 /opt/frontier/vllm-wheel.sha256
+
+RUN test -n "${FRONTIER_SOURCE_LOCK_SHA256}" \
+ && test "$(sha256sum /opt/frontier/source-lock.json | cut -d' ' -f1)" = "${FRONTIER_SOURCE_LOCK_SHA256}" \
+ && test "$(sha256sum /opt/frontier/wheelhouse/humming_kernels-0.1.12-py3-none-manylinux_2_28_x86_64.whl | cut -d' ' -f1)" = "cd3ef712a93f3a9075ea99de2c72bcd3ec89dab3759b3a248d869f5507b60331" \
+ && sha256sum -c /opt/frontier/vllm-wheel.sha256 \
+ && python -m pip install --no-index --no-deps --force-reinstall -r /opt/frontier/runtime-wheels.txt /opt/frontier/vllm-wheel/vllm-*.whl \
+ && python - <<'PY'
+import hashlib
+import importlib.metadata
+import json
+from pathlib import Path
+
+versions = {'humming-kernels': '0.1.12', 'compressed-tensors': '0.17.0'}
+wheel_lock = json.loads(Path('/opt/frontier/wheel-lock.json').read_text(encoding='utf-8'))
+names = sorted({item['distribution'] for item in wheel_lock['wheels'] if item['scope'] in {'runtime', 'both'}} | {'vllm'})
+packages = []
+for name in names:
+    distribution = importlib.metadata.distribution(name)
+    normalized = name.lower().replace('_', '-')
+    if normalized in versions:
+        assert distribution.version == versions[normalized], (name, distribution.version)
+    files = []
+    for item in sorted(distribution.files or [], key=str):
+        path = Path(distribution.locate_file(item))
+        if path.is_file():
+            digest = hashlib.sha256(path.read_bytes()).hexdigest()
+            files.append({'path': str(item), 'bytes': path.stat().st_size, 'sha256': digest})
+    assert files, name
+    packages.append({'distribution': name, 'version': distribution.version, 'files': files})
+value = {'schema': 'qwen38-frontier-autoround-installed-bytes/1', 'packages': packages}
+Path('/opt/frontier/installed-bytes.json').write_text(json.dumps(value, sort_keys=True, separators=(',', ':')) + '\n', encoding='utf-8')
+PY
+
+RUN <<'INSTALL_WRAPPER'
+cat > /usr/local/bin/frontier-autoround-serve <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+while IFS='=' read -r name _value; do
+    case "${name}" in
+        *MTP*|*SPECULATIVE*) printf 'frontier-autoround-serve: forbidden speculative environment: %s\n' "${name}" >&2; exit 64 ;;
+    esac
+done < <(env)
+for argument in "$@"; do
+    case "${argument}" in
+        --model|--model=*|--revision|--revision=*|--hf-config-path|--hf-config-path=*|--config|--config=*|--max-model-len|--max-model-len=*|--speculative*|*mtp*|*MTP*)
+            printf 'frontier-autoround-serve: forbidden model/revision/length/speculative argument: %s\n' "${argument}" >&2
+            exit 64
+            ;;
+    esac
+done
+exec vllm serve "Intel/Qwen3.8-27B-bpw2.8-AutoRound" \
+    --revision "03a2e36af5fad7b8eb281ff27bfb081e6216a257" \
+    --served-model-name qwen38-frontier-autoround \
+    --max-model-len "4096" \
+    "$@"
+SH
+chmod 0555 /usr/local/bin/frontier-autoround-serve
+INSTALL_WRAPPER
+
+LABEL org.opencontainers.image.title="Qwen3.8-27B AutoRound G0/G1 non-speculative candidate" \
+      org.opencontainers.image.source="https://github.com/vllm-project/vllm" \
+      io.malaiwah.frontier.autoround.model-revision="03a2e36af5fad7b8eb281ff27bfb081e6216a257" \
+      io.malaiwah.frontier.autoround.vllm-commit="${VLLM_COMMIT}" \
+      io.malaiwah.frontier.autoround.vllm-parent="${VLLM_PARENT}" \
+      io.malaiwah.frontier.autoround.source-lock-sha256="${FRONTIER_SOURCE_LOCK_SHA256}" \
+      io.malaiwah.frontier.autoround.max-model-len="4096" \
+      io.malaiwah.frontier.autoround.mtp="disabled-static-blocker" \
+      io.malaiwah.frontier.autoround.llm-compressor-serving-dependency="false"
+
+EXPOSE 8000
+ENTRYPOINT ["/usr/local/bin/frontier-autoround-serve"]

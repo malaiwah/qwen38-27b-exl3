@@ -1,0 +1,19 @@
+{
+  "schema_version": "frontier-g01-prereg-v1",
+  "campaign_id": "frontier-g01",
+  "experiment_id": "g1-qkv-pilot",
+  "parent_experiment_id": "g1-converter-qualification",
+  "kind": "qkv-pilot",
+  "candidate_id": null,
+  "hypothesis": "The versioned producer and consumer can round-trip one real gated Qwen full-attention block as split-default and fused-uniform payloads with exact identity, logits, graph, and route evidence.",
+  "falsifier": "Producer metadata, payload exclusivity, gated Q/G width, consumer loading, reconstruction/logits, graph capture, or startup fails.",
+  "changed_variables": {"qkv_topology": ["split", "fused_uniform"], "pilot_layer": 3},
+  "held_variables": {"output_splits": [12288, 1024, 1024], "codebook": "mcg", "K": 6, "mixed_width_one_launch": false},
+  "identities": {"campaign_contract_sha256": "3e3d020fa1e531e44677ceccdbc99d2491cc29c937820f7d5b3ad00427485abc", "producer_commit": "dce9cfabde438512d946814645881fc7f9c127d0", "consumer_commit": "5f167ce8dfadd91310142e5aadffc8101a14382c"},
+  "analysis_code_sha256": "2e051b61d7109c2147effafaf69345c907c2ddc4f4d7b379cb376a679fa3052e",
+  "candidate_options": ["split-default", "fused-uniform-k6"],
+  "engineering_margins": {"reconstruction_cosine_min": 0.999, "max_relative_error_max": 0.05, "logit_top1_mismatches_max": 0, "fallbacks_max": 0},
+  "decision_rules": {"accept": "Both source identities and all real producer-consumer pilot gates pass.", "reject": "Any schema, width, payload, numerical, graph, route, or health gate fails.", "futility": "Stop fused topology if it cannot beat split launch cost after correctness.", "abort": "Abort on OOM, engine death, source drift, or unmeasured fallback."},
+  "maximum_spend": {"gpu_hours": 1.5, "usd": 0},
+  "planned_output_paths": ["experiments/g1-qkv-pilot/qkv-plan.json", "experiments/g1-qkv-pilot/producer-log.json", "experiments/g1-qkv-pilot/producer-evidence-raw-a4.json", "experiments/g1-qkv-pilot/producer-evidence.json", "experiments/g1-qkv-pilot/consumer-evidence.json", "experiments/g1-qkv-pilot/transaction.json", "experiments/g1-qkv-pilot/transaction-log.json", "experiments/g1-qkv-pilot/raw-log.json", "experiments/g1-qkv-pilot/result.json"]
+}

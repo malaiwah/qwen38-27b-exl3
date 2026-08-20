@@ -1,0 +1,19 @@
+{
+  "schema_version": "frontier-g01-prereg-v1",
+  "campaign_id": "frontier-g01",
+  "experiment_id": "g1-baseline-pilot",
+  "parent_experiment_id": null,
+  "kind": "baseline-pilot",
+  "candidate_id": null,
+  "hypothesis": "The frozen clean public runtime tuple reproduces the incumbent profile within every stored non-regression tolerance on the authorized RTX 5090.",
+  "falsifier": "Any identity mismatch, profile metric below its frozen tolerance, fatal runtime condition, or failed owner-service restore falsifies the pilot.",
+  "changed_variables": {"runtime_tuple": "clean-public-source-mounted", "embedding_bits": 8},
+  "held_variables": {"model_revision": "ab3a91a13813df8096cb4c1d560ed3669035d0cf", "max_model_len": 238400, "mtp_tokens": 6, "development_data": "unopened"},
+  "identities": {"campaign_contract_sha256": "3e3d020fa1e531e44677ceccdbc99d2491cc29c937820f7d5b3ad00427485abc", "runtime_commit": "b19029d2309b26c4942425e52b74a0e6dd5d141e", "image_id": "c946ca8735fea03dc6ea65ced676d1ee474e63531bf3313185ef28a7726b32df", "gpu_uuid": "GPU-506a575d-01d7-b12e-9a0a-c1ab5f38ae0a"},
+  "analysis_code_sha256": "6047883b9459531f77fcbed53d08babb2ec991972917573c90e54f7e145ac0d4",
+  "candidate_options": ["matched-clean-incumbent"],
+  "engineering_margins": {"profile_min_ratio": 0.95, "context_tokens_min": 238400, "capabilities_all_true": true},
+  "decision_rules": {"accept": "All frozen profile checks pass and rollback is proven.", "reject": "Any profile check fails or runtime identity differs.", "futility": "Not applicable to the single baseline pilot.", "abort": "Abort on OOM, engine death, fallback, or failed restore."},
+  "maximum_spend": {"gpu_hours": 1.0, "usd": 0},
+  "planned_output_paths": ["experiments/g1-baseline-pilot/raw-log.json", "experiments/g1-baseline-pilot/result.json"]
+}

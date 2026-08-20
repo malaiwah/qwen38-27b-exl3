@@ -1,0 +1,19 @@
+{
+  "schema_version": "frontier-g01-prereg-v1",
+  "campaign_id": "frontier-g01",
+  "experiment_id": "g1-direct-marginals",
+  "parent_experiment_id": "g1-converter-qualification",
+  "kind": "direct-marginals",
+  "candidate_id": null,
+  "hypothesis": "Measured incumbent-adjacent K choices expose at least one legal byte/fidelity/runtime tradeoff without an unmeasured fallback.",
+  "falsifier": "No adjacent option has measured decode+prefill routes, deterministic payloads, and a finite direct fidelity/resource observation.",
+  "changed_variables": {"language_body_K": [4, 5, 6], "row_class": ["decode", "prefill"]},
+  "held_variables": {"codebook": "mcg", "scale_mode": "calibrated_g_scale", "topology": "split_qkv", "runtime_sha": "b19029d2309b26c4942425e52b74a0e6dd5d141e"},
+  "identities": {"campaign_contract_sha256": "3e3d020fa1e531e44677ceccdbc99d2491cc29c937820f7d5b3ad00427485abc", "gpu_uuid": "GPU-506a575d-01d7-b12e-9a0a-c1ab5f38ae0a", "ladder_sha256": "b5e3a4ff1e08218f49b49156eee35e85677aaacacbde232603a45569931b13c9"},
+  "analysis_code_sha256": "1d810b390336fec34e02d0afe0478b8357e6849a5fdb25cd459ec3e5b1aca6cf",
+  "candidate_options": ["incumbent", "adjacent-lower-K", "adjacent-higher-K"],
+  "engineering_margins": {"route_cosine_min": 0.999, "route_max_relative_max": 0.05, "fallbacks_max": 0, "nonfinite_measurements_max": 0},
+  "decision_rules": {"accept": "Retain only measured legal options with complete route/resource and direct-fidelity evidence.", "reject": "Reject any modeled route, fallback, nonfinite result, or failed parity gate.", "futility": "Stop an option family when all adjacent rungs are dominated or invalid.", "abort": "Abort on GPU error, OOM, identity drift, or reserve violation."},
+  "maximum_spend": {"gpu_hours": 2.0, "usd": 0},
+  "planned_output_paths": ["experiments/g1-direct-marginals/direct-marginals.json", "experiments/g1-direct-marginals/raw-log.json", "experiments/g1-direct-marginals/result.json"]
+}

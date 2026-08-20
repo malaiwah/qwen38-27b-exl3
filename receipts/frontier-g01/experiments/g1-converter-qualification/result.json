@@ -1,0 +1,21 @@
+{
+  "schema_version": "frontier-g01-result-v1",
+  "campaign_id": "frontier-g01",
+  "experiment_id": "g1-converter-qualification",
+  "kind": "converter-qualification",
+  "candidate_id": null,
+  "prereg_canonical_sha256": "6864bb419e5d000f387da77e30d4155654ecaf2f7707d125e792cdc722ed5570",
+  "artifacts": {
+    "raw-log": {"path": "experiments/g1-converter-qualification/raw-log.json", "sha256": "a4aede21aad11ea9d185881ad4104d8f298a30469f4dcc7ce0550198b55b6274", "canonical_sha256": "a511d84dcf841f0d242ffd730d94e79021a9d12f2f4763f11310e2d2a79702a5"},
+    "controls": {"path": "experiments/g1-converter-qualification/converter-controls.json", "sha256": "da41f1f6048e13fa3f89525d44a8d9fed0cd86d83f327d674f970ad6c3f1a93b", "canonical_sha256": "802f50161d2dbf18b501b36216fa73c5952871d48f219fda35c951d656cc90a7"},
+    "finalizer": {"path": "experiments/g1-converter-qualification/finalizer-replay.json", "sha256": "b4f909bdf54bf75ac16734f5e127abbf93394065abfd3e673e92db3e1aea6e66", "canonical_sha256": "c1a5cd7520e64b3bf35cbb53b950f7347b3bea2a8c8464036903f075ba621e25"},
+    "transaction": {"path": "experiments/g1-converter-qualification/transaction.json", "sha256": "3ec2c7876c4d51f120d547e26427f4bd158f43d1e8ebe360563bc4d4b331f687", "canonical_sha256": "974daa3cffe27c383016763d19314c9f4c2191720ee265386cfacdb0b971dbf6"},
+    "transaction-log": {"path": "experiments/g1-converter-qualification/transaction-log.json", "sha256": "9c1fd4fc9689d99bc17a53f368528a5edc209581a9aaa5d7c3372d26b97bc0c1", "canonical_sha256": "63588dc5162aa0c08b50d895b3f4dc2c9fc4de905803e37976113f9bc3bd23c7"}
+  },
+  "results": {"seeded_a_a_byte_identical": false, "a_a_payload_mismatch_count": 24, "resume_byte_identical": true, "finalizer_pass": true, "logical_tensors_verified": 1199, "restore_proven": true},
+  "uncertainty": {"panel_scope": "first three main-model modules at two by 128 calibration", "nondeterminism_confirmed": true},
+  "failures": [{"stage": "converter-a-a", "reason": "24 tensor payloads differ between independent seeded runs; converter-derived lanes fail the frozen determinism gate."}],
+  "cost": {"gpu_hours": 0.066, "usd": 0, "candidate_opportunities_consumed": 0},
+  "disposition": "no_go",
+  "unsupported_reason": null
+}

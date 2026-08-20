@@ -16,17 +16,23 @@ someone else's in-flight work.
 
 Nothing here computes a card's content. It only moves bytes and checks them.
 """
+from __future__ import annotations
+
 import argparse
 import hashlib
 import json
+import os
 import pathlib
 import shutil
 import subprocess
 import tempfile
 import time
+import urllib.request
+
+from frontier_common import atomic_write_json, canonical_sha256
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
-HF_HOME = "/var/tmp/hf-home-3"
+HF_HOME = os.environ.get("HF_HOME")
 
 # repo -> (local card file, repo type)
 CARDS = {
@@ -41,18 +47,36 @@ CARDS = {
 }
 
 
-def hf(*argv, cwd=None):
-    env = {"HF_HOME": HF_HOME, "PATH": "/home/mbelleau/.local/bin:/usr/bin:/bin",
-           "HOME": "/home/mbelleau"}
-    proc = subprocess.run(["hf", *argv], capture_output=True, text=True, cwd=cwd, env=env)
+def hf(*argv: str, cwd: pathlib.Path | None = None) -> str:
+    binary = shutil.which("hf")
+    if binary is None:
+        raise SystemExit("hf CLI is not installed or not on PATH")
+    env = os.environ.copy()
+    if HF_HOME:
+        env["HF_HOME"] = HF_HOME
+    proc = subprocess.run(
+        [binary, *argv], capture_output=True, text=True, cwd=cwd, env=env
+    )
     if proc.returncode != 0:
-        raise SystemExit(f"hf {' '.join(argv)} failed rc={proc.returncode}\n"
-                         f"{proc.stdout[-2000:]}\n{proc.stderr[-2000:]}")
+        raise SystemExit(
+            f"hf {' '.join(argv)} failed rc={proc.returncode}\n"
+            f"{proc.stdout[-2000:]}\n{proc.stderr[-2000:]}"
+        )
     return proc.stdout.strip()
 
 
 def sha256_bytes(data):
     return hashlib.sha256(data).hexdigest()
+
+def hub_revision(repo: str, repo_type: str) -> str:
+    endpoint = "datasets" if repo_type == "dataset" else "models"
+    url = f"https://huggingface.co/api/{endpoint}/{repo}"
+    with urllib.request.urlopen(url, timeout=60) as response:
+        payload = json.load(response)
+    revision = payload.get("sha")
+    if not isinstance(revision, str) or len(revision) != 40:
+        raise SystemExit(f"Hub API returned no immutable revision for {repo}")
+    return revision
 
 
 def fetch(repo, filename, into, repo_type):
@@ -112,6 +136,7 @@ def publish_one(repo, card, repo_type, message, dry_run):
             (staged / "DOCS-SHA256SUMS").write_text(new_sums)
         hf("upload", repo, str(staged), ".", "--repo-type", repo_type,
            "--commit-message", message)
+        row["published_revision"] = hub_revision(repo, repo_type)
 
         after = fetch(repo, "README.md", scratch / "after", repo_type)
         row["published_bytes"] = len(after)
@@ -132,7 +157,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--message", required=True)
     ap.add_argument("--dry-run", action="store_true")
-    ap.add_argument("--out", default=str(REPO / "receipts/apc-card-publication.json"))
+    ap.add_argument("--out", required=True,
+                    help="new publication receipt path; existing files are refused")
     ap.add_argument("--only", action="append", metavar="REPO",
                     help="publish only this repo id; repeatable. Default: every repo in CARDS")
     args = ap.parse_args()
@@ -146,17 +172,24 @@ def main():
 
     rows = [publish_one(repo, *CARDS[repo], args.message, args.dry_run) for repo in selected]
     payload = {
-        "schema": "qwen38-apc-card-publication/1",
+        "schema": "qwen38-card-publication/2",
         "generated_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-        "tool": f"hf upload, HF_HOME={HF_HOME}, user malaiwah",
+        "tool": f"hf upload, HF_HOME={HF_HOME or 'default'}, user malaiwah",
         "what_changed": args.message,
         "per_repo": rows,
         "all_byte_identical": all(r.get("byte_identical") for r in rows) if not args.dry_run
                               else None,
     }
+    payload["content_sha256_excludes"] = ["generated_utc", "content_sha256"]
+    payload["content_sha256"] = canonical_sha256(
+        {key: value for key, value in payload.items() if key != "generated_utc"}
+    )
     if not args.dry_run:
-        pathlib.Path(args.out).write_text(json.dumps(payload, indent=2) + "\n")
-    print(json.dumps(payload, indent=2))
+        output = pathlib.Path(args.out)
+        if output.exists():
+            raise SystemExit(f"refusing to overwrite publication receipt: {output}")
+        atomic_write_json(output, payload)
+    print(json.dumps(payload, indent=2, allow_nan=False))
     return 0 if args.dry_run or payload["all_byte_identical"] else 1
 
 

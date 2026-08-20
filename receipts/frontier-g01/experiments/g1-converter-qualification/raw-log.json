@@ -1,0 +1,11 @@
+{
+  "schema": "qwen38-frontier-converter-qualification-log/1",
+  "experiment_id": "g1-converter-qualification",
+  "converter": {"repo": "malaiwah/exllamav3", "commit": "a71fbd8f841fd8772f4a411e43686f15fb16f166", "tree": "2b3a373faa27e8cfc885c0ced715321df0ed6830", "seed": 1376380199},
+  "controls": {"path": "experiments/g1-converter-qualification/converter-controls.json", "sha256": "da41f1f6048e13fa3f89525d44a8d9fed0cd86d83f327d674f970ad6c3f1a93b", "a_a_byte_identical": false, "a_a_payload_mismatches": 24, "resume_byte_identical": true, "resume_payload_mismatches": 0},
+  "finalizer": {"path": "experiments/g1-converter-qualification/finalizer-replay.json", "sha256": "b4f909bdf54bf75ac16734f5e127abbf93394065abfd3e673e92db3e1aea6e66", "status": "pass", "logical_tensors_verified": 1199, "logical_shapes_verified": 1199, "atomic_writes": true},
+  "transaction": {"path": "experiments/g1-converter-qualification/transaction.json", "sha256": "3ec2c7876c4d51f120d547e26427f4bd158f43d1e8ebe360563bc4d4b331f687", "status": "fail", "restore_proven": true, "callback_exit_code": 1},
+  "disposition": "no_go",
+  "kill_condition": "Independent seeded A/A quantization produced 24 distinct tensor payloads, so converter-derived candidate lanes stop even though resume and finalizer controls passed.",
+  "candidate_opportunities_consumed": 0
+}

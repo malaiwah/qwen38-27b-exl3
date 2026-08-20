@@ -1,0 +1,19 @@
+{
+  "schema_version": "frontier-g01-prereg-v1",
+  "campaign_id": "frontier-g01",
+  "experiment_id": "candidate-03",
+  "parent_experiment_id": "candidate-02",
+  "kind": "candidate",
+  "candidate_id": "candidate-03",
+  "hypothesis": "A fixed first-half gate/up FP4 overlay may preserve fidelity while recovering enough prefill throughput for Gate A.",
+  "falsifier": "Failure of any absolute Gate A, paired tail/capability, route/resource, or fatal-runtime condition yields no_go.",
+  "changed_variables": {"execution_overlay": "mlp.gate_up_proj-FP4", "language_layer_range": "0-31"},
+  "held_variables": {"payload_revision": "ab3a91a13813df8096cb4c1d560ed3669035d0cf", "runtime_commit": "b19029d2309b26c4942425e52b74a0e6dd5d141e", "development_set": "D-v6", "sealed_final_opened": false},
+  "identities": {"campaign_contract_sha256": "3e3d020fa1e531e44677ceccdbc99d2491cc29c937820f7d5b3ad00427485abc", "candidate_opportunity": 3, "gpu_uuid": "GPU-506a575d-01d7-b12e-9a0a-c1ab5f38ae0a"},
+  "analysis_code_sha256": "e5089b75ae7fd8b6e363468d3819954599289652e5a1ad27cf9e347556604a69",
+  "candidate_options": ["fp4-gate-up-language-layers-0-31"],
+  "engineering_margins": {"pp_tok_s_min": 7000, "tg_fox_tok_s_min": 190, "tg_essay_tok_s_min": 83, "mean_kld_max": 0.012, "context_tokens_min": 238400},
+  "decision_rules": {"accept": "Pass only if every frozen Gate A condition passes.", "reject": "Any failed Gate A condition is no_go and consumes opportunity three.", "futility": "Stop scoring after a deterministic hard-axis failure is proven.", "abort": "Abort on identity drift, OOM, engine death, fallback, or failed restore."},
+  "maximum_spend": {"gpu_hours": 1.0, "usd": 0},
+  "planned_output_paths": ["experiments/candidate-03/raw-log.json", "experiments/candidate-03/result.json"]
+}

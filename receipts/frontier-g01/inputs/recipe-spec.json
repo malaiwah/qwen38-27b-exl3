@@ -1,0 +1,63 @@
+{
+  "schema": "qwen38-frontier-recipe-spec/1",
+  "source_revision": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0",
+  "topology": "split_qkv",
+  "resolution": "first_match",
+  "edge_justifications": {},
+  "rules": [
+    {
+      "id": "lm-head-k6",
+      "target": "module",
+      "pattern": "lm_head",
+      "disposition": {"format": "exl3", "policy": "head", "K": 6, "codebook": "mcg", "scale_mode": "calibrated_g_scale", "topology": "split_qkv"}
+    },
+    {
+      "id": "mtp-fc-k4",
+      "target": "module",
+      "pattern": "mtp\\.fc",
+      "disposition": {"format": "exl3", "policy": "mtp", "K": 4, "codebook": "mcg", "scale_mode": "calibrated_g_scale", "topology": "split_qkv"}
+    },
+    {
+      "id": "mtp-gate-up-k5",
+      "target": "module",
+      "pattern": "mtp\\.layers\\.0\\.mlp\\.(?:gate_proj|up_proj)",
+      "disposition": {"format": "exl3", "policy": "mtp", "K": 5, "codebook": "mcg", "scale_mode": "calibrated_g_scale", "topology": "split_qkv"}
+    },
+    {
+      "id": "mtp-attention-down-k6",
+      "target": "module",
+      "pattern": "mtp\\.layers\\.0\\.(?:mlp\\.down_proj|self_attn\\.(?:q_proj|k_proj|v_proj|o_proj))",
+      "disposition": {"format": "exl3", "policy": "mtp", "K": 6, "codebook": "mcg", "scale_mode": "calibrated_g_scale", "topology": "split_qkv"}
+    },
+    {
+      "id": "language-gate-up-k5",
+      "target": "module",
+      "pattern": "model\\.language_model\\.layers\\.\\d+\\.mlp\\.(?:gate_proj|up_proj)",
+      "disposition": {"format": "exl3", "policy": "language_body", "K": 5, "codebook": "mcg", "scale_mode": "calibrated_g_scale", "topology": "split_qkv"}
+    },
+    {
+      "id": "language-attention-down-k6",
+      "target": "module",
+      "pattern": "model\\.language_model\\.layers\\.\\d+\\.(?:linear_attn\\.(?:in_proj_qkv|in_proj_z|out_proj)|self_attn\\.(?:q_proj|k_proj|v_proj|o_proj)|mlp\\.down_proj)",
+      "disposition": {"format": "exl3", "policy": "language_body", "K": 6, "codebook": "mcg", "scale_mode": "calibrated_g_scale", "topology": "split_qkv"}
+    },
+    {
+      "id": "bf16-embedding",
+      "target": "tensor",
+      "pattern": ".*embed_tokens.*",
+      "disposition": {"format": "bf16", "policy": "embedding"}
+    },
+    {
+      "id": "bf16-vision",
+      "target": "tensor",
+      "pattern": ".*visual\\..*",
+      "disposition": {"format": "bf16", "policy": "vision"}
+    },
+    {
+      "id": "bf16-norm-small",
+      "target": "tensor",
+      "pattern": ".*",
+      "disposition": {"format": "bf16", "policy": "norm_small"}
+    }
+  ]
+}

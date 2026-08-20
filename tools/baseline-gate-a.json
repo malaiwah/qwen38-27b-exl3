@@ -1,0 +1,16 @@
+{
+  "schema": "qwen38-profile-baseline/1",
+  "provenance": "Final Frontier G01 Gate A absolute RTX 5090 development thresholds; frozen before candidate execution.",
+  "note": "Every metric is a hard gate. KLD/tails/capability panels are recorded separately when runtime gates remain viable.",
+  "metrics": {
+    "pp_tok_s": {"baseline": 7000.0, "rule": "min_absolute", "min_absolute": 7000.0, "description": "Gate A prompt throughput."},
+    "tg_essay_tok_s": {"baseline": 83.0, "rule": "min_absolute", "min_absolute": 83.0, "description": "Gate A essay decode throughput."},
+    "tg_fox_tok_s": {"baseline": 190.0, "rule": "min_absolute", "min_absolute": 190.0, "description": "Gate A fox decode throughput."},
+    "max_model_len": {"baseline": 238400, "rule": "min_absolute", "min_absolute": 238400, "description": "Gate A configured context."},
+    "acceptance_essay": {"baseline": 0.1, "rule": "min_absolute", "min_absolute": 0.1, "description": "Native MTP must remain active on the essay prompt."},
+    "acceptance_fox": {"baseline": 0.1, "rule": "min_absolute", "min_absolute": 0.1, "description": "Native MTP must remain active on the fox prompt."},
+    "sanity_paris": {"baseline": true, "rule": "boolean_true", "description": "Text sanity."},
+    "vision_red_blue": {"baseline": true, "rule": "boolean_true", "description": "Vision path."},
+    "long_ctx_200k": {"baseline": true, "rule": "boolean_true", "description": "Common long-context request."}
+  }
+}

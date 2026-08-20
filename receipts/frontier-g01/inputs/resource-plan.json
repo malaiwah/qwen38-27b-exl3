@@ -1,0 +1,337 @@
+{
+  "schema": "qwen38-frontier-resource-plan/1",
+  "campaign_identity": {
+    "campaign_id": "frontier-g01",
+    "aiboss_gpu": "NVIDIA-GeForce-RTX-5090",
+    "aiboss_gpu_uuid": "GPU-506a575d-01d7-b12e-9a0a-c1ab5f38ae0a",
+    "external_rental_usd": 0,
+    "aiboss_incremental_gpu_hour_usd": 0,
+    "private_hf_bucket_incremental_usd": 0,
+    "capacity_measurement_utc": "2026-08-20T20:00:00Z"
+  },
+  "phase_order": [
+    "g0-ready",
+    "candidate1-convert",
+    "candidate1-upload",
+    "candidate2-convert",
+    "candidate2-upload",
+    "candidate3-convert",
+    "candidate3-upload",
+    "final-score",
+    "terminal"
+  ],
+  "branches": ["campaign"],
+  "locations": [
+    {
+      "id": "aiboss-rootfs",
+      "kind": "filesystem",
+      "copy_domain": "aiboss-rootfs-lvm",
+      "capacity_bytes": 1004298338304,
+      "available_bytes": 189509349376,
+      "role": "aiboss"
+    },
+    {
+      "id": "hf-private-bucket",
+      "kind": "object_storage",
+      "copy_domain": "hf-private-frontier-g01",
+      "capacity_bytes": 549755813888,
+      "available_bytes": 528291165424,
+      "role": "private-durable"
+    },
+    {
+      "id": "hf-public-hub",
+      "kind": "object_storage",
+      "copy_domain": "hf-public-content-addressed",
+      "capacity_bytes": 1099511627776,
+      "available_bytes": 1099511627776,
+      "role": "public-source"
+    }
+  ],
+  "upload": {
+    "source_location": "aiboss-rootfs",
+    "destination_location": "hf-private-bucket",
+    "measured_bandwidth_bytes_per_second": 13000000,
+    "window_seconds": 21600
+  },
+  "artifacts": [
+    {
+      "id": "bf16-source",
+      "source_identity": {
+        "repo": "Qwen/Qwen3.8-27B",
+        "revision": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0",
+        "measurement": "du-sbL",
+        "config_sha256": "191e0af232104ed8b65258cf3fb2b842e288008baca7633c11b82a1ac7203aab"
+      },
+      "size": {"basis": "exact", "bytes": 55586114863},
+      "multiplicity": 1,
+      "location": "aiboss-rootfs",
+      "branches": ["campaign"],
+      "birth_phase": "g0-ready",
+      "release_phase": null,
+      "present_at_start": true,
+      "retention": "permanent",
+      "atomic_temp": {"location": "aiboss-rootfs", "multiplier": 1, "birth_phase": null, "release_phase": null},
+      "checksum_staging": {"location": "aiboss-rootfs", "copies": 0, "birth_phase": null, "release_phase": null},
+      "upload_staging": {"location": "aiboss-rootfs", "copies": 0, "birth_phase": null, "release_phase": null},
+      "retry_reserve": {"location": "aiboss-rootfs", "copies": 0, "birth_phase": null, "release_phase": null},
+      "preservation": {
+        "upload": false,
+        "copies": [
+          {"id": "bf16-local", "location": "aiboss-rootfs", "verified_phase": "g0-ready", "verification": "independent_sha256", "content_binding": "artifact_sha256", "storage_accounting": "base_artifact"},
+          {"id": "bf16-public", "location": "hf-public-hub", "verified_phase": "g0-ready", "verification": "independent_sha256", "content_binding": "artifact_sha256", "storage_accounting": "additional_copy"}
+        ]
+      }
+    },
+    {
+      "id": "incumbent-payload",
+      "source_identity": {"repo": "malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated", "revision": "ab3a91a13813df8096cb4c1d560ed3669035d0cf", "measurement": "du-sb"},
+      "size": {"basis": "exact", "bytes": 21621875999},
+      "multiplicity": 1,
+      "location": "aiboss-rootfs",
+      "branches": ["campaign"],
+      "birth_phase": "g0-ready",
+      "release_phase": null,
+      "present_at_start": true,
+      "retention": "permanent",
+      "atomic_temp": {"location": "aiboss-rootfs", "multiplier": 1, "birth_phase": null, "release_phase": null},
+      "checksum_staging": {"location": "aiboss-rootfs", "copies": 0, "birth_phase": null, "release_phase": null},
+      "upload_staging": {"location": "aiboss-rootfs", "copies": 0, "birth_phase": null, "release_phase": null},
+      "retry_reserve": {"location": "aiboss-rootfs", "copies": 0, "birth_phase": null, "release_phase": null},
+      "preservation": {
+        "upload": false,
+        "copies": [
+          {"id": "incumbent-local", "location": "aiboss-rootfs", "verified_phase": "g0-ready", "verification": "independent_sha256", "content_binding": "artifact_sha256", "storage_accounting": "base_artifact"},
+          {"id": "incumbent-public", "location": "hf-public-hub", "verified_phase": "g0-ready", "verification": "independent_sha256", "content_binding": "artifact_sha256", "storage_accounting": "additional_copy"}
+        ]
+      }
+    },
+    {
+      "id": "preserved-hidden-captures",
+      "source_identity": {"off_tree_sha256": "ec0f1be951a45f79e11097f9e2d67ecce1987baf29e4461a487f789f7344ccad", "on_tree_sha256": "77731099571f9e530c7865bd6bcdba704531c518010ad327427eb1812d6729b8"},
+      "size": {"basis": "exact", "bytes": 21464648464},
+      "multiplicity": 1,
+      "location": "aiboss-rootfs",
+      "branches": ["campaign"],
+      "birth_phase": "g0-ready",
+      "release_phase": null,
+      "present_at_start": true,
+      "retention": "campaign",
+      "atomic_temp": {"location": "aiboss-rootfs", "multiplier": 1, "birth_phase": null, "release_phase": null},
+      "checksum_staging": {"location": "aiboss-rootfs", "copies": 0, "birth_phase": null, "release_phase": null},
+      "upload_staging": {"location": "aiboss-rootfs", "copies": 0, "birth_phase": null, "release_phase": null},
+      "retry_reserve": {"location": "aiboss-rootfs", "copies": 0, "birth_phase": null, "release_phase": null},
+      "preservation": {
+        "upload": false,
+        "copies": [
+          {"id": "captures-local", "location": "aiboss-rootfs", "verified_phase": "g0-ready", "verification": "independent_sha256", "content_binding": "artifact_sha256", "storage_accounting": "base_artifact"},
+          {"id": "captures-private", "location": "hf-private-bucket", "verified_phase": "g0-ready", "verification": "independent_sha256", "content_binding": "artifact_sha256", "storage_accounting": "additional_copy"}
+        ]
+      }
+    },
+    {
+      "id": "clean-runtime-image",
+      "source_identity": {"image_sha256": "c946ca8735fea03dc6ea65ced676d1ee474e63531bf3313185ef28a7726b32df", "source_commit": "b19029d2309b26c4942425e52b74a0e6dd5d141e", "measurement": "podman-image-inspect-size"},
+      "size": {"basis": "exact", "bytes": 25878360974},
+      "multiplicity": 1,
+      "location": "aiboss-rootfs",
+      "branches": ["campaign"],
+      "birth_phase": "g0-ready",
+      "release_phase": null,
+      "present_at_start": true,
+      "retention": "ephemeral",
+      "atomic_temp": {"location": "aiboss-rootfs", "multiplier": 1, "birth_phase": null, "release_phase": null},
+      "checksum_staging": {"location": "aiboss-rootfs", "copies": 0, "birth_phase": null, "release_phase": null},
+      "upload_staging": {"location": "aiboss-rootfs", "copies": 0, "birth_phase": null, "release_phase": null},
+      "retry_reserve": {"location": "aiboss-rootfs", "copies": 0, "birth_phase": null, "release_phase": null},
+      "preservation": {"upload": false, "copies": []}
+    },
+    {
+      "id": "converter-environment",
+      "source_identity": {"environment_identity_sha256": "d12bc109ec5b7592cc7c9551d22ec5525fb458a2e6189bf233226ea8cc1e7a58", "source_commit": "a71fbd8"},
+      "size": {"basis": "exact", "bytes": 7260154638},
+      "multiplicity": 1,
+      "location": "aiboss-rootfs",
+      "branches": ["campaign"],
+      "birth_phase": "g0-ready",
+      "release_phase": null,
+      "present_at_start": true,
+      "retention": "ephemeral",
+      "atomic_temp": {"location": "aiboss-rootfs", "multiplier": 1, "birth_phase": null, "release_phase": null},
+      "checksum_staging": {"location": "aiboss-rootfs", "copies": 0, "birth_phase": null, "release_phase": null},
+      "upload_staging": {"location": "aiboss-rootfs", "copies": 0, "birth_phase": null, "release_phase": null},
+      "retry_reserve": {"location": "aiboss-rootfs", "copies": 0, "birth_phase": null, "release_phase": null},
+      "preservation": {"upload": false, "copies": []}
+    },
+    {
+      "id": "conversion-workspace-1",
+      "source_identity": {"measurement": "prior-kquant-work-du-sb", "measured_bytes": 32470869173, "planning_bound_bytes": 35000000000},
+      "size": {"basis": "upper_bound", "bytes": 35000000000},
+      "multiplicity": 1,
+      "location": "aiboss-rootfs",
+      "branches": ["campaign"],
+      "birth_phase": "candidate1-convert",
+      "release_phase": "candidate1-upload",
+      "present_at_start": false,
+      "retention": "ephemeral",
+      "atomic_temp": {"location": "aiboss-rootfs", "multiplier": 1, "birth_phase": null, "release_phase": null},
+      "checksum_staging": {"location": "aiboss-rootfs", "copies": 0, "birth_phase": null, "release_phase": null},
+      "upload_staging": {"location": "aiboss-rootfs", "copies": 0, "birth_phase": null, "release_phase": null},
+      "retry_reserve": {"location": "aiboss-rootfs", "copies": 0, "birth_phase": null, "release_phase": null},
+      "preservation": {"upload": false, "copies": []}
+    },
+    {
+      "id": "conversion-workspace-2",
+      "source_identity": {"measurement": "prior-kquant-work-du-sb", "measured_bytes": 32470869173, "planning_bound_bytes": 35000000000},
+      "size": {"basis": "upper_bound", "bytes": 35000000000},
+      "multiplicity": 1,
+      "location": "aiboss-rootfs",
+      "branches": ["campaign"],
+      "birth_phase": "candidate2-convert",
+      "release_phase": "candidate2-upload",
+      "present_at_start": false,
+      "retention": "ephemeral",
+      "atomic_temp": {"location": "aiboss-rootfs", "multiplier": 1, "birth_phase": null, "release_phase": null},
+      "checksum_staging": {"location": "aiboss-rootfs", "copies": 0, "birth_phase": null, "release_phase": null},
+      "upload_staging": {"location": "aiboss-rootfs", "copies": 0, "birth_phase": null, "release_phase": null},
+      "retry_reserve": {"location": "aiboss-rootfs", "copies": 0, "birth_phase": null, "release_phase": null},
+      "preservation": {"upload": false, "copies": []}
+    },
+    {
+      "id": "conversion-workspace-3",
+      "source_identity": {"measurement": "prior-kquant-work-du-sb", "measured_bytes": 32470869173, "planning_bound_bytes": 35000000000},
+      "size": {"basis": "upper_bound", "bytes": 35000000000},
+      "multiplicity": 1,
+      "location": "aiboss-rootfs",
+      "branches": ["campaign"],
+      "birth_phase": "candidate3-convert",
+      "release_phase": "candidate3-upload",
+      "present_at_start": false,
+      "retention": "ephemeral",
+      "atomic_temp": {"location": "aiboss-rootfs", "multiplier": 1, "birth_phase": null, "release_phase": null},
+      "checksum_staging": {"location": "aiboss-rootfs", "copies": 0, "birth_phase": null, "release_phase": null},
+      "upload_staging": {"location": "aiboss-rootfs", "copies": 0, "birth_phase": null, "release_phase": null},
+      "retry_reserve": {"location": "aiboss-rootfs", "copies": 0, "birth_phase": null, "release_phase": null},
+      "preservation": {"upload": false, "copies": []}
+    },
+    {
+      "id": "fidelity-score-scratch-1",
+      "source_identity": {"measurement": "preserved-hidden-capture-tree", "observed_bytes": 10732324232},
+      "size": {"basis": "upper_bound", "bytes": 11000000000},
+      "multiplicity": 1,
+      "location": "aiboss-rootfs",
+      "branches": ["campaign"],
+      "birth_phase": "candidate1-upload",
+      "release_phase": "candidate2-convert",
+      "present_at_start": false,
+      "retention": "ephemeral",
+      "atomic_temp": {"location": "aiboss-rootfs", "multiplier": 2, "birth_phase": "candidate1-upload", "release_phase": "candidate2-convert"},
+      "checksum_staging": {"location": "aiboss-rootfs", "copies": 0, "birth_phase": null, "release_phase": null},
+      "upload_staging": {"location": "aiboss-rootfs", "copies": 0, "birth_phase": null, "release_phase": null},
+      "retry_reserve": {"location": "aiboss-rootfs", "copies": 0, "birth_phase": null, "release_phase": null},
+      "preservation": {"upload": false, "copies": []}
+    },
+    {
+      "id": "fidelity-score-scratch-2",
+      "source_identity": {"measurement": "preserved-hidden-capture-tree", "observed_bytes": 10732324232},
+      "size": {"basis": "upper_bound", "bytes": 11000000000},
+      "multiplicity": 1,
+      "location": "aiboss-rootfs",
+      "branches": ["campaign"],
+      "birth_phase": "candidate2-upload",
+      "release_phase": "candidate3-convert",
+      "present_at_start": false,
+      "retention": "ephemeral",
+      "atomic_temp": {"location": "aiboss-rootfs", "multiplier": 2, "birth_phase": "candidate2-upload", "release_phase": "candidate3-convert"},
+      "checksum_staging": {"location": "aiboss-rootfs", "copies": 0, "birth_phase": null, "release_phase": null},
+      "upload_staging": {"location": "aiboss-rootfs", "copies": 0, "birth_phase": null, "release_phase": null},
+      "retry_reserve": {"location": "aiboss-rootfs", "copies": 0, "birth_phase": null, "release_phase": null},
+      "preservation": {"upload": false, "copies": []}
+    },
+    {
+      "id": "fidelity-score-scratch-3",
+      "source_identity": {"measurement": "preserved-hidden-capture-tree", "observed_bytes": 10732324232},
+      "size": {"basis": "upper_bound", "bytes": 11000000000},
+      "multiplicity": 1,
+      "location": "aiboss-rootfs",
+      "branches": ["campaign"],
+      "birth_phase": "candidate3-upload",
+      "release_phase": "terminal",
+      "present_at_start": false,
+      "retention": "ephemeral",
+      "atomic_temp": {"location": "aiboss-rootfs", "multiplier": 2, "birth_phase": "candidate3-upload", "release_phase": "terminal"},
+      "checksum_staging": {"location": "aiboss-rootfs", "copies": 0, "birth_phase": null, "release_phase": null},
+      "upload_staging": {"location": "aiboss-rootfs", "copies": 0, "birth_phase": null, "release_phase": null},
+      "retry_reserve": {"location": "aiboss-rootfs", "copies": 0, "birth_phase": null, "release_phase": null},
+      "preservation": {"upload": false, "copies": []}
+    },
+    {
+      "id": "candidate-1",
+      "source_identity": {"opportunity": 1, "maximum_payload_bytes": 23000000000},
+      "size": {"basis": "upper_bound", "bytes": 23000000000},
+      "multiplicity": 1,
+      "location": "aiboss-rootfs",
+      "branches": ["campaign"],
+      "birth_phase": "candidate1-convert",
+      "release_phase": "candidate2-convert",
+      "present_at_start": false,
+      "retention": "campaign",
+      "atomic_temp": {"location": "aiboss-rootfs", "multiplier": 2, "birth_phase": "candidate1-convert", "release_phase": "candidate1-upload"},
+      "checksum_staging": {"location": "aiboss-rootfs", "copies": 1, "birth_phase": "candidate1-upload", "release_phase": "candidate2-convert"},
+      "upload_staging": {"location": "aiboss-rootfs", "copies": 0, "birth_phase": null, "release_phase": null},
+      "retry_reserve": {"location": "aiboss-rootfs", "copies": 1, "birth_phase": "candidate1-convert", "release_phase": "candidate1-upload"},
+      "preservation": {
+        "upload": true,
+        "copies": [
+          {"id": "candidate1-local", "location": "aiboss-rootfs", "verified_phase": "candidate1-convert", "verification": "independent_sha256", "content_binding": "artifact_sha256", "storage_accounting": "base_artifact"},
+          {"id": "candidate1-private", "location": "hf-private-bucket", "verified_phase": "candidate1-upload", "verification": "independent_sha256", "content_binding": "artifact_sha256", "storage_accounting": "additional_copy"}
+        ]
+      }
+    },
+    {
+      "id": "candidate-2",
+      "source_identity": {"opportunity": 2, "maximum_payload_bytes": 23000000000},
+      "size": {"basis": "upper_bound", "bytes": 23000000000},
+      "multiplicity": 1,
+      "location": "aiboss-rootfs",
+      "branches": ["campaign"],
+      "birth_phase": "candidate2-convert",
+      "release_phase": "candidate3-convert",
+      "present_at_start": false,
+      "retention": "campaign",
+      "atomic_temp": {"location": "aiboss-rootfs", "multiplier": 2, "birth_phase": "candidate2-convert", "release_phase": "candidate2-upload"},
+      "checksum_staging": {"location": "aiboss-rootfs", "copies": 1, "birth_phase": "candidate2-upload", "release_phase": "candidate3-convert"},
+      "upload_staging": {"location": "aiboss-rootfs", "copies": 0, "birth_phase": null, "release_phase": null},
+      "retry_reserve": {"location": "aiboss-rootfs", "copies": 1, "birth_phase": "candidate2-convert", "release_phase": "candidate2-upload"},
+      "preservation": {
+        "upload": true,
+        "copies": [
+          {"id": "candidate2-local", "location": "aiboss-rootfs", "verified_phase": "candidate2-convert", "verification": "independent_sha256", "content_binding": "artifact_sha256", "storage_accounting": "base_artifact"},
+          {"id": "candidate2-private", "location": "hf-private-bucket", "verified_phase": "candidate2-upload", "verification": "independent_sha256", "content_binding": "artifact_sha256", "storage_accounting": "additional_copy"}
+        ]
+      }
+    },
+    {
+      "id": "candidate-3",
+      "source_identity": {"opportunity": 3, "maximum_payload_bytes": 23000000000},
+      "size": {"basis": "upper_bound", "bytes": 23000000000},
+      "multiplicity": 1,
+      "location": "aiboss-rootfs",
+      "branches": ["campaign"],
+      "birth_phase": "candidate3-convert",
+      "release_phase": "terminal",
+      "present_at_start": false,
+      "retention": "campaign",
+      "atomic_temp": {"location": "aiboss-rootfs", "multiplier": 2, "birth_phase": "candidate3-convert", "release_phase": "candidate3-upload"},
+      "checksum_staging": {"location": "aiboss-rootfs", "copies": 1, "birth_phase": "candidate3-upload", "release_phase": "final-score"},
+      "upload_staging": {"location": "aiboss-rootfs", "copies": 0, "birth_phase": null, "release_phase": null},
+      "retry_reserve": {"location": "aiboss-rootfs", "copies": 1, "birth_phase": "candidate3-convert", "release_phase": "candidate3-upload"},
+      "preservation": {
+        "upload": true,
+        "copies": [
+          {"id": "candidate3-local", "location": "aiboss-rootfs", "verified_phase": "candidate3-convert", "verification": "independent_sha256", "content_binding": "artifact_sha256", "storage_accounting": "base_artifact"},
+          {"id": "candidate3-private", "location": "hf-private-bucket", "verified_phase": "candidate3-upload", "verification": "independent_sha256", "content_binding": "artifact_sha256", "storage_accounting": "additional_copy"}
+        ]
+      }
+    }
+  ]
+}

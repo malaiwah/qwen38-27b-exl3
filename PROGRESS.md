@@ -1364,3 +1364,46 @@ did not diagnose the KV-cache compounding mechanism. No source published a
 controlled early-vs-late KLD experiment or a measured proxy-objective
 regression. Full analysis in
 [docs/58-qwen36-quant-prior-art.md](docs/58-qwen36-quant-prior-art.md).
+
+## 2026-08-20
+
+**Final Frontier G0/G1 executed and stopped at the local RTX 5090 gate.**
+The versioned campaign record is
+[`receipts/frontier-g01/manifest.json`](receipts/frontier-g01/manifest.json);
+its fail-closed verifier exits 0 with terminal disposition
+`three_candidate_no_go`. G0 preserved and hashed the immutable BF16 inputs,
+emitted the 1,199-tensor census and 409-module/937-option compatibility
+registry, locked converter/runtime identities, qualified a source-pinned clean
+runtime reproduction, and proved full owner-service restoration around every
+AIBoss transaction.
+
+**All three preregistered candidate opportunities failed an absolute Gate A
+runtime threshold.** Full gate/up FP6 could not admit its configured
+199,104-token context (startup estimated 192,576), already below the frozen
+238,400-token minimum. Full gate/up FP4 passed decode, 238,400 context, MTP,
+text, vision and 200k-context checks but measured only **4,393.6 tok/s PP**
+against the 7,000 minimum. Restricting gate/up FP4 to language layers 0–31
+measured **3,529.5 tok/s PP** while likewise passing the other runtime checks.
+The preregistered hard-gate rule stopped KLD scoring; no paid reference,
+gradient or rental stage is authorized.
+
+**The bounded method lanes produced evidence but no integrated candidate.**
+Independent seeded converter A/A runs differed in 24 tensor payloads, while
+resume was byte-exact and finalizer replay validated all 1,199 logical
+names/shapes. The exact pinned AutoRound consumer could not build. An actual
+16×16 ResComp weight tile reduced SSE 21.1% versus LDLQ, but no valid
+whole-GDN/full-attention suffix implementation existed. The hybrid QKV
+producer and consumer component pilots passed after fixing interleaved Q/G
+width, contiguity, visual/text layer-collision and tensor-parallel validation
+defects, but the full checkpoint/startup/graph/logit gates were absent and the
+lane remained `no_go`.
+
+**Upstreamable fixes were separated from campaign claims.** exllamav3 PRs
+[#298](https://github.com/turboderp/exllamav3/pull/298) and
+[#299](https://github.com/turboderp/exllamav3/pull/299) carry the GDN
+optimizer-group and hybrid-QKV producer changes; local-inference-lab/vllm PRs
+[#454](https://github.com/local-inference-lab/vllm/pull/454) and
+[#455](https://github.com/local-inference-lab/vllm/pull/455) carry the
+consumer and opt-in INT8 embedding work. Focused verifier suites pass for the
+exact published heads. The campaign result does not promote those component
+proofs into a release claim.

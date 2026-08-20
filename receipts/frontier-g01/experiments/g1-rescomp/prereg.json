@@ -1,0 +1,19 @@
+{
+  "schema_version": "frontier-g01-prereg-v1",
+  "campaign_id": "frontier-g01",
+  "experiment_id": "g1-rescomp",
+  "parent_experiment_id": "g1-converter-qualification",
+  "kind": "rescomp",
+  "candidate_id": null,
+  "hypothesis": "A preregistered ResComp 16x16 trellis correction and one representative Qwen block suffix can improve reconstruction without violating the frozen no-post-quant-GPTQ and YAQA-exclusion rules.",
+  "falsifier": "The arithmetic oracle, deterministic manifest, trellis comparison, whole-block suffix, or resource bound fails.",
+  "changed_variables": {"correction": "rescomp", "scope": ["trellis-tile", "representative-block-suffix"]},
+  "held_variables": {"tile_shape": [16, 16], "codebook": "mcg", "yaqa_active": false, "post_quant_scalar_gptq": false, "converter_revision": "5f3c537ca9d89893d771256f5c43c93656553fbb"},
+  "identities": {"campaign_contract_sha256": "3e3d020fa1e531e44677ceccdbc99d2491cc29c937820f7d5b3ad00427485abc", "gdn_source_sha256": "062f9822b0c473963d06ebc7022976b9db16b8dd1436691511b8152801ee9216"},
+  "analysis_code_sha256": "f11b8bf4364fb557836fe304f8460c2a627a49f5e65b3428ddba9cbfac2cbd53",
+  "candidate_options": ["control", "rescomp-tile", "rescomp-block-suffix"],
+  "engineering_margins": {"oracle_max_abs_error": 1e-06, "deterministic_digest_mismatches_max": 0, "peak_memory_gib_max": 8.0},
+  "decision_rules": {"accept": "Oracle, deterministic payload, tile, suffix, and resource gates all pass.", "reject": "Any correction worsens the preregistered comparison or violates method policy.", "futility": "Stop promotion when tile evidence does not beat the control.", "abort": "Abort on OOM, nonfinite arithmetic, source drift, or YAQA/GPTQ overlap."},
+  "maximum_spend": {"gpu_hours": 1.5, "usd": 0},
+  "planned_output_paths": ["experiments/g1-rescomp/oracle-input.json", "experiments/g1-rescomp/oracle-result.json", "experiments/g1-rescomp/selftest-input.json", "experiments/g1-rescomp/selftest.json", "experiments/g1-rescomp/manifest-input.json", "experiments/g1-rescomp/manifest.json", "experiments/g1-rescomp/promotion-input.json", "experiments/g1-rescomp/promotion.json", "experiments/g1-rescomp/raw-log.json", "experiments/g1-rescomp/result.json"]
+}

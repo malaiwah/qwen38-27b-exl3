@@ -1,0 +1,10 @@
+{
+  "schema": "qwen38-frontier-rescomp-log/1",
+  "experiment_id": "g1-rescomp",
+  "actual_tile": {"tensor": "model.language_model.layers.0.linear_attn.in_proj_qkv.weight", "tile_shape": [16, 16], "ldlq_output_sse": 0.0753856463296422, "rescomp_output_sse": 0.05945472423949859, "relative_improvement": 0.211333, "rescomp_won": true, "oracle_input_sha256": "55a34d3ce68a98868b8be0bbc91595df9f529f26199df5e519b6b0202054c287", "oracle_result_sha256": "8cb2412d38e22c6621fb0d025b883fb624ea37df419d246b1a67b13ced85cf34"},
+  "selftest": {"status": "PASS", "sha256": "1a8b1c1459817ae946a9f8b514bc9e47dc844103d81bea7a43a04282eaa7836b"},
+  "qwen_manifest": {"sha256": "2c87a7a2ba86c0b6b6d426388deb0325910cc3e36eb480fab1a4d7b137324b65", "gdn_suffix": [60, 61, 62, 63], "full_attention_suffix": [63], "whole_block_contract": true},
+  "promotion": {"sha256": "d0b2b0af04c0e468afdd99cafff4cac6be5318f29f4cada4bb36958303bef4bd", "disposition": "NOT_PROMOTED", "whole_gdn_suffix": false, "whole_full_attention_suffix": false, "propagated_end_logits": false},
+  "failure": "No implementation produced running-quantized predecessor states or propagated either whole Qwen suffix to end logits; the fail-closed promotion gate rejected the lane.",
+  "candidate_opportunities_consumed": 0
+}

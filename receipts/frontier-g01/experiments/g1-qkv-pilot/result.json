@@ -1,0 +1,22 @@
+{
+  "schema_version": "frontier-g01-result-v1",
+  "campaign_id": "frontier-g01",
+  "experiment_id": "g1-qkv-pilot",
+  "kind": "qkv-pilot",
+  "candidate_id": null,
+  "prereg_canonical_sha256": "b778e729218ed17cc1bdd9804a934c7c55c185f9cb4f26e24b756c9d3091624e",
+  "artifacts": {
+    "raw-log": {"path": "experiments/g1-qkv-pilot/raw-log.json", "sha256": "e5e3dc3964c0b16ed563fcb1c0069903d76020ebd53cbf07e4008a3115169ba8", "canonical_sha256": "be79bc20bb7e05f523ab65b62a4deb966ff7fe5ff1239c0ff135f6f92336900a"},
+    "plan": {"path": "experiments/g1-qkv-pilot/qkv-plan.json", "sha256": "bdbe7f37d6461aeb2d21d9e9c503e99cb2bd4c12803c2e998851ee9b5b19e2e9", "canonical_sha256": "90f837fe322b1b093130a2843d770c932b93e3ec266c10dd35b7b89735f96690"},
+    "producer": {"path": "experiments/g1-qkv-pilot/producer-evidence.json", "sha256": "299c1aa5fa1c83a085dc3be74b76817a948de9874014752369470f584b99c1a4", "canonical_sha256": "f0fbc3572a97e59a5ce9a4b125ca13115f5247dc35537663c8280b270fd4c6f4"},
+    "consumer": {"path": "experiments/g1-qkv-pilot/consumer-evidence.json", "sha256": "0617d7a6d74d38a5011550a0a63be017337642e1bf5724c32a008ce8ec5085ef", "canonical_sha256": "5a48f47fb43ab4f7a7cd3a84954e0f7cc0bf09323f31ba74a152b0125bfc09cd"},
+    "transaction": {"path": "experiments/g1-qkv-pilot/transaction.json", "sha256": "9b1a8a49723c07fbc04471f409c7081f453d1349ded3097e6c40bf1ffa53ea67", "canonical_sha256": "cf923f6acf2cca7cbdc78d640d6a882b717374c71b2dd8cbdde5cfae63404b9f"},
+    "transaction-log": {"path": "experiments/g1-qkv-pilot/transaction-log.json", "sha256": "60ef1c03ec62eb360980a16d4e554ecb63fd3d50786a23060965701f71768bd7", "canonical_sha256": "9f9490a711d946a05a7dc81f72423d1408b6c75301e29a11fbe600e1d72849a9"}
+  },
+  "results": {"producer_fragment_pass": true, "consumer_metadata_payload_acceptance": true, "gated_qg_width_correct": true, "payload_exclusive": true, "complete_checkpoint_load": false, "reconstruction_parity": false, "end_logits": false, "cuda_graph": false},
+  "uncertainty": {"scope": "one real layer-3 fused fragment plus consumer metadata/payload validation", "modeled_speed_claim": false},
+  "failures": [{"stage": "end-to-end-consumer", "reason": "The partial fragment cannot establish complete-checkpoint load, logits, graph capture, startup, or text/vision health."}],
+  "cost": {"gpu_hours": 0.19, "usd": 0, "candidate_opportunities_consumed": 0},
+  "disposition": "no_go",
+  "unsupported_reason": null
+}

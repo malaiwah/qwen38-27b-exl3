@@ -1,0 +1,11 @@
+{
+  "schema": "qwen38-frontier-direct-marginals-log/1",
+  "experiment_id": "g1-direct-marginals",
+  "inputs": {"census": "g0/bf16-census.json", "registry": "g0/compatibility-registry.json", "runtime_routes": "g0/runtime-routes.json", "ladder": "receipts/error-driven-ladder.json"},
+  "direct_marginals": {"path": "experiments/g1-direct-marginals/direct-marginals.json", "sha256": "1ed708c84c2a7c2b7bdea87926a3de5ed68acf7db0a63decd236b3e64e3a0c4b", "canonical_sha256": "580ed3816ea7dee9525ce4a4a58014963d4c20809c592db27fc80b20fb6a1300"},
+  "measurements": {"modules": 409, "options": 937, "route_entries": 34, "route_rows": 34, "row_classes": ["decode", "prefill"], "graph_modes": ["FULL_DECODE_ONLY"], "fallbacks": 0, "nonfinite": 0},
+  "objectives": ["proxy_error_scaled", "prefill_latency_ns", "resident_bytes"],
+  "parity_gates": {"cosine_min": 0.999, "max_relative_max": 0.05, "all_b12x_rows_passed": true},
+  "model_fidelity_claim_from_synthetic_routes": false,
+  "proxy_error_source": "measured exllamav3 Hessian-weighted ladder"
+}

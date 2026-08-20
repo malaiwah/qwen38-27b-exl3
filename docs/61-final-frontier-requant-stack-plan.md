@@ -1,6 +1,6 @@
 # 61 — Final-frontier Qwen3.8-27B requantization + serving-stack plan
 
-**Status:** final research plan, 2026-08-20; execution remains gated. Repository, external, dataset, upstream and three independent adversarial reviews are incorporated. No rental or GPU conversion is authorized until G0/G1 pass.
+**Status:** G0/G1 executed 2026-08-20; the deterministic campaign verifier passed with `three_candidate_no_go`. G0 passed, but all three AIBoss RTX 5090 candidates failed a frozen Gate A threshold, so paid rental and further GPU conversion remain unauthorized. Evidence: [`receipts/frontier-g01/manifest.json`](../receipts/frontier-g01/manifest.json) and [`receipts/frontier-g01/disposition.json`](../receipts/frontier-g01/disposition.json).
 
 ## 0. Reformulated mandate
 
@@ -29,7 +29,7 @@ The next artifact is **not one guessed K-map**. It is the output of a constraine
 
 The executable order is deliberately simpler than the initial draft:
 
-1. preserve standard EXL3 1.4.2 LDLQ, the hydrated artifact and the existing direct end-logit marginal path as controls;
+1. preserve standard EXL3 1.4.2 LDLQ, the hydrated artifact and the existing direct end-logit marginal path as controls, but do not use stock `-l 3` until the pinned GDN optimizer-target patch and grouping verifier pass;
 2. audit the already-built [`Intel/Qwen3.8-27B-bpw2.8-AutoRound`](https://huggingface.co/Intel/Qwen3.8-27B-bpw2.8-AutoRound) artifact before implementing a new quantizer;
 3. use the measured K curve to retain only incumbent/adjacent K options plus justified K3/K7 and codebook arms—never a Cartesian bank;
 4. derive and test forward-only ResComp-style trellis compensation on AIBoss;
@@ -43,7 +43,7 @@ The old EDA ladder, Dynamic 3.0 map, KronQ joint trace, GuidedQuant, AutoRound D
 
 Algorithmic priorities:
 
-- **Control allocator:** pinned EXL3 LDLQ + `measure_model.py -l 3` end-logit marginals + exact resource solver.
+- **Control allocator:** pinned EXL3 LDLQ + the repository's GDN optimizer-target patch + verifier-qualified `measure_model.py -l 3` end-logit marginals + exact resource solver.
 - **P0 rounding experiment:** ResComp-style running-input/current-layer compensation, independently derived for 16×16 trellis tiles and tested on whole GDN/full-attention block suffixes.
 - **P0-after-gradient-gate:** YAQA-style two-Hessian rounding. It is the strongest paper-level match to EXL3/QTIP tiles, but it is not a one-linear or 5090 experiment and GPL source is not transplanted.
 - **P1 features:** candidate-specific KronQ-trace×EXL3-distortion, GuidedQuant and DeltaLoss ablations; MBQ is an alternative modality weighting, not another additive score.
@@ -262,7 +262,7 @@ Persist calibration int64 rows. Hessians/factors are ephemeral by default; same-
 
 1. **Control:** existing proxy K curve, bytes, role/depth and pinned LDLQ.
 2. **External bound:** audit AutoRound's exact Qwen3.8 artifact—ancestry, hashes, vision/MTP/topology, actual bits, internally inconsistent PR references—then same BF16 bridge if runnable.
-3. **Direct marginal:** pinned `measure_model.py -l 3`, with the exact optimizer group named; final-logit KLD remains the control allocator.
+3. **Direct marginal:** `measure_model.py -l 3` pinned to `5f3c537`, with [`patches/exllamav3-1.4.2-gdn-optimizer-targets.patch`](../patches/exllamav3-1.4.2-gdn-optimizer-targets.patch) applied and [`tools/verify_exllamav3_gdn_optimizer_targets.py`](../tools/verify_exllamav3_gdn_optimizer_targets.py) passing the 320-group/400-linear oracle; stock `-l 3` is invalid for this control because it produces no split-GDN groups and omits fused-GDN outputs.
 4. **Forward-only rounding:** independently derive ResComp at trellis tile/group level and evaluate a whole GDN/full-attention block suffix under running quantized inputs.
 5. **Gradient gate on 96 GB:** only after differentiable-hybrid parity; then YAQA Sketch A/B, KronQ, GuidedQuant, DeltaLoss and MBQ.
 6. **Candidate-level features:** e.g. `joint_trace(m) × actual_EXL3_distortion(m,K)`; DeltaLoss on reconstructed `W_K−W`. MBQ is an alternative modality aggregation. Drop features that add no held-out rank/calibration value beyond K distortion+role/depth.
@@ -499,14 +499,15 @@ Stage 0 records the live OCI/service/image/model/profile/power hashes and provid
 1. Pull the repo; preserve selected `/tmp` references/head/suite/environments/source to durable storage.
 2. Emit exact BF16/recipe target census and sparse-option compatibility registry.
 3. Build locked converter/runtime environments.
-4. Produce the peak storage/IO/rental resource ledger and cost caps.
-5. Freeze C1/S/D-v6/E-final manifests, rights, source-family split/dedup and power plans.
-6. Audit the exact AutoRound Qwen artifact and consumer tree.
-7. Build the public, reproducible runtime image and reproduce the incumbent on AIBoss.
-8. Test the AIBoss maintenance/rollback transaction.
-9. Split preregistration/result/correction schemas; render candidate-blind campaign contract.
+4. Apply the repository GDN optimizer-target patch only to the pinned exllamav3 source and pass the pure verifier's 320-group/400-linear `-l 3` oracle; the unpatched tree must fail.
+5. Produce the peak storage/IO/rental resource ledger and cost caps.
+6. Freeze C1/S/D-v6/E-final manifests, rights, source-family split/dedup and power plans.
+7. Audit the exact AutoRound Qwen artifact and consumer tree.
+8. Build the public, reproducible runtime image and reproduce the incumbent on AIBoss.
+9. Test the AIBoss maintenance/rollback transaction.
+10. Split preregistration/result/correction schemas; render candidate-blind campaign contract.
 
-**G0 pass:** durable capacity/provider path exists; public clean tree reproduces incumbent; no unsupported target/silent fallback; rollback works; every source/right/identity resolves. Otherwise no candidate GPU work.
+**G0 pass:** durable capacity/provider path exists; public clean tree reproduces incumbent; the patched source and grouping oracle verify; no unsupported target/silent fallback; rollback works; every source/right/identity resolves. Otherwise no candidate GPU work.
 
 ### G1 / Stage 1 — AIBoss RTX 5090 rehearsal
 
@@ -514,7 +515,7 @@ Every block is owner-authorized and bounded. Stop the owning systemd unit, verif
 
 1. Baseline-only pilot: current fidelity/balanced/throughput TTFT/PP/TG/memory at tuned and stock clocks; freeze margins, power, fixed N and profile hashes before candidate output.
 2. Converter A/A, panel, consecutive suffix, resume/finalizer qualification.
-3. Direct-marginal control and sparse incumbent/adjacent K/codebook panel.
+3. Direct-marginal control and sparse incumbent/adjacent K/codebook panel, only from the pinned, patched, verifier-qualified `-l 3` grouping.
 4. AutoRound artifact bridge/capability/runtime audit if its pinned consumer builds.
 5. Derive/test forward-only ResComp on trellis tiles and whole block suffixes.
 6. Complete actual QKV producer/consumer pilot before attention fusion options.
@@ -657,7 +658,7 @@ This campaign closes F100/F163/F176 only when the new writers and versioned succ
 | Order | Experiment/gate | Cost | Unlocks | Kill condition |
 |---:|---|---|---|---|
 | 0 | source/data/rights/storage/environment/profile/rollback closure | CPU | G0 publishable base | any mutable, unlicensed, underprovisioned or unrebuildable dependency |
-| 1 | matched incumbent power pilot + AutoRound artifact audit + existing direct-marginal control | CPU/bounded 5090 | campaign contract and external bound | unmatched ancestry/path or no powered design |
+| 1 | matched incumbent power pilot + AutoRound artifact audit + patched/verifier-qualified direct-marginal control | CPU/bounded 5090 | campaign contract and external bound | unmatched ancestry/path, failed 320-group/400-linear oracle, or no powered design |
 | 2 | converter A/A/panel/suffix/resume and sparse adjacent-K/codebook panel | bounded 5090 | qualified tools/options | invariant/resume failure or underpriced storage |
 | 3 | ResComp trellis derivation + whole-block suffix KLD | bounded 5090 | forward-only rounding arm | no direct-KLD win or invalid tile/GDN derivation |
 | 4 | actual QKV producer/consumer and exact route registry | bounded 5090 | legal topology/runtime solver | only synthetic speed, FP mismatch or unmeasured fallback |

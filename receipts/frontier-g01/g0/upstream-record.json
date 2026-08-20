@@ -1,0 +1,43 @@
+{
+  "schema": "qwen38-frontier-upstream-record/2",
+  "status": "pass",
+  "audited_utc": "2026-08-20T23:30:51Z",
+  "scope": {
+    "issues": [409, 410, 435, 451, 452, 297],
+    "pull_requests": [298, 299, 436, 454, 455, 52530],
+    "all_issue_comments_reviewed": true,
+    "all_reviews_and_inline_comments_reviewed": true,
+    "all_check_runs_reviewed": true,
+    "coderabbit_prioritized": true
+  },
+  "issues": [
+    {"repo": "local-inference-lab/vllm", "number": 409, "state": "closed", "disposition": "measured-null", "action": "corrected and closed", "evidence_comment": "https://github.com/local-inference-lab/vllm/issues/409#issuecomment-5358769846"},
+    {"repo": "local-inference-lab/vllm", "number": 410, "state": "closed", "disposition": "measured-null", "action": "corrected and closed", "evidence_comment": "https://github.com/local-inference-lab/vllm/issues/410#issuecomment-5358772274"},
+    {"repo": "local-inference-lab/vllm", "number": 435, "state": "open", "disposition": "active-row-indexed-trellis-request", "action": "body corrected to remove unsupported int6/Trellis fidelity inference and point to clean int8 PR 455", "url": "https://github.com/local-inference-lab/vllm/issues/435"},
+    {"repo": "local-inference-lab/vllm", "number": 451, "state": "open", "disposition": "per-device-bit-warmup-defect", "action": "retained as source requirement; clean runtime uses per-(device,bits) warmup", "url": "https://github.com/local-inference-lab/vllm/issues/451"},
+    {"repo": "local-inference-lab/vllm", "number": 452, "state": "open", "disposition": "active-hybrid-qkv-consumer", "action": "implemented by PR 454", "url": "https://github.com/local-inference-lab/vllm/issues/452"},
+    {"repo": "turboderp-org/exllamav3", "number": 297, "state": "open", "disposition": "active-hybrid-qkv-producer", "action": "implemented by PR 299", "url": "https://github.com/turboderp-org/exllamav3/issues/297"}
+  ],
+  "pull_requests": [
+    {"repo": "turboderp-org/exllamav3", "number": 298, "state": "open", "head": "a236a3e39fcb3343f369e5bb240587ad24730562", "disposition": "ready-for-maintainer", "focused_tests": {"passed": 4, "failed": 0}, "review_actions": ["added deterministic 320-group/400-linear architecture proof", "made fixture composable with fused-QKV surface"], "url": "https://github.com/turboderp-org/exllamav3/pull/298"},
+    {"repo": "turboderp-org/exllamav3", "number": 299, "state": "open", "head": "dce9cfabde438512d946814645881fc7f9c127d0", "disposition": "producer-fragment-passed-end-to-end-pilot-pending", "focused_tests": {"passed": 23, "failed": 0}, "review_actions": ["made topology opt-in", "modeled and executed interleaved Q/G width", "scoped rows to text decoder", "aligned K/codebook domain", "fixed actual-pilot ungated split", "materialized non-contiguous Q/G view before extension deinterleave", "added Qwen-style, fast-path, and side-model tests"], "url": "https://github.com/turboderp-org/exllamav3/pull/299"},
+    {"repo": "local-inference-lab/vllm", "number": 436, "state": "closed", "head": "3cd48af029cbc926fdd6c7efa9f31bd243ec4f2b", "disposition": "superseded-by-455", "review_threads_resolved": 2, "action": "closed with full evidence correction", "closure_comment": "https://github.com/local-inference-lab/vllm/pull/436#issuecomment-5358778629"},
+    {"repo": "local-inference-lab/vllm", "number": 454, "state": "open", "head": "5f167ce8dfadd91310142e5aadffc8101a14382c", "disposition": "ready-for-maintainer-and-real-pilot", "focused_tests": {"passed": 25, "failed": 0}, "lsp_diagnostics": "clean", "review_threads": {"total": 2, "resolved": 2}, "coderabbit_actions": ["rebutted and resolved incorrect Qwen width finding; bot verified and withdrew", "rebutted and resolved numeric-sort finding; bot verified and withdrew", "fixed API/docs/negative-test items", "fixed visual/text identity collision", "fixed split-route local/global width validation", "added TP=2 geometry regression"], "final_review_retry": "requested after CodeRabbit repository-access failure", "url": "https://github.com/local-inference-lab/vllm/pull/454"},
+    {"repo": "local-inference-lab/vllm", "number": 455, "state": "open", "head": "342fd7e15f72a9f0f7b5dafded1910edac512b21", "disposition": "opt-in-gpu-qualification-pending", "focused_tests": {"passed": 12, "failed": 0}, "review_actions": ["fixed EAGLE false equality from empty compatibility stubs", "made owned quantized sharing compare q_weight and scales", "fail-closed MTP/EAGLE representation checks", "added observable TP and sharing tests"], "coderabbit": "review requested twice; external review rate limit produced no finding", "url": "https://github.com/local-inference-lab/vllm/pull/455"},
+    {"repo": "vllm-project/vllm", "number": 52530, "state": "closed", "disposition": "superseded-by-merged-47272", "action": "closed after maintainer direction", "closure_comment": "https://github.com/vllm-project/vllm/pull/52530#issuecomment-5358783883"}
+  ],
+  "published_source_branches": [
+    {"repo": "malaiwah/vllm-voipmonitor", "branch": "frontier-g01-clean-runtime", "commit": "b19029d2309b26c4942425e52b74a0e6dd5d141e", "tree": "b1d8a19e3b6012f68f8dbeb450dd5253678c3d14"},
+    {"repo": "malaiwah/exllamav3", "branch": "frontier-g01-converter", "commit": "6dabcfc7f0e75f75a577ea3650382ea1e8242a06", "tree": "d62a56b1269cc8b1e8e3207465fd896fb615cfad", "purpose": "PR298 plus PR299 composition with actual-pilot Q/G width and contiguity fixes", "focused_tests": 27},
+    {"repo": "malaiwah/sparkinfer", "commit": "c0a36cec766ce529d203f535fcaaa9c76338a551", "tree": "759843ccbd8b9bd003845750158dddafd440cc31"}
+  ],
+  "publication": {"cards": {"path": "g0/card-publication.json", "published": 7, "byte_identical": true}},
+  "ci": {
+    "local_inference_lab_label_gate": "pre-run-check requires ready/verified label or four merged PRs; pre-commit remains skipped",
+    "exllamav3_pr_ci": "manual workflow only; no pull-request checks",
+    "dco": {"454": "signed-off", "455": "signed-off", "298": "signed-off", "299_followup": "signed-off"}
+  },
+  "unresolved_actionable_review_findings": 0,
+  "external_review_limitations": ["CodeRabbit rate limit on PR 455", "CodeRabbit repository-access failure on final PR 454 retry", "maintainer labels unavailable to the author"],
+  "all_known_actionable_feedback_resolved_or_fail_closed": true
+}

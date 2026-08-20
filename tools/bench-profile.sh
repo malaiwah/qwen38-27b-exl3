@@ -9,16 +9,15 @@
 # times and GPU telemetry per boot, and records dead-boot failures without
 # aborting the remaining boots.
 #
-# On exit — success or failure — the service is always restored to the DEFAULT
-# flagship config (plain `systemctl --user start`, no env overrides) via a bash
-# trap.
+# By default this legacy harness owns the live-service lifecycle.  In
+# --campaign-mode it owns none of it: the outer frontier transaction must
+# already have started the isolated campaign endpoint, exactly one measurement
+# pass is allowed, and no service/container/env lifecycle operation is issued.
 #
 # Usage:
 #   bench-profile.sh --name <profile> [--boots 3] [--out <json>] [--env KEY=VAL]...
-#
-# Each --env KEY=VAL is passed to the launcher for every boot.  Example:
-#   bench-profile.sh --name fp8dg-m256 --boots 5 \
-#       --env VLLM_EXL3_FP8DG_PREFILL_M=256 --env VLLM_EXL3_FP8DG_CACHE=1
+#   FRONTIER_TRANSACTION_ACTIVE=1 bench-profile.sh --campaign-mode \
+#       --name <profile> --boots 1 --out <json>
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -31,7 +30,7 @@ CONTAINER="qwen38-27b"
 # --------------------------------------------------------------------------- usage
 usage() {
     cat <<'EOF'
-Usage: bench-profile.sh --name <profile> [--boots 3] [--out <json>] [--env KEY=VAL]...
+Usage: bench-profile.sh [--campaign-mode] --name <profile> [--boots 3] [--out <json>] [--env KEY=VAL]...
 
 Required:
   --name <profile>      Name tag for this benchmark profile (used in output path)
@@ -42,12 +41,14 @@ Optional:
                         (default: receipts/bench-<name>-<UTC-date>.json)
   --env KEY=VAL         Environment override passed to the launcher for every boot.
                         May be repeated: --env MAX_MODEL_LEN=8192 --env MTP=6
+  --campaign-mode       Measure one endpoint already owned by
+                        frontier_aiboss_transaction.sh. Requires --boots 1,
+                        no --env, and FRONTIER_TRANSACTION_ACTIVE=1. Never
+                        stops, starts, removes, launches, or restores anything.
 
-The script does NOT touch systemd/podman in --help mode.
-
-On completion (success or failure), the service is restored to the default
-flagship config via `systemctl --user start qwen38-27b.service` (no env
-overrides).
+The script does NOT touch systemd/podman in --help mode. In default mode, it
+restores the flagship config on exit. In --campaign-mode, lifecycle and restore
+remain exclusively owned by the outer transaction.
 EOF
 }
 
@@ -56,13 +57,15 @@ NAME=""
 BOOTS=3
 OUT=""
 declare -a ENV_VARS=()
+CAMPAIGN_MODE=0
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --name)  NAME="$2"; shift 2 ;;
-        --boots) BOOTS="$2"; shift 2 ;;
-        --out)   OUT="$2"; shift 2 ;;
-        --env)   ENV_VARS+=("$2"); shift 2 ;;
+        --name)          NAME="$2"; shift 2 ;;
+        --boots)         BOOTS="$2"; shift 2 ;;
+        --out)           OUT="$2"; shift 2 ;;
+        --env)           ENV_VARS+=("$2"); shift 2 ;;
+        --campaign-mode) CAMPAIGN_MODE=1; shift ;;
         --help|-h) usage; exit 0 ;;
         *) echo "ERROR: unknown argument: $1" >&2; usage >&2; exit 1 ;;
     esac
@@ -77,6 +80,29 @@ fi
 if ! [[ "$BOOTS" =~ ^[1-9][0-9]*$ ]]; then
     echo "ERROR: --boots must be a positive integer, got: $BOOTS" >&2
     exit 1
+fi
+
+if [[ "$CAMPAIGN_MODE" -eq 1 ]]; then
+    if [[ "${FRONTIER_TRANSACTION_ACTIVE:-0}" != "1" ]]; then
+        echo "ERROR: --campaign-mode requires FRONTIER_TRANSACTION_ACTIVE=1" >&2
+        exit 1
+    fi
+    if [[ "$BOOTS" -ne 1 ]]; then
+        echo "ERROR: --campaign-mode requires --boots 1" >&2
+        exit 1
+    fi
+    if [[ ${#ENV_VARS[@]} -ne 0 ]]; then
+        echo "ERROR: --campaign-mode rejects --env; the outer transaction owns campaign launch identity" >&2
+        exit 1
+    fi
+    if [[ -z "$OUT" ]]; then
+        echo "ERROR: --campaign-mode requires an explicit --out path" >&2
+        exit 1
+    fi
+    if [[ -e "$OUT" || -L "$OUT" ]]; then
+        echo "ERROR: --campaign-mode refuses to overwrite output: $OUT" >&2
+        exit 1
+    fi
 fi
 
 if [[ -z "$OUT" ]]; then
@@ -120,17 +146,17 @@ restore_default() {
     say "Default config restore initiated."
 }
 
-# --------------------------------------------------------------------------- EXIT trap
-# CRITICAL: always leave the service running with the default flagship config,
-# whether the benchmark succeeded, failed, or was interrupted.
-trap restore_default EXIT
-
 # --------------------------------------------------------------------------- temp files for results
 RESULTS_FILE="$(mktemp /tmp/bench-profile-results.XXXXXX.jsonl)"
-# Clean up the temp file after the restore_default trap runs.  We append the
-# rm to the EXIT trap rather than replacing it: the service restore MUST run
-# first (it is the safety-critical guarantee), then the temp file is removed.
-trap 'restore_default; rm -f "$RESULTS_FILE"' EXIT
+
+# --------------------------------------------------------------------------- EXIT trap
+if [[ "$CAMPAIGN_MODE" -eq 1 ]]; then
+    # Campaign mode must not become a second lifecycle owner.
+    trap 'rm -f "$RESULTS_FILE"' EXIT
+else
+    # Default mode preserves the legacy safety guarantee.
+    trap 'restore_default; rm -f "$RESULTS_FILE"' EXIT
+fi
 
 # Serialize env vars as JSON for the Python receipt builder.
 ENV_VARS_JSON="[]"
@@ -151,19 +177,24 @@ run_one_boot() {
     local boot_idx="$1"
     BOOT_DIED=0
 
-    stop_service
-    say "Boot ${boot_idx}/${BOOTS}: launching..."
+    if [[ "$CAMPAIGN_MODE" -eq 1 ]]; then
+        say "Pass ${boot_idx}/${BOOTS}: measuring transaction-owned endpoint..."
+        BOOT_WALL_SECONDS=0
+        if ! python3 -c "import sys; sys.path.insert(0, '${TOOLS_DIR}'); import bench_lib; bench_lib.wait_healthy(timeout_s=600)"; then
+            python3 -c "import json; print(json.dumps({'boot_index': ${boot_idx}, 'status': 'endpoint_unhealthy'}))" >> "$RESULTS_FILE"
+            BOOT_DIED=1
+            return
+        fi
+    else
+        stop_service
+        say "Boot ${boot_idx}/${BOOTS}: launching..."
+        local launch_t0 launch_rc=0
+        launch_t0=$(date +%s.%N)
+        start_with_env || launch_rc=$?
+        BOOT_WALL_SECONDS=$(awk -v a="$launch_t0" -v b="$(date +%s.%N)" 'BEGIN{printf "%.2f", b-a}')
+    fi
 
-    # Time the launcher itself. bench_lib.wait_healthy() cannot measure boot:
-    # run-qwen38-27b.sh already blocks until /health is green before it
-    # returns, so wait_healthy() afterwards always saw an up server and
-    # reported ~0.0s (the "Boot time: 0.0+/-0.0s" bug).
-    local launch_t0 launch_rc=0
-    launch_t0=$(date +%s.%N)
-    start_with_env || launch_rc=$?
-    BOOT_WALL_SECONDS=$(awk -v a="$launch_t0" -v b="$(date +%s.%N)" 'BEGIN{printf "%.2f", b-a}')
-
-    if [[ $launch_rc -ne 0 ]]; then
+    if [[ "${launch_rc:-0}" -ne 0 ]]; then
         say "Boot ${boot_idx}: launcher exited ${launch_rc}"
         python3 -c "
 import json
@@ -355,6 +386,7 @@ receipt = {
     'boots': ${BOOTS},
     'env': ${ENV_VARS_JSON},
     'utc_date': '${UTC_TS}',
+    'lifecycle_mode': 'transaction_owned' if ${CAMPAIGN_MODE} else 'live_service_owned',
     'boots_raw': results,
     'aggregate': {
         'pp_tok_s': safe_stats(pp_tok_s),

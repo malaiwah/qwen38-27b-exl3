@@ -50,6 +50,39 @@
 > replaces it is [docs/27](docs/27-graph-decode-drift-control.md). Open items are tracked in
 > [docs/29](docs/29-plan-and-loose-ends.md).
 
+## Final Frontier G0/G1 campaign (measured 2026-08-20)
+
+The preregistered campaign in
+[`docs/61-final-frontier-requant-stack-plan.md`](docs/61-final-frontier-requant-stack-plan.md)
+ended at its local RTX 5090 gate with the terminal disposition
+**`three_candidate_no_go`**. The complete hashed record is
+[`receipts/frontier-g01/manifest.json`](receipts/frontier-g01/manifest.json);
+`python3 tools/verify_frontier_g01.py --campaign receipts/frontier-g01`
+validates every referenced G0 artifact, preregistration, result and terminal
+decision and exits 0.
+
+G0 passed: the immutable BF16 payload was fully censused (1,199 logical
+tensors), converter/runtime environments were locked, the clean source-pinned
+runtime tuple reproduced the incumbent, and every AIBoss maintenance transaction
+proved service restoration. G1 then consumed the three frozen candidate
+opportunities:
+
+| candidate | measured result | frozen Gate A failure |
+|---|---|---|
+| full gate/up FP6 | startup rejected the 199,104-token configuration; estimated maximum 192,576 | context below 238,400 |
+| full gate/up FP4 | PP 4,393.6 tok/s; fox/essay TG 211.6/98.8; context and capability checks passed | PP below 7,000 |
+| gate/up FP4, language layers 0–31 | PP 3,529.5 tok/s; fox/essay TG 215.9/96.0; context and capability checks passed | PP below 7,000 |
+
+The preregistered hard-gate rule stopped KLD scoring after each deterministic
+runtime failure. Supporting experiments also closed without a promotable
+candidate: independent seeded converter A/A runs had 24 payload mismatches;
+the pinned AutoRound consumer could not build; ResComp improved one actual
+16×16 weight-tile SSE by 21.1% but lacked a valid whole-block implementation;
+and the hybrid QKV producer/consumer pilot passed its component checks without
+the mandatory full-checkpoint, startup, graph and logit gates. No paid rental
+or new model release is authorized by this campaign; the measured serving
+profiles below remain current.
+
 ## Serving on one RTX 5090 (measured 2026-08-19)
 
 ![Speed vs fidelity](charts/profiles-tradeoff.png)
