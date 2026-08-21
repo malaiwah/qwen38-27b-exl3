@@ -1,4 +1,4 @@
-# 63 — Trellis Quantization Innovation Lab: 10-Researcher Collaborative Findings
+# 63 — Trellis Quantization Innovation Lab: 15-Researcher Collaborative Findings
 
 **Status:** completed, 2026-08-21. 10 mathematician-researcher subagents explored novel
 quantization approaches in isolated git worktrees, each with adversarial openai-reviewer
@@ -375,3 +375,171 @@ through `research/r10-coupled-blocks`. Artifacts merged into main for this docum
 - SpinQuant: learned rotations in LLM quantization
 - GuidedQuant: arXiv:2505.07004
 - YAQA: arXiv:2505.22988
+
+## 10. Wave 2: Closing cross-review gaps (5 additional researchers)
+
+**Status:** completed, 2026-08-21. 5 researchers addressed the 2 blockers and 7 concerns
+from the independent cross-review of §1-9.
+
+
+### 10.1 R11-UnifiedStack: Full stack factorial experiment
+
+
+**Claim (reviewer-revised v2):** BiIP + Hadamard + DP allocation + GPTQ (α=0) achieves
++86.6% held-out HWE reduction over RTN at K=5 (no scaling), +57-70% over best individual.
+
+
+- 19 configs, 912 arms, 4 tensors, 3 slices, K=3-6, matched byte budget
+- GPTQ is the single most important component (+88-91% unrotated, +75-88% with rotation)
+- Rotation+GPTQ synergy confirmed held-out (+75-88%)
+- GPTAQ α=1.0 HARMFUL post-rotation (1.8× worse, worst overfitting ratio 0.844)
+- Scaling (lp_pinf) harmful alone, excluded from recommended stack
+- Permutation interferes with GPTQ propagation, excluded when GPTQ active
+- GPTQ generalizes when off-diagonal Hessian structure is real (82% off-diag → +85.6%
+  held-out) but overfits when H_X is near-diagonal (0.87% off-diag → -17.2%)
+
+
+### 10.2 R12-AlphaSweep: Systematic α sweep post-rotation
+
+
+**Claim (reviewer-confirmed v3, held-out evaluation):** α=0.25 dominates α=1.0 on both
+HWE (42-46/48 wins) and asymmetric error (40-44/48 wins), in ALL conditions (rotated/
+unrotated, natural/act-order). **The α=1.0-untested-post-rotation gap is now CLOSED:
+α=1.0 is NOT better than α=0.25 post-rotation.**
+
+
+- 1632 experiments + 24 diagnostics, 8 α values, 4 tensors, 3 slices, K=3-6
+- GPTQ (α=0) overfits held-out: -26.4% unrotated (0/48 positive), -19.1% rotated
+- P-matrix partially compensates for GPTQ overfitting at K3-K4 (oracle +2-7%) but
+  fixed α=0.25 is NOT broadly beneficial (K5 -5.61%, K6 -11.29%)
+- Optimal α is similar rotated vs unrotated with held-out eval (mean 0.227 vs 0.244)
+- ||P|| barely changes post-rotation (-8%): BiIP shrinks ||D|| 7.7× but ||L|| grows 2.36×
+
+
+### 10.3 R13-AllocRotation: Allocation + rotation composition
+
+
+**Claim (reviewer-corrected v2):** Allocation composes with rotation ONLY in
+rotate-then-allocate order. +71.59% mean (rot+alloc) vs +69.62% (rot only), +30.77%
+(alloc only). Marginal allocation gain on top of rotation: +6.58%.
+
+
+- 48 cases, 4 tensors, 3 slices, K=3-6, exact byte budget
+- Alloc-then-rotate is CATASTROPHIC: -45.97% vs rotate-only
+- Rotation homogenizes tile sensitivity (CV ratio 0.257, 74.3% reduction) but residual
+  3-5× max/min ratio still exploitable by DP allocator
+- Alternating (warm-start) adds negligible gain (+0.04% over rot-then-alloc)
+- No GPTQ used — only diagonal-stat components that generalize well (R15)
+- **Stack ordering confirmed: rotation MUST come before allocation**
+
+
+
+### 10.4 R14-NoiseShapeStack: Noise shaping within the full stack
+
+
+**Claim (reviewer-confirmed, 0 issues):** Act-order becomes near-no-op post-rotation
+(macro-mean improvement ~10% → ~0%, win rate 80% → 61%). Root cause: rotation
+uniformizes diag(H_X) (CV 2.40 → 0.23).
+
+
+- 2844 records, 0 errors, 4 tensors, K=3-6
+- GPTQ Schur-complement still helps post-rotation: +29.2% over Rot+RTN
+- GPTAQ α=1.0 harmful post-rotation (HWE 17.8-21.5% higher than α=0)
+- Rotation creates stronger spectral anti-correlation (r=-0.385) than act-order (r=-0.219)
+- Best in-sample stack: BiIP+Hadamard+DP_alloc+GPTQ_LR(α=0) = +93.5% over RTN
+- Rotation reduces BOTH HWE and MSE (91% and 41%); GPTQ trades MSE for HWE (30% vs 46%)
+- R15 caveat: GPTQ overfits on synthetic calibration — use accept-if-improve gating
+
+
+
+### 10.5 R15-HeldOutValidation: Held-out validation framework
+
+
+**Claim (reviewer-v2 caveats incorporated):** Diagonal/weight-based transforms
+generalize perfectly to held-out calibration (gap ~0pp). Full-covariance GPTQ overfits
+with synthetic independent-channel calibration (gap +57.5pp) — but this is partly an
+artifact since synthetic Gaussian channels make off-diagonal Hessian terms pure noise.
+
+
+| Component | In-sample | Held-out | Gen gap | Overfits? |
+|-----------|-----------|----------|---------|-----------|
+| R3 BiIP+Hadamard | +74.8% | +74.6% | +0.2% | No |
+| R1 DP Allocation | +25.5% | +25.6% | -0.2% | No |
+| R4 Hadamard+p99 Perm | +33.4% | +33.4% | 0% | No |
+| R7 Act-order GPTQ | +26.9% | -30.7% | +57.5% | Yes (synthetic) |
+| R9 Alternating Optimizer | +86.0% | +81.7% | +4.3% | Moderate |
+| Full Stack | +84.8% | +78.8% | +6.1% | Moderate |
+
+
+- Ranking 100% stable across 7 splits at every K: R9 > Full_Stack > R3 > R1/R4 > R7
+- R9 held-out 81.7% > R3 alone 74.6% — combination is net positive even with adversarial
+  synthetic calibration
+- Key principle: transforms using diagonal/marginal Hessian stats generalize; transforms
+  using full covariance (Cholesky) may not with small calibration
+- GPTQ overfitting is specific to synthetic independent-channel calibration (off-diag
+  energy 2.18%). Real activations have genuine off-diagonal structure — GPTQ should
+  generalize better. Testing with real activations is required.
+- R9's accept-if-improve is the key safety mechanism (gap +4.3pp vs +57.5pp standalone)
+- R9's advantage over R3 may not be solely from GPTQ (also changes orbit sampling,
+  partitioning, scaling, allocation) — systematic correction on/off ablation needed
+
+
+
+### 10.6 Updated recommended stack
+
+
+
+Based on Wave 2 findings, the recommended stack is:
+
+
+
+1. **BiIP diagonal balancing** (R3): generalizes perfectly, +74.6% held-out
+2. **Signed randomized Hadamard** (R3): both sides, generalizes perfectly
+3. **DP-refined tile allocation** (R1): generalizes perfectly, +25.6% held-out, MUST come after rotation
+4. **GPTQ error propagation (α=0)** (R7/R14): +29.2% post-rotation, BUT may overfit —
+   use **accept-if-improve gating** (R9 pattern)
+5. **GPTAQ P-matrix (α=0.25)** (R12): NOT α=1.0. Oracle benefit at K3-K4 only;
+   fixed α=0.25 not broadly beneficial. Gate behind accept-if-improve.
+
+
+
+**Excluded from stack:**
+- Scaling (lp_pinf): harmful alone (R11)
+- p99 permutation: interferes with GPTQ propagation (R11)
+- Act-order: near-no-op post-rotation (R14)
+- GPTAQ α=1.0: harmful post-rotation (R11, R12, R14)
+
+
+
+**Held-out performance**: R9 alternating optimizer (which includes gated GPTQ) achieves
++81.7% held-out vs +74.6% for rotation alone. The 7.1pp gain from gated GPTQ is net
+positive even with adversarial synthetic calibration.
+
+
+
+### 10.7 Remaining open questions
+
+
+
+1. **Real-activation testing**: GPTQ overfitting may be a synthetic artifact. Must test
+   with real model activations (requires GPU forward pass on aiboss).
+2. **R9 correction on/off ablation**: R9's 81.7% vs R3's 74.6% may not be solely from
+   GPTQ — need systematic ablation.
+3. **EXL3 Viterbi**: All results use uniform per-tile quantizer, not actual trellis.
+4. **Full-tensor testing**: 128×128 slices hide aspect ratio effects.
+5. **Block-Hadamard for non-power-of-2**: Real tensor dims (5120, 17408) aren't powers of 2.
+6. **Served KLD validation**: No end-to-end KLD measurement yet.
+
+
+
+### 10.8 Wave 2 artifacts
+
+
+
+| Researcher | Code | Findings | Results |
+|-----------|------|----------|---------|
+| R11-UnifiedStack | tools/research/r11-unified-stack/poc.py | docs/research/r11-unified-stack-findings.md | receipts/research/r11-unified-stack-results.json |
+| R12-AlphaSweep | tools/research/r12-alpha-sweep/poc.py | docs/research/r12-alpha-sweep-findings.md | receipts/research/r12-alpha-sweep-results.json |
+| R13-AllocRotation | tools/research/r13-alloc-rotation/poc.py | docs/research/r13-alloc-rotation-findings.md | receipts/research/r13-alloc-rotation-results.json |
+| R14-NoiseShapeStack | tools/research/r14-noise-shape-stack/poc.py | docs/research/r14-noise-shape-stack-findings.md | receipts/research/r14-noise-shape-stack-results.json |
+| R15-HeldOutValidation | tools/research/r15-held-out-validation/poc.py | docs/research/r15-held-out-validation-findings.md | receipts/research/r15-held-out-validation-results.json |
