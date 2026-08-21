@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """
-Real Qwen3.8-27B weight experiment — verified v2.
+Historical real-weight proxy harness — INVALIDATED by docs/62 §10.
 
-All algorithm fixes from trellis_quant_full.py applied.
-Tests on 15 tensors: L0/L10/L20/L30/L40/L55 gate+down + L0 GDN attention.
-K5K6 recipe: gate_proj=K5, down_proj/attention=K6.
+The L10/L20/L30/L40 slices used by the v2 receipt were BF16 bytes decoded as
+IEEE FP16 and are corrupt. The harness also inherits the unmatched baseline,
+proxy metrics, incomplete methods, rate mismatch, and correction bugs from
+trellis_quant_full.py. Historical receipts are not decision-grade.
 """
 
 import numpy as np, json, time, warnings
@@ -98,12 +99,12 @@ def smoothquant_scales(W, X, alpha=0.5):
 def apply_scales(W, X, Xt, s):
     return W * s[None, :], X / s[:, None], Xt / s[:, None]
 
-# ==================== KronQ (fixed: H_G cancels → uniform) ====================
+# ==================== KronQ solver no-op (not KronQ BiIP/allocation) ====================
 
 def kronq_weights(W, X, Xt):
     return np.ones(W.shape[1])
 
-# ==================== GuidedQuant (unchanged) ====================
+# ==================== Local Fisher-diagonal proxy (not GuidedQuant) ====================
 
 def guidedquant_weights(W, Xt, num_groups=8):
     p = softmax(W @ Xt, 0)
@@ -144,7 +145,7 @@ def baq_allocate(W, X, avg_bits, tile, min_k=3, max_k=7):
         bits[np.argmin(bits)] += 1
     return bits
 
-# ==================== ResQ (fixed: PCA subspace quantization) ====================
+# ==================== Partial ResQ-style PCA proxy (not rate-matched/full ResQ) ====================
 
 def resq_quantize(W, X, bits, high_bits=8, ratio=0.125):
     m, n = W.shape
@@ -258,6 +259,17 @@ def gen_calibration(n, k, seed=42):
     X = Xtilde + rng.standard_normal((n, k)) * 0.02
     return X, Xtilde
 
+def validate_weight_slice(name, W):
+    """Reject the known BF16-as-FP16 corruption before producing new receipts."""
+    if not np.isfinite(W).all():
+        raise ValueError(f"{name}: non-finite weight values")
+    rms = float(np.sqrt(np.mean(np.square(W, dtype=np.float64))))
+    if rms > 0.1:
+        raise ValueError(
+            f"{name}: RMS={rms:.4g} is implausible for this Qwen checkpoint; "
+            "the v2 mid-layer file decoded BF16 bytes as IEEE FP16"
+        )
+
 def run_real_experiment():
     # Load existing weights (full tensors, subsample to 128x128)
     existing = np.load("/Users/mbelleau/Projects/cleanroom/qwen38_real_weights.npz")
@@ -320,6 +332,7 @@ def run_real_experiment():
         else:
             print(f"  WARNING: {spec.name} not found, skipping")
             continue
+        validate_weight_slice(spec.name, W)
         
         m, n = W.shape
         X, Xt = gen_calibration(n, k_cal, seed=42)

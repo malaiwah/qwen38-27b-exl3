@@ -1,6 +1,11 @@
 # 62 — Trellis-tile generalization of GPTAQ, YAQA, and ResComp with clean-room experimental measurement
 
-**Status:** completed experiment, 2026-08-20. CPU-only clean-room implementations over sample and real Qwen3.8-27B tensors. No GPU, no model serving, no trellis payload modification.
+**Status:** **INVALIDATED / historical only**, 2026-08-20 adversarial correctness review. Sections 1–9 preserve the v1/v2 experiment record but their quantitative rankings are not decision-grade. Section 10 is authoritative.
+
+> **Stop-use notice.** The audit found unmatched quantizer granularity, corrupt
+> BF16 mid-layer slices, incomplete/mislabeled paper methods, a broken ResComp
+> lazy-block path, unmatched bit budgets, and proxy metrics with a nonzero noise
+> floor. Do not use the v1/v2 receipts to select a production quantization arm.
 
 ## 1. Scope
 
@@ -627,3 +632,293 @@ which fixes actually matter.
    layers have larger activation deviation, so stronger correction is needed.
 9. **Mid-layer weights have larger optimization room.** L10-L40 gate tensors
    show +20-30% improvement from the full stack vs GPTAQ alone.
+
+## 10. Adversarial correctness review and research ranking
+
+### 10.1 Verdict
+
+The v1/v2 scripts are useful as hypothesis generators, not algorithm
+measurements. No numerical ranking in Sections 3, 4, 5, or 9 survives as
+decision-grade evidence. The strongest headline—“GPTAQ dominates”—mostly came
+from comparing GPTAQ's 16-value column groups against a baseline using one
+codebook over each 16×16 tile. Mid-layer trends came from BF16 bytes interpreted
+as IEEE FP16. ResComp, YAQA, GuidedQuant, and KronQ were not faithfully measured.
+
+The current implementation is also not an EXL3 trellis approximation in the
+algorithmic sense: `quantize_uniform` performs independent min/max scalar
+rounding. It has no EXL3 codebook, trellis state, transition cost, Viterbi
+search, or exact payload accounting.
+
+### 10.2 Severity-ranked findings
+
+| Severity | Finding | Concrete evidence | Consequence |
+|----------|---------|-------------------|-------------|
+| **Critical** | **Unmatched baseline and codebook granularity** | `baseline()` uses Hadamard + one uniform range per 16×16 tile (`trellis_quant_full.py` L74-90, L316-320). `quantize_core()` uses one range per 16×1 column segment (L284-291). At 128×128 this is 64 vs 1,024 codebooks/scales—a 16× metadata/flexibility difference. | Most reported GPTAQ/BAQ gain is not method gain. |
+| **Critical** | **L10/L20/L30/L40 weights are corrupt** | The download step interpreted BF16 bytes with `dtype=float16`. The saved `L10_gate` exactly equals that wrong decode. Correct BF16: min −0.0510, max 0.09375, std 0.01098. Saved: min −1.329, max 1.4375, std 0.99828. | All mid-layer values and layer-trend conclusions are void. |
+| **Critical** | **ResComp outer-block correction is identically zero** | `W0 = W.copy()` (full.py L259); outer term is `(W0[:,block] - W[:,block]) @ P2` (L310-314), hence exactly zero. No compensated block state is saved. | CAE acts only within blocks; result depends on arbitrary block size. |
+| **Critical** | **GuidedQuant is not implemented** | Code uses local `softmax(W @ Xt)` and `p(1-p)` (L153-163). GuidedQuant requires one end-loss backward pass and grouped input-space Hessians $X^T\operatorname{Diag}(g^2)X$; it groups consecutive output channels, not channels sorted by local softmax. | Every “GQ” and GQ-stack result is mislabeled. |
+| **Critical** | **YAQA and KronQ are not implemented** | `trellis_quant.py` uses a local diagonal multiplier instead of dense real-Fisher Kronecker factors and three-term LDL rounding. v2 replaces only the solver factor with identity; KronQ BiIP and joint-trace allocation are absent. | “Sketch A/B,” “KronQ no-op,” and 9-algorithm claims are false. |
+| **High** | **Metric is a local softmax proxy with a nonzero floor** | `kld_loss` softmaxes 128 arbitrary output channels (full.py L92-96). Evaluation compares $W\widetilde X$ to $\widehat W X$ (L422-428), so even $\widehat W=W$ has KL > 0. | It is not model/end-logit KLD; high-K percentages are floor-sensitive. |
+| **High** | **Output MSE is inconsistent with selection metric** | `omse` compares $W\widetilde X$ to $\widehat W\widetilde X$, while KLD compares $W\widetilde X$ to $\widehat W X$. | Tables mix symmetric and asymmetric objectives. |
+| **High** | **ResQ is incomplete and rate-unmatched** | It omits within-subspace rotations, GPTQ composition, projection/runtime cost, and exact budget matching. At high fraction 1/8, average rates are K3→3.625, K4→4.5, K5→5.375, K6→6.25, K7→7.125. | “ResQ vs K-bit” is not a fixed-rate comparison. |
+| **High** | **BAQ budget and integer projection are inexact** | K5 sample allocation used 652 bits over 128 columns (mean 5.09375) vs exact budget 640. The ±0.1 tolerance accepts extra bits; adjustments repeatedly mutate `argmax/argmin` rather than minimizing marginal loss. | BAQ receives extra rate and biased rounding. |
+| **High** | **AWQ search is not reference AWQ** | Search minimizes asymmetric local KL using the tile quantizer (`W@Xt` vs `Wq@X`), whereas AWQ searches same-input inspected-module output MSE using its actual quantizer. | “AWQ(search)” is a new proxy, not an AWQ reproduction. |
+| **High** | **“All combinations” is false** | v2 `METHODS` contains no YAQA, ResComp, or KronQ arm; ResQ short-circuits and ignores other flags. | The receipt does not measure nine algorithms or their Cartesian combinations. |
+| **Medium** | **Provenance/reproducibility is insufficient** | Real script uses absolute paths outside the repo; receipts contain no source revision, tensor offsets, slice hashes, decoder metadata, calibration hash, or codebook/scale bytes. | Results cannot be independently reconstructed. |
+| **Medium** | **Slice and aggregation bias** | Original tensors use only the first 128 rows/columns; every tensor reuses one synthetic seed. Raw KL is averaged across roles/scales, allowing high-scale tensors to dominate. | “Best per K” is not a balanced layer estimate. |
+| **Medium** | **Partial-shape bugs** | `kronq_weights` returns input-width values but multiplies an output-width vector; it works only because experiments are square. Group remainders in `guidedquant_weights` are left ungrouped. | General rectangular layer support is false. |
+
+### 10.3 Reproduced counterexamples
+
+#### Fair-baseline counterexample
+
+Same random tensors, seeds, K, column grouping, and codebook count were used for
+column RTN and GPTAQ. “Published gain” uses the historical Hadamard 16×16-tile
+baseline; “fair gain” uses 16×1 column RTN, matching GPTAQ's quantizer primitive.
+
+| K | Published GPTAQ gain | Fair gain vs column RTN | Gain on KL above noise floor |
+|---|----------------------|-------------------------|------------------------------|
+| K3 | +65.13% | **−0.25%** | **−0.26%** |
+| K4 | +63.32% | +2.76% | +3.23% |
+| K5 | +53.67% | +2.22% | +3.85% |
+| K6 | +35.26% | +4.42% | +17.81% |
+| K7 | +17.35% | +5.34% | +69.22% |
+
+The K7 excess-floor ratio is numerically unstable because quantization error is
+already small relative to the activation-noise floor. The total-KL comparison is
+the safer number. At K3—the regime where correction should matter most—GPTAQ is
+slightly worse than matched RTN in this proxy.
+
+#### BF16 decoding counterexample
+
+For `model.language_model.layers.10.mlp.gate_proj.weight`, the header says
+`BF16`. Correct decoding shifts each uint16 payload into the high 16 bits of a
+float32. The saved NPZ exactly equals `np.frombuffer(raw, dtype=float16)`.
+
+| Decode | min | max | std |
+|--------|----:|----:|----:|
+| Correct BF16 | −0.05103 | 0.09375 | 0.01098 |
+| Saved / wrong FP16 interpretation | −1.3291 | 1.4375 | 0.99828 |
+
+The corrupt L10 gate baseline proxy KL was 0.042144. Correctly decoded, it is
+1.4977e−5: a **2,814×** difference. Sections 9.6–9.8 mid-layer trends are retracted.
+
+#### Lazy-block propagation counterexample
+
+With identical W/X and K5:
+
+- standard GPTQ is invariant across block={1,16,128} to 1.7e−16;
+- ResComp with block=1 is bit-identical to GPTQ, proving its correction vanishes;
+- ResComp changes by up to 0.00984 in reconstructed weights between block sizes;
+- GPTAQ changes by up to 0.00609 between block=1 and block=128.
+
+A lazy-block reformulation should preserve the sequential recurrence, apart from
+roundoff. The code must cache every pre-quantization compensated column and use
+that cache in the outer update.
+
+### 10.4 What remains credible
+
+1. **The hypotheses remain useful:** input drift, rate allocation, scaling,
+   incoherence, output-side curvature, and subspace separation are plausible
+   levers.
+2. **BAQ's paper derivation remains valid**, but the measured BAQ ranking does
+   not. It needs actual-trellis distortion, exact rate, and optimal integer
+   projection.
+3. **GPTAQ may provide a modest matched-quantizer benefit** in this local proxy
+   at K4–K7; it did not win at K3. Whole-block/end-logit evidence is still absent.
+4. **The original L0/L55 slices appear numerically plausible**, but their method
+   comparisons are invalidated by the baseline, metrics, and rate mismatches.
+5. **No conclusion survives for ResComp, YAQA, GuidedQuant, or KronQ.** They
+   require new implementations and, except forward-only ResComp, real gradients.
+
+### 10.5 Required v3 harness before testing ideas
+
+1. Use the **same quantizer, codebook granularity, transforms, scale metadata,
+   and exact byte budget** for every arm. Include matched RTN, LDLQ/GPTQ, and
+   no-quant controls.
+2. Use the **actual EXL3 encoder/decoder and Viterbi objective**. A uniform
+   min/max toy quantizer cannot rank trellis-specific ideas.
+3. Score **actual reconstructed weights** under:
+   - symmetric layer MSE;
+   - asymmetric running-input MSE;
+   - actual EXL3 distortion;
+   - whole GDN/full-attention suffix KLD;
+   - final shared-LM-head KLD where feasible.
+4. Report and subtract the **no-quant activation-drift floor** for local proxies.
+5. Use real FP-flow and running quant-flow activations. Gradient methods wait for
+   the 96-GB differentiable-hybrid gate required by doc 61.
+6. Use multiple deterministic slices per tensor (first/middle/last + seeded
+   random), multiple layers/roles, and normalized per-tensor aggregation.
+7. Record source revision, shard, tensor name, byte offsets, dtype decoder,
+   slice/calibration hashes, transform seed, codebook/scales/sidecar bytes, and
+   exact consumer version in every receipt.
+8. Validate every recurrence against a supported small-model or direct
+   full-matrix oracle and test block-size invariance.
+
+### 10.6 Ranked approaches worth trying
+
+Rank is by expected information gain × deployment plausibility, after v3 exists.
+
+| Rank | Approach | Type | Why it ranks here | Main risk |
+|-----:|----------|------|-------------------|-----------|
+| **0** | **Harness repair and exact controls** | prerequisite | Every current ranking is confounded; nothing else is interpretable first. | None; mandatory. |
+| **1** | **Exact trellis rate–distortion allocator** | novel BAQ generalization | Directly optimizes the real EXL3 distortion/bytes frontier and removes BAQ's $\Delta^2/12$ mismatch. Cheap once per-tile K curves exist. | Additive tile loss may miss interactions. |
+| **2** | **Correct forward-only GPTAQ vs ResComp on actual tiles and whole blocks** | existing, properly derived | Matches doc 61 P0; tests the only gradient-free correction against real running drift. | Recurrence may not generalize from columns to trellis states. |
+| **3** | **Two-sided BiIP: diagonal balancing + signed randomized Hadamard** | KronQ/QuIP# rotation | Low-complexity, hardware-friendly, attacks row and column outliers before coding; likely strongest at K2–K4. | Folding/online transform cost; needs H_G for true row scaling. |
+| **4** | **Hessian-aware row/column tile packing** | novel permutation | Permutations can be nearly free when baked. Aligns correlated/equal-scale channels to 16×16 tiles and the trellis path. | Coupled architectural invariants constrain legal permutations. |
+| **5** | **Act-order / pivoted-LDL trellis order** | permutation | Reference GPTQ/ResComp use act-order. Ordering sensitive coordinates first can shape error into low-curvature directions. | Tile/Viterbi order may respond differently from scalar GPTQ. |
+| **6** | **Adaptive GPTAQ correction strength** | alternative correction | Replaces unexplained 0.25 with paper-faithful α=1, reference α=.25, and data-driven/search arms. High information value. | Local search can overfit calibration. |
+| **7** | **Budget-matched ResQ + GPTAQ + exact allocator** | combination | Paper permits GPTQ composition; subspaces may improve conditioning and let BAQ spend rate where PCA leaves residual energy. | Transform/runtime overhead may erase gains. |
+| **8** | **True GuidedQuant grouped Hessians** | existing gradient method | End-loss gradients can distinguish errors local MSE misses; natural competitor to YAQA/KronQ. | 96-GB gradient gate, storage, calibration overfit. |
+| **9** | **True KronQ joint-trace allocation / BiIP** | existing gradient method | Differentiates Q/K/V sharing the same H_X and supplies principled row scaling. | One backward pass and transform integration. |
+| **10** | **True YAQA Sketch A/B** | existing gradient rounding | Most complete two-sided rounding objective. | Highest complexity/memory; mutually exclusive with ResComp until jointly derived. |
+| **11** | **GDN balanced-coordinate quantization** | novel control-theoretic rotation | Uses recurrence structure unavailable to generic PTQ; could materially help the GDN half of Qwen3.8. | Exact similarity transform/fusion constraints are complex. |
+| **12** | **Trellis-path noise shaping** | high-risk novel | Could push quantization noise into low-eigenvalue Hessian directions instead of merely reducing its norm. | Requires decoder-compatible state/order changes. |
+
+### 10.7 Permutations worth trying
+
+1. **Act-order / pivoted Cholesky (highest priority).** Permute input columns by
+   descending diagonal OBS saliency or pivoted-LDL score; permute W, X, H, P,
+   allocation state, and output reconstruction consistently. Compare against
+   minimum-degree and reverse orders, not just one heuristic.
+2. **Two-sided spectral seriation.** Build input graph
+   $A_X=|\operatorname{corr}(H_X)|$ and output graph
+   $A_G=|\operatorname{corr}(H_G)|$. Balanced-partition each graph into groups of
+   16, maximizing within-tile correlation while penalizing within-tile dynamic
+   range. This is a constrained graph partition / optimal-transport problem.
+3. **Scale-homogeneous packing.** Sort channels by robust log-scale
+   (median/RMS/p99), then solve a balanced assignment minimizing the maximum
+   range ratio inside each tile. Shared-codebook quantizers benefit directly.
+4. **Attention-invariant coupled permutations.** Apply the same head-dimension
+   permutation to Q and K so $QK^T$ is unchanged; pair V permutation with the
+   inverse O-projection permutation. Optimize the coupled attention block, not
+   each matrix independently.
+5. **MLP-safe intermediate permutations.** The same permutation must be applied
+   to gate and up outputs and inverted in down. Arbitrary rotations do **not**
+   commute with SiLU or the elementwise gate product; permutations do.
+6. **Trellis-path ordering.** Within each legal tile, order coefficients by
+   spectral seriation, Gray-code neighborhood, or a traveling-salesperson path
+   over coefficient/context vectors to reduce Viterbi transition burden. This
+   is only meaningful with the actual EXL3 trellis.
+
+### 10.8 Rotations and continuous transforms worth trying
+
+1. **KronQ BiIP faithfully:** compute
+   $S_X=(\operatorname{diag}H_X/\operatorname{diag}(W^TW))^{1/4}$ and analogous
+   $S_G$, then apply signed randomized Hadamards on both sides. Test scaling,
+   input rotation, and output rotation as separate factorial arms.
+2. **Block-Givens / Householder outlier annihilation.** Within hardware-aligned
+   16/32 blocks, greedily choose exact orthogonal reflectors that minimize
+   tile max/RMS or measured trellis distortion. A few reflectors are cheaper
+   than a dense learned rotation and can be fused as butterflies.
+3. **Kronecker/butterfly rotations.** Optimize small factors
+   $U=U_1\otimes U_2$, $V=V_1\otimes V_2$ aligned to EXL3 tiles. This offers
+   much of SpinQuant's freedom with logarithmic application cost.
+4. **Joint generalized-eigen rotation.** Find directions important to both
+   activations and weights, e.g. generalized eigenvectors of
+   $(H_X,\,W^TW+\epsilon I)$, then quantize in that basis. Treat as a hypothesis,
+   not “joint PCA”; its objective must be stated and rate-matched.
+5. **Attention paired rotations.** A common orthogonal rotation of Q/K head
+   coordinates preserves dot products; V/O admit an inverse pair. Search these
+   legal group orbits directly for minimum actual trellis distortion.
+6. **GDN state-basis balancing.** Treat the recurrent linear-attention state as
+   a realization and search similarity transforms that balance empirical
+   controllability/observability Gramians before quantization. This is the
+   control-theoretic analogue of two-sided Hessian balancing.
+
+### 10.9 Combinations and operation order
+
+Blindly multiplying AWQ and SmoothQuant scales is not principled; transforms do
+not generally commute with quantization. Use a preregistered order sweep:
+
+1. legal structural permutation;
+2. two-sided diagonal balancing;
+3. orthogonal signed-Hadamard/butterfly rotation;
+4. exact per-tile K/codebook allocation;
+5. GPTQ/GPTAQ **or** ResComp recurrence;
+6. optional subspace/residual arm;
+7. inverse/folded transforms;
+8. whole-block suffix/end-logit scoring.
+
+Highest-value combinations:
+
+1. **Tile packing + exact allocator.** Packing reduces within-tile dynamic range;
+   allocator spends bits on residual hard tiles. Both are nearly offline-free.
+2. **BiIP + GPTAQ/ResComp.** Incoherence reduces raw rounding error; correction
+   handles structured residual/drift. KronQ reports these as complementary.
+3. **ResQ + per-subspace GPTAQ + exact rate DP.** Allocate high/low rank and K
+   jointly under one byte/runtime constraint, including transform sidecars.
+4. **Coupled attention rotation + joint Q/K/V/O rate allocation.** Optimize the
+   invariants $QK^T$ and $VO$, not four independent matrix errors.
+5. **GDN balanced state basis + gate-aware rate allocation.** Weight tile loss
+   by measured gate/Jacobian sensitivity and recurrence horizon.
+
+### 10.10 Crazy-mathematician formulations
+
+#### A. Exact discrete rate–distortion program
+
+For every actual tile $t$, transform/orbit $o$, and legal K/codebook $k$, measure
+the real EXL3 distortion $D_{t,o,k}$ and exact cost $C_{t,o,k}$. Solve
+
+$$
+\min_{z}\sum_{t,o,k}D_{t,o,k}z_{t,o,k}
+\quad\text{s.t.}\quad
+\sum_{o,k}z_{t,o,k}=1,\;
+\sum C_{t,o,k}z_{t,o,k}\le B,
+$$
+
+using multiple-choice knapsack DP or a Lagrangian frontier. Add sparse pairwise
+terms only for adjacent trellis tiles whose errors measurably interact. This is
+more faithful than forcing BAQ's scalar high-resolution approximation onto EXL3.
+
+#### B. Alternating group-orbit optimizer
+
+Optimize over legal diagonal scales $D_r,D_c$, permutations $P_r,P_c$,
+orthogonals $U,V$, tile rates K, and quantized payload $\widehat W$:
+
+$$
+\min\;
+\operatorname{tr}\!\left(H_G E H_X E^T\right)
++\lambda\,\text{bytes}
++\mu\,\text{latency},
+\qquad
+E=W-\widehat W.
+$$
+
+Alternate boring exact/monotone steps:
+
+1. Osborne/Sinkhorn-like diagonal equilibration;
+2. balanced graph partition for 16×16 packing;
+3. signed-Hadamard orbit sampling, then local Givens refinement;
+4. exact K/codebook DP;
+5. actual Viterbi quantization;
+6. corrected GPTAQ or ResComp pass.
+
+Keep only steps that improve held-out whole-block/end-logit KLD at matched bytes
+and runtime. This unifies AWQ/SmoothQuant, rotations, permutations, BAQ, and
+correction without pretending their independently optimal parameters compose.
+
+#### C. Hessian noise shaping along the trellis
+
+Rather than minimize $\|E\|$, choose quantization order and feedback so E lies in
+low-eigenvalue directions of $H_X$ and $H_G$. A pivoted generalized-Schur/LDL
+order or sigma-delta-style state can diffuse unavoidable error forward along the
+trellis path. The invariant to test is not smaller weight MSE but smaller
+$\operatorname{tr}(H_G E H_X E^T)$ at identical payload.
+
+### 10.11 Recommended experiment sequence
+
+1. Repair v3 and reproduce matched controls; no method claims before this passes.
+2. Run a small factorial on **actual EXL3**:
+   - column/tile control;
+   - act-order on/off;
+   - BiIP scaling/input-Hadamard/output-Hadamard;
+   - GPTAQ α ∈ {paper 1.0, reference .25, data-driven};
+   - exact uniform vs exact tile-rate DP.
+3. Promote only effects stable across K, role, slice, and fresh activations.
+4. Then test two coupled structural pilots:
+   - attention Q/K and V/O legal rotations/permutations;
+   - GDN state-basis balancing.
+5. Only after the 96-GB gradient gate: true GuidedQuant, KronQ, and YAQA.
+6. Final promotion requires a fresh sequential checkpoint, actual served KLD,
+   exact bytes, startup, graph capture, PP/TG, context, and no runtime fallback.

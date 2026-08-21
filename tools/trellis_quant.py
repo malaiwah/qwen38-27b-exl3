@@ -1,16 +1,12 @@
 #!/usr/bin/env python3
 """
-Trellis-tile quantization: GPTAQ x YAQA x ResComp generalization
-for EXL3 K3-K7 trellis quantization over GDN + full-attention blocks.
+Historical v1 proxy harness — INVALIDATED by docs/62 §10.
 
-Clean-room from: GPTAQ arXiv:2504.02692, YAQA arXiv:2505.22988,
-                 ResComp arXiv:2604.07955, EXL3 github.com/turboderp-org/exllamav3
-
-YAQA: Kronecker-factored Hessian H_O ⊗ H_I. Output Hessian H_O from Fisher
-      diag(p)-pp^T. Uses diagonal Fisher preconditioning (well-conditioned,
-      always PSD) to weight the GPTQ error by output sensitivity.
-GPTAQ: Asymmetric calibration, P = ((dX X^T L) ⊙ M_U) L^T error correction.
-ResComp: CAE adds (W0-Wq)·P2 where P2 = ((X̃ X^T L) ⊙ M_U) L^T.
+This is not YAQA: it replaces YAQA's dense real-Fisher Kronecker factors and
+three-term LDL rounding with a local softmax-diagonal multiplier. Its GPTAQ and
+ResComp P-matrices also predate the reference-code audit. The baseline uses a
+different quantizer/codebook granularity than corrected arms. Retained only to
+reproduce the historical v1 receipt; do not use for algorithm conclusions.
 """
 
 import numpy as np, json, time, warnings
@@ -248,7 +244,7 @@ def print_table(s, bits_list):
 
 def main():
     cfg = Config()
-    print("Trellis-tile quantization: GPTAQ x YAQA x ResComp (Sketch A + B)")
+    print("WARNING: INVALIDATED historical proxy; see docs/62 §10")
     print(f"  {cfg.m}x{cfg.n}, {cfg.k} cal, tile={cfg.tile_size}, seeds={cfg.num_seeds}")
     t0 = time.time()
     results_A = run(cfg, sketch="A")
