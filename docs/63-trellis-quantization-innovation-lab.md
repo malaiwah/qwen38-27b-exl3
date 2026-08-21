@@ -1,10 +1,10 @@
-# 63 — Trellis Quantization Innovation Lab: 20-Researcher Collaborative Findings
+# 63 — Trellis Quantization Innovation Lab: 28-Researcher Pre-Wave-5 Record
 
-**Status:** completed, 2026-08-21. 10 mathematician-researcher subagents explored novel
-quantization approaches in isolated git worktrees, each with adversarial openai-reviewer
-verification. Most findings are reviewer-confirmed; R3 is NEEDS_REVISION (core confirmed,
-headline corrected), R5 and R9 are reviewer-pending (receipts authoritative). R6 is an
-honest negative result.
+**Status:** **screening record / not deployment evidence**, 2026-08-21. Four waves
+produced 28 researcher axes with adversarial review. Sections 1–11 preserve the
+chronological discoveries and corrections; their fixed-stack recommendations are
+superseded. Section 12 is the authoritative pre-Wave-5 synthesis. The final
+actual-stock-EXL3 plan is in [doc 64](64-final-exl3-wave5-research-plan.md).
 
 ## 1. Executive summary
 
@@ -644,3 +644,162 @@ Based on wave 3, the recommended stack bifurcates:
 | R18-BlockPropagation | tools/research/r18-block-propagation/poc.py | docs/research/r18-block-propagation-findings.md | receipts/research/r18-block-propagation-results.json |
 | R19-InterlayerAlloc | tools/research/r19-interlayer-alloc/poc.py | docs/research/r19-interlayer-alloc-findings.md | receipts/research/r19-interlayer-alloc-results.json |
 | R20-InfoTheoretic | tools/research/r20-info-theoretic/poc.py | docs/research/r20-info-theoretic-findings.md | receipts/research/r20-info-theoretic-results.json |
+
+## 12. Authoritative pre-Wave-5 synthesis
+
+### 12.1 Promotion verdict
+
+No R1–R28 quality headline currently authorizes a checkpoint or production
+promotion. The lab established algebraic invariants, failure modes, and useful
+screening hypotheses, but it has not completed the causal chain:
+
+1. real document-disjoint activations and gradients;
+2. actual current stock EXL3 signs/H128/`suh`/`svh`/scale search/BlockLDLQ/Viterbi;
+3. full-tensor serialize/decode in the original basis;
+4. one-tensor or full-checkpoint replacement;
+5. untouched full-vocabulary KLD/EAR/p99;
+6. exact codec and production-profile runtime qualification.
+
+All percentages below are proxy-screening evidence unless the scope is stated in
+the same sentence. Local MSE, OC-HWE, Fisher-HWE, block output error, and served
+full-vocabulary KLD are distinct metrics.
+
+### 12.2 Wave 4 and external-review ledger
+
+| Axis | Latest scoped result | Authoritative disposition |
+|------|----------------------|---------------------------|
+| R21 shared codebook | Shared/no-tile-scale + rotation + DP wins its affine proxy 12/12 at K4/K5 | Proxy sidecar saving does not exist in stock EXL3; learned/shared actual codebook remains open |
+| R22 BD-GPTQ × allocation | Final exact rerun: joint arm is −0.94 pp vs BD-GPTQ and −0.39 pp vs allocation; reallocation neutral | Confirms conditional bifurcation in this proxy; exact correction-inside-each-K RD remains open |
+| R23 full tensors | BiIP+H16 gives 64–81% OC-HWE vs unrotated on four full MLP tensors; 3/4 slice directions transfer | Not incremental to stock H128+LDLQ; H16 solves no production alignment problem |
+| R24 entropy allocation | Broad 45-tensor/900-block screen: about +58% empirical-entropy oracle at K4/K5 | Same-block lower bound, not a serialized coder or held-out policy; strata/reporting corrected to 8/8/4 |
+| R25 multi-seed | 20-seed proxy directions are statistically robust vs unrotated RTN | Four fixed 128² blocks and synthetic population; no stock-EXL3/KLD inference |
+| R26 HARP/BiIP | BiIP 68.9% vs naive, but stock-like H+GPTQ proxy 93.4% vs BiIP+GPTQ 92.5%; greedy signs +0.2–1.7% | Large BiIP headline mostly rediscovers existing incoherence/correction; BiIP is a zero-byte candidate, incremental quality unknown |
+| R27 equal-rate | After full-tensor sign amortization and rotate→reallocate, K5.5+Had beats K5.5 allocation in 9/12 fixed slices | Near-equal affine proxy, in-sample allocation, no stock trellis/LDLQ/KLD; useful fractional-rate screen only |
+| R28 multi-precision | DP solves supplied `{K,K+BiIP,K+Had}` menus; broad proxy strongly favors slice-local BiIP | Action prices and synthetic extrapolation invalidate an EXL3 frontier; rebuild from full-tensor serialized stock actions |
+
+The decisive R22 final result supersedes its rejected v1–v3 claims. Correction and
+allocation must be measured as one complete action at every K. A post-hoc
+correction or a K-independent correction factor cannot define a rate-distortion
+curve.
+
+### 12.3 Exact stock-EXL3 delta
+
+Current EXL3 already includes:
+
+- one integer K per tensor/shard and fixed-stride 16×16 trellis packing;
+- random input/output signs and block-Hadamard-128;
+- FP16 signed magnitude vectors `suh`/`svh`;
+- global scale search;
+- block-LDLQ feedback inside actual Viterbi encoding;
+- procedural MCG/MUL1 reconstruction.
+
+Therefore:
+
+- the 55–97% rotation/BiIP proxy gains are **not** incremental stock-EXL3 gains;
+- BiIP may reuse existing `suh`/`svh` with zero incremental payload/hot operation,
+  but its quality delta against stock is unknown;
+- the cleanroom `chol(inv(H)).T` correction must **not** be transplanted blindly
+  into stock block-LDLQ, which uses a different correct recurrence;
+- per-tile mixed K, entropy streams, arbitrary LUTs, post-H permutations, H16,
+  dense learned rotations, and QSRT boundary transforms are new-format/runtime
+  lanes rather than stock converter changes;
+- per-tensor integer K allocation is the first deployable multi-precision action.
+
+The production throughput profile also materializes selected trellis shards to
+FP4/FP6 and discards their trellis payload. Every finalist must be qualified both
+in codec-exact all-trellis mode and under the unchanged production profile.
+
+### 12.4 Architecture corrections
+
+1. **Gated attention V/O:** arbitrary dense V/O rotation is not free because Qwen
+   applies a token-varying per-head output gate before O. The zero-runtime exact
+   family is coordinated monomial transforms (permutation/diagonal/sign) with
+   gate coordinates and inverse O transformed consistently.
+2. **Q/K:** production full attention is 24 Q / 4 KV, head dimension 256, rotary
+   dimension 64, with learned Q/K RMSNorm. Zero-hot-path arms are coordinated
+   signs/permutations with norm weights co-permuted. Dense post-norm rotations
+   need a fused runtime boundary operation and must commute with relative RoPE.
+3. **SwiGLU:** generic rotation does not commute through SiLU, but QSRT's explicit
+   activation-boundary construction is algebraically exact: restore the
+   preactivation basis before SiLU/product, then apply a separate postactivation
+   basis matched by down. It is not free; dense Qwen pays/fuses the transforms
+   in every MLP invocation.
+4. **GDN:** R6's simplified recurrence omitted depthwise conv+activation, q/k
+   normalization, and RMSNormGated. Its negative result does not close real GDN.
+   Exact channel permutations remain plausible if propagated through conv,
+   state, q/k/v/z, norm, and out coordinates.
+5. **Down targets:** the largest zero-hot-path architecture lever may be fitting
+   each down target/covariance from the actual decoded gate/up candidate and
+   then stock-encoding the target, with no adapter payload.
+
+### 12.5 QSRT crossover
+
+The QSRT review at `pedapudi/qsrt@a5d68dd` found complementary mechanisms on the
+same QTIP/EXL3 trellis lineage:
+
+- exact gate/up/down activation-boundary Hadamard transforms;
+- candidate-conditioned down covariance and continuous target refit;
+- dense-H legal-path block-coordinate refinement;
+- final-KL gradient target shifting with hard legal Viterbi;
+- deterministic periodic mixed-K grammars;
+- MoE route-aware whole-expert selection and router recovery.
+
+Dense Qwen can use the first four and byte-matched allocation. Router, rare-expert,
+co-routing, and expert-atom machinery do not transfer. QSRT's finite E4M3 SQG
+endpoint is a K2/K3 idea and loses to MCG at K5/K6; keep it out of the high-rate
+mainline unless a wider endpoint first beats stock.
+
+### 12.6 arXiv horizon
+
+The final literature scan prioritized:
+
+1. **SLQ (2605.02404):** minimum bytes subject to model-distribution fidelity;
+   Qwen3.5-27B reports 5.19-bpp distribution-lossless and 3.30-bpp task-lossless.
+2. **Q-Palette (2509.20214):** real fractional TCQ/fixed half-TCQ kernels and
+   hardware-aware allocation; motivates a conditional fixed-stripe K5/K6 lane.
+3. **BCJR-QAT (2605.10655):** differentiable trellis path optimization with
+   hard-projected unchanged payload and forward-KL objective.
+4. **WaterSIC/QMM II:** Cholesky-innovation rate oracle and high-rate stopping
+   test; randomly rotated GPTQ can be within roughly 0.1 equivalent bit.
+5. **PiSO/Four Over Six:** zero-byte scale-family optimization.
+6. **DASH-Q:** covariance shrinkage selected for robustness rather than maximal H.
+7. **SchurQuant/GSQ/QES:** expensive in-format legal-code search.
+8. **ICBQ:** reconstructed/rerolled dense block seams.
+9. **GEMQ:** MoE-only global expert allocation/router adaptation.
+
+No paper covers exact EXL3 K5/K6, fixed payload/runtime, full-vocabulary KLD, and
+the project's p99 tail together. That is the Wave-5 opportunity.
+
+### 12.7 Pre-Wave-5 data and search contract
+
+- Use the M4 Max MPS GPU for batched screens/search; CPU for unsupported
+  eig/SVD/Cholesky.
+- Use correctly decoded BF16. The old L10–L40 extra file is forbidden.
+- Common census: 9 depths × roles gate/up/down/qkv/out/z, 8 blocks/tensor for
+  screening and 20+ for promotion, including diagonal/random/off-diagonal blocks.
+- Full tensors for final converter arms. Qwen dimensions are divisible by stock
+  H128; no H16 substitution is required.
+- Source-disjoint calibration, validation/model selection, and untouched test
+  documents. Equal candidate/seed search budgets and preregistered contrasts.
+- Build a heterogeneous complete-action menu per legal module/topology group.
+  One action includes K, transform, scales, codebook, target, correction, and
+  serialized payload. Expensive encode search is welcome; decode hot-path cost is
+  a hard constraint.
+- Local proxy wins only shortlist. Promotion requires actual stock EXL3
+  serialize/decode, full-vocabulary mean/p99 KLD, EAR/top1, exact bytes, startup,
+  graph capture, PP/TG, context, and no runtime fallback.
+
+### 12.8 Wave 4 artifact index
+
+| Axis | PoC | Findings | Receipt |
+|------|-----|----------|---------|
+| R21 shared codebook/trellis proxy | `tools/research/r21-trellis-sim/poc.py` | `docs/research/r21-trellis-sim-findings.md` | `receipts/research/r21-trellis-sim-results.json` |
+| R22 BD-GPTQ × allocation | `tools/research/r22-blockdiag-alloc/poc.py` | `docs/research/r22-blockdiag-alloc-findings.md` | `receipts/research/r22-blockdiag-alloc-results.json` |
+| R23 full-tensor screen | `tools/research/r23-full-tensor/poc.py` | `docs/research/r23-full-tensor-findings.md` | `receipts/research/r23-full-tensor-results.json` |
+| R24 entropy allocation | `tools/research/r24-entropy-alloc/poc.py` / `wave5_poc.py` | `docs/research/r24-entropy-alloc-findings.md` / `r24-entropy-alloc-wave5-findings.md` | `receipts/research/r24-entropy-alloc-results.json` / `r24-entropy-alloc-wave5-results.json` |
+| R25 multi-seed robustness | `tools/research/r25-multiseed/poc.py` | `docs/research/r25-multiseed-findings.md` | `receipts/research/r25-multiseed-results.json` |
+| R26 HARP/BiIP comparison | `tools/research/r26-harp-comparison/poc.py` | `docs/research/r26-harp-comparison-findings.md` | `receipts/research/r26-harp-comparison-results.json` |
+| R27 equal-rate proxy | `tools/research/r27-equal-rate-kld/poc.py` | `docs/research/r27-equal-rate-kld-findings.md` | `receipts/research/r27-equal-rate-kld-results.json` |
+| R28 multi-precision menu | `tools/research/r28-multi-precision/poc.py` | `docs/research/r28-multi-precision-findings.md` | `receipts/research/r28-multi-precision-results.json` |
+
+Wave 5 is the final research wave and is specified in doc 64.
