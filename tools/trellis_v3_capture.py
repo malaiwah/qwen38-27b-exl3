@@ -163,8 +163,8 @@ _PLAN = _validate_plan(_PLAN_PATH)
 sys.path.insert(0, os.environ.get("TRELLIS_V3_EXLLAMAV3_SOURCE", "/work/exllamav3"))
 
 import torch
-from exllamav3.conversion import (
-    convert_model as cm,  # pyright: ignore[reportMissingImports]
+from exllamav3.conversion import (  # pyright: ignore[reportMissingImports]
+    convert_model as cm,
 )
 from exllamav3.modules.linear import Linear  # pyright: ignore[reportMissingImports]
 from safetensors import safe_open

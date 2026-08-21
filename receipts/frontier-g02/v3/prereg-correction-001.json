@@ -1,0 +1,37 @@
+{
+  "schema_version": "qwen38-trellis-v3-prereg-correction/1",
+  "campaign_id": "frontier-g02",
+  "experiment_id": "trellis-v3-control-capture",
+  "correction_id": "prereg-correction-001",
+  "supersedes": {
+    "path": "prereg.json",
+    "sha256": "da3cf24b8be14e52fc7a2bbaf7dd1fd0b369bcf3b94e33a3df79f5c0f0c3bedc",
+    "canonical_sha256": "13a86840d4af29ef7f36d29c697c175c4bcdaa8e32a82df6659885c800c3241c"
+  },
+  "reason": "Before any capture result was observed, the hook was corrected to resolve the explicitly mounted converter source path and seed Python/Torch/CUDA deterministically. The target, flows, slices, controls, decisions, spend cap, and planned outputs are unchanged.",
+  "result_observed_before_correction": false,
+  "effective_identities": {
+    "capture_tool_sha256": "e7330d213f977ef3d035310b41d5e7bd460d2ad5dc5320f6078abf8a4d005622",
+    "callback_sha256": "a2948e186392f58be7a7464b28eb9a88769d9e04554827d6c10874828041a582",
+    "bf16_plan_sha256": "b49c17679f441d1d693c558c396a41a8a821538638b7b1f8516a6c9c7993ae3e",
+    "quant_plan_sha256": "5e2abf57a36da98853be0ebd997a97238d31ad5bbc1dd7db0ad462102dfb45bd",
+    "seed": 1376380199
+  },
+  "unchanged_scope": {
+    "target": "model.language_model.layers.10.mlp.gate_proj",
+    "flows": ["bf16", "quant"],
+    "slice_count": 4,
+    "slice_shape": [128, 128],
+    "activation_rows_per_flow": 256,
+    "method_ranking_allowed": false
+  },
+  "planned_outputs": [
+    "v3/bf16-flow.json",
+    "v3/bf16-flow.safetensors",
+    "v3/quant-flow.json",
+    "v3/quant-flow.safetensors",
+    "v3/capture-transaction.json",
+    "v3/capture-transaction-log.json",
+    "v3/capture-result.json"
+  ]
+}
