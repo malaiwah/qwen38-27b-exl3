@@ -1,0 +1,168 @@
+{
+  "schema": "wave5/r37-slq-frontier-receipt/1",
+  "run_id": "R37-2026-08-21-validation-menu-gate",
+  "created_utc": "2026-08-21T18:40:06Z",
+  "stage": "phase-b-validation-selection",
+  "status": "scientific-negative-no-eligible-measured-registry",
+  "claim_scope": "Final Phase-B intake: all R32-R36 lanes explicitly completed or falsified with zero eligible direct validation full-vocabulary action rows. No numerical frontier or assignment is claimed.",
+  "foundation": {
+    "data_manifest_file_sha256": "68bcc5ddce1d34f71d696265d908eccd1b75f48444cb0a3aaffe86fea02bff37",
+    "data_manifest_content_sha256": "51957ac986dc44bc06f937ae74b005e090883348c947ef65ac331ed5a91057c2",
+    "split_manifest_file_sha256": "a7eab6e2d8ee78e8d27655f8e9caf4c7813c43539ba24b31c4941d3d38ee09cc",
+    "split_manifest_content_sha256": "151c41151142060619e6a7957f36daa4849e53276435df54b74bdfc223596a2e",
+    "validation_selection_sha256": "4c5cf19acc18835ee6d36da91b2b93135c5d33655ca410c079d4d4be83c5a5de",
+    "fisher_manifest_file_sha256": "4541b2ed392d518eaec24cb4ac2936757cb21cb1148857b08e3e4840fbca8b9a",
+    "fisher_manifest_content_sha256": "28d3b59353e9b8aab2be47bace1086431b59e55e62cc52d47317729541d26237",
+    "exl3_action_harness_sha256": "d4dfd35cd7b85beab11d33de110eb240ca87162e4a01ec434cb19e5b6a82605d",
+    "exl3_action_schema_sha256": "275644ed86017f54953d7eecd2f843e6b6f6c14ae52df163ef5827179edf7af8",
+    "exl3_extension_binary_sha256": "e2e26e0dcfa6eb637215c673a30522076c9d530140cd0d5c727ca549f2d8801e",
+    "historical_stock_control_receipt_sha256": "894a8992c84aef5dd2091e71ea8f73b405fe5803c0a360de5ec552d5b325cb43",
+    "historical_stock_control_harness_sha256": "717de7845c3f3812396f089e47c9e8c6a4d59175b12efcc120742ff0ea6cfd87",
+    "historical_stock_control_schema_sha256": "896f29d70c42de9544bac0719fe0a287c31dadbdf3ddbeafa74a209e40fa1478",
+    "fidelity_gate_sha256": "f4fc059c03331905dca6ad7b0ad4ba0e6af515897e2fc90dfd82f1ce0e8e8482",
+    "fidelity_contract_sha256": "e8e1d47694038bbec4aa6f4a4554c4b53e549d2082d87e07353e5d8d16a66783",
+    "fidelity_prereg_sha256": "75a81665c75761767a7c71d58f4d59c446a13d3d7b164c5a8b9da9070388a784"
+  },
+  "method": {
+    "solver_path": "tools/research/wave5/r37_slq_frontier.py",
+    "solver_sha256": "a791eb562064b922b9747fe0b53ca47e9981ebfe6179048268c0da1c6a8a7269",
+    "registry_schema": "wave5/r37-measured-action-registry/1",
+    "frontier_schema": "wave5/r37-screening-frontier/1",
+    "selection_split": "validation",
+    "untouched_test_opened": false,
+    "admitted_action_granularity": [
+      "topology_group",
+      "module",
+      "tensor",
+      "shard"
+    ],
+    "forbidden_assumptions": [
+      "per-tile K",
+      "selector map",
+      "entropy-coded payload",
+      "new decoder format",
+      "affine-uniform proxy as EXL3",
+      "post-allocation correction"
+    ],
+    "selection_rule": "minimum exact bytes only among fresh sequential whole-checkpoint validation measurements passing mean KLD, p99, CVaR1%, EAR, top1, runtime, startup, graph, context, route, and no-fallback gates",
+    "screening_rule": "exact multiple-choice DP over complete legal actions using direct single-group full-vocabulary validation marginals; additive output is non-promotable"
+  },
+  "solver_verification": {
+    "command": "/Users/mbelleau/Projects/qwen38-research-venv/bin/python tools/research/wave5/r37_slq_frontier.py self-test",
+    "status": "pass",
+    "oracle_assignments": 6,
+    "reachable_exact_budgets": [
+      200,
+      220,
+      240
+    ],
+    "dp_equals_cartesian_oracle": true,
+    "exact_byte_sum_checked": true,
+    "fresh_sequential_selection_checked": true,
+    "screen_only_not_promoted": true,
+    "new_format_rejected": true,
+    "untouched_test_rejected": true,
+    "tie_equivalence_checked": true,
+    "strict_action_gate_checked": true,
+    "ci_consistency_checked": true,
+    "r38_screening_stop_checked": true
+  },
+  "scientific_registry": {
+    "action_rows": [],
+    "action_registry_sha256": null,
+    "legal_action_set_sha256": null,
+    "complete_stock_k4_k5_k6_curves": false,
+    "direct_validation_marginals": false,
+    "targeted_interactions": false,
+    "fresh_sequential_measured_assignments": 0,
+    "reason": "No received row simultaneously contained a complete wave5/exl3-action/1 object under the current additive R30 pins, exact serialized action bytes, and direct validation full-vocabulary KLD/EAR/p99/CVaR/top1 evidence. Proxy/local-only values were deliberately not invented or imported.",
+    "historical_stock_panel_exclusion": "receipts/wave5/stock-control.json contains actual K4/K5/K6 codec payload bytes and proxy reconstruction errors for a 128x128 panel, but not the required full-model validation fidelity marginals and not a whole-model action registry. It therefore cannot support R37 selection.",
+    "intake_status": "final-closed-empty",
+    "lane_outcomes": {
+      "R32-ScaleRefit": {
+        "source_path": "receipts/wave5/r32-scale-refit.json",
+        "source_file_sha256": "c00d4f8bbaaaad3f9d158d7291a89e353f601caabc7ab33df9e7ac4079a75c0b",
+        "eligibility": "local-positive-validation-blocked",
+        "failed_predicate": "approved capture launcher produced zero validation KLD rows; no direct full-vocabulary evidence",
+        "evidence": "All 10 L55 gate K5 actions were 55,750,660 bytes. Round-3 improved local MSE 0.0857% and OC-HWE 0.7762%; finite-two improved OC-HWE 33.62% but regressed MSE. None is selectable.",
+        "selection_use": false
+      },
+      "R33-CurvatureShrink": {
+        "source_path": "receipts/wave5/r33-curvature-shrink.json",
+        "source_file_sha256": "f542a58aefab9d9164bf29182969fb67ed82f24c23b8d7705b679b179535876a",
+        "eligibility": "local-negative-promotion-gated",
+        "failed_predicate": "no R31 validation KLD and no selected action; preregistered QMM oracle was not measured",
+        "evidence": "Stock rho=1 won L0/L55 real-input HWE. The reported ~4.86 values are Gaussian SNR-equivalent bits, not QMM headroom.",
+        "selection_use": false
+      },
+      "R34-ReconstructedDown": {
+        "source_path": "/tmp/qwen38-wave5-r34/factorial.json",
+        "source_file_sha256": "d511618a66086b51a63b7c8f22fe104ce3f66424ca2f49e09ebc40ea4a457993",
+        "source_content_sha256": "4fa4e2f96b87f18015fb68e86eb20af1ec7e22db14869d182df6391d744256eb",
+        "eligibility": "falsified-before-full-vocabulary",
+        "failed_predicate": "no candidate cleared validation block-output gate",
+        "evidence": "A0 identity passed under e2e/d4df. At 66,891,780 buffer bytes, seam worsened MSE 7.80%, reconstructed target 23.10%, and reconstructed+seam 30.98% versus stock/source 6.04953e-4.",
+        "selection_use": false
+      },
+      "R35-SchurRefine": {
+        "source_path": "receipts/wave5/r35-schur-refine.json",
+        "source_file_sha256": "ac2071d026d1fec26e829302ba2bafda319c7e19118174790303de6dc407959c",
+        "source_content_sha256": "4c518e393875eee31623893b207ed791e04eebf792b05c2c156b57caee22f26d",
+        "eligibility": "excluded-local-only",
+        "failed_predicate": "no direct validation KLD/EAR row and no R34 target factorial",
+        "evidence": "Full L0-gate same-byte dense-H changes were -0.018% K4, -0.060% K5, and -0.122% K6; local only.",
+        "selection_use": false
+      },
+      "R36-FinalKLBCJR": {
+        "source_path": "receipts/wave5/r36-finalkl-bcjr.json",
+        "source_file_sha256": "adf1d2a97e30c8dca9361b592bc4d984838ba0f533ee34c5da1f36465c49a923",
+        "eligibility": "hard-path-stability-falsifier",
+        "failed_predicate": "guided stable-negative gate passed 11/20, below required 16/20; no validation KLD row",
+        "evidence": "Strength-zero bytes/decode identity and decoder adjoint checks passed; BCJR/Gumbel/QES remained gated off.",
+        "selection_use": false
+      }
+    }
+  },
+  "controls": {
+    "stock_hydrated_current_recipe": {
+      "measured_in_r37_registry": false
+    },
+    "local_eda_known_negative": {
+      "measured_in_r37_registry": false
+    },
+    "uniform_k6": {
+      "measured_in_r37_registry": false
+    },
+    "best_module_k5_k6_mixing": {
+      "measured_in_r37_registry": false
+    }
+  },
+  "frontier": {
+    "points": [],
+    "exact_bytes_sum": null,
+    "selected_assignment": null,
+    "validation_metrics": null,
+    "role_depth_action_frequencies": null,
+    "claim": "no frontier point measured"
+  },
+  "residual_gate": {
+    "proceed_r38": false,
+    "exact_target_bytes": null,
+    "best_measured_whole_module_assignment": null,
+    "qmm_innovation_gap_effective_bits": null,
+    "reason": "Final STOP: all R32-R36 lanes closed with zero eligible direct-validation rows, no selected measured whole-module assignment, and no assignment-bound measured QMM headroom."
+  },
+  "adversarial_review": {
+    "rounds": 2,
+    "final_verdict": "reject-for-production-normalization",
+    "approved_scope": "targeted additive DP/oracle behavior only",
+    "unresolved_blockers": [
+      "current tool does not execute the full R30 semantic validator",
+      "evidence paths are hashed but report/proof semantic contents are not fully validated",
+      "three non-uniform control labels are not bound to preregistered assignment hashes",
+      "self-test strict rejection is not a complete schema-valid production fixture"
+    ],
+    "effect": "No full measured registry, promotable frontier, assignment, exact checkpoint claim, or R38 proceed decision is emitted."
+  },
+  "conclusion": "Final Phase-B scientific negative: all R32-R36 lanes closed with zero eligible full-vocabulary validation action rows. The targeted screening DP passes its oracle, but reviewer-rejected production normalization prevents any measured frontier claim. No selected assignment or R38 proceed gate exists."
+}

@@ -1,0 +1,125 @@
+{
+  "schema": "qwen38-wave5-r30-final-capture-acceptance/2",
+  "date": "2026-08-21",
+  "status": "blocked",
+  "launcher_lane": "closed_after_first_bringup_infrastructure_retry_cap",
+  "candidate_id": "R30-layer55-K6-strength-zero-final",
+  "candidate_and_data_frozen_across_attempts": true,
+  "scope": {
+    "logical_tensor_key": "model.language_model.layers.55.self_attn.k_proj.weight",
+    "K": 6,
+    "strength": 0.0,
+    "route_id": "codec-exact/all-trellis-stock-exl3",
+    "base_checkpoint": "/home/mbelleau/.cache/huggingface/hub/models--malaiwah--Qwen3.8-27B-EXL3-K5K6-hydrated/snapshots/ab3a91a13813df8096cb4c1d560ed3669035d0cf"
+  },
+  "first_bringup_attempts": [
+    {
+      "ordinal": 0,
+      "authorization": "pre-reopen final rerun",
+      "result": "invalid_infrastructure",
+      "failure": "ModuleNotFoundError: exl3_fp4_conversion",
+      "delta_learned": "Mount authoritative /opt/fp4 and /opt/fp6 conversion modules in addition to the seven Python patches."
+    },
+    {
+      "ordinal": 1,
+      "authorization": "reopened first-bringup retry 1_of_4",
+      "result": "invalid_infrastructure_before_materialization",
+      "failure": "Remote-shell brace expansion split the service-only QUANTIZATION_CONFIG JSON argument.",
+      "delta_learned": "Omit the service-only env because fidelity.py passes quantization explicitly; mounts and scientific inputs unchanged."
+    },
+    {
+      "ordinal": 2,
+      "authorization": "reopened first-bringup retry 2_of_4",
+      "result": "invalid_infrastructure",
+      "failure": "CUDA OOM during load after the codec-exact hook cached 88 reconstructed 170 MB gate_up tensors.",
+      "delta_learned": "Production fidelity CACHE/MAX_MB controls do not govern the separate codec-exact load hook."
+    },
+    {
+      "ordinal": 3,
+      "authorization": "reopened first-bringup retry 3_of_4",
+      "result": "invalid_infrastructure",
+      "failure": "CUDA OOM during load after the codec-exact hook cached 97 reconstructed 170 MB gate_up tensors.",
+      "delta_learned": "Mounted exl3.py lines 3292-3325 gate that hook only with VLLM_EXL3_PRE_RECONSTRUCT; set it to 0."
+    },
+    {
+      "ordinal": 4,
+      "authorization": "reopened first-bringup retry 4_of_4",
+      "result": "invalid_infrastructure",
+      "failure": "TypeError: Object of type <class 'function'> is not serializable while fidelity.py installs its post-final-norm hook through collective_rpc.",
+      "failure_stage": "Engine fully initialized; candidate identity printed; no hidden row was captured.",
+      "suggested_by_runtime_but_not_retried_due_cap": "VLLM_ALLOW_INSECURE_SERIALIZATION=1"
+    }
+  ],
+  "final_attempt_runtime": {
+    "image_digest": "sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b",
+    "gpu_uuid": "GPU-506a575d-01d7-b12e-9a0a-c1ab5f38ae0a",
+    "authoritative_mounts": {
+      "jit_rw": "/home/mbelleau/.cache/jit:/cache/jit:rw",
+      "fp4_conversion": "/home/mbelleau/qwen38-27b-exl3/patches/exl3_fp4_conversion.py:/opt/fp4/exl3_fp4_conversion.py:ro",
+      "fp4_triton": "/home/mbelleau/qwen38-27b-exl3/patches/triton_fp4_quant.py:/opt/fp4/triton_fp4_quant.py:ro",
+      "fp6_conversion": "/home/mbelleau/qwen38-27b-exl3/patches/exl3_fp6_conversion.py:/opt/fp6/exl3_fp6_conversion.py:ro",
+      "production_python_patches": 7,
+      "qualified_extension": "/home/mbelleau/worktrees/r30-torch-ext/exllamav3_ext/exllamav3_ext.so:/opt/r30-ext/exllamav3_ext.so:ro",
+      "qualified_extension_sha256": "e2e26e0dcfa6eb637215c673a30522076c9d530140cd0d5c727ca549f2d8801e"
+    },
+    "key_environment": {
+      "TORCH_EXTENSIONS_DIR": "/cache/jit/torch_extensions",
+      "LD_LIBRARY_PATH": "/usr/local/cuda/targets/x86_64-linux/lib:/opt/venv/lib/python3.12/site-packages/torch/lib",
+      "PYTHONPATH": "/opt/r30-ext",
+      "VLLM_EXL3_MULTIPRECISION": "0",
+      "VLLM_EXL3_PRE_RECONSTRUCT": "0",
+      "VLLM_EXL3_B12X_ANY_BITS": "1",
+      "VLLM_EXL3_B12X_MIN_M": "128",
+      "VLLM_EXL3_PREFILL_RECONSTRUCT_CACHE": "0"
+    }
+  },
+  "disk": {
+    "final_attempt_free_before_bytes": 81098731520,
+    "final_attempt_free_after_materialize_bytes": 76301811712,
+    "final_free_after_cleanup_bytes": 76291497984,
+    "minimum_free_bytes": 64424509440,
+    "floor_preserved": true
+  },
+  "materialization": {
+    "status": "pass",
+    "remote_evidence_root": "/home/mbelleau/worktrees/r30-capture-smoke/retry4-evidence-20260821",
+    "manifest_sha256": "2c287c760c583e73a01d52d56f8608ed1705090b0aa390bab4c359e1388c2a51",
+    "action_sha256": "d91e9f898690e903bffce3b4cccf9a7acfda278b7c994c0300fc31f9d7c5fec8",
+    "action_identity_sha256": "a2093fdfb7fe25871e12ce263f2e929b0a7afd0763b29c46e9899ae66673b61c",
+    "payload_file_sha256": "0a2fd1e37f443324bf646829a8783309c942541659ee3e5cfa8556fcfe1a1e7b",
+    "action_payload_sha256": "e2e883a64294e6b7a7698d4cb4c20b098263ba778c2fd26549346d7a523a3680",
+    "candidate_checkpoint_identity_sha256": "d9a5db52cad017f7ba7508c0d0857c4cde53e9811063a57365f16384cf366db2",
+    "preserved_changed_shard": {
+      "path": "/home/mbelleau/worktrees/r30-capture-smoke/retry4-evidence-20260821/changed-shard/model-00003-of-00003.safetensors",
+      "sha256": "8d901875ea60a9a651e6585931749c2bdd526207d3b75d4c7bd33472923327d1",
+      "bytes": 4792879451
+    },
+    "unchanged_tensor_buffers": 693,
+    "unchanged_component_count": 53
+  },
+  "capture": {
+    "status": "fail",
+    "captured_hidden_rows": 0,
+    "capture_manifest": null,
+    "final_failure": "collective_rpc rejected the function-valued hook because insecure pickle fallback was disabled",
+    "execution_receipt_sha256": "e4fdb156d08d8e3f0817d192855abea24c976ec5ac431b96080991adef8ff5de"
+  },
+  "r31": {
+    "lineage_acceptance": "not_run_no_complete_capture",
+    "validation_replay": "not_run_no_complete_capture",
+    "paired_stock_comparison": "not_run_no_complete_capture",
+    "untouched_test_opened": false
+  },
+  "cleanup": {
+    "temporary_candidate_removed": true,
+    "temporary_capture_directory_removed": true,
+    "preserved_latest_changed_shard": true,
+    "cleanup_receipt_sha256": "8c30b6742635195398e02d5814f4c6e38a191c22a8211b408d5d595994b0260e"
+  },
+  "service_restoration": {
+    "profile": "throughput (systemd default; PROFILE unset)",
+    "systemd_active": true,
+    "health_http_status": 200,
+    "receipt_sha256": "834334674e344115d6487b17b45345a8ca8715e7013260bae600b1728bd4e81c"
+  }
+}

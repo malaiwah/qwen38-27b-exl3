@@ -242,6 +242,20 @@ invariant. Security/formal hardening becomes DEFER.
 - Stop a lane after two valid iterations fail its minimum effect or immediately when
   actual EXL3/bytes/validation KLD falsifies it.
 
+### First-bring-up exception
+
+For the **first** end-to-end Wave-5 stock capture/runtime bring-up, allow up to four
+invalid-infrastructure retries (container mounts, JIT cache, libraries, service
+startup, capture wiring). These retries:
+
+- keep the candidate method, K, source tensor, data, thresholds, and search budget frozen;
+- change plumbing only and record the failure plus the exact configuration delta;
+- do not count as valid scientific iterations;
+- end immediately once one accepted baseline path runs.
+
+After baseline acceptance, the normal limits above resume. This exception never
+permits another untouched-test opening or a results-dependent method change.
+
 A valid negative is not rerun until positive.
 
 ## 11. Cost of omission

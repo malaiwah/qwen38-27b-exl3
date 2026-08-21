@@ -1,0 +1,1759 @@
+{
+  "claim_scope": "actual-stock-EXL3 legal-path calibration screen; no validation KLD claim",
+  "decoder_adjoint": {
+    "guided_legal_displacement": {
+      "absolute_error": 2.5747138085334463e-11,
+      "legal_decoded_sha256": "34048323e4c98c720989ca6455460b3e03d593ae4cd5e0e2b9be832129a14f41",
+      "pass": true,
+      "source_inner_product": -1.530798316054288e-06,
+      "stock_decoded_sha256": "4bb33d3f77a7a6888b150b7e4a47e97b8d795221a03bc2bf6f6b8679053de5d6",
+      "tolerance": 5e-05,
+      "working_inner_product": -1.5308240631923734e-06
+    },
+    "random_legal_displacement": {
+      "absolute_error": 1.8366105785863488e-11,
+      "legal_decoded_sha256": "c741f23aaf1ac90ae78f2321ae626863f5cb9180dd218981e7aaf1b1ac54d779",
+      "pass": true,
+      "source_inner_product": -7.208258876866425e-08,
+      "stock_decoded_sha256": "4bb33d3f77a7a6888b150b7e4a47e97b8d795221a03bc2bf6f6b8679053de5d6",
+      "tolerance": 5e-05,
+      "working_inner_product": -7.210095487445012e-08
+    },
+    "serialized_fp16_scales": true
+  },
+  "final_forward_kl_gradient": {
+    "candidate_anchor": "/home/mbelleau/worktrees/r36-results/stock/decoded.safetensors",
+    "candidate_anchor_sha256": "4bb33d3f77a7a6888b150b7e4a47e97b8d795221a03bc2bf6f6b8679053de5d6",
+    "direction": "KL(BF16 reference || actual-stock-K5 one-tensor candidate)",
+    "full_vocabulary": true,
+    "loss_mean_nats": 0.0005397025961428881,
+    "per_position_max": 0.001722170040011406,
+    "per_position_min": 2.5567496777512133e-05,
+    "positions": 8,
+    "relinearization_required_after_acceptance": true,
+    "schema": "wave5/r36-final-kl-gradient/1",
+    "source_gradient_l2": 0.020626390103573363,
+    "source_gradient_sha256": "e69acd488c23034381e2bebeeae91cd01241f508e0830d39e71997a5f03c4a47",
+    "source_gradient_shape": [
+      17408,
+      5120
+    ],
+    "split": "calibration",
+    "split_selection_sha256": "490a15969bf7b62b585f24cce644dae48f8021f534b0b2bc7553a46a989ea259",
+    "token_sha256": "584f6f2c1e8572e4d20d28914a451ba7de0c531862810c258f1c4e8d6275fd41",
+    "vocab_size": 248320
+  },
+  "foundation": {
+    "calibration_selection_sha256": "490a15969bf7b62b585f24cce644dae48f8021f534b0b2bc7553a46a989ea259",
+    "data_manifest_content_sha256": "51957ac986dc44bc06f937ae74b005e090883348c947ef65ac331ed5a91057c2",
+    "data_manifest_file_sha256": "68bcc5ddce1d34f71d696265d908eccd1b75f48444cb0a3aaffe86fea02bff37",
+    "fisher_manifest_content_sha256": "28d3b59353e9b8aab2be47bace1086431b59e55e62cc52d47317729541d26237",
+    "fisher_manifest_file_sha256": "4541b2ed392d518eaec24cb4ac2936757cb21cb1148857b08e3e4840fbca8b9a",
+    "split_manifest_content_sha256": "151c41151142060619e6a7957f36daa4849e53276435df54b74bdfc223596a2e",
+    "split_manifest_file_sha256": "a7eab6e2d8ee78e8d27655f8e9caf4c7813c43539ba24b31c4941d3d38ee09cc",
+    "untouched_test_accessed": false,
+    "validation_selection_sha256": "4c5cf19acc18835ee6d36da91b2b93135c5d33655ca410c079d4d4be83c5a5de"
+  },
+  "fresh_anchor": {
+    "decoded_identical": true,
+    "finite_decode": true,
+    "payload_identical": true,
+    "stock_action": {
+      "K": 5,
+      "action_id": "R36.stock.K5.mcg.s0",
+      "callback": {
+        "content_sha256": "e4efe3df4ccfb4c4327038602be799a4123d7c4e11d636a874c8516924385521",
+        "expected_interface": {
+          "curvature": "(transformed_damped_H, action) -> same-shape/dtype/device finite H",
+          "legal_path": "(tiles, stock_values, stock_indices, action) -> candidate target tiles only; harness reruns pinned Viterbi",
+          "recurrence": "(stock_block_ldl_L, action) -> same-shape/dtype/device finite L",
+          "scale": "(stock_five_tuple, action) -> identical structure/dtypes/devices",
+          "target": "(source_basis_weight, action) -> same-shape/dtype/device finite target"
+        },
+        "identifier": "none",
+        "implementation_sha256": "f9f1b815705005615d0db4ebd8048821d640494cff0e6aef60ba3231b0b8f189",
+        "module_files_sha256": {},
+        "parameters": {},
+        "version": "1"
+      },
+      "codebook": "mcg",
+      "curvature": {
+        "basis": "source-model input-feature activation basis",
+        "capture_id": "r29/bf16-reference/l0-gate-up/XtX-over-63",
+        "capture_manifest_sha256": "7a1d11d40a6481f7481c2fa0aaf528c140f5b1dfec505c68f7458333f074c9b4",
+        "coordinate_convention": "H rows/columns equal stored [out,in] source tensor input-feature axis before stock seeded sign/H128",
+        "h_dtype": "float32",
+        "h_shape": [
+          5120,
+          5120
+        ],
+        "h_tensor_sha256": "5b71e520ca176a399c80e7a1abc3a47035edd7ff9a0378ae377fc245ec2d62cd",
+        "module_boundary": "qwen38.layer0.mlp.gate_proj",
+        "normalization": "X^T X / N",
+        "observation_count": 63,
+        "tensor_boundary": "model.language_model.layers.0.mlp.gate_proj.weight"
+      },
+      "curvature_correction": {
+        "implementation": "stock",
+        "kind": "stock_curvature_recurrence",
+        "parameters": {
+          "block_ldl": 16,
+          "buf_size_k": 128,
+          "sigma_reg": 0.025
+        },
+        "recipe_id": "stock.block-ldl16",
+        "strength": null
+      },
+      "encoder_commit": "5f3c537ca9d89893d771256f5c43c93656553fbb",
+      "encoder_repo": "turboderp-org/exllamav3",
+      "encoder_tree_sha1": "ffc0a1d31c25d4174b96adffef3727f12a7056c7",
+      "encoder_version": "1.4.2",
+      "evidence": {
+        "local_metrics": {},
+        "promoted_kld": null
+      },
+      "hashes": {
+        "action_identity_sha256": "27fabe692141d8bfc51db83ba35dba34e167ec4f723b830cbb080e9f9dcc8542",
+        "payload_sha256": "d21d385b80645fd53292cb5ac3c410107060873bd2937ecb97fd6d6a6769a27f",
+        "source_basis_reconstruction_sha256": "ed3e55d604afb6094a17db76a8eaf6433e884c057b90ef2c9709c2ee5aff7e85"
+      },
+      "metric_contract": {
+        "accumulation": "float64",
+        "body_only": true,
+        "bootstrap": {
+          "resamples": 10000,
+          "seed": 1,
+          "unit": "source_cluster"
+        },
+        "contexts": 5120,
+        "direction": "KL(BF16 reference || candidate)",
+        "local_metric_guard": "MSE/OC-HWE/Fisher-HWE/block-output-error are never called KLD",
+        "method_of_record": "docs/42-kld-method.md",
+        "protocol_id": "qwen38-kld-method-v5/body-only-shared-bf16-head",
+        "required_metrics": [
+          "token_mean_kld",
+          "context_macro_mean_kld",
+          "p99",
+          "cvar1pct",
+          "top1_agreement",
+          "full_vocab_ear",
+          "worst_contexts"
+        ],
+        "scored_positions_per_context": 2047,
+        "served_head_axis": "candidate-own/served head contribution is separate from body-only shared-head KLD",
+        "shared_bf16_head_sha256": "25a30fd5f826da0abc4efc4cc71def9f02bcb8085f7175eee284d221dee4cfff",
+        "source_clusters": 842,
+        "suite_manifest_sha256": "c79dfad3767ca5b3015129077f20dbb9282a2e51ca8bca9ed09be8c7a9c73019",
+        "suite_repo": "malaiwah/qwen38-27b-fidelity-suite-v5",
+        "suite_revision": "7797fcce3ffed62b99871348887f4626dc9b2b3b",
+        "suite_token_sha256": "510541f6861b589d44932db253ec25d96d6daaeeee4ea2ab9b65329209482b88",
+        "two_pass": true,
+        "vocab_chunk": 24832,
+        "vocab_size": 248320
+      },
+      "qualifications": {},
+      "runtime": {
+        "decode_hot_ops": [
+          "H128 input",
+          "stock trellis GEMM",
+          "H128/output scale"
+        ],
+        "graph_capturable": true,
+        "incremental_hot_bytes": 0,
+        "materialization_qualification": null,
+        "route_id": "codec-exact/all-trellis-stock-exl3",
+        "sidecar_bytes": 0,
+        "startup_ops": [
+          "load fixed-stride trellis"
+        ]
+      },
+      "schema": "wave5/exl3-action/1",
+      "seed": 360036,
+      "serialized": {
+        "alignment": "safetensors v1: 8-byte header length and 8-byte-padded JSON header; tensor offsets are contiguous",
+        "buffer_bytes": 55750660,
+        "buffers": {
+          "mcg": {
+            "bytes": 4,
+            "dtype": "int32",
+            "sha256": "ade4fb124dda0f3537386cdd4a3cdcea3a223d386e506a4be89394bb33ee13fe",
+            "shape": []
+          },
+          "suh": {
+            "bytes": 10240,
+            "dtype": "float16",
+            "sha256": "b075a226b60738467ee3c114abe2ab995098ff27d93c0b70bd5a076677f2504a",
+            "shape": [
+              5120
+            ]
+          },
+          "svh": {
+            "bytes": 34816,
+            "dtype": "float16",
+            "sha256": "f6b9fc19c2dba260bfcf77b0c483d827a16f035a5db5c4c05be19b4cf9c50e7a",
+            "shape": [
+              17408
+            ]
+          },
+          "trellis": {
+            "bytes": 55705600,
+            "dtype": "int16",
+            "sha256": "7e5cb8782913cb0e8cd6b542e3eb82f21b71ce3f77f21f551144c7f81172adca",
+            "shape": [
+              320,
+              1088,
+              80
+            ]
+          }
+        },
+        "container_overhead_bytes": 472,
+        "dense_byte_law": {
+          "expected_bytes": 55750660,
+          "formula": "numel*K/8 + 2*(in_features+out_features) + marker_bytes",
+          "marker_bytes": 4,
+          "passes": true
+        },
+        "safetensors_sha256": "3d133302df8423533badb9096fb564c1730386edfffab160db6d2d49ee652e4e",
+        "standalone_safetensors_bytes": 55751132
+      },
+      "sign_scale_transform": {
+        "implementation": "stock",
+        "kind": "stock_sign_scale_transform",
+        "parameters": {
+          "apply_out_scales": true,
+          "global_scale_search": "stock_g_scale_gss",
+          "hadamard": 128,
+          "scales_dtype": "float16",
+          "sign_streams": "torch.randn.sign/fixed-seed"
+        },
+        "recipe_id": "stock.sign-scale-h128-gss",
+        "strength": null
+      },
+      "source_layout": "out_in",
+      "source_revision": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0",
+      "source_tensor_sha256": "33f8e7677f361290d5f6a415c00cb56149a8fdbea20122bc13f0e1004b469565",
+      "split_disjointness": {
+        "artifact_sha256": "7fb0bf2f932d93af78c2ca7f40a0cb41f577a2b7801ae80a4ff44bfcc07cc6d9",
+        "domain_leakage_count": 0,
+        "pairwise_overlap_counts": {
+          "calibration__untouched_test": 0,
+          "calibration__validation": 0,
+          "validation__untouched_test": 0
+        },
+        "predicate_language": "wave5.split-predicate/1",
+        "source_document_overlap_count": 0,
+        "verified": true
+      },
+      "split_manifest_content_sha256": "151c41151142060619e6a7957f36daa4849e53276435df54b74bdfc223596a2e",
+      "split_manifest_sha256": "a7eab6e2d8ee78e8d27655f8e9caf4c7813c43539ba24b31c4941d3d38ee09cc",
+      "split_selections": {
+        "calibration": {
+          "selection_sha256": "490a15969bf7b62b585f24cce644dae48f8021f534b0b2bc7553a46a989ea259",
+          "selector": {
+            "field": "split",
+            "op": "eq",
+            "value": "calibration"
+          }
+        },
+        "untouched_test": {
+          "selection_sha256": "4eaaa72d93790195468c168ee03753fe2a0efa0d04334a5d5335fd083de88bca",
+          "selector": {
+            "field": "split",
+            "op": "eq",
+            "value": "untouched_test"
+          }
+        },
+        "validation": {
+          "selection_sha256": "4c5cf19acc18835ee6d36da91b2b93135c5d33655ca410c079d4d4be83c5a5de",
+          "selector": {
+            "field": "split",
+            "op": "eq",
+            "value": "validation"
+          }
+        }
+      },
+      "target": {
+        "implementation": "stock",
+        "kind": "source_basis_target",
+        "parameters": {
+          "basis": "source"
+        },
+        "recipe_id": "stock.source-target",
+        "strength": null
+      },
+      "unit": {
+        "fused_group": null,
+        "granularity": "tensor",
+        "layer_index": 0,
+        "output_splits": [],
+        "role": "gate",
+        "shard_id": null,
+        "tensor_keys": [
+          "model.language_model.layers.0.mlp.gate_proj.weight"
+        ],
+        "topology": "mlp",
+        "unit_id": "qwen38.layer0.mlp.gate_proj"
+      },
+      "viterbi_refinement": {
+        "implementation": "stock",
+        "kind": "stock_legal_path",
+        "parameters": {
+          "callback_return": "candidate_tiles_only",
+          "tensor_core_permutation": true,
+          "tile": [
+            16,
+            16
+          ],
+          "viterbi_executor": "harness/pinned-stock"
+        },
+        "recipe_id": "stock.quantize-tiles-viterbi",
+        "strength": null
+      }
+    },
+    "stock_decoded_sha256": "ed3e55d604afb6094a17db76a8eaf6433e884c057b90ef2c9709c2ee5aff7e85",
+    "stock_payload": {
+      "alignment": "safetensors v1: 8-byte header length and 8-byte-padded JSON header; tensor offsets are contiguous",
+      "buffer_bytes": 55750660,
+      "buffers": {
+        "mcg": {
+          "bytes": 4,
+          "dtype": "int32",
+          "sha256": "ade4fb124dda0f3537386cdd4a3cdcea3a223d386e506a4be89394bb33ee13fe",
+          "shape": []
+        },
+        "suh": {
+          "bytes": 10240,
+          "dtype": "float16",
+          "sha256": "b075a226b60738467ee3c114abe2ab995098ff27d93c0b70bd5a076677f2504a",
+          "shape": [
+            5120
+          ]
+        },
+        "svh": {
+          "bytes": 34816,
+          "dtype": "float16",
+          "sha256": "f6b9fc19c2dba260bfcf77b0c483d827a16f035a5db5c4c05be19b4cf9c50e7a",
+          "shape": [
+            17408
+          ]
+        },
+        "trellis": {
+          "bytes": 55705600,
+          "dtype": "int16",
+          "sha256": "7e5cb8782913cb0e8cd6b542e3eb82f21b71ce3f77f21f551144c7f81172adca",
+          "shape": [
+            320,
+            1088,
+            80
+          ]
+        }
+      },
+      "container_overhead_bytes": 472,
+      "dense_byte_law": {
+        "expected_bytes": 55750660,
+        "formula": "numel*K/8 + 2*(in_features+out_features) + marker_bytes",
+        "marker_bytes": 4,
+        "passes": true
+      },
+      "safetensors_sha256": "3d133302df8423533badb9096fb564c1730386edfffab160db6d2d49ee652e4e",
+      "standalone_safetensors_bytes": 55751132
+    },
+    "stock_payload_sha256": "d21d385b80645fd53292cb5ac3c410107060873bd2937ecb97fd6d6a6769a27f",
+    "strength_zero_action": {
+      "K": 5,
+      "action_id": "R36.zero.K5.mcg.s0",
+      "callback": {
+        "content_sha256": "a5c95e72372861e6f77e765a5b3b470efcd7ff1837f97219c900512e79e35091",
+        "expected_interface": {
+          "curvature": "(transformed_damped_H, action) -> same-shape/dtype/device finite H",
+          "legal_path": "(tiles, stock_values, stock_indices, action) -> candidate target tiles only; harness reruns pinned Viterbi",
+          "recurrence": "(stock_block_ldl_L, action) -> same-shape/dtype/device finite L",
+          "scale": "(stock_five_tuple, action) -> identical structure/dtypes/devices",
+          "target": "(source_basis_weight, action) -> same-shape/dtype/device finite target"
+        },
+        "identifier": "identity/strength-zero",
+        "implementation_sha256": "7920c764187e1ec950404210baa458a67415215c11bd8611b6d0e0f12c24ed41",
+        "module_files_sha256": {
+          "__main__:r36.py": "000fa532ce0c34aff522bd80b20fe108c561eaad5878f380e8e28b192d546ed1"
+        },
+        "parameters": {
+          "gradient_path": null,
+          "hard_projection": "pinned-stock-cuda-viterbi",
+          "mode": "zero",
+          "scale_fit": "stock-unshifted-source",
+          "seed": 360036,
+          "selected_working_tiles": [
+            [
+              0,
+              0
+            ],
+            [
+              159,
+              544
+            ],
+            [
+              319,
+              1087
+            ],
+            [
+              0,
+              1087
+            ],
+            [
+              319,
+              0
+            ],
+            [
+              5,
+              819
+            ],
+            [
+              210,
+              231
+            ],
+            [
+              181,
+              471
+            ],
+            [
+              110,
+              1060
+            ],
+            [
+              300,
+              383
+            ],
+            [
+              310,
+              168
+            ],
+            [
+              213,
+              591
+            ],
+            [
+              286,
+              1027
+            ],
+            [
+              39,
+              267
+            ],
+            [
+              151,
+              933
+            ],
+            [
+              317,
+              430
+            ],
+            [
+              16,
+              452
+            ],
+            [
+              39,
+              80
+            ],
+            [
+              223,
+              655
+            ],
+            [
+              250,
+              694
+            ]
+          ],
+          "strength": 0.0
+        },
+        "version": "1"
+      },
+      "codebook": "mcg",
+      "curvature": {
+        "basis": "source-model input-feature activation basis",
+        "capture_id": "r29/bf16-reference/l0-gate-up/XtX-over-63",
+        "capture_manifest_sha256": "7a1d11d40a6481f7481c2fa0aaf528c140f5b1dfec505c68f7458333f074c9b4",
+        "coordinate_convention": "H rows/columns equal stored [out,in] source tensor input-feature axis before stock seeded sign/H128",
+        "h_dtype": "float32",
+        "h_shape": [
+          5120,
+          5120
+        ],
+        "h_tensor_sha256": "5b71e520ca176a399c80e7a1abc3a47035edd7ff9a0378ae377fc245ec2d62cd",
+        "module_boundary": "qwen38.layer0.mlp.gate_proj",
+        "normalization": "X^T X / N",
+        "observation_count": 63,
+        "tensor_boundary": "model.language_model.layers.0.mlp.gate_proj.weight"
+      },
+      "curvature_correction": {
+        "implementation": "stock-with-encode-callback",
+        "kind": "stock_curvature_recurrence",
+        "parameters": {
+          "block_ldl": 16,
+          "buf_size_k": 128,
+          "sigma_reg": 0.025
+        },
+        "recipe_id": "stock.block-ldl16",
+        "strength": null
+      },
+      "encoder_commit": "5f3c537ca9d89893d771256f5c43c93656553fbb",
+      "encoder_repo": "turboderp-org/exllamav3",
+      "encoder_tree_sha1": "ffc0a1d31c25d4174b96adffef3727f12a7056c7",
+      "encoder_version": "1.4.2",
+      "evidence": {
+        "local_metrics": {},
+        "promoted_kld": null
+      },
+      "hashes": {
+        "action_identity_sha256": "793da738ae3b2e8b318914b796003adc06290ee3b1fc9a6d96b874ad1e521982",
+        "payload_sha256": "d21d385b80645fd53292cb5ac3c410107060873bd2937ecb97fd6d6a6769a27f",
+        "source_basis_reconstruction_sha256": "ed3e55d604afb6094a17db76a8eaf6433e884c057b90ef2c9709c2ee5aff7e85"
+      },
+      "metric_contract": {
+        "accumulation": "float64",
+        "body_only": true,
+        "bootstrap": {
+          "resamples": 10000,
+          "seed": 1,
+          "unit": "source_cluster"
+        },
+        "contexts": 5120,
+        "direction": "KL(BF16 reference || candidate)",
+        "local_metric_guard": "MSE/OC-HWE/Fisher-HWE/block-output-error are never called KLD",
+        "method_of_record": "docs/42-kld-method.md",
+        "protocol_id": "qwen38-kld-method-v5/body-only-shared-bf16-head",
+        "required_metrics": [
+          "token_mean_kld",
+          "context_macro_mean_kld",
+          "p99",
+          "cvar1pct",
+          "top1_agreement",
+          "full_vocab_ear",
+          "worst_contexts"
+        ],
+        "scored_positions_per_context": 2047,
+        "served_head_axis": "candidate-own/served head contribution is separate from body-only shared-head KLD",
+        "shared_bf16_head_sha256": "25a30fd5f826da0abc4efc4cc71def9f02bcb8085f7175eee284d221dee4cfff",
+        "source_clusters": 842,
+        "suite_manifest_sha256": "c79dfad3767ca5b3015129077f20dbb9282a2e51ca8bca9ed09be8c7a9c73019",
+        "suite_repo": "malaiwah/qwen38-27b-fidelity-suite-v5",
+        "suite_revision": "7797fcce3ffed62b99871348887f4626dc9b2b3b",
+        "suite_token_sha256": "510541f6861b589d44932db253ec25d96d6daaeeee4ea2ab9b65329209482b88",
+        "two_pass": true,
+        "vocab_chunk": 24832,
+        "vocab_size": 248320
+      },
+      "qualifications": {},
+      "runtime": {
+        "decode_hot_ops": [
+          "H128 input",
+          "stock trellis GEMM",
+          "H128/output scale"
+        ],
+        "graph_capturable": true,
+        "incremental_hot_bytes": 0,
+        "materialization_qualification": null,
+        "route_id": "codec-exact/all-trellis-stock-exl3",
+        "sidecar_bytes": 0,
+        "startup_ops": [
+          "load fixed-stride trellis"
+        ]
+      },
+      "schema": "wave5/exl3-action/1",
+      "seed": 360036,
+      "serialized": {
+        "alignment": "safetensors v1: 8-byte header length and 8-byte-padded JSON header; tensor offsets are contiguous",
+        "buffer_bytes": 55750660,
+        "buffers": {
+          "mcg": {
+            "bytes": 4,
+            "dtype": "int32",
+            "sha256": "ade4fb124dda0f3537386cdd4a3cdcea3a223d386e506a4be89394bb33ee13fe",
+            "shape": []
+          },
+          "suh": {
+            "bytes": 10240,
+            "dtype": "float16",
+            "sha256": "b075a226b60738467ee3c114abe2ab995098ff27d93c0b70bd5a076677f2504a",
+            "shape": [
+              5120
+            ]
+          },
+          "svh": {
+            "bytes": 34816,
+            "dtype": "float16",
+            "sha256": "f6b9fc19c2dba260bfcf77b0c483d827a16f035a5db5c4c05be19b4cf9c50e7a",
+            "shape": [
+              17408
+            ]
+          },
+          "trellis": {
+            "bytes": 55705600,
+            "dtype": "int16",
+            "sha256": "7e5cb8782913cb0e8cd6b542e3eb82f21b71ce3f77f21f551144c7f81172adca",
+            "shape": [
+              320,
+              1088,
+              80
+            ]
+          }
+        },
+        "container_overhead_bytes": 472,
+        "dense_byte_law": {
+          "expected_bytes": 55750660,
+          "formula": "numel*K/8 + 2*(in_features+out_features) + marker_bytes",
+          "marker_bytes": 4,
+          "passes": true
+        },
+        "safetensors_sha256": "9396adde1ea261c363eb29b75401087d81551a7124875fc36e44614400dc920a",
+        "standalone_safetensors_bytes": 55751132
+      },
+      "sign_scale_transform": {
+        "implementation": "stock-with-encode-callback",
+        "kind": "stock_sign_scale_transform",
+        "parameters": {
+          "apply_out_scales": true,
+          "global_scale_search": "stock_g_scale_gss",
+          "hadamard": 128,
+          "scales_dtype": "float16",
+          "sign_streams": "torch.randn.sign/fixed-seed"
+        },
+        "recipe_id": "stock.sign-scale-h128-gss",
+        "strength": 0.0
+      },
+      "source_layout": "out_in",
+      "source_revision": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0",
+      "source_tensor_sha256": "33f8e7677f361290d5f6a415c00cb56149a8fdbea20122bc13f0e1004b469565",
+      "split_disjointness": {
+        "artifact_sha256": "7fb0bf2f932d93af78c2ca7f40a0cb41f577a2b7801ae80a4ff44bfcc07cc6d9",
+        "domain_leakage_count": 0,
+        "pairwise_overlap_counts": {
+          "calibration__untouched_test": 0,
+          "calibration__validation": 0,
+          "validation__untouched_test": 0
+        },
+        "predicate_language": "wave5.split-predicate/1",
+        "source_document_overlap_count": 0,
+        "verified": true
+      },
+      "split_manifest_content_sha256": "151c41151142060619e6a7957f36daa4849e53276435df54b74bdfc223596a2e",
+      "split_manifest_sha256": "a7eab6e2d8ee78e8d27655f8e9caf4c7813c43539ba24b31c4941d3d38ee09cc",
+      "split_selections": {
+        "calibration": {
+          "selection_sha256": "490a15969bf7b62b585f24cce644dae48f8021f534b0b2bc7553a46a989ea259",
+          "selector": {
+            "field": "split",
+            "op": "eq",
+            "value": "calibration"
+          }
+        },
+        "untouched_test": {
+          "selection_sha256": "4eaaa72d93790195468c168ee03753fe2a0efa0d04334a5d5335fd083de88bca",
+          "selector": {
+            "field": "split",
+            "op": "eq",
+            "value": "untouched_test"
+          }
+        },
+        "validation": {
+          "selection_sha256": "4c5cf19acc18835ee6d36da91b2b93135c5d33655ca410c079d4d4be83c5a5de",
+          "selector": {
+            "field": "split",
+            "op": "eq",
+            "value": "validation"
+          }
+        }
+      },
+      "target": {
+        "implementation": "stock-with-encode-callback",
+        "kind": "source_basis_target",
+        "parameters": {
+          "basis": "source"
+        },
+        "recipe_id": "stock.source-target",
+        "strength": null
+      },
+      "unit": {
+        "fused_group": null,
+        "granularity": "tensor",
+        "layer_index": 0,
+        "output_splits": [],
+        "role": "gate",
+        "shard_id": null,
+        "tensor_keys": [
+          "model.language_model.layers.0.mlp.gate_proj.weight"
+        ],
+        "topology": "mlp",
+        "unit_id": "qwen38.layer0.mlp.gate_proj"
+      },
+      "viterbi_refinement": {
+        "implementation": "stock-with-encode-callback",
+        "kind": "stock_legal_path",
+        "parameters": {
+          "callback_return": "candidate_tiles_only",
+          "tensor_core_permutation": true,
+          "tile": [
+            16,
+            16
+          ],
+          "viterbi_executor": "harness/pinned-stock"
+        },
+        "recipe_id": "stock.quantize-tiles-viterbi",
+        "strength": null
+      }
+    },
+    "strength_zero_decoded_sha256": "ed3e55d604afb6094a17db76a8eaf6433e884c057b90ef2c9709c2ee5aff7e85",
+    "strength_zero_payload_sha256": "d21d385b80645fd53292cb5ac3c410107060873bd2937ecb97fd6d6a6769a27f"
+  },
+  "independent_review": {
+    "conclusion_changing_blockers": [],
+    "confirmed_invariants": [
+      "actual K5/MCG state graph",
+      "mandatory stock hard projection",
+      "strength-zero buffer/decode identity",
+      "decoder adjoint legal-displacement inner products",
+      "matched guided/random budgets",
+      "20-block falsifier and no validation KLD claim",
+      "complete action bytes"
+    ],
+    "nonblocking_caveat": "Standalone safetensors container hashes may differ while operational buffer hashes/bytes and payload digest match.",
+    "reviewer": "openai-reviewer",
+    "verdict": "APPROVE"
+  },
+  "infrastructure_failures": [
+    {
+      "operation": "gradient capture, 63 positions, 20GiB GPU placement",
+      "outcome": "CUDA OOM; no metric read"
+    },
+    {
+      "operation": "gradient capture, 8 positions, 12GiB GPU placement",
+      "outcome": "CUDA OOM; no metric read"
+    },
+    {
+      "operation": "gradient capture, 8 positions, 1GiB GPU/CPU offload",
+      "outcome": "success"
+    }
+  ],
+  "matched_hard_screen": {
+    "evaluation_contract": {
+      "guided_complete_action_evaluations": 1,
+      "guided_legal_encoder_evaluations": 2,
+      "hard_projection": "pinned stock CUDA Viterbi to stock buffers",
+      "random_complete_action_evaluations": 1,
+      "random_legal_encoder_evaluations": 2,
+      "same_20_working_tiles": true,
+      "scale_fit": "stock on unshifted source",
+      "seed": 360036,
+      "strength": 0.1,
+      "viterbi_calls_per_tile": 2
+    },
+    "guided_action": {
+      "K": 5,
+      "action_id": "R36.guided.K5.mcg.s0.1",
+      "callback": {
+        "content_sha256": "4c7cc581e75925e7a1f3ae3607d214c9e23af271f324c902e1a602871545a957",
+        "expected_interface": {
+          "curvature": "(transformed_damped_H, action) -> same-shape/dtype/device finite H",
+          "legal_path": "(tiles, stock_values, stock_indices, action) -> candidate target tiles only; harness reruns pinned Viterbi",
+          "recurrence": "(stock_block_ldl_L, action) -> same-shape/dtype/device finite L",
+          "scale": "(stock_five_tuple, action) -> identical structure/dtypes/devices",
+          "target": "(source_basis_weight, action) -> same-shape/dtype/device finite target"
+        },
+        "identifier": "r36/guided/hard-stock-viterbi",
+        "implementation_sha256": "7920c764187e1ec950404210baa458a67415215c11bd8611b6d0e0f12c24ed41",
+        "module_files_sha256": {
+          "__main__:r36.py": "b0781ac652d7c9d711f9e4387df326be8fdd66008cfee839f2abb81ab7053f11"
+        },
+        "parameters": {
+          "gradient_path": "/out/adjoint-stock/working-gradient.npy",
+          "hard_projection": "pinned-stock-cuda-viterbi",
+          "mode": "guided",
+          "scale_fit": "stock-unshifted-source",
+          "seed": 360036,
+          "selected_working_tiles": [
+            [
+              0,
+              0
+            ],
+            [
+              159,
+              544
+            ],
+            [
+              319,
+              1087
+            ],
+            [
+              0,
+              1087
+            ],
+            [
+              319,
+              0
+            ],
+            [
+              5,
+              819
+            ],
+            [
+              210,
+              231
+            ],
+            [
+              181,
+              471
+            ],
+            [
+              110,
+              1060
+            ],
+            [
+              300,
+              383
+            ],
+            [
+              310,
+              168
+            ],
+            [
+              213,
+              591
+            ],
+            [
+              286,
+              1027
+            ],
+            [
+              39,
+              267
+            ],
+            [
+              151,
+              933
+            ],
+            [
+              317,
+              430
+            ],
+            [
+              16,
+              452
+            ],
+            [
+              39,
+              80
+            ],
+            [
+              223,
+              655
+            ],
+            [
+              250,
+              694
+            ]
+          ],
+          "strength": 0.1
+        },
+        "version": "1"
+      },
+      "codebook": "mcg",
+      "curvature": {
+        "basis": "source-model input-feature activation basis",
+        "capture_id": "r29/bf16-reference/l0-gate-up/XtX-over-63",
+        "capture_manifest_sha256": "7a1d11d40a6481f7481c2fa0aaf528c140f5b1dfec505c68f7458333f074c9b4",
+        "coordinate_convention": "H rows/columns equal stored [out,in] source tensor input-feature axis before stock seeded sign/H128",
+        "h_dtype": "float32",
+        "h_shape": [
+          5120,
+          5120
+        ],
+        "h_tensor_sha256": "5b71e520ca176a399c80e7a1abc3a47035edd7ff9a0378ae377fc245ec2d62cd",
+        "module_boundary": "qwen38.layer0.mlp.gate_proj",
+        "normalization": "X^T X / N",
+        "observation_count": 63,
+        "tensor_boundary": "model.language_model.layers.0.mlp.gate_proj.weight"
+      },
+      "curvature_correction": {
+        "implementation": "stock-with-encode-callback",
+        "kind": "stock_curvature_recurrence",
+        "parameters": {
+          "block_ldl": 16,
+          "buf_size_k": 128,
+          "sigma_reg": 0.025
+        },
+        "recipe_id": "stock.block-ldl16",
+        "strength": null
+      },
+      "encoder_commit": "5f3c537ca9d89893d771256f5c43c93656553fbb",
+      "encoder_repo": "turboderp-org/exllamav3",
+      "encoder_tree_sha1": "ffc0a1d31c25d4174b96adffef3727f12a7056c7",
+      "encoder_version": "1.4.2",
+      "evidence": {
+        "local_metrics": {},
+        "promoted_kld": null
+      },
+      "hashes": {
+        "action_identity_sha256": "3dd1c65905f77a5aed18cc1ba9d1a269c691f1e8038005391a49fbf23aaed4b2",
+        "payload_sha256": "c6beb13e8bd222d50094c345b5013bbcbf546643a48a1dd94712fa3567a67096",
+        "source_basis_reconstruction_sha256": "fad4a133e7d6b25c18c8405a34ae7fc9472d5daa071cf6b797e3edba54ae603a"
+      },
+      "metric_contract": {
+        "accumulation": "float64",
+        "body_only": true,
+        "bootstrap": {
+          "resamples": 10000,
+          "seed": 1,
+          "unit": "source_cluster"
+        },
+        "contexts": 5120,
+        "direction": "KL(BF16 reference || candidate)",
+        "local_metric_guard": "MSE/OC-HWE/Fisher-HWE/block-output-error are never called KLD",
+        "method_of_record": "docs/42-kld-method.md",
+        "protocol_id": "qwen38-kld-method-v5/body-only-shared-bf16-head",
+        "required_metrics": [
+          "token_mean_kld",
+          "context_macro_mean_kld",
+          "p99",
+          "cvar1pct",
+          "top1_agreement",
+          "full_vocab_ear",
+          "worst_contexts"
+        ],
+        "scored_positions_per_context": 2047,
+        "served_head_axis": "candidate-own/served head contribution is separate from body-only shared-head KLD",
+        "shared_bf16_head_sha256": "25a30fd5f826da0abc4efc4cc71def9f02bcb8085f7175eee284d221dee4cfff",
+        "source_clusters": 842,
+        "suite_manifest_sha256": "c79dfad3767ca5b3015129077f20dbb9282a2e51ca8bca9ed09be8c7a9c73019",
+        "suite_repo": "malaiwah/qwen38-27b-fidelity-suite-v5",
+        "suite_revision": "7797fcce3ffed62b99871348887f4626dc9b2b3b",
+        "suite_token_sha256": "510541f6861b589d44932db253ec25d96d6daaeeee4ea2ab9b65329209482b88",
+        "two_pass": true,
+        "vocab_chunk": 24832,
+        "vocab_size": 248320
+      },
+      "qualifications": {},
+      "runtime": {
+        "decode_hot_ops": [
+          "H128 input",
+          "stock trellis GEMM",
+          "H128/output scale"
+        ],
+        "graph_capturable": true,
+        "incremental_hot_bytes": 0,
+        "materialization_qualification": null,
+        "route_id": "codec-exact/all-trellis-stock-exl3",
+        "sidecar_bytes": 0,
+        "startup_ops": [
+          "load fixed-stride trellis"
+        ]
+      },
+      "schema": "wave5/exl3-action/1",
+      "seed": 360036,
+      "serialized": {
+        "alignment": "safetensors v1: 8-byte header length and 8-byte-padded JSON header; tensor offsets are contiguous",
+        "buffer_bytes": 55750660,
+        "buffers": {
+          "mcg": {
+            "bytes": 4,
+            "dtype": "int32",
+            "sha256": "ade4fb124dda0f3537386cdd4a3cdcea3a223d386e506a4be89394bb33ee13fe",
+            "shape": []
+          },
+          "suh": {
+            "bytes": 10240,
+            "dtype": "float16",
+            "sha256": "b075a226b60738467ee3c114abe2ab995098ff27d93c0b70bd5a076677f2504a",
+            "shape": [
+              5120
+            ]
+          },
+          "svh": {
+            "bytes": 34816,
+            "dtype": "float16",
+            "sha256": "f6b9fc19c2dba260bfcf77b0c483d827a16f035a5db5c4c05be19b4cf9c50e7a",
+            "shape": [
+              17408
+            ]
+          },
+          "trellis": {
+            "bytes": 55705600,
+            "dtype": "int16",
+            "sha256": "d397317db2e37ac9037b0d8bf1054241130e93e53c9689b4f18ce6852f5da051",
+            "shape": [
+              320,
+              1088,
+              80
+            ]
+          }
+        },
+        "container_overhead_bytes": 480,
+        "dense_byte_law": {
+          "expected_bytes": 55750660,
+          "formula": "numel*K/8 + 2*(in_features+out_features) + marker_bytes",
+          "marker_bytes": 4,
+          "passes": true
+        },
+        "safetensors_sha256": "2f0626f59b6abfaf624c932214a84db6e6f620a426fa15e3a76d14883eb21530",
+        "standalone_safetensors_bytes": 55751140
+      },
+      "sign_scale_transform": {
+        "implementation": "stock-with-encode-callback",
+        "kind": "stock_sign_scale_transform",
+        "parameters": {
+          "apply_out_scales": true,
+          "global_scale_search": "stock_g_scale_gss",
+          "hadamard": 128,
+          "scales_dtype": "float16",
+          "sign_streams": "torch.randn.sign/fixed-seed"
+        },
+        "recipe_id": "stock.sign-scale-h128-gss",
+        "strength": null
+      },
+      "source_layout": "out_in",
+      "source_revision": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0",
+      "source_tensor_sha256": "33f8e7677f361290d5f6a415c00cb56149a8fdbea20122bc13f0e1004b469565",
+      "split_disjointness": {
+        "artifact_sha256": "7fb0bf2f932d93af78c2ca7f40a0cb41f577a2b7801ae80a4ff44bfcc07cc6d9",
+        "domain_leakage_count": 0,
+        "pairwise_overlap_counts": {
+          "calibration__untouched_test": 0,
+          "calibration__validation": 0,
+          "validation__untouched_test": 0
+        },
+        "predicate_language": "wave5.split-predicate/1",
+        "source_document_overlap_count": 0,
+        "verified": true
+      },
+      "split_manifest_content_sha256": "151c41151142060619e6a7957f36daa4849e53276435df54b74bdfc223596a2e",
+      "split_manifest_sha256": "a7eab6e2d8ee78e8d27655f8e9caf4c7813c43539ba24b31c4941d3d38ee09cc",
+      "split_selections": {
+        "calibration": {
+          "selection_sha256": "490a15969bf7b62b585f24cce644dae48f8021f534b0b2bc7553a46a989ea259",
+          "selector": {
+            "field": "split",
+            "op": "eq",
+            "value": "calibration"
+          }
+        },
+        "untouched_test": {
+          "selection_sha256": "4eaaa72d93790195468c168ee03753fe2a0efa0d04334a5d5335fd083de88bca",
+          "selector": {
+            "field": "split",
+            "op": "eq",
+            "value": "untouched_test"
+          }
+        },
+        "validation": {
+          "selection_sha256": "4c5cf19acc18835ee6d36da91b2b93135c5d33655ca410c079d4d4be83c5a5de",
+          "selector": {
+            "field": "split",
+            "op": "eq",
+            "value": "validation"
+          }
+        }
+      },
+      "target": {
+        "implementation": "stock-with-encode-callback",
+        "kind": "source_basis_target",
+        "parameters": {
+          "basis": "source"
+        },
+        "recipe_id": "stock.source-target",
+        "strength": null
+      },
+      "unit": {
+        "fused_group": null,
+        "granularity": "tensor",
+        "layer_index": 0,
+        "output_splits": [],
+        "role": "gate",
+        "shard_id": null,
+        "tensor_keys": [
+          "model.language_model.layers.0.mlp.gate_proj.weight"
+        ],
+        "topology": "mlp",
+        "unit_id": "qwen38.layer0.mlp.gate_proj"
+      },
+      "viterbi_refinement": {
+        "implementation": "stock-with-encode-callback",
+        "kind": "stock_legal_path",
+        "parameters": {
+          "callback_return": "candidate_tiles_only",
+          "tensor_core_permutation": true,
+          "tile": [
+            16,
+            16
+          ],
+          "viterbi_executor": "harness/pinned-stock"
+        },
+        "recipe_id": "stock.quantize-tiles-viterbi",
+        "strength": null
+      }
+    },
+    "guided_payload": {
+      "bytes": 55750660,
+      "decoded_sha256": "fad4a133e7d6b25c18c8405a34ae7fc9472d5daa071cf6b797e3edba54ae603a",
+      "sha256": "c6beb13e8bd222d50094c345b5013bbcbf546643a48a1dd94712fa3567a67096"
+    },
+    "guided_signal": {
+      "negative": 11,
+      "positive": 7,
+      "rows": [
+        {
+          "changed_values": 256,
+          "input_tile": 0,
+          "linear_kl_term": -5.390619859586879e-08,
+          "output_tile": 0
+        },
+        {
+          "changed_values": 256,
+          "input_tile": 159,
+          "linear_kl_term": 9.64063265070766e-09,
+          "output_tile": 544
+        },
+        {
+          "changed_values": 0,
+          "input_tile": 319,
+          "linear_kl_term": 0.0,
+          "output_tile": 1087
+        },
+        {
+          "changed_values": 256,
+          "input_tile": 0,
+          "linear_kl_term": -4.4722961404589774e-08,
+          "output_tile": 1087
+        },
+        {
+          "changed_values": 0,
+          "input_tile": 319,
+          "linear_kl_term": 0.0,
+          "output_tile": 0
+        },
+        {
+          "changed_values": 256,
+          "input_tile": 5,
+          "linear_kl_term": -2.4277015659623163e-08,
+          "output_tile": 819
+        },
+        {
+          "changed_values": 256,
+          "input_tile": 210,
+          "linear_kl_term": 8.502785849186452e-10,
+          "output_tile": 231
+        },
+        {
+          "changed_values": 256,
+          "input_tile": 181,
+          "linear_kl_term": 1.2576874812756525e-09,
+          "output_tile": 471
+        },
+        {
+          "changed_values": 256,
+          "input_tile": 110,
+          "linear_kl_term": 1.11818319361858e-08,
+          "output_tile": 1060
+        },
+        {
+          "changed_values": 256,
+          "input_tile": 300,
+          "linear_kl_term": -1.0346515519091508e-08,
+          "output_tile": 383
+        },
+        {
+          "changed_values": 256,
+          "input_tile": 310,
+          "linear_kl_term": -2.0653801916551772e-10,
+          "output_tile": 168
+        },
+        {
+          "changed_values": 256,
+          "input_tile": 213,
+          "linear_kl_term": -1.9046378557685536e-09,
+          "output_tile": 591
+        },
+        {
+          "changed_values": 256,
+          "input_tile": 286,
+          "linear_kl_term": -1.976086143712757e-08,
+          "output_tile": 1027
+        },
+        {
+          "changed_values": 256,
+          "input_tile": 39,
+          "linear_kl_term": 4.2084348446640076e-11,
+          "output_tile": 267
+        },
+        {
+          "changed_values": 256,
+          "input_tile": 151,
+          "linear_kl_term": -6.828486900505315e-09,
+          "output_tile": 933
+        },
+        {
+          "changed_values": 256,
+          "input_tile": 317,
+          "linear_kl_term": -5.3276047397172975e-09,
+          "output_tile": 430
+        },
+        {
+          "changed_values": 256,
+          "input_tile": 16,
+          "linear_kl_term": -2.664265890737028e-07,
+          "output_tile": 452
+        },
+        {
+          "changed_values": 256,
+          "input_tile": 39,
+          "linear_kl_term": 5.687260282167813e-10,
+          "output_tile": 80
+        },
+        {
+          "changed_values": 256,
+          "input_tile": 223,
+          "linear_kl_term": 5.527067672774005e-10,
+          "output_tile": 655
+        },
+        {
+          "changed_values": 256,
+          "input_tile": 250,
+          "linear_kl_term": -5.713914770613208e-09,
+          "output_tile": 694
+        }
+      ],
+      "stable_negative_gate": false,
+      "zero": 2
+    },
+    "guided_total_linear_kl_term": -1.530798316054288e-06,
+    "random_action": {
+      "K": 5,
+      "action_id": "R36.random.K5.mcg.s0.1",
+      "callback": {
+        "content_sha256": "8ed2b0c50b1b0222e9e59919e54ce8d1c88561984252b257596b94e67162cb21",
+        "expected_interface": {
+          "curvature": "(transformed_damped_H, action) -> same-shape/dtype/device finite H",
+          "legal_path": "(tiles, stock_values, stock_indices, action) -> candidate target tiles only; harness reruns pinned Viterbi",
+          "recurrence": "(stock_block_ldl_L, action) -> same-shape/dtype/device finite L",
+          "scale": "(stock_five_tuple, action) -> identical structure/dtypes/devices",
+          "target": "(source_basis_weight, action) -> same-shape/dtype/device finite target"
+        },
+        "identifier": "r36/random/hard-stock-viterbi",
+        "implementation_sha256": "7920c764187e1ec950404210baa458a67415215c11bd8611b6d0e0f12c24ed41",
+        "module_files_sha256": {
+          "__main__:r36.py": "b0781ac652d7c9d711f9e4387df326be8fdd66008cfee839f2abb81ab7053f11"
+        },
+        "parameters": {
+          "gradient_path": null,
+          "hard_projection": "pinned-stock-cuda-viterbi",
+          "mode": "random",
+          "scale_fit": "stock-unshifted-source",
+          "seed": 360036,
+          "selected_working_tiles": [
+            [
+              0,
+              0
+            ],
+            [
+              159,
+              544
+            ],
+            [
+              319,
+              1087
+            ],
+            [
+              0,
+              1087
+            ],
+            [
+              319,
+              0
+            ],
+            [
+              5,
+              819
+            ],
+            [
+              210,
+              231
+            ],
+            [
+              181,
+              471
+            ],
+            [
+              110,
+              1060
+            ],
+            [
+              300,
+              383
+            ],
+            [
+              310,
+              168
+            ],
+            [
+              213,
+              591
+            ],
+            [
+              286,
+              1027
+            ],
+            [
+              39,
+              267
+            ],
+            [
+              151,
+              933
+            ],
+            [
+              317,
+              430
+            ],
+            [
+              16,
+              452
+            ],
+            [
+              39,
+              80
+            ],
+            [
+              223,
+              655
+            ],
+            [
+              250,
+              694
+            ]
+          ],
+          "strength": 0.1
+        },
+        "version": "1"
+      },
+      "codebook": "mcg",
+      "curvature": {
+        "basis": "source-model input-feature activation basis",
+        "capture_id": "r29/bf16-reference/l0-gate-up/XtX-over-63",
+        "capture_manifest_sha256": "7a1d11d40a6481f7481c2fa0aaf528c140f5b1dfec505c68f7458333f074c9b4",
+        "coordinate_convention": "H rows/columns equal stored [out,in] source tensor input-feature axis before stock seeded sign/H128",
+        "h_dtype": "float32",
+        "h_shape": [
+          5120,
+          5120
+        ],
+        "h_tensor_sha256": "5b71e520ca176a399c80e7a1abc3a47035edd7ff9a0378ae377fc245ec2d62cd",
+        "module_boundary": "qwen38.layer0.mlp.gate_proj",
+        "normalization": "X^T X / N",
+        "observation_count": 63,
+        "tensor_boundary": "model.language_model.layers.0.mlp.gate_proj.weight"
+      },
+      "curvature_correction": {
+        "implementation": "stock-with-encode-callback",
+        "kind": "stock_curvature_recurrence",
+        "parameters": {
+          "block_ldl": 16,
+          "buf_size_k": 128,
+          "sigma_reg": 0.025
+        },
+        "recipe_id": "stock.block-ldl16",
+        "strength": null
+      },
+      "encoder_commit": "5f3c537ca9d89893d771256f5c43c93656553fbb",
+      "encoder_repo": "turboderp-org/exllamav3",
+      "encoder_tree_sha1": "ffc0a1d31c25d4174b96adffef3727f12a7056c7",
+      "encoder_version": "1.4.2",
+      "evidence": {
+        "local_metrics": {},
+        "promoted_kld": null
+      },
+      "hashes": {
+        "action_identity_sha256": "c6790a12992a3789799eaabfdb95409263801b748494df8caa2234aedd1fec88",
+        "payload_sha256": "e2033212650fcca0c82b677f7afe747ba736a38baa983f8cff729ac469cdb644",
+        "source_basis_reconstruction_sha256": "d14c1aa59512a05197fb835093097f4823c21ae017887b0f9da19bf1c6982daf"
+      },
+      "metric_contract": {
+        "accumulation": "float64",
+        "body_only": true,
+        "bootstrap": {
+          "resamples": 10000,
+          "seed": 1,
+          "unit": "source_cluster"
+        },
+        "contexts": 5120,
+        "direction": "KL(BF16 reference || candidate)",
+        "local_metric_guard": "MSE/OC-HWE/Fisher-HWE/block-output-error are never called KLD",
+        "method_of_record": "docs/42-kld-method.md",
+        "protocol_id": "qwen38-kld-method-v5/body-only-shared-bf16-head",
+        "required_metrics": [
+          "token_mean_kld",
+          "context_macro_mean_kld",
+          "p99",
+          "cvar1pct",
+          "top1_agreement",
+          "full_vocab_ear",
+          "worst_contexts"
+        ],
+        "scored_positions_per_context": 2047,
+        "served_head_axis": "candidate-own/served head contribution is separate from body-only shared-head KLD",
+        "shared_bf16_head_sha256": "25a30fd5f826da0abc4efc4cc71def9f02bcb8085f7175eee284d221dee4cfff",
+        "source_clusters": 842,
+        "suite_manifest_sha256": "c79dfad3767ca5b3015129077f20dbb9282a2e51ca8bca9ed09be8c7a9c73019",
+        "suite_repo": "malaiwah/qwen38-27b-fidelity-suite-v5",
+        "suite_revision": "7797fcce3ffed62b99871348887f4626dc9b2b3b",
+        "suite_token_sha256": "510541f6861b589d44932db253ec25d96d6daaeeee4ea2ab9b65329209482b88",
+        "two_pass": true,
+        "vocab_chunk": 24832,
+        "vocab_size": 248320
+      },
+      "qualifications": {},
+      "runtime": {
+        "decode_hot_ops": [
+          "H128 input",
+          "stock trellis GEMM",
+          "H128/output scale"
+        ],
+        "graph_capturable": true,
+        "incremental_hot_bytes": 0,
+        "materialization_qualification": null,
+        "route_id": "codec-exact/all-trellis-stock-exl3",
+        "sidecar_bytes": 0,
+        "startup_ops": [
+          "load fixed-stride trellis"
+        ]
+      },
+      "schema": "wave5/exl3-action/1",
+      "seed": 360036,
+      "serialized": {
+        "alignment": "safetensors v1: 8-byte header length and 8-byte-padded JSON header; tensor offsets are contiguous",
+        "buffer_bytes": 55750660,
+        "buffers": {
+          "mcg": {
+            "bytes": 4,
+            "dtype": "int32",
+            "sha256": "ade4fb124dda0f3537386cdd4a3cdcea3a223d386e506a4be89394bb33ee13fe",
+            "shape": []
+          },
+          "suh": {
+            "bytes": 10240,
+            "dtype": "float16",
+            "sha256": "b075a226b60738467ee3c114abe2ab995098ff27d93c0b70bd5a076677f2504a",
+            "shape": [
+              5120
+            ]
+          },
+          "svh": {
+            "bytes": 34816,
+            "dtype": "float16",
+            "sha256": "f6b9fc19c2dba260bfcf77b0c483d827a16f035a5db5c4c05be19b4cf9c50e7a",
+            "shape": [
+              17408
+            ]
+          },
+          "trellis": {
+            "bytes": 55705600,
+            "dtype": "int16",
+            "sha256": "938f33f5b51bd3eb2e52e854a7098209720ea6b4b306dc9891de4d3e4ae0f5ad",
+            "shape": [
+              320,
+              1088,
+              80
+            ]
+          }
+        },
+        "container_overhead_bytes": 480,
+        "dense_byte_law": {
+          "expected_bytes": 55750660,
+          "formula": "numel*K/8 + 2*(in_features+out_features) + marker_bytes",
+          "marker_bytes": 4,
+          "passes": true
+        },
+        "safetensors_sha256": "d87ad18f84c36aad86f379943b47c4ffee47727b008424fe73021691ff03c37b",
+        "standalone_safetensors_bytes": 55751140
+      },
+      "sign_scale_transform": {
+        "implementation": "stock-with-encode-callback",
+        "kind": "stock_sign_scale_transform",
+        "parameters": {
+          "apply_out_scales": true,
+          "global_scale_search": "stock_g_scale_gss",
+          "hadamard": 128,
+          "scales_dtype": "float16",
+          "sign_streams": "torch.randn.sign/fixed-seed"
+        },
+        "recipe_id": "stock.sign-scale-h128-gss",
+        "strength": null
+      },
+      "source_layout": "out_in",
+      "source_revision": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0",
+      "source_tensor_sha256": "33f8e7677f361290d5f6a415c00cb56149a8fdbea20122bc13f0e1004b469565",
+      "split_disjointness": {
+        "artifact_sha256": "7fb0bf2f932d93af78c2ca7f40a0cb41f577a2b7801ae80a4ff44bfcc07cc6d9",
+        "domain_leakage_count": 0,
+        "pairwise_overlap_counts": {
+          "calibration__untouched_test": 0,
+          "calibration__validation": 0,
+          "validation__untouched_test": 0
+        },
+        "predicate_language": "wave5.split-predicate/1",
+        "source_document_overlap_count": 0,
+        "verified": true
+      },
+      "split_manifest_content_sha256": "151c41151142060619e6a7957f36daa4849e53276435df54b74bdfc223596a2e",
+      "split_manifest_sha256": "a7eab6e2d8ee78e8d27655f8e9caf4c7813c43539ba24b31c4941d3d38ee09cc",
+      "split_selections": {
+        "calibration": {
+          "selection_sha256": "490a15969bf7b62b585f24cce644dae48f8021f534b0b2bc7553a46a989ea259",
+          "selector": {
+            "field": "split",
+            "op": "eq",
+            "value": "calibration"
+          }
+        },
+        "untouched_test": {
+          "selection_sha256": "4eaaa72d93790195468c168ee03753fe2a0efa0d04334a5d5335fd083de88bca",
+          "selector": {
+            "field": "split",
+            "op": "eq",
+            "value": "untouched_test"
+          }
+        },
+        "validation": {
+          "selection_sha256": "4c5cf19acc18835ee6d36da91b2b93135c5d33655ca410c079d4d4be83c5a5de",
+          "selector": {
+            "field": "split",
+            "op": "eq",
+            "value": "validation"
+          }
+        }
+      },
+      "target": {
+        "implementation": "stock-with-encode-callback",
+        "kind": "source_basis_target",
+        "parameters": {
+          "basis": "source"
+        },
+        "recipe_id": "stock.source-target",
+        "strength": null
+      },
+      "unit": {
+        "fused_group": null,
+        "granularity": "tensor",
+        "layer_index": 0,
+        "output_splits": [],
+        "role": "gate",
+        "shard_id": null,
+        "tensor_keys": [
+          "model.language_model.layers.0.mlp.gate_proj.weight"
+        ],
+        "topology": "mlp",
+        "unit_id": "qwen38.layer0.mlp.gate_proj"
+      },
+      "viterbi_refinement": {
+        "implementation": "stock-with-encode-callback",
+        "kind": "stock_legal_path",
+        "parameters": {
+          "callback_return": "candidate_tiles_only",
+          "tensor_core_permutation": true,
+          "tile": [
+            16,
+            16
+          ],
+          "viterbi_executor": "harness/pinned-stock"
+        },
+        "recipe_id": "stock.quantize-tiles-viterbi",
+        "strength": null
+      }
+    },
+    "random_payload": {
+      "bytes": 55750660,
+      "decoded_sha256": "d14c1aa59512a05197fb835093097f4823c21ae017887b0f9da19bf1c6982daf",
+      "sha256": "e2033212650fcca0c82b677f7afe747ba736a38baa983f8cff729ac469cdb644"
+    },
+    "random_signal": {
+      "negative": 10,
+      "positive": 8,
+      "rows": [
+        {
+          "changed_values": 256,
+          "input_tile": 0,
+          "linear_kl_term": 1.5978498482780096e-08,
+          "output_tile": 0
+        },
+        {
+          "changed_values": 256,
+          "input_tile": 159,
+          "linear_kl_term": 9.888804483024635e-09,
+          "output_tile": 544
+        },
+        {
+          "changed_values": 0,
+          "input_tile": 319,
+          "linear_kl_term": 0.0,
+          "output_tile": 1087
+        },
+        {
+          "changed_values": 256,
+          "input_tile": 0,
+          "linear_kl_term": -6.7899196000699314e-09,
+          "output_tile": 1087
+        },
+        {
+          "changed_values": 0,
+          "input_tile": 319,
+          "linear_kl_term": 0.0,
+          "output_tile": 0
+        },
+        {
+          "changed_values": 256,
+          "input_tile": 5,
+          "linear_kl_term": -4.458414534123968e-09,
+          "output_tile": 819
+        },
+        {
+          "changed_values": 256,
+          "input_tile": 210,
+          "linear_kl_term": 8.347183707774393e-10,
+          "output_tile": 231
+        },
+        {
+          "changed_values": 256,
+          "input_tile": 181,
+          "linear_kl_term": -7.14196233617165e-09,
+          "output_tile": 471
+        },
+        {
+          "changed_values": 256,
+          "input_tile": 110,
+          "linear_kl_term": -4.886423821254625e-10,
+          "output_tile": 1060
+        },
+        {
+          "changed_values": 256,
+          "input_tile": 300,
+          "linear_kl_term": -4.861043002400005e-10,
+          "output_tile": 383
+        },
+        {
+          "changed_values": 256,
+          "input_tile": 310,
+          "linear_kl_term": 4.4684901932952725e-09,
+          "output_tile": 168
+        },
+        {
+          "changed_values": 256,
+          "input_tile": 213,
+          "linear_kl_term": -2.1504327690387546e-09,
+          "output_tile": 591
+        },
+        {
+          "changed_values": 256,
+          "input_tile": 286,
+          "linear_kl_term": -2.6392377914257243e-09,
+          "output_tile": 1027
+        },
+        {
+          "changed_values": 256,
+          "input_tile": 39,
+          "linear_kl_term": -2.2805539075845528e-08,
+          "output_tile": 267
+        },
+        {
+          "changed_values": 256,
+          "input_tile": 151,
+          "linear_kl_term": -6.085169538053125e-09,
+          "output_tile": 933
+        },
+        {
+          "changed_values": 256,
+          "input_tile": 317,
+          "linear_kl_term": 2.37511476573659e-10,
+          "output_tile": 430
+        },
+        {
+          "changed_values": 256,
+          "input_tile": 16,
+          "linear_kl_term": 1.4066565863891338e-11,
+          "output_tile": 452
+        },
+        {
+          "changed_values": 256,
+          "input_tile": 39,
+          "linear_kl_term": -2.62889710373143e-09,
+          "output_tile": 80
+        },
+        {
+          "changed_values": 256,
+          "input_tile": 223,
+          "linear_kl_term": 2.057334196280861e-09,
+          "output_tile": 655
+        },
+        {
+          "changed_values": 256,
+          "input_tile": 250,
+          "linear_kl_term": 1.2834762585349059e-09,
+          "output_tile": 694
+        }
+      ],
+      "stable_negative_gate": false,
+      "zero": 2
+    },
+    "random_total_linear_kl_term": -7.208258876866425e-08
+  },
+  "phase_decision": {
+    "conditional_methods_run": false,
+    "eligible_action_rows": 0,
+    "note": "The negative aggregate linear term is not KLD and supports no fidelity claim.",
+    "observed": "11 negative, 7 positive, 2 unchanged",
+    "pass": false,
+    "promote_to_bcjr_gumbel_qes": false,
+    "reason": "hard projected final-KL linear terms were not sign-stable across >=20 blocks",
+    "relinearization_runs": 0,
+    "stable_hard_path_gate": "guided negative on at least 16 of 20 preregistered working blocks",
+    "validation_kld_run": false
+  },
+  "pins": {
+    "action_schema_sha256": "275644ed86017f54953d7eecd2f843e6b6f6c14ae52df163ef5827179edf7af8",
+    "decoder_route": "codec-exact/all-trellis-stock-exl3",
+    "exl3_commit": "5f3c537ca9d89893d771256f5c43c93656553fbb",
+    "exl3_tree_sha1": "ffc0a1d31c25d4174b96adffef3727f12a7056c7",
+    "extension_binary_sha256": "e2e26e0dcfa6eb637215c673a30522076c9d530140cd0d5c727ca549f2d8801e",
+    "harness_sha256": "d4dfd35cd7b85beab11d33de110eb240ca87162e4a01ec434cb19e5b6a82605d"
+  },
+  "raw_receipts": {
+    "adjoint-guided.json": "ddde3121add032b641482695df12630caadec7e4f5f6480e6880728b9e9e79de",
+    "adjoint-random.json": "1bb7d3996b7430ee09753a543b7d1b8ed3f5e626c778cbfe5d7cdea8ffdcc872",
+    "gradient.json": "8328c66b67367566f44951b5933a2106cac34a19daca017a0e0bfcfac22ab6db",
+    "guided.json": "f36422d3ef68037d05ff7731db0f07edd9929a8a789a776b4ea854f71d4f0604",
+    "random.json": "ebc5a3a1e22600e16c553aa7deba8fe9fe195a7e402ae82afdedabf810c74510",
+    "stock.json": "84dcad148ce94d6002c1d82d125f12c0be5753a8347d668dbbb57758bb5d6db4",
+    "zero.json": "7f8c373db9c41005d77fa4903f85c59af295531fe265d38c2d13eaeccf940925"
+  },
+  "run_id": "R36-finalkl-bcjr-20260821",
+  "schema": "wave5/r36-finalkl-bcjr/1",
+  "service_handoff": {
+    "gpu_processes_exited": true,
+    "reason": "direct handoff to Main-queued R30-CaptureLauncher; that operator owns restore",
+    "service_left_stopped": true
+  },
+  "stage": "phase-b-calibration-hard-gate",
+  "status": "scientific-negative",
+  "target": {
+    "K": 5,
+    "codebook": "mcg",
+    "curvature": "R29 BF16-reference X^T X / N, 63 activation rows",
+    "layer": 0,
+    "role": "gate",
+    "shape": [
+      17408,
+      5120
+    ],
+    "source_sha256": "33f8e7677f361290d5f6a415c00cb56149a8fdbea20122bc13f0e1004b469565",
+    "tensor_key": "model.language_model.layers.0.mlp.gate_proj.weight",
+    "topology": "mlp",
+    "working_blocks": 20
+  },
+  "utc": "2026-08-21T15:35:00Z"
+}

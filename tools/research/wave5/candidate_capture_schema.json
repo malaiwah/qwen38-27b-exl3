@@ -1,0 +1,238 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://malaiwah.invalid/schemas/qwen38-wave5-candidate-capture-1.json",
+  "title": "Wave 5 one-tensor candidate checkpoint and capture evidence",
+  "oneOf": [
+    {"$ref": "#/$defs/checkpoint"},
+    {"$ref": "#/$defs/captureBinding"},
+    {"$ref": "#/$defs/captureExecution"},
+    {"$ref": "#/$defs/result"}
+  ],
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "pathHash": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "checkpointIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["model_revision", "index_sha256", "config_sha256", "shard_sha256"],
+      "properties": {
+        "model_revision": {"type": ["string", "null"]},
+        "index_sha256": {"$ref": "#/$defs/sha256"},
+        "config_sha256": {"$ref": "#/$defs/sha256"},
+        "shard_sha256": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {"$ref": "#/$defs/sha256"}
+        }
+      }
+    },
+    "checkpoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema", "source_checkpoint", "candidate_checkpoint",
+        "source_checkpoint_identity", "source_checkpoint_identity_sha256",
+        "candidate_checkpoint_identity", "candidate_checkpoint_identity_sha256",
+        "source_index_sha256", "candidate_index_sha256",
+        "source_config_sha256", "candidate_config_sha256",
+        "logical_tensor_key", "physical_tensor_keys",
+        "action_identity_sha256", "action_file_sha256", "action_harness_sha256",
+        "operational_extension_sha256", "action_payload_sha256",
+        "action_source_tensor_sha256", "action_source_revision",
+        "action_split_manifest_sha256", "action_split_manifest_content_sha256",
+        "action_split_selections", "action_split_disjointness_sha256",
+        "codec_route_id",
+        "changed_shard", "source_changed_shard_sha256", "candidate_changed_shard_sha256",
+        "unchanged_shard_sha256", "changed_shard_rewrite",
+        "unchanged_component_count", "unchanged_component_manifest_sha256",
+        "exact_checkpoint_bytes", "checkpoint_byte_manifest",
+        "preserved_action", "preserved_payload", "preserved_changed_shard",
+        "clone_methods", "disk", "complete"
+      ],
+      "properties": {
+        "schema": {"const": "qwen38-wave5-one-tensor-checkpoint/1"},
+        "source_checkpoint": {"type": "string", "minLength": 1},
+        "candidate_checkpoint": {"type": "string", "minLength": 1},
+        "source_checkpoint_identity": {"$ref": "#/$defs/checkpointIdentity"},
+        "source_checkpoint_identity_sha256": {"$ref": "#/$defs/sha256"},
+        "candidate_checkpoint_identity": {"$ref": "#/$defs/checkpointIdentity"},
+        "candidate_checkpoint_identity_sha256": {"$ref": "#/$defs/sha256"},
+        "source_index_sha256": {"$ref": "#/$defs/sha256"},
+        "candidate_index_sha256": {"$ref": "#/$defs/sha256"},
+        "source_config_sha256": {"$ref": "#/$defs/sha256"},
+        "candidate_config_sha256": {"$ref": "#/$defs/sha256"},
+        "logical_tensor_key": {"type": "string", "pattern": "\\.weight$"},
+        "physical_tensor_keys": {
+          "type": "object",
+          "minProperties": 3,
+          "maxProperties": 4,
+          "required": ["suh", "svh", "trellis"],
+          "additionalProperties": {"type": "string", "minLength": 1}
+        },
+        "action_identity_sha256": {"$ref": "#/$defs/sha256"},
+        "action_file_sha256": {"$ref": "#/$defs/sha256"},
+        "action_harness_sha256": {"const": "d4dfd35cd7b85beab11d33de110eb240ca87162e4a01ec434cb19e5b6a82605d"},
+        "operational_extension_sha256": {"const": "e2e26e0dcfa6eb637215c673a30522076c9d530140cd0d5c727ca549f2d8801e"},
+        "action_payload_sha256": {"$ref": "#/$defs/sha256"},
+        "action_source_tensor_sha256": {"$ref": "#/$defs/sha256"},
+        "action_source_revision": {"type": "string", "minLength": 1},
+        "action_split_manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "action_split_manifest_content_sha256": {"$ref": "#/$defs/sha256"},
+        "action_split_selections": {
+          "type": "object",
+          "required": ["calibration", "validation", "untouched_test"],
+          "additionalProperties": false,
+          "properties": {
+            "calibration": {"type": "object"},
+            "validation": {"type": "object"},
+            "untouched_test": {"type": "object"}
+          }
+        },
+        "action_split_disjointness_sha256": {"$ref": "#/$defs/sha256"},
+        "codec_route_id": {"const": "codec-exact/all-trellis-stock-exl3"},
+        "changed_shard": {"type": "string", "minLength": 1},
+        "source_changed_shard_sha256": {"$ref": "#/$defs/sha256"},
+        "candidate_changed_shard_sha256": {"$ref": "#/$defs/sha256"},
+        "unchanged_shard_sha256": {
+          "type": "object",
+          "additionalProperties": {"$ref": "#/$defs/sha256"}
+        },
+        "changed_shard_rewrite": {
+          "type": "object",
+          "additionalProperties": true,
+          "required": [
+            "source_header_sha256", "candidate_header_sha256",
+            "unchanged_tensor_buffers", "unchanged_tensor_buffer_manifest_sha256",
+            "range_copy_methods", "replacement_tensor_buffers",
+            "candidate_shard_sha256", "candidate_shard_bytes"
+          ],
+          "properties": {
+            "source_header_sha256": {"$ref": "#/$defs/sha256"},
+            "candidate_header_sha256": {"$ref": "#/$defs/sha256"},
+            "range_copy_methods": {
+              "type": "object",
+              "additionalProperties": {"type": "integer", "minimum": 0}
+            },
+            "unchanged_tensor_buffers": {"type": "integer", "minimum": 0},
+            "unchanged_tensor_buffer_manifest_sha256": {"$ref": "#/$defs/sha256"},
+            "replacement_tensor_buffers": {
+              "type": "object",
+              "minProperties": 3,
+              "maxProperties": 4,
+              "additionalProperties": {"$ref": "#/$defs/sha256"}
+            },
+            "candidate_shard_sha256": {"$ref": "#/$defs/sha256"},
+            "candidate_shard_bytes": {"type": "integer", "minimum": 1}
+          }
+        },
+        "unchanged_component_count": {"type": "integer", "minimum": 1},
+        "unchanged_component_manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "exact_checkpoint_bytes": {"type": "integer", "minimum": 1},
+        "checkpoint_byte_manifest": {"$ref": "#/$defs/pathHash"},
+        "preserved_action": {"$ref": "#/$defs/pathHash"},
+        "preserved_payload": {"$ref": "#/$defs/pathHash"},
+        "preserved_changed_shard": {"$ref": "#/$defs/pathHash"},
+        "clone_methods": {
+          "type": "object",
+          "additionalProperties": {"type": "integer", "minimum": 0}
+        },
+        "disk": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "free_before_bytes", "free_after_materialize_bytes",
+            "reserved_capture_bytes", "minimum_free_bytes"
+          ],
+          "properties": {
+            "free_before_bytes": {"type": "integer", "minimum": 0},
+            "free_after_materialize_bytes": {"type": "integer", "minimum": 0},
+            "reserved_capture_bytes": {"type": "integer", "minimum": 1},
+            "minimum_free_bytes": {"type": "integer", "minimum": 1}
+          }
+        },
+        "complete": {"const": true}
+      }
+    },
+    "captureBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema", "role", "checkpoint_identity_sha256", "capture_manifest_sha256",
+        "capture_execution", "capture_execution_receipt",
+        "action_identity_sha256", "action_file_sha256", "action_payload_sha256",
+        "logical_tensor_key", "changed_shard_sha256",
+        "r29_validation_selection_sha256", "suite_manifest_sha256",
+        "suite_token_sha256", "shared_head_sha256", "codec_route_id",
+        "canonical_artifacts"
+      ],
+      "properties": {
+        "schema": {"const": "qwen38-wave5-capture-binding/2"},
+        "role": {"const": "candidate"},
+        "checkpoint_identity_sha256": {"$ref": "#/$defs/sha256"},
+        "capture_manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "capture_execution": {"type": "object"},
+        "capture_execution_receipt": {"$ref": "#/$defs/pathHash"},
+        "action_identity_sha256": {"$ref": "#/$defs/sha256"},
+        "action_file_sha256": {"$ref": "#/$defs/sha256"},
+        "action_payload_sha256": {"$ref": "#/$defs/sha256"},
+        "logical_tensor_key": {"type": "string", "pattern": "\\.weight$"},
+        "changed_shard_sha256": {"$ref": "#/$defs/sha256"},
+        "r29_validation_selection_sha256": {"$ref": "#/$defs/sha256"},
+        "suite_manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "suite_token_sha256": {"$ref": "#/$defs/sha256"},
+        "shared_head_sha256": {"$ref": "#/$defs/sha256"},
+        "codec_route_id": {"const": "codec-exact/all-trellis-stock-exl3"},
+        "canonical_artifacts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["v5", "v3"],
+          "properties": {
+            "v5": {"type": "object"},
+            "v3": {"type": "object"}
+          }
+        }
+      }
+    },
+    "captureExecution": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "schema", "status", "command", "elapsed_sec", "container_image", "gpu",
+        "repository_head_fidelity_path", "repository_head_fidelity_sha256",
+        "checkpoint_identity_sha256"
+      ],
+      "properties": {
+        "schema": {"const": "qwen38-wave5-capture-execution/1"},
+        "status": {"enum": ["pass", "fail"]},
+        "command": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+        "elapsed_sec": {"type": "number", "minimum": 0},
+        "container_image": {"type": "object"},
+        "gpu": {"type": "object"},
+        "repository_head_fidelity_path": {"type": "string", "minLength": 1},
+        "repository_head_fidelity_sha256": {"$ref": "#/$defs/sha256"},
+        "checkpoint_identity_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["schema", "status", "candidate_id", "checkpoint", "capture", "r31_validation_replay"],
+      "properties": {
+        "schema": {"const": "qwen38-wave5-candidate-capture-result/1"},
+        "status": {"const": "pass"},
+        "candidate_id": {"type": "string", "minLength": 1},
+        "checkpoint": {"$ref": "#/$defs/checkpoint"},
+        "capture": {"type": "object"},
+        "r31_validation_replay": {"type": "object"}
+      }
+    }
+  }
+}

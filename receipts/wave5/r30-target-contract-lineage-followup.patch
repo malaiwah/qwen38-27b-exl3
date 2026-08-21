@@ -1,0 +1,85 @@
+--- a/tools/research/wave5/exl3_action.py
++++ b/tools/research/wave5/exl3_action.py
+@@ -544,6 +544,7 @@
+     seed: int
+     split_manifest_sha256: str
+     split_selections: Mapping[str, Mapping[str, Any]]
++    split_manifest_content_sha256: str
+     split_disjointness: SplitDisjointness
+     source_tensor_sha256: str
+     source_revision: str
+@@ -595,6 +596,7 @@
+         ):
+             raise ContractError("action does not name the pinned stock encoder repo/commit/tree/version")
+         validate_sha256("split_manifest_sha256", self.split_manifest_sha256)
++        validate_sha256("split_manifest_content_sha256", self.split_manifest_content_sha256)
+         if set(self.split_selections) != set(SPLIT_NAMES):
+             raise ContractError("split selections must name calibration, validation, and untouched_test")
+         selection_hashes: set[str] = set()
+@@ -1278,6 +1280,7 @@
+     split_selections: Mapping[str, Mapping[str, Any]],
+     split_disjointness: SplitDisjointness,
+     evidence: Mapping[str, Any],
++    split_manifest_content_sha256: str,
+     route_id: str = "codec-exact/all-trellis-stock-exl3",
+     materialization_qualification: Mapping[str, Any] | None = None,
+     target_parameters: Mapping[str, Any] | None = None,
+@@ -1336,6 +1339,7 @@
+         ),
+         seed=seed,
+         split_manifest_sha256=split_manifest_sha256,
++        split_manifest_content_sha256=split_manifest_content_sha256,
+         split_selections=split_selections,
+         split_disjointness=split_disjointness,
+         source_tensor_sha256=source_sha256,
+@@ -1415,10 +1419,14 @@
+         "scope": "codec-smoke/no-fidelity-claim",
+         "selections": split_selections,
+     }
+-    split_manifest_sha256 = sha256_bytes(canonical_json(split_manifest_body))
++    split_manifest_bytes = canonical_json(split_manifest_body)
++    split_manifest_content_sha256 = sha256_bytes(split_manifest_bytes)
++    # The synthetic smoke writes canonical bytes directly, so file/content hashes coincide.
++    split_manifest_sha256 = sha256_bytes(split_manifest_bytes)
+     audit_body = {
+         "schema": "wave5/split-disjointness/1",
+         "split_manifest_sha256": split_manifest_sha256,
++        "split_manifest_content_sha256": split_manifest_content_sha256,
+         "split_selections": split_selections,
+         "pairwise_overlap_counts": {
+             "calibration__validation": 0,
+@@ -1431,6 +1439,7 @@
+     }
+     return {
+         "split_manifest_sha256": split_manifest_sha256,
++        "split_manifest_content_sha256": split_manifest_content_sha256,
+         "split_selections": split_selections,
+         "split_disjointness": SplitDisjointness(
+             artifact_sha256=sha256_bytes(canonical_json(audit_body)),
+@@ -1634,6 +1643,7 @@
+         },
+         "split_control": {
+             "split_manifest_sha256": smoke_manifest_args["split_manifest_sha256"],
++            "split_manifest_content_sha256": smoke_manifest_args["split_manifest_content_sha256"],
+             "split_selections": smoke_manifest_args["split_selections"],
+             "disjointness": dataclasses.asdict(smoke_manifest_args["split_disjointness"]),
+             "claim_scope": "synthetic codec-smoke partitions; not promoted fidelity data",
+--- a/tools/research/wave5/exl3_action_schema.json
++++ b/tools/research/wave5/exl3_action_schema.json
+@@ -9,7 +9,7 @@
+     "schema", "action_id", "unit", "K", "codebook",
+     "sign_scale_transform", "target", "curvature_correction", "viterbi_refinement",
+     "curvature", "callback", "runtime", "seed",
+-    "split_manifest_sha256", "split_selections", "split_disjointness",
++    "split_manifest_sha256", "split_manifest_content_sha256", "split_selections", "split_disjointness",
+     "source_tensor_sha256", "source_revision", "source_layout",
+     "encoder_repo", "encoder_commit", "encoder_tree_sha1", "encoder_version", "serialized", "hashes",
+     "qualifications", "metric_contract", "evidence"
+@@ -29,6 +29,7 @@
+     "runtime": {"$ref": "#/$defs/runtime"},
+     "seed": {"type": "integer", "minimum": 0, "maximum": 9223372036854775807},
+     "split_manifest_sha256": {"$ref": "#/$defs/sha256"},
++    "split_manifest_content_sha256": {"$ref": "#/$defs/sha256"},
+     "split_selections": {"$ref": "#/$defs/splitSelections"},
+     "split_disjointness": {"$ref": "#/$defs/splitDisjointness"},
+     "source_tensor_sha256": {"$ref": "#/$defs/sha256"},

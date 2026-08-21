@@ -1,6 +1,6 @@
 # 64 — Final Wave 5: Actual-EXL3, Real-Activation, Full-KLD Research Plan
 
-**Status:** preregistered final research wave, 2026-08-21.
+**Status:** completed final research wave, 2026-08-21. No candidate promoted; results and disposition are in [doc 66](66-final-exl3-wave5-results.md).
 
 ## 1. Mission
 

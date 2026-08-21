@@ -1,0 +1,161 @@
+--- a/tools/research/wave5/exl3_action.py
++++ b/tools/research/wave5/exl3_action.py
+@@ -639,8 +639,40 @@
+             or sign.get("global_scale_search") != "stock_g_scale_gss"
+         ):
+             raise ContractError("sign/scale recipe does not bind the pinned stock semantics")
+-        if self.target.parameters != {"basis": "source"}:
+-            raise ContractError("target recipe must bind the source-basis stock target")
++        target = self.target.parameters
++        if target == {"basis": "source"}:
++            pass
++        elif set(target) == {
++            "basis", "target_tensor_sha256", "fit_manifest_sha256",
++            "teacher_output_sha256", "upstream_action_identity_sha256",
++            "target_dtype", "target_shape", "ridge_lambda", "recompute_scope",
++        }:
++            if not callback_enabled or target["basis"] != "candidate_conditioned":
++                raise ContractError("candidate-conditioned target requires an encode callback")
++            for name in (
++                "target_tensor_sha256", "fit_manifest_sha256",
++                "teacher_output_sha256", "upstream_action_identity_sha256",
++            ):
++                validate_sha256(f"target.{name}", target[name])
++            if target["target_dtype"] not in ("float32", "bfloat16", "float16"):
++                raise ContractError("candidate-conditioned target dtype is unsupported")
++            if (
++                not isinstance(target["target_shape"], list)
++                or len(target["target_shape"]) != 2
++                or any(not isinstance(v, int) or isinstance(v, bool) or v <= 0 for v in target["target_shape"])
++            ):
++                raise ContractError("candidate-conditioned target shape must be two positive integers")
++            if (
++                not isinstance(target["ridge_lambda"], (int, float))
++                or isinstance(target["ridge_lambda"], bool)
++                or not math.isfinite(float(target["ridge_lambda"]))
++                or target["ridge_lambda"] < 0
++            ):
++                raise ContractError("candidate-conditioned ridge_lambda must be finite and nonnegative")
++            if not isinstance(target["recompute_scope"], str) or not target["recompute_scope"]:
++                raise ContractError("candidate-conditioned recompute_scope is required")
++        else:
++            raise ContractError("target recipe is neither stock source nor complete candidate-conditioned target")
+         curvature = self.curvature_correction.parameters
+         if curvature != {"sigma_reg": 0.025, "block_ldl": LDL_BLOCK, "buf_size_k": 128}:
+             raise ContractError("curvature recipe does not bind pinned damping/block-LDL parameters")
+@@ -1248,6 +1280,7 @@
+     evidence: Mapping[str, Any],
+     route_id: str = "codec-exact/all-trellis-stock-exl3",
+     materialization_qualification: Mapping[str, Any] | None = None,
++    target_parameters: Mapping[str, Any] | None = None,
+ ) -> EXL3Action:
+     declared_callback = callback_contract(callbacks)
+     callback_enabled = declared_callback.identifier != "none"
+@@ -1271,9 +1304,9 @@
+             strength=0.0 if declared_callback.identifier == "identity/strength-zero" else None,
+         ),
+         target=Recipe(
+-            "stock.source-target",
+-            "source_basis_target",
+-            {"basis": "source"},
++            "stock.source-target" if target_parameters is None else "callback.candidate-conditioned-target",
++            "source_basis_target" if target_parameters is None else "candidate_conditioned_target",
++            {"basis": "source"} if target_parameters is None else copy.deepcopy(dict(target_parameters)),
+             implementation=implementation,
+         ),
+         curvature_correction=Recipe(
+@@ -1793,6 +1826,39 @@
+     )
+     verify_callback_contract(identity_action.callback, identity_callbacks)
+     expect_contract_error(lambda: verify_callback_contract(identity_action.callback, None))
++    candidate_target = {
++        "basis": "candidate_conditioned",
++        "target_tensor_sha256": "a" * 64,
++        "fit_manifest_sha256": "b" * 64,
++        "teacher_output_sha256": "c" * 64,
++        "upstream_action_identity_sha256": "d" * 64,
++        "target_dtype": "float32",
++        "target_shape": [128, 128],
++        "ridge_lambda": 0.0,
++        "recompute_scope": "per-upstream-complete-action",
++    }
++    candidate_target_action = make_stock_action(
++        action_id="self-test.candidate-target",
++        unit=unit,
++        K=5,
++        codebook="mcg",
++        seed=1,
++        source_sha256="3" * 64,
++        source_revision="self-test-revision",
++        source_layout="out_in",
++        curvature=curvature,
++        callbacks=identity_callbacks,
++        target_parameters=candidate_target,
++        **split_args,
++    )
++    candidate_target_action.validate()
++    jsonschema.validate(candidate_target_action.to_dict(), schema)
++    incomplete_target = dict(candidate_target)
++    del incomplete_target["teacher_output_sha256"]
++    expect_contract_error(lambda: dataclasses.replace(
++        candidate_target_action,
++        target=dataclasses.replace(candidate_target_action.target, parameters=incomplete_target),
++    ).validate())
+     expect_contract_error(lambda: dataclasses.replace(
+         action,
+         viterbi_refinement=dataclasses.replace(
+--- a/tools/research/wave5/exl3_action_schema.json
++++ b/tools/research/wave5/exl3_action_schema.json
+@@ -21,7 +21,7 @@
+     "K": {"enum": [4, 5, 6, 7]},
+     "codebook": {"enum": ["mcg", "mul1", "3inst"]},
+     "sign_scale_transform": {"$ref": "#/$defs/recipe"},
+-    "target": {"$ref": "#/$defs/recipe"},
++    "target": {"$ref": "#/$defs/targetRecipe"},
+     "curvature_correction": {"$ref": "#/$defs/recipe"},
+     "viterbi_refinement": {"$ref": "#/$defs/recipe"},
+     "curvature": {"$ref": "#/$defs/curvature"},
+@@ -120,6 +120,43 @@
+         "strength": {"type": ["number", "null"]}
+       }
+     },
++    "targetRecipe": {
++      "type": "object",
++      "additionalProperties": false,
++      "required": ["recipe_id", "kind", "parameters", "implementation", "strength"],
++      "properties": {
++        "recipe_id": {"type": "string", "minLength": 1},
++        "kind": {"enum": ["source_basis_target", "candidate_conditioned_target"]},
++        "parameters": {
++          "oneOf": [
++            {"const": {"basis": "source"}},
++            {
++              "type": "object",
++              "additionalProperties": false,
++              "required": ["basis", "target_tensor_sha256", "fit_manifest_sha256", "teacher_output_sha256", "upstream_action_identity_sha256", "target_dtype", "target_shape", "ridge_lambda", "recompute_scope"],
++              "properties": {
++                "basis": {"const": "candidate_conditioned"},
++                "target_tensor_sha256": {"$ref": "#/$defs/sha256"},
++                "fit_manifest_sha256": {"$ref": "#/$defs/sha256"},
++                "teacher_output_sha256": {"$ref": "#/$defs/sha256"},
++                "upstream_action_identity_sha256": {"$ref": "#/$defs/sha256"},
++                "target_dtype": {"enum": ["float32", "bfloat16", "float16"]},
++                "target_shape": {
++                  "type": "array",
++                  "minItems": 2,
++                  "maxItems": 2,
++                  "items": {"type": "integer", "minimum": 1}
++                },
++                "ridge_lambda": {"type": "number", "minimum": 0},
++                "recompute_scope": {"type": "string", "minLength": 1}
++              }
++            }
++          ]
++        },
++        "implementation": {"enum": ["stock", "stock-with-encode-callback"]},
++        "strength": {"type": ["number", "null"]}
++      }
++    },
+     "curvature": {
+       "type": "object",
+       "additionalProperties": false,

@@ -3,8 +3,9 @@
 **Status:** **screening record / not deployment evidence**, 2026-08-21. Four waves
 produced 28 researcher axes with adversarial review. Sections 1–11 preserve the
 chronological discoveries and corrections; their fixed-stack recommendations are
-superseded. Section 12 is the authoritative pre-Wave-5 synthesis. The final
-actual-stock-EXL3 plan is in [doc 64](64-final-exl3-wave5-research-plan.md).
+superseded. Section 12 is the authoritative pre-Wave-5 synthesis. Wave 5 completed
+without a promoted candidate; see [plan 64](64-final-exl3-wave5-research-plan.md)
+and [results 66](66-final-exl3-wave5-results.md).
 
 ## 1. Executive summary
 
@@ -802,4 +803,4 @@ the project's p99 tail together. That is the Wave-5 opportunity.
 | R27 equal-rate proxy | `tools/research/r27-equal-rate-kld/poc.py` | `docs/research/r27-equal-rate-kld-findings.md` | `receipts/research/r27-equal-rate-kld-results.json` |
 | R28 multi-precision menu | `tools/research/r28-multi-precision/poc.py` | `docs/research/r28-multi-precision-findings.md` | `receipts/research/r28-multi-precision-results.json` |
 
-Wave 5 is the final research wave and is specified in doc 64.
+Wave 5 completed without a promoted candidate; see docs 64 and 66.
