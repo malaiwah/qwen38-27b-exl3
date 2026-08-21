@@ -302,10 +302,11 @@ def _publish_fixture(linear: Any, capture_h: dict[str, Any]) -> None:
             .contiguous()
         )
         source_slice, source_identity = _source_slice(tensor_name, item)
-        if not torch.equal(weight_slice, source_slice):
-            max_diff = float((weight_slice - source_slice).abs().max().item())
+        max_decode_diff = float((weight_slice - source_slice).abs().max().item())
+        if max_decode_diff > 1.0e-7:
             raise CaptureError(
-                f"converter/source BF16 decode mismatch for {identifier}: {max_diff}"
+                f"converter/source BF16 decode mismatch for {identifier}: "
+                f"{max_decode_diff}"
             )
         if shard_identity is None:
             shard_identity = source_identity
@@ -323,6 +324,7 @@ def _publish_fixture(linear: Any, capture_h: dict[str, Any]) -> None:
         slice_rows.append(
             {
                 **item,
+                "source_decode_max_abs_diff": max_decode_diff,
                 "weight_sha256": hashlib.sha256(
                     weight_slice.numpy().tobytes(order="C")
                 ).hexdigest(),

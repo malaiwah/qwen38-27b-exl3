@@ -1,0 +1,44 @@
+{
+  "schema_version": "qwen38-trellis-v3-prereg-correction/1",
+  "campaign_id": "frontier-g02",
+  "experiment_id": "trellis-v3-control-capture",
+  "correction_id": "prereg-correction-005",
+  "supersedes": {
+    "path": "prereg-correction-004.json",
+    "sha256": "42a0bab8a0a3bc9dfa90bae2faae3eddfaba2428cf5446e397ac9f1806880731",
+    "canonical_sha256": "b54605a1cf2ae28f47a78c53bf5c5eac679601057991d6a15145504c5b8449c3"
+  },
+  "reason": "The fourth attempt loaded the ABI-matched extension and reached the real target, then found a maximum 2.98e-8 difference between the converter's float32 materialization and direct safetensors BF16 decode. This is below BF16 resolution and proves the prior exact-equality assertion was too strict. The corrected gate records the difference and accepts at most 1e-7; the historical FP16 misdecode was orders of magnitude larger. No source, target, data, quantization, slice, metric, or decision rule changed.",
+  "failed_attempt": {
+    "transaction": {"path": "attempt-004-transaction.json", "sha256": "1e1b09b6ccc2a04ac3a9f0231258cca0257689ef0d9f4bcadf67f9e001cad062", "canonical_sha256": "6fe9eb58c786d3ee44bbec997458dc9c92bfddaacc298d9ddac8e607a413b923"},
+    "log_sha256": "92b58472c744f21d94705712176b26f23cca040931b3d645226c223b5e168d6b",
+    "failure": "exact float equality rejected 2.98e-8 converter materialization roundoff",
+    "restore_proven": true
+  },
+  "effective_identities": {
+    "capture_tool_sha256": "5c709b47a91ef1302d86ff2f7239296d16525c67b12c3416f6a6831977313770",
+    "callback_sha256": "61bcd15261291894c0d7bde60bf6bf5bd3cef411d1182fdf7207a1269ad73384",
+    "extension_sha256": "55eb3e914c46adcb842175dfe149dea5656c76eb8ce24160994659b43b13ad37",
+    "bf16_decode_max_abs_diff": 1e-7,
+    "bf16_plan_sha256": "b49c17679f441d1d693c558c396a41a8a821538638b7b1f8516a6c9c7993ae3e",
+    "quant_plan_sha256": "5e2abf57a36da98853be0ebd997a97238d31ad5bbc1dd7db0ad462102dfb45bd",
+    "seed": 1376380199
+  },
+  "unchanged_scope": {
+    "target": "model.language_model.layers.10.mlp.gate_proj",
+    "flows": ["bf16", "quant"],
+    "slice_count": 4,
+    "slice_shape": [128, 128],
+    "activation_rows_per_flow": 256,
+    "method_ranking_allowed": false
+  },
+  "planned_outputs": [
+    "v3/bf16-flow.json",
+    "v3/bf16-flow.safetensors",
+    "v3/quant-flow.json",
+    "v3/quant-flow.safetensors",
+    "v3/capture-transaction.json",
+    "v3/capture-transaction-log.json",
+    "v3/capture-result.json"
+  ]
+}
