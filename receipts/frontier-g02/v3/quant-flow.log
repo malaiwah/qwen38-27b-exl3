@@ -1,0 +1,246 @@
+/opt/venv/lib/python3.12/site-packages/torch/cuda/__init__.py:63: FutureWarning: The pynvml package is deprecated. Please install nvidia-ml-py instead. If you did not install pynvml directly, please report this to the maintainers of the package that installed pynvml for you.
+  import pynvml  # type: ignore[import]
+ -- Creating new job
+    Input directory: /models/bf16-repo/snapshots/1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0
+    Output directory: /work/quant-flow-out
+    Working directory: /work/quant-flow-converter
+    Calibration size: 2 rows, 128 columns
+    Target bitrate: 4.0 (decoder), 6 (head)
+    Output scales: always
+    Codebook: mcg
+ -- Loaded model config
+    Architecture: Qwen3_5ForConditionalGeneration
+ -- Created model instance:
+     - Qwen3_5VLModel
+         - Embedding
+         - [16x]
+             - [3x] TransformerBlock
+                 - RMSNorm
+                 - GatedDeltaNet
+                     - [5x] Linear
+                     - GatedRMSNorm
+                 - RMSNorm
+                 - GatedMLP
+                     - [3x] Linear
+             - TransformerBlock
+                 - RMSNorm
+                 - Attention
+                     - [4x] Linear
+                     - [2x] RMSNorm
+                 - RMSNorm
+                 - GatedMLP
+                     - [3x] Linear
+         - RMSNorm
+         - Linear
+ -- Created MTP model instance:
+     - Qwen3_5MTPModel
+         - Qwen3_5MTPInputLayer
+             - [2x] RMSNorm
+             - Linear
+         - TransformerBlock
+             - RMSNorm
+             - Attention
+                 - [4x] Linear
+                 - [2x] RMSNorm
+             - RMSNorm
+             - GatedMLP
+                 - [3x] Linear
+         - RMSNorm
+ -- Loaded tokenizer
+    Vocab size: 248077
+ -- RoPE settings
+    head_dim: 256
+    rope_scaling: {'mrope_interleaved': True, 'mrope_section': [11, 11, 10], 'partial_rotary_factor': 0.25, 'rope_theta': 10000000, 'rope_type': 'default'}
+    rope_theta: 10000000.0
+    rotary_dim: None
+    partial_rotary_factor: 0.25
+    max_position_embeddings: 262144
+    original_max_position_embeddings: None
+    rope_style: NEOX
+    llama_4_scaling_beta: 0.0
+ -- Preparing input state
+ -- Deciding quantization strategy
+ -- Quantization strategy, summary:
+     - 4 bpw:
+        model.language_model.layers.*.linear_attn.in_proj_qkv         48 tensors
+        model.language_model.layers.*.linear_attn.in_proj_z           48 tensors
+        model.language_model.layers.*.linear_attn.out_proj            48 tensors
+        model.language_model.layers.*.mlp.down_proj                   64 tensors
+        model.language_model.layers.*.mlp.gate_proj                   64 tensors
+        model.language_model.layers.*.mlp.up_proj                     64 tensors
+        model.language_model.layers.*.self_attn.k_proj                16 tensors
+        model.language_model.layers.*.self_attn.o_proj                16 tensors
+        model.language_model.layers.*.self_attn.q_proj                16 tensors
+        model.language_model.layers.*.self_attn.v_proj                16 tensors
+        mtp.fc                                                         1 tensor
+        mtp.layers.*.mlp.down_proj                                     1 tensor
+        mtp.layers.*.mlp.gate_proj                                     1 tensor
+        mtp.layers.*.mlp.up_proj                                       1 tensor
+        mtp.layers.*.self_attn.k_proj                                  1 tensor
+        mtp.layers.*.self_attn.o_proj                                  1 tensor
+        mtp.layers.*.self_attn.q_proj                                  1 tensor
+        mtp.layers.*.self_attn.v_proj                                  1 tensor
+     - 6 bpw:
+        lm_head                                                        1 tensor
+ -- Final bitrate (excluding head): 4.00
+ -- Loading unquantized module: model.language_model.embed_tokens
+
+ -- Quantized: model.language_model.embed_tokens                                       bpw: 16.00  rfn: 0.000000  cos: 0.000000  sqnr: 0.000000  [0.79 s]  rss: 3.24 GB
+ -- Saving checkpoint
+ -- Loading unquantized module: model.language_model.layers.0
+
+ -- Captured: model.language_model.layers.0
+ -- Hessians: block.attn.input, block.attn.output, block.mlp.down, block.mlp.input
+ -- Quantized: model.language_model.layers.0.linear_attn.in_proj_qkv                   bpw:  6.00  proxy_err: 0.000005  o.  g_sc: 0.648945
+ -- Quantized: model.language_model.layers.0.linear_attn.in_proj_z                     bpw:  6.00  proxy_err: 0.000006  o.  g_sc: 0.778529
+ -- Quantized: model.language_model.layers.0.mlp.up_proj                               bpw:  5.00  proxy_err: 0.000048  o.  g_sc: 0.847896
+ -- Quantized: model.language_model.layers.0.mlp.gate_proj                             bpw:  5.00  proxy_err: 0.000046  o.  g_sc: 0.843350
+ -- Quantized: model.language_model.layers.0.linear_attn.out_proj                      bpw:  6.00  proxy_err: 0.000011  o.  g_sc: 0.772567
+ -- Quantized: model.language_model.layers.0.mlp.down_proj                             bpw:  6.00  proxy_err: 0.000007  o.  g_sc: 0.791285
+
+
+ -- Quantized: model.language_model.layers.0                                           bpw:  5.55  rfn: 0.001821  cos: 0.000000  sqnr: 59.340442  [25.61 s]  rss: 4.69 GB
+ -- Estimated remaining time: warming up (1/3 timed blocks)
+ -- Saving checkpoint
+ -- Loading unquantized module: model.language_model.layers.1
+
+ -- Captured: model.language_model.layers.1
+ -- Hessians: block.attn.input, block.attn.output, block.mlp.down, block.mlp.input
+ -- Quantized: model.language_model.layers.1.linear_attn.in_proj_qkv                   bpw:  6.00  proxy_err: 0.000011  o.  g_sc: 0.781253
+ -- Quantized: model.language_model.layers.1.linear_attn.in_proj_z                     bpw:  6.00  proxy_err: 0.000011  o.  g_sc: 0.850000
+ -- Quantized: model.language_model.layers.1.mlp.up_proj                               bpw:  5.00  proxy_err: 0.000066  o.  g_sc: 0.858007
+ -- Quantized: model.language_model.layers.1.mlp.gate_proj                             bpw:  5.00  proxy_err: 0.000058  o.  g_sc: 0.849482
+ -- Quantized: model.language_model.layers.1.linear_attn.out_proj                      bpw:  6.00  proxy_err: 0.000024  o.  g_sc: 0.640176
+ -- Quantized: model.language_model.layers.1.mlp.down_proj                             bpw:  6.00  proxy_err: 0.000009  o.  g_sc: 0.798558
+
+
+ -- Quantized: model.language_model.layers.1                                           bpw:  5.55  rfn: 0.000754  cos: 0.000000  sqnr: 62.631705  [24.34 s]  rss: 4.69 GB
+ -- Estimated remaining time: warming up (2/3 timed blocks)
+ -- Saving checkpoint
+ -- Loading unquantized module: model.language_model.layers.2
+
+ -- Captured: model.language_model.layers.2
+ -- Hessians: block.attn.input, block.attn.output, block.mlp.down, block.mlp.input
+ -- Quantized: model.language_model.layers.2.linear_attn.in_proj_qkv                   bpw:  6.00  proxy_err: 0.000011  o.  g_sc: 0.777881
+ -- Quantized: model.language_model.layers.2.linear_attn.in_proj_z                     bpw:  6.00  proxy_err: 0.000011  o.  g_sc: 0.790072
+ -- Quantized: model.language_model.layers.2.mlp.up_proj                               bpw:  5.00  proxy_err: 0.000082  o.  g_sc: 0.849488
+ -- Quantized: model.language_model.layers.2.mlp.gate_proj                             bpw:  5.00  proxy_err: 0.000074  o.  g_sc: 0.842746
+ -- Quantized: model.language_model.layers.2.linear_attn.out_proj                      bpw:  6.00  proxy_err: 0.000014  o.  g_sc: 0.775468
+ -- Quantized: model.language_model.layers.2.mlp.down_proj                             bpw:  6.00  proxy_err: 0.000008  o.  g_sc: 0.788083
+
+
+ -- Quantized: model.language_model.layers.2                                           bpw:  5.55  rfn: 0.001112  cos: 0.000001  sqnr: 59.545695  [24.47 s]  rss: 4.72 GB
+ -- Estimated remaining time: 26 minutes (avg over last 3 blocks)
+ -- Saving checkpoint
+ -- Loading unquantized module: model.language_model.layers.3
+
+ -- Captured: model.language_model.layers.3
+ -- Hessians: block.attn.input, block.attn.o, block.mlp.down, block.mlp.input
+ -- Quantized: model.language_model.layers.3.self_attn.q_proj                          bpw:  6.00  proxy_err: 0.000006  o.  g_sc: 0.792853
+ -- Quantized: model.language_model.layers.3.self_attn.k_proj                          bpw:  6.00  proxy_err: 0.000012  o.  g_sc: 0.793000
+ -- Quantized: model.language_model.layers.3.self_attn.v_proj                          bpw:  6.00  proxy_err: 0.000011  o.  g_sc: 0.789410
+ -- Quantized: model.language_model.layers.3.mlp.up_proj                               bpw:  5.00  proxy_err: 0.000082  o.  g_sc: 0.848411
+ -- Quantized: model.language_model.layers.3.mlp.gate_proj                             bpw:  5.00  proxy_err: 0.000068  o.  g_sc: 0.843695
+ -- Quantized: model.language_model.layers.3.self_attn.o_proj                          bpw:  6.00  proxy_err: 0.000009  o.  g_sc: 0.767673
+ -- Quantized: model.language_model.layers.3.mlp.down_proj                             bpw:  6.00  proxy_err: 0.000010  o.  g_sc: 0.796762
+
+
+ -- Quantized: model.language_model.layers.3                                           bpw:  5.53  rfn: 0.000961  cos: 0.000000  sqnr: 60.973445  [24.85 s]  rss: 4.74 GB
+ -- Estimated remaining time: 25 minutes (avg over last 4 blocks)
+ -- Saving checkpoint
+ -- Loading unquantized module: model.language_model.layers.4
+
+ -- Captured: model.language_model.layers.4
+ -- Hessians: block.attn.input, block.attn.output, block.mlp.down, block.mlp.input
+ -- Quantized: model.language_model.layers.4.linear_attn.in_proj_qkv                   bpw:  6.00  proxy_err: 0.000013  o.  g_sc: 0.779180
+ -- Quantized: model.language_model.layers.4.linear_attn.in_proj_z                     bpw:  6.00  proxy_err: 0.000013  o.  g_sc: 0.806251
+ -- Quantized: model.language_model.layers.4.mlp.up_proj                               bpw:  5.00  proxy_err: 0.000087  o.  g_sc: 0.849216
+ -- Quantized: model.language_model.layers.4.mlp.gate_proj                             bpw:  5.00  proxy_err: 0.000071  o.  g_sc: 0.851621
+ -- Quantized: model.language_model.layers.4.linear_attn.out_proj                      bpw:  6.00  proxy_err: 0.000019  o.  g_sc: 0.808965
+ -- Quantized: model.language_model.layers.4.mlp.down_proj                             bpw:  6.00  proxy_err: 0.000011  o.  g_sc: 0.794302
+
+
+ -- Quantized: model.language_model.layers.4                                           bpw:  5.55  rfn: 0.000797  cos: 0.000000  sqnr: 62.726589  [24.56 s]  rss: 4.74 GB
+ -- Estimated remaining time: 25 minutes (avg over last 5 blocks)
+ -- Saving checkpoint
+ -- Loading unquantized module: model.language_model.layers.5
+
+ -- Captured: model.language_model.layers.5
+ -- Hessians: block.attn.input, block.attn.output, block.mlp.down, block.mlp.input
+ -- Quantized: model.language_model.layers.5.linear_attn.in_proj_qkv                   bpw:  6.00  proxy_err: 0.000013  o.  g_sc: 0.776554
+ -- Quantized: model.language_model.layers.5.linear_attn.in_proj_z                     bpw:  6.00  proxy_err: 0.000011  o.  g_sc: 0.794020
+ -- Quantized: model.language_model.layers.5.mlp.up_proj                               bpw:  5.00  proxy_err: 0.000089  o.  g_sc: 0.845005
+ -- Quantized: model.language_model.layers.5.mlp.gate_proj                             bpw:  5.00  proxy_err: 0.000073  o.  g_sc: 0.854414
+ -- Quantized: model.language_model.layers.5.linear_attn.out_proj                      bpw:  6.00  proxy_err: 0.000018  o.  g_sc: 0.773015
+ -- Quantized: model.language_model.layers.5.mlp.down_proj                             bpw:  6.00  proxy_err: 0.000011  o.  g_sc: 0.787825
+
+
+ -- Quantized: model.language_model.layers.5                                           bpw:  5.55  rfn: 0.000868  cos: 0.000000  sqnr: 61.863139  [24.55 s]  rss: 4.74 GB
+ -- Estimated remaining time: 24 minutes (avg over last 6 blocks)
+ -- Saving checkpoint
+ -- Loading unquantized module: model.language_model.layers.6
+
+ -- Captured: model.language_model.layers.6
+ -- Hessians: block.attn.input, block.attn.output, block.mlp.down, block.mlp.input
+ -- Quantized: model.language_model.layers.6.linear_attn.in_proj_qkv                   bpw:  6.00  proxy_err: 0.000012  o.  g_sc: 0.779643
+ -- Quantized: model.language_model.layers.6.linear_attn.in_proj_z                     bpw:  6.00  proxy_err: 0.000011  o.  g_sc: 0.767311
+ -- Quantized: model.language_model.layers.6.mlp.up_proj                               bpw:  5.00  proxy_err: 0.000076  o.  g_sc: 0.841396
+ -- Quantized: model.language_model.layers.6.mlp.gate_proj                             bpw:  5.00  proxy_err: 0.000063  o.  g_sc: 0.848329
+ -- Quantized: model.language_model.layers.6.linear_attn.out_proj                      bpw:  6.00  proxy_err: 0.000016  o.  g_sc: 0.782963
+ -- Quantized: model.language_model.layers.6.mlp.down_proj                             bpw:  6.00  proxy_err: 0.000009  o.  g_sc: 0.795902
+
+
+ -- Quantized: model.language_model.layers.6                                           bpw:  5.55  rfn: 0.001123  cos: 0.000001  sqnr: 59.411821  [24.56 s]  rss: 4.76 GB
+ -- Estimated remaining time: 24 minutes (avg over last 7 blocks)
+ -- Saving checkpoint
+ -- Loading unquantized module: model.language_model.layers.7
+
+ -- Captured: model.language_model.layers.7
+ -- Hessians: block.attn.input, block.attn.o, block.mlp.down, block.mlp.input
+ -- Quantized: model.language_model.layers.7.self_attn.q_proj                          bpw:  6.00  proxy_err: 0.000006  o.  g_sc: 0.783466
+ -- Quantized: model.language_model.layers.7.self_attn.k_proj                          bpw:  6.00  proxy_err: 0.000012  o.  g_sc: 0.795467
+ -- Quantized: model.language_model.layers.7.self_attn.v_proj                          bpw:  6.00  proxy_err: 0.000012  o.  g_sc: 0.788699
+ -- Quantized: model.language_model.layers.7.mlp.up_proj                               bpw:  5.00  proxy_err: 0.000091  o.  g_sc: 0.845343
+ -- Quantized: model.language_model.layers.7.mlp.gate_proj                             bpw:  5.00  proxy_err: 0.000072  o.  g_sc: 0.847182
+ -- Quantized: model.language_model.layers.7.self_attn.o_proj                          bpw:  6.00  proxy_err: 0.000013  o.  g_sc: 0.798149
+ -- Quantized: model.language_model.layers.7.mlp.down_proj                             bpw:  6.00  proxy_err: 0.000011  o.  g_sc: 0.788294
+
+
+ -- Quantized: model.language_model.layers.7                                           bpw:  5.53  rfn: 0.001033  cos: 0.000000  sqnr: 59.999640  [23.61 s]  rss: 4.78 GB
+ -- Estimated remaining time: 23 minutes (avg over last 8 blocks)
+ -- Saving checkpoint
+ -- Loading unquantized module: model.language_model.layers.8
+
+ -- Captured: model.language_model.layers.8
+ -- Hessians: block.attn.input, block.attn.output, block.mlp.down, block.mlp.input
+ -- Quantized: model.language_model.layers.8.linear_attn.in_proj_qkv                   bpw:  6.00  proxy_err: 0.000012  o.  g_sc: 0.788175
+ -- Quantized: model.language_model.layers.8.linear_attn.in_proj_z                     bpw:  6.00  proxy_err: 0.000011  o.  g_sc: 0.793833
+ -- Quantized: model.language_model.layers.8.mlp.up_proj                               bpw:  5.00  proxy_err: 0.000093  o.  g_sc: 0.847247
+ -- Quantized: model.language_model.layers.8.mlp.gate_proj                             bpw:  5.00  proxy_err: 0.000078  o.  g_sc: 0.844894
+ -- Quantized: model.language_model.layers.8.linear_attn.out_proj                      bpw:  6.00  proxy_err: 0.000019  o.  g_sc: 0.778691
+ -- Quantized: model.language_model.layers.8.mlp.down_proj                             bpw:  6.00  proxy_err: 0.000012  o.  g_sc: 0.787761
+
+
+ -- Quantized: model.language_model.layers.8                                           bpw:  5.55  rfn: 0.000878  cos: 0.000000  sqnr: 61.600267  [24.56 s]  rss: 4.78 GB
+ -- Estimated remaining time: 23 minutes (avg over last 8 blocks)
+ -- Saving checkpoint
+ -- Loading unquantized module: model.language_model.layers.9
+
+ -- Captured: model.language_model.layers.9
+ -- Hessians: block.attn.input, block.attn.output, block.mlp.down, block.mlp.input
+ -- Quantized: model.language_model.layers.9.linear_attn.in_proj_qkv                   bpw:  6.00  proxy_err: 0.000012  o.  g_sc: 0.797545
+ -- Quantized: model.language_model.layers.9.linear_attn.in_proj_z                     bpw:  6.00  proxy_err: 0.000011  o.  g_sc: 0.781795
+ -- Quantized: model.language_model.layers.9.mlp.up_proj                               bpw:  5.00  proxy_err: 0.000090  o.  g_sc: 0.852542
+ -- Quantized: model.language_model.layers.9.mlp.gate_proj                             bpw:  5.00  proxy_err: 0.000076  o.  g_sc: 0.855891
+ -- Quantized: model.language_model.layers.9.linear_attn.out_proj                      bpw:  6.00  proxy_err: 0.000016  o.  g_sc: 0.793557
+ -- Quantized: model.language_model.layers.9.mlp.down_proj                             bpw:  6.00  proxy_err: 0.000012  o.  g_sc: 0.787454
+
+
+ -- Quantized: model.language_model.layers.9                                           bpw:  5.55  rfn: 0.000817  cos: 0.000000  sqnr: 62.126515  [24.55 s]  rss: 4.76 GB
+ -- Estimated remaining time: 22 minutes (avg over last 8 blocks)
+ -- Saving checkpoint
+ -- Loading unquantized module: model.language_model.layers.10
+
+ -- Captured: model.language_model.layers.10
+ -- Hessians: block.attn.input, block.attn.output, block.mlp.down, block.mlp.input
+PASS: captured quant fixture layer10-gate-quant-flow

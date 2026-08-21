@@ -1,0 +1,22 @@
+{
+  "schema": "qwen38-trellis-v3-run-plan/1",
+  "experiment_id": "trellis-v3-actual-exl3-controls",
+  "evidence_root": "/evidence",
+  "captures": {
+    "bf16": {"path": "bf16-flow.json", "sha256": "fa0015a60e9fc279a5ad69eba708824097d887ec33379f21dd1adf37d21f20f0", "canonical_sha256": "ddc8ef046649c83ebe6798e9dd6b80a74093b12401ad5ff16733f1cce6bd4001"},
+    "quant": {"path": "quant-flow.json", "sha256": "cbb01617d6bff457a05f0298d58b0b56d768b26f0e999336353808d0e2378f63", "canonical_sha256": "02804643d77e51f7735c21d077dfebd717d714c6de52f94527d046a2219a608d"}
+  },
+  "quantizer": {
+    "source": "/src",
+    "source_sha256": "4cd368dab28e007d649e25b97c65fc73a56ef2a1482ca2b9298a53d4b0876dbf",
+    "commit": "6dabcfc7f0e75f75a577ea3650382ea1e8242a06",
+    "K": 5,
+    "codebook": "mcg",
+    "seed": 1376380199
+  },
+  "arms": ["rtn", "ldlq_bf16_h", "ldlq_quant_h"],
+  "external_gates": {
+    "whole_block": {"required_for_method_claim": true, "status": "pending", "evidence": null},
+    "end_logit": {"required_for_method_claim": true, "status": "pending", "evidence": null}
+  }
+}

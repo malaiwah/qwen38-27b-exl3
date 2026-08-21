@@ -1,0 +1,174 @@
+/opt/venv/lib/python3.12/site-packages/torch/cuda/__init__.py:63: FutureWarning: The pynvml package is deprecated. Please install nvidia-ml-py instead. If you did not install pynvml directly, please report this to the maintainers of the package that installed pynvml for you.
+  import pynvml  # type: ignore[import]
+ -- Creating new job
+    Input directory: /models/bf16-repo/snapshots/1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0
+    Output directory: /work/bf16-flow-out
+    Working directory: /work/bf16-flow-converter
+    Calibration size: 2 rows, 128 columns
+    Target bitrate: 4.0 (decoder), 6 (head)
+    Output scales: always
+    Codebook: mcg
+ -- Loaded model config
+    Architecture: Qwen3_5ForConditionalGeneration
+ -- Created model instance:
+     - Qwen3_5VLModel
+         - Embedding
+         - [16x]
+             - [3x] TransformerBlock
+                 - RMSNorm
+                 - GatedDeltaNet
+                     - [5x] Linear
+                     - GatedRMSNorm
+                 - RMSNorm
+                 - GatedMLP
+                     - [3x] Linear
+             - TransformerBlock
+                 - RMSNorm
+                 - Attention
+                     - [4x] Linear
+                     - [2x] RMSNorm
+                 - RMSNorm
+                 - GatedMLP
+                     - [3x] Linear
+         - RMSNorm
+         - Linear
+ -- Created MTP model instance:
+     - Qwen3_5MTPModel
+         - Qwen3_5MTPInputLayer
+             - [2x] RMSNorm
+             - Linear
+         - TransformerBlock
+             - RMSNorm
+             - Attention
+                 - [4x] Linear
+                 - [2x] RMSNorm
+             - RMSNorm
+             - GatedMLP
+                 - [3x] Linear
+         - RMSNorm
+ -- Loaded tokenizer
+    Vocab size: 248077
+ -- RoPE settings
+    head_dim: 256
+    rope_scaling: {'mrope_interleaved': True, 'mrope_section': [11, 11, 10], 'partial_rotary_factor': 0.25, 'rope_theta': 10000000, 'rope_type': 'default'}
+    rope_theta: 10000000.0
+    rotary_dim: None
+    partial_rotary_factor: 0.25
+    max_position_embeddings: 262144
+    original_max_position_embeddings: None
+    rope_style: NEOX
+    llama_4_scaling_beta: 0.0
+ -- Preparing input state
+ -- Deciding quantization strategy
+ -- Quantization strategy, summary:
+     - 4 bpw:
+        model.language_model.layers.*.linear_attn.in_proj_qkv         48 tensors
+        model.language_model.layers.*.linear_attn.in_proj_z           48 tensors
+        model.language_model.layers.*.linear_attn.out_proj            48 tensors
+        model.language_model.layers.*.mlp.down_proj                   64 tensors
+        model.language_model.layers.*.mlp.gate_proj                   64 tensors
+        model.language_model.layers.*.mlp.up_proj                     64 tensors
+        model.language_model.layers.*.self_attn.k_proj                16 tensors
+        model.language_model.layers.*.self_attn.o_proj                16 tensors
+        model.language_model.layers.*.self_attn.q_proj                16 tensors
+        model.language_model.layers.*.self_attn.v_proj                16 tensors
+        mtp.fc                                                         1 tensor
+        mtp.layers.*.mlp.down_proj                                     1 tensor
+        mtp.layers.*.mlp.gate_proj                                     1 tensor
+        mtp.layers.*.mlp.up_proj                                       1 tensor
+        mtp.layers.*.self_attn.k_proj                                  1 tensor
+        mtp.layers.*.self_attn.o_proj                                  1 tensor
+        mtp.layers.*.self_attn.q_proj                                  1 tensor
+        mtp.layers.*.self_attn.v_proj                                  1 tensor
+     - 6 bpw:
+        lm_head                                                        1 tensor
+ -- Final bitrate (excluding head): 4.00
+ -- Loading unquantized module: model.language_model.embed_tokens
+
+ -- Quantized: model.language_model.embed_tokens                                       bpw: 16.00  rfn: 0.000000  cos: 0.000000  sqnr: 0.000000  [0.79 s]  rss: 3.24 GB
+ -- Saving checkpoint
+ -- Loading unquantized module: model.language_model.layers.0
+
+ -- Captured: model.language_model.layers.0
+ -- Hessians: block.attn.input, block.attn.output, block.mlp.down, block.mlp.input
+
+ -- Quantized: model.language_model.layers.0                                           bpw: 16.00  rfn: 0.000003  cos: -0.000000  sqnr: 103.068579  [2.33 s]  rss: 2.77 GB
+ -- Estimated remaining time: warming up (1/3 timed blocks)
+ -- Saving checkpoint
+ -- Loading unquantized module: model.language_model.layers.1
+
+ -- Captured: model.language_model.layers.1
+ -- Hessians: block.attn.input, block.attn.output, block.mlp.down, block.mlp.input
+
+ -- Quantized: model.language_model.layers.1                                           bpw: 16.00  rfn: 0.000003  cos: -0.000000  sqnr: 104.539457  [1.34 s]  rss: 2.77 GB
+ -- Estimated remaining time: warming up (2/3 timed blocks)
+ -- Saving checkpoint
+ -- Loading unquantized module: model.language_model.layers.2
+
+ -- Captured: model.language_model.layers.2
+ -- Hessians: block.attn.input, block.attn.output, block.mlp.down, block.mlp.input
+
+ -- Quantized: model.language_model.layers.2                                           bpw: 16.00  rfn: 0.000003  cos: -0.000000  sqnr: 103.829576  [1.40 s]  rss: 2.77 GB
+ -- Estimated remaining time: 1 minute (avg over last 3 blocks)
+ -- Saving checkpoint
+ -- Loading unquantized module: model.language_model.layers.3
+
+ -- Captured: model.language_model.layers.3
+ -- Hessians: block.attn.input, block.attn.o, block.mlp.down, block.mlp.input
+
+ -- Quantized: model.language_model.layers.3                                           bpw: 16.00  rfn: 0.000000  cos: -0.000000  sqnr: 108.027094  [1.95 s]  rss: 2.88 GB
+ -- Estimated remaining time: 1 minute (avg over last 4 blocks)
+ -- Saving checkpoint
+ -- Loading unquantized module: model.language_model.layers.4
+
+ -- Captured: model.language_model.layers.4
+ -- Hessians: block.attn.input, block.attn.output, block.mlp.down, block.mlp.input
+
+ -- Quantized: model.language_model.layers.4                                           bpw: 16.00  rfn: 0.000002  cos: -0.000000  sqnr: 108.519356  [2.94 s]  rss: 2.88 GB
+ -- Estimated remaining time: 2 minutes (avg over last 5 blocks)
+ -- Saving checkpoint
+ -- Loading unquantized module: model.language_model.layers.5
+
+ -- Captured: model.language_model.layers.5
+ -- Hessians: block.attn.input, block.attn.output, block.mlp.down, block.mlp.input
+
+ -- Quantized: model.language_model.layers.5                                           bpw: 16.00  rfn: 0.000003  cos: -0.000000  sqnr: 108.919426  [1.37 s]  rss: 2.88 GB
+ -- Estimated remaining time: 1 minute (avg over last 6 blocks)
+ -- Saving checkpoint
+ -- Loading unquantized module: model.language_model.layers.6
+
+ -- Captured: model.language_model.layers.6
+ -- Hessians: block.attn.input, block.attn.output, block.mlp.down, block.mlp.input
+
+ -- Quantized: model.language_model.layers.6                                           bpw: 16.00  rfn: 0.000006  cos: 0.000000  sqnr: 108.433842  [1.38 s]  rss: 2.88 GB
+ -- Estimated remaining time: 1 minute (avg over last 7 blocks)
+ -- Saving checkpoint
+ -- Loading unquantized module: model.language_model.layers.7
+
+ -- Captured: model.language_model.layers.7
+ -- Hessians: block.attn.input, block.attn.o, block.mlp.down, block.mlp.input
+
+ -- Quantized: model.language_model.layers.7                                           bpw: 16.00  rfn: 0.000000  cos: -0.000000  sqnr: 111.504793  [1.34 s]  rss: 2.88 GB
+ -- Estimated remaining time: 1 minute (avg over last 8 blocks)
+ -- Saving checkpoint
+ -- Loading unquantized module: model.language_model.layers.8
+
+ -- Captured: model.language_model.layers.8
+ -- Hessians: block.attn.input, block.attn.output, block.mlp.down, block.mlp.input
+
+ -- Quantized: model.language_model.layers.8                                           bpw: 16.00  rfn: 0.000004  cos: -0.000000  sqnr: 111.198698  [1.36 s]  rss: 2.88 GB
+ -- Estimated remaining time: 1 minute (avg over last 8 blocks)
+ -- Saving checkpoint
+ -- Loading unquantized module: model.language_model.layers.9
+
+ -- Captured: model.language_model.layers.9
+ -- Hessians: block.attn.input, block.attn.output, block.mlp.down, block.mlp.input
+
+ -- Quantized: model.language_model.layers.9                                           bpw: 16.00  rfn: 0.000004  cos: 0.000000  sqnr: 111.494656  [1.37 s]  rss: 2.88 GB
+ -- Estimated remaining time: 1 minute (avg over last 8 blocks)
+ -- Saving checkpoint
+ -- Loading unquantized module: model.language_model.layers.10
+
+ -- Captured: model.language_model.layers.10
+ -- Hessians: block.attn.input, block.attn.output, block.mlp.down, block.mlp.input
+PASS: captured bf16 fixture layer10-gate-bf16-flow

@@ -294,13 +294,9 @@ class Verifier:
             compatibility.get("path"),
             "runtime_extension.compatibility",
         )
-        if (
-            not compatibility_path.is_file()
-            or sha256_file(compatibility_path)
-            != _sha(
-                compatibility.get("sha256"),
-                "runtime_extension.compatibility.sha256",
-            )
+        if not compatibility_path.is_file() or sha256_file(compatibility_path) != _sha(
+            compatibility.get("sha256"),
+            "runtime_extension.compatibility.sha256",
         ):
             raise MalformedEvidence("historical compatibility receipt hash differs")
         return correction
@@ -515,10 +511,7 @@ class Verifier:
                 is not False
             ):
                 raise MalformedEvidence("v3 control infrastructure semantics differ")
-        elif any(
-            method[name] is not None
-            for name in ("capture_result", "run_result")
-        ):
+        elif any(method[name] is not None for name in ("capture_result", "run_result")):
             raise MalformedEvidence("pending method infrastructure declares results")
         rental = _object(manifest["rental"], "rental")
         if rental.get("authorized") is not False:
