@@ -243,17 +243,44 @@ ResComp, AWQ, and SmoothQuant, reporting exact line-by-line discrepancies. The
 BAQ, KronQ, and ResQ papers were read directly for algorithm details. GuidedQuant
 was verified against its paper (no reference repo available).
 
-### 9.2 Discrepancies found and fixed
+### 9.2 Discrepancies: source classification
 
-| Algorithm | Discrepancy | Fix | Source |
-|-----------|-------------|-----|--------|
-| **GPTAQ P-matrix** | Wrong factor order (`D@L` instead of `D@L.T`), missing 0.25 multiplier | `P = 0.25 * triu(D @ L.T, 1) @ L` | GPTQv2 ref `gptaq_utils.py` L89-90 |
-| **GPTAQ/ResComp** | Used post-update weights for correction terms | Save `w_pre` before quantization, use it for P/P2 corrections | ResComp ref `gptaq_utils_r.py` L134-138 |
-| **AWQ** | Used `max|X|` instead of `mean|X|`, had weight denominator, arithmetic mean normalization, fixed alpha | `s_j = mean|X_j|^alpha`, geom norm `sqrt(max*min)`, clamp 1e-4, alpha grid search | AWQ ref `auto_scale.py` L27-28, L112-128 |
-| **SmoothQuant** | Had mean normalization, wrong clamp | No mean normalization, clamp 1e-5 | SQ ref `smooth.py` L19-71 |
-| **BAQ** | Used heuristic `log2(Hessian diagonal)` for bit allocation | Closed-form `R* = 0.5*log2(c/λ) + avg_bits` where `c = (w_range)²/(12·[H⁻¹]_jj)`, `λ = geom_mean(c)` | BAQ paper Eq 5-6 |
-| **KronQ** | Used `tr(H_O) × diag(H_I)` as per-column sensitivity weight | H_G cancels in GPTQ update; returns uniform weights (no-op for single layer) | KronQ paper §3.2 |
-| **ResQ** | Used rank-4 SVD of `W - Wq` as post-processing | PCA subspace: project W onto activation covariance eigenvectors, top 1/8 at 8-bit, rest at K | ResQ paper Eq 3 |
+Each fix is classified by whether it is confirmed by the arXiv paper equations,
+or whether it is a code-level implementation detail not present in the paper.
+This distinction matters: paper-confirmed fixes are unambiguous algorithm errors;
+code-convention fixes may be valid alternative implementations of the same paper.
+
+#### Paper-confirmed fixes (unambiguous — our code contradicted the published equations)
+
+| Algorithm | What paper says | What we did | Fix |
+|-----------|----------------|-------------|-----|
+| **AWQ core formula** | Eq 5: $s = s_X^\alpha$ where $s_X$ is "the average magnitude of activation (per-channel)". No weight term. | Used `max|X|`, had weight denominator `max|W|` | `mean|X|^α`, no weight term |
+| **AWQ alpha search** | "grid search over [0,1]" | Fixed α=0.5 | Grid search over {0, 0.05, ..., 0.95} |
+| **BAQ bit allocation** | Eq 5-6: $R^* = \frac{1}{2}\log_2\frac{c}{\lambda} + \frac{R_{\text{sum}}}{MN}$, explicit closed-form | Heuristic `log2(Hessian diagonal)` | Closed-form from Eq 5-6 |
+| **KronQ H_G cancellation** | Paper states H_G cancels in GPTQ update; only used for incoherence + inter-layer allocation | Used `tr(H_O) × diag(H_I)` as per-column sensitivity weight | Uniform weights (no-op for single layer) |
+| **ResQ algorithm** | Eq 3: $W_q = U_l Q_L(U_l^T W) + U_h Q_H(U_h^T W)$ — PCA subspace quantization | Rank-4 SVD of `W - Wq` as post-processing | PCA subspace: top 1/8 dim at 8-bit, rest at K |
+
+#### Code-convention fixes (not in papers — matched to reference repos)
+
+| Algorithm | What reference code does | What we did | Fix | Paper says? |
+|-----------|-------------------------|-------------|-----|-------------|
+| **GPTAQ 0.25 multiplier** | `alpha = 0.25` in `gptaq_utils_r.py` L96 | No multiplier | Added 0.25 | **Nothing.** Paper Eq 9/15 have no such factor. Origin unclear — may relate to 2/N Hessian scaling or empirical tuning. |
+| **GPTAQ P-matrix factor order** | `triu(D @ U.T, 1) @ U` where U = upper Cholesky of inv(H) | `triu(D @ L, 1) @ L.T` — factors reversed | `triu(D @ L.T, 1) @ L` | **Ambiguous.** Paper Fig 3 shows Cholesky factorization but doesn't specify upper/lower convention. |
+| **GPTAQ/ResComp pre-update weights** | Saves `w = W1[:,i].clone()` before quantization, uses `w` in correction | Used post-update `Ww[:,c]` (already modified by GPTQ) | Save `w_pre` before quantization | **Ambiguous.** Paper Eq 15 uses $W_{:,q}$ "current weight" — doesn't specify pre vs post quantization. |
+| **AWQ geometric normalization** | `s / sqrt(max(s) * min(s))` — makes min/max reciprocal | `s / mean(s)` — arithmetic mean | Geometric normalization | **Nothing.** Paper Eq 5 has no normalization. |
+| **AWQ clamp 1e-4** | `r.clamp(min=1e-4)` | `+ 1e-10` | Clamp 1e-4 | **Nothing.** Implementation detail. |
+| **SmoothQuant normalization** | No normalization at all | `s / mean(s)` | Removed normalization | **Confirmed by paper** — formula has no normalization. Our addition was a bug. |
+| **SmoothQuant clamp 1e-5** | Clamp to 1e-5 | `+ 1e-10` | Clamp 1e-5 | **Nothing.** Implementation detail. |
+
+#### Honest assessment
+
+The 0.25 GPTAQ multiplier is the most concerning fix. It is an empirical constant
+in the reference code with no paper justification. Our original code without it
+may have been a valid clean-room implementation of the published algorithm. By
+matching the code, we may have over-fit to their implementation choices rather
+than the paper. The factor could relate to the $\frac{2}{N}$ Hessian scaling in
+the reference (`H = (2/N) X X^T`), but our Hessian uses raw `X @ X.T` without
+the $\frac{2}{N}$ factor, so the 0.25 may be inappropriate for our setup.
 
 ### 9.3 YAQA note
 
@@ -261,9 +288,251 @@ YAQA requires backward passes to compute the true Kronecker-factored Hessian
 (H_O from gradient covariance, H_I from input covariance). Sketch B (identity
 H_O) reduces to standard GPTQ. Since our CPU-only environment cannot run backward
 passes, YAQA is not separately implemented. The YAQA insight (output-side Hessian
-matters) is captured by GuidedQuant's per-output-channel Fisher weighting.
+matters) is partially captured by GuidedQuant's per-output-channel Fisher weighting.
 
-### 9.4 Sample-tensor results (v2, fixed code)
+### 9.4 Alternative approaches and novel possibilities
+
+For each discrepancy, we analyze whether alternative solutions exist beyond the
+one we adopted. Some of these may unlock novel research directions.
+
+#### 9.4.1 GPTAQ P-matrix: factor order and multiplier
+
+**Ambiguity:** The paper describes the correction using $\tilde{H}^{-1}$ (inverse
+Hessian after Gaussian elimination) but doesn't specify the Cholesky convention.
+The 0.25 multiplier is not in the paper at all.
+
+**Alternatives not tried:**
+
+1. **Eigendecomposition-based P-matrix.** Instead of Cholesky, decompose
+   $H = Q \Lambda Q^T$ and compute $P = \text{triu}(D \cdot Q \Lambda^{-1} Q^T, 1) \cdot Q \Lambda^{-1} Q^T$.
+   The eigenvalue approach naturally handles ill-conditioned Hessians through
+   $\Lambda^{-1}$ and may be more numerically stable for tensors with extreme
+   eigenvalue decay (e.g., L55_down). The cost is $O(n^3)$ vs Cholesky's $O(n^3/3)$,
+   but for 128×128 matrices this is negligible.
+
+2. **Adaptive correction strength.** Instead of fixed 0.25, derive α from the
+   data: $\alpha = \frac{\|\Delta X \cdot X^T\|_F}{\|X \cdot X^T\|_F}$ — the ratio
+   of asymmetric to symmetric error. When activation deviation is small (early
+   layers), the correction is weak; when large (late layers), it's strong.
+   This adapts to the actual asymmetry rather than using a universal constant.
+
+3. **Grid-searched α per layer.** Like AWQ's alpha search, try
+   α ∈ {0, 0.1, ..., 0.5} per tensor and pick the best by KLD. This removes
+   the guesswork entirely. Cost: 6× the GPTAQ time, still trivial for 128×128.
+
+4. **No multiplier (paper-faithful).** Since our Hessian uses raw $X X^T$ (not
+   $\frac{2}{N} X X^T$), the 0.25 may not apply. Testing α=1.0 (no multiplier)
+   would validate whether the constant is necessary for our Hessian convention.
+
+#### 9.4.2 Pre-update vs post-update weights
+
+**Ambiguity:** Paper says $W_{:,q}$ — "current weight" — but doesn't specify
+whether this is before or after the quantization step at column q.
+
+**Alternatives not tried:**
+
+1. **Error-vector correction.** Use the quantization error itself:
+   $(w_{\text{pre}} - Q_{:,c}) \cdot P_{c,c:}$ instead of $w_{\text{pre}} \cdot P_{c,c:}$.
+   This directly ties the correction magnitude to the error, making it
+   self-scaling — large errors get large corrections, small errors get small ones.
+   The current approach uses the full weight magnitude, which may over-correct
+   for small errors.
+
+2. **Blended coefficient.** Use $\alpha \cdot w_{\text{pre}} + (1-\alpha) \cdot Q_{:,c}$
+   for the GPTAQ term. At α=1 this is the reference approach; at α=0 it uses
+   the quantized value. An intermediate α might balance the original-weight
+   signal with the quantization-error direction. Could be searched per-layer.
+
+3. **Iterative refinement.** After one pass of GPTAQ with pre-update weights,
+   run a second pass that uses the post-quantization residual to refine.
+   This is a multi-round GPTAQ that converges to a better solution, at 2× cost.
+
+#### 9.4.3 AWQ: activation statistic and normalization
+
+**What paper confirms:** $s_X$ = mean activation magnitude, α grid search.
+**What code adds:** geometric normalization, 1e-4 clamp.
+
+**Alternatives not tried:**
+
+1. **Activation variance instead of mean magnitude.** $s_X = \text{Var}(X_j)$
+   captures both magnitude and dispersion. Channels with high variance carry
+   more information; protecting them may be more effective than protecting
+   high-magnitude channels. The paper's rationale is about magnitude, but
+   variance is a richer statistic.
+
+2. **Activation kurtosis.** Outlier channels often have high kurtosis (heavy
+   tails). Using kurtosis as the scale would specifically target channels with
+   extreme outliers, which are the most damaging for uniform quantization.
+   $s_j = \text{kurt}(X_j)^\alpha$.
+
+3. **Weight-activation product.** $s_j = (\text{mean}|X_j| \cdot \text{max}|W_{:,j}|)^\alpha$.
+   This combines activation and weight information — neither pure AWQ (activation
+   only) nor pure SmoothQuant (separate terms). The product form ensures both
+   high-activation AND high-weight channels get protected. This is a genuine
+   hybrid that neither paper proposes.
+
+4. **Per-tile AWQ.** Instead of per-channel scaling, compute scales per trellis
+   tile (16×16). Each tile gets its own scale based on the activation statistics
+   of its channels. This is finer-grained than per-channel and aligns with the
+   trellis quantization structure. Overhead: 1 float per tile vs 1 float per channel.
+
+5. **No normalization (paper-faithful).** The paper has no normalization. The
+   scale just IS $s_X^\alpha$. Removing normalization entirely and letting the
+   scale range be determined by the data might be more faithful to the paper's
+   intent, even if it produces larger scale ranges.
+
+#### 9.4.4 SmoothQuant: normalization and alpha
+
+**What paper confirms:** $s_j = \max|X_j|^\alpha / \max|W_j|^{1-\alpha}$, no normalization.
+**Our bug:** Added mean normalization spuriously.
+
+**Alternatives not tried:**
+
+1. **Per-channel adaptive alpha.** Instead of a single α for all channels, use
+   $\alpha_j = \sigma(\log(|X_j| / |W_j|))$ — a sigmoid of the log-ratio of
+   activation to weight magnitude. Channels with high activation but low weight
+   get α→1 (migrate fully to weights); balanced channels get α≈0.5. This is a
+   channel-wise SmoothQuant that adapts to each channel's difficulty balance.
+
+2. **Per-layer alpha search.** The SmoothQuant paper uses different α values for
+   different models (0.85 for Llama-2, 0.9 for 70B). A per-layer search would
+   be finer-grained. Early layers (well-conditioned) might prefer low α; late
+   layers (outlier-heavy) might prefer high α.
+
+3. **Smooth-then-quantize-aware.** Apply SmoothQuant scaling, then design a
+   non-uniform quantization grid that's denser where the scaled weights cluster.
+   This combines the difficulty migration with optimal quantization grid design,
+   which neither SmoothQuant nor AWQ does.
+
+#### 9.4.5 BAQ: closed-form allocation
+
+**What paper confirms:** Eq 5-6, closed-form convex optimization.
+
+**Assumptions that may not hold for trellis:**
+1. BAQ assumes scalar uniform quantization — trellis uses tile-level codebooks.
+2. BAQ assumes per-element range — we use per-column range (coarser).
+3. The high-resolution approximation $\Delta^2/12$ may not hold at K3.
+
+**Alternatives not tried:**
+
+1. **Trellis-aware BAQ.** Allocate bits per tile instead of per column. The
+   formula becomes $c_{\text{tile}} = (\text{tile range})^2 / (12 \cdot \text{tile Hessian sensitivity})$
+   where tile Hessian sensitivity = trace of $H^{-1}$ restricted to the tile's
+   input channels. This is a novel extension of BAQ to the trellis setting that
+   the paper doesn't consider. Each 16×16 tile would get its own K value.
+
+2. **Iterative BAQ.** The formula assumes $[H_F^{-1}]_{jj}$ is fixed, but GPTQ
+   updates the Hessian as columns are quantized. Iterate: (1) allocate bits,
+   (2) run GPTQ, (3) recompute Hessian sensitivity after quantization,
+   (4) reallocate. This adaptive BAQ would be more accurate at 2-3× cost.
+
+3. **BAQ with weight magnitude.** The paper's $c_{ij}$ uses only weight range
+   and Hessian. Augment: $c'_{ij} = c_{ij} \cdot |w_{ij}|^2$ to also account for
+   weight magnitude. This allocates more bits to both sensitive AND large weights.
+
+4. **Per-element BAQ.** The paper's formula is per-element (i,j), but we apply
+   it per-column. Computing per-element allocation requires per-element Hessian
+   diagonal, which is the diagonal of $H^{-1}$ — available from the Cholesky
+   factor but at $O(n^2)$ storage. For 128×128 this is feasible and would be
+   the true paper implementation.
+
+#### 9.4.6 KronQ: H_G cancellation
+
+**What paper confirms:** H_G cancels in the GPTQ update. H_G is only used for
+bidirectional incoherence processing and inter-layer allocation.
+
+**What we might have missed:** Even though H_G cancels in the update, the paper
+says it's used for **output-side incoherence processing** — rotating the weight
+rows using H_G eigenvectors. We didn't implement this.
+
+**Alternatives not tried:**
+
+1. **Output-side Hadamard transform.** Apply a random Hadamard transform on the
+   output rows of W before quantization, then inverse after. This is the
+   practical form of H_G-based incoherence processing. It makes weight rows
+   approximately i.i.d. Gaussian, which is optimal for uniform quantization.
+   Cost: $O(m \log m)$ per column. This is distinct from our existing
+   block_hadamard (which operates on both rows and columns) — this is
+   output-only, driven by H_G not random.
+
+2. **H_G-informed tile ordering.** H_G eigenvectors reveal which output channels
+   are correlated. Reorder output channels so correlated ones share tiles,
+   allowing the trellis quantizer to exploit their correlation. This is a novel
+   use of H_G that doesn't cancel — it's about data layout, not the update rule.
+
+3. **Inter-tile BAQ using H_X.** Even for single-layer, allocate bits across
+   tiles using tr(H_X restricted to tile) as sensitivity. The H_X part doesn't
+   cancel — it's the input-side Hessian. This combines KronQ's H_X with BAQ's
+   allocation formula: $c_{\text{tile}} = (\text{tile range})^2 / (12 \cdot \text{tr}(H_X^{-1}_{\text{tile}}))$.
+
+4. **KronQ-weighted loss.** Instead of weighting the GPTQ update (which cancels),
+   weight the KLD loss: $L = \sum_i H_{G,ii} \cdot \text{KLD}_i$. This doesn't
+   cancel because it's in the objective, not the update. But it requires the
+   true H_G (backward pass). For CPU-only, we could approximate H_G using output
+   covariance: $H_G \approx Y^T Y / N$ where $Y = WX$.
+
+#### 9.4.7 ResQ: PCA subspace
+
+**What paper confirms:** Eq 3, PCA from activation covariance, r=d/8, 8-bit for
+high-variance subspace, K-bit for rest.
+
+**Design choices not explored:**
+
+1. **Weight PCA instead of activation PCA.** Project using SVD of W itself. The
+   top-r singular vectors of W capture the most "expressive" weight directions.
+   This protects the most important weight components rather than the most
+   activated ones. May be better for weight-only quantization (which is our case).
+
+2. **Joint PCA.** Find the subspace that maximizes both activation variance AND
+   weight sensitivity: maximize $u^T (XX^T) u$ subject to $u^T (W^T W) u = 1$.
+   This is a generalized eigenvalue problem that gives a subspace that's both
+   high-activation and high-weight. Neither AWQ nor ResQ does this.
+
+3. **Trellis-tile PCA.** Apply PCA within each 16×16 tile: 2 components at
+   8-bit, 14 at K-bit. Much finer-grained with lower overhead (2×16×2 bytes
+   per tile vs 16×16/8 bytes savings). The overhead ratio is much better than
+   full-matrix ResQ.
+
+4. **Adaptive rank.** Instead of fixed r=d/8, choose r per-layer based on
+   eigenvalue decay. If the activation covariance has fast decay (top few
+   eigenvalues dominate), use small r. If slow decay, use larger r. The
+   optimal r minimizes $r \cdot \epsilon_{8\text{bit}} + (d-r) \cdot \epsilon_{K\text{bit}}$
+   where $\epsilon$ depends on the eigenvalue spectrum.
+
+5. **ResQ + GPTAQ.** The paper says ResQ can combine with GPTQ. Apply GPTAQ
+   within each subspace separately. The high-precision subspace gets minimal
+   correction (8-bit is already good); the low-precision subspace gets maximum
+   GPTAQ benefit. The P-matrix would be computed within each subspace's Hessian,
+   which is better conditioned. This is a novel combination we didn't test.
+
+6. **ResQ + BAQ.** Apply BAQ bit allocation within the low-precision subspace.
+   The low-precision components get mixed K values based on BAQ sensitivity.
+   This combines ResQ's subspace decomposition with BAQ's optimal allocation.
+
+#### 9.4.8 YAQA: approximate Hessian without backward
+
+**What paper says:** H_O = E[∇_y ℓ^T ∇_y ℓ] (gradient covariance), requires backward.
+
+**Alternatives not tried:**
+
+1. **Output covariance as H_O proxy.** $H_O \approx Y^T Y / N$ where $Y = WX$.
+   This captures output channel correlations without backward passes. It's
+   computable in our CPU-only setup and approximates the Fisher when the model
+   is near convergence (output distribution ≈ activation distribution).
+
+2. **Hadamard as H_O incoherence.** The paper says incoherence processing
+   reduces H_O's incoherence. If H_O ≈ I (which Figure 3 suggests for some
+   layers), then output-side Hadamard IS the incoherence processing. Apply
+   Hadamard on output rows, quantize, inverse Hadamard. This is Sketch B +
+   incoherence, a practical YAQA approximation.
+
+3. **GuidedQuant as diagonal H_O.** Our GuidedQuant computes per-output Fisher
+   diagonal. Use this as diagonal H_O in the YAQA rounding formula (Eq 10):
+   $W = Q(W^* + L_O^T \Delta W L_I + L_O^T \Delta W + \Delta W L_I)$ where
+   $L_O$ = Cholesky of Fisher diagonal (trivially invertible). This is a
+   legitimate YAQA variant using diagonal H_O, computable without backward.
+
+### 9.5 Sample-tensor results (v2, fixed code)
 
 19 methods × 5 K × 3 seeds = 285 runs. Matrix 128×128.
 
@@ -278,7 +547,7 @@ matters) is captured by GuidedQuant's per-output-channel Fisher weighting.
 **Key change from v1:** BAQ (closed-form) is now the strongest complement at ALL
 K values, not just K6. The consistent winner is GPTAQ+AWQ+SQ+BAQ across K3-K6.
 
-### 9.5 Real-weight results (v2, fixed code, 15 tensors)
+### 9.6 Real-weight results (v2, fixed code, 15 tensors)
 
 15 tensors: L0/L10/L20/L30/L40/L55 gate+down + L0 GDN (qkv, out, z).
 K5K6 recipe: gate=K5, down/attention=K6.
@@ -308,7 +577,7 @@ K5K6 recipe: gate=K5, down/attention=K6.
 | L55_gate | 55 | K5 | GPTAQ+AWQ+SQ+BAQ | +69.2% | +36.1% |
 | L55_down | 55 | K6 | GPTAQ+AWQ(search)+SQ+BAQ | +30.0% | +19.5% |
 
-### 9.6 How conclusions changed
+### 9.7 How conclusions changed
 
 | Finding | v1 (pre-fix) | v2 (post-fix) | Change |
 |---------|-------------|---------------|--------|
@@ -323,27 +592,38 @@ K5K6 recipe: gate=K5, down/attention=K6.
 | Late-layer hardest | L55_down | L55_down | **Confirmed** |
 | Mid-layer trend | Not measured | Larger improvement room (L10-L40) | **New finding** |
 
-### 9.7 Updated implications for the Frontier Loop
+**Caveat:** Some v1→v2 changes may be due to code-convention fixes (0.25 multiplier,
+geometric normalization) rather than true algorithm corrections. The 0.25 multiplier
+in particular may not be appropriate for our unscaled Hessian. A v3 experiment
+testing paper-faithful implementations (no 0.25, no normalization) would isolate
+which fixes actually matter.
+
+### 9.8 Updated implications for the Frontier Loop
 
 1. **GPTAQ is the P0 correction.** Confirmed across 15 tensors and 5 K values.
 2. **BAQ (closed-form) should be P0.** The closed-form convex allocation from
    BAQ Eq 5-6 is the strongest single complement to GPTAQ at all K values.
-   Promote from "diagnostic" to P0.
-3. **GPTAQ+AWQ+SQ+BAQ is the recommended stack.** This combination consistently
-   wins across K3-K6 on both sample and real weights.
-4. **ResQ should be evaluated as a standalone alternative.** The PCA subspace
-   approach is a fundamentally different quantization path, not a post-processing
-   correction. It may be competitive for specific use cases but cannot be stacked
-   with GPTAQ.
-5. **KronQ can be deferred.** Verified as a no-op for single-layer quantization.
-   Only relevant for inter-layer mixed-precision allocation.
-6. **AWQ and SmoothQuant are genuinely different.** AWQ uses activation-only
-   scaling (mean|X|^alpha); SmoothQuant migrates difficulty between activations
-   and weights (max|X|^alpha / max|W|^(1-alpha)). Both hurt without GPTAQ
-   compensation.
-7. **AWQ alpha grid search** provides marginal improvement over fixed alpha=0.5.
-   Worth including but not critical.
-8. **Late-layer weights remain hardest.** L55_down shows the smallest
-   improvement from the best stack (+19.5% vs GPTAQ, vs +36% for L0/L55 gate).
+3. **GPTAQ+AWQ+SQ+BAQ is the recommended stack.** Consistently wins K3-K6.
+4. **ResQ should be evaluated as a standalone alternative.** PCA subspace is
+   a different quantization path, not stackable with GPTAQ. ResQ+GPTAQ (per-subspace
+   GPTAQ) and ResQ+BAQ (BAQ within low-precision subspace) are untested novel
+   combinations worth exploring.
+5. **KronQ can be deferred** for single-layer, but its H_G-based output-side
+   incoherence processing (Hadamard on output rows) is untested and may help.
+6. **AWQ and SmoothQuant are genuinely different.** AWQ: activation-only
+   (mean|X|^α). SQ: activation-weight balance (max|X|^α / max|W|^{1-α}). Both
+   hurt without GPTAQ compensation.
+7. **Novel research directions** identified in §9.4:
+   - Trellis-aware BAQ (per-tile bit allocation)
+   - Adaptive GPTAQ correction strength (data-driven α instead of 0.25)
+   - Weight-activation product AWQ hybrid
+   - Per-channel adaptive SmoothQuant α
+   - ResQ+GPTAQ per-subspace correction
+   - Output-side Hadamard as KronQ incoherence
+   - Joint PCA for ResQ (activation + weight covariance)
+   - Trellis-tile PCA (per-tile subspace quantization)
+8. **Late-layer weights remain hardest.** L55_down: +19.5% vs GPTAQ (vs +36%
+   for L0/L55 gate). The adaptive GPTAQ α (§9.4.1 alt 2) may help here — late
+   layers have larger activation deviation, so stronger correction is needed.
 9. **Mid-layer weights have larger optimization room.** L10-L40 gate tensors
    show +20-30% improvement from the full stack vs GPTAQ alone.
