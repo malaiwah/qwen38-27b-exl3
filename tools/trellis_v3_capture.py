@@ -100,6 +100,7 @@ def _validate_plan(path: Path) -> dict[str, Any]:
         "slices",
         "source",
         "converter",
+        "quant_flow_recipe",
     }
     if set(plan) != expected:
         raise CaptureError(
@@ -150,6 +151,24 @@ def _validate_plan(path: Path) -> dict[str, Any]:
     _known_string(converter["commit"], "converter.commit")
     _known_string(converter["tree"], "converter.tree")
     _sha256(converter["source_sha256"], "converter.source_sha256")
+    recipe = _object(plan["quant_flow_recipe"], "quant_flow_recipe")
+    if set(recipe) != {
+        "gate_up_bits",
+        "down_bits",
+        "attention_bits",
+        "expected_prior_counts",
+    }:
+        raise CaptureError("quant_flow_recipe keys differ")
+    for name in ("gate_up_bits", "down_bits", "attention_bits"):
+        value = recipe[name]
+        if not isinstance(value, int) or value not in range(3, 9):
+            raise CaptureError(f"quant_flow_recipe.{name} must be 3..8")
+    counts = _object(recipe["expected_prior_counts"], "expected_prior_counts")
+    if set(counts) != {"5", "6"} or any(
+        isinstance(value, bool) or not isinstance(value, int) or value < 0
+        for value in counts.values()
+    ):
+        raise CaptureError("quant_flow_recipe expected counts differ")
     return plan
 
 
@@ -175,6 +194,7 @@ _TARGET_KEY = _PLAN["target"]["linear_key"]
 _SAMPLE_LIMIT = _PLAN["sample_rows"]
 _SAMPLES: list[torch.Tensor] = []
 _CAPTURED = False
+_RECIPE_BITS_APPLIED: dict[str, int] = {}
 _ORIGINAL_CAPTURE_H = Linear.capture_H
 
 
@@ -253,6 +273,19 @@ def _atomic_save_tensors(path: Path, tensors: dict[str, torch.Tensor]) -> None:
     except BaseException:
         temporary.unlink(missing_ok=True)
         raise
+
+
+def _recipe_bit(linear_key: str) -> int | None:
+    if not linear_key.startswith("model.language_model.layers."):
+        return None
+    recipe = _PLAN["quant_flow_recipe"]
+    if linear_key.endswith((".mlp.gate_proj", ".mlp.up_proj")):
+        return int(recipe["gate_up_bits"])
+    if linear_key.endswith(".mlp.down_proj"):
+        return int(recipe["down_bits"])
+    if ".linear_attn." in linear_key or ".self_attn." in linear_key:
+        return int(recipe["attention_bits"])
+    return None
 
 
 def _publish_fixture(linear: Any, capture_h: dict[str, Any]) -> None:
@@ -338,6 +371,17 @@ def _publish_fixture(linear: Any, capture_h: dict[str, Any]) -> None:
         )
     tensor_path = _OUT_PATH.with_suffix(".safetensors")
     _atomic_save_tensors(tensor_path, tensors)
+    recipe_counts = {
+        str(bits): sum(value == bits for value in _RECIPE_BITS_APPLIED.values())
+        for bits in sorted(set(_RECIPE_BITS_APPLIED.values()))
+    }
+    expected_counts = _PLAN["quant_flow_recipe"]["expected_prior_counts"]
+    if _PLAN["flow"] == "quant" and recipe_counts != expected_counts:
+        raise CaptureError(
+            f"quant-flow recipe counts differ: {recipe_counts} != {expected_counts}"
+        )
+    if _PLAN["flow"] == "bf16" and recipe_counts:
+        raise CaptureError("BF16 flow unexpectedly applied quantization recipe bits")
     result = {
         "schema": OUTPUT_SCHEMA,
         "status": "pass",
@@ -366,6 +410,11 @@ def _publish_fixture(linear: Any, capture_h: dict[str, Any]) -> None:
             **(shard_identity or {}),
         },
         "converter": _PLAN["converter"],
+        "flow_recipe": {
+            "configured": _PLAN["quant_flow_recipe"],
+            "applied_prior_modules": len(_RECIPE_BITS_APPLIED),
+            "applied_prior_counts": recipe_counts,
+        },
         "tensors": {
             "path": tensor_path.name,
             "sha256": sha256_file(tensor_path),
@@ -396,6 +445,11 @@ def _wrap_quantizer(original: Any) -> Any:
             _publish_fixture(targets[0], capture_h)
             raise CaptureComplete
         if _PLAN["flow"] == "quant":
+            for linear in linears:
+                bits = _recipe_bit(linear.key)
+                if bits is not None:
+                    strategy[linear.key] = bits
+                    _RECIPE_BITS_APPLIED[linear.key] = bits
             original(
                 args,
                 linears,
