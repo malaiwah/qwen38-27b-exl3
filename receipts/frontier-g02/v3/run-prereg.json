@@ -1,0 +1,57 @@
+{
+  "schema_version": "qwen38-trellis-v3-run-prereg/1",
+  "campaign_id": "frontier-g02",
+  "experiment_id": "trellis-v3-actual-exl3-controls",
+  "parent_experiment_id": "trellis-v3-control-capture",
+  "hypothesis": "On four matched real Qwen 128x128 slices, actual EXL3 RTN and LDLQ controls can be executed at identical K5/mcg payload bytes with deterministic replay, while separately measuring BF16-flow, quant-flow, and no-quant running-input floors.",
+  "falsifier": "Any source/capture identity drift, BF16/quant-flow mismatch, unequal exact payload bytes, non-deterministic seeded payload, non-finite metric, non-actual quantizer route, or missing no-quant floor falsifies the control harness.",
+  "arms": [
+    {"id": "rtn", "quantizer": "actual EXL3 Viterbi fallback", "hessian": null},
+    {"id": "ldlq_bf16_h", "quantizer": "actual EXL3 LDLQ+Viterbi", "hessian": "BF16-flow"},
+    {"id": "ldlq_quant_h", "quantizer": "actual EXL3 LDLQ+Viterbi", "hessian": "quant-flow"}
+  ],
+  "held_variables": {
+    "K": 5,
+    "codebook": "mcg",
+    "seed": 1376380199,
+    "slice_count": 4,
+    "slice_shape": [128, 128],
+    "exact_payload_bytes_equal": true,
+    "source_tensor": "model.language_model.layers.10.mlp.gate_proj.weight"
+  },
+  "identities": {
+    "runner_sha256": "deaae0641ca558882d644f13437d507c2418fd4056fc850ef27c9088d912360f",
+    "capture_tool_sha256": "e7330d213f977ef3d035310b41d5e7bd460d2ad5dc5320f6078abf8a4d005622",
+    "actual_quantizer_sha256": "4cd368dab28e007d649e25b97c65fc73a56ef2a1482ca2b9298a53d4b0876dbf",
+    "converter_commit": "6dabcfc7f0e75f75a577ea3650382ea1e8242a06",
+    "converter_tree": "d62a56b1269cc8b1e8e3207465fd896fb615cfad",
+    "bf16_revision": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0"
+  },
+  "metrics": [
+    "weight_mse",
+    "bf16_hessian_distortion",
+    "quant_hessian_distortion",
+    "symmetric_output_relative_mse",
+    "running_output_relative_mse",
+    "noquant_running_relative_mse_floor",
+    "excess_running_relative_mse_over_noquant_floor",
+    "proxy_error",
+    "exact_payload_bytes",
+    "effective_bpw_with_sidecars"
+  ],
+  "external_gates": {
+    "whole_block": {"required_for_method_claim": true, "initial_status": "pending"},
+    "end_logit": {"required_for_method_claim": true, "initial_status": "pending"}
+  },
+  "decision_rules": {
+    "accept_control_harness": "All three controls run on every slice with identical exact bytes, finite metrics, correct route flags, and deterministic LDLQ quant-flow replay.",
+    "allow_method_claim": "Never from this control run alone; both whole-block and end-logit external gates must separately pass.",
+    "reject": "Any falsifier condition occurs."
+  },
+  "maximum_spend": {"gpu_hours": 0.5, "usd": 0},
+  "planned_outputs": [
+    "v3/run-plan.json",
+    "v3/run-result.json",
+    "v3/run-result.safetensors"
+  ]
+}
