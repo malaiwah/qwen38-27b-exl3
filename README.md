@@ -67,6 +67,32 @@ high-KLD throughput profile. Every INT8/FP4/FP6, K-map, topology, kernel-route,
 KV, MTP, graph, or profile change is a candidate variable and requires
 preregistered paired comparison against this exact control.
 
+## Frontier G02 pre-candidate controls (measured 2026-08-21)
+
+The exact control and method-neutral harness are ready. Clean packed INT6 was
+integrated onto runtime `b19029d`, matched the historical encoder byte-for-byte
+on real BF16 rows, and passed three independent AIBoss boots. Aggregate PP was
+**2,941.9 tok/s**, fox/essay TG **226.9/104.3**, context **238,400**, with text,
+vision, MTP, 200k context and rollback passing on every boot.
+
+The clean-runtime fidelity recapture is exactly equal to the historical control:
+mean KLD **0.0034052972**, p99 **0.0348892**, paired delta and CI **0.0**, with
+all 512 per-context rows and the full tail histogram identical. Its 513-file,
+10.73 GB hidden-state capture has an independently verified private-bucket copy.
+
+The repaired v3 harness uses the actual EXL3 Viterbi quantizer—not the invalidated
+uniform proxy—on four real 128×128 Qwen slices with matched BF16/quant-flow
+activations and Hessians. RTN and both LDLQ controls carry the same exact
+**10,756-byte / 5.251953-bpw** payload. Quant-flow-H LDLQ reduced mean excess
+running-output error from RTN's `0.0011858` to `0.0008865` at those same bytes;
+this is a control result, not a method promotion. Whole-block and end-logit gates
+remain mandatory and intentionally pending for researcher-proposed methods.
+
+[`receipts/frontier-g02/manifest.json`](receipts/frontier-g02/manifest.json) is
+validated by `python3 tools/verify_frontier_g02.py --campaign
+receipts/frontier-g02` as `pre_candidate_ready`. Candidate slots remain unopened,
+`E-final-v7` remains sealed, and rental authorization remains false.
+
 ## Final Frontier G0/G1 campaign (measured 2026-08-20)
 
 The preregistered campaign in

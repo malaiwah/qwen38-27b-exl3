@@ -1432,3 +1432,28 @@ The `frontier-g01` receipts remain unchanged. Its G0
 `incumbent-fidelity-int8` arm qualified the clean runtime and rollback path but
 was not an exact `PROFILE=fidelity` recapture. A later campaign must rerun the
 exact control under matched hardware/runtime blocks before scoring candidates.
+
+**Frontier G02 exact-control and v3 infrastructure qualified.** Clean packed
+INT6 was integrated onto exact clean runtime `b19029d` and proved byte-identical
+to the historical encoder on 48 real BF16 rows. Three independent AIBoss boots
+passed at aggregate PP **2,941.9**, fox/essay TG **226.9/104.3**, acceptance
+**0.972/0.305**, and 238,400 context; text, vision, 200k context and owner-service
+restoration passed on every boot. A new 512-context / 1,048,064-position KLD
+capture reproduced the historical distribution exactly: mean `0.0034052972`,
+p99 `0.0348892`, paired delta/CI zero, every per-context row and tail bin equal.
+The 10.73 GB capture was uploaded to the private bucket and independently read
+back with matching tree hash.
+
+The v3 harness now captures real BF16-flow and exact hydrated quant-flow
+activations/Hessians from the pinned converter, checks direct safetensors BF16
+decode, and runs actual EXL3 RTN plus LDLQ with BF16- and quant-flow Hessians.
+Four real layer-10 gate slices used identical 10,756-byte K5/mcg payloads across
+all arms; seeded replay was deterministic. Mean excess running-output error was
+`0.0011858` for RTN, `0.0008989` for BF16-H LDLQ and `0.0008865` for quant-H
+LDLQ, above a measured no-quant running-flow floor of `0.0000661`. These are
+control-harness measurements only: whole-block and end-logit gates remain
+mandatory before any mathematical method claim.
+
+`receipts/frontier-g02/manifest.json` verifies as `pre_candidate_ready`.
+Candidate slots are unopened, `E-final-v7` is sealed, and rental remains
+unauthorized until a fresh candidate passes Gate A plus paired fidelity.

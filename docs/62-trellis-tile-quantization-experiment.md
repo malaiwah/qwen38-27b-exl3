@@ -922,3 +922,42 @@ $\operatorname{tr}(H_G E H_X E^T)$ at identical payload.
 5. Only after the 96-GB gradient gate: true GuidedQuant, KronQ, and YAQA.
 6. Final promotion requires a fresh sequential checkpoint, actual served KLD,
    exact bytes, startup, graph capture, PP/TG, context, and no runtime fallback.
+
+## 11. V3 control harness qualification
+
+**Status 2026-08-21:** the prerequisite control harness in §10.5/§10.11 now
+passes. This does not rehabilitate any v1/v2 ranking.
+
+The v3 path:
+
+1. captures 256 real activation rows and an 896-row Hessian under both BF16 flow
+   and the exact hydrated predecessor flow;
+2. checks four first/middle/last/seeded 128×128 layer-10 gate slices against
+   direct safetensors BF16 decoding (maximum materialization difference
+   `2.98e-8`);
+3. enforces the predecessor recipe—20 K5 gate/up and 42 K6
+   down/attention modules before the target;
+4. invokes the actual pinned EXL3 encoder/Viterbi implementation for RTN,
+   BF16-H LDLQ and quant-flow-H LDLQ;
+5. charges every physical trellis/sign/codebook sidecar byte; all arms are
+   exactly 10,756 bytes, or 5.251953 bpw;
+6. measures symmetric output error, running-input error, both Hessian
+   distortions and the no-quant running-flow floor; and
+7. verifies seeded payload replay and full maintenance rollback.
+
+Mean across four slices:
+
+| control | running relative MSE | excess over no-quant floor |
+|---|---:|---:|
+| actual EXL3 RTN | 0.00125193 | 0.00118583 |
+| actual EXL3 LDLQ, BF16-flow H | 0.00096501 | 0.00089892 |
+| actual EXL3 LDLQ, quant-flow H | **0.00095261** | **0.00088652** |
+
+The measured no-quant running-flow floor is `0.00006609`. LDLQ's lower
+activation/Hessian-weighted error despite slightly higher raw weight MSE is the
+expected reason local scalar weight MSE cannot select methods.
+
+The harness still reports `method_claims_allowed=false`. Every researcher method
+must pass separately preregistered whole-block and end-logit gates before it can
+be ranked or promoted. The strict evidence lives under
+`receipts/frontier-g02/v3/`.

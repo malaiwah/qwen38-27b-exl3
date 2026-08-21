@@ -208,13 +208,27 @@ class Verifier:
                 ref, f"inherited_evidence.{name}", base=self.campaign, canonical=False
             )
         baseline = _object(contract["baseline_execution"], "baseline_execution")
-        for name in ("profile_gate", "baseline", "callback", "transaction"):
+        for name in ("profile_gate", "baseline", "transaction"):
             self._ref(
                 baseline[name],
                 f"baseline_execution.{name}",
                 base=self.campaign,
                 canonical=False,
             )
+        historical_callback = _object(
+            baseline["callback"], "baseline_execution.callback"
+        )
+        _exact(
+            historical_callback,
+            {"path", "sha256"},
+            "baseline_execution.callback",
+        )
+        if (
+            historical_callback["path"]
+            != "../../tools/frontier_clean_incumbent_callback.sh"
+        ):
+            raise MalformedEvidence("historical callback path differs")
+        _sha(historical_callback["sha256"], "historical callback sha256")
         policy = _object(contract["candidate_policy"], "candidate_policy")
         if (
             policy.get("research_results_observed") is not False
@@ -299,6 +313,15 @@ class Verifier:
             "runtime_extension.compatibility.sha256",
         ):
             raise MalformedEvidence("historical compatibility receipt hash differs")
+        effective = _object(
+            correction["effective_baseline_execution"],
+            "effective_baseline_execution",
+        )
+        callback_path = self.repo / "tools/frontier_clean_incumbent_callback.sh"
+        if not callback_path.is_file() or sha256_file(callback_path) != _sha(
+            effective.get("callback_sha256"), "effective callback sha256"
+        ):
+            raise MalformedEvidence("effective exact-control callback hash differs")
         return correction
 
     def _validate_prereg(self, value: object, experiment_id: str) -> dict[str, Any]:
@@ -480,6 +503,7 @@ class Verifier:
                 "capture_result",
                 "run_prereg",
                 "run_result",
+                "run_transaction",
             },
             "method_infrastructure",
         )
@@ -498,17 +522,27 @@ class Verifier:
             _, run_result = self._ref(
                 method["run_result"], "method_infrastructure.run_result"
             )
+            _, run_transaction = self._ref(
+                method["run_transaction"], "method_infrastructure.run_transaction"
+            )
             if (
                 _object(capture_prereg, "capture prereg").get("schema_version")
                 != "qwen38-trellis-v3-prereg-correction/1"
+                or _object(capture_prereg, "capture prereg").get("correction_id")
+                != "prereg-correction-006"
                 or _object(capture_result, "capture result").get("status") != "pass"
                 or _object(run_prereg, "run prereg").get("schema_version")
-                != "qwen38-trellis-v3-run-prereg/1"
+                != "qwen38-trellis-v3-run-prereg-correction/1"
+                or _object(run_prereg, "run prereg").get("correction_id")
+                != "run-prereg-correction-001"
                 or _object(run_result, "run result").get("schema")
                 != "qwen38-trellis-v3-result/1"
                 or _object(run_result, "run result").get("status") != "pass"
                 or _object(run_result, "run result").get("method_claims_allowed")
                 is not False
+                or _object(run_transaction, "run transaction").get("status") != "pass"
+                or _object(run_transaction, "run transaction").get("restore_proven")
+                is not True
             ):
                 raise MalformedEvidence("v3 control infrastructure semantics differ")
         elif any(method[name] is not None for name in ("capture_result", "run_result")):
