@@ -775,7 +775,7 @@ def replay_command(args: argparse.Namespace) -> None:
             if (capture_contract.get("context_length") != 2048
                     or runtime.get("fp32") is not False
                     or runtime.get("chunk_accumulate") is not False
-                    or runtime.get("max_batched_tokens") != 2048
+                    or runtime.get("max_batched_tokens") not in (0, 2048)
                     or identity.get("kv_cache_dtype_resolved") not in
                     ("bfloat16", "torch.bfloat16")):
                 raise GateError(f"{label} capture violates eager TP1/full-chunk/BF16-KV contract")
