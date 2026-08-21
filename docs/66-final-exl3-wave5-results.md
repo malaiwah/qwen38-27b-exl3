@@ -1,6 +1,8 @@
 # 66 — Final Wave 5 Results: Actual-EXL3 Research Disposition
 
 **Status:** final research-wave result, 2026-08-21. **No checkpoint promoted.**
+**Postscript (2026-08-21):** the capture launcher was repaired and the
+strength-zero control was captured and replayed — see §8.
 
 ## 1. Executive result
 
@@ -183,23 +185,22 @@ closed.
 5. **R34 reconstructed-down/seam failed its validation block-output gate; R35
    Schur refinement remained calibration-local and was excluded without
    validation evidence.**
-6. **Final-KL legal-path direction was not stable enough to justify BCJR/QAT.**
-7. **No evidence justified a new fractional-K format/kernel.**
-8. **The absence of validation KLD is an infrastructure limitation, not evidence
-   that every untested action is fidelity-neutral.** No positive production claim
-   is made.
+8. **The validation KLD infrastructure is now operational** (§8). The
+   strength-zero control measured mean KLD 0.003409, matching production
+   0.003405. No Wave-5 candidate action has been replayed, but the lane is
+   open for any future candidate that produces a local win large enough to
+   justify the GPU time.
 
 ## 6. Production disposition
 
 - Keep the shipped checkpoint/profile unchanged.
 - Keep `frontier-g02-prep` research artifacts; do not merge a quantization method
   into production code.
-- If operational work resumes, the next single engineering step is to finish the
-  Wave-5-bound one-tensor capture launcher using the known serialization setting,
-  then replay R32's finite-two/path-r3 candidates on validation. That is outside
-  this final research wave and is not authorization for another method search.
-- Any future candidate still requires one frozen full-model confirmation and
-  codec-exact plus production-profile runtime gates.
+- The capture launcher has been repaired (§8). The strength-zero control was
+  captured and replayed, producing the first validation KLD row from the
+  actual-EXL3 pipeline. R32's finite-two and scale-rerun-r3 candidates remain
+  available for replay if future work warrants it, but the sub-percent
+  one-tensor local gains make a full-model KLD improvement unlikely.
 
 ## 7. Artifacts
 
@@ -209,3 +210,58 @@ closed.
   under `docs/research/`, receipts under `receipts/wave5/`.
 - Lean process: [doc 65](65-lean-quantization-traceability-manual.md).
 - Preregistered plan: [doc 64](64-final-exl3-wave5-research-plan.md).
+
+## 8. Postscript: capture launcher repaired, strength-zero control validated
+
+After the final research wave closed, the capture launcher's two infrastructure
+bugs were fixed and the strength-zero control was run end-to-end through the
+R31 validation gate.
+
+### Fixes
+
+1. **`VLLM_ALLOW_INSECURE_SERIALIZATION=1`** (commit `38ce6fe`): added the env
+   var to the podman capture command in `candidate_capture.py:767`. Without it,
+   vLLM's `MsgspecEncoder.enc_hook()` raises `TypeError` on `FunctionType` when
+   `collective_rpc` ships the post-final-norm hook to the EngineCore process.
+   With it, cloudpickle serializes the callable. Every other KLD capture script
+   in the repo already set this env var; the Wave 5 launcher omitted it.
+
+2. **Gate `max_batched_tokens=0` acceptance** (commit `e6e34d2`): the pinned v5
+   BF16 reference manifest records `max_batched_tokens=0` (old fidelity.py
+   default meaning "use ctx_len=2048"), but `fidelity_gate.py:778` required
+   exactly `2048`. Changed `!= 2048` to `not in (0, 2048)`. The candidate
+   manifest already had `2048`; only the reference failed the check.
+
+### Strength-zero control results
+
+The R30 strength-zero control (layer-55 `k_proj`, K6, strength=0.0 — a
+codec-exact re-encoding of the production tensor) was materialized, captured,
+and replayed through the R31 gate:
+
+| metric | strength-zero control | production fidelity |
+|---|---:|---:|
+| mean KLD | 0.003409 | 0.003405 |
+| p99 KLD | 0.03476 | 0.0349 |
+| top-1 agreement | 0.9760 | — |
+| EAR | 0.9804 | — |
+
+CI95 (cluster bootstrap, 10,000 resamples, 330 clusters): mean KLD
+[0.003168, 0.003677], p99 [0.031036, 0.039487].
+
+512 contexts × 2047 positions = 1,048,064 scored positions. Capture took 347 s;
+replay took ~300 s.
+
+The strength-zero KLD (0.003409) matches the production fidelity profile KLD
+(0.003405) within 0.000004, confirming the materialization pipeline is
+codec-exact and the capture/replay infrastructure produces valid measurements.
+
+### What this changes
+
+The capture launcher lane is now open. R32's finite-two and scale-rerun-r3
+candidate actions remain on aiboss and could be replayed if future work
+warrants. However, the local gains were sub-percent on one tensor (L55 gate, 1
+of 409 modules), so a full-model KLD improvement over the strength-zero control
+is unlikely to be distinguishable from noise.
+
+The research conclusion stands: no checkpoint promoted, stock EXL3 remains the
+production recommendation.
