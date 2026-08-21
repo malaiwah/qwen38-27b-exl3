@@ -1,0 +1,36 @@
+{
+  "schema": "qwen38-frontier-g02-control-log/1",
+  "campaign_id": "frontier-g02",
+  "experiment_id": "g1-exact-fidelity-control-v2",
+  "runtime": {
+    "base_commit": "b19029d2309b26c4942425e52b74a0e6dd5d141e",
+    "integrated_commit": "8e5b5a2c6d955270f30ce9f3c8baaffa2da80710",
+    "source_sha256": "4d095154897181f6e403c938884c124f6e74004458b4974c1b643ee59dbb9fd5",
+    "historical_int6_compatibility": "pass"
+  },
+  "attempts": [
+    {
+      "attempt": 1,
+      "transaction": {"path": "attempt-001-transaction.json", "sha256": "32ed68704a991d869002ff27c65ab4794a30e9cf44ce36792dc49a35113b1dc2", "canonical_sha256": "7d5cf8171b2f50ff22e41de6d120f8847c247813bc81426850dd62c28d67c263"},
+      "failure": "profile harness dependency bench_lib.py was absent from the isolated tool directory after the exact model became healthy",
+      "restore_proven": true,
+      "measurement_reached": false
+    },
+    {
+      "attempt": 2,
+      "transaction": {"path": "attempt-002-transaction.json", "sha256": "7051be622355edee0c94d40ece62ae745ba5f424845a444646392a5317d4362c", "canonical_sha256": "f13b189f779505b4be7de346fe16ac6cad49f6c3431087c6bf2ad4e7286a8a7a"},
+      "profile": {"path": "attempt-002-profile.json", "sha256": "66daa474b37d7c5a16f1646fcd34d7160ae66b81b42db4f2236a8818269347fa", "canonical_sha256": "fb87aa34d62088528ebdaee426a87db2ec07b88c9813f3eee69d5088348464fe"},
+      "metrics": {"pp_tok_s": 2943.496938374459, "tg_fox_tok_s": 227.4540145897195, "tg_essay_tok_s": 98.51211626224756, "acceptance_fox": 0.9722222222222222, "acceptance_essay": 0.27807486631016043, "max_model_len": 238400, "sanity": true, "vision": true, "long_ctx_200k": true},
+      "failed_metrics": ["tg_essay_tok_s"],
+      "restore_proven": true,
+      "measurement_reached": true
+    }
+  ],
+  "decision": {
+    "one_boot_profile_pass": false,
+    "reason": "Essay TG 98.512 tok/s was below the frozen 98.89 tok/s threshold; all other profile checks passed.",
+    "candidate_opportunity_consumed": false,
+    "next_measurement": "separately preregistered three-independent-boot control using the historical n=3 design"
+  },
+  "disposition": "no_go"
+}

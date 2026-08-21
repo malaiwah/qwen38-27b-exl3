@@ -1,0 +1,28 @@
+{
+  "schema_version": "frontier-g02-result-v1",
+  "campaign_id": "frontier-g02",
+  "experiment_id": "g1-exact-fidelity-control-v2",
+  "kind": "exact-fidelity-control",
+  "candidate_id": null,
+  "prereg_canonical_sha256": "4c51bd9a9d9b808b679074612e961c5f1c65bcce107f2cc0465e9a19e9390c6d",
+  "artifacts": {
+    "raw-log": {"path": "experiments/g1-exact-fidelity-control-v2/raw-log.json", "sha256": "e5df94cd73425ed823c2a006b5c6fafc89ca9c6522157446c5a43dabdd16b0f9", "canonical_sha256": "a91a7e2ddb205f42d2c79d19be6e4f17795cfeb6808531fd1dd4bc31dada59f7"}
+  },
+  "results": {
+    "runtime_config_accepted": true,
+    "model_loading_pass": true,
+    "int6_historical_bytes_equal": true,
+    "profile_pass": false,
+    "pp_tok_s": 2943.496938374459,
+    "tg_fox_tok_s": 227.4540145897195,
+    "tg_essay_tok_s": 98.51211626224756,
+    "max_model_len": 238400,
+    "functional_checks_pass": true,
+    "restore_proven": true,
+    "candidate_opportunity_consumed": false
+  },
+  "uncertainty": {"independent_boots": 1, "failed_margin_tok_s": 0.37788373775243933, "historical_reference_boots": 3},
+  "failures": [{"stage": "profile-non-regression", "reason": "Essay TG 98.512 tok/s was below the frozen 98.89 tok/s threshold in the preregistered single boot."}],
+  "cost": {"gpu_hours": 0.19, "usd": 0},
+  "disposition": "no_go"
+}
