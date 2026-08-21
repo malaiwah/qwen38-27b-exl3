@@ -1,0 +1,26 @@
+{
+  "schema": "qwen38-trellis-v3-capture-plan/1",
+  "capture_id": "layer10-gate-bf16-flow",
+  "flow": "bf16",
+  "target": {
+    "linear_key": "model.language_model.layers.10.mlp.gate_proj",
+    "tensor_name": "model.language_model.layers.10.mlp.gate_proj.weight"
+  },
+  "sample_rows": 256,
+  "slices": [
+    {"id": "first", "input_start": 0, "output_start": 0, "size": 128},
+    {"id": "middle", "input_start": 2496, "output_start": 8640, "size": 128},
+    {"id": "last", "input_start": 4992, "output_start": 17280, "size": 128},
+    {"id": "seeded", "input_start": 1280, "output_start": 4096, "size": 128}
+  ],
+  "source": {
+    "model_root": "/models/bf16-repo/snapshots/1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0",
+    "model_revision": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0",
+    "index_sha256": "77042094076611b69791a610065f28b7013b8c621795fa86ddccc8bac7d1b9df"
+  },
+  "converter": {
+    "commit": "6dabcfc7f0e75f75a577ea3650382ea1e8242a06",
+    "tree": "d62a56b1269cc8b1e8e3207465fd896fb615cfad",
+    "source_sha256": "c75fac525034e41d7863d62ef8e3a8f4dfc89f066597e4c7f7820c2a2480c16b"
+  }
+}
