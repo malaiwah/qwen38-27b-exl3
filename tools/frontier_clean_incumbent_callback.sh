@@ -40,6 +40,7 @@ FP4_HELPER="/home/mbelleau/final-frontier-g0/source-patches/exl3_fp4_conversion.
 TRITON_FP4_HELPER="/home/mbelleau/final-frontier-g0/source-patches/triton_fp4_quant.py"
 FP6_HELPER="/home/mbelleau/final-frontier-g0/source-patches/exl3_fp6_conversion.py"
 B12X_ROOT="/home/mbelleau/final-frontier-g0/source-patches/b12x-base-1.2.1"
+EXL3_RUNTIME_SOURCE="${FRONTIER_EXL3_RUNTIME_SOURCE:-/home/mbelleau/frontier-g02-vllm-int6/vllm/model_executor/layers/quantization/exl3.py}"
 B12X_PACKAGE="${B12X_ROOT}/b12x"
 B12X_SELFTEST_SOURCE="/home/mbelleau/final-frontier-g0/incumbent-work-a7/runtime.log"
 B12X_SELFTEST_COPY="${FRONTIER_CAMPAIGN_WORK_DIR}/b12x-selftest.log"
@@ -49,7 +50,7 @@ MODEL_JSON="${FRONTIER_CAMPAIGN_WORK_DIR}/served-model.json"
 LOG_FILE="${FRONTIER_CAMPAIGN_WORK_DIR}/runtime.log"
 RECEIPT="${FRONTIER_CAMPAIGN_WORK_DIR}/incumbent-reproduction.json"
 
-for path in "$PROFILE_GATE" "$BASELINE" "$FP4_HELPER" "$TRITON_FP4_HELPER" "$FP6_HELPER" "$B12X_SELFTEST_SOURCE"; do
+for path in "$PROFILE_GATE" "$BASELINE" "$FP4_HELPER" "$TRITON_FP4_HELPER" "$FP6_HELPER" "$EXL3_RUNTIME_SOURCE" "$B12X_SELFTEST_SOURCE"; do
   [[ -f "$path" && ! -L "$path" && -s "$path" ]] || {
     echo "frontier_clean_incumbent_callback: missing immutable input ${path}" >&2
     exit 2
@@ -117,6 +118,7 @@ podman run -d --replace \
   -v "${TRITON_FP4_HELPER}:/opt/fp4/triton_fp4_quant.py:ro" \
   -v "${FP6_HELPER}:/opt/fp6/exl3_fp6_conversion.py:ro" \
   -v "${B12X_PACKAGE}:/opt/venv/lib/python3.12/site-packages/b12x:ro" \
+  -v "${EXL3_RUNTIME_SOURCE}:/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py:ro" \
   --entrypoint /opt/venv/bin/vllm \
   "${FRONTIER_CAMPAIGN_IMAGE}" \
   serve /models/qwen38 \
@@ -164,7 +166,7 @@ trap - EXIT
 
 python3 - "$PROFILE_JSON" "$CONTAINER_JSON" "$MODEL_JSON" "$LOG_FILE" "$RECEIPT" \
   "$FRONTIER_CAMPAIGN_IMAGE" "$FRONTIER_CAMPAIGN_MODEL_REVISION" \
-  "$FP4_HELPER" "$TRITON_FP4_HELPER" "$FP6_HELPER" \
+  "$FP4_HELPER" "$TRITON_FP4_HELPER" "$FP6_HELPER" "$EXL3_RUNTIME_SOURCE" \
   "$B12X_PACKAGE" "$B12X_SELFTEST_COPY" "$PROFILE_ID" "$EMBEDDING_BITS" \
   "$GPU_MEMORY_UTILIZATION" "$EXACT_FIDELITY_CONTROL" <<'PY'
 import datetime as dt
@@ -177,12 +179,12 @@ import sys
 
 profile_path, inspect_path, model_path, log_path, receipt_path = map(pathlib.Path, sys.argv[1:6])
 image_identity, model_revision = sys.argv[6:8]
-helper_paths = [pathlib.Path(value) for value in sys.argv[8:12]]
-selftest_path = pathlib.Path(sys.argv[12])
-profile_id = sys.argv[13]
-embedding_bits = int(sys.argv[14])
-gpu_memory_utilization = float(sys.argv[15])
-exact_fidelity_control = sys.argv[16] == "true"
+helper_paths = [pathlib.Path(value) for value in sys.argv[8:13]]
+selftest_path = pathlib.Path(sys.argv[13])
+profile_id = sys.argv[14]
+embedding_bits = int(sys.argv[15])
+gpu_memory_utilization = float(sys.argv[16])
+exact_fidelity_control = sys.argv[17] == "true"
 
 def load(path):
     with path.open("r", encoding="utf-8") as handle:
@@ -282,7 +284,8 @@ receipt = {
             {"path": "patches/exl3_fp4_conversion.py", "sha256": sha(helper_paths[0])},
             {"path": "patches/triton_fp4_quant.py", "sha256": sha(helper_paths[1])},
             {"path": "patches/exl3_fp6_conversion.py", "sha256": sha(helper_paths[2])},
-            {"path": "base-image:/opt/venv/lib/python3.12/site-packages/b12x", "tree_sha256": sha_tree(helper_paths[3]), "version": "1.2.1"},
+            {"path": "vllm/model_executor/layers/quantization/exl3.py", "sha256": sha(helper_paths[3]), "source_commit": "41192ae577"},
+            {"path": "base-image:/opt/venv/lib/python3.12/site-packages/b12x", "tree_sha256": sha_tree(helper_paths[4]), "version": "1.2.1"},
         ],
     },
     "model": {

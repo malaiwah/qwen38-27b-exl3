@@ -1,0 +1,26 @@
+{
+  "schema": "qwen38-frontier-int6-source/1",
+  "status": "source-qualified",
+  "source_repo": "malaiwah/vllm-voipmonitor",
+  "source_branch": "feature/int6-embedding-clean",
+  "source_commit": "41192ae577",
+  "base": "PR455 clean INT8 embedding head 342fd7e15f72a9f0f7b5dafded1910edac512b21",
+  "files": {
+    "vllm/model_executor/layers/quantization/exl3.py": "e7b659d34866e041689f6edf8189536b176188a7078b48b65055ccb7d07219d7",
+    "tests/quantization/test_exl3_int8_embedding.py": "f12848f4d88b3d6d20b4baee7e97e2f9deae76137d1cee68605b0604b30f736e",
+    "patches/0002-feat-exl3-add-packed-int6-embeddings.patch": "57e3fe14f09290ea8d4d3bed49748d487b67fbdbd1506a3e615007ac257a9cc8"
+  },
+  "verification": {
+    "focused_tests_passed": 19,
+    "focused_tests_failed": 0,
+    "runtime": "digest-pinned Gilded Gnosis r34 test image",
+    "ruff_check": "pass",
+    "ruff_format_check": "pass"
+  },
+  "scope": {
+    "supported_bits": [6, 8],
+    "int6_storage": "four signed int6 values packed into three bytes with fp16 per-row scale",
+    "int8_behavior_preserved": true,
+    "gpu_profile_qualification": "pending"
+  }
+}
