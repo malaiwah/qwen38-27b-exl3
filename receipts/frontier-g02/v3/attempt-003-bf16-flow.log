@@ -1,0 +1,123 @@
+/opt/venv/lib/python3.12/site-packages/torch/cuda/__init__.py:63: FutureWarning: The pynvml package is deprecated. Please install nvidia-ml-py instead. If you did not install pynvml directly, please report this to the maintainers of the package that installed pynvml for you.
+  import pynvml  # type: ignore[import]
+ -- Creating new job
+    Input directory: /models/bf16-repo/snapshots/1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0
+    Output directory: /work/bf16-flow-out
+    Working directory: /work/bf16-flow-converter
+    Calibration size: 2 rows, 128 columns
+    Target bitrate: 4.0 (decoder), 6 (head)
+    Output scales: always
+    Codebook: mcg
+ -- Loaded model config
+    Architecture: Qwen3_5ForConditionalGeneration
+ -- Created model instance:
+     - Qwen3_5VLModel
+         - Embedding
+         - [16x]
+             - [3x] TransformerBlock
+                 - RMSNorm
+                 - GatedDeltaNet
+                     - [5x] Linear
+                     - GatedRMSNorm
+                 - RMSNorm
+                 - GatedMLP
+                     - [3x] Linear
+             - TransformerBlock
+                 - RMSNorm
+                 - Attention
+                     - [4x] Linear
+                     - [2x] RMSNorm
+                 - RMSNorm
+                 - GatedMLP
+                     - [3x] Linear
+         - RMSNorm
+         - Linear
+ -- Created MTP model instance:
+     - Qwen3_5MTPModel
+         - Qwen3_5MTPInputLayer
+             - [2x] RMSNorm
+             - Linear
+         - TransformerBlock
+             - RMSNorm
+             - Attention
+                 - [4x] Linear
+                 - [2x] RMSNorm
+             - RMSNorm
+             - GatedMLP
+                 - [3x] Linear
+         - RMSNorm
+ -- Loaded tokenizer
+    Vocab size: 248077
+ -- RoPE settings
+    head_dim: 256
+    rope_scaling: {'mrope_interleaved': True, 'mrope_section': [11, 11, 10], 'partial_rotary_factor': 0.25, 'rope_theta': 10000000, 'rope_type': 'default'}
+    rope_theta: 10000000.0
+    rotary_dim: None
+    partial_rotary_factor: 0.25
+    max_position_embeddings: 262144
+    original_max_position_embeddings: None
+    rope_style: NEOX
+    llama_4_scaling_beta: 0.0
+ -- Preparing input state
+ -- Deciding quantization strategy
+ -- Quantization strategy, summary:
+     - 4 bpw:
+        model.language_model.layers.*.linear_attn.in_proj_qkv         48 tensors
+        model.language_model.layers.*.linear_attn.in_proj_z           48 tensors
+        model.language_model.layers.*.linear_attn.out_proj            48 tensors
+        model.language_model.layers.*.mlp.down_proj                   64 tensors
+        model.language_model.layers.*.mlp.gate_proj                   64 tensors
+        model.language_model.layers.*.mlp.up_proj                     64 tensors
+        model.language_model.layers.*.self_attn.k_proj                16 tensors
+        model.language_model.layers.*.self_attn.o_proj                16 tensors
+        model.language_model.layers.*.self_attn.q_proj                16 tensors
+        model.language_model.layers.*.self_attn.v_proj                16 tensors
+        mtp.fc                                                         1 tensor
+        mtp.layers.*.mlp.down_proj                                     1 tensor
+        mtp.layers.*.mlp.gate_proj                                     1 tensor
+        mtp.layers.*.mlp.up_proj                                       1 tensor
+        mtp.layers.*.self_attn.k_proj                                  1 tensor
+        mtp.layers.*.self_attn.o_proj                                  1 tensor
+        mtp.layers.*.self_attn.q_proj                                  1 tensor
+        mtp.layers.*.self_attn.v_proj                                  1 tensor
+     - 6 bpw:
+        lm_head                                                        1 tensor
+ -- Final bitrate (excluding head): 4.00
+ -- Loading unquantized module: model.language_model.embed_tokens
+
+ -- Quantized: model.language_model.embed_tokens                                       bpw: 16.00  rfn: 0.000000  cos: 0.000000  sqnr: 0.000000  [0.79 s]  rss: 3.24 GB
+ -- Saving checkpoint
+ -- Loading unquantized module: model.language_model.layers.0
+Traceback (most recent call last):
+  File "/opt/frontier/trellis_v3_capture.py", line 436, in <module>
+    raise SystemExit(main())
+                     ^^^^^^
+  File "/opt/frontier/trellis_v3_capture.py", line 426, in main
+    cm.main(in_args, job_state)
+  File "/opt/venv/lib/python3.12/site-packages/torch/utils/_contextlib.py", line 124, in decorate_context
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/src/exllamav3/conversion/convert_model.py", line 1079, in main
+    module.load(
+  File "/src/exllamav3/modules/transformer.py", line 95, in load
+    super().load(device, **kwargs)
+  File "/src/exllamav3/modules/module.py", line 69, in load
+    module.load(device, **kwargs)
+  File "/src/exllamav3/modules/gated_delta_net.py", line 649, in load
+    super().load(device, **kwargs)
+  File "/src/exllamav3/modules/module.py", line 69, in load
+    module.load(device, **kwargs)
+  File "/src/exllamav3/modules/gated_rmsnorm.py", line 50, in load
+    self.bc = ext.BC_GatedRMSNorm(
+              ^^^^^^^^^^^^^^^^^^^^
+TypeError: __init__(): incompatible constructor arguments. The following argument types are supported:
+    1. exllamav3_ext.BC_GatedRMSNorm(weight: torch.Tensor, rms_norm_eps: typing.SupportsFloat, constant_bias: typing.SupportsFloat)
+
+Invoked with: Parameter containing:
+tensor([0.88281, 0.89062, 0.87109, 0.85156, 0.86719, 0.88672, 0.85547, 0.87500, 0.88672, 0.86328, 0.87500, 0.79688, 0.85547, 0.89844, 0.86719, 0.84766, 0.90625, 0.84766, 0.92969, 0.82812, 0.89453,
+        0.88281, 0.85938, 0.89062, 0.86719, 0.84766, 0.86719, 0.90625, 0.84375, 0.83203, 0.85156, 0.85938, 0.85156, 0.87500, 0.89453, 0.85156, 0.81250, 0.86719, 0.80469, 0.84766, 0.90625, 0.91016,
+        0.91406, 0.91016, 0.86328, 0.87109, 0.90234, 0.90234, 0.88281, 0.80078, 0.82812, 0.85547, 0.88281, 0.82812, 0.85156, 0.91016, 0.89844, 0.85938, 0.83203, 0.85938, 0.91406, 0.84766, 0.88281,
+        0.87109, 0.82812, 0.88281, 0.86328, 0.92188, 0.91406, 0.86328, 0.88281, 0.86719, 0.85156, 0.86719, 0.85156, 0.88281, 0.85547, 0.85156, 0.82812, 0.86719, 0.86719, 0.88672, 0.87500, 0.84375,
+        0.85938, 0.86328, 0.83594, 0.85938, 0.81641, 0.84766, 0.87891, 0.82812, 0.92969, 0.88281, 0.89062, 0.89844, 0.90625, 0.85547, 0.87891, 0.85938, 0.85547, 0.78516, 0.84375, 0.85547, 0.90234,
+        0.85547, 0.89844, 0.89844, 0.89453, 0.89062, 0.87500, 0.92578, 0.86719, 0.89453, 0.86719, 0.86719, 0.88281, 0.84766, 0.87891, 0.88281, 0.82031, 0.83594, 0.85156, 0.88672, 0.86719, 0.87109,
+        0.91016, 0.84766], device='cuda:0', dtype=torch.bfloat16), 1e-06, 0.0, 1, False

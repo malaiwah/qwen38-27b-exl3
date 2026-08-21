@@ -65,7 +65,7 @@ run_capture() {
     "$FRONTIER_CAMPAIGN_IMAGE" \
     -lc 'set -euo pipefail
       ln -sf /usr/local/cuda-13.2/targets/x86_64-linux/lib/* /usr/local/cuda-13.2/lib64/
-      export PYTHONPATH=/opt/frontier:/src
+      export PYTHONPATH=/cache/exllamav3_ext:/opt/frontier:/src
       export EXL3_BITS_FIXED='"'"'{"^.*self_attn\\..*$":6,"^.*linear_attn\\..*$":6}'"'"'
       export EXL3_BITS_OVERRIDE='"'"'{"^.*mlp\\.down_proj$":6,"^.*mlp\\.(gate|up)_proj$":5}'"'"'
       exec /opt/venv/bin/python /opt/frontier/trellis_v3_capture.py \
