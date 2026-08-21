@@ -1,0 +1,49 @@
+{
+  "schema_version": "frontier-g02-prereg-v1",
+  "campaign_id": "frontier-g02",
+  "experiment_id": "g1-exact-fidelity-control",
+  "kind": "exact-fidelity-control",
+  "candidate_id": null,
+  "hypothesis": "The exact frozen PROFILE=fidelity tuple reproduces its stored runtime envelope on AIBoss under the clean source-pinned runtime and a bounded rollback transaction.",
+  "falsifier": "Any identity mismatch, non-regression metric failure, wrong INT6 embedding/profile flag, fatal runtime marker, missing route evidence, or failed owner-service restoration falsifies the recapture.",
+  "changed_variables": {
+    "historical_g0_profile": "incumbent-fidelity-int8",
+    "recaptured_profile": "exact PROFILE=fidelity",
+    "embedding_bits": "8 to 6",
+    "gpu_memory_utilization": "0.95 to 0.945"
+  },
+  "held_variables": {
+    "model_revision": "ab3a91a13813df8096cb4c1d560ed3669035d0cf",
+    "runtime_commit": "b19029d2309b26c4942425e52b74a0e6dd5d141e",
+    "runtime_image": "sha256:c946ca8735fea03dc6ea65ced676d1ee474e63531bf3313185ef28a7726b32df",
+    "gpu_uuid": "GPU-506a575d-01d7-b12e-9a0a-c1ab5f38ae0a",
+    "max_model_len": 238400,
+    "mtp_speculative_tokens": 6,
+    "kv_cache_dtype": "fp8_e4m3"
+  },
+  "identities": {
+    "campaign_contract_file_sha256": "ebeb7237f54eaa8ddc129c24b2c3f2cdbd77f7dbf675c555862a8800a35ca82b",
+    "campaign_contract_canonical_sha256": "1b6b06dc057b342fd2064233788271aa262b5bcd6e51c22180073eacf183e75a",
+    "fidelity_control_sha256": "2fde25ebaa200ee72fd46a62438437767a0007d8ac0a5632fa2cfbc7ea056aee",
+    "callback_sha256": "c7adc817e148872b77188cdc4a0caca41e61b064eceff66f796a0b78273d5b7e",
+    "transaction_sha256": "12b299cc40bdd7bda9d2c08648dcc9b7d8777b89587a491fbc9ef462c0795394"
+  },
+  "measurement_plan": {
+    "independent_boots": 1,
+    "pp_repetitions": 5,
+    "tg_repetitions_per_prompt": 3,
+    "profile_non_regression_ratio": 0.95,
+    "absolute_candidate_gate_applies": false,
+    "purpose": "identity and runtime-envelope recapture; fixed-N paired candidate blocks remain unopened"
+  },
+  "decision_rules": {
+    "accept": "Every frozen profile check passes, the served/container identities and INT6 profile match, logs contain no fatal/fallback marker, and rollback is proven.",
+    "reject": "Any frozen profile, identity, runtime-integrity, or rollback condition fails.",
+    "abort": "Abort on OOM, engine death, live-path mutation, competing GPU process, timeout, or failed restore."
+  },
+  "maximum_spend": {"gpu_hours": 0.5, "usd": 0},
+  "planned_output_paths": [
+    "experiments/g1-exact-fidelity-control/raw-log.json",
+    "experiments/g1-exact-fidelity-control/result.json"
+  ]
+}

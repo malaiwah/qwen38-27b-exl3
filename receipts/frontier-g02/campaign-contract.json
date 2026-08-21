@@ -1,0 +1,72 @@
+{
+  "schema_version": "frontier-g02-contract-v1",
+  "campaign_id": "frontier-g02",
+  "status": "pre_candidate",
+  "frozen_utc": "2026-08-21T02:22:29Z",
+  "objective": "Recover enough PP/TTFT from the exact PROFILE=fidelity control to pass absolute candidate gates without sacrificing paired fidelity, tails, decode, context, or capability.",
+  "primary_control": {
+    "contract": {
+      "path": "../frontier-fidelity-control.json",
+      "sha256": "2fde25ebaa200ee72fd46a62438437767a0007d8ac0a5632fa2cfbc7ea056aee"
+    },
+    "profile": "fidelity",
+    "embedding_bits": 6,
+    "model_revision": "ab3a91a13813df8096cb4c1d560ed3669035d0cf",
+    "max_model_len": 238400,
+    "runtime_commit": "b19029d2309b26c4942425e52b74a0e6dd5d141e",
+    "runtime_image": "sha256:c946ca8735fea03dc6ea65ced676d1ee474e63531bf3313185ef28a7726b32df",
+    "gpu_uuid": "GPU-506a575d-01d7-b12e-9a0a-c1ab5f38ae0a"
+  },
+  "inherited_evidence": {
+    "data_manifest": {"path": "../frontier-g01/g0/data-manifest.json", "sha256": "1ab0eb042a21bdf8e7624553502f56a4f19fe966902c77ee52f2735d9062ddcb"},
+    "power_plan": {"path": "../frontier-g01/g0/power-plan.json", "sha256": "75744ba4601a8ca344598f7bf9d11985810d33fbba52a8ac413c1680c9dc93b6"},
+    "resource_ledger": {"path": "../frontier-g01/g0/resource-ledger.json", "sha256": "3c05b128df84428d36b47009107c36d3f228c6af4be029ff29460e1e706b4776"},
+    "runtime_source": {"path": "../frontier-g01/g0/runtime-source.json", "sha256": "b03ee6e934f9aad155c928bdfca06534135845019853ca17bb746d672fc3d864"},
+    "runtime_environment": {"path": "../frontier-g01/g0/runtime-environment.json", "sha256": "ae605d1900bedbcf3d0383f99368c4e1897949dc5fa70f7614f3acb7da798887"},
+    "converter_environment": {"path": "../frontier-g01/g0/converter-environment.json", "sha256": "874f11f0bcbdde1cf7c9ba75f613c71d139ab8e9c9e80ff2c0120fee4faff6e4"},
+    "maintenance_transaction": {"path": "../frontier-g01/g0/maintenance-transaction.json", "sha256": "db8507157e37d0915f81ab1466258ae7f7da0fe136f58d9cb4de157ff345a955"}
+  },
+  "baseline_execution": {
+    "experiment_id": "g1-exact-fidelity-control",
+    "profile_gate": {"path": "../../tools/verify-profile.sh", "sha256": "5757286c0ebc6214350a9be4f9946ba894ba97325a7295c00c3605ee52d466c2"},
+    "baseline": {"path": "../../tools/baseline-fidelity.json", "sha256": "9c99f3a375052c92a62f63ce039c413c7c9c8fbe371ffb1db5628e071b4b8a30"},
+    "callback": {"path": "../../tools/frontier_clean_incumbent_callback.sh", "sha256": "c7adc817e148872b77188cdc4a0caca41e61b064eceff66f796a0b78273d5b7e"},
+    "transaction": {"path": "../../tools/frontier_aiboss_transaction.sh", "sha256": "12b299cc40bdd7bda9d2c08648dcc9b7d8777b89587a491fbc9ef462c0795394"},
+    "profile_non_regression_ratio": 0.95,
+    "candidate_gate_applies": false
+  },
+  "data_policy": {
+    "development_sets": ["S_i", "D-v6"],
+    "sealed_final_set": "E-final-v7",
+    "sealed_final_opened": false,
+    "legacy_v5_role": "descriptive continuity only"
+  },
+  "candidate_policy": {
+    "research_results_observed": false,
+    "selection_frozen": false,
+    "maximum_fresh_sequential_candidates": 3,
+    "bank_splicing_allowed": false,
+    "candidate_slots": [
+      {"candidate_id": "candidate-01", "status": "unopened"},
+      {"candidate_id": "candidate-02", "status": "unopened"},
+      {"candidate_id": "candidate-03", "status": "unopened"}
+    ]
+  },
+  "promotion_gates": {
+    "absolute": {"pp_tok_s_min": 7000, "tg_fox_tok_s_min": 190, "tg_essay_tok_s_min": 83, "development_mean_kld_max": 0.012, "max_model_len_min": 238400},
+    "paired": ["mean_kld", "frozen_tails", "tg", "context", "capability"],
+    "paired_control": "exact PROFILE=fidelity",
+    "absolute_only_pass_allowed": false
+  },
+  "rental": {
+    "authorized": false,
+    "authorization_rule": "At least one fresh sequential candidate must pass absolute Gate A and preregistered paired development non-inferiority on AIBoss.",
+    "diagnostic_exception": null
+  },
+  "planned_outputs": [
+    "experiments/g1-exact-fidelity-control/prereg.json",
+    "experiments/g1-exact-fidelity-control/raw-log.json",
+    "experiments/g1-exact-fidelity-control/result.json",
+    "manifest.json"
+  ]
+}

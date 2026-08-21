@@ -14,10 +14,24 @@ for name in FRONTIER_CAMPAIGN_CONTAINER FRONTIER_CAMPAIGN_IMAGE \
     exit 2
   }
 done
-[[ "${FRONTIER_CAMPAIGN_PROFILE}" == "incumbent-fidelity-int8" ]] || {
-  echo "frontier_clean_incumbent_callback: unexpected profile" >&2
-  exit 2
-}
+case "${FRONTIER_CAMPAIGN_PROFILE}" in
+  incumbent-fidelity-int8)
+    PROFILE_ID="incumbent-fidelity-int8"
+    EMBEDDING_BITS=8
+    GPU_MEMORY_UTILIZATION=0.95
+    EXACT_FIDELITY_CONTROL=false
+    ;;
+  exact-fidelity-control)
+    PROFILE_ID="fidelity"
+    EMBEDDING_BITS=6
+    GPU_MEMORY_UTILIZATION=0.945
+    EXACT_FIDELITY_CONTROL=true
+    ;;
+  *)
+    echo "frontier_clean_incumbent_callback: unexpected profile" >&2
+    exit 2
+    ;;
+esac
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROFILE_GATE="${SCRIPT_DIR}/verify-profile.sh"
@@ -83,7 +97,7 @@ podman run -d --replace \
   -e TORCH_EXTENSIONS_DIR=/cache/jit/torch_extensions -e FLASHINFER_WORKSPACE_BASE=/cache/jit/flashinfer \
   -e VLLM_EXL3_ONLINE_CACHE_DIR=/cache/jit/exl3-online -e VLLM_EXL3_ONLINE_CACHE_MODE=readwrite \
   -e VLLM_EXL3_ONLINE_TRELLIS_BITS=6 -e VLLM_EXL3_MULTIPRECISION=1 \
-  -e VLLM_EXL3_EMBED_ONLINE_BITS=8 -e VLLM_EXL3_FP4_TRITON_DECODE=0 \
+  -e VLLM_EXL3_EMBED_ONLINE_BITS="$EMBEDDING_BITS" -e VLLM_EXL3_FP4_TRITON_DECODE=0 \
   -e VLLM_EXL3_GRAPH_DECODE=1 -e VLLM_EXL3_FP4_PER_ROW_GS=0 \
   -e VLLM_EXL3_FP4_DRAFT_HEAD=0 -e VLLM_EXL3_FP4_BANDED_SELFTEST=0 \
   -e VLLM_EXL3_FP8DG_PREFILL_M=0 -e VLLM_EXL3_FP8DG_SELFTEST=0 -e VLLM_EXL3_FP8DG_CACHE=0 \
@@ -109,7 +123,7 @@ podman run -d --replace \
   --served-model-name Qwen3.8-27B --trust-remote-code \
   --host 0.0.0.0 --port 8000 --quantization exl3 \
   --quantization-config "$QUANTIZATION_CONFIG" \
-  --attention-backend TRITON_ATTN --gpu-memory-utilization 0.95 \
+  --attention-backend TRITON_ATTN --gpu-memory-utilization "$GPU_MEMORY_UTILIZATION" \
   --kv-cache-dtype fp8_e4m3 --max-model-len 238400 \
   --max-num-seqs 4 --max-num-batched-tokens 3072 \
   --compilation-config '{"mode":"NONE","cudagraph_mode":"FULL_DECODE_ONLY"}' \
@@ -151,7 +165,8 @@ trap - EXIT
 python3 - "$PROFILE_JSON" "$CONTAINER_JSON" "$MODEL_JSON" "$LOG_FILE" "$RECEIPT" \
   "$FRONTIER_CAMPAIGN_IMAGE" "$FRONTIER_CAMPAIGN_MODEL_REVISION" \
   "$FP4_HELPER" "$TRITON_FP4_HELPER" "$FP6_HELPER" \
-  "$B12X_PACKAGE" "$B12X_SELFTEST_COPY" <<'PY'
+  "$B12X_PACKAGE" "$B12X_SELFTEST_COPY" "$PROFILE_ID" "$EMBEDDING_BITS" \
+  "$GPU_MEMORY_UTILIZATION" "$EXACT_FIDELITY_CONTROL" <<'PY'
 import datetime as dt
 import hashlib
 import json
@@ -164,6 +179,10 @@ profile_path, inspect_path, model_path, log_path, receipt_path = map(pathlib.Pat
 image_identity, model_revision = sys.argv[6:8]
 helper_paths = [pathlib.Path(value) for value in sys.argv[8:12]]
 selftest_path = pathlib.Path(sys.argv[12])
+profile_id = sys.argv[13]
+embedding_bits = int(sys.argv[14])
+gpu_memory_utilization = float(sys.argv[15])
+exact_fidelity_control = sys.argv[16] == "true"
 
 def load(path):
     with path.open("r", encoding="utf-8") as handle:
@@ -272,18 +291,19 @@ receipt = {
         "max_model_len": served["max_model_len"],
     },
     "profile": {
-        "id": "incumbent-fidelity-int8",
-        "embedding_bits": 8,
+        "id": profile_id,
+        "embedding_bits": embedding_bits,
         "mtp_speculative_tokens": 6,
-        "gpu_memory_utilization": 0.95,
+        "gpu_memory_utilization": gpu_memory_utilization,
         "max_num_batched_tokens": 3072,
         "kv_cache_dtype": "fp8_e4m3",
+        "exact_fidelity_control": exact_fidelity_control,
     },
     "qualification_gates": {
         "flashinfer-captured-shape": {"passed": True, "evidence": "MTP decode and repeated profile requests completed without wrapper/fallback/death"},
         "exl3-runtime": {"passed": True, "evidence": "EXL3 checkpoint loaded and completed text, vision, prefill, decode, and 200k-context checks"},
         "b12x-route-pack-equivalence": {"passed": True, "evidence": "separate same-image VLLM_EXL3_B12X_SELFTEST=1 run has real-tensor evidence and no mismatch; performance run disables synchronization-heavy selftest instrumentation"},
-        "qwen35-native-path": {"passed": True, "evidence": "native Qwen model, int8 embedding, MTP, GDN, BF16 vision, and max_pixels=8388608 profile served"},
+        "qwen35-native-path": {"passed": True, "evidence": f"native Qwen model, int{embedding_bits} embedding, MTP, GDN, BF16 vision, and max_pixels=8388608 profile served"},
     },
     "artifacts": {
         "profile": {"path": "profile-verification.json", "sha256": sha(profile_path)},
