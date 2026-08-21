@@ -1,0 +1,20 @@
+{
+  "mlp_safe": {
+    "constraint": "MLP-safe permutation",
+    "permutation_preserves_output": true,
+    "silu_commutes_with_perm": true,
+    "product_commutes_with_perm": true,
+    "rotation_breaks_silu": true,
+    "rotation_silu_error": 0.015074184937687696,
+    "direction": "W_down[:, P] (SAME direction as gate/up rows)"
+  },
+  "attention_gqa": {
+    "constraint": "Attention-invariant permutation (GQA)",
+    "gqa_scores_preserved": true,
+    "gqa_output_preserved": true,
+    "scope": "per-KV-head head_dim permutation (basic QK^T + V/O pair only)",
+    "rope_caveat": "Safe IFF P preserves RoPE 2-D coordinate pairs; GDN unconditionally safe",
+    "cross_head_note": "Whole-head swaps safe IF coordinated; arbitrary mixing unsafe",
+    "tested": "QK^T contraction + V/O inverse pair only; RoPE and GDN recurrence NOT tested"
+  }
+}

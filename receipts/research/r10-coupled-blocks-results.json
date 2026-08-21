@@ -1,0 +1,376 @@
+{
+  "attn_invariants": {
+    "qk_invariance": 1.5738340457193297e-25,
+    "vo_invariance": 9.908655544306917e-28,
+    "full_y_invariance": 4.7179400637950893e-29,
+    "d_model": 64,
+    "d_head": 32,
+    "N": 128,
+    "bits": 4,
+    "rope_caveat": "Q/K rotation requires R commuting with RoPE in real model. V/O is free."
+  },
+  "attn_quantization": {
+    "bits": 4,
+    "independent": {
+      "search_error": 0.9406528133011223,
+      "heldout_mean": 0.8191429297549868,
+      "heldout_std": 0.09064944039885298,
+      "heldout_range": [
+        0.6668128213567746,
+        1.0623003286897856
+      ],
+      "individual_errors": {
+        "Q": 0.17127896479991517,
+        "K": 0.16048907450917654,
+        "V": 0.18404212673952208,
+        "O": 0.12675772841129246
+      }
+    },
+    "qk_rotation": {
+      "search_error": 0.7625069977489286,
+      "search_improvement_pct": 18.938530032883182,
+      "heldout_mean": 0.7255405256066702,
+      "heldout_improvement_pct": 11.426870787533261,
+      "heldout_std": 0.1032108989840588,
+      "heldout_range": [
+        0.5710042894170653,
+        0.9867349902958708
+      ],
+      "note": "Q/K rotation not free under RoPE in real model"
+    },
+    "vo_rotation": {
+      "search_error": 0.6854139272944617,
+      "search_improvement_pct": 27.13422873960547,
+      "heldout_mean": 0.634850125883416,
+      "heldout_improvement_pct": 22.49824751911055,
+      "heldout_std": 0.05656897952846216,
+      "heldout_range": [
+        0.5146099330348797,
+        0.7195193082553608
+      ],
+      "note": "V/O rotation is a FREE invariant"
+    },
+    "full_coupled": {
+      "search_error": 0.531999676443718,
+      "search_improvement_pct": 43.44356717791328,
+      "heldout_mean": 0.5345151661271745,
+      "heldout_improvement_pct": 34.74702073213854,
+      "heldout_std": 0.06570905630313931,
+      "heldout_range": [
+        0.428355346336006,
+        0.6531514702713537
+      ]
+    }
+  },
+  "attn_rate_allocation": {
+    "3.5_avg": {
+      "budget": 28672,
+      "used": 28672,
+      "budget_exact": true,
+      "joint_alloc": {
+        "Q": 3,
+        "K": 3,
+        "V": 4,
+        "O": 4
+      },
+      "best_equal_alloc": {
+        "Q": 3,
+        "K": 3,
+        "V": 4,
+        "O": 4
+      },
+      "n_balanced_allocs": 84,
+      "joint_search_error": 1.9541189837917605,
+      "best_equal_search_error": 1.9541189837917605,
+      "improvement_vs_best_pct": 0.0,
+      "joint_heldout_mean": 1.9596376843044658,
+      "best_equal_heldout_mean": 1.9596376843044658,
+      "heldout_improvement_pct": 0.0
+    },
+    "4.5_avg": {
+      "budget": 36864,
+      "used": 36864,
+      "budget_exact": true,
+      "joint_alloc": {
+        "Q": 4,
+        "K": 5,
+        "V": 5,
+        "O": 4
+      },
+      "best_equal_alloc": {
+        "Q": 4,
+        "K": 5,
+        "V": 5,
+        "O": 4
+      },
+      "n_balanced_allocs": 206,
+      "joint_search_error": 0.5111119492714311,
+      "best_equal_search_error": 0.5111119492714311,
+      "improvement_vs_best_pct": 0.0,
+      "joint_heldout_mean": 0.46629635629735705,
+      "best_equal_heldout_mean": 0.46629635629735705,
+      "heldout_improvement_pct": 0.0
+    }
+  },
+  "attn_jacobian": {
+    "trace_summary": [
+      [
+        2034.0679536598552,
+        -1.0164209701918816,
+        -2.474441463451404,
+        -0.5800242234780993
+      ],
+      [
+        -1.0164209701918816,
+        2108.8253869199466,
+        -0.27182376085252336,
+        -1.6969614350242477
+      ],
+      [
+        -2.474441463451404,
+        -0.27182376085252336,
+        3423.9231543816163,
+        -1.1588225027325083
+      ],
+      [
+        -0.5800242234780993,
+        -1.6969614350242477,
+        -1.1588225027325083,
+        3264.0514536813616
+      ]
+    ],
+    "names": [
+      "Q",
+      "K",
+      "V",
+      "O"
+    ],
+    "error_direction_cross": [
+      [
+        0.16610873712684857,
+        0.007570081122420502,
+        0.012251453546812764,
+        0.00455157927698055
+      ],
+      [
+        0.007570081122420502,
+        0.1964212295965074,
+        0.006901084709983871,
+        -0.01440392975698658
+      ],
+      [
+        0.012251453546812764,
+        0.006901084709983871,
+        0.28023494365902873,
+        0.0061109334983413125
+      ],
+      [
+        0.00455157927698055,
+        -0.01440392975698658,
+        0.0061109334983413125,
+        0.21286248174339611
+      ]
+    ],
+    "diag_fraction": 0.8920167554284828
+  },
+  "mlp_invariants": {
+    "permutation_h_invariance": 0.0,
+    "permutation_y_invariance": 3.6832219910691146e-28,
+    "rotation_violation": 2938.3090973321223,
+    "d_model": 64,
+    "d_inter": 128,
+    "N": 128,
+    "bits": 4
+  },
+  "mlp_quantization": {
+    "bits": 4,
+    "per_column": {
+      "independent_search": 42.28500126197366,
+      "independent_heldout_mean": 40.168942431641085,
+      "perm_search": 42.28500126197366,
+      "n_displaced": 0,
+      "note": "No-op: per-column quantizer is invariant to column permutation"
+    },
+    "per_tile": {
+      "tile_size": 16,
+      "independent_search": 60.12995030730354,
+      "independent_heldout_mean": 55.54284061311032,
+      "independent_heldout_std": 2.5296858910785107,
+      "perm_search": 41.708574321122825,
+      "search_improvement_pct": 30.63594081158455,
+      "perm_heldout_mean": 52.95068469827561,
+      "perm_heldout_std": 2.357777640361674,
+      "perm_heldout_range": [
+        49.177951496198915,
+        58.284233909010524
+      ],
+      "heldout_improvement_pct": 4.666948766431767,
+      "n_displaced": 126
+    }
+  },
+  "mlp_rate_allocation": {
+    "3.333_avg": {
+      "budget": 81920,
+      "used": 81920,
+      "budget_exact": true,
+      "joint_alloc": {
+        "gate": 3,
+        "up": 3,
+        "down": 4
+      },
+      "best_equal_alloc": {
+        "gate": 3,
+        "up": 3,
+        "down": 4
+      },
+      "n_balanced_allocs": 15,
+      "joint_search_error": 140.27410385776773,
+      "best_equal_search_error": 140.27410385776773,
+      "improvement_vs_best_pct": 0.0,
+      "joint_heldout_mean": 137.43468879981305,
+      "best_equal_heldout_mean": 137.43468879981305,
+      "heldout_improvement_pct": 0.0
+    },
+    "4.333_avg": {
+      "budget": 106496,
+      "used": 106496,
+      "budget_exact": true,
+      "joint_alloc": {
+        "gate": 4,
+        "up": 4,
+        "down": 5
+      },
+      "best_equal_alloc": {
+        "gate": 4,
+        "up": 4,
+        "down": 5
+      },
+      "n_balanced_allocs": 33,
+      "joint_search_error": 29.574088785903864,
+      "best_equal_search_error": 29.574088785903864,
+      "improvement_vs_best_pct": 0.0,
+      "joint_heldout_mean": 28.787580466214614,
+      "best_equal_heldout_mean": 28.787580466214614,
+      "heldout_improvement_pct": 0.0
+    }
+  },
+  "mlp_jacobian": {
+    "trace_summary": [
+      [
+        167788.75614139278,
+        -30.898128881078357,
+        -17.58123579689891
+      ],
+      [
+        -30.898128881078357,
+        156898.94837642965,
+        -2.8064346963285485
+      ],
+      [
+        -17.58123579689891,
+        -2.8064346963285485,
+        161233.76320486065
+      ]
+    ],
+    "names": [
+      "gate",
+      "up",
+      "down"
+    ],
+    "error_direction_cross": [
+      [
+        13.778047684437146,
+        0.1014221400461866,
+        0.06081093455508792
+      ],
+      [
+        0.1014221400461866,
+        11.696762341412125,
+        0.05521069963782821
+      ],
+      [
+        0.06081093455508792,
+        0.05521069963782821,
+        15.483849187502138
+      ]
+    ],
+    "diag_fraction": 0.9894938321912721,
+    "analytic": {
+      "H_gate_gate": 167788.52792329883,
+      "H_up_up": 156898.94837643093,
+      "H_down_down": 161233.7632048666,
+      "H_gate_up": -30.897002591384307
+    }
+  },
+  "attn_bit_sweep": [
+    {
+      "bits": 3,
+      "heldout_independent": 3.78574459163737,
+      "heldout_coupled": 2.4565368513157555,
+      "improvement_pct": 35.110866783189934
+    },
+    {
+      "bits": 4,
+      "heldout_independent": 0.8191429297549868,
+      "heldout_coupled": 0.5040547166523315,
+      "improvement_pct": 38.465596376068476
+    },
+    {
+      "bits": 5,
+      "heldout_independent": 0.17963651489272559,
+      "heldout_coupled": 0.12659267962332257,
+      "improvement_pct": 29.52842594451326
+    },
+    {
+      "bits": 6,
+      "heldout_independent": 0.04449805399371441,
+      "heldout_coupled": 0.02929444809603876,
+      "improvement_pct": 34.166900646538934
+    }
+  ],
+  "mlp_bit_sweep": [
+    {
+      "bits": 3,
+      "heldout_independent": 268.11017952928955,
+      "heldout_perm": 247.08634261399192,
+      "improvement_pct": 7.841491491374308
+    },
+    {
+      "bits": 4,
+      "heldout_independent": 55.54284061311032,
+      "heldout_perm": 53.660142280562766,
+      "improvement_pct": 3.389632780328422
+    },
+    {
+      "bits": 5,
+      "heldout_independent": 12.601835844693685,
+      "heldout_perm": 11.891902045790733,
+      "improvement_pct": 5.633574406556708
+    },
+    {
+      "bits": 6,
+      "heldout_independent": 3.119407460123568,
+      "heldout_perm": 2.9011703377377995,
+      "improvement_pct": 6.996108240926102
+    }
+  ],
+  "real_weight_experiments": {
+    "L0_mlp_perm": {
+      "heldout_independent": 0.00523803925856267,
+      "heldout_perm": 0.004801563154665593,
+      "improvement_pct": 8.33281467265764,
+      "note": "Real gate+down, synthetic up, held-out Gaussian X"
+    },
+    "L55_mlp_perm": {
+      "heldout_independent": 0.03511984682922217,
+      "heldout_perm": 0.030426836019094107,
+      "improvement_pct": 13.362845324892337,
+      "note": "Real gate+down, synthetic up, held-out Gaussian X"
+    }
+  },
+  "noise_floor": {
+    "attention": 0.0,
+    "mlp": 0.0
+  },
+  "timing_seconds": 216.1828179359436
+}
