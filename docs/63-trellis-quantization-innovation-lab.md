@@ -1,4 +1,4 @@
-# 63 — Trellis Quantization Innovation Lab: 15-Researcher Collaborative Findings
+# 63 — Trellis Quantization Innovation Lab: 20-Researcher Collaborative Findings
 
 **Status:** completed, 2026-08-21. 10 mathematician-researcher subagents explored novel
 quantization approaches in isolated git worktrees, each with adversarial openai-reviewer
@@ -543,3 +543,104 @@ positive even with adversarial synthetic calibration.
 | R13-AllocRotation | tools/research/r13-alloc-rotation/poc.py | docs/research/r13-alloc-rotation-findings.md | receipts/research/r13-alloc-rotation-results.json |
 | R14-NoiseShapeStack | tools/research/r14-noise-shape-stack/poc.py | docs/research/r14-noise-shape-stack-findings.md | receipts/research/r14-noise-shape-stack-results.json |
 | R15-HeldOutValidation | tools/research/r15-held-out-validation/poc.py | docs/research/r15-held-out-validation-findings.md | receipts/research/r15-held-out-validation-results.json |
+
+## 11. Wave 3: Novel directions beyond doc 62 (5 additional researchers)
+
+**Status:** completed, 2026-08-21. 5 researchers explored directions beyond doc 62 §10:
+non-uniform codebooks, diagonal GPTQ, block-level error propagation, inter-layer
+allocation, and information-theoretic bounds.
+
+### 11.1 R16-NonUniformCodebook: Non-uniform and learned codebooks
+
+**Claim (reviewer-revised):** Non-uniform codebooks (Lloyd-Max, k-means, Hessian-weighted
+Lloyd-Max) improve per-tile HWE by +31-75% unrotated at matched K. But at matched BYTE
+budget, per-tile codebook storage (7.7-60% overhead, exponential in K) makes non-uniform
+lose to uniform K+1 in 59/60 cases. The one exception is L55_down/first (kurtosis=100)
+where k-means wins by 2-6×.
+
+- After rotation, non-uniform hurts at K3-4 but helps at K5-6 (+16-61%)
+- Codebook overhead: K3=7.7%, K4=17.6%, K5=33.3%, K6=60.0%
+- Hadamard drives kurtosis → 0 (outlier removal, not Gaussianization per Bennett's theorem)
+- DP allocation composes orthogonally with all quantizer types (~50-60%)
+- **Conclusion: per-tile non-uniform codebooks NOT worth it. Shared/trellis codebook (O(1)
+  storage) remains open.**
+
+### 11.2 R17-DiagGPTQ: Diagonal-covariance GPTQ that generalizes
+
+**Claim (reviewer-confirmed v2):** Block-diagonal GPTQ (16×16 blocks, global λ) is the
+safest GPTQ variant: post-rotation held-out +75.7%, generalization gap only +0.65pp (vs
+Full GPTQ's +6.36pp).
+
+- Off-diagonal H^{-1} entries ARE the source of GPTQ overfitting (not Cholesky structure)
+- Diagonal H^{-1} GPTQ overfits identically to Full (gen gap +36pp) — dead end
+- Forward-H GPTQ catastrophic (-1147% vs RTN) — dead end
+- Full GPTQ is net positive post-rotation (+1.8pp over rotation-only, 79% win rate)
+- **Ungated GPTQ + allocation is net HARMFUL** (interferes with allocation's bit distribution)
+- **Stack: EITHER rotation→allocation (no GPTQ) OR rotation→GPTQ (gated, no allocation)**
+- Block-diagonal GPTQ preferred when gating unavailable
+
+### 11.3 R18-BlockPropagation: Block-level error propagation
+
+**Claim (reviewer-confirmed v2):** Rotation persists at block output: Hadamard gives +56%
+L55 MLP block error reduction. SiLU is in linear regime (FD/Jac ≈ 1.0, mean SiLU' ≈ 0.50).
+Cross-matrix interaction is low (0.3-11%, additivity ratio 0.95-1.13).
+
+- down_proj dominates L55 block error (75% of individual weight error)
+- Joint greedy allocation helps synthetic attention (+51% K5) but NOT real MLP (0% L0)
+- GQA 7.7× amplification was a bug (broken einsum). Corrected: ratio ~0.03
+- K5K6 recipe already near-optimal for MLP
+- Block amplification factors could weight inter-layer DP objective (R19)
+
+### 11.4 R19-InterlayerAlloc: Inter-layer optimal K allocation
+
+**Claim (reviewer-confirmed):** Inter-layer DP allocation (multiple-choice knapsack across
+all layers × roles) reduces total HWE by **+39.1-47.3%** over uniform-K at matched byte
+budget, and +40.7% over the K5K6 recipe.
+
+- Attention tensors are 2.5-3.6× more sensitive than MLP
+- L55 is the most sensitive layer (2.4× over mean), max/min ratio ~115×
+- Global DP dominates role-partitioned by +18.2% — global bit transfer across roles is essential
+- Rotation homogenizes within-layer but NOT inter-layer sensitivity (DP gain persists post-rotation +26.3%)
+- KronQ proxy: Spearman ρ=0.920, but tr(H_G) alone (r=0.966) and MSE×KronQ (r=0.990) are better
+- **Hierarchical allocation**: R19 allocates K per layer/role, R1 allocates K per tile within tensor
+
+### 11.5 R20-InfoTheoretic: Information-theoretic bounds
+
+**Claim (reviewer-corrected v3):** Uniform per-tile quantization is only 11-16% above the
+Panter-Dite high-rate asymptotic reference at K=5. Lloyd-Max improves 46-48% but is
+non-deployable (codebook overhead). Δ²/12 is valid at K≥3 (mean ratio 0.98-1.01).
+
+- The 200-430% gap to Gaussian R-D is structural (scalar vs vector, tile range ~6σ vs σ)
+- Hadamard drives kurtosis → 0; BiIP adds variance scaling (15-45×), not Gaussianization
+- Entropy coding saves 13-24% of rate (compression-layer benefit)
+- Weights are 74-79% Gaussian by AIC (GGD β≈1.86-1.99)
+- L55_down is the outlier: 430% gap, kurtosis 60.3, 93.5% HWE improvement from rotation
+- **Conclusion: uniform is near-optimal for fixed-rate scalar. Lloyd-Max is the main lever
+  but non-deployable. Rotation is the key transform. HWE has the most room (75-95% achieved,
+  no theoretical bound).**
+
+### 11.6 Wave 3 updated stack recommendation
+
+Based on wave 3, the recommended stack bifurcates:
+
+**Path A (rotation + allocation, no GPTQ):**
+1. BiIP diagonal balancing → 2. Hadamard both sides → 3. Inter-layer DP allocation (R19) +
+   intra-layer DP allocation (R1) → 4. Uniform quantization
+- Generalizes perfectly (gap ~0pp), +74.6% held-out from rotation, +25.6% from allocation
+
+**Path B (rotation + gated GPTQ, no allocation):**
+1. BiIP → 2. Hadamard → 3. Full GPTQ (α=0.25) with accept-if-improve gating → 4. Uniform quantization
+- +81.7% held-out (R9), but GPTQ overfitting risk with real activations unknown
+- Block-diagonal GPTQ (R17) is the safe fallback (gap +0.65pp)
+
+**Do NOT combine allocation + ungated GPTQ** (R17: GPTQ interferes with allocation).
+
+### 11.7 Wave 3 artifacts
+
+| Researcher | Code | Findings | Results |
+|-----------|------|----------|---------|
+| R16-NonUniformCodebook | tools/research/r16-nonuniform-codebook/poc.py | docs/research/r16-nonuniform-codebook-findings.md | receipts/research/r16-nonuniform-codebook-results.json |
+| R17-DiagGPTQ | tools/research/r17-diag-gptq/poc.py | docs/research/r17-diag-gptq-findings.md | receipts/research/r17-diag-gptq-results.json |
+| R18-BlockPropagation | tools/research/r18-block-propagation/poc.py | docs/research/r18-block-propagation-findings.md | receipts/research/r18-block-propagation-results.json |
+| R19-InterlayerAlloc | tools/research/r19-interlayer-alloc/poc.py | docs/research/r19-interlayer-alloc-findings.md | receipts/research/r19-interlayer-alloc-results.json |
+| R20-InfoTheoretic | tools/research/r20-info-theoretic/poc.py | docs/research/r20-info-theoretic-findings.md | receipts/research/r20-info-theoretic-results.json |
