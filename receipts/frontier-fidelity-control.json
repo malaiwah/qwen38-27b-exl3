@@ -1,0 +1,86 @@
+{
+  "schema": "qwen38-frontier-fidelity-control/1",
+  "status": "frozen",
+  "frozen_utc": "2026-08-21T01:10:07Z",
+  "decision": "Recover enough prompt-processing and TTFT performance from the exact PROFILE=fidelity control to pass candidate gates without sacrificing its fidelity, tail, decode, context, or capability envelope.",
+  "repository_revision": "a57193aaeada94e1822795b77ae98a118586d9c0",
+  "primary_control": {
+    "profile": "fidelity",
+    "model_repo": "malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated",
+    "model_revision": "ab3a91a13813df8096cb4c1d560ed3669035d0cf",
+    "body": "all-trellis hydrated K5/K5/K6 MLP with calibrated serialized attention",
+    "embedding_overlay_bits": 6,
+    "kv_cache_dtype": "fp8_e4m3",
+    "max_model_len": 238400,
+    "artifacts": {
+      "profile_source": {
+        "path": "patches/run-qwen38-27b.sh",
+        "sha256": "b588fc7bf9d428922739e554e4046f01929913ee08d6fb35cef883491bb596d1"
+      },
+      "baseline": {
+        "path": "tools/baseline-fidelity.json",
+        "sha256": "9c99f3a375052c92a62f63ce039c413c7c9c8fbe371ffb1db5628e071b4b8a30"
+      },
+      "performance": {
+        "path": "receipts/bench-fidelity-anybits-2026-08-19.json",
+        "sha256": "8904e7265ba92f60ef026565c07da3ba553f47ad8986d50555627cf0f9d1efbe"
+      },
+      "qualification": {
+        "path": "receipts/verify-fidelity-anybits-2026-08-19.json",
+        "sha256": "55ed380206bb322a8b9209bb9960b39dde43a5f0677f2eb1cf98e637f4cd5d59"
+      },
+      "fidelity": {
+        "path": "receipts/kld-reports/report-alltrellis-anybits.json",
+        "sha256": "a3bc62b4a56881add923bdb8aef32c2d1476ed0940177ed25417e1170352060a"
+      }
+    },
+    "reference_metrics": {
+      "pp_tok_s": 2987.7,
+      "tg_fox_tok_s": 228.3,
+      "tg_essay_tok_s": 104.1,
+      "mean_kld": 0.0034052972183458746,
+      "p99_kld": 0.03488920482114736,
+      "max_model_len": 238400
+    }
+  },
+  "candidate_contract": {
+    "baseline_must_pass_absolute_gate_a": false,
+    "baseline_role": "immutable paired control",
+    "absolute_promotion_gates": {
+      "pp_tok_s_min": 7000,
+      "tg_fox_tok_s_min": 190,
+      "tg_essay_tok_s_min": 83,
+      "development_mean_kld_max": 0.012,
+      "max_model_len_min": 238400
+    },
+    "paired_promotion_gates": {
+      "fidelity": "candidate-blind paired non-inferiority against the exact primary control for mean KLD and frozen tails",
+      "capability": "candidate-blind paired non-inferiority against the exact primary control on every retained capability panel",
+      "runtime": "same inputs, runtime tree, hardware blocks, warm-up policy, and randomized/interleaved execution",
+      "improvement": "material PP/TTFT recovery; absolute PP must still clear 7000 tok/s"
+    },
+    "secondary_profiles": {
+      "throughput": "performance ceiling and secondary comparator only; never the primary control",
+      "balanced": "secondary comparator only; never the primary control"
+    }
+  },
+  "historical_g0": {
+    "campaign_manifest": {
+      "path": "receipts/frontier-g01/manifest.json",
+      "sha256": "fbd37fd5b1d7abf10894b13ea1d832791a98fc536f28e4c0a9989d4c0e1a13c5"
+    },
+    "profile": "incumbent-fidelity-int8",
+    "embedding_overlay_bits": 8,
+    "scope": "clean-runtime and rollback qualification",
+    "exact_primary_control_reproduction": false,
+    "rule": "Historical evidence remains immutable, but this profile cannot substitute for a fresh exact PROFILE=fidelity control in a later campaign."
+  },
+  "invariants": [
+    "The exact PROFILE=fidelity tuple is the primary control even though it fails the absolute 7000 tok/s PP candidate gate.",
+    "A baseline reproduction is judged by frozen non-regression tolerances, not by candidate promotion thresholds.",
+    "Every embedding, K-map, codebook, topology, runtime flag, kernel route, MTP, KV, graph, or context change is a candidate variable unless it is byte-identical to the frozen control tuple.",
+    "No candidate may be promoted from an absolute Gate A pass alone; it must also pass preregistered paired non-inferiority against the exact fidelity control.",
+    "The throughput profile cannot replace the fidelity control merely because it already exceeds 7000 tok/s.",
+    "Historical receipts are not rewritten to conform to this decision."
+  ]
+}

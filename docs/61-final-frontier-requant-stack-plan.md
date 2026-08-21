@@ -23,6 +23,23 @@ The research question is not “what is the smallest acceptable quant?” It is:
 
 > What checkpoint/runtime pair can dominate the current deployable frontier on the most important axes without sacrificing native capability, and what sequence of cheap experiments gives enough evidence to spend the final conversion rental confidently?
 
+### 0.1 Immutable optimization objective
+
+This rule is **non-negotiable for every campaign after `frontier-g01`**:
+
+> Start from the exact `PROFILE=fidelity` tuple and recover enough PP/TTFT to pass the candidate gates without sacrificing its fidelity, tails, decode, context, or capability envelope.
+
+The machine-readable control is [`receipts/frontier-fidelity-control.json`](../receipts/frontier-fidelity-control.json). It pins the hydrated model revision, `PROFILE=fidelity` source, INT6 embedding overlay, performance/qualification receipts, KLD report, hashes, and reference metrics. In particular:
+
+1. `PROFILE=fidelity` is the primary paired control even though its historical PP is only **2,987.7 tok/s** and it does not pass the absolute **7,000 tok/s** candidate gate.
+2. Reproducing the control is judged against its frozen non-regression tolerances. Gate A's absolute thresholds apply to a **candidate**, never retroactively to the control.
+3. A candidate must both pass the absolute candidate gates and clear preregistered, candidate-blind paired non-inferiority against the exact fidelity control for mean KLD, frozen tails, TG, context, and retained capabilities. An absolute KLD below `0.012` alone is insufficient.
+4. `PROFILE=throughput` is a performance ceiling and secondary comparator. Its existing PP pass cannot make it the primary control because its KLD fails.
+5. INT8 embeddings, FP4/FP6 overlays, a changed K-map/codebook/topology, or any changed runtime/KV/MTP/graph/profile flag are candidate variables. They cannot be folded silently into the control.
+6. The historical G0 profile `incumbent-fidelity-int8` remains valid evidence for clean-runtime and rollback qualification, but it is not an exact `PROFILE=fidelity` recapture and cannot substitute for one in a later campaign.
+
+Historical receipts remain immutable. A later campaign must recapture the exact fidelity control under matched hardware/runtime blocks before scoring its first candidate.
+
 ## 1. Executive decision
 
 The next artifact is **not one guessed K-map**. It is the output of a constrained, multi-fidelity feedback loop named here **Frontier Loop**.

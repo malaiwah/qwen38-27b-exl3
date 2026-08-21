@@ -50,6 +50,23 @@
 > replaces it is [docs/27](docs/27-graph-decode-drift-control.md). Open items are tracked in
 > [docs/29](docs/29-plan-and-loose-ends.md).
 
+## Fixed optimization objective (frozen 2026-08-21)
+
+The primary control is the exact **`PROFILE=fidelity`** tuple, not
+`PROFILE=throughput` and not a memory-modified derivative. The objective is to
+recover enough PP/TTFT from that control to pass the absolute candidate gates
+without sacrificing its paired KLD/tails, TG, context, or capability envelope.
+The fidelity control is allowed to fail the 7,000 tok/s PP candidate threshold;
+that threshold governs promotion of a new candidate, not acceptance of the
+control.
+
+[`receipts/frontier-fidelity-control.json`](receipts/frontier-fidelity-control.json)
+pins the model/profile identity, INT6 embedding overlay, exact evidence hashes,
+reference metrics, candidate rules, and the prohibition on substituting the
+high-KLD throughput profile. Every INT8/FP4/FP6, K-map, topology, kernel-route,
+KV, MTP, graph, or profile change is a candidate variable and requires
+preregistered paired comparison against this exact control.
+
 ## Final Frontier G0/G1 campaign (measured 2026-08-20)
 
 The preregistered campaign in
@@ -62,10 +79,12 @@ validates every referenced G0 artifact, preregistration, result and terminal
 decision and exits 0.
 
 G0 passed: the immutable BF16 payload was fully censused (1,199 logical
-tensors), converter/runtime environments were locked, the clean source-pinned
-runtime tuple reproduced the incumbent, and every AIBoss maintenance transaction
-proved service restoration. G1 then consumed the three frozen candidate
-opportunities:
+tensors), converter/runtime environments were locked, the fidelity-derived
+`incumbent-fidelity-int8` clean runtime was qualified, and every AIBoss
+maintenance transaction proved service restoration. That historical G0 arm
+used INT8 embeddings and did not remeasure the exact `PROFILE=fidelity` KLD; it
+is runtime/rollback evidence, not a substitute for the frozen primary control.
+G1 then consumed the three frozen candidate opportunities:
 
 | candidate | measured result | frozen Gate A failure |
 |---|---|---|

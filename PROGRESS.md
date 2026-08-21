@@ -1407,3 +1407,28 @@ optimizer-group and hybrid-QKV producer changes; local-inference-lab/vllm PRs
 consumer and opt-in INT8 embedding work. Focused verifier suites pass for the
 exact published heads. The campaign result does not promote those component
 proofs into a release claim.
+
+## 2026-08-21
+
+**The next optimization objective is frozen around the exact fidelity
+control.** The immutable primary control is `PROFILE=fidelity`: hydrated
+all-trellis K5/K5/K6 body, INT6 embedding overlay, FP8 KV, 238,400 configured
+tokens, historical PP 2,987.7 tok/s, fox/essay TG 228.3/104.1, mean KLD
+0.0034053 and p99 0.034889. It is explicitly allowed to fail the 7,000 tok/s
+absolute PP candidate gate. The objective is to recover PP/TTFT from this
+control without sacrificing its paired fidelity/tails, TG, context, or
+capability envelope.
+
+The machine-readable decision is
+[`receipts/frontier-fidelity-control.json`](receipts/frontier-fidelity-control.json),
+which pins the source and evidence hashes. `PROFILE=throughput` remains a
+secondary performance ceiling and cannot become the primary control merely
+because it passes PP. Every INT8/FP4/FP6, K-map, topology, runtime, KV, MTP,
+graph, or profile change is a candidate variable. Promotion requires both the
+absolute candidate gates and preregistered paired non-inferiority against the
+exact fidelity control; KLD below 0.012 by itself is not enough.
+
+The `frontier-g01` receipts remain unchanged. Its G0
+`incumbent-fidelity-int8` arm qualified the clean runtime and rollback path but
+was not an exact `PROFILE=fidelity` recapture. A later campaign must rerun the
+exact control under matched hardware/runtime blocks before scoring candidates.
