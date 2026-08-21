@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import hashlib
+import numbers
 import os
 import random
 import sys
@@ -270,13 +271,15 @@ def _publish_fixture(linear: Any, capture_h: dict[str, Any]) -> None:
     if not isinstance(h_data, dict):
         raise CaptureError("target has no Hessian capture")
     hessian = h_data.get("H")
-    count = h_data.get("count")
+    raw_count = h_data.get("count")
     if (
         not isinstance(hessian, torch.Tensor)
-        or not isinstance(count, int)
-        or count <= 0
+        or isinstance(raw_count, bool)
+        or not isinstance(raw_count, numbers.Integral)
+        or raw_count <= 0
     ):
         raise CaptureError("target Hessian capture is incomplete")
+    count = int(raw_count)
     hessian = hessian.detach().float().cpu()
     activations = torch.cat(_SAMPLES, dim=0)
     tensors: dict[str, torch.Tensor] = {}

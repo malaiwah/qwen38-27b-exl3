@@ -1,0 +1,42 @@
+{
+  "schema_version": "qwen38-trellis-v3-prereg-correction/1",
+  "campaign_id": "frontier-g02",
+  "experiment_id": "trellis-v3-control-capture",
+  "correction_id": "prereg-correction-002",
+  "supersedes": {
+    "path": "prereg-correction-001.json",
+    "sha256": "9ef7694c1517ebd024a8314cc85e77907d21e0eb8f912760142f3129568334dd",
+    "canonical_sha256": "4da5d370b3e62e611a14073a63c4b8ea3c3c2c204bb5736a2fc1bfe92ecefb31"
+  },
+  "reason": "The first actual BF16-flow capture reached the exact target with real activations and Hessian data, then rejected the Hessian count because exllamav3 accumulates it as numpy.int64 rather than Python int. The validator now accepts numbers.Integral, rejects bool/nonpositive values, and canonicalizes to int. No target, data, metric, slice, or method rule changed.",
+  "failed_attempt": {
+    "transaction": {"path": "attempt-001-transaction.json", "sha256": "66f02876255e590522978fa8a0b81b05471ba698d42d71e22332dff6e1be4b1a", "canonical_sha256": "3badf0c1dac4aa85f66b56ccd58dd151227c8ffe08f14e62e9f3126de696d934"},
+    "log_sha256": "506952662f95218e7105a5ab8c308ea72e7eae745c001b54010c304574646a5d",
+    "failure": "target Hessian capture is incomplete due solely to numpy.int64 type rejection",
+    "restore_proven": true
+  },
+  "effective_identities": {
+    "capture_tool_sha256": "56727c3ba8ab1732ca343ae64206346b97ace1a6aebb274bdcf5eb58211accbd",
+    "callback_sha256": "a2948e186392f58be7a7464b28eb9a88769d9e04554827d6c10874828041a582",
+    "bf16_plan_sha256": "b49c17679f441d1d693c558c396a41a8a821538638b7b1f8516a6c9c7993ae3e",
+    "quant_plan_sha256": "5e2abf57a36da98853be0ebd997a97238d31ad5bbc1dd7db0ad462102dfb45bd",
+    "seed": 1376380199
+  },
+  "unchanged_scope": {
+    "target": "model.language_model.layers.10.mlp.gate_proj",
+    "flows": ["bf16", "quant"],
+    "slice_count": 4,
+    "slice_shape": [128, 128],
+    "activation_rows_per_flow": 256,
+    "method_ranking_allowed": false
+  },
+  "planned_outputs": [
+    "v3/bf16-flow.json",
+    "v3/bf16-flow.safetensors",
+    "v3/quant-flow.json",
+    "v3/quant-flow.safetensors",
+    "v3/capture-transaction.json",
+    "v3/capture-transaction-log.json",
+    "v3/capture-result.json"
+  ]
+}
