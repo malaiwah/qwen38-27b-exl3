@@ -1,0 +1,34 @@
+{
+  "schema": "qwen38-frontier-int6-runtime-integration/1",
+  "status": "source-and-compatibility-qualified",
+  "base_runtime": {
+    "repo": "malaiwah/vllm-voipmonitor",
+    "commit": "b19029d2309b26c4942425e52b74a0e6dd5d141e"
+  },
+  "integrated_runtime": {
+    "branch": "frontier-g02-int6-runtime",
+    "commit": "8e5b5a2c6d955270f30ce9f3c8baaffa2da80710",
+    "tree": "d5f86df0311e9949620bceda5832575cd1fd990f",
+    "source_file_sha256": "4d095154897181f6e403c938884c124f6e74004458b4974c1b643ee59dbb9fd5",
+    "test_file_sha256": "f12848f4d88b3d6d20b4baee7e97e2f9deae76137d1cee68605b0604b30f736e"
+  },
+  "patch": {
+    "path": "../../patches/0003-feat-exl3-add-packed-int6-embeddings.patch",
+    "sha256": "c2289e9e8c5117ea497609d236d422cd405d656ded90a473d948aa59eb202152"
+  },
+  "focused_tests": {
+    "passed": 19,
+    "failed": 0,
+    "runtime": "digest-pinned Gilded Gnosis r34 test image",
+    "scope": ["INT8 regression", "known INT6 packing", "INT6 chunk identity", "three-quarter storage", "multidimensional lookup", "invalid widths", "TP mask/all-reduce", "sharing and tied-weight guards"]
+  },
+  "historical_compatibility": {
+    "path": "int6-embedding-compat.json",
+    "sha256": "9d3a2e78d1a9cf88701c92151a5d3f932acb620acaefc7c29fb26cead1b8a406",
+    "real_bf16_rows": 48,
+    "packed_bytes_equal": true,
+    "fp16_scales_equal": true,
+    "dequantized_rows_equal": true
+  },
+  "aiboss_profile_qualification": "pending"
+}

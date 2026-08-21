@@ -1,0 +1,57 @@
+{
+  "schema_version": "frontier-g02-prereg-v1",
+  "campaign_id": "frontier-g02",
+  "experiment_id": "g1-exact-fidelity-control-v2",
+  "parent_experiment_id": "g1-exact-fidelity-control",
+  "kind": "exact-fidelity-control",
+  "candidate_id": null,
+  "hypothesis": "The exact frozen PROFILE=fidelity tuple reproduces its stored runtime envelope on AIBoss when the byte-compatible clean packed-INT6 extension is integrated onto the exact b19029d runtime tree.",
+  "falsifier": "Any identity mismatch, historical INT6 payload mismatch, non-regression metric failure, wrong INT6 profile flag, fatal runtime marker, silent fallback, or failed owner-service restoration falsifies the recapture.",
+  "changed_variables": {
+    "failed_runtime": "b19029d without packed INT6 support",
+    "corrected_runtime": "b19029d plus clean byte-compatible packed INT6 commit 8e5b5a2c6d",
+    "profile": "unchanged exact PROFILE=fidelity"
+  },
+  "held_variables": {
+    "model_revision": "ab3a91a13813df8096cb4c1d560ed3669035d0cf",
+    "base_runtime_commit": "b19029d2309b26c4942425e52b74a0e6dd5d141e",
+    "runtime_image": "sha256:c946ca8735fea03dc6ea65ced676d1ee474e63531bf3313185ef28a7726b32df",
+    "gpu_uuid": "GPU-506a575d-01d7-b12e-9a0a-c1ab5f38ae0a",
+    "embedding_bits": 6,
+    "max_model_len": 238400,
+    "mtp_speculative_tokens": 6,
+    "kv_cache_dtype": "fp8_e4m3"
+  },
+  "identities": {
+    "campaign_contract_file_sha256": "ebeb7237f54eaa8ddc129c24b2c3f2cdbd77f7dbf675c555862a8800a35ca82b",
+    "campaign_contract_canonical_sha256": "1b6b06dc057b342fd2064233788271aa262b5bcd6e51c22180073eacf183e75a",
+    "contract_correction_file_sha256": "5bbd11698dca591776e96c3b96582efea5b50b799fb1f7fd1f465ed2d2f4a225",
+    "contract_correction_canonical_sha256": "ab4f1d0164efe44a5cad8d8db9ce2c602cfa29587c3c8cc4e16d34e7343bff5b",
+    "fidelity_control_sha256": "2fde25ebaa200ee72fd46a62438437767a0007d8ac0a5632fa2cfbc7ea056aee",
+    "integrated_runtime_commit": "8e5b5a2c6d955270f30ce9f3c8baaffa2da80710",
+    "integrated_runtime_tree": "d5f86df0311e9949620bceda5832575cd1fd990f",
+    "runtime_source_sha256": "4d095154897181f6e403c938884c124f6e74004458b4974c1b643ee59dbb9fd5",
+    "compatibility_receipt_sha256": "9d3a2e78d1a9cf88701c92151a5d3f932acb620acaefc7c29fb26cead1b8a406",
+    "callback_sha256": "d7da868cad929e410ec397e247ab2a0c4196896d9738cd20f0f8075f75700668",
+    "transaction_sha256": "12b299cc40bdd7bda9d2c08648dcc9b7d8777b89587a491fbc9ef462c0795394"
+  },
+  "measurement_plan": {
+    "independent_boots": 1,
+    "pp_repetitions": 5,
+    "tg_repetitions_per_prompt": 3,
+    "profile_non_regression_ratio": 0.95,
+    "profile_metrics": ["pp_tok_s", "tg_fox_tok_s", "tg_essay_tok_s", "acceptance_fox", "acceptance_essay", "max_model_len", "sanity_paris", "vision_red_blue", "long_ctx_200k"],
+    "absolute_candidate_gate_applies": false,
+    "purpose": "exact control identity and runtime-envelope recapture; fixed-N paired candidate blocks remain unopened"
+  },
+  "decision_rules": {
+    "accept": "Every frozen profile check passes, the served/container/runtime identities and packed INT6 profile match, logs contain no fatal/fallback marker, compatibility remains byte-exact, and rollback is proven.",
+    "reject": "Any frozen profile, identity, INT6 compatibility, runtime-integrity, or rollback condition fails.",
+    "abort": "Abort on OOM, engine death, live-path mutation, competing GPU process, timeout, or failed restore."
+  },
+  "maximum_spend": {"gpu_hours": 0.5, "usd": 0},
+  "planned_output_paths": [
+    "experiments/g1-exact-fidelity-control-v2/raw-log.json",
+    "experiments/g1-exact-fidelity-control-v2/result.json"
+  ]
+}

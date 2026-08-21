@@ -1,0 +1,62 @@
+{
+  "schema_version": "frontier-g02-contract-correction-v1",
+  "campaign_id": "frontier-g02",
+  "correction_id": "campaign-contract-correction-001",
+  "supersedes": {
+    "path": "campaign-contract.json",
+    "sha256": "ebeb7237f54eaa8ddc129c24b2c3f2cdbd77f7dbf675c555862a8800a35ca82b",
+    "canonical_sha256": "1b6b06dc057b342fd2064233788271aa262b5bcd6e51c22180073eacf183e75a"
+  },
+  "reason": "The preregistered clean runtime b19029d rejected VLLM_EXL3_EMBED_ONLINE_BITS=6 before model loading. The failed transaction restored the owner service, and a clean packed-INT6 extension was then integrated onto the exact b19029d tree and proven byte-compatible with the historical fidelity encoder.",
+  "failed_experiment": {
+    "experiment_id": "g1-exact-fidelity-control",
+    "preregistration": {
+      "path": "experiments/g1-exact-fidelity-control/prereg.json",
+      "sha256": "0200359ba9390de7e890004b044cc8734c08cc539810221aff10c116d3a9b40d",
+      "canonical_sha256": "e0e9f3c43f18a629c12feb2e3469031065018d66428191a199c5093f3afb01f5"
+    },
+    "transaction": {
+      "path": "experiments/g1-exact-fidelity-control/attempt-001-transaction.json",
+      "sha256": "364adeb573a2d6a96ad4cb83f24d8120478041feeeb5e0f3e2e47fe2bef217ee",
+      "canonical_sha256": "c627884377ce75b56d1a6d0f4bb4376891f3e3ca81bcbc6b8b4d17d5d2b92ea9",
+      "restore_proven": true
+    },
+    "runtime_log_sha256": "8a96bd493ca260aa580a8e9a5d912370b1bbf5634c67a78124d707e275ef8407",
+    "failure": "VLLM_EXL3_EMBED_ONLINE_BITS must be unset, 0, or 8; got '6'"
+  },
+  "runtime_extension": {
+    "base_commit": "b19029d2309b26c4942425e52b74a0e6dd5d141e",
+    "integrated_commit": "8e5b5a2c6d955270f30ce9f3c8baaffa2da80710",
+    "integrated_tree": "d5f86df0311e9949620bceda5832575cd1fd990f",
+    "branch": "malaiwah/vllm-voipmonitor@frontier-g02-int6-runtime",
+    "source_file_sha256": "4d095154897181f6e403c938884c124f6e74004458b4974c1b643ee59dbb9fd5",
+    "patch": {
+      "path": "../../patches/0003-feat-exl3-add-packed-int6-embeddings.patch",
+      "sha256": "c2289e9e8c5117ea497609d236d422cd405d656ded90a473d948aa59eb202152"
+    },
+    "focused_tests": {"passed": 19, "failed": 0},
+    "compatibility": {
+      "path": "int6-embedding-compat.json",
+      "sha256": "9d3a2e78d1a9cf88701c92151a5d3f932acb620acaefc7c29fb26cead1b8a406",
+      "real_bf16_rows": 48,
+      "historical_packed_bytes_equal": true,
+      "historical_scales_equal": true
+    }
+  },
+  "effective_baseline_execution": {
+    "experiment_id": "g1-exact-fidelity-control-v2",
+    "profile": "exact-fidelity-control",
+    "embedding_bits": 6,
+    "callback_sha256": "d7da868cad929e410ec397e247ab2a0c4196896d9738cd20f0f8075f75700668",
+    "runtime_source_sha256": "4d095154897181f6e403c938884c124f6e74004458b4974c1b643ee59dbb9fd5",
+    "absolute_candidate_gate_applies": false
+  },
+  "unchanged_invariants": {
+    "primary_control": "exact PROFILE=fidelity",
+    "model_revision": "ab3a91a13813df8096cb4c1d560ed3669035d0cf",
+    "max_model_len": 238400,
+    "sealed_final_opened": false,
+    "maximum_fresh_sequential_candidates": 3,
+    "rental_authorized": false
+  }
+}

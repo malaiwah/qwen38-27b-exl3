@@ -40,7 +40,7 @@ FP4_HELPER="/home/mbelleau/final-frontier-g0/source-patches/exl3_fp4_conversion.
 TRITON_FP4_HELPER="/home/mbelleau/final-frontier-g0/source-patches/triton_fp4_quant.py"
 FP6_HELPER="/home/mbelleau/final-frontier-g0/source-patches/exl3_fp6_conversion.py"
 B12X_ROOT="/home/mbelleau/final-frontier-g0/source-patches/b12x-base-1.2.1"
-EXL3_RUNTIME_SOURCE="${FRONTIER_EXL3_RUNTIME_SOURCE:-/home/mbelleau/frontier-g02-vllm-int6/vllm/model_executor/layers/quantization/exl3.py}"
+EXL3_RUNTIME_SOURCE="${FRONTIER_EXL3_RUNTIME_SOURCE:-/home/mbelleau/final-frontier-g02/source-patches/exl3.py}"
 B12X_PACKAGE="${B12X_ROOT}/b12x"
 B12X_SELFTEST_SOURCE="/home/mbelleau/final-frontier-g0/incumbent-work-a7/runtime.log"
 B12X_SELFTEST_COPY="${FRONTIER_CAMPAIGN_WORK_DIR}/b12x-selftest.log"
@@ -284,7 +284,7 @@ receipt = {
             {"path": "patches/exl3_fp4_conversion.py", "sha256": sha(helper_paths[0])},
             {"path": "patches/triton_fp4_quant.py", "sha256": sha(helper_paths[1])},
             {"path": "patches/exl3_fp6_conversion.py", "sha256": sha(helper_paths[2])},
-            {"path": "vllm/model_executor/layers/quantization/exl3.py", "sha256": sha(helper_paths[3]), "source_commit": "41192ae577"},
+            {"path": "vllm/model_executor/layers/quantization/exl3.py", "sha256": sha(helper_paths[3]), "source_commit": "8e5b5a2c6d955270f30ce9f3c8baaffa2da80710"},
             {"path": "base-image:/opt/venv/lib/python3.12/site-packages/b12x", "tree_sha256": sha_tree(helper_paths[4]), "version": "1.2.1"},
         ],
     },
