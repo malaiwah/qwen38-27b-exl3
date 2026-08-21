@@ -1,0 +1,78 @@
+{
+  "schema": "qwen38-pr455-int8-embedding-kld/1",
+  "date": "2026-08-21",
+  "candidate_id": "PR455-int8-embed-strength-zero",
+  "description": "PR455 int8 online embedding quantization (VLLM_EXL3_EMBED_ONLINE_BITS=8) vs strength-zero control (int6, VLLM_EXL3_EMBED_ONLINE_BITS=6). Same strength-zero R30 checkpoint (layer-55 k_proj K6), same 512 v5 shard0 contexts, same R31 replay gate, same BF16 reference and shared head.",
+  "method": {
+    "capture": "fidelity.py capture, post-final-norm hook via collective_rpc (VLLM_ALLOW_INSECURE_SERIALIZATION=1)",
+    "replay": "fidelity_gate.py replay, full-vocabulary KL(BF16||candidate), shared BF16 lm_head, 512 contexts x 2047 positions = 1,048,064 scored positions",
+    "suite_token_sha256": "caef8a4628d6c07c162100895096f890cdf9cafc8e4c48b3d66035d737ee7cf7",
+    "cluster_bootstrap": "source-cluster percentile bootstrap, 330 clusters, 10000 resamples, seed 1"
+  },
+  "pr455_files_mounted": {
+    "qwen3_5.py": "constructor wiring: quant_config=self.quant_config passed to VocabParallelEmbedding",
+    "qwen3_5_mtp.py": "same constructor wiring for MTP draft embedding",
+    "llm_base_proposer.py": "embedding sharing compatibility checks for quantized representations",
+    "eagle_utils.py": "embeddings_equal and embedding_quantization_compatible helpers"
+  },
+  "exl3_py": "vllm-exl3-multiprecision.py (production multiprecision patch with Exl3OnlineEmbeddingMethod supporting int8 and int6)",
+  "container_image": "docker.io/voipmonitor/vllm:gilded-gnosis-v20-vllm4d006a4-b12xcd3ce19-fi1ac6942-cu132-20260810-r34@sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b",
+  "int8_metrics": {
+    "mean_kld": 0.0026665698925228912,
+    "p50_kld": 0.0010763180285948692,
+    "p95_kld": 0.008112294635020586,
+    "p99_kld": 0.02754122851261854,
+    "p999_kld": 0.12767838582538904,
+    "max_kld": 3.840256489271809,
+    "top1_agreement": 0.9782055294333171,
+    "ear": 0.9821473539918895,
+    "cvar1_kld": 0.07211308466365393,
+    "mean_jsd_bits": 0.0009486452919862472
+  },
+  "int8_ci95": {
+    "mean_kld": [0.002484788530422767, 0.00287532660699903],
+    "p99_kld": [0.0241185673203287, 0.031103400892516214],
+    "top1_agreement": [0.9773386034255599, 0.9790512389735524],
+    "ear": [0.981621904932567, 0.9826680905721545],
+    "cvar1_kld": [0.06068402442458097, 0.08528126077919078]
+  },
+  "int6_control_metrics": {
+    "mean_kld": 0.0034091598835847177,
+    "p99_kld": 0.03475849808050957,
+    "p999_kld": 0.17950809994907,
+    "max_kld": 9.433094086271012,
+    "top1_agreement": 0.9759947865779189,
+    "ear": 0.9804444594076976,
+    "cvar1_kld": 0.1058921563566198
+  },
+  "int6_control_ci95": {
+    "mean_kld": [0.0031684922344145084, 0.003677333662792938],
+    "p99_kld": [0.031035627897458708, 0.03948725603899561]
+  },
+  "delta_int8_minus_int6": {
+    "mean_kld": -0.000742589991061826,
+    "p99_kld": -0.00721726956789103,
+    "p999_kld": -0.0518297141236809,
+    "max_kld": -5.592837596900203,
+    "top1_agreement": 0.0022107428553982,
+    "ear": 0.001702894584222,
+    "cvar1_kld": -0.033779071692966
+  },
+  "model_loading_gib": {
+    "int6": 18.92,
+    "int8": 19.21,
+    "bf16_baseline": 20.31,
+    "int8_saves_vs_bf16_gib": 1.10,
+    "int6_saves_vs_bf16_gib": 1.39,
+    "int8_costs_vs_int6_gib": 0.29
+  },
+  "ci_overlap": {
+    "mean_kld": false,
+    "note": "int6 [0.003168, 0.003677] vs int8 [0.002485, 0.002875] do not overlap"
+  },
+  "log_bug": {
+    "description": "EXL3 embed online K8 conversion complete ... Δ0.00 is a measurement timing bug. del layer.weight + del w removes Python references but torch.cuda.memory_allocated() runs before CPython GC collects the freed Parameter. Actual savings proven by model loading size: 19.21 GiB (int8) vs 20.31 GiB (BF16) = 1.10 GiB saved.",
+    "log_line": "EXL3 embed online K8 conversion complete for VocabParallelEmbedding 4.60→4.60 GiB (Δ0.00)"
+  },
+  "conclusion": "int8 embeddings beat int6 on every KLD metric with non-overlapping CI95. The 0.29 GiB VRAM cost buys 22% lower mean KLD. Switching production from VLLM_EXL3_EMBED_ONLINE_BITS=6 to =8 is a fidelity/context tradeoff: ~2k fewer context tokens for 0.000743 lower mean KLD."
+}

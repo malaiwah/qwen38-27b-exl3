@@ -1,0 +1,41 @@
+{
+  "schema": "qwen38-fp8kv-cache-kld/1",
+  "date": "2026-08-21",
+  "candidate_id": "fp8kv-strength-zero",
+  "description": "FP8 KV cache (fp8_e4m3) vs BF16 KV cache, same strength-zero R30 checkpoint, same int6 embeddings (VLLM_EXL3_EMBED_ONLINE_BITS=6). Measures the KLD impact of FP8 KV cache quantization on the hidden-state output.",
+  "method": {
+    "capture": "fidelity.py capture, post-final-norm hook via collective_rpc (VLLM_ALLOW_INSECURE_SERIALIZATION=1), --kv-cache-dtype fp8_e4m3",
+    "replay": "fidelity.py replay (direct, not R31 gate — gate requires BF16 KV), full-vocabulary KL(BF16||candidate), shared BF16 lm_head, 512 contexts x 2047 positions = 1,048,064 scored positions",
+    "note": "R31 fidelity_gate.py rejects fp8_e4m3 KV cache because the frozen contract requires bfloat16. Replay was run directly with fidelity.py to measure the KV cache impact without the gate constraint."
+  },
+  "container_image": "docker.io/voipmonitor/vllm:gilded-gnosis-v20-vllm4d006a4-b12xcd3ce19-fi1ac6942-cu132-20260810-r34@sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b",
+  "fp8kv_metrics": {
+    "mean_kld": 0.003890914895773163,
+    "p95_kld": 0.012047072786941013,
+    "p99_kld": 0.03944054946246068,
+    "p999_kld": 0.19083336292511424,
+    "max_kld": 9.180068406829378,
+    "top1_agreement": 0.9741771494870543
+  },
+  "bf16kv_control_metrics": {
+    "mean_kld": 0.0034091598835847177,
+    "p99_kld": 0.03475849808050957,
+    "p999_kld": 0.17950809994907,
+    "max_kld": 9.433094086271012,
+    "top1_agreement": 0.9759947865779189
+  },
+  "delta_fp8kv_minus_bf16kv": {
+    "mean_kld": 0.000481755012188445,
+    "p99_kld": 0.00468205138195111,
+    "p999_kld": 0.0113252629760442,
+    "max_kld": -0.253025679441634,
+    "top1_agreement": -0.0018176370908646
+  },
+  "model_loading_gib": {
+    "fp8kv": 18.95,
+    "bf16kv_control": 18.92,
+    "note": "Model loading is identical (~0.03 GiB difference is measurement noise). KV cache dtype affects KV cache pool size, not model weight loading."
+  },
+  "kv_cache_log": "Using fp8_e4m3 data type to store kv cache",
+  "conclusion": "FP8 KV cache adds 0.000482 mean KLD (+14% over the BF16 KV control). The CI95s from the int6 control run were [0.003168, 0.003677]; the fp8kv mean 0.003891 is above that interval. This is a real fidelity cost, not noise. The tradeoff: FP8 KV roughly halves KV cache memory, enabling ~2x context length. Production already uses fp8_e4m3 KV cache in the throughput profile."
+}
