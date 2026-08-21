@@ -1,0 +1,50 @@
+{
+  "schema_version": "frontier-g02-prereg-v1",
+  "campaign_id": "frontier-g02",
+  "experiment_id": "g1-exact-fidelity-kld",
+  "parent_experiment_id": "g1-exact-fidelity-control-n3",
+  "kind": "exact-fidelity-kld-control",
+  "candidate_id": null,
+  "hypothesis": "The byte-compatible clean packed-INT6 runtime reproduces the frozen exact PROFILE=fidelity distribution on the burned 512-context shard-0 bridge within the candidate-blind control margins.",
+  "falsifier": "Mean KLD leaves the historical 95% interval or differs by more than 0.0005, frozen tail-exceedance margins fail, capture/report identities drift, the capture is incomplete, or owner-service restoration fails.",
+  "held_variables": {
+    "model_revision": "ab3a91a13813df8096cb4c1d560ed3669035d0cf",
+    "runtime_commit": "8e5b5a2c6d955270f30ce9f3c8baaffa2da80710",
+    "runtime_source_sha256": "4d095154897181f6e403c938884c124f6e74004458b4974c1b643ee59dbb9fd5",
+    "embedding_bits": 6,
+    "suite_token_sha256": "caef8a4628d6c07c162100895096f890cdf9cafc8e4c48b3d66035d737ee7cf7",
+    "head_sha256": "25a30fd5f826da0abc4efc4cc71def9f02bcb8085f7175eee284d221dee4cfff",
+    "reference_capture_manifest_sha256": "01a2f676edcf5d1f958f0e0ffb9dfa1dd8cf5671e3d8c69b822cb806e13200ec",
+    "contexts": 512,
+    "positions_per_context": 2047
+  },
+  "identities": {
+    "fidelity_tool_sha256": "7f9228393047f2e71f4c83d43046272803b3f385a86f1495f6d8ac0e3f567f3d",
+    "suite_manifest_sha256": "44000bbd4ec24fea4a19696eb7b5e1055b66c4dc65a3bf14f243de58e38cd3f3",
+    "historical_report_sha256": "a3bc62b4a56881add923bdb8aef32c2d1476ed0940177ed25417e1170352060a",
+    "int6_compatibility_sha256": "9d3a2e78d1a9cf88701c92151a5d3f932acb620acaefc7c29fb26cead1b8a406",
+    "gpu_uuid": "GPU-506a575d-01d7-b12e-9a0a-c1ab5f38ae0a"
+  },
+  "measurement_plan": {
+    "capture": "teacher-forced final-RMSNorm hidden states",
+    "replay": "one shared BF16 LM head over every vocabulary logit",
+    "reference": "existing immutable BF16 shard-0 capture",
+    "comparison": "paired by the same 512 contexts and 1,048,064 scored positions",
+    "historical_mean_kld": 0.0034052972183458746,
+    "historical_ci95": [0.0031658192495042053, 0.0036721708784952446],
+    "mean_delta_abs_max": 0.0005,
+    "tail_exceedance_delta_max": {"0.005": 0.02, "0.01": 0.01}
+  },
+  "decision_rules": {
+    "accept": "All identities match, capture/replay are complete, mean KLD lies inside the historical CI, absolute paired mean delta is at most 0.0005, both tail-exceedance deltas meet their margins, and rollback is proven.",
+    "reject": "Any identity, completeness, mean, tail, or rollback condition fails.",
+    "abort": "Abort on OOM, non-finite states, incomplete 513-file capture, runtime death, or failed restore."
+  },
+  "maximum_spend": {"gpu_hours": 1.0, "usd": 0},
+  "planned_output_paths": [
+    "experiments/g1-exact-fidelity-kld/report.json",
+    "experiments/g1-exact-fidelity-kld/paired.json",
+    "experiments/g1-exact-fidelity-kld/raw-log.json",
+    "experiments/g1-exact-fidelity-kld/result.json"
+  ]
+}
