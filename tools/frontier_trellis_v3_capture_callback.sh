@@ -16,7 +16,7 @@ done
 
 SOURCE=/home/mbelleau/final-frontier-g0/converter-source
 BF16_REPO=/home/mbelleau/.cache/huggingface/hub/models--Qwen--Qwen3.8-27B
-EXT_CACHE_SOURCE=/home/mbelleau/final-frontier-g0/cache/converter-base-ext
+EXT_CACHE_SOURCE=/home/mbelleau/final-frontier-g0/qkv-cache-a4
 TOOL=/home/mbelleau/final-frontier-g02/tools/trellis_v3_capture.py
 COMMON=/home/mbelleau/final-frontier-g02/tools/frontier_common.py
 PLAN_ROOT=/home/mbelleau/final-frontier-g02/v3-plans

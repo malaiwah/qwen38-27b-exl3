@@ -1,0 +1,44 @@
+{
+  "schema_version": "qwen38-trellis-v3-prereg-correction/1",
+  "campaign_id": "frontier-g02",
+  "experiment_id": "trellis-v3-control-capture",
+  "correction_id": "prereg-correction-003",
+  "supersedes": {
+    "path": "prereg-correction-002.json",
+    "sha256": "f72be704ea327a051a5672c485b1323a9026ca087a2f49bd92ac336cbd72e44e",
+    "canonical_sha256": "0b1ad3c38994f91cca02a3965ce42975726fd8c77f7274700eee0684e6fbbd58"
+  },
+  "reason": "The second capture attempt proved the source/model path but loaded the older converter-base extension, whose BC_GatedRMSNorm constructor predates the pinned 6dabc source. The callback now uses the already source-tested qkv-cache-a4 extension built from the exact 6dabc tree. No target, data, quantization, slice, metric, or decision rule changed.",
+  "failed_attempt": {
+    "transaction": {"path": "attempt-002-transaction.json", "sha256": "157aa37c6eb6a18c1b581c5b8bf2d9cdb6ca0386455fe77edfc1552b330b8566", "canonical_sha256": "aea4ba52f881c042d11659518037cd761fd9bcb86a6f7d06f31540589074e4de"},
+    "log_sha256": "cb9bcd9caaea6c84a46c14b6f4935d3b281a98401c95c187522ea0430dd93fc4",
+    "failure": "BC_GatedRMSNorm extension constructor ABI mismatch",
+    "restore_proven": true
+  },
+  "effective_identities": {
+    "capture_tool_sha256": "56727c3ba8ab1732ca343ae64206346b97ace1a6aebb274bdcf5eb58211accbd",
+    "callback_sha256": "0af954114fe98c72630a81766cf126a0c6359097eb4fc1cf4aa7d1e3bccdad7c",
+    "extension_sha256": "55eb3e914c46adcb842175dfe149dea5656c76eb8ce24160994659b43b13ad37",
+    "extension_cache": "qkv-cache-a4",
+    "bf16_plan_sha256": "b49c17679f441d1d693c558c396a41a8a821538638b7b1f8516a6c9c7993ae3e",
+    "quant_plan_sha256": "5e2abf57a36da98853be0ebd997a97238d31ad5bbc1dd7db0ad462102dfb45bd",
+    "seed": 1376380199
+  },
+  "unchanged_scope": {
+    "target": "model.language_model.layers.10.mlp.gate_proj",
+    "flows": ["bf16", "quant"],
+    "slice_count": 4,
+    "slice_shape": [128, 128],
+    "activation_rows_per_flow": 256,
+    "method_ranking_allowed": false
+  },
+  "planned_outputs": [
+    "v3/bf16-flow.json",
+    "v3/bf16-flow.safetensors",
+    "v3/quant-flow.json",
+    "v3/quant-flow.safetensors",
+    "v3/capture-transaction.json",
+    "v3/capture-transaction-log.json",
+    "v3/capture-result.json"
+  ]
+}
