@@ -2,7 +2,9 @@
 
 **Status:** completed, 2026-08-21. 10 mathematician-researcher subagents explored novel
 quantization approaches in isolated git worktrees, each with adversarial openai-reviewer
-verification. All findings below are reviewer-confirmed or honestly reported as negative.
+verification. Most findings are reviewer-confirmed; R3 is NEEDS_REVISION (core confirmed,
+headline corrected), R5 and R9 are reviewer-pending (receipts authoritative). R6 is an
+honest negative result.
 
 ## 1. Executive summary
 
@@ -88,7 +90,8 @@ vs Hadamard alone: +5.6% paired-median MSE, 28/28 MSE wins, 21/28 HW wins.
 - Act-order: direction no-op (desc=asc identical), saliency grouping outlier-driven
   (median -0.1%, 13/28 wins — not general)
 - Constraints verified: MLP-safe (error <3.25e-19), GQA per-KV-head (error <3.5e-18),
-  RoPE requires operator conjugation R'_t = P R_t P^T, GDN unconditionally safe
+  RoPE requires operator conjugation R'_t = P R_t P^T, GDN: RoPE obstruction absent
+  but recurrence and channelwise parameters not yet verified
 - Per-column permutation is no-op (per-column quantizer is permutation-invariant)
 - **Dead ends:** spectral seriation (negative), balanced scale assignment (neutral-to-
   harmful), permute-then-Hadamard (wrong order), median scale packing (worse than RMS)
@@ -97,13 +100,14 @@ vs Hadamard alone: +5.6% paired-median MSE, 28/28 MSE wins, 21/28 HW wins.
 
 **Claim (v3 final, reviewer-pending):** GPTQ within PCA subspaces provides **8.6% (K5)
 to 25% (K6)** improvement over plain PCA with matched quantizers. Tile PCA viable:
-1.22-1.56× K+1 bytes, 2.0-2.6× lower error than K+1.
+1.22-1.56× K+1 bytes, 2.2-3.0× lower error than K+1 (per-K range varies by aspect ratio).
 
 - Activation PCA > Weight PCA > Joint PCA (7× gap)
 - Joint PCA broken: generalized eigenvectors are H_W-orthogonal, QR orthonormalization
   destroys ordering
 - Global ResQ impractical for weight-only PTQ: n²×2 projection overhead, dominated by
-  uniform FP16 at matched bytes (3600×)
+  uniform FP16 at matched bytes (~6300-7300×; note: bits≥16 arms converted to FP16
+  but charged at requested bit budget, so comparison is qualitative not exact-match)
 - PCA + Hadamard + GPTQ compose: PCA identifies subspaces, Hadamard creates non-
   diagonal Hessian for GPTQ to exploit
 - Adaptive rank: non-monotone, budget-constrained (r=13-16 in practice)
@@ -125,8 +129,9 @@ provide no measurable improvement with synthetic calibration.
 - RTN has 47% better accumulated recurrence error than GPTQ
 - **Root cause:** real W_z@X pre-activations are small (|z|<<1), so SiLU'(z)≈0.5
   uniformly. Need real model activations to exploit gate sensitivity.
-- Balanced realization dead end was an exponent bug (sqrt vs eigvals**0.25); corrected
-  transform gives 96×/202× improvement — but this was on synthetic data only
+- Balanced realization dead end was an exponent bug (sqrt vs eigvals**0.25); the exponent
+  fix reduced the bug-induced error by 96×/202× vs broken v1, but corrected balancing
+  still remains 260-440% worse than standard GPTQ
 
 ### R7-NoiseShaping: Hessian noise shaping
 
@@ -164,8 +169,10 @@ individual method on ALL 4 tensors: **+40.8% mean** (L0_gate +49.0%, L0_down +43
 L55_gate +55.3%, L55_down +15.2%).
 
 - Rotation+GPTQ synergy: +30.5-53.8% on all 4 tensors (was antagonistic due to Cholesky bug)
-- GPTQ (α=0) outperforms GPTAQ (α=0.25) after rotation on 3/4 tensors — GPTQ error
-  propagation is the main contributor, not the P-matrix
+- GPTAQ (α=0.25) beats GPTQ (α=0) after rotation on 3/4 tensors (L0_gate, L0_down,
+  L55_gate); GPTQ wins on L55_down. The P-matrix is modestly positive on 3/4 and
+  negative on L55_down. Note: α=1.0 was NOT tested after rotation (only α=0 and α=0.25).
+  The alternating optimizer accepted correction on all 4 tensors including L55_down.
 - Multi-step interactions discovered: re-rotation after correction improves further,
   partition becomes useful after correction changes landscape
 - Alternating framework's accept-if-improve handles per-tensor variation
@@ -201,7 +208,7 @@ held-out block error reduction, no RoPE interaction). Full coupled attention rot
 | Output-only rotation without BiIP | R3 | Ineffective without diagonal balancing |
 | Global ResQ (dense projection) | R5 | n²×2 overhead, dominated by FP16 at matched bytes |
 | Joint PCA | R5 | QR orthonormalization destroys generalized eigenvector ordering |
-| GPTAQ α=0.25 (reference code) | R2 | Paper-faithful α=1.0 wins 34/36; 0.25 is code convention, not paper |
+| GPTAQ α=0.25 (unrotated, R2 setup) | R2 | Paper-faithful α=1.0 wins 34/36 unrotated; but α=0.25 beats α=0 on 3/4 post-rotation tensors (R9) — context-dependent |
 | Error-vector correction | R2 | Collapses toward GPTQ, disables GPTAQ benefit |
 | Iterative requantization | R2 | Hurts (+0.8-67%), not refinement |
 | Adaptive α from asymmetry ratio | R2 | Too conservative (α ≈ 0.005-0.04) |
@@ -215,25 +222,51 @@ held-out block error reduction, no RoPE interaction). Full coupled attention rot
 | Act-order for tile quant (grouping) | R4 | Outlier-driven, median -0.1%, not general |
 | Spectral seriation | R4 | Negative/marginal |
 | Permute-then-Hadamard | R4 | Wrong order, no improvement (Hadamard first is correct) |
-| Column-BAQ | R1 | Aggregation heuristic collapses to near-uniform |
-
+| Column-BAQ (aggregation heuristic) | R1 | Aggregation heuristic collapses to near-uniform; not a fair test of column allocation itself |
+| Iterative BAQ | R1 | No benefit over single-pass |
+| Weight-magnitude BAQ | R1 | +8.8% vs +10.5% standard, not worth the added complexity |
+| ResComp alone (without GPTAQ) | R2 | CAE alone insufficient |
+| Butterfly as replacement | R3 | Comparable to Hadamard but 2× sidecar cost |
+| Per-column scaling tautology | R3 | Per-column quantizer commutes with per-channel scaling |
+| Two-sided correlation packing | R4 | Negative/marginal |
+| Median scale packing | R4 | Worse than RMS |
+| 4-bit quantized projection | R5 | Too much error in projection |
+| Weight PCA standalone | R5 | 7× worse than activation PCA |
+| Sigma-delta without GPTQ | R7 | Filter alone insufficient |
+| Condition-number α | R7 | Too conservative |
+| Kurtosis scaling | R8 | -4.4% (slightly harmful) |
+| AWQ normalization | R8 | Not in paper, no benefit |
+| Per-tile scaling | R8 | Near-no-op (+0.1%) |
+| Per-column MLP permutation | R10 | No-op (per-column quantizer is permutation-invariant) |
+| In-sample MLP permutation | R10 | 30.6% in-sample → 4.7% held-out (substantial overfitting) |
+| Allocation after rotation (surrogate) | R9 | Rotation homogenizes tile sensitivity; R9's surrogate allocation rejected after rotation (may be fixture-dependent) |
 ## 4. The recommended quantization stack
 
-Based on all verified findings, the recommended operation order is:
+**WARNING: This stack has NOT been tested as a unified pipeline.** Each component was
+verified individually or in small combinations (primarily R9's 6-step optimizer). The
+order below is a candidate search space, not a deployable recipe. A direct matched-budget,
+held-out factorial experiment is required before any production use.
+
+Correct operation order (transforms BEFORE quantization, correction DURING):
 
 1. **Scaling** (R8): Lp-norm p=∞ (max activation magnitude) or AWQ (mean|X|^α)
 2. **BiIP diagonal balancing** (R3): S_X = (diag(H_X)/diag(W^T W))^{1/4}, S_G similar
 3. **Signed randomized Hadamard** (R3): both input and output dimensions
 4. **p99-scale permutation** (R4): sort transformed weights by p99 column scale
-5. **Act-order GPTQ** (R7): quantize columns in descending diag(H_X) order
-6. **GPTAQ correction with α=1.0** (R2): paper-faithful, no 0.25 multiplier
+5. **V/O rotation for attention** (R10): free invariant, 22.5% held-out improvement
+6. **MLP-safe permutation** (R4, R10): same P for gate/up, inverse for down
 7. **DP-refined tile allocation** (R1): local search on full Hessian-weighted objective
-8. **V/O rotation for attention** (R10): free invariant, 22.5% held-out improvement
-9. **MLP-safe permutation** (R4, R10): same P for gate/up, inverse for down
+8. **Act-order GPTQ + GPTAQ correction** (R7, R2): single quantization pass, columns
+   in descending diag(H_X) order, α=1.0 (paper-faithful for unrotated; α=0.25 modestly
+   better post-rotation per R9, but α=1.0 untested post-rotation)
+9. **Inverse/fold transforms**: undo scaling, rotation, permutation
 
-The alternating optimizer (R9) with accept-if-improve selects which steps compose
-per-tensor. Not all steps help every tensor — L55_down correctly rejects GPTAQ after
-rotation, while L0_gate benefits from the full stack.
+The R9 alternating optimizer with accept-if-improve is the principled framework to select
+which steps compose per-tensor. R9's tested 6-step optimizer (equilibrate, partition,
+dense rotate, surrogate allocate, quantize, correct) achieved +40.8% over best individual,
+but used only α=0 and α=0.25 (not α=1.0), dense rotations (not foldable Hadamard),
+surrogate DP (not full-objective), and in-sample evaluation. Extending R9 to include the
+exact proposals above requires a new factorial experiment.
 
 ### Expected improvement (from verified individual measurements)
 
@@ -245,14 +278,17 @@ rotation, while L0_gate benefits from the full stack.
 | DP-refined allocation | 25.5% | Over uniform K, HWE | 100% win rate |
 | Act-order GPTQ | 21-24% | Over RTN, HWE | 97% head-to-head |
 | V/O attention rotation | 22.5% | Held-out block error | Free invariant |
-| GPTAQ α=1.0 vs GPTQ | 0.2-10.2% | Grows with K | Paper-faithful |
-| p99 permutation (post-Hadamard) | 5.6% | Over Hadamard alone | Complementary |
+| GPTAQ α=1.0 vs GPTQ (unrotated) | 0.2-10.2% | Grows with K | Paper-faithful; untested post-rotation |
+| GPTAQ α=0.25 vs GPTQ (post-rotation) | Modest on 3/4 | Post-rotation HWE | R9 receipt; α=1.0 untested post-rotation |
+| p99 permutation (post-Hadamard) | 5.2% median | Over Hadamard alone | Complementary, 28/28 MSE wins |
 | Scaling (lp_pinf) + GPTAQ | 3.3% | Over no-scaling+GPTAQ | Not subsumed |
-| Tile-PCA ResQ | 2.0-2.6× | Lower error than K+1 | 1.22-1.56× bytes |
+| Tile-PCA ResQ | 2.2-3.0× | Lower error than K+1 | 1.22-1.56× bytes, aspect-ratio-dependent |
 
 **Important:** These are individual component improvements on proxy metrics with
-synthetic calibration. They do NOT simply add. The R9 alternating optimizer is the
-principled way to combine them, and it achieves +40.8% over the best individual method.
+synthetic calibration. They do NOT simply add. The R9 alternating optimizer (+40.8%)
+tested a subset of these components with unequal search budget (5 rotation searches vs 1
+for baseline) and unmatched byte budget (dense U/V vs foldable Hadamard). A direct
+matched-budget factorial experiment is required before claiming a deployable stack.
 
 ## 5. Key architectural insights
 
@@ -266,9 +302,10 @@ principled way to combine them, and it achieves +40.8% over the best individual 
    on top, not super-additive. Correct order is Hadamard THEN permutation.
 5. **Per-column quantization makes permutations a no-op** — permutations only help
    per-tile quantizers.
-6. **Allocation works best on unrotated weights** — rotation homogenizes tile sensitivity.
-   But the alternating optimizer can allocate BEFORE rotation or after correction changes
-   the landscape.
+6. **Allocation interacts with rotation** — R9's surrogate allocation was rejected after
+   rotation (rotation homogenizes tile sensitivity), but this may be fixture-dependent.
+   R1's DP-refined allocation was tested on unrotated weights only. Composition of
+   allocation with rotation remains an open question.
 7. **V/O rotation is the only free attention invariant** — Q/K rotation breaks under RoPE.
 8. **MLP allows permutations but not rotations** — SiLU + elementwise product commute
    with permutations but not coordinate mixing.
@@ -280,11 +317,16 @@ principled way to combine them, and it achieves +40.8% over the best individual 
 ## 6. Limitations and next steps
 
 ### Current limitations
-- All results use 128×128 slices from full tensors (aspect ratio hidden)
+- Most real-weight experiments use 128×128 slices from full tensors (aspect ratio hidden);
+  R10 uses synthetic d_model=64, d_head=32 blocks
 - Synthetic calibration (Gaussian + outliers), not real model activations
-- Uniform per-tile quantizer, not EXL3 trellis/Viterbi
+- Proxy uniform quantizers of varying granularity: R3 per-column, R7 16-column groups,
+  R10 both per-column and per-tile, R1/R4/R5/R9 per-tile — none is EXL3 trellis/Viterbi
 - Output-covariance proxy for H_G, not true gradient covariance (Fisher)
-- In-sample evaluation for most experiments
+- In-sample evaluation for most experiments; R10 is the main held-out exception
+- R8's K5 aggregate is 98.6% synthetic (real-weight effects near zero/mixed)
+- R7's 186/192 comparisons reuse only 3 calibration matrices (correlated, not independent)
+- R9's +40.8% uses unequal search budget (5 rotation searches vs 1 for baseline)
 - No end-to-end KLD, no served model validation
 
 ### Required next steps
@@ -303,7 +345,7 @@ principled way to combine them, and it achieves +40.8% over the best individual 
 
 | Researcher | Code | Findings | Results | Dead ends |
 |-----------|------|----------|---------|-----------|
-| R1-RateDistortion | tools/research/r1-rate-distortion/poc.py | docs/research/r1-rate-distortion-findings.md | receipts/research/r1-rate-distortion-results.json | — |
+| R1-RateDistortion | tools/research/r1-rate-distortion/poc.py | docs/research/r1-rate-distortion-findings.md | receipts/research/r1-rate-distortion-results.json | docs/research/r1-rate-distortion-deadends.md |
 | R2-GPTAQ | tools/research/r2-gptaq-corrections/poc.py | docs/research/r2-gptaq-corrections-findings.md | receipts/research/r2-gptaq-corrections-results.json | docs/research/r2-gptaq-corrections-deadends.md |
 | R3-Rotations | tools/research/r3-rotations/poc.py | docs/research/r3-rotations-findings.md | receipts/research/r3-rotations-results.json | docs/research/r3-rotations-deadends.md |
 | R4-Permutations | tools/research/r4-permutations/poc.py | docs/research/r4-permutations-findings.md | receipts/research/r4-permutations-results.json | docs/research/r4-permutations-deadends.md |
@@ -311,7 +353,7 @@ principled way to combine them, and it achieves +40.8% over the best individual 
 | R6-GDN | tools/research/r6-gdn/poc.py | docs/research/r6-gdn-findings.md | receipts/research/r6-gdn-results.json | docs/research/r6-gdn-deadends.md |
 | R7-NoiseShaping | tools/research/r7-noise-shaping/poc.py | docs/research/r7-noise-shaping-findings.md | receipts/research/r7-noise-shaping-results-v3.json | docs/research/r7-noise-shaping-deadends.md |
 | R8-Scaling | tools/research/r8-scaling/poc.py | docs/research/r8-scaling-findings.md | receipts/research/r8-scaling-results.json | docs/research/r8-scaling-deadends.md |
-| R9-GroupOrbit | tools/research/r9-group-orbit/poc.py | docs/research/r9-group-orbit-findings.md | receipts/research/r9-group-orbit-results.json | — |
+| R9-GroupOrbit | tools/research/r9-group-orbit/poc.py | docs/research/r9-group-orbit-findings.md | receipts/research/r9-group-orbit-results.json | docs/research/r9-group-orbit-deadends.md |
 | R10-CoupledBlocks | tools/research/r10-coupled-blocks/poc.py | docs/research/r10-coupled-blocks-findings.md | receipts/research/r10-coupled-blocks-results.json | docs/research/r10-coupled-blocks-deadends.md |
 
 ## 8. Worktree branches
