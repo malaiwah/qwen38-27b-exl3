@@ -23,7 +23,14 @@ EXPECTED_EXPERIMENTS = (
     "g1-exact-fidelity-control",
     "g1-exact-fidelity-control-v2",
     "g1-exact-fidelity-control-n3",
+    "g1-exact-fidelity-kld",
 )
+EXPECTED_KINDS = {
+    "g1-exact-fidelity-control": "exact-fidelity-control",
+    "g1-exact-fidelity-control-v2": "exact-fidelity-control",
+    "g1-exact-fidelity-control-n3": "exact-fidelity-control",
+    "g1-exact-fidelity-kld": "exact-fidelity-kld-control",
+}
 
 
 class IncompleteCampaign(Exception):
@@ -270,12 +277,32 @@ class Verifier:
             != 19
         ):
             raise MalformedEvidence("clean INT6 runtime correction differs")
+        self._ref(
+            runtime["patch"],
+            "runtime_extension.patch",
+            base=self.campaign,
+            canonical=False,
+        )
         compatibility = _object(runtime.get("compatibility"), "compatibility")
         if (
             compatibility.get("historical_packed_bytes_equal") is not True
             or compatibility.get("historical_scales_equal") is not True
         ):
             raise MalformedEvidence("historical INT6 compatibility is not proven")
+        _, compatibility_path = self._path(
+            self.campaign,
+            compatibility.get("path"),
+            "runtime_extension.compatibility",
+        )
+        if (
+            not compatibility_path.is_file()
+            or sha256_file(compatibility_path)
+            != _sha(
+                compatibility.get("sha256"),
+                "runtime_extension.compatibility.sha256",
+            )
+        ):
+            raise MalformedEvidence("historical compatibility receipt hash differs")
         return correction
 
     def _validate_prereg(self, value: object, experiment_id: str) -> dict[str, Any]:
@@ -288,7 +315,7 @@ class Verifier:
         ):
             raise MalformedEvidence(f"prereg {experiment_id} identity differs")
         if (
-            prereg.get("kind") != "exact-fidelity-control"
+            prereg.get("kind") != EXPECTED_KINDS[experiment_id]
             or prereg.get("candidate_id") is not None
         ):
             raise MalformedEvidence(f"prereg {experiment_id} kind differs")
@@ -330,7 +357,7 @@ class Verifier:
             result["schema_version"] != RESULT_SCHEMA
             or result["campaign_id"] != "frontier-g02"
             or result["experiment_id"] != experiment_id
-            or result["kind"] != "exact-fidelity-control"
+            or result["kind"] != EXPECTED_KINDS[experiment_id]
             or result["candidate_id"] is not None
         ):
             raise MalformedEvidence(f"result {experiment_id} identity differs")
@@ -377,6 +404,7 @@ class Verifier:
             "contract",
             "contract_corrections",
             "experiments",
+            "fidelity_control_experiment_id",
             "baseline_control_experiment_id",
             "candidate_slots",
             "sealed_final",
@@ -435,7 +463,12 @@ class Verifier:
         baseline_id = manifest["baseline_control_experiment_id"]
         if baseline_id != EXPECTED_EXPERIMENTS[2]:
             raise MalformedEvidence("effective baseline control experiment differs")
-        effective_pass = outcomes[baseline_id] == "pass"
+        fidelity_id = manifest["fidelity_control_experiment_id"]
+        if fidelity_id != EXPECTED_EXPERIMENTS[3]:
+            raise MalformedEvidence("effective fidelity control experiment differs")
+        effective_pass = (
+            outcomes[baseline_id] == "pass" and outcomes[fidelity_id] == "pass"
+        )
         slots = _array(manifest["candidate_slots"], "manifest.candidate_slots")
         if slots != contract["candidate_policy"]["candidate_slots"]:
             raise MalformedEvidence("manifest candidate slots differ from contract")
@@ -445,21 +478,48 @@ class Verifier:
         method = _object(manifest["method_infrastructure"], "method_infrastructure")
         _exact(
             method,
-            {"status", "prereg", "capture_result", "run_result"},
+            {
+                "status",
+                "capture_prereg",
+                "capture_result",
+                "run_prereg",
+                "run_result",
+            },
             "method_infrastructure",
         )
         if method["status"] not in {"pending", "control_ready"}:
             raise MalformedEvidence("method infrastructure status differs")
         if method["status"] == "control_ready":
-            for name in ("prereg", "capture_result", "run_result"):
-                self._ref(method[name], f"method_infrastructure.{name}")
-        else:
-            if any(
-                method[name] is not None for name in ("capture_result", "run_result")
+            _, capture_prereg = self._ref(
+                method["capture_prereg"], "method_infrastructure.capture_prereg"
+            )
+            _, capture_result = self._ref(
+                method["capture_result"], "method_infrastructure.capture_result"
+            )
+            _, run_prereg = self._ref(
+                method["run_prereg"], "method_infrastructure.run_prereg"
+            )
+            _, run_result = self._ref(
+                method["run_result"], "method_infrastructure.run_result"
+            )
+            if (
+                _object(capture_prereg, "capture prereg").get("schema_version")
+                != "qwen38-trellis-v3-prereg-correction/1"
+                or _object(capture_result, "capture result").get("status") != "pass"
+                or _object(run_prereg, "run prereg").get("schema_version")
+                != "qwen38-trellis-v3-run-prereg/1"
+                or _object(run_result, "run result").get("schema")
+                != "qwen38-trellis-v3-result/1"
+                or _object(run_result, "run result").get("status") != "pass"
+                or _object(run_result, "run result").get("method_claims_allowed")
+                is not False
             ):
-                raise MalformedEvidence(
-                    "pending method infrastructure declares results"
-                )
+                raise MalformedEvidence("v3 control infrastructure semantics differ")
+        elif any(
+            method[name] is not None
+            for name in ("capture_result", "run_result")
+        ):
+            raise MalformedEvidence("pending method infrastructure declares results")
         rental = _object(manifest["rental"], "rental")
         if rental.get("authorized") is not False:
             raise MalformedEvidence("pre-candidate manifest authorizes rental")
