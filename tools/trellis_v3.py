@@ -264,8 +264,15 @@ def run(plan_path: Path, out_path: Path) -> dict[str, Any]:
         raise HarnessError("capture target identities differ")
     bf16_slices = capture_values["bf16"]["capture"]["slices"]
     quant_slices = capture_values["quant"]["capture"]["slices"]
-    if bf16_slices != quant_slices:
-        raise HarnessError("capture slice identities differ")
+    geometry_fields = ("id", "input_start", "output_start", "size")
+    bf16_geometry = [
+        {field: row[field] for field in geometry_fields} for row in bf16_slices
+    ]
+    quant_geometry = [
+        {field: row[field] for field in geometry_fields} for row in quant_slices
+    ]
+    if bf16_geometry != quant_geometry:
+        raise HarnessError("capture slice geometry differs")
 
     source = Path(plan["quantizer"]["source"])
     sys.path.insert(0, str(source))

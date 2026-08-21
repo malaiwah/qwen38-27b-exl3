@@ -1,0 +1,29 @@
+{
+  "schema_version": "qwen38-trellis-v3-run-prereg-correction/1",
+  "campaign_id": "frontier-g02",
+  "experiment_id": "trellis-v3-actual-exl3-controls",
+  "correction_id": "run-prereg-correction-001",
+  "supersedes": {
+    "path": "run-prereg.json",
+    "sha256": "c54f9b460cd7cac0c19fad0ccab98cc1a2d59988a44ee83dd252647ad499ba3c",
+    "canonical_sha256": "0ee8d3fcd5b7d0b5f92e9faa4b0bf295ed77bb788e299204e5e25ea61fc9951c"
+  },
+  "reason": "The first control run correctly found that complete slice records cannot be equal across BF16 and quant flows because activation and Hessian hashes are flow-specific by design. Matching now compares only id/input_start/output_start/size; weight equality, tensor payload hashes, activation shapes, and flow-specific provenance remain separately enforced. No quantizer, arm, bytes, metric, source, or decision rule changed.",
+  "failed_attempt": {
+    "transaction": {"path": "run-attempt-001-transaction.json", "sha256": "103f7ba2f2a99cb2ba487496d37dbcee6a39f9cbfd9a107c360f8fe89a8b06f5", "canonical_sha256": "3e29ca85bc8418240563f7780b4c49d618ee06203b4c49f04a9eff02ff0061f2"},
+    "log_sha256": "65bb9fe4f28dde7e1cff1f0fa63e7281daded1d425fe7943fbe8a6b392f74692",
+    "failure": "complete flow-specific slice records were compared instead of immutable slice geometry",
+    "restore_proven": true
+  },
+  "effective_identities": {
+    "runner_sha256": "0db6bd7b4ac3b7717ce117e668e74b62ebca0b2eeb5e8d314986b55c670d8707",
+    "actual_quantizer_sha256": "4cd368dab28e007d649e25b97c65fc73a56ef2a1482ca2b9298a53d4b0876dbf",
+    "run_plan_sha256": "24e5c5c0f34aa8177594fba6cfdec932c7d69b0d8668f53005cec079d97a3413"
+  },
+  "unchanged_arms": ["rtn", "ldlq_bf16_h", "ldlq_quant_h"],
+  "planned_outputs": [
+    "v3/run-plan.json",
+    "v3/run-result.json",
+    "v3/run-result.safetensors"
+  ]
+}
