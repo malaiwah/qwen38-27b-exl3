@@ -1,0 +1,179 @@
+{
+  "schema": "qwen38-wave5-fidelity-preregistration/3",
+  "status": "frozen-before-wave5-candidate-results",
+  "frozen_on": "2026-08-21",
+  "contract_path": "tools/research/wave5/fidelity_contract.json",
+  "contract_sha256": "e8e1d47694038bbec4aa6f4a4554c4b53e549d2082d87e07353e5d8d16a66783",
+  "gate_path": "tools/research/wave5/fidelity_gate.py",
+  "gate_sha256": "f4fc059c03331905dca6ad7b0ad4ba0e6af515897e2fc90dfd82f1ce0e8e8482",
+  "method_of_record": "docs/42-kld-method.md",
+  "projector_path": "tools/fidelity.py",
+  "projector_sha256": "e5089b75ae7fd8b6e363468d3819954599289652e5a1ad27cf9e347556604a69",
+  "superseded_methods": ["docs/05-kld-protocol.md", "docs/14-fidelity-protocol-v2.md"],
+  "canonical_paths": {
+    "candidate_freeze": "receipts/wave5/frozen-candidate.json",
+    "test_open_state": "receipts/wave5/untouched-test-open.json",
+    "access_log": "receipts/wave5/fidelity-access.jsonl",
+    "validation_attempt_log": "receipts/wave5/validation-attempts.jsonl",
+    "promotion_decision": "receipts/wave5/promotion-decision.json"
+  },
+  "r29_bindings": {
+    "split_manifest_path": "receipts/wave5/split-manifest.json",
+    "split_manifest_file_sha256": "a7eab6e2d8ee78e8d27655f8e9caf4c7813c43539ba24b31c4941d3d38ee09cc",
+    "split_manifest_content_sha256": "151c41151142060619e6a7957f36daa4849e53276435df54b74bdfc223596a2e",
+    "data_manifest_path": "receipts/wave5/data-manifest.json",
+    "data_manifest_file_sha256": "68bcc5ddce1d34f71d696265d908eccd1b75f48444cb0a3aaffe86fea02bff37",
+    "data_manifest_content_sha256": "51957ac986dc44bc06f937ae74b005e090883348c947ef65ac331ed5a91057c2",
+    "leakage_audit_sha256": "7fb0bf2f932d93af78c2ca7f40a0cb41f577a2b7801ae80a4ff44bfcc07cc6d9",
+    "language_model_tensor_records": 87,
+    "disjoint_document_hashes_verified": true,
+    "disjoint_source_clusters_verified": true,
+    "test_contents_opened_by_builder": false
+  },
+  "suite_identity": {
+    "repo": "malaiwah/qwen38-27b-fidelity-suite-v5",
+    "revision": "7797fcce3ffed62b99871348887f4626dc9b2b3b",
+    "parent_manifest_sha256": "c79dfad3767ca5b3015129077f20dbb9282a2e51ca8bca9ed09be8c7a9c73019",
+    "suite_token_sha256": "510541f6861b589d44932db253ec25d96d6daaeeee4ea2ab9b65329209482b88",
+    "contexts": 5120,
+    "scored_positions_per_context": 2047,
+    "source_clusters": 842,
+    "source_documents": 941,
+    "retokenization": "forbidden"
+  },
+  "split_registry": {
+    "calibration": {
+      "manifest_path": "receipts/wave5/split-manifest.json",
+      "manifest_sha256": "a7eab6e2d8ee78e8d27655f8e9caf4c7813c43539ba24b31c4941d3d38ee09cc",
+      "selector": {"field": "split", "op": "eq", "value": "calibration"},
+      "selection_sha256": "490a15969bf7b62b585f24cce644dae48f8021f534b0b2bc7553a46a989ea259",
+      "documents": 6,
+      "primary_v5_contexts": 0,
+      "access": [{
+        "actors": ["Main", "R29-DataFisher", "R30-ExactEXL3Harness", "R31-FidelityProtocol", "R32", "R33", "R34", "R35", "R36", "R37", "R38"],
+        "phases": ["calibration", "infrastructure_audit"],
+        "purposes": ["fit", "capture", "encoder_control", "contract_audit"]
+      }],
+      "forbidden": ["model selection", "promotion", "threshold adjustment"]
+    },
+    "validation": {
+      "manifest_path": "receipts/wave5/split-manifest.json",
+      "manifest_sha256": "a7eab6e2d8ee78e8d27655f8e9caf4c7813c43539ba24b31c4941d3d38ee09cc",
+      "selector": {"field": "split", "op": "eq", "value": "validation"},
+      "selection_sha256": "4c5cf19acc18835ee6d36da91b2b93135c5d33655ca410c079d4d4be83c5a5de",
+      "primary_v5_selection_sha256": "4c5cf19acc18835ee6d36da91b2b93135c5d33655ca410c079d4d4be83c5a5de",
+      "documents": 331,
+      "primary_v5_contexts": 512,
+      "retained_suite_manifest_sha256": "44000bbd4ec24fea4a19696eb7b5e1055b66c4dc65a3bf14f243de58e38cd3f3",
+      "retained_suite_token_sha256": "caef8a4628d6c07c162100895096f890cdf9cafc8e4c48b3d66035d737ee7cf7",
+      "reference_policy": "reuse retained shard0 BF16 capture; never recapture",
+      "access": [{
+        "actors": ["Main", "R29-DataFisher", "R31-FidelityProtocol", "R32", "R33", "R34", "R35", "R36", "R37", "R38"],
+        "phases": ["validation", "model_selection", "infrastructure_audit"],
+        "purposes": ["select", "stop", "interaction_select", "frontier_select", "capture", "contract_audit"]
+      }],
+      "forbidden": ["fit calibration statistics", "change budget after metrics", "promotion without untouched confirmation"]
+    },
+    "untouched_test": {
+      "manifest_path": "receipts/wave5/split-manifest.json",
+      "manifest_sha256": "a7eab6e2d8ee78e8d27655f8e9caf4c7813c43539ba24b31c4941d3d38ee09cc",
+      "selector": {"field": "split", "op": "eq", "value": "untouched_test"},
+      "selection_sha256": "4eaaa72d93790195468c168ee03753fe2a0efa0d04334a5d5335fd083de88bca",
+      "primary_v5_selection_sha256": "4eaaa72d93790195468c168ee03753fe2a0efa0d04334a5d5335fd083de88bca",
+      "documents": 513,
+      "primary_v5_contexts": 1881,
+      "primary_metric_subset": "only exact v5 context records embedded in R29 documents; UltraChat test-gen documents have no v5 contexts and cannot enter replay",
+      "reference_policy": "capture missing shards1-9 BF16 references once after open, hash/retain, reuse for candidate/F0/F0-fresh",
+      "access": [],
+      "forbidden": ["all method researchers", "calibration", "model selection", "threshold change", "second opening"]
+    }
+  },
+  "data_function_separation": {
+    "R29": "builds/hash-verifies data and exact context manifests; does not select from test metrics",
+    "R30": "builds stock-exact complete actions/routes; cannot open test",
+    "R32_R38": "fit on calibration and select on validation; cannot open test",
+    "R31_Main": "open and evaluate the single frozen contrast using the canonical capability/state/ledger",
+    "function_freeze": "projector, metric, bootstrap, threshold, route, evaluator, canonical paths, and capability hash freeze before test"
+  },
+  "arm_registry": [
+    {"arm_id": "F0", "kind": "immutable shipped control", "test_required": true},
+    {"arm_id": "F0-fresh", "kind": "fresh R30 stock control", "test_required": true},
+    {"arm_id": "R32-scale-path", "kind": "complete actions", "test_eligible": true},
+    {"arm_id": "R33-covariance", "kind": "complete actions", "test_eligible": true},
+    {"arm_id": "R34-target-seam", "kind": "complete actions", "test_eligible": true},
+    {"arm_id": "R35-legal-path", "kind": "complete actions", "test_eligible": true},
+    {"arm_id": "R36-final-kl", "kind": "complete actions", "test_eligible": true},
+    {"arm_id": "R37-allocation", "kind": "complete-action allocation", "test_eligible": true},
+    {"arm_id": "R38-fractional", "kind": "qualified format complete actions", "test_eligible": true}
+  ],
+  "candidate_freeze": {
+    "required_manifest_fields": [
+      "candidate_id", "selection_split", "untouched_test_accessed",
+      "validation_manifest_sha256", "validation_selection_sha256",
+      "complete_checkpoint_sha256",
+      "candidate_head_path", "candidate_head_sha256", "candidate_head_dtype", "candidate_head_shape",
+      "action_registry_path", "action_registry_sha256",
+      "action_assignment_sha256",
+      "dual_frontier_path", "dual_frontier_sha256",
+      "exact_serialized_bytes",
+      "validation_attempt_ledger_path", "validation_attempt_ledger_sha256",
+      "selection_decision_path", "selection_decision_sha256",
+      "ordered_seed_list", "matched_search_budget",
+      "selected_arm_id", "document_order_path", "block_order_path",
+      "codec_exact_route_id", "production_route_id",
+      "F0_checkpoint_identity_sha256", "F0_fresh_checkpoint_identity_sha256",
+      "F0_fresh_stock_action_sha256"
+    ],
+    "sha256_fields": [
+      "validation_manifest_sha256", "validation_selection_sha256",
+      "complete_checkpoint_sha256", "candidate_head_sha256",
+      "action_registry_sha256", "action_assignment_sha256", "dual_frontier_sha256",
+      "validation_attempt_ledger_sha256", "selection_decision_sha256",
+      "F0_checkpoint_identity_sha256", "F0_fresh_checkpoint_identity_sha256",
+      "F0_fresh_stock_action_sha256"
+    ],
+    "carry_into_freeze": [
+      "candidate_id", "complete_checkpoint_sha256",
+      "candidate_head_sha256", "candidate_head_dtype", "candidate_head_shape",
+      "action_registry_sha256", "action_assignment_sha256",
+      "dual_frontier_sha256", "exact_serialized_bytes", "validation_attempt_ledger_sha256",
+      "selection_decision_sha256", "ordered_seed_list", "matched_search_budget",
+      "codec_exact_route_id", "production_route_id",
+      "F0_checkpoint_identity_sha256", "F0_fresh_checkpoint_identity_sha256",
+      "F0_fresh_stock_action_sha256"
+    ],
+    "carry_into_open_state": [
+      "candidate_id", "complete_checkpoint_sha256",
+      "candidate_head_sha256", "candidate_head_dtype", "candidate_head_shape",
+      "action_registry_sha256", "action_assignment_sha256",
+      "dual_frontier_sha256", "exact_serialized_bytes", "validation_attempt_ledger_sha256",
+      "selection_decision_sha256", "ordered_seed_list", "matched_search_budget",
+      "codec_exact_route_id", "production_route_id",
+      "F0_checkpoint_identity_sha256", "F0_fresh_checkpoint_identity_sha256",
+      "F0_fresh_stock_action_sha256", "prereg_sha256", "contract_sha256"
+    ],
+    "one_candidate_only": "canonical O_EXCL freeze path"
+  },
+  "budget_and_multiplicity": {
+    "matched_search_budget_schema": "candidate, every test-eligible arm, and F0-fresh receive the exact frozen legal-evaluation count and seed/document/block order hashes",
+    "attempt_ledger": "canonical SHA256-chained validation-only attempt log; every arm/setting/ordinal/seed and common-random-number hash is reconciled before freeze",
+    "selection": "validation selects exactly one legal assignment/frontier point and binds its assignment SHA256, full checkpoint SHA256, threshold SHA256, and decision SHA256",
+    "confirmatory_contrast": "body-only and served candidate-head axes versus F0-fresh, with F0 equivalence control",
+    "threshold_changes_after_results": "forbidden and detected through open-state/decision/frontier contract hashes"
+  },
+  "untouched_test_policy": {
+    "capability_sha256": "74c0f5ae0880250357bc47e5a30f8f609dd2bf2f192a54fea9f024c1b3683542",
+    "capability_delivery": "owner-only out-of-band WAVE5_TEST_OPEN_CAPABILITY environment value; method-agent environments do not receive it and the secret is never printed or committed",
+    "state_creation": "one canonical O_CREAT|O_EXCL file containing its own hashed grant event",
+    "access_log": "one canonical append-only SHA256-chained ledger; exactly one matching grant is required and every denial after trust-root load is logged",
+    "after_open": "candidate/F0/F0-fresh capture, both candidate replay axes, and evaluation only; no selection changes or capability reuse"
+  },
+  "controls": {
+    "F0_model_revision": "ab3a91a13813df8096cb4c1d560ed3669035d0cf",
+    "route_ids": ["codec-exact/all-trellis-stock-exl3", "production/throughput-fp4-fp6-materialized"],
+    "shared_head_sha256": "25a30fd5f826da0abc4efc4cc71def9f02bcb8085f7175eee284d221dee4cfff",
+    "bootstrap_samples": 10000,
+    "bootstrap_seed": 1
+  },
+  "results_dependent_threshold_selection": false
+}

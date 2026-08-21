@@ -1,0 +1,413 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/malaiwah/qwen38-27b-exl3/blob/main/tools/research/wave5/exl3_action_schema.json",
+  "title": "Wave 5 complete EXL3 action",
+  "description": "Fail-closed immutable stock-EXL3 action contract. Curvature, callback implementation, split identity, promotion evidence, payload and production materialization qualification are action-bound.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema", "action_id", "unit", "K", "codebook",
+    "sign_scale_transform", "target", "curvature_correction", "viterbi_refinement",
+    "curvature", "callback", "runtime", "seed",
+    "split_manifest_sha256", "split_selections", "split_disjointness",
+    "source_tensor_sha256", "source_revision", "source_layout",
+    "encoder_repo", "encoder_commit", "encoder_tree_sha1", "encoder_version", "serialized", "hashes",
+    "qualifications", "metric_contract", "evidence"
+  ],
+  "properties": {
+    "schema": {"const": "wave5/exl3-action/1"},
+    "action_id": {"type": "string", "minLength": 1},
+    "unit": {"$ref": "#/$defs/unit"},
+    "K": {"enum": [4, 5, 6, 7]},
+    "codebook": {"enum": ["mcg", "mul1", "3inst"]},
+    "sign_scale_transform": {"$ref": "#/$defs/recipe"},
+    "target": {"$ref": "#/$defs/recipe"},
+    "curvature_correction": {"$ref": "#/$defs/recipe"},
+    "viterbi_refinement": {"$ref": "#/$defs/recipe"},
+    "curvature": {"$ref": "#/$defs/curvature"},
+    "callback": {"$ref": "#/$defs/callback"},
+    "runtime": {"$ref": "#/$defs/runtime"},
+    "seed": {"type": "integer", "minimum": 0, "maximum": 9223372036854775807},
+    "split_manifest_sha256": {"$ref": "#/$defs/sha256"},
+    "split_selections": {"$ref": "#/$defs/splitSelections"},
+    "split_disjointness": {"$ref": "#/$defs/splitDisjointness"},
+    "source_tensor_sha256": {"$ref": "#/$defs/sha256"},
+    "source_revision": {"type": "string", "minLength": 1},
+    "source_layout": {"enum": ["out_in", "in_out"]},
+    "encoder_repo": {"const": "turboderp-org/exllamav3"},
+    "encoder_commit": {"const": "5f3c537ca9d89893d771256f5c43c93656553fbb"},
+    "encoder_tree_sha1": {"const": "ffc0a1d31c25d4174b96adffef3727f12a7056c7"},
+    "encoder_version": {"const": "1.4.2"},
+    "serialized": {"$ref": "#/$defs/serialized"},
+    "hashes": {
+      "type": "object",
+      "additionalProperties": {"$ref": "#/$defs/sha256"},
+      "description": "Empty before encoding. Promotion requires candidate_payload_sha256 to equal hashes.payload_sha256."
+    },
+    "qualifications": {
+      "type": "object",
+      "additionalProperties": {"$ref": "#/$defs/sha256"}
+    },
+    "metric_contract": {"$ref": "#/$defs/metricContract"},
+    "evidence": {"$ref": "#/$defs/evidence"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"K": {"const": 7}}, "required": ["K"]},
+      "then": {"properties": {"qualifications": {"required": ["k7_artifact_sha256"]}}}
+    }
+  ],
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^(?!(?:0{64}|e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855)$)[0-9a-f]{64}$"
+    },
+    "metricContract": {
+      "const": {
+        "protocol_id": "qwen38-kld-method-v5/body-only-shared-bf16-head",
+        "method_of_record": "docs/42-kld-method.md",
+        "suite_repo": "malaiwah/qwen38-27b-fidelity-suite-v5",
+        "suite_revision": "7797fcce3ffed62b99871348887f4626dc9b2b3b",
+        "suite_manifest_sha256": "c79dfad3767ca5b3015129077f20dbb9282a2e51ca8bca9ed09be8c7a9c73019",
+        "suite_token_sha256": "510541f6861b589d44932db253ec25d96d6daaeeee4ea2ab9b65329209482b88",
+        "shared_bf16_head_sha256": "25a30fd5f826da0abc4efc4cc71def9f02bcb8085f7175eee284d221dee4cfff",
+        "direction": "KL(BF16 reference || candidate)",
+        "vocab_size": 248320,
+        "vocab_chunk": 24832,
+        "accumulation": "float64",
+        "two_pass": true,
+        "body_only": true,
+        "scored_positions_per_context": 2047,
+        "contexts": 5120,
+        "source_clusters": 842,
+        "bootstrap": {"unit": "source_cluster", "resamples": 10000, "seed": 1},
+        "required_metrics": ["token_mean_kld", "context_macro_mean_kld", "p99", "cvar1pct", "top1_agreement", "full_vocab_ear", "worst_contexts"],
+        "local_metric_guard": "MSE/OC-HWE/Fisher-HWE/block-output-error are never called KLD",
+        "served_head_axis": "candidate-own/served head contribution is separate from body-only shared-head KLD"
+      }
+    },
+    "unit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["unit_id", "granularity", "topology", "role", "tensor_keys", "layer_index", "shard_id", "fused_group", "output_splits"],
+      "properties": {
+        "unit_id": {"type": "string", "minLength": 1},
+        "granularity": {"enum": ["topology_group", "module", "tensor", "shard"]},
+        "topology": {"enum": ["mlp", "gdn", "full_attention", "lm_head", "mtp"]},
+        "role": {"enum": ["gate_proj", "up_proj", "down_proj", "q_proj", "k_proj", "v_proj", "qkv_proj", "z_proj", "out_proj", "in_proj_a", "in_proj_b", "lm_head", "mtp_dense", "other_dense"]},
+        "tensor_keys": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "layer_index": {"type": ["integer", "null"], "minimum": 0, "maximum": 63},
+        "shard_id": {"type": ["string", "null"]},
+        "fused_group": {"type": ["string", "null"]},
+        "output_splits": {"type": "array", "items": {"type": "integer", "minimum": 128, "multipleOf": 128}}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"granularity": {"const": "shard"}}, "required": ["granularity"]},
+          "then": {"properties": {"shard_id": {"type": "string", "minLength": 1}}}
+        }
+      ]
+    },
+    "recipe": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["recipe_id", "kind", "parameters", "implementation", "strength"],
+      "properties": {
+        "recipe_id": {"type": "string", "minLength": 1},
+        "kind": {"type": "string", "minLength": 1},
+        "parameters": {"type": "object"},
+        "implementation": {"enum": ["stock", "stock-with-encode-callback"]},
+        "strength": {"type": ["number", "null"]}
+      }
+    },
+    "curvature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["capture_id", "h_tensor_sha256", "h_dtype", "h_shape", "capture_manifest_sha256", "observation_count", "normalization", "basis", "coordinate_convention", "tensor_boundary", "module_boundary"],
+      "properties": {
+        "capture_id": {"type": "string", "minLength": 1},
+        "h_tensor_sha256": {"$ref": "#/$defs/sha256"},
+        "h_dtype": {"const": "float32"},
+        "h_shape": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {"type": "integer", "minimum": 1}
+        },
+        "capture_manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "observation_count": {"type": "integer", "minimum": 1},
+        "normalization": {"type": "string", "minLength": 1},
+        "basis": {"type": "string", "minLength": 1},
+        "coordinate_convention": {"enum": ["H rows/columns equal stored [out,in] source tensor input-feature axis before stock seeded sign/H128", "H rows/columns equal stored [in,out] source tensor input-feature axis before stock seeded sign/H128"]},
+        "tensor_boundary": {"type": "string", "minLength": 1},
+        "module_boundary": {"type": "string", "minLength": 1}
+      }
+    },
+    "callback": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["identifier", "version", "implementation_sha256", "module_files_sha256", "content_sha256", "parameters", "expected_interface"],
+      "properties": {
+        "identifier": {"type": "string", "minLength": 1},
+        "version": {"type": "string", "minLength": 1},
+        "implementation_sha256": {"$ref": "#/$defs/sha256"},
+        "module_files_sha256": {
+          "type": "object",
+          "additionalProperties": {"$ref": "#/$defs/sha256"}
+        },
+        "content_sha256": {"$ref": "#/$defs/sha256"},
+        "parameters": {"type": "object"},
+        "expected_interface": {
+          "const": {
+            "target": "(source_basis_weight, action) -> same-shape/dtype/device finite target",
+            "scale": "(stock_five_tuple, action) -> identical structure/dtypes/devices",
+            "curvature": "(transformed_damped_H, action) -> same-shape/dtype/device finite H",
+            "recurrence": "(stock_block_ldl_L, action) -> same-shape/dtype/device finite L",
+            "legal_path": "(tiles, stock_values, stock_indices, action) -> candidate target tiles only; harness reruns pinned Viterbi"
+          }
+        }
+      }
+    },
+    "splitPredicate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["field", "op", "value"],
+      "properties": {
+        "field": {"const": "split"},
+        "op": {"const": "eq"},
+        "value": {"enum": ["calibration", "validation", "untouched_test"]}
+      }
+    },
+    "splitSelections": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["calibration", "validation", "untouched_test"],
+      "properties": {
+        "calibration": {"$ref": "#/$defs/calibrationSelection"},
+        "validation": {"$ref": "#/$defs/validationSelection"},
+        "untouched_test": {"$ref": "#/$defs/untouchedTestSelection"}
+      }
+    },
+    "calibrationSelection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["selection_sha256", "selector"],
+      "properties": {
+        "selection_sha256": {"$ref": "#/$defs/sha256"},
+        "selector": {"const": {"field": "split", "op": "eq", "value": "calibration"}}
+      }
+    },
+    "validationSelection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["selection_sha256", "selector"],
+      "properties": {
+        "selection_sha256": {"$ref": "#/$defs/sha256"},
+        "selector": {"const": {"field": "split", "op": "eq", "value": "validation"}}
+      }
+    },
+    "untouchedTestSelection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["selection_sha256", "selector"],
+      "properties": {
+        "selection_sha256": {"$ref": "#/$defs/sha256"},
+        "selector": {"const": {"field": "split", "op": "eq", "value": "untouched_test"}}
+      }
+    },
+    "splitDisjointness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact_sha256", "predicate_language", "pairwise_overlap_counts", "source_document_overlap_count", "domain_leakage_count", "verified"],
+      "properties": {
+        "artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "predicate_language": {"const": "wave5.split-predicate/1"},
+        "pairwise_overlap_counts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["calibration__validation", "calibration__untouched_test", "validation__untouched_test"],
+          "properties": {
+            "calibration__validation": {"const": 0},
+            "calibration__untouched_test": {"const": 0},
+            "validation__untouched_test": {"const": 0}
+          }
+        },
+        "source_document_overlap_count": {"const": 0},
+        "domain_leakage_count": {"const": 0},
+        "verified": {"const": true}
+      }
+    },
+    "runtime": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["route_id", "decode_hot_ops", "startup_ops", "graph_capturable", "incremental_hot_bytes", "sidecar_bytes", "materialization_qualification"],
+      "properties": {
+        "route_id": {"enum": ["codec-exact/all-trellis-stock-exl3", "production/throughput-fp4-fp6-materialized"]},
+        "decode_hot_ops": {"type": "array", "items": {"type": "string"}},
+        "startup_ops": {"type": "array", "items": {"type": "string"}},
+        "graph_capturable": {"type": "boolean"},
+        "incremental_hot_bytes": {"type": "integer", "minimum": 0},
+        "sidecar_bytes": {"type": "integer", "minimum": 0},
+        "materialization_qualification": {"type": ["object", "null"]}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"route_id": {"const": "codec-exact/all-trellis-stock-exl3"}}, "required": ["route_id"]},
+          "then": {"properties": {"materialization_qualification": {"const": null}}}
+        },
+        {
+          "if": {"properties": {"route_id": {"const": "production/throughput-fp4-fp6-materialized"}}, "required": ["route_id"]},
+          "then": {"properties": {"materialization_qualification": {"$ref": "#/$defs/materializationQualification"}}}
+        }
+      ]
+    },
+    "materializationQualification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["route_id", "route_implementation_path", "route_implementation_sha256", "image_digest_sha256", "fp4_converter_source_path", "fp4_converter_source_sha256", "fp4_converter_binary_path", "fp4_converter_binary_sha256", "fp6_converter_source_path", "fp6_converter_source_sha256", "fp6_converter_binary_path", "fp6_converter_binary_sha256", "effective_environment", "effective_environment_sha256", "source_payload_path", "source_payload_sha256", "materialized_tensor_path", "materialized_tensor_sha256", "materialized_payload_path", "materialized_payload_sha256", "runtime_receipt_path", "runtime_receipt_sha256"],
+      "properties": {
+        "route_id": {"const": "production/throughput-fp4-fp6-materialized"},
+        "route_implementation_path": {"type": "string", "minLength": 1},
+        "route_implementation_sha256": {"const": "dcede1b494984b3ec29fae5187e8aa692557e4658a1601c7dc0fc337737cbaa8"},
+        "image_digest_sha256": {"$ref": "#/$defs/sha256"},
+        "fp4_converter_source_path": {"type": "string", "minLength": 1},
+        "fp4_converter_source_sha256": {"$ref": "#/$defs/sha256"},
+        "fp4_converter_binary_path": {"type": "string", "minLength": 1},
+        "fp4_converter_binary_sha256": {"$ref": "#/$defs/sha256"},
+        "fp6_converter_source_path": {"type": "string", "minLength": 1},
+        "fp6_converter_source_sha256": {"$ref": "#/$defs/sha256"},
+        "fp6_converter_binary_path": {"type": "string", "minLength": 1},
+        "fp6_converter_binary_sha256": {"$ref": "#/$defs/sha256"},
+        "effective_environment": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["PROFILE", "VLLM_EXL3_MULTIPRECISION", "VLLM_EXL3_FP4_LAYERS", "VLLM_EXL3_FP6_LAYERS", "VLLM_EXL3_FP4_MODULE", "VLLM_EXL3_FP6_MODULE", "VLLM_EXL3_FP4_LAYER_RANGE", "VLLM_EXL3_FP6_LAYER_RANGE", "VLLM_EXL3_FP4_DRAFT_HEAD", "VLLM_EXL3_B12X_ANY_BITS", "VLLM_EXL3_B12X_MIN_M", "VLLM_EXL3_B12X_N_RANGE", "VLLM_EXL3_B12X_LM_HEAD_MIN_M", "VLLM_EXL3_PREFILL_RECONSTRUCT_M", "VLLM_EXL3_SKIP_TRELLIS_PREP"],
+          "properties": {
+            "PROFILE": {"const": "throughput"},
+            "VLLM_EXL3_MULTIPRECISION": {"const": "1"},
+            "VLLM_EXL3_FP4_LAYERS": {"type": "string", "minLength": 1},
+            "VLLM_EXL3_FP6_LAYERS": {"type": "string"},
+            "VLLM_EXL3_FP4_MODULE": {"type": "string", "minLength": 1},
+            "VLLM_EXL3_FP6_MODULE": {"type": "string", "minLength": 1},
+            "VLLM_EXL3_FP4_LAYER_RANGE": {"type": "string"},
+            "VLLM_EXL3_FP6_LAYER_RANGE": {"type": "string"},
+            "VLLM_EXL3_FP4_DRAFT_HEAD": {"type": "string", "minLength": 1},
+            "VLLM_EXL3_B12X_ANY_BITS": {"type": "string", "minLength": 1},
+            "VLLM_EXL3_B12X_MIN_M": {"type": "string", "minLength": 1},
+            "VLLM_EXL3_B12X_N_RANGE": {"type": "string", "minLength": 1},
+            "VLLM_EXL3_B12X_LM_HEAD_MIN_M": {"type": "string"},
+            "VLLM_EXL3_PREFILL_RECONSTRUCT_M": {"type": "string", "minLength": 1},
+            "VLLM_EXL3_SKIP_TRELLIS_PREP": {"type": "string", "minLength": 1}
+          }
+        },
+        "effective_environment_sha256": {"$ref": "#/$defs/sha256"},
+        "source_payload_path": {"type": "string", "minLength": 1},
+        "source_payload_sha256": {"$ref": "#/$defs/sha256"},
+        "materialized_tensor_path": {"type": "string", "minLength": 1},
+        "materialized_tensor_sha256": {"$ref": "#/$defs/sha256"},
+        "materialized_payload_path": {"type": "string", "minLength": 1},
+        "materialized_payload_sha256": {"$ref": "#/$defs/sha256"},
+        "runtime_receipt_path": {"type": "string", "minLength": 1},
+        "runtime_receipt_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["local_metrics", "promoted_kld"],
+      "properties": {
+        "local_metrics": {
+          "type": "object",
+          "propertyNames": {"not": {"pattern": "[Kk][Ll][Dd]"}}
+        },
+        "promoted_kld": {"anyOf": [{"type": "null"}, {"$ref": "#/$defs/promotedKld"}]}
+      }
+    },
+    "promotedKld": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocol_id", "suite_manifest_sha256", "suite_token_sha256", "shared_bf16_head_sha256", "reference_model_sha256", "candidate_model_sha256", "reference_capture_sha256", "candidate_capture_sha256", "report_sha256", "candidate_payload_sha256", "direction", "full_vocabulary", "promoted_split", "metrics", "fail_closed_lineage"],
+      "properties": {
+        "protocol_id": {"const": "qwen38-kld-method-v5/body-only-shared-bf16-head"},
+        "suite_manifest_sha256": {"const": "c79dfad3767ca5b3015129077f20dbb9282a2e51ca8bca9ed09be8c7a9c73019"},
+        "suite_token_sha256": {"const": "510541f6861b589d44932db253ec25d96d6daaeeee4ea2ab9b65329209482b88"},
+        "shared_bf16_head_sha256": {"const": "25a30fd5f826da0abc4efc4cc71def9f02bcb8085f7175eee284d221dee4cfff"},
+        "reference_model_sha256": {"$ref": "#/$defs/sha256"},
+        "candidate_model_sha256": {"$ref": "#/$defs/sha256"},
+        "reference_capture_sha256": {"$ref": "#/$defs/sha256"},
+        "candidate_capture_sha256": {"$ref": "#/$defs/sha256"},
+        "report_sha256": {"$ref": "#/$defs/sha256"},
+        "candidate_payload_sha256": {"$ref": "#/$defs/sha256"},
+        "direction": {"const": "KL(BF16 reference || candidate)"},
+        "full_vocabulary": {"const": true},
+        "promoted_split": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["name", "split_manifest_sha256", "selection_sha256", "selector"],
+          "properties": {
+            "name": {"enum": ["validation", "untouched_test"]},
+            "split_manifest_sha256": {"$ref": "#/$defs/sha256"},
+            "selection_sha256": {"$ref": "#/$defs/sha256"},
+            "selector": {"$ref": "#/$defs/splitPredicate"}
+          }
+        },
+        "metrics": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["token_mean_kld", "context_macro_mean_kld", "p99", "cvar1pct", "top1_agreement", "full_vocab_ear", "worst_contexts"],
+          "properties": {
+            "token_mean_kld": {"type": "number", "minimum": 0},
+            "context_macro_mean_kld": {"type": "number", "minimum": 0},
+            "p99": {"type": "number", "minimum": 0},
+            "cvar1pct": {"type": "number", "minimum": 0},
+            "top1_agreement": {"type": "number", "minimum": 0, "maximum": 1},
+            "full_vocab_ear": {"type": "number", "minimum": 0},
+            "worst_contexts": {"type": "array"}
+          }
+        },
+        "fail_closed_lineage": {
+          "const": {"all_hashes_verified": true, "no_missing_parents": true}
+        }
+      }
+    },
+    "tensorBuffer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dtype", "shape", "bytes", "sha256"],
+      "properties": {
+        "dtype": {"enum": ["float16", "int16", "int32"]},
+        "shape": {"type": "array", "items": {"type": "integer", "minimum": 0}},
+        "bytes": {"type": "integer", "minimum": 0},
+        "sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "serialized": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "buffers": {
+          "type": "object",
+          "propertyNames": {"enum": ["suh", "svh", "trellis", "mcg", "mul1"]},
+          "additionalProperties": {"$ref": "#/$defs/tensorBuffer"},
+          "required": ["suh", "svh", "trellis"]
+        },
+        "buffer_bytes": {"type": "integer", "minimum": 0},
+        "dense_byte_law": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["formula", "marker_bytes", "expected_bytes", "passes"],
+          "properties": {
+            "formula": {"const": "numel*K/8 + 2*(in_features+out_features) + marker_bytes"},
+            "marker_bytes": {"enum": [0, 4]},
+            "expected_bytes": {"type": "integer", "minimum": 0},
+            "passes": {"const": true}
+          }
+        },
+        "standalone_safetensors_bytes": {"type": "integer", "minimum": 0},
+        "container_overhead_bytes": {"type": "integer", "minimum": 0},
+        "safetensors_sha256": {"$ref": "#/$defs/sha256"},
+        "alignment": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

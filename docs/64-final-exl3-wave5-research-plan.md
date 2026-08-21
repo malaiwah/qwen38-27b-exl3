@@ -58,6 +58,20 @@ Split by complete documents/conversations and domain (code, prose, dialogue,
 multilingual), never random activation rows. Hash every data manifest. Candidate
 and control receive identical search/evaluation budgets and common seeds.
 
+### 3.2.1 Lean traceability budget
+
+Traceability follows [doc 65](65-lean-quantization-traceability-manual.md):
+
+- manual and automated trace overhead each stay near or below 5% of lane effort;
+- retain only conclusion-bearing scientific identities, exact bytes, split labels,
+  metric configuration, raw results, selected assignments, and key failures;
+- maximum two review rounds; Round 2 cannot invent requirements unless an
+  executable counterexample can change ranking, thresholds, bytes, leakage, or route;
+- security-grade authentication, process isolation, exhaustive frontier proofs,
+  transitive attestations, and exhaustive fuzzing are deferred;
+- call results **best measured**, not global optimum, unless a genuinely small
+  finite space was exhaustively enumerated.
+
 ### 3.3 Stock EXL3 control
 
 Every comparison includes a fresh stock current EXL3 control with identical:
@@ -194,7 +208,10 @@ Deliver:
 - runtime/startup/context gate schema;
 - immutable `F0` shipped and `F0-fresh` stock controls.
 
-Phase B begins only when R29–R31 contracts pass independent review.
+Phase B begins when R29–R31 pass the **Core Reproducibility Gate** in doc 65:
+actual stock/data/split/metric identity, strength-zero control, exact bytes, one
+positive full path, and six conclusion-bearing negative tests. Review is capped at
+two rounds. MAY/DEFER hardening cannot keep the foundation pending.
 
 ## 6. Phase B — seven final research axes (parallel after Phase A)
 
@@ -212,7 +229,7 @@ Actual-stock arms at fixed K/bytes:
 - int8/int4 scale serialization only if existing decoder semantics permit.
 
 Use actual FP16-in-loop scales. Zero incremental bytes/hot op is required for the
-main arm. Falsifier: no untouched KLD/p99 benefit vs search-matched stock.
+main arm. Falsifier during Phase B: no validation KLD/p99 benefit vs search-matched stock.
 
 ### R33 — Real covariance shrinkage and stock block-LDL variants (DASH/QMM)
 
@@ -221,11 +238,11 @@ Using real activations:
 - `H_rho = diag(H) + rho(H-diag(H))`, rho `{0,.05,.1,.25,.5,.75,1}`;
 - block-diagonal/banded stock recurrence at block sizes 16/32/64;
 - Ledoit-Wolf control and sample-count sweep;
-- Fisher-HWE/OC-HWE and untouched KLD selection;
+- Fisher-HWE/OC-HWE and validation KLD selection;
 - WaterSIC/QMM innovation-rate gap as an early stopping oracle.
 
 Define truncation in the actual stock block recurrence, not a separate GPTQ proxy.
-Falsifier: validation selects endpoints or interior rho fails untouched KLD.
+Falsifier: validation selects endpoints or an interior rho fails validation KLD.
 
 ### R34 — Candidate-conditioned dense block targets and seams (QSRT/ICBQ)
 
@@ -304,7 +321,7 @@ not K5/K6 proof.
 
 ## 7. Phase C — exact candidates and deployment confirmation
 
-Minimum full-checkpoint set:
+Validation candidate categories:
 
 1. `F0`: shipped incumbent, immutable.
 2. `F0-fresh`: fresh stock conversion under Wave-5 data/search contract.
@@ -313,9 +330,16 @@ Minimum full-checkpoint set:
 5. `F3`: heterogeneous best-action allocation at `F0` exact bytes.
 6. optional `F4`: conditional fixed-stripe/custom-runtime arm.
 
-For each: actual serialized bytes, exact and production profiles, startup, resident
-memory, graph capture, context, PP/TG, full-vocabulary KLD/EAR/p99/top1. Only Phase
-C can produce a promoted Qwen3.8-27B recipe.
+F1–F4 are **validation categories**, not mandatory untouched-test arms. Measure
+their validation KLD/EAR/p99, exact bytes, and required runtime gates; then freeze
+exactly one winner/checkpoint/config/threshold set. Open the untouched test once
+for that winner plus F0 and F0-fresh. A failed confirmation is reported; another
+candidate is exploratory or requires a preregistered reserve holdout.
+
+For the frozen winner: exact serialized bytes, codec-exact and claimed production
+profiles, startup, resident memory, graph capture, context, PP/TG, and
+full-vocabulary KLD/EAR/p99/top1. Only Phase C can produce a promoted
+Qwen3.8-27B recipe.
 
 ## 8. Wave-5 stop and success criteria
 

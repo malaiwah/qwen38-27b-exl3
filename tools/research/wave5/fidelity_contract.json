@@ -1,0 +1,450 @@
+{
+  "schema": "qwen38-wave5-fidelity-contract/2",
+  "status": "immutable-preregistered",
+  "frozen_on": "2026-08-21",
+  "scope": "Qwen3.8-27B Wave 5 stock-EXL3 and full-checkpoint candidates",
+  "r29_final_approved_bindings": {
+    "split_manifest_path": "receipts/wave5/split-manifest.json",
+    "split_manifest_file_sha256": "a7eab6e2d8ee78e8d27655f8e9caf4c7813c43539ba24b31c4941d3d38ee09cc",
+    "split_manifest_content_sha256": "151c41151142060619e6a7957f36daa4849e53276435df54b74bdfc223596a2e",
+    "data_manifest_path": "receipts/wave5/data-manifest.json",
+    "data_manifest_file_sha256": "68bcc5ddce1d34f71d696265d908eccd1b75f48444cb0a3aaffe86fea02bff37",
+    "data_manifest_content_sha256": "51957ac986dc44bc06f937ae74b005e090883348c947ef65ac331ed5a91057c2",
+    "leakage_audit_sha256": "7fb0bf2f932d93af78c2ca7f40a0cb41f577a2b7801ae80a4ff44bfcc07cc6d9",
+    "language_model_tensor_records": 87,
+    "disjoint_document_hashes_verified": true,
+    "disjoint_source_clusters_verified": true,
+    "test_contents_opened_by_builder": false
+  },
+  "split_identity_contract": {
+    "manifest_path": "receipts/wave5/split-manifest.json",
+    "manifest_file_sha256": "a7eab6e2d8ee78e8d27655f8e9caf4c7813c43539ba24b31c4941d3d38ee09cc",
+    "manifest_content_sha256": "151c41151142060619e6a7957f36daa4849e53276435df54b74bdfc223596a2e",
+    "labels": {
+      "calibration": {"selector": {"field": "split", "op": "eq", "value": "calibration"}, "selection_sha256": "490a15969bf7b62b585f24cce644dae48f8021f534b0b2bc7553a46a989ea259"},
+      "validation": {"selector": {"field": "split", "op": "eq", "value": "validation"}, "selection_sha256": "4c5cf19acc18835ee6d36da91b2b93135c5d33655ca410c079d4d4be83c5a5de"},
+      "untouched_test": {"selector": {"field": "split", "op": "eq", "value": "untouched_test"}, "selection_sha256": "4eaaa72d93790195468c168ee03753fe2a0efa0d04334a5d5335fd083de88bca"}
+    },
+    "invariant": "one combined R29 manifest file/content identity; split labels are distinguished only by their exact selector and selection/projection SHA256"
+  },
+  "benchmark_registry": {
+    "primary": {
+      "dataset": "malaiwah/qwen38-27b-fidelity-suite-v5",
+      "revision": "7797fcce3ffed62b99871348887f4626dc9b2b3b",
+      "inventory": "5120 contexts, 10 shards, 842 source clusters, 941 source documents with hashes, exact stored token IDs",
+      "contexts": 5120,
+      "scored_positions_per_context": 2047,
+      "tokenization": "retokenization forbidden",
+      "grouping": "source-cluster/document identities from the corpus manifest are the bootstrap and split units",
+      "validation": "R29 hash-selected v5 shard0 contexts with retained BF16 replay",
+      "untouched_confirmation": "R29 hash-selected source-cluster-disjoint v5 contexts from shards1-9, opened once through the capability/canonical-state gate",
+      "caveat": "v5 has historical use; untouched means not opened during Wave 5 method development, not never previously evaluated"
+    },
+    "external_stress": {
+      "dataset": "malaiwah/qwen38-27b-fidelity-suite-v3",
+      "revision": "73252e77",
+      "inventory": "181-context multilingual/domain stress suite",
+      "use": "external stress/replay control only",
+      "limitations": "analysis and qualification are not source-disjoint; replay absolute floor is approximately 6.5e-4; never use for selection or primary promotion"
+    },
+    "downstream_capability": [
+      "qwen38-frontier-g01-capability (BFCL/chat/RULER 131k+262k/MathVision/RealWorldQA/video fixtures)",
+      "qwen38-27b-terminal-bench-2.1 (agentic regression and BF16 attribution)"
+    ],
+    "excluded_calibration": ["GLM MTP78", "GLM Fruit datasets"]
+  },
+  "vocabulary": {
+    "size": 248320,
+    "axis": "complete tokenizer/model output vocabulary in canonical token-id order",
+    "truncation_forbidden": true
+  },
+  "reference_semantics": {
+    "source_model_index_sha256": "77042094076611b69791a610065f28b7013b8c621795fa86ddccc8bac7d1b9df",
+    "source_config_sha256": "191e0af232104ed8b65258cf3fb2b842e288008baca7633c11b82a1ac7203aab",
+    "shared_head_sha256": "25a30fd5f826da0abc4efc4cc71def9f02bcb8085f7175eee284d221dee4cfff",
+    "shared_head_bytes": 2542796896,
+    "shared_head_shape": [248320, 5120],
+    "hidden_size": 5120,
+    "projector_source_sha256": "e5089b75ae7fd8b6e363468d3819954599289652e5a1ad27cf9e347556604a69",
+    "projection": "both body operands use the one shared BF16 LM head, so primary KLD/EAR are body-only",
+    "capture_point": "post-final-norm hidden states, rows 0..2046 of each 2048-token context",
+    "candidate_capture_repetitions": 1,
+    "determinism_scope": "pinned eager TP1, max_num_seqs=1, one full 2048-token chunk, BF16 KV; not CUDA-graph or multi-sequence determinism",
+    "bf16_decode": "uint16 payload shifted into float32 high 16 bits; never IEEE-FP16 reinterpretation",
+    "reference_capture_policy": "never recapture retained v5 shard0 BF16 reference; shards1-9 references were deleted and may be captured exactly once when the once-open confirmatory test requires them, then hash and retain them for all candidate/control replay",
+    "existing_reports": "context only; they never substitute for fresh candidate/control captures under this contract",
+    "served_head_axis": "candidate-own-head full-vocabulary replay is a separately labeled head-inclusive promotion axis; a body-only win never satisfies it"
+  },
+  "served_head_contract": {
+    "dtype": "torch.bfloat16",
+    "shape": [248320, 5120],
+    "identity": "the exact candidate head tensor file SHA256, tensor dtype, tensor shape, candidate checkpoint SHA256, capture hashes, report SHA256, and row payload SHA256 are frozen together",
+    "promotion_policy": "candidate-own-head replay must independently pass the same absolute and paired-noninferiority gates as body-only shared-head replay",
+    "substitution": "body-only and served-head reports are both mandatory and may never substitute for or relabel each other"
+  },
+  "capture_execution_contract": {
+    "tensor_parallel_size": 1,
+    "max_num_seqs": 1,
+    "context_length": 2048,
+    "max_num_batched_tokens": 2048,
+    "enforce_eager": true,
+    "kv_cache_dtype": "bfloat16",
+    "dtype": "bfloat16",
+    "chunk_accumulate": false,
+    "capture_point": "post-final-norm",
+    "scored_window": "rows 0..2046"
+  },
+  "metric_contract": {
+    "kld": {
+      "name": "forward KLD",
+      "formula": "KL(p||q)=sum_v p_v*(ln(p_v)-ln(q_v))",
+      "units": "natural-log nats",
+      "p": "retained BF16 reference after shared BF16 LM head",
+      "q": "candidate after the same shared BF16 LM head",
+      "primary_mean": "token mean over rows 0..2046; context macro mean is also reported and identical because every context has exactly 2047 scored positions",
+      "computation": "method-of-record two-pass vocabulary walk in chunks of 24832, float32 inside a chunk and float64 accumulated across chunks",
+      "vocab_chunk": 24832,
+      "ci": "95% percentile interval from the frozen source-cluster bootstrap",
+      "proxy_prohibition": "MSE, OC-HWE, Fisher-HWE, block-output error, hidden-state distance, local softmax, truncated-vocabulary KL, and local tensor metrics are never KLD"
+    },
+    "p99_kld": {
+      "definition": "linear empirical 0.99 quantile of per-position forward KLD",
+      "numpy_method": "linear"
+    },
+    "cvar1_kld": {
+      "definition": "upper-tail expected shortfall over exactly 1% of scored-position mass, with fractional boundary weight"
+    },
+    "top1_agreement": {
+      "definition": "mean indicator that full-vocabulary argmax(q) equals argmax(p)",
+      "tie_rule": "lowest canonical token id, matching numpy argmax"
+    },
+    "ear": {
+      "name": "full-vocabulary expected agreement rate",
+      "formula": "mean_i sum_v min(p_iv,q_iv)",
+      "identity": "EAR=1-TV for normalized distributions",
+      "top_k_forbidden": true
+    },
+    "required_breakdowns": [
+      "token and context-macro mean KLD",
+      "mean JSD bits, exact maximum, p50/p95/p99/p999, fixed 560-bin tail histogram",
+      "worst 20 contexts by mean forward KLD",
+      "per-context",
+      "per-document/source-cluster",
+      "five strata: code, encyclopedic, literary, multilingual, scientific",
+      "source-cluster/context/scored-position counts"
+    ]
+  },
+  "statistical_contract": {
+    "sampling_unit": "complete source-cluster document/conversation and its contexts",
+    "non_independent_units": [
+      "positions within one context",
+      "contexts from one source document/conversation",
+      "blocks from one tensor",
+      "tensors/blocks produced by one source document"
+    ],
+    "bootstrap": {
+      "algorithm": "for each replicate sample source clusters with replacement, retain every position of every context belonging to each selected cluster, then recompute mean, global pooled per-position p99, global pooled per-position CVaR1%, EAR, and top1; apply identical draws to candidate and control",
+      "mean_estimand": "global token mean KLD, identical to context-macro mean because every context has 2047 rows",
+      "tail_interval_estimand": "global pooled per-position p99/CVaR1%; per-shard or per-context quantiles are never averaged",
+      "samples": 10000,
+      "seed": 1,
+      "ci": [0.025, 0.975],
+      "paired_delta_sign": "candidate minus control",
+      "common_random_numbers": true,
+      "ties": "strict candidate wins, strict control wins, and exact ties counted separately"
+    },
+    "local_screening_macro": {
+      "block": "compute candidate_metric/stock_metric within each identical block; zero-over-zero is 1 and positive-over-zero is +infinity",
+      "tensor": "arithmetic mean of preregistered block ratios, exactly one value per tensor; also report median and all blocks",
+      "role_depth_cell": "arithmetic mean over tensors in that role/depth cell, exactly one value per tensor",
+      "role_macro": "arithmetic mean over represented preregistered depths, exactly one value per depth",
+      "depth_macro": "arithmetic mean over represented preregistered roles, exactly one value per role",
+      "global_macro": "arithmetic mean over role macros, exactly one value per role",
+      "raw_error_pooling": "forbidden because tensor scale and block count would dominate",
+      "promotion_power": "none; local metrics only shortlist candidates"
+    }
+  },
+  "search_and_multiplicity": {
+    "unit_of_budget": "actual legal stock-EXL3 encoder/Viterbi evaluation of a complete action",
+    "equal_budget_rule": "each candidate and both controls receive identical per-unit evaluation counts and identical seed lists; an arm that cannot consume the budget forfeits unused evaluations rather than donating them",
+    "common_random_numbers": "same calibration documents, activation rows, blocks, tensor order, initialization seeds, and Viterbi/search seeds for every arm",
+    "calibration": "fresh source-disjoint EXL3 standard calibration plus UltraChat-train dialogue documents may fit curvature, scales, targets, paths, transforms, and callbacks; they may not select a reported arm",
+    "validation": "v5 shard 0 is the only split permitted for model/action/K/alpha/seed/shrinkage/stopping/interaction/byte-frontier selection",
+    "untouched_test": "the R29 frozen source-cluster-disjoint v5 shards1-9 allocation is opened once only after one complete candidate hash is frozen; no tuning, reseeding, arm substitution, threshold change, or second opening",
+    "multiple_searches": {
+      "within_registered_arm": "all tried settings count against that arm's fixed validation budget",
+      "across_arms": "report every registered arm and validation attempt; final test evaluates the single frozen winner plus F0 and F0-fresh controls",
+      "confirmatory_claim": "the one frozen test contrast is primary; all other test inspection is exploratory and cannot promote",
+      "failed_run": "replace only for preregistered infrastructure failure documented before any metric is read, with the same seed and arm"
+    }
+  },
+  "immutable_controls": {
+    "F0": {
+      "definition": "shipped malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated revision ab3a91a13813df8096cb4c1d560ed3669035d0cf",
+      "purpose": "immutable deployed-checkpoint control",
+      "mutation_forbidden": true
+    },
+    "F0-fresh": {
+      "definition": "fresh stock-current actual-EXL3 conversion from the frozen BF16 source with the shipped K5/K6 recipe and R30 stock action, equal search/seed budget, actual serialization and decode",
+      "purpose": "controls converter freshness and stock stochasticity",
+      "mutation_forbidden": true
+    },
+    "practical_equivalence_F0_fresh_minus_F0": {
+      "paired_ci95_must_lie_within": {
+        "mean_kld": [-0.00025, 0.00025],
+        "p99_kld": [-0.003, 0.003],
+        "cvar1_kld": [-0.006, 0.006],
+        "ear": [-0.00025, 0.00025],
+        "top1_agreement": [-0.00025, 0.00025]
+      },
+      "route": "same qualified route/profile",
+      "failure": "do not use F0-fresh as the promotion baseline; investigate converter/control mismatch without reopening test"
+    }
+  },
+  "absolute_fidelity_constraints": {
+    "mean_kld_ci95_high_max": 0.012,
+    "p99_kld_max": 0.12,
+    "cvar1_kld_max": 0.25,
+    "ear_min": 0.97,
+    "top1_agreement_min": 0.97,
+    "note": "thresholds frozen before Wave5 results; body-only replay systematics are disclosed and never subtracted as an additive floor"
+  },
+  "promotion": {
+    "required": [
+      "untouched-test open-state hash and hash-chained access event",
+      "F0-fresh practical equivalence to F0",
+      "all absolute fidelity constraints",
+      "paired noninferiority to F0-fresh",
+      "separate full-vocabulary candidate-own-head replay passing the same absolute and paired-noninferiority gates",
+      "exact-byte or equal-byte-superiority rule",
+      "codec-exact and production deployment gates",
+      "all route/no-fallback assertions"
+    ],
+    "paired_noninferiority_candidate_minus_F0_fresh": {
+      "mean_kld_ci95_high_max": 0.00025,
+      "p99_kld_ci95_high_max": 0.003,
+      "cvar1_kld_ci95_high_max": 0.006,
+      "ear_ci95_low_min": -0.00025,
+      "top1_agreement_ci95_low_min": -0.00025
+    },
+    "lower_byte_rule": "candidate exact serialized bytes must be at least max(1048576 bytes, 0.01% of F0-fresh exact serialized bytes) lower",
+    "equal_byte_rule": "if exact bytes are equal, mean_kld candidate-minus-F0-fresh CI95 high must be <0, EAR CI95 low must be >0, and every tail/top1 noninferiority bound must pass",
+    "results_dependent_threshold_selection": "forbidden"
+  },
+  "slq_primal": {
+    "schema": "qwen38-wave5-primal-assignment/1",
+    "action_registry_schema": "wave5/exl3-action-registry/1",
+    "complete_action_schema": "wave5/exl3-action/1",
+    "objective": "minimize the exact integer sum of one selected complete R30 action per legal topology/fused unit",
+    "enforced_invariants": [
+      "R30 action-registry SHA256 equals the frozen candidate/open state",
+      "every registered unit occurs exactly once in the assignment",
+      "every selected action exists under that unit and carries wave5/exl3-action/1",
+      "selected action exact bytes sum to the frozen checkpoint exact bytes",
+      "fidelity, route, runtime, startup, graph, and context gates pass"
+    ],
+    "bytes": "actual payload plus headers, alignment, signs, scales, codebook IDs, path/selector metadata, sidecars, and every candidate-only decode artifact",
+    "solution_verification": "fresh sequential full-checkpoint rebuild and once-open untouched-test capture/replay; additive proxy constraints cannot promote"
+  },
+  "slq_dual_frontier": {
+    "schema": "qwen38-wave5-exact-byte-frontier/2",
+    "objective": "on the complete declared screened action registry, at each reachable measured exact-byte budget lexicographically minimize mean KLD, p99, CVaR1%, negative EAR, negative top1, runtime seconds, then startup seconds",
+    "required_fields": ["action_registry_sha256", "legal_action_set_sha256", "reachable_budget_set_sha256", "thresholds_sha256", "selection_split", "solver_semantics", "points"],
+    "point_fields": ["exact_serialized_bytes", "mean_kld", "p99_kld", "cvar1_kld", "ear", "top1_agreement", "runtime_seconds", "startup_seconds", "assignment", "assignment_sha256", "equivalent_assignment_sha256", "validation_measurement"],
+    "solver_semantics": {
+      "legal_set": "the complete declared screened R30 unit/action menu; exactly one complete legal action per unit",
+      "bytes": "exact integer sum of complete-action exact_serialized_bytes",
+      "constraints": "all frozen fidelity, byte, route, runtime, startup, graph, context, and no-fallback constraints",
+      "selection_data": "validation only; untouched-test metrics are forbidden",
+      "ties": "equal lexicographic metric tuples form an equivalence class sorted by assignment SHA256; the smallest SHA256 is canonical",
+      "candidate": "selected assignment SHA256 and complete checkpoint SHA256 are frozen before test opening",
+      "completeness": "every registered reachable measured exact-byte budget from the declared screened menu is present; no global optimum outside that menu is claimed"
+    },
+    "validation": "unique increasing exact budgets, legal canonical assignment at every point, candidate point/checkpoint present, validation measurement hashes, all-cheaper-point dominance, and exact tie canonicalization",
+    "oracle": "the gate self-test enumerates a two-unit screened menu and requires solver output to equal the independent Cartesian-product oracle on that targeted menu",
+    "interactions": "targeted fused/high-sensitivity interactions are complete remeasured actions; correction is never appended after allocation"
+  },
+  "replacement_workflows": {
+    "one_tensor": {
+      "steps": [
+        "verify BF16 source tensor, F0/F0-fresh checkpoint, R29 split manifest, R30 action, tensor name, and source offset hashes",
+        "serialize and decode the complete candidate tensor through the exact R30 action and assert source-basis shape/dtype",
+        "copy F0-fresh to a new artifact; replace exactly the registered serialized tensor buffers and required metadata; never mutate controls",
+        "hash the candidate manifest and prove every non-target file/buffer equals F0-fresh",
+        "load declared exact route with fallback counters armed; capture once on validation or the once-open test",
+        "replay against retained BF16 reference through shared BF16 LM head over all 248320 tokens",
+        "emit contract metrics and paired document/context bootstrap against both controls with all artifact hashes"
+      ]
+    },
+    "full_checkpoint": {
+      "steps": [
+        "freeze complete per-unit R30 action registry and exact-byte manifest after validation",
+        "perform fresh sequential conversion into a new artifact and verify every buffer, sidecar, alignment byte, route ID, and exact total",
+        "freeze complete checkpoint hash before test access",
+        "open test once with fidelity_gate.py open-test and use identical request order/common randomness for candidate and controls",
+        "reuse retained shard0 BF16 reference; if confirmatory shards1-9 are selected, capture their missing BF16 references once only, hash and retain them",
+        "capture candidate, F0, and F0-fresh once on identical contexts; existing reports are not substitutes",
+        "replay through same BF16 head and emit full-vocabulary metrics, paired intervals, strata, worst contexts, and separately labeled candidate-own-head attribution",
+        "qualify codec-exact and unchanged production profiles; reject fallback or unregistered route"
+      ]
+    }
+  },
+  "deployment_report_schema": {
+    "required_top_level": [
+      "schema",
+      "candidate_id",
+      "candidate_checkpoint_sha256",
+      "action_registry_sha256",
+      "checkpoint_byte_manifest",
+      "exact_serialized_bytes",
+      "serialized_byte_breakdown",
+      "served_head_evidence",
+      "action_assignment",
+      "dual_frontier",
+      "profiles"
+    ],
+    "serialized_byte_breakdown": {
+      "required_nonnegative_integer_fields": [
+        "trellis_payload_bytes",
+        "sidecar_bytes",
+        "header_alignment_bytes",
+        "other_checkpoint_bytes"
+      ],
+      "invariant": "the four fields sum exactly to exact_serialized_bytes and equal a qwen38-wave5-checkpoint-byte-manifest/1 whose canonically ordered entries are re-hashed and stat-sized from the actual files; directories, sparse holes, resident memory, and filesystem block allocation are not substituted for serialized file bytes"
+    },
+    "control_byte_invariant": "candidate, F0-fresh, and shipped F0 each provide qwen38-wave5-checkpoint-byte-manifest/1, checkpoint identity, exact_serialized_bytes, and the same four-component nonnegative integer breakdown summing exactly to stat-sized, SHA256-verified files; F0-fresh also binds the frozen stock action SHA256",
+    "served_head_evidence": {
+      "required": ["body_only_report_sha256", "served_head_report_sha256", "candidate_head_sha256", "candidate_head_dtype", "candidate_head_shape"],
+      "interpretation": "both capture-bound full-vocabulary reports are independently evaluated; body-only evidence cannot satisfy the served-head gate"
+    },
+    "profiles": {
+      "codec_exact": {
+        "route_id": "codec-exact/all-trellis-stock-exl3",
+        "required_environment": {"VLLM_EXL3_MULTIPRECISION": "0"},
+        "required_provenance": {
+          "attention_backend": "TRITON_ATTN",
+          "kv_cache_dtype": "fp8_e4m3",
+          "mtp_tokens": 6,
+          "cudagraph_mode": "FULL_DECODE_ONLY",
+          "profile": "codec_exact"
+        },
+        "baseline": "F0-fresh under identical codec-exact route/runtime stack"
+      },
+      "production": {
+        "route_id": "production/throughput-fp4-fp6-materialized",
+        "required_environment": {"PROFILE": "throughput", "MAX_NUM_BATCHED_TOKENS": "3072", "MTP": "6", "ATTN_BACKEND": "TRITON_ATTN", "KV_CACHE_DTYPE": "fp8_e4m3", "CUDAGRAPH_MODE": "FULL_DECODE_ONLY"},
+        "required_provenance": {
+          "attention_backend": "TRITON_ATTN",
+          "kv_cache_dtype": "fp8_e4m3",
+          "mtp_tokens": 6,
+          "cudagraph_mode": "FULL_DECODE_ONLY",
+          "profile": "throughput"
+        },
+        "baseline": "F0 shipped under identical unchanged throughput runtime stack"
+      }
+    },
+    "required_measurements_per_profile": [
+      "schema qwen38-wave5-runtime-profile/2 and exact route/action/checkpoint/head/open-state identities",
+      "content-digested image, vLLM/build revision, GPU UUID/name, driver, attention backend, KV dtype, MTP count, graph mode, and profile",
+      "exact effective environment object plus an identical hash-bound environment receipt",
+      "separate hash-bound startup receipt, runtime receipt, and raw harness evidence",
+      "resident/scratch/transient peak bytes",
+      "cold start seconds",
+      "conversion and compilation seconds separately",
+      "graph capture success, seconds, modes, and captured shapes",
+      "actual decode graph parity on frozen greedy prompts with logprobs, repeated within mode, compared with same-stack BF16 control; prefill capture is not decode-graph evidence",
+      "maximum qualified context tokens",
+      "prefill tok/s at M approximately 2048 and 6144",
+      "decode tok/s and MTP acceptance for every registered concurrency/prompt row",
+      "fallback count and fallback reason list"
+    ],
+    "profile_numeric_nonnegative": [
+      "resident_bytes",
+      "scratch_peak_bytes",
+      "transient_peak_bytes",
+      "cold_start_seconds",
+      "conversion_seconds",
+      "compilation_seconds"
+    ],
+    "profile_object_required": [
+      "schema",
+      "candidate_id",
+      "candidate_checkpoint_sha256",
+      "action_registry_sha256",
+      "route_id",
+      "provenance",
+      "environment",
+      "effective_environment_receipt",
+      "startup_receipt",
+      "runtime_receipt",
+      "raw_evidence",
+      "resident_bytes",
+      "scratch_peak_bytes",
+      "transient_peak_bytes",
+      "cold_start_seconds",
+      "conversion_seconds",
+      "compilation_seconds",
+      "graph_capture",
+      "decode_graph_probe",
+      "max_context_tokens",
+      "performance_rows",
+      "fallback_count",
+      "fallback_reasons"
+    ],
+    "provenance_required": [
+      "image_digest",
+      "vllm_revision",
+      "build_revision",
+      "gpu_uuid",
+      "gpu_name",
+      "driver_version",
+      "attention_backend",
+      "kv_cache_dtype",
+      "mtp_tokens",
+      "cudagraph_mode",
+      "profile",
+      "candidate_checkpoint_sha256",
+      "route_id",
+      "head_sha256",
+      "test_open_state_sha256",
+      "effective_environment_sha256"
+    ],
+    "decode_graph_probe": {
+      "harness": "actual autoregressive decode, 32 frozen prompts x 32 greedy tokens, fixed seed, logprobs, ignore_eos",
+      "repeat": "two independent collections per eager/graph mode; within-mode determinism reported",
+      "control": "same-stack BF16 eager-vs-graph probe",
+      "gate": "candidate graph drift must lie within the preregistered BF16 control envelope; a prefill hidden capture cannot satisfy this field"
+    },
+    "runtime_rows": {
+      "prefill": [
+        {"row_id": "pp-m2048-c1", "prompt_tokens": 2048, "concurrency": 1},
+        {"row_id": "pp-m6144-c1", "prompt_tokens": 6144, "concurrency": 1}
+      ],
+      "decode": [
+        {"row_id": "tg-fox-c1-mtp6", "prompt": "frozen-fox", "concurrency": 1, "mtp_tokens": 6},
+        {"row_id": "tg-essay-c1-mtp6", "prompt": "frozen-essay", "concurrency": 1, "mtp_tokens": 6},
+        {"row_id": "tg-fox-c4-mtp6", "prompt": "frozen-fox", "concurrency": 4, "mtp_tokens": 6},
+        {"row_id": "tg-essay-c4-mtp6", "prompt": "frozen-essay", "concurrency": 4, "mtp_tokens": 6}
+      ]
+    },
+    "gates": {
+      "every_pp_and_tg_row_ratio_to_profile_baseline_min": 0.95,
+      "cold_start_ratio_to_profile_baseline_max": 1.1,
+      "cold_start_seconds_absolute_max": 360,
+      "context_tokens_min": 238400,
+      "graph_capture_success_required": true,
+      "fallback_count_max": 0,
+      "route_id_exact_match_required": true,
+      "production_absolute": {
+        "pp-m2048-c1_tok_s_min": 7000,
+        "tg-fox-c1-mtp6_tok_s_min": 180,
+        "tg-essay-c1-mtp6_tok_s_min": 90
+      }
+    }
+  },
+  "report_compatibility": {
+    "R30_stock": "candidate_id=F0-fresh plus action_registry_sha256 and exact R30 route IDs populate the same fields",
+    "later_full_checkpoint": "any registered complete-action assignment populates the same immutable schema; no threshold, metric, or route inference amendment",
+    "unknown_extension": "an unregistered metric may be exploratory but cannot replace a required field"
+  }
+}
