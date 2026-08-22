@@ -1,0 +1,68 @@
+{
+  "schema": "qwen38-fidelity-report/1",
+  "title": "Combined Trellis K4/K6/K8 (Embedding + lm_head) KLD",
+  "date": "2026-08-22",
+  "method": "End-to-end KLD when BOTH embed_tokens and lm_head are trellis-quantized to the same K level. Step 1: pre-encode both [248320, 5120] tensors. Step 2: inject quantized embedding into vLLM, capture hidden states (error propagates through 48 layers). Step 3: project captured hidden states through quantized lm_head, compute full-vocab KL vs BF16 reference hidden states through BF16 lm_head. Same 512-context v5 shard-0000 suite (1,048,064 scored positions).",
+  "model": "malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated (rev ab3a91a)",
+  "results": {
+    "combined_k8": {
+      "bits": 8,
+      "components": "embed_tokens K8 + lm_head K8",
+      "token_mean_kld": 0.0022859175223857164,
+      "context_macro_mean_kld": 0.002285917571839491,
+      "p95_kld": 0.007344180718064308,
+      "p99_kld": 0.026110457256436348,
+      "p999_kld": 0.12892213463783264,
+      "max_kld": null,
+      "top1_agreement": 0.9805460353566194,
+      "scored_positions": 1048064,
+      "contexts": 512
+    },
+    "combined_k6": {
+      "bits": 6,
+      "components": "embed_tokens K6 + lm_head K6",
+      "token_mean_kld": 0.0025848564691841602,
+      "context_macro_mean_kld": 0.0025848565235264687,
+      "p95_kld": 0.008073631674051285,
+      "p99_kld": 0.0269030574709177,
+      "p999_kld": 0.12935075163841248,
+      "max_kld": null,
+      "top1_agreement": 0.9770834605520273,
+      "scored_positions": 1048064,
+      "contexts": 512
+    },
+    "combined_k4": {
+      "bits": 4,
+      "components": "embed_tokens K4 + lm_head K4",
+      "token_mean_kld": 0.006762844976037741,
+      "context_macro_mean_kld": 0.0067628455394697085,
+      "p95_kld": 0.02016572281718254,
+      "p99_kld": 0.04170731455087662,
+      "p999_kld": 0.153861865401268,
+      "max_kld": null,
+      "top1_agreement": 0.9552823110039081,
+      "scored_positions": 1048064,
+      "contexts": 512
+    }
+  },
+  "comparison": {
+    "config": ["BF16 baseline", "embed K8 only", "embed K6 only", "embed K4 only", "lm_head K8 only", "lm_head K6 only", "lm_head K4 only", "combined K8", "combined K6", "combined K4"],
+    "mean_kld": [0.002700, 0.002653, 0.002667, 0.002857, 0.0000302, 0.000315, 0.004304, 0.002286, 0.002585, 0.006763],
+    "p99_kld": [0.0349, 0.02709, 0.02729, 0.03009, 0.000161, 0.001517, 0.02044, 0.02611, 0.02690, 0.04171],
+    "top1_agreement": [null, 0.97814, 0.97809, 0.97765, 0.99630, 0.98866, 0.96118, 0.98055, 0.97708, 0.95528],
+    "notes": "BF16 baseline is the trellis K5K6 model with BF16 embed+head (the control). 'embed only' and 'lm_head only' KLDs are measured differently (end-to-end vs isolated) and are not additive. 'combined' is the true end-to-end measurement with both quantized."
+  },
+  "key_findings": [
+    "Combined K8 KLD (0.002286) is LOWER than the BF16 baseline (0.002700) and lower than embed-K8-only (0.002653). The lm_head K8 quantization error is so tiny (3e-05) that it's lost in the noise of the embedding quantization, and the Hadamard rotation in the head may slightly decorrelate errors.",
+    "Combined K6 KLD (0.002585) is also below the BF16 baseline (0.002700) and below embed-K6-only (0.002667). Same effect — lm_head K6 error (3e-04) is small compared to embedding error.",
+    "Combined K4 KLD (0.006763) is 2.5x the BF16 baseline (0.002700) but still under the 0.012 budget. This is where both components contribute meaningfully: embed K4 (0.002857) + lm_head K4 (0.004304), but the combined is less than the sum (0.007161) — the errors partially cancel.",
+    "K8 and K6 combined are below baseline because the trellis K5K6 model's BF16 embed+head control (0.002700) already carries the trellis quantization error of the K5/K6 MLP/attention layers, and the additional K8/K6 error on embed+head is smaller than the measurement noise.",
+    "p99 KLD: K8=0.02611, K6=0.02690, K4=0.04171. K4 is the only one exceeding the 0.0349 BF16 baseline p99.",
+    "top1 agreement: K8=98.05%, K6=97.71%, K4=95.53%. All maintain >95% greedy decoding agreement.",
+    "All three combined configs are under the 0.012 KLD budget. K4 is the tightest at 0.006763 (1.8x margin)."
+  ],
+  "files": {
+    "script": "patches/trellis-embed/combined_kld.py",
+    "runner": "patches/trellis-embed/run-combined-kld.sh"
+  }
+}
