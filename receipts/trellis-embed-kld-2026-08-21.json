@@ -1,0 +1,72 @@
+{
+  "schema": "qwen38-fidelity-report/1",
+  "title": "Trellis K6/K8 Embedding Round-Trip KLD",
+  "date": "2026-08-21",
+  "method": "EXL3 trellis round-trip on embed_tokens [248320, 5120] via quantize_exl3 (uncalibrated, meta Hessian) + ext.reconstruct + hadamard_fold_weight, injected into vLLM V1 model via collective_rpc, hidden states captured and replayed against BF16 reference through shared BF16 LM head. Same 512-context v5 shard-0000 suite as int8/int6/FP8KV tests.",
+  "model": "malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated (rev ab3a91a)",
+  "suite": "fp8kv-evidence/capture-suite-view (512 contexts, 2047 positions each, 1,048,064 scored positions)",
+  "kv_cache_dtype": "bfloat16",
+  "results": {
+    "trellis_k6": {
+      "bits": 6,
+      "proxy_error": 0.000324,
+      "round_trip_mse": 5e-08,
+      "round_trip_max_err": 0.003418,
+      "round_trip_cosine": 1.5836,
+      "token_mean_kld": 0.0026670690805839846,
+      "context_macro_mean_kld": 0.0026670690805839846,
+      "p95_kld": 0.008107544418135142,
+      "p99_kld": 0.0272940059560662,
+      "p999_kld": 0.13007830589046518,
+      "max_kld": 3.31470228890592,
+      "top1_agreement": 0.9780891243282853,
+      "scored_positions": 1048064,
+      "contexts": 512
+    },
+    "trellis_k8": {
+      "bits": 8,
+      "proxy_error": 0.000019,
+      "round_trip_mse": 0,
+      "round_trip_max_err": 0.001953,
+      "round_trip_cosine": 1.5838,
+      "token_mean_kld": 0.002653407180085056,
+      "context_macro_mean_kld": 0.0026534071800850562,
+      "p95_kld": 0.00805738859396854,
+      "p99_kld": 0.027094131337398714,
+      "p999_kld": 0.12868221614320235,
+      "max_kld": 3.1055365428997206,
+      "top1_agreement": 0.978140647899365,
+      "scored_positions": 1048064,
+      "contexts": 512
+    }
+  },
+  "comparison": {
+    "embedding": ["int6", "int8 (PR455)", "trellis_k6", "trellis_k8"],
+    "mean_kld": [0.003409, 0.002667, 0.002667, 0.002653],
+    "p99_kld": [0.03476, 0.02754, 0.02729, 0.02709],
+    "p95_kld": [null, null, 0.008108, 0.008057],
+    "top1_agreement": [null, null, 0.97809, 0.97814],
+    "model_gib": [18.92, 19.21, 20.40, 20.40],
+    "notes": "Trellis K6 and K8 embeddings are BF16-sized in this round-trip test (no memory savings). The trellis payload would be ~6 or ~8 bits per weight but the production path requires a reconstruct_rows kernel (issue #435)."
+  },
+  "key_findings": [
+    "Trellis K6 embedding KLD (0.002667) is essentially identical to int8 (0.002667) — same mean KLD to 6 significant figures.",
+    "Trellis K8 embedding KLD (0.002653) is marginally better than both K6 and int8 — 0.5% lower mean KLD.",
+    "Trellis K6 p99 (0.02729) is slightly better than int8 p99 (0.02754) — 0.9% lower tail error.",
+    "Trellis K8 p99 (0.02709) is the best of all four — 1.6% lower than int8.",
+    "Both trellis K6 and K8 beat int6 (0.003409 mean, 0.03476 p99) by ~22% on mean KLD.",
+    "The Hadamard-folded trellis round-trip preserves embedding quality at least as well as per-row int8 quantization, validating the trellis coding approach for embeddings.",
+    "Production use requires implementing the reconstruct_rows kernel for row-indexed gather (issue #435), since the existing reconstruct kernel requires 128-row alignment and is designed for full-matrix dequantization, not scattered row access."
+  ],
+  "technical_details": {
+    "encoding": "Chunked along V (vocab) dimension in 97280-row chunks (3 chunks for 248320 rows) to avoid quantize_exl3 CPU-swap path (numel > 5e8 triggers weight_r.cpu() which breaks device assertion in fallback_quant). Hadamard fold is block-diagonal (128x128), so chunking with multiples of 128 is equivalent to full-matrix encoding.",
+    "process_split": "Pre-encode runs in a separate podman container (releases GPU on exit), then capture runs in a second container that loads vLLM and injects the pre-encoded embedding via collective_rpc. This avoids EXCLUSIVE_PROCESS mode conflict where the pre-encode CUDA context blocks vLLM's EngineCore spawn.",
+    "hook": "Inline forward hook on language_model.model.norm captures hidden states in bf16 with accumulate mode for chunked prefill (ctx_len=2112 > max_num_batched_tokens=2048)."
+  },
+  "files": {
+    "script": "patches/trellis-embed/trellis_embed_kld.py",
+    "runner": "patches/trellis-embed/run-trellis-embed-kld.sh",
+    "k6_report": "/home/mbelleau/worktrees/r30-capture-smoke/trellis-k6-capture/trellis-k6-replay-report.json (on aiboss)",
+    "k8_report": "/home/mbelleau/worktrees/r30-capture-smoke/trellis-k6-capture/trellis-k8-replay-report.json (on aiboss)"
+  }
+}

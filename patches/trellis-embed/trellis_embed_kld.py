@@ -30,7 +30,13 @@ def sha256_file(path):
     return h.hexdigest()
 
 def trellis_roundtrip_embed(weight_bf16, bits, device):
-    """Encode BF16 [V,H] embedding to trellis K{bits}, reconstruct, fold, return BF16."""
+    """Encode BF16 [V,H] embedding to trellis K{bits} in chunks, reconstruct, fold, return BF16.
+
+    Chunks along V (the trellis N dimension) to avoid the quantize_exl3 CPU-swap
+    path (numel > 5e8 triggers weight_r.cpu() which breaks the device assertion
+    in fallback_quant). Hadamard fold is block-diagonal (128×128), so chunking
+    with multiples of 128 gives equivalent results.
+    """
     import torch
     import exllamav3_ext as ext
     sys.path.insert(0, '/opt/fp4')
@@ -39,73 +45,141 @@ def trellis_roundtrip_embed(weight_bf16, bits, device):
     V, H = weight_bf16.shape
     print(f"  embedding: [{V}, {H}], encoding to trellis K{bits}...", flush=True)
 
-    # Transpose to [H, V] = [K, N] for trellis encoding
-    source = weight_bf16.detach().t().float().contiguous()
+    # Keep original on CPU for final MSE
+    orig_cpu = weight_bf16.detach().cpu().float()
 
-    # Dummy H_data with meta Hessian → uncalibrated path (q_fallback=True)
-    H_meta = torch.empty(H, H, device='meta')
-    H_data = {"H": H_meta, "L": None, "device": device, "count": 0, "finalized": False}
+    # Chunk along V (trellis N dim). Each chunk [H, chunk_V] stays under 5e8 elements.
+    # 5e8 / 5120 = 97656 → use 97280 (760 × 128) for safety margin.
+    CHUNK_V = 128 * 760  # 97280
+    chunks = []
+    proxy_errors = []
 
-    # Load the online quantizer
+    # Load the online quantizer once
     from vllm.model_executor.layers.quantization.exl3 import _load_exl3_online_quantizer
     quantize_exl3 = _load_exl3_online_quantizer()
 
-    quant_args = {"K": bits, "seed": 0, "devices": [str(device)],
-                  "apply_out_scales": True, "mcg": True}
-    _, proxy_error, tensors = quantize_exl3(
-        source, H_data, quant_args,
-        return_weight_q=False, verbose=False,
-    )
+    for v_start in range(0, V, CHUNK_V):
+        v_end = min(v_start + CHUNK_V, V)
+        v_size = v_end - v_start
+        print(f"  chunk [{v_start}:{v_end}] (V={v_size})...", flush=True)
 
-    trellis = tensors["trellis"]
-    suh = tensors["suh"]
-    svh = tensors["svh"]
-    print(f"  trellis shape: {list(trellis.shape)}, suh: {list(suh.shape)}, svh: {list(svh.shape)}", flush=True)
-    print(f"  proxy error: {proxy_error:.6f}", flush=True)
+        # Move chunk to GPU as [H, v_size] float32
+        chunk_bf16 = weight_bf16[v_start:v_end, :].to(device)  # [v_size, H]
+        source = chunk_bf16.detach().t().float().contiguous()   # [H, v_size]
 
-    # Reconstruct to fp16
-    weight_fp16 = torch.empty(H, V, dtype=torch.float16, device=device)
-    trellis_k = int(trellis.shape[2]) // 16
-    ext.reconstruct(weight_fp16, trellis, trellis_k, True, False)
-    print(f"  reconstructed to fp16 [{H}, {V}]", flush=True)
+        # Meta Hessian for uncalibrated path
+        H_meta = torch.empty(H, H, device='meta')
+        H_data = {"H": H_meta, "L": None, "device": device, "count": 0, "finalized": False}
 
-    # Apply Hadamard fold: diag(suh) @ Had_K @ W @ Had_N @ diag(svh)
-    weight_folded = hadamard_fold_weight(weight_fp16, suh, svh)
-    print(f"  folded to final weight [{H}, {V}]", flush=True)
+        quant_args = {"K": bits, "seed": 0, "devices": [str(source.device)],
+                      "apply_out_scales": True, "mcg": True}
+        _, proxy_err, tensors = quantize_exl3(
+            source, H_data, quant_args, return_weight_q=False, verbose=False)
 
-    # Transpose back to [V, H] and cast to BF16
-    result = weight_folded.t().contiguous().to(torch.bfloat16)
+        trellis = tensors["trellis"]
+        suh = tensors["suh"]
+        svh = tensors["svh"]
 
-    # Measure round-trip error
-    orig_f32 = weight_bf16.detach().float()
-    recon_f32 = result.float()
-    mse = ((orig_f32 - recon_f32) ** 2).mean().item()
-    max_err = (orig_f32 - recon_f32).abs().max().item()
+        # Reconstruct to fp16
+        weight_fp16 = torch.empty(H, v_size, dtype=torch.float16, device=device)
+        trellis_k = int(trellis.shape[2]) // 16
+        ext.reconstruct(weight_fp16, trellis, trellis_k, True, False)
+
+        # Hadamard fold
+        weight_folded = hadamard_fold_weight(weight_fp16, suh, svh)
+
+        # Transpose back to [v_size, H] BF16 and move to CPU
+        chunk_result = weight_folded.t().contiguous().to(torch.bfloat16).cpu()
+        chunks.append(chunk_result)
+        proxy_errors.append(float(proxy_err))
+
+        del chunk_bf16, source, trellis, suh, svh, weight_fp16, weight_folded
+        torch.cuda.empty_cache()
+
+    # Concatenate chunks
+    result = torch.cat(chunks, dim=0).to(device)  # [V, H] BF16 on GPU
+    del chunks
+    avg_proxy = sum(proxy_errors) / len(proxy_errors)
+    print(f"  avg proxy error: {avg_proxy:.6f} (over {len(proxy_errors)} chunks)", flush=True)
+
+    # Measure round-trip error (on CPU to avoid OOM)
+    recon_cpu = result.cpu().float()
+    mse = ((orig_cpu - recon_cpu) ** 2).mean().item()
+    max_err = (orig_cpu - recon_cpu).abs().max().item()
     cos = torch.nn.functional.cosine_similarity(
-        orig_f32.flatten().unsqueeze(0), recon_f32.flatten().unsqueeze(0)
+        orig_cpu.flatten().unsqueeze(0), recon_cpu.flatten().unsqueeze(0)
     ).item()
     print(f"  round-trip MSE: {mse:.8f}, max_err: {max_err:.6f}, cosine_sim: {cos:.8f}", flush=True)
 
-    # Free intermediates
-    del source, trellis, suh, svh, weight_fp16, weight_folded, orig_f32, recon_f32
+    del orig_cpu, recon_cpu
     if device.type == 'cuda':
         torch.cuda.empty_cache()
 
-    return result, proxy_error
+    return result, avg_proxy, mse, max_err, cos
+
+def cmd_pre_encode(args):
+    """Pre-encode embedding with trellis K{bits} and save to file. Runs in its own process."""
+    import torch
+    from safetensors.torch import load_file as load_safetensors
+
+    model_dir = Path(args.model)
+    embed_weight = None
+    embed_key = None
+    for sf in sorted(model_dir.glob("*.safetensors")):
+        tensors = load_safetensors(str(sf), device="cpu")
+        for name, t in tensors.items():
+            if "embed_tokens" in name and "weight" in name:
+                embed_weight = t.to(torch.bfloat16)
+                embed_key = name
+                break
+        if embed_weight is not None:
+            break
+        del tensors
+
+    if embed_weight is None:
+        print("ERROR: could not find embed_tokens.weight in safetensors", file=sys.stderr)
+        return 1
+
+    print(f"  found: {embed_key} {embed_weight.shape}", flush=True)
+
+    device = torch.device("cuda")
+    weight_gpu = embed_weight.to(device)
+    result, proxy_err, mse, max_err, cos = trellis_roundtrip_embed(
+        weight_gpu, args.bits, device)
+
+    torch.save({
+        "weight": result.cpu(),
+        "proxy_error": float(proxy_err),
+        "mse": float(mse),
+        "max_err": float(max_err),
+        "cos": float(cos),
+        "bits": args.bits,
+    }, args.output)
+    print(f"  saved to {args.output}", flush=True)
+    return 0
 
 
 def cmd_capture(args):
     import torch
-    from safetensors.torch import save_file
-    from vllm import LLM, SamplingParams
-    from vllm.inputs import TokensPrompt
-
-    # Load model with BF16 embeddings (no overlay)
-    os.environ["VLLM_EXL3_EMBED_ONLINE_BITS"] = "0"
+    os.environ.pop("VLLM_EXL3_EMBED_ONLINE_BITS", None)  # disable int8/int6 overlay
     os.environ.setdefault("VLLM_ALLOW_INSECURE_SERIALIZATION", "1")
 
     suite_manifest = json.loads((Path(args.suite) / "suite-manifest.json").read_text())
     ctx_len = suite_manifest["context_length"]
+
+    # Load pre-encoded embedding
+    pre = torch.load(args.pre_encoded)
+    rt_metrics = {"proxy_error": pre["proxy_error"], "mse": pre["mse"],
+                  "max_err": pre["max_err"], "cos": pre["cos"]}
+    bits = pre["bits"]
+    embed_tmp = args.pre_encoded
+    print(f"\n=== Trellis K{bits} embedding (pre-encoded) ===", flush=True)
+    print(f"  proxy_error={rt_metrics['proxy_error']:.6f}, mse={rt_metrics['mse']:.8f}, "
+          f"max_err={rt_metrics['max_err']:.6f}, cos={rt_metrics['cos']:.8f}", flush=True)
+
+    # --- Step 2: Load model (GPU is now free of encoding transients) ---
+    from vllm import LLM, SamplingParams
+    from vllm.inputs import TokensPrompt
 
     kwargs = dict(
         model=args.model, trust_remote_code=True, tensor_parallel_size=1,
@@ -123,38 +197,66 @@ def cmd_capture(args):
 
     llm = LLM(**kwargs)
 
-    # --- Trellis round-trip on the embedding ---
-    print(f"\n=== Trellis K{args.bits} embedding round-trip ===", flush=True)
-    model = llm.llm_engine.model_executor.driver_worker.model_runner.model
+    print(f"\n=== Injecting trellis K{bits} embedding ===", flush=True)
 
-    # Find the embedding layer
-    embed = None
-    for name, module in model.named_modules():
-        if type(module).__name__ == "VocabParallelEmbedding":
-            if "embed_tokens" in name:
-                embed = module
-                print(f"  found embedding: {name}", flush=True)
-                break
-    if embed is None:
-        print("ERROR: could not find VocabParallelEmbedding", file=sys.stderr)
-        return 1
+    def _inject_embed_rpc(self, embed_path):
+        import torch as _torch
+        model = self.model_runner.model
+        for name, module in model.named_modules():
+            if type(module).__name__ == "VocabParallelEmbedding" and "embed_tokens" in name:
+                data = _torch.load(embed_path)
+                weight = data["weight"] if isinstance(data, dict) else data
+                module.weight.data.copy_(weight.to(module.weight.data.device))
+                return {"injected": True, "shape": list(module.weight.data.shape)}
+        return {"error": "no embedding found"}
+    inject_result = llm.collective_rpc(_inject_embed_rpc, args=(embed_tmp,))[0]
+    print(f"  injection: {inject_result}", flush=True)
 
-    device = next(embed.parameters()).device
-    weight_bf16 = embed.weight.data.clone()
+    # --- Step 4: Capture hidden states ---
+    # Inline hook functions (avoid fidelity module dependency in worker process)
+    from safetensors.torch import save_file
 
-    # Do the trellis round-trip
-    roundtripped, proxy_err = trellis_roundtrip_embed(weight_bf16, args.bits, device)
+    def _rpc_install_hook(self):
+        """Runs inside the worker process: hook the final norm, stash captures."""
+        import torch
+        model = self.model_runner.model
+        cands = [(n, m) for n, m in model.named_modules()
+                 if n.endswith("language_model.norm") or n == "model.norm"
+                 or n.endswith(".model.norm")]
+        if not cands:
+            cands = [(n, m) for n, m in model.named_modules()
+                     if n.split(".")[-1] == "norm" and "layers" not in n and "visual" not in n]
+        if len(cands) != 1:
+            raise RuntimeError(f"final norm ambiguous: {[n for n, _ in cands]}")
+        name, norm = cands[0]
+        store: dict = {"last": None, "rows": 0, "parts": [], "accumulate": True, "fp32": False}
+        def hook(_m, _i, output):
+            t = output[0] if isinstance(output, tuple) else output
+            if t.dim() != 2:
+                return output
+            dtype = torch.float32 if store.get("fp32") else torch.bfloat16
+            cpu = t.detach().to("cpu", dtype, copy=True)
+            if store["accumulate"]:
+                store["parts"].append(cpu)
+                store["rows"] = sum(p.shape[0] for p in store["parts"])
+                store["last"] = torch.cat(store["parts"], dim=0) if len(store["parts"]) > 1 else cpu
+            elif cpu.shape[0] > store["rows"]:
+                store["rows"] = cpu.shape[0]
+                store["last"] = cpu
+            return output
+        norm.register_forward_hook(hook)
+        self._fid_store = store
+        return name
 
-    # Replace the embedding weight
-    embed.weight.data.copy_(roundtripped)
-    del weight_bf16, roundtripped
-    if device.type == 'cuda':
-        torch.cuda.empty_cache()
-    print("  embedding replaced with trellis round-trip version", flush=True)
-
-    # --- Capture hidden states ---
-    print(f"\n=== Capturing {len(suite_manifest['context_index'])} contexts ===", flush=True)
-    from fidelity import _rpc_install_hook  # type: ignore
+    def _rpc_pop_capture(self):
+        store = getattr(self, "_fid_store", None)
+        if store is None:
+            return None
+        t = store["last"]
+        store["last"] = None
+        store["rows"] = 0
+        store["parts"] = []
+        return t
 
     hooked = llm.collective_rpc(_rpc_install_hook)
     print(f"hooked {hooked}", flush=True)
@@ -169,9 +271,9 @@ def cmd_capture(args):
         ids = json.loads((Path(args.suite) / ctx["file"]).read_text())
         dst = out / f"hidden_{index:04d}.safetensors"
 
-        llm.collective_rpc(lambda self: None)  # reset
+        llm.collective_rpc(_rpc_pop_capture)  # reset
         llm.generate([TokensPrompt(prompt_token_ids=ids)], sampling_params=params, use_tqdm=False)
-        got = llm.collective_rpc(lambda self: getattr(self, '_fid_store', {}).get('last'))[0]
+        got = llm.collective_rpc(_rpc_pop_capture)[0]
 
         if got is None or got.shape[0] != ctx_len:
             print(f"  capture failed for context {index}", file=sys.stderr)
@@ -183,16 +285,20 @@ def cmd_capture(args):
         records.append({"index": index, "sha256": sha, "shape": list(hidden.shape)})
 
         if (i + 1) % 16 == 0:
-            print(f"  {i+1} captured ({i+1}s approx)", flush=True)
+            print(f"  {i+1}/{len(suite_manifest['context_index'])} captured", flush=True)
 
     manifest = {
         "complete": True,
         "captures": records,
+        "contexts": len(records),
         "suite_token_sha256": suite_manifest["suite_token_sha256"],
         "expected_indices": [c["index"] for c in suite_manifest["context_index"]],
         "filter": "all",
-        "trellis_embed_bits": args.bits,
-        "trellis_embed_proxy_error": proxy_err,
+        "trellis_embed_bits": bits,
+        "trellis_embed_proxy_error": rt_metrics["proxy_error"],
+        "trellis_embed_mse": rt_metrics["mse"],
+        "trellis_embed_max_err": rt_metrics["max_err"],
+        "trellis_embed_cos": rt_metrics["cos"],
     }
     (out / "capture-manifest.json").write_text(json.dumps(manifest, indent=2))
     print(f"\ncapture_done: {len(records)} contexts", flush=True)
@@ -202,10 +308,15 @@ def cmd_capture(args):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
+    p_pre = sub.add_parser("pre-encode")
+    p_pre.add_argument("--model", required=True)
+    p_pre.add_argument("--bits", type=int, required=True, choices=[6, 8])
+    p_pre.add_argument("--output", required=True)
+    p_pre.set_defaults(func=cmd_pre_encode)
 
     p = sub.add_parser("capture")
     p.add_argument("--model", required=True)
-    p.add_argument("--bits", type=int, default=6, choices=[6, 8])
+    p.add_argument("--pre-encoded", required=True, help="Path to pre-encoded embedding .pt file")
     p.add_argument("--suite", required=True)
     p.add_argument("--out", required=True)
     p.add_argument("--quantization", default="auto")
