@@ -1,96 +1,67 @@
 {
   "schema": "qwen38-fidelity-report/1",
-  "title": "Trellis K8 Vision Tower Round-Trip Error",
+  "title": "Trellis K6/K8 Vision Tower Round-Trip Error",
   "date": "2026-08-21",
-  "method": "EXL3 trellis K8 round-trip on all 111 2D vision weight tensors (27 ViT blocks × 4 weights + merger × 2 + pos_embed). quantize_exl3 (uncalibrated, meta Hessian) + ext.reconstruct + hadamard_fold_weight. MLP weights with dim 4304 (not 128-aligned) padded to 4352 before encoding, cropped back after. KLD suite is text-only (no images), so vision weights don't affect KLD — this measures round-trip error on the weights themselves.",
+  "method": "EXL3 trellis K6 and K8 round-trip on all 111 2D vision weight tensors (27 ViT blocks × 4 weights + merger × 2 + pos_embed). quantize_exl3 (uncalibrated, meta Hessian) + ext.reconstruct + hadamard_fold_weight. MLP weights with dim 4304 (not 128-aligned) padded to 4352 before encoding, cropped back after. KLD suite is text-only (no images), so vision weights don't affect KLD — this measures round-trip error on the weights themselves.",
   "model": "malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated (rev ab3a91a)",
   "vision_tower": "Qwen3.8 ViT: 27 blocks, hidden=1152, MLP=4304, merger=[4608→5120]",
   "results": {
-    "total_tensors": 111,
-    "total_params": 458551296,
-    "overall_proxy_error": 0.000020,
-    "overall_mse": 1.06e-08,
-    "overall_cosine": 0.99998033,
-    "bf16_gb": 0.917,
-    "trellis_k8_gb": 0.459,
-    "savings_gb": 0.459
-  },
-  "per_type": {
-    "blocks.N.attn.proj.weight": {
-      "count": 27,
-      "shape": [1152, 1152],
-      "total_numel": 35831808,
-      "avg_proxy_error": 0.000022,
-      "avg_mse": 5.79e-09,
-      "avg_cosine": 0.99991147
+    "k8": {
+      "total_tensors": 111,
+      "total_params": 458551296,
+      "overall_proxy_error": 0.000020,
+      "overall_mse": 1.06e-08,
+      "overall_cosine": 0.99998033,
+      "bf16_gb": 0.917,
+      "trellis_gb": 0.459,
+      "savings_gb": 0.459
     },
-    "blocks.N.attn.qkv.weight": {
-      "count": 27,
-      "shape": [3456, 1152],
-      "total_numel": 107495424,
-      "avg_proxy_error": 0.000020,
-      "avg_mse": 8.50e-09,
-      "avg_cosine": 0.99994080
-    },
-    "blocks.N.mlp.linear_fc1.weight": {
-      "count": 27,
-      "shape": [4304, 1152],
-      "total_numel": 133871616,
-      "avg_proxy_error": 0.000019,
-      "avg_mse": 7.62e-09,
-      "avg_cosine": 0.99997174,
-      "note": "K=4304 not 128-aligned, padded to 4352 (34×128) for Hadamard fold, cropped back"
-    },
-    "blocks.N.mlp.linear_fc2.weight": {
-      "count": 27,
-      "shape": [1152, 4304],
-      "total_numel": 133871616,
-      "avg_proxy_error": 0.000020,
-      "avg_mse": 6.86e-09,
-      "avg_cosine": 0.99996533,
-      "note": "N=4304 not 128-aligned, padded to 4352 (34×128) for Hadamard fold, cropped back"
-    },
-    "merger.linear_fc1": {
-      "count": 1,
-      "shape": [4608, 4608],
-      "total_numel": 21233664,
-      "avg_proxy_error": 0.000018,
-      "avg_mse": 4.58e-09,
-      "avg_cosine": 1.00149095
-    },
-    "merger.linear_fc2": {
-      "count": 1,
-      "shape": [5120, 4608],
-      "total_numel": 23592960,
-      "avg_proxy_error": 0.000018,
-      "avg_mse": 4.33e-09,
-      "avg_cosine": 1.00183415
-    },
-    "model.visual.pos_embed.weight": {
-      "count": 1,
-      "shape": [2304, 1152],
-      "total_numel": 2654208,
-      "avg_proxy_error": 0.000016,
-      "avg_mse": 3.93e-07,
-      "avg_cosine": 1.00017929,
-      "note": "Higher MSE due to small tensor with large dynamic range; max_err=0.111 but cosine still >1.0"
+    "k6": {
+      "total_tensors": 111,
+      "total_params": 458551296,
+      "overall_proxy_error": 0.000322,
+      "overall_mse": 1.20e-07,
+      "overall_cosine": 0.99983066,
+      "bf16_gb": 0.917,
+      "trellis_gb": 0.344,
+      "savings_gb": 0.573
     }
   },
-  "key_findings": [
-    "Trellis K8 round-trip on vision tower is near-lossless: overall proxy error 0.000020, MSE 1.06e-08, cosine 0.99998.",
-    "Proxy error (0.000020) matches the embedding K8 proxy error (0.000019) — trellis K8 coding is consistent across tensor types.",
-    "Padding approach for 4304-dim MLP weights works: proxy errors (0.000019-0.000020) are indistinguishable from non-padded weights.",
-    "All 111 tensors (458.5M params, 0.917 GB BF16) compress to 0.459 GB at K8 — saving 0.459 GB (50% reduction).",
-    "pos_embed has highest MSE (3.93e-07) and max_err (0.111) — small tensor with large values, but cosine still >1.0.",
-    "Vision tower does NOT affect the text-only KLD suite (no images in the 512 contexts), so KLD is unchanged from the baseline.",
-    "Combined with trellis K8 embeddings (0.002653 mean KLD), the total quantization footprint would be: embeddings K8 + vision K8, with no additional KLD impact beyond the embedding quantization."
-  ],
-  "comparison_with_embedding_k8": {
-    "embedding_k8": {"proxy_error": 0.000019, "mse": 0, "params": 1270000000, "bf16_gb": 2.54},
-    "vision_k8": {"proxy_error": 0.000020, "mse": 1.06e-08, "params": 458551296, "bf16_gb": 0.917},
-    "combined_savings_gb": 1.50,
-    "note": "Embedding K8 saves ~1.27 GB, vision K8 saves ~0.46 GB, total ~1.50 GB from BF16→K8 trellis."
+  "per_type_k8": {
+    "blocks.N.attn.proj.weight": {"count": 27, "shape": [1152, 1152], "total_numel": 35831808, "avg_proxy_error": 0.000022, "avg_mse": 5.79e-09, "avg_cosine": 0.99991147},
+    "blocks.N.attn.qkv.weight": {"count": 27, "shape": [3456, 1152], "total_numel": 107495424, "avg_proxy_error": 0.000020, "avg_mse": 8.50e-09, "avg_cosine": 0.99994080},
+    "blocks.N.mlp.linear_fc1.weight": {"count": 27, "shape": [4304, 1152], "total_numel": 133871616, "avg_proxy_error": 0.000019, "avg_mse": 7.62e-09, "avg_cosine": 0.99997174, "note": "K=4304 padded to 4352 (34×128) for Hadamard fold, cropped back"},
+    "blocks.N.mlp.linear_fc2.weight": {"count": 27, "shape": [1152, 4304], "total_numel": 133871616, "avg_proxy_error": 0.000020, "avg_mse": 6.86e-09, "avg_cosine": 0.99996533, "note": "N=4304 padded to 4352 (34×128) for Hadamard fold, cropped back"},
+    "merger.linear_fc1": {"count": 1, "shape": [4608, 4608], "total_numel": 21233664, "avg_proxy_error": 0.000018, "avg_mse": 4.58e-09, "avg_cosine": 1.00149095},
+    "merger.linear_fc2": {"count": 1, "shape": [5120, 4608], "total_numel": 23592960, "avg_proxy_error": 0.000018, "avg_mse": 4.33e-09, "avg_cosine": 1.00183415},
+    "model.visual.pos_embed.weight": {"count": 1, "shape": [2304, 1152], "total_numel": 2654208, "avg_proxy_error": 0.000016, "avg_mse": 3.93e-07, "avg_cosine": 1.00017929, "note": "Higher MSE due to small tensor with large dynamic range; max_err=0.111"}
   },
+  "per_type_k6": {
+    "blocks.N.attn.proj.weight": {"count": 27, "shape": [1152, 1152], "total_numel": 35831808, "avg_proxy_error": 0.000324, "avg_mse": 6.67e-08, "avg_cosine": 0.99976198},
+    "blocks.N.attn.qkv.weight": {"count": 27, "shape": [3456, 1152], "total_numel": 107495424, "avg_proxy_error": 0.000323, "avg_mse": 9.83e-08, "avg_cosine": 0.99978991},
+    "blocks.N.mlp.linear_fc1.weight": {"count": 27, "shape": [4304, 1152], "total_numel": 133871616, "avg_proxy_error": 0.000320, "avg_mse": 9.03e-08, "avg_cosine": 0.99982322, "note": "K=4304 padded to 4352 (34×128) for Hadamard fold, cropped back"},
+    "blocks.N.mlp.linear_fc2.weight": {"count": 27, "shape": [1152, 4304], "total_numel": 133871616, "avg_proxy_error": 0.000324, "avg_mse": 8.34e-08, "avg_cosine": 0.99981933, "note": "N=4304 padded to 4352 (34×128) for Hadamard fold, cropped back"},
+    "merger.linear_fc1": {"count": 1, "shape": [4608, 4608], "total_numel": 21233664, "avg_proxy_error": 0.000317, "avg_mse": 5.64e-08, "avg_cosine": 1.00135005},
+    "merger.linear_fc2": {"count": 1, "shape": [5120, 4608], "total_numel": 23592960, "avg_proxy_error": 0.000328, "avg_mse": 5.28e-08, "avg_cosine": 1.00168478},
+    "model.visual.pos_embed.weight": {"count": 1, "shape": [2304, 1152], "total_numel": 2654208, "avg_proxy_error": 0.000250, "avg_mse": 4.12e-06, "avg_cosine": 0.99991810, "note": "Higher MSE; max_err=0.187, cosine drops to 0.9999"}
+  },
+  "k6_vs_k8_comparison": {
+    "proxy_error_ratio": "K6/K8 = 0.000322/0.000020 = 16x",
+    "mse_ratio": "K6/K8 = 1.20e-07/1.06e-08 = 11x",
+    "cosine_delta": "K8=0.99998 vs K6=0.99983 (both near-lossless)",
+    "savings": {"k8": "0.459 GB (50%)", "k6": "0.573 GB (62%)"}
+  },
+  "key_findings": [
+    "Trellis K8: proxy error 0.000020, MSE 1.06e-08, cosine 0.99998 — near-lossless.",
+    "Trellis K6: proxy error 0.000322, MSE 1.20e-07, cosine 0.99983 — still excellent, 16x higher proxy error than K8 but cosine within 0.015%.",
+    "Proxy error scaling K6→K8 is ~16x, consistent with the embedding scaling (K4→K6 was ~18x, K6→K8 was ~17x).",
+    "Vision K6 proxy error (0.000322) matches embedding K6 proxy error (0.000324) — trellis coding is consistent across tensor types and sizes.",
+    "Padding for 4304-dim MLP weights works equally well at both K6 and K8 — proxy errors indistinguishable from non-padded weights.",
+    "K6 saves 0.573 GB (62%), K8 saves 0.459 GB (50%) vs BF16. K6 saves 0.114 GB more than K8.",
+    "pos_embed is the outlier at both bit widths: K6 MSE=4.12e-06 (34x higher than other K6 tensors), K8 MSE=3.93e-07 (37x higher). Small tensor, large dynamic range.",
+    "Vision tower does NOT affect the text-only KLD suite, so KLD is unchanged regardless of vision quantization.",
+    "Combined savings with embeddings: K6 embed (1.91 GB) + K6 vision (0.573 GB) = 2.48 GB; K8 embed (1.27 GB) + K8 vision (0.459 GB) = 1.73 GB from BF16."
+  ],
   "files": {
     "script": "patches/trellis-embed/vision_k8_roundtrip.py"
   }
