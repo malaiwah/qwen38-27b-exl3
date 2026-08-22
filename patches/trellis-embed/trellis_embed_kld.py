@@ -204,9 +204,16 @@ def cmd_capture(args):
         model = self.model_runner.model
         for name, module in model.named_modules():
             if type(module).__name__ == "VocabParallelEmbedding" and "embed_tokens" in name:
-                data = _torch.load(embed_path)
+                data = _torch.load(embed_path, map_location="cpu")
                 weight = data["weight"] if isinstance(data, dict) else data
-                module.weight.data.copy_(weight.to(module.weight.data.device))
+                # Copy in chunks to avoid full-size temporary GPU allocation
+                chunk = 16384
+                dev = module.weight.data.device
+                for i in range(0, weight.shape[0], chunk):
+                    end = min(i + chunk, weight.shape[0])
+                    module.weight.data[i:end].copy_(weight[i:end].to(dev))
+                del weight, data
+                _torch.cuda.empty_cache()
                 return {"injected": True, "shape": list(module.weight.data.shape)}
         return {"error": "no embedding found"}
     inject_result = llm.collective_rpc(_inject_embed_rpc, args=(embed_tmp,))[0]
