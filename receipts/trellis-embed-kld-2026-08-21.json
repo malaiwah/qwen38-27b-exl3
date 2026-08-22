@@ -1,12 +1,28 @@
 {
   "schema": "qwen38-fidelity-report/1",
-  "title": "Trellis K6/K8 Embedding Round-Trip KLD",
+  "title": "Trellis K4/K6/K8 Embedding Round-Trip KLD",
   "date": "2026-08-21",
   "method": "EXL3 trellis round-trip on embed_tokens [248320, 5120] via quantize_exl3 (uncalibrated, meta Hessian) + ext.reconstruct + hadamard_fold_weight, injected into vLLM V1 model via collective_rpc, hidden states captured and replayed against BF16 reference through shared BF16 LM head. Same 512-context v5 shard-0000 suite as int8/int6/FP8KV tests.",
   "model": "malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated (rev ab3a91a)",
   "suite": "fp8kv-evidence/capture-suite-view (512 contexts, 2047 positions each, 1,048,064 scored positions)",
   "kv_cache_dtype": "bfloat16",
   "results": {
+    "trellis_k4": {
+      "bits": 4,
+      "proxy_error": 0.005772,
+      "round_trip_mse": 7.4e-07,
+      "round_trip_max_err": 0.013672,
+      "round_trip_cosine": 1.5814,
+      "token_mean_kld": 0.002857206570887965,
+      "context_macro_mean_kld": 0.0028572065708879655,
+      "p95_kld": 0.008681998905940702,
+      "p99_kld": 0.03009123016021021,
+      "p999_kld": 0.14364334586900646,
+      "max_kld": 2.7165977239940897,
+      "top1_agreement": 0.977654036394724,
+      "scored_positions": 1048064,
+      "contexts": 512
+    },
     "trellis_k6": {
       "bits": 6,
       "proxy_error": 0.000324,
@@ -41,21 +57,24 @@
     }
   },
   "comparison": {
-    "embedding": ["int6", "int8 (PR455)", "trellis_k6", "trellis_k8"],
-    "mean_kld": [0.003409, 0.002667, 0.002667, 0.002653],
-    "p99_kld": [0.03476, 0.02754, 0.02729, 0.02709],
-    "p95_kld": [null, null, 0.008108, 0.008057],
-    "top1_agreement": [null, null, 0.97809, 0.97814],
-    "model_gib": [18.92, 19.21, 20.40, 20.40],
-    "notes": "Trellis K6 and K8 embeddings are BF16-sized in this round-trip test (no memory savings). The trellis payload would be ~6 or ~8 bits per weight but the production path requires a reconstruct_rows kernel (issue #435)."
+    "embedding": ["int6", "int8 (PR455)", "trellis_k4", "trellis_k6", "trellis_k8"],
+    "mean_kld": [0.003409, 0.002667, 0.002857, 0.002667, 0.002653],
+    "p99_kld": [0.03476, 0.02754, 0.03009, 0.02729, 0.02709],
+    "p95_kld": [null, null, 0.008682, 0.008108, 0.008057],
+    "top1_agreement": [null, null, 0.97765, 0.97809, 0.97814],
+    "model_gib": [18.92, 19.21, 20.40, 20.40, 20.40],
+    "notes": "Trellis embeddings are BF16-sized in this round-trip test (no memory savings). The trellis payload would be ~4, 6, or 8 bits per weight but the production path requires a reconstruct_rows kernel (issue #435)."
   },
   "key_findings": [
+    "Trellis K4 embedding KLD (0.002857) is 7% worse than int8 (0.002667) but still 16% better than int6 (0.003409).",
     "Trellis K6 embedding KLD (0.002667) is essentially identical to int8 (0.002667) — same mean KLD to 6 significant figures.",
     "Trellis K8 embedding KLD (0.002653) is marginally better than both K6 and int8 — 0.5% lower mean KLD.",
+    "Trellis K4 p99 (0.03009) is 9% worse than int8 (0.02754) but 13% better than int6 (0.03476).",
     "Trellis K6 p99 (0.02729) is slightly better than int8 p99 (0.02754) — 0.9% lower tail error.",
-    "Trellis K8 p99 (0.02709) is the best of all four — 1.6% lower than int8.",
-    "Both trellis K6 and K8 beat int6 (0.003409 mean, 0.03476 p99) by ~22% on mean KLD.",
-    "The Hadamard-folded trellis round-trip preserves embedding quality at least as well as per-row int8 quantization, validating the trellis coding approach for embeddings.",
+    "Trellis K8 p99 (0.02709) is the best of all five — 1.6% lower than int8.",
+    "All three trellis variants (K4/K6/K8) beat int6 on both mean KLD and p99 KLD.",
+    "Proxy error scales as expected: K4=0.005772, K6=0.000324, K8=0.000019 (18x and 17x improvements per 2-bit step).",
+    "The Hadamard-folded trellis round-trip preserves embedding quality at least as well as per-row int8 quantization at K6+, validating the trellis coding approach for embeddings.",
     "Production use requires implementing the reconstruct_rows kernel for row-indexed gather (issue #435), since the existing reconstruct kernel requires 128-row alignment and is designed for full-matrix dequantization, not scattered row access."
   ],
   "technical_details": {
@@ -66,6 +85,7 @@
   "files": {
     "script": "patches/trellis-embed/trellis_embed_kld.py",
     "runner": "patches/trellis-embed/run-trellis-embed-kld.sh",
+    "k4_report": "/home/mbelleau/worktrees/r30-capture-smoke/trellis-k6-capture/trellis-k4-replay-report.json (on aiboss)",
     "k6_report": "/home/mbelleau/worktrees/r30-capture-smoke/trellis-k6-capture/trellis-k6-replay-report.json (on aiboss)",
     "k8_report": "/home/mbelleau/worktrees/r30-capture-smoke/trellis-k6-capture/trellis-k8-replay-report.json (on aiboss)"
   }

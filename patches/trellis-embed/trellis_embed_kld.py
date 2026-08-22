@@ -310,7 +310,7 @@ def main():
     sub = parser.add_subparsers(dest="command", required=True)
     p_pre = sub.add_parser("pre-encode")
     p_pre.add_argument("--model", required=True)
-    p_pre.add_argument("--bits", type=int, required=True, choices=[6, 8])
+    p_pre.add_argument("--bits", type=int, required=True, choices=[4, 6, 8])
     p_pre.add_argument("--output", required=True)
     p_pre.set_defaults(func=cmd_pre_encode)
 
