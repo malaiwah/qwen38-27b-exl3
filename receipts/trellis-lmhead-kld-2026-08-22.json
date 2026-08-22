@@ -1,0 +1,86 @@
+{
+  "schema": "qwen38-fidelity-report/1",
+  "title": "Trellis K4/K6/K8 lm_head Quantization KLD",
+  "date": "2026-08-22",
+  "method": "Trellis K{bits} round-trip on lm_head [248320, 5120] (untied from embeddings). Projects BF16 reference hidden states through both original BF16 head and trellis-quantized head, computing full-vocabulary KL divergence at every scored position. No vLLM model load needed — pure GPU matmul + KL. Same 512-context v5 shard-0000 suite (1,048,064 scored positions, vocab 248,320).",
+  "model": "malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated (rev ab3a91a)",
+  "lm_head_shape": [248320, 5120],
+  "lm_head_bf16_gb": 2.54,
+  "results": {
+    "trellis_k8": {
+      "bits": 8,
+      "proxy_error": 0.000019,
+      "round_trip_mse": 1e-08,
+      "round_trip_max_err": 0.004150,
+      "round_trip_cosine": 1.6571,
+      "token_mean_kld": 3.0160550522850826e-05,
+      "context_macro_mean_kld": 3.016055142657237e-05,
+      "p95_kld": 9.501306340098381e-05,
+      "p99_kld": 0.00016095698811113834,
+      "p999_kld": 0.0002940855920314789,
+      "max_kld": 0.0010133679024875164,
+      "top1_agreement": 0.9963036608451392,
+      "scored_positions": 1048064,
+      "contexts": 512,
+      "trellis_gb": 2.54,
+      "savings_gb": 1.27
+    },
+    "trellis_k6": {
+      "bits": 6,
+      "proxy_error": 0.000324,
+      "round_trip_mse": 6e-08,
+      "round_trip_max_err": 0.007812,
+      "round_trip_cosine": 1.6568,
+      "token_mean_kld": 0.00031501325429417193,
+      "context_macro_mean_kld": 0.0003150132402147676,
+      "p95_kld": 0.0009768526069819927,
+      "p99_kld": 0.0015168190002441406,
+      "p999_kld": 0.0026250071823596954,
+      "max_kld": 0.007480856031179428,
+      "top1_agreement": 0.988656227100635,
+      "scored_positions": 1048064,
+      "contexts": 512,
+      "trellis_gb": 1.91,
+      "savings_gb": 0.63
+    },
+    "trellis_k4": {
+      "bits": 4,
+      "proxy_error": 0.005767,
+      "round_trip_mse": 8.6e-07,
+      "round_trip_max_err": 0.026123,
+      "round_trip_cosine": 1.6522,
+      "token_mean_kld": 0.004304192028939724,
+      "context_macro_mean_kld": 0.004304192373353999,
+      "p95_kld": 0.013356983661651611,
+      "p99_kld": 0.020437510684132576,
+      "p999_kld": 0.03414848446846008,
+      "max_kld": 0.1063147783279419,
+      "top1_agreement": 0.9611817598925256,
+      "scored_positions": 1048064,
+      "contexts": 512,
+      "trellis_gb": 1.27,
+      "savings_gb": 1.27
+    }
+  },
+  "comparison_all_layers": {
+    "layer": ["embed K4", "embed K6", "embed K8", "lm_head K4", "lm_head K6", "lm_head K8"],
+    "mean_kld": [0.002857, 0.002667, 0.002653, 0.004304, 0.000315, 0.0000302],
+    "p99_kld": [0.03009, 0.02729, 0.02709, 0.02044, 0.001517, 0.000161],
+    "top1_agreement": [0.97765, 0.97809, 0.97814, 0.96118, 0.98866, 0.99630],
+    "notes": "lm_head KLD is measured differently from embedding KLD: embedding KLD captures end-to-end model output after replacing embeddings and running full forward pass; lm_head KLD projects same BF16 hidden states through BF16 vs quantized head (isolates lm_head error only)."
+  },
+  "key_findings": [
+    "lm_head K8 KLD (3.02e-05) is 88x lower than embedding K8 KLD (0.002653) — lm_head quantization at K8 is nearly free.",
+    "lm_head K6 KLD (3.15e-04) is 8.4x lower than embedding K6 KLD (0.002667) — still well within budget.",
+    "lm_head K4 KLD (0.004304) is 1.6x higher than embedding K4 KLD (0.002857) — K4 is where lm_head starts to hurt more than embeddings.",
+    "Surprisingly, lm_head K8 and K6 produce LOWER KLD than embedding K8 and K6. This is because the KLD measures different things: embedding KLD is end-to-end (error propagates through 48 layers), while lm_head KLD is isolated to the final projection (no propagation).",
+    "top1 agreement: K8=99.63%, K6=98.87%, K4=96.12%. Even K4 lm_head keeps >96% greedy agreement.",
+    "Proxy error scaling is consistent with embeddings: K4=0.00577, K6=0.00032, K8=0.00002 (~18x per 2-bit step).",
+    "Combined KLD budget if quantizing both embedding and lm_head at K8: 0.002653 + 0.000030 = 0.002683 (vs BF16 baseline 0.002700). Still under the 0.012 target.",
+    "At K6: combined = 0.002667 + 0.000315 = 0.002982. At K4: combined = 0.002857 + 0.004304 = 0.007161. K6 combined is 3.8x under budget; K4 combined is 1.7x under budget.",
+    "K4 lm_head is the crossover where lm_head error (0.004304) exceeds embedding error (0.002857). Below K6, lm_head is the dominant error source."
+  ],
+  "files": {
+    "script": "patches/trellis-embed/lm_head_kld.py"
+  }
+}
