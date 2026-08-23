@@ -442,6 +442,38 @@ def _online_trellis_bits() -> int | None:
     return bits
 
 
+def _vision_trellis_bits() -> int | None:
+    """Bit width for online Trellis encoding of the ViT tower's BF16 linears.
+
+    The vision tower ships BF16 in the checkpoint, so it is absent from EXL3
+    storage and `_get_bf16_online_linear_method` declines it (the BF16 overlay
+    spec is not configured for this checkpoint).  That leaves ~0.92 GB of the
+    31.4 GiB budget on BF16 for no fidelity reason: the tower is used in dense
+    GEMMs, never in a scattered gather, so the shipped `reconstruct` /
+    b12x trellis GEMM path applies to it unchanged.
+
+    Only shards whose K and N are both 128-aligned are taken.  In the Qwen3.8
+    ViT that is attn.qkv [3456,1152], attn.proj [1152,1152] and both merger
+    projections; the MLP pair carries 4304 on one side and is left BF16.
+    Padding 4304 -> 4352 would also require padding the activation before the
+    GEMM, which the b12x entry point does not do, so it is deliberately out of
+    scope here.
+
+    Measured (receipts/trellis-vision-k8-2026-08-21.json): K6 round-trip on the
+    full tower is proxy 0.000322, MSE 1.20e-07.  The suite is text-only so this
+    cannot move the published KLD either way.
+    """
+    raw = os.environ.get("VLLM_EXL3_VISION_TRELLIS_BITS")
+    if raw is None or not raw.strip():
+        return None
+    bits = int(raw)
+    if bits not in range(3, 9):
+        raise ValueError(
+            f"VLLM_EXL3_VISION_TRELLIS_BITS must be from 3 to 8, got {bits}"
+        )
+    return bits
+
+
 def _online_trellis_shape_supported(input_size: int, output_size: int) -> bool:
     return input_size % _HADAMARD_BLOCK == 0 and output_size % _HADAMARD_BLOCK == 0
 
@@ -2405,6 +2437,10 @@ class Exl3Config(QuantizationConfig):
                 method := self._get_bf16_online_linear_method(layer, prefix)
             ):
                 return method
+            if not is_lm_head and (
+                method := self._get_vision_trellis_linear_method(layer, prefix)
+            ):
+                return method
             return UnquantizedLinearMethod()
         if isinstance(layer, RoutedExperts):
             if not self._moe_prefix_is_exl3(prefix, layer):
@@ -2412,6 +2448,61 @@ class Exl3Config(QuantizationConfig):
             self._require_eager_moe_experts(prefix)
             return Exl3MoEMethod(self, layer.moe_config)
         return None
+
+    def _get_vision_trellis_linear_method(
+        self, layer: torch.nn.Module, prefix: str
+    ) -> QuantizeMethodBase | None:
+        """Online Trellis for the ViT tower's BF16 projections.
+
+        Reached only after the EXL3-storage check and the BF16 overlay have both
+        declined, so it can never displace an EXL3-owned matrix.  Gated on the
+        prefix containing ``visual`` and on both dimensions being 128-aligned;
+        anything else falls through to ``UnquantizedLinearMethod``.
+        """
+        bits = _vision_trellis_bits()
+        if bits is None:
+            return None
+        if not isinstance(layer, LinearBase):
+            return None
+        if "visual" not in prefix:
+            return None
+        in_size = getattr(layer, "input_size_per_partition", None)
+        out_size = getattr(layer, "output_size_per_partition", None)
+        if in_size is None:
+            in_size = getattr(layer, "input_size", None)
+        if out_size is None:
+            out_size = getattr(layer, "output_size", None)
+        if in_size is None or out_size is None:
+            return None
+        if not _online_trellis_shape_supported(int(in_size), int(out_size)):
+            logger.info_once(
+                "EXL3 vision Trellis skips 128-unaligned ViT shards "
+                "(example %s: K=%d, N=%d); they stay BF16.",
+                prefix, int(in_size), int(out_size),
+            )
+            return None
+        if self._online_model_identity is None:
+            vllm_config = get_current_vllm_config_or_none()
+            if vllm_config is None:
+                return None
+            model_config = vllm_config.model_config
+            self._configure_online_cache_identity(
+                model_config.model,
+                hf_config=model_config.hf_config,
+                revision=model_config.revision,
+            )
+        if self._online_model_identity is None or self._online_encoder_identity is None:
+            return None
+        logger.warning_once(
+            "EXL3 vision Trellis: encoding 128-aligned ViT projections at K=%d.",
+            bits,
+        )
+        return Exl3OnlineLinearMethod(
+            bits=bits,
+            prefix=prefix,
+            model_identity=self._online_model_identity,
+            encoder_identity=self._online_encoder_identity,
+        )
 
     def _get_bf16_online_linear_method(
         self, layer: torch.nn.Module, prefix: str

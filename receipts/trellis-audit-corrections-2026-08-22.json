@@ -1,0 +1,111 @@
+{
+  "schema": "qwen38-audit-corrections/1",
+  "title": "Audit corrections to the trellis quantization receipt set",
+  "date": "2026-08-22",
+  "scope": "Adversarial peer review of the five trellis receipts produced 2026-08-21/22, plus the two missing control experiments the review identified. Two independent reviewers (anthropic-reviewer x2) plus first-party verification.",
+  "summary": "Three of five receipts had headline claims that do not survive. The central error is a scoring-dtype mismatch between two KL harnesses that made quantization appear to REDUCE KLD. A second error mislabeled an all-trellis run as the balanced profile. Neither error affects the production configuration, which was validated independently.",
+
+  "confirmed_defects": {
+    "D1_scoring_dtype_mismatch": {
+      "severity": "blocker",
+      "what": "combined_kld.py and lm_head_kld.py project logits in float32 (h.float() @ head.float().t()); the canonical fidelity.py replay projects in bfloat16 and upcasts afterwards. Every baseline the receipts compare against was bf16-scored.",
+      "evidence": "combined_kld.py:304-305, lm_head_kld.py:110-111 and :207-208 vs fidelity.py:856-857 and :895. Neither runner passes --fp32.",
+      "magnitude": "+4.6e-04 nats, additive and near-constant. Reviewer measured +4.520e-04 directly on the K4 capture over 384 positions. First-party control (BF16 identity head scored through combined_kld.py on the same capture, 1,048,064 positions) gave 0.0024592 against the canonical 0.0028572 for the same capture: gap +3.980e-04. The two agree to 11.9%.",
+      "mechanism": "Two independent bf16 roundings (reference and candidate logits), each contributing a KL(fp32||bf16) floor of 2.14e-04.",
+      "consequence": "Every combined_kld.py and lm_head_kld.py number is ~4.6e-04 LOWER than a canonically-scored equivalent. This is what produced the spurious 'quantization lowered KLD' result."
+    },
+    "D2_balanced_profile_never_enabled": {
+      "severity": "blocker",
+      "what": "run-balanced-k6-kld.sh set VLLM_EXL3_MULTIPRECISION=0, which gates the entire FP4/FP6 conversion block. VLLM_EXL3_FP6_LAYERS=mlp.gate_up_proj was therefore inert and gate_up stayed trellis K5.",
+      "evidence": "run-balanced-k6-kld.sh:28 vs vllm-exl3-multiprecision.py:104 (_MULTIPRECISION_ENABLED) and :3278 (sole gate on the fp6 branch). Production sets MULTIPRECISION=1 unconditionally at run-qwen38-27b.sh:258. First-party confirmation: zero 'EXL3->FP6 conversion' lines in the run log; a production boot emits 130.",
+      "magnitude": "The run measured the all-trellis (fidelity-class) weight path, not balanced.",
+      "independent_reproduction": "embed-only trellis-K6 arm (0.0026671) + repo's own measured fp8-KV delta (+0.0004818, receipts/fp8kv-cache-kld.json) = 0.0031488 predicted vs 0.0031687 measured: 0.63% agreement on the mean, -0.73% on p99."
+    },
+    "D3_cosine_similarity_invalid": {
+      "severity": "high",
+      "what": "F.cosine_similarity computes its norms in the input dtype; over 1.27e9 float32 elements the sum-of-squares under-accumulates while the final sum does not, so the ratio exceeds 1.",
+      "evidence": "Identical pattern at trellis_embed_kld.py:109-111, lm_head_kld.py:84-86, combined_kld.py:66-68, vision_k8_roundtrip.py:121-123. First-party reproduction: n=1e7 -> 1.0017, n=5e7 -> 1.0224, n=1e8 -> 1.0601 against a float64 reference of 0.9999875. Monotone in element count; invariant to K (embed K4/K6/K8 all report ~1.58).",
+      "affected": "All round_trip_cosine fields in trellis-embed-kld and trellis-lmhead-kld; overall_cosine and the merger/pos_embed cosines in trellis-vision-k8.",
+      "not_affected": "mse (torch .mean() uses pairwise reduction, relative error ~1e-8), max_err (exact reduction), proxy_error (per-chunk on GPU), and ALL KLD and top1 values (reductions over 248,320-wide rows, far below the failure threshold). Verified first-party."
+    },
+    "D4_no_matched_control": {
+      "severity": "high",
+      "what": "No arm has a same-harness, same-env BF16-embedding control. Every comparison crosses a harness boundary, a checkpoint boundary, or both.",
+      "evidence": "The int6/int8 comparators (receipts/pr455-int8-embedding-kld.json) were measured on the strength-zero R30 checkpoint with fidelity_gate.py; the trellis arms ran on K5K6-hydrated ab3a91a with in-process LLM(enforce_eager=True, max_num_seqs=1, no MTP).",
+      "consequence": "The repo's own frontier-2026-08-19.md records 0.003412/0.003407/0.003437/0.003405 on an identical checkpoint and profile as kernel routing changed: a 0.94% spread with no quantizer change. Claimed effects of 0.5%, 0.9%, 1.22% and 1.6% all sit inside that band and are not attributable."
+    },
+    "D5_lmhead_size_table_arithmetic": {
+      "severity": "medium",
+      "what": "The lm_head receipt's size table treated BF16 as 8 bits per weight instead of 16, making it internally inconsistent (trellis_gb 2.54 and savings_gb 1.27 against bf16_gb 2.54 implies 2.54-2.54=1.27).",
+      "correct_values": "For [248320,5120] = 1.2714e9 params, BF16 = 2.543 GB. K8 payload 1.271 GB / saving 1.271 GB. K6 payload 0.954 GB / saving 1.589 GB. K4 payload 0.636 GB / saving 1.907 GB.",
+      "propagated_into": "trellis-vision-k8 key_findings[8], which stated combined embed+vision K6 savings of 2.48 GB. Correct value is 2.162 GB."
+    },
+    "D6_unweighted_aggregates": {
+      "severity": "medium",
+      "what": "vision_k8_roundtrip.py:178-180 averages per-tensor metrics unweighted, so pos_embed (0.579% of tower parameters) supplies 33.3% of the reported overall MSE.",
+      "correct_values": "Parameter-weighted K8 MSE is 9.38e-09 against the reported per-tensor mean of 1.06e-08."
+    }
+  },
+
+  "controls_run_to_close_the_audit": {
+    "C1_bf16_head_identity_control": {
+      "purpose": "Test whether combined_kld.py agrees with the canonical fidelity.py replay.",
+      "method": "Constructed an identity pre-encoded head (unmodified BF16 weight, bits=16 marker) and scored the existing K4 embedding capture through combined_kld.py cmd_kld. If the harnesses agreed this must reproduce the canonical embed-only K4 value.",
+      "result": {"combined_kld_fp32_scored": 0.0024591712281107903, "canonical_fidelity_bf16_scored": 0.002857206570887965, "gap": 0.000398},
+      "conclusion": "Harnesses disagree by +3.98e-04, matching the reviewer's independently measured fp32-vs-bf16 scoring offset of +4.52e-04 to within 11.9%. D1 confirmed."
+    },
+    "C2_vision_output_fidelity": {
+      "purpose": "The vision receipt claimed 'near-lossless' from weight-space error alone, which bounds nothing about output-space error through a 27-block ViT.",
+      "method": "Served a synthetic 64x64 PNG (solid red left half, solid blue right half) to the production endpoint with trellis K6 active on the ViT attention and merger projections, asking for the left then right colour in exactly two words.",
+      "result": {"content": "Red Blue", "reasoning_excerpt": "left half is red, right half is blue", "finish_reason": "stop"},
+      "conclusion": "Vision output is correct with trellis K6 on the 128-aligned ViT projections. This is a functional smoke test, not a fidelity metric."
+    }
+  },
+
+  "corrected_claims": {
+    "combined_arms_on_a_common_scale": {
+      "note": "fp32-scored values plus the +4.6e-04 harness offset, making them comparable to the bf16-scored 0.002700 baseline.",
+      "combined_k8": {"as_published_fp32": 0.002286, "on_bf16_scale": 0.002746, "vs_baseline": "+0.000046 (a cost, not an improvement)"},
+      "combined_k6": {"as_published_fp32": 0.002585, "on_bf16_scale": 0.003045, "vs_baseline": "+0.000345"},
+      "combined_k4": {"as_published_fp32": 0.006763, "on_bf16_scale": 0.007223, "vs_baseline": "+0.004523"},
+      "retracted": "The claim that combined K8/K6 fall below the BF16 baseline, and the 'Hadamard rotation decorrelates quantization error' explanation. Decorrelation drives the cross term to zero, which makes KL additive and predicts combined ABOVE embed-only, the opposite of what was reported. The receipt also invoked the contradictory 'errors partially cancel' mechanism elsewhere."
+    },
+    "lmhead_reframed": {
+      "valid_statement": "Replacing the harness's shared BF16 scoring head with an UNCALIBRATED trellis head adds 3.02e-05 / 3.15e-04 / 4.30e-03 KL at fixed inputs for K8/K6/K4, with top1 agreement 99.63/98.87/96.12 percent.",
+      "resolvability": "The harness's own bf16 logit-rounding floor is 2.14e-04. The K8 result (3.02e-05) is BELOW that floor and is not a resolvable measurement. K6 is 1.5x the floor; K4 is 20x.",
+      "not_the_production_delta": "The shipped lm_head is already trellis K6/mcg and was built with a calibrated Hessian; this measurement used a meta Hessian (uncalibrated). The production-relevant delta is K6->K8, which remains unmeasured.",
+      "retracted": "The '88x lower than embedding K8' comparison (head-only at fixed inputs versus end-to-end after 48 layers share no denominator), the K4 'crossover' framing, and all additive combinations of KLD values (KL is not additive; the combined receipt's own measured values contradict the sums)."
+    },
+    "balanced_receipt": {
+      "verdict": "RETRACTED IN FULL",
+      "what_was_actually_measured": "All-trellis (fidelity-class) weights + fp8_e4m3 KV + trellis K6 embedding round-trip = 0.003169 mean, 0.031742 p99.",
+      "salvaged_result": "A useful by-product: the fp8 KV cache cost is now measured twice independently. int6 embed BF16->FP8 KV = +0.000482 (prior receipt); trellis K6 embed BF16->FP8 KV = +0.000502 (this session). Agreement 4.1%, giving ~+0.00049 mean KLD for fp8_e4m3 KV independent of embedding scheme.",
+      "unmeasured": "The balanced profile (FP6 gate_up) with a trellis K6 embedding. Any re-run must assert FP6 activation from the 'EXL3->FP6 conversion complete' log line before the result is trusted."
+    },
+    "embed_receipt": {
+      "verdict": "Usable WITHIN the arm set only",
+      "valid": "K4/K6/K8 = 0.002857 / 0.002667 / 0.002653 under one harness, one checkpoint, one variable. The monotone ordering is sound.",
+      "retracted": "All round_trip_cosine values; 'round_trip_mse: 0' (a %.8f print artifact, should read < 5e-09); 'identical to int8 to 6 significant figures' (they agree to four); and every sub-1-percent superiority claim, which sits inside the repo's own 0.94% kernel-routing band.",
+      "missing_control": "A BF16-embedding capture under byte-identical env. Until it exists no arm may be compared to 0.002700, 0.003405, 0.003409 or 0.002667."
+    },
+    "vision_receipt": {
+      "verdict": "Mostly sound",
+      "valid": "Per-tensor proxy_error, mse and max_err; the savings figures (0.459 GB at K8, 0.573 GB at K6, within 2-3% for omitted suh/svh side data); and the statement that a text-only suite cannot show vision KLD impact.",
+      "retracted": "Both overall_cosine values and the merger/pos_embed cosines; the 2.48 GB combined-savings figure (correct: 2.162 GB); and 'near-lossless' as an output-space claim.",
+      "relabelled": "overall_mse and overall_proxy_error are unweighted per-tensor means, not parameter-weighted. Parameter-weighted K8 MSE is 9.38e-09.",
+      "upgraded": "Output fidelity is now backed by a functional test (control C2) rather than weight-space error alone."
+    }
+  },
+
+  "production_impact": "None of these defects touched the production configuration. The vision K6 landing was validated by a functional vision test and by boot-time memory/context measurement, both first-party. The published served-profile KLD numbers (throughput/fidelity/balanced in AGENTS.md) were produced by the canonical harness and are unaffected.",
+
+  "remaining_work": [
+    "Run the BF16-embedding control capture under byte-identical env (one arm of GPU time). Settles D4 and the embed-only baseline question.",
+    "Re-score all combined/lm_head arms through fidelity.py replay, or pass --fp32 to fidelity.py for every arm, so one scale is used throughout. fidelity.py:837-845 already exposes a --candidate-head argument intended for exactly this head-attribution use.",
+    "Re-run the balanced + trellis K6 embedding measurement with VLLM_EXL3_MULTIPRECISION=1, asserting FP6 activation from the log before trusting the result.",
+    "Recompute all cosine metrics in float64, or switch to the row-wise mean/p01 cosine already used by receipts/embedding-quant-error.json.",
+    "Weight the vision aggregates by parameter count."
+  ],
+
+  "reviewers": ["anthropic-reviewer (methodology)", "anthropic-reviewer (scripts)", "first-party verification of D1/D3 and controls C1/C2"]
+}

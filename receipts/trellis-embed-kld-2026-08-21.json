@@ -1,4 +1,17 @@
 {
+  "AUDIT_STATUS": "CORRECTED - usable within the arm set only",
+  "AUDIT_NOTE": "The K4/K6/K8 means (0.002857 / 0.002667 / 0.002653) and their ordering stand: one harness, one checkpoint, one variable. They are NOT comparable to the int6/int8 comparators, which were measured on the strength-zero R30 checkpoint with a different replay tool. Sub-1-percent superiority claims are retracted: this repo's own frontier-2026-08-19.md shows a 0.94% spread on an identical checkpoint and profile from kernel routing alone. round_trip_cosine is invalid (fp32 norm under-accumulation over 1.27e9 elements). 'round_trip_mse: 0' is a %.8f print artifact and should read < 5e-09.",
+  "AUDIT_SUPERSEDED_BY": "receipts/trellis-audit-corrections-2026-08-22.json",
+  "AUDIT_RETRACTED_FIELDS": [
+    "results.*.round_trip_cosine",
+    "results.trellis_k8.round_trip_mse",
+    "comparison",
+    "key_findings[1]",
+    "key_findings[2]",
+    "key_findings[3]",
+    "key_findings[4]",
+    "key_findings[5]"
+  ],
   "schema": "qwen38-fidelity-report/1",
   "title": "Trellis K4/K6/K8 Embedding Round-Trip KLD",
   "date": "2026-08-21",
@@ -41,7 +54,7 @@
     },
     "trellis_k8": {
       "bits": 8,
-      "proxy_error": 0.000019,
+      "proxy_error": 1.9e-05,
       "round_trip_mse": 0,
       "round_trip_max_err": 0.001953,
       "round_trip_cosine": 1.5838,
@@ -57,21 +70,57 @@
     }
   },
   "comparison": {
-    "embedding": ["int6", "int8 (PR455)", "trellis_k4", "trellis_k6", "trellis_k8"],
-    "mean_kld": [0.003409, 0.002667, 0.002857, 0.002667, 0.002653],
-    "p99_kld": [0.03476, 0.02754, 0.03009, 0.02729, 0.02709],
-    "p95_kld": [null, null, 0.008682, 0.008108, 0.008057],
-    "top1_agreement": [null, null, 0.97765, 0.97809, 0.97814],
-    "model_gib": [18.92, 19.21, 20.40, 20.40, 20.40],
+    "embedding": [
+      "int6",
+      "int8 (PR455)",
+      "trellis_k4",
+      "trellis_k6",
+      "trellis_k8"
+    ],
+    "mean_kld": [
+      0.003409,
+      0.002667,
+      0.002857,
+      0.002667,
+      0.002653
+    ],
+    "p99_kld": [
+      0.03476,
+      0.02754,
+      0.03009,
+      0.02729,
+      0.02709
+    ],
+    "p95_kld": [
+      null,
+      null,
+      0.008682,
+      0.008108,
+      0.008057
+    ],
+    "top1_agreement": [
+      null,
+      null,
+      0.97765,
+      0.97809,
+      0.97814
+    ],
+    "model_gib": [
+      18.92,
+      19.21,
+      20.4,
+      20.4,
+      20.4
+    ],
     "notes": "Trellis embeddings are BF16-sized in this round-trip test (no memory savings). The trellis payload would be ~4, 6, or 8 bits per weight but the production path requires a reconstruct_rows kernel (issue #435)."
   },
   "key_findings": [
     "Trellis K4 embedding KLD (0.002857) is 7% worse than int8 (0.002667) but still 16% better than int6 (0.003409).",
-    "Trellis K6 embedding KLD (0.002667) is essentially identical to int8 (0.002667) — same mean KLD to 6 significant figures.",
-    "Trellis K8 embedding KLD (0.002653) is marginally better than both K6 and int8 — 0.5% lower mean KLD.",
+    "Trellis K6 embedding KLD (0.002667) is essentially identical to int8 (0.002667) \u2014 same mean KLD to 6 significant figures.",
+    "Trellis K8 embedding KLD (0.002653) is marginally better than both K6 and int8 \u2014 0.5% lower mean KLD.",
     "Trellis K4 p99 (0.03009) is 9% worse than int8 (0.02754) but 13% better than int6 (0.03476).",
-    "Trellis K6 p99 (0.02729) is slightly better than int8 p99 (0.02754) — 0.9% lower tail error.",
-    "Trellis K8 p99 (0.02709) is the best of all five — 1.6% lower than int8.",
+    "Trellis K6 p99 (0.02729) is slightly better than int8 p99 (0.02754) \u2014 0.9% lower tail error.",
+    "Trellis K8 p99 (0.02709) is the best of all five \u2014 1.6% lower than int8.",
     "All three trellis variants (K4/K6/K8) beat int6 on both mean KLD and p99 KLD.",
     "Proxy error scales as expected: K4=0.005772, K6=0.000324, K8=0.000019 (18x and 17x improvements per 2-bit step).",
     "The Hadamard-folded trellis round-trip preserves embedding quality at least as well as per-row int8 quantization at K6+, validating the trellis coding approach for embeddings.",

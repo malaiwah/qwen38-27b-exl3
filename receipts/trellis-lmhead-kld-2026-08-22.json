@@ -1,17 +1,36 @@
 {
+  "AUDIT_STATUS": "RE-SCOPED - valid only as isolated uncalibrated-head sensitivity",
+  "AUDIT_NOTE": "Three corrections. (1) Scored in float32 against bf16-scored baselines (+4.6e-04 offset); the harness's own bf16 logit-rounding floor is 2.14e-04, so the K8 result (3.02e-05) is BELOW the measurement floor and is not resolvable. (2) Not the production delta: the shipped lm_head is already trellis K6/mcg built with a calibrated Hessian, while this used a meta (uncalibrated) Hessian; the production-relevant K6->K8 delta is unmeasured. (3) The size table treated BF16 as 8 bits instead of 16 and is arithmetically impossible (2.54 - 2.54 != 1.27). Correct K6 saving is 1.589 GB, not 0.63 GB.",
+  "AUDIT_SUPERSEDED_BY": "receipts/trellis-audit-corrections-2026-08-22.json",
+  "AUDIT_RETRACTED_FIELDS": [
+    "results.*.trellis_gb",
+    "results.*.savings_gb",
+    "results.*.round_trip_cosine",
+    "comparison_all_layers",
+    "key_findings[0]",
+    "key_findings[1]",
+    "key_findings[2]",
+    "key_findings[3]",
+    "key_findings[6]",
+    "key_findings[7]",
+    "key_findings[8]"
+  ],
   "schema": "qwen38-fidelity-report/1",
   "title": "Trellis K4/K6/K8 lm_head Quantization KLD",
   "date": "2026-08-22",
-  "method": "Trellis K{bits} round-trip on lm_head [248320, 5120] (untied from embeddings). Projects BF16 reference hidden states through both original BF16 head and trellis-quantized head, computing full-vocabulary KL divergence at every scored position. No vLLM model load needed — pure GPU matmul + KL. Same 512-context v5 shard-0000 suite (1,048,064 scored positions, vocab 248,320).",
+  "method": "Trellis K{bits} round-trip on lm_head [248320, 5120] (untied from embeddings). Projects BF16 reference hidden states through both original BF16 head and trellis-quantized head, computing full-vocabulary KL divergence at every scored position. No vLLM model load needed \u2014 pure GPU matmul + KL. Same 512-context v5 shard-0000 suite (1,048,064 scored positions, vocab 248,320).",
   "model": "malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated (rev ab3a91a)",
-  "lm_head_shape": [248320, 5120],
+  "lm_head_shape": [
+    248320,
+    5120
+  ],
   "lm_head_bf16_gb": 2.54,
   "results": {
     "trellis_k8": {
       "bits": 8,
-      "proxy_error": 0.000019,
+      "proxy_error": 1.9e-05,
       "round_trip_mse": 1e-08,
-      "round_trip_max_err": 0.004150,
+      "round_trip_max_err": 0.00415,
       "round_trip_cosine": 1.6571,
       "token_mean_kld": 3.0160550522850826e-05,
       "context_macro_mean_kld": 3.016055142657237e-05,
@@ -63,16 +82,44 @@
     }
   },
   "comparison_all_layers": {
-    "layer": ["embed K4", "embed K6", "embed K8", "lm_head K4", "lm_head K6", "lm_head K8"],
-    "mean_kld": [0.002857, 0.002667, 0.002653, 0.004304, 0.000315, 0.0000302],
-    "p99_kld": [0.03009, 0.02729, 0.02709, 0.02044, 0.001517, 0.000161],
-    "top1_agreement": [0.97765, 0.97809, 0.97814, 0.96118, 0.98866, 0.99630],
+    "layer": [
+      "embed K4",
+      "embed K6",
+      "embed K8",
+      "lm_head K4",
+      "lm_head K6",
+      "lm_head K8"
+    ],
+    "mean_kld": [
+      0.002857,
+      0.002667,
+      0.002653,
+      0.004304,
+      0.000315,
+      3.02e-05
+    ],
+    "p99_kld": [
+      0.03009,
+      0.02729,
+      0.02709,
+      0.02044,
+      0.001517,
+      0.000161
+    ],
+    "top1_agreement": [
+      0.97765,
+      0.97809,
+      0.97814,
+      0.96118,
+      0.98866,
+      0.9963
+    ],
     "notes": "lm_head KLD is measured differently from embedding KLD: embedding KLD captures end-to-end model output after replacing embeddings and running full forward pass; lm_head KLD projects same BF16 hidden states through BF16 vs quantized head (isolates lm_head error only)."
   },
   "key_findings": [
-    "lm_head K8 KLD (3.02e-05) is 88x lower than embedding K8 KLD (0.002653) — lm_head quantization at K8 is nearly free.",
-    "lm_head K6 KLD (3.15e-04) is 8.4x lower than embedding K6 KLD (0.002667) — still well within budget.",
-    "lm_head K4 KLD (0.004304) is 1.6x higher than embedding K4 KLD (0.002857) — K4 is where lm_head starts to hurt more than embeddings.",
+    "lm_head K8 KLD (3.02e-05) is 88x lower than embedding K8 KLD (0.002653) \u2014 lm_head quantization at K8 is nearly free.",
+    "lm_head K6 KLD (3.15e-04) is 8.4x lower than embedding K6 KLD (0.002667) \u2014 still well within budget.",
+    "lm_head K4 KLD (0.004304) is 1.6x higher than embedding K4 KLD (0.002857) \u2014 K4 is where lm_head starts to hurt more than embeddings.",
     "Surprisingly, lm_head K8 and K6 produce LOWER KLD than embedding K8 and K6. This is because the KLD measures different things: embedding KLD is end-to-end (error propagates through 48 layers), while lm_head KLD is isolated to the final projection (no propagation).",
     "top1 agreement: K8=99.63%, K6=98.87%, K4=96.12%. Even K4 lm_head keeps >96% greedy agreement.",
     "Proxy error scaling is consistent with embeddings: K4=0.00577, K6=0.00032, K8=0.00002 (~18x per 2-bit step).",

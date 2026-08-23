@@ -1,4 +1,15 @@
 {
+  "AUDIT_STATUS": "CORRECTED - headline claims retracted",
+  "AUDIT_NOTE": "combined_kld.py scores logits in float32 while every baseline cited was scored in bfloat16 by the canonical fidelity.py replay, a +4.6e-04 additive offset. On a common scale the arms become K8 0.002746, K6 0.003045, K4 0.007223 - none below the 0.002700 baseline. The claimed K8 'improvement' of -0.000414 is actually +0.000046. Confirmed by a first-party BF16 identity-head control (0.0024592 here vs 0.0028572 canonical on the same capture). The 'Hadamard rotation decorrelates error' explanation is retracted and was self-contradictory: decorrelation makes KL additive, predicting the opposite sign.",
+  "AUDIT_SUPERSEDED_BY": "receipts/trellis-audit-corrections-2026-08-22.json",
+  "AUDIT_RETRACTED_FIELDS": [
+    "comparison",
+    "key_findings[0]",
+    "key_findings[1]",
+    "key_findings[2]",
+    "key_findings[3]",
+    "key_findings[4]"
+  ],
   "schema": "qwen38-fidelity-report/1",
   "title": "Combined Trellis K4/K6/K8 (Embedding + lm_head) KLD",
   "date": "2026-08-22",
@@ -46,16 +57,60 @@
     }
   },
   "comparison": {
-    "config": ["BF16 baseline", "embed K8 only", "embed K6 only", "embed K4 only", "lm_head K8 only", "lm_head K6 only", "lm_head K4 only", "combined K8", "combined K6", "combined K4"],
-    "mean_kld": [0.002700, 0.002653, 0.002667, 0.002857, 0.0000302, 0.000315, 0.004304, 0.002286, 0.002585, 0.006763],
-    "p99_kld": [0.0349, 0.02709, 0.02729, 0.03009, 0.000161, 0.001517, 0.02044, 0.02611, 0.02690, 0.04171],
-    "top1_agreement": [null, 0.97814, 0.97809, 0.97765, 0.99630, 0.98866, 0.96118, 0.98055, 0.97708, 0.95528],
+    "config": [
+      "BF16 baseline",
+      "embed K8 only",
+      "embed K6 only",
+      "embed K4 only",
+      "lm_head K8 only",
+      "lm_head K6 only",
+      "lm_head K4 only",
+      "combined K8",
+      "combined K6",
+      "combined K4"
+    ],
+    "mean_kld": [
+      0.0027,
+      0.002653,
+      0.002667,
+      0.002857,
+      3.02e-05,
+      0.000315,
+      0.004304,
+      0.002286,
+      0.002585,
+      0.006763
+    ],
+    "p99_kld": [
+      0.0349,
+      0.02709,
+      0.02729,
+      0.03009,
+      0.000161,
+      0.001517,
+      0.02044,
+      0.02611,
+      0.0269,
+      0.04171
+    ],
+    "top1_agreement": [
+      null,
+      0.97814,
+      0.97809,
+      0.97765,
+      0.9963,
+      0.98866,
+      0.96118,
+      0.98055,
+      0.97708,
+      0.95528
+    ],
     "notes": "BF16 baseline is the trellis K5K6 model with BF16 embed+head (the control). 'embed only' and 'lm_head only' KLDs are measured differently (end-to-end vs isolated) and are not additive. 'combined' is the true end-to-end measurement with both quantized."
   },
   "key_findings": [
     "Combined K8 KLD (0.002286) is LOWER than the BF16 baseline (0.002700) and lower than embed-K8-only (0.002653). The lm_head K8 quantization error is so tiny (3e-05) that it's lost in the noise of the embedding quantization, and the Hadamard rotation in the head may slightly decorrelate errors.",
-    "Combined K6 KLD (0.002585) is also below the BF16 baseline (0.002700) and below embed-K6-only (0.002667). Same effect — lm_head K6 error (3e-04) is small compared to embedding error.",
-    "Combined K4 KLD (0.006763) is 2.5x the BF16 baseline (0.002700) but still under the 0.012 budget. This is where both components contribute meaningfully: embed K4 (0.002857) + lm_head K4 (0.004304), but the combined is less than the sum (0.007161) — the errors partially cancel.",
+    "Combined K6 KLD (0.002585) is also below the BF16 baseline (0.002700) and below embed-K6-only (0.002667). Same effect \u2014 lm_head K6 error (3e-04) is small compared to embedding error.",
+    "Combined K4 KLD (0.006763) is 2.5x the BF16 baseline (0.002700) but still under the 0.012 budget. This is where both components contribute meaningfully: embed K4 (0.002857) + lm_head K4 (0.004304), but the combined is less than the sum (0.007161) \u2014 the errors partially cancel.",
     "K8 and K6 combined are below baseline because the trellis K5K6 model's BF16 embed+head control (0.002700) already carries the trellis quantization error of the K5/K6 MLP/attention layers, and the additional K8/K6 error on embed+head is smaller than the measurement noise.",
     "p99 KLD: K8=0.02611, K6=0.02690, K4=0.04171. K4 is the only one exceeding the 0.0349 BF16 baseline p99.",
     "top1 agreement: K8=98.05%, K6=97.71%, K4=95.53%. All maintain >95% greedy decoding agreement.",

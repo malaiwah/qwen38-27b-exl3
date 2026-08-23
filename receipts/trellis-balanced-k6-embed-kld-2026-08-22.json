@@ -1,6 +1,15 @@
 {
+  "AUDIT_STATUS": "RETRACTED",
+  "AUDIT_NOTE": "The run did not execute the balanced profile. VLLM_EXL3_MULTIPRECISION=0 in the runner gated out the entire FP4/FP6 conversion block, so VLLM_EXL3_FP6_LAYERS=mlp.gate_up_proj was inert and gate_up stayed trellis K5. Zero 'EXL3->FP6 conversion' log lines confirm it (a production boot emits 130). What was actually measured: all-trellis weights + fp8_e4m3 KV + trellis K6 embedding = 0.003169, reproduced to 0.63% by the embed-only K6 arm plus this repo's own measured fp8-KV delta. Every key_finding, the context extrapolation, and the 'novel finding' are void.",
+  "AUDIT_SUPERSEDED_BY": "receipts/trellis-audit-corrections-2026-08-22.json",
+  "AUDIT_RETRACTED_FIELDS": [
+    "results",
+    "comparison",
+    "context_analysis",
+    "key_findings"
+  ],
   "schema": "qwen38-fidelity-report/1",
-  "title": "Balanced Profile + Trellis K6 Embedding — Measured KLD",
+  "title": "Balanced Profile + Trellis K6 Embedding \u2014 Measured KLD",
   "date": "2026-08-22",
   "method": "Loaded vLLM with balanced profile env vars (FP6 gate_up, fp8_e4m3 KV, B12X, 0.945 GPU util), injected trellis K6 embedding via collective_rpc (chunked copy to avoid OOM), captured hidden states, replayed KLD against BF16 reference. Same 512-context v5 shard-0000 suite.",
   "model": "malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated (rev ab3a91a)",
@@ -26,33 +35,66 @@
     "note": "Model 24.11 GiB includes FP6 gate_up overhead (~2.4 GiB over K5K6 trellis). Test used max_model_len=2112 for suite contexts; production uses 199,104."
   },
   "comparison": {
-    "config": ["balanced (current)", "balanced + K6 embed (measured)", "fidelity (current)", "fidelity + K6 embed (prior)"],
-    "mean_kld": [0.00567, 0.003169, 0.00341, 0.002667],
-    "p99_kld": [0.0599, 0.03174, 0.0349, 0.02729],
-    "top1_agreement": [null, 0.97600, null, 0.97809],
-    "context": [199104, "est. 234K", 238400, "est. 274K"],
-    "model_gib": [24.11, "est. 21.9", 20.4, "est. 20.4"]
+    "config": [
+      "balanced (current)",
+      "balanced + K6 embed (measured)",
+      "fidelity (current)",
+      "fidelity + K6 embed (prior)"
+    ],
+    "mean_kld": [
+      0.00567,
+      0.003169,
+      0.00341,
+      0.002667
+    ],
+    "p99_kld": [
+      0.0599,
+      0.03174,
+      0.0349,
+      0.02729
+    ],
+    "top1_agreement": [
+      null,
+      0.976,
+      null,
+      0.97809
+    ],
+    "context": [
+      199104,
+      "est. 234K",
+      238400,
+      "est. 274K"
+    ],
+    "model_gib": [
+      24.11,
+      "est. 21.9",
+      20.4,
+      "est. 20.4"
+    ]
   },
   "context_analysis": {
     "kv_per_token_mb": 0.0625,
     "savings_gb": 2.162,
-    "savings_breakdown": {"embed_k6": 1.589, "vision_k6": 0.573},
+    "savings_breakdown": {
+      "embed_k6": 1.589,
+      "vision_k6": 0.573
+    },
     "current_context": 199104,
     "estimated_new_context": 234503,
     "context_gain": 35399,
     "context_gain_pct": "17.8%",
     "vs_fidelity_context": "234,503 vs 238,400 (nearly parity)",
-    "note": "Context estimate uses KV per token derived from AGENTS.md fidelity→balanced context delta (39,296 tokens / 2.4 GiB). Actual production context depends on activation overhead with max_num_batched_tokens=3072."
+    "note": "Context estimate uses KV per token derived from AGENTS.md fidelity\u2192balanced context delta (39,296 tokens / 2.4 GiB). Actual production context depends on activation overhead with max_num_batched_tokens=3072."
   },
   "key_findings": [
-    "MEASURED balanced + K6 embed KLD = 0.003169 — BETTER than current balanced KLD (0.00567) by 44%.",
+    "MEASURED balanced + K6 embed KLD = 0.003169 \u2014 BETTER than current balanced KLD (0.00567) by 44%.",
     "This is counterintuitive: adding K6 embedding quantization IMPROVES KLD. The likely explanation: the K6 trellis round-trip on the embedding introduces a Hadamard rotation that partially decorrelates the FP6 gate_up quantization error, reducing overall KLD. The balanced profile's FP6 gate_up is the dominant error source, and the embedding's Hadamard transform spreads this error more uniformly.",
-    "p99 KLD drops from 0.0599 to 0.03174 — a 47% improvement, now well under the 0.12 budget (3.8x margin).",
+    "p99 KLD drops from 0.0599 to 0.03174 \u2014 a 47% improvement, now well under the 0.12 budget (3.8x margin).",
     "mean KLD 0.003169 is 3.8x under the 0.012 budget, and is also lower than the fidelity profile's 0.00341.",
-    "Estimated context gain: +35K (199K → 234K), nearly matching fidelity's 238K.",
+    "Estimated context gain: +35K (199K \u2192 234K), nearly matching fidelity's 238K.",
     "This means balanced + K6 embed could achieve: PP~3923 (unchanged), TG~206 (unchanged), KLD 0.00317 (3.8x under budget), p99 0.0317 (3.8x under budget), context ~234K (near fidelity).",
     "Production requires reconstruct_rows kernel (issue #435) for trellis embedding gather. Vision K6 is simpler (full-matrix dequant works for ViT).",
-    "The KLD improvement from Hadamard decorrelation is a novel finding — trellis coding the embedding doesn't just save VRAM, it actively reduces the model's quantization noise."
+    "The KLD improvement from Hadamard decorrelation is a novel finding \u2014 trellis coding the embedding doesn't just save VRAM, it actively reduces the model's quantization noise."
   ],
   "files": {
     "script": "patches/trellis-embed/trellis_embed_kld.py",
