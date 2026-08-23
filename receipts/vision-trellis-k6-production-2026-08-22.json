@@ -216,5 +216,7 @@
       "A working sub-8-bit KV format would be decisive (4-bit KV roughly doubles the context ceiling), but none is supported by this build and the operator has chosen to keep fp8."
     ]
   },
-  "lesson": "A boot plus /health check does not validate a serving config. vLLM sizes the KV cache to fill the utilization budget, so a config can allocate successfully and then have no memory left for prefill activations. Every context change must be validated with a real prefill at a meaningful fraction of the claimed context."
+  "lesson": "A boot plus /health check does not validate a serving config. vLLM sizes the KV cache to fill the utilization budget, so a config can allocate successfully and then have no memory left for prefill activations. Every context change must be validated with a real prefill at a meaningful fraction of the claimed context.",
+  "SUPERSEDED_BY": "receipts/memory-forensics-native-context-2026-08-23.json",
+  "SUPERSEDED_NOTE": "SUPERSEDED 2026-08-23: the 220,000 ceiling in this receipt was found to be a consequence of FP6 gate_up occupying +1.66 GiB, not a hardware limit. With VLLM_EXL3_FP6_LAYER_RANGE=0-11 the model now serves its full native 262,144 context at 0.96 util with KV exactly 262,144, validated by a 240,001-token prefill. See receipts/memory-forensics-native-context-2026-08-23.json."
 }
