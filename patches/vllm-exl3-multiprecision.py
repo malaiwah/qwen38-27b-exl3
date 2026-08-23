@@ -325,9 +325,14 @@ _B12X_SELFTEST = os.environ.get("VLLM_EXL3_B12X_SELFTEST", "0") == "1"
 _B12X_SELFTEST_DONE: set[tuple] = set()
 # One persistent fp16 reconstruct buffer per device (PR #397, minimal form).
 _RECON_ARENA: dict[int, torch.Tensor] = {}
-# Opt-out for the FP16 reconstruct cache on the prefill reconstruct+hgemm path.
+# Opt-IN for the FP16 reconstruct cache on the prefill reconstruct+hgemm path.
+# Default is off: the cache populates during vLLM's profiling forward, so the
+# profiler both inflates its measured peak and cannot count the cached bytes as
+# free, which silently shrinks the KV pool. Every profile that was ever tuned
+# overrides it to 0 already; leaving "1" as the default meant any new profile
+# silently inherited a memory-corrupting cache. Set the env var to 1 to opt in.
 _PREFILL_RECONSTRUCT_CACHE = (
-    os.environ.get("VLLM_EXL3_PREFILL_RECONSTRUCT_CACHE", "1") == "1"
+    os.environ.get("VLLM_EXL3_PREFILL_RECONSTRUCT_CACHE", "0") == "1"
 )
 # Minimum row count for preferring B12X W4A16 over the fused exl3_gemm kernel.
 # 0 keeps B12X for every row count (previous behaviour).
@@ -580,6 +585,24 @@ class Exl3OnlineEmbeddingMethod(QuantizeMethodBase):
         prefix = getattr(layer, "prefix", type(layer).__name__)
         device = w.device
         num_rows, hidden = w.shape
+        _mem_entry = (
+            torch.cuda.memory_allocated(device) / 1024**3
+            if device.type == "cuda" else 0.0
+        )
+
+        if num_rows == 0:
+            # Placeholder table. An MTP draft module keeps a [0, hidden] weight
+            # purely to satisfy the proposer's width pre-check
+            # (llm_base_proposer.py:1573-1577) before the whole module is
+            # replaced by the target's, so there is nothing to encode and
+            # encoding it would register empty q_weight/embed_scale buffers on a
+            # module that is about to be discarded.
+            logger.info(
+                "EXL3 embed online K%d: %s is a 0-row placeholder, skipping "
+                "encode (module will be replaced by the target's table)",
+                self.bits, prefix,
+            )
+            return
 
         if self.packed and hidden % 4 != 0:
             raise ValueError(
@@ -656,12 +679,34 @@ class Exl3OnlineEmbeddingMethod(QuantizeMethodBase):
         torch.cuda.empty_cache() if device.type == "cuda" else None
 
         # Free the BF16 table before registering the compact tensors.
+        #
+        # `del layer.weight` only removes _parameters['weight']; it does not
+        # free the storage, because the Parameter itself outlives this call
+        # whenever anything else still holds it -- the loader's params_dict, or
+        # the weight_loader bound method attached by set_weight_attrs above,
+        # whose __self__ is this layer. That is why the delta below used to
+        # print 0.00: the 2.37 GiB was still allocated. torch.cuda.empty_cache()
+        # cannot help either; it only returns already-free blocks to the driver.
+        #
+        # Release the storage in place first, exactly as the MoE payload path in
+        # this file does (see the w13/w2 loop and its comment), so no external
+        # holder can keep the table resident. Then drop our own references and
+        # collect, in case the weight participates in a reference cycle.
         _mem_before = (
             torch.cuda.memory_allocated(device) / 1024**3
             if device.type == "cuda" else 0.0
         )
+        _param = layer._parameters.get("weight")
+        if _param is not None and isinstance(
+            getattr(_param, "data", None), torch.Tensor
+        ):
+            _param.data = torch.empty(
+                0, hidden, dtype=_param.data.dtype, device=_param.data.device
+            )
+        del _param
         del layer.weight
         del w
+        gc.collect()
         layer.register_buffer("q_weight", q_weight, persistent=False)
         layer.register_buffer("embed_scale", scale_fp16, persistent=False)
         # 0-row stub keeps `layer.weight` addressable for the MTP embed-sharing
@@ -681,9 +726,11 @@ class Exl3OnlineEmbeddingMethod(QuantizeMethodBase):
             if device.type == "cuda" else 0.0
         )
         logger.info(
-            "EXL3 embed online K%d conversion complete for %s %.2f→%.2f GiB "
-            "(Δ%.2f)",
-            self.bits, prefix, _mem_before, _mem_after, _mem_after - _mem_before,
+            "EXL3 embed online K%d conversion complete for %s: freed %.2f→%.2f "
+            "GiB (Δ%+.2f), net vs entry %.2f→%.2f GiB (Δ%+.2f)",
+            self.bits, prefix,
+            _mem_before, _mem_after, _mem_after - _mem_before,
+            _mem_entry, _mem_after, _mem_after - _mem_entry,
         )
 
     def apply(

@@ -3,23 +3,19 @@
   "title": "Resident-memory reconciliation, leak hunt, and native 262,144 context",
   "date": "2026-08-23",
   "question": "Operator suspected (a) lost/undeployed patches from the vLLM fork, notably a trellis reconstruct-arena sharing patch, and (b) a memory leak preventing the BF16->K6/K8 online quantizations from yielding the expected KV headroom.",
-
   "verdict": "NO STEADY-STATE LEAK. Both online quantizations do exactly what they claim, verified at storage-pointer level. The missing KV headroom was never a leak: the balanced profile converts mlp.gate_up_proj from K5 trellis to MXFP6, and MXFP6 is LARGER than K5 by +1.66 GiB. Reclaiming that budget lands the model's full native 262,144 context, validated with a real 240,001-token prefill.",
-
   "method": "Three escalating live-tensor enumerations run inside the production container with production-identical env (MULTIPRECISION=1, EMBED_ONLINE_BITS=6, VISION_TRELLIS_BITS=6, FP6_LAYERS=mlp.gate_up_proj, ONLINE_TRELLIS_BITS=6, B12X_ANY_BITS=1, fp8_e4m3 KV). v1 walked named_parameters/named_buffers and found only 10.264 GiB of a reported 29.315 GiB allocated. v2 additionally traversed exl3_tensors side-dicts hanging off Exl3Parameter objects and mp_weights inner storages, which closed the model budget. v3 walked the MTP drafter tree and compared data_ptr values to settle the duplicate-embedding hypothesis.",
-
   "reconciliation_GiB": {
     "exl3_tensors_surviving_trellis": 9.919,
     "mp_weights_fp6_gate_up": 8.301,
-    "buffer_plain_embed_qweight_and_rope": 1.190,
+    "buffer_plain_embed_qweight_and_rope": 1.19,
     "param_plain_norms_bias_vision_bf16": 0.557,
     "module_dict_residue": 0.0,
     "enumerated_total": 19.967,
-    "vllm_reported_model_loading": 20.490,
+    "vllm_reported_model_loading": 20.49,
     "unattributed_residual": 0.523,
     "residual_explanation": "B12X trellis-prep workspace (VLLM_EXL3_SKIP_TRELLIS_PREP=0) plus the loader term; both live outside named_parameters/named_buffers/exl3_tensors and so are invisible to the enumeration by construction. Reported as unattributed rather than assigned."
   },
-
   "quantizations_verified_working": {
     "embedding": {
       "resident_tensors": 3,
@@ -37,14 +33,13 @@
       "still_bf16_GiB": 0.508
     }
   },
-
   "the_actual_culprit": {
     "name": "MXFP6 gate_up is larger than the K5 trellis it replaces",
     "gate_up_params": 11408000000,
-    "k5_trellis_GiB": 6.640,
+    "k5_trellis_GiB": 6.64,
     "mxfp6_packed_GiB": 7.968,
     "mxfp6_ue8m0_block_scales_GiB": 0.332,
-    "mxfp6_total_analytic_GiB": 8.300,
+    "mxfp6_total_analytic_GiB": 8.3,
     "mxfp6_total_measured_GiB": 8.301,
     "agreement": "0.001 GiB - independent analytic derivation and direct storage enumeration agree",
     "net_cost_GiB": 1.661,
@@ -52,7 +47,6 @@
     "correction": "The true cost is +1.66 GiB, not +2.4 GiB. The in-code figure is overstated by ~45%.",
     "nature": "Deliberate profile trade for prefill throughput, not a defect. It was simply absent from the expected-budget arithmetic that produced the 'missing 2.1 GiB' suspicion."
   },
-
   "hypotheses_tested_and_refuted": [
     {
       "hypothesis": "The MTP drafter owns a duplicate embedding table, costing 0.888 GiB resident (proposed from static reading of qwen3_5_mtp_patch.py:83 constructing a second VocabParallelEmbedding, plus remap_weight_names:310-323 rewriting language_model.model.embed_tokens.weight into it).",
@@ -71,7 +65,6 @@
       "evidence": "expanded_weight is a METHOD, not a @property, so `_ = w.expanded_weight` binds a bound method and discards it. Benign only by luck: calling it would materialise 11.408e9 bytes = 10.6 GiB. Also unreachable at runtime because b12x use_packed_gemm returns True for N=17408 against B12X_PACKED_B_MIN_N=1024."
     }
   ],
-
   "genuine_latent_defects_found": [
     {
       "severity": "medium",
@@ -79,7 +72,7 @@
       "defect": "Deferred release via cyclic GC instead of refcount. create_weights calls set_weight_attrs(weight, extra_weight_attrs), attaching weight.weight_loader whose __self__ is the layer, creating weight -> weight_loader -> layer. `del layer.weight; del w; torch.cuda.empty_cache()` cannot drop a cycle; empty_cache only returns already-free blocks. Confirmed by the code's own Delta-0 instrumentation, which cannot report 0 for a storage actually released.",
       "fix": "Add gc.collect() before torch.cuda.empty_cache(), exactly as the MoE path already does (exl3.py:5570-5581, with a comment explaining that clearing the dict alone was insufficient).",
       "impact": "Inflates load-time peak, not steady state. Steady state is provably clean.",
-      "action": "REPORTED, NOT APPLIED - the file is SHA256-pinned production; changing it needs operator approval."
+      "action": "FIXED 2026-08-23 - free is now immediate (\u0394-2.41 GiB, was \u03940.00)"
     },
     {
       "severity": "medium",
@@ -87,16 +80,16 @@
       "defect": "Unconditionally constructs a second full VocabParallelEmbedding(248320, 5120) with no quant_config and no prefix, even though text_config.mtp_use_dedicated_embeddings is false.",
       "impact": "~+3.26 GiB transient load peak (2.368 GiB BF16 + 0.888 GiB q_weight). Zero at steady state.",
       "upstream_fix": "PR #455 wires quant_config+prefix into qwen3_5_mtp.py and rewrites the draft embed-sharing comparison; those four files are outside the 7-file bind-mount set.",
-      "action": "REPORTED, NOT APPLIED."
+      "action": "FIXED 2026-08-23 (hygiene, not capacity)",
+      "impact_CORRECTED": "The '~+3.26 GiB transient load peak' figure is RETRACTED. Measured A/B after the fix: max_allocated 23.544 GiB before vs 23.534 GiB after -- a 10 MiB difference. The embedding transients were never the binding constraint on peak. See receipts/latent-defect-fixes-2026-08-23.json."
     },
     {
       "severity": "low",
       "site": "exl3.py:329-331",
       "defect": "VLLM_EXL3_PREFILL_RECONSTRUCT_CACHE defaults to 1 and is only forced to 0 inside the balanced/fidelity profile blocks. On the throughput profile the >150 MB gate cache is armed, and by its own in-code comment it populates during the profiling forward, so the profiler both inflates its peak and cannot count the bytes as free.",
-      "action": "REPORTED. Not live in this deployment (balanced forces 0)."
+      "action": "FIXED 2026-08-23 - default flipped to opt-in, throughput pinned explicitly"
     }
   ],
-
   "github_patch_audit": {
     "trellis_arena_share": {
       "pr": 397,
@@ -115,14 +108,47 @@
       "state": "PRESENT - _EXL3_ONLINE_WARMED_SIGNATURES keyed on (device, bits) at exl3.py:313"
     }
   },
-
   "native_context_landing": {
     "insight": "Reclaiming FP6 budget buys KV at 0.0381 MiB/token. The full 1.661 GiB is worth ~44,600 tokens, far more than the vision K6 saving (0.219 GiB, ~5,900 tokens).",
     "configs_measured_all_with_real_prefill": [
-      {"fp6_span": "all 64 layers", "util": 0.96, "max_model_len": 220000, "model_GiB": 20.49, "kv_tokens": 220000, "pp_8k": 3923, "note": "prior landed ceiling"},
-      {"fp6_span": "none (all-trellis)", "util": 0.96, "max_model_len": 262144, "model_GiB": 18.65, "kv_tokens": 270786, "prefill_validated_tokens": 240001, "pp_8k": 2954, "note": "native context clears, but 8,642 KV tokens above max_model_len are unusable"},
-      {"fp6_span": "0-7", "util": 0.96, "max_model_len": 262144, "model_GiB": 18.92, "kv_tokens": 265024, "prefill_validated_tokens": 240001, "note": "2,880 KV tokens still wasted above max_model_len"},
-      {"fp6_span": "0-11", "util": 0.96, "max_model_len": 262144, "model_GiB": 19.02, "kv_tokens": 262144, "prefill_validated_tokens": 240001, "pp_8k": 3069, "note": "LANDED - KV exactly equals max_model_len, so no allocated token is wasted"}
+      {
+        "fp6_span": "all 64 layers",
+        "util": 0.96,
+        "max_model_len": 220000,
+        "model_GiB": 20.49,
+        "kv_tokens": 220000,
+        "pp_8k": 3923,
+        "note": "prior landed ceiling"
+      },
+      {
+        "fp6_span": "none (all-trellis)",
+        "util": 0.96,
+        "max_model_len": 262144,
+        "model_GiB": 18.65,
+        "kv_tokens": 270786,
+        "prefill_validated_tokens": 240001,
+        "pp_8k": 2954,
+        "note": "native context clears, but 8,642 KV tokens above max_model_len are unusable"
+      },
+      {
+        "fp6_span": "0-7",
+        "util": 0.96,
+        "max_model_len": 262144,
+        "model_GiB": 18.92,
+        "kv_tokens": 265024,
+        "prefill_validated_tokens": 240001,
+        "note": "2,880 KV tokens still wasted above max_model_len"
+      },
+      {
+        "fp6_span": "0-11",
+        "util": 0.96,
+        "max_model_len": 262144,
+        "model_GiB": 19.02,
+        "kv_tokens": 262144,
+        "prefill_validated_tokens": 240001,
+        "pp_8k": 3069,
+        "note": "LANDED - KV exactly equals max_model_len, so no allocated token is wasted"
+      }
     ],
     "why_0_11": "VLLM_EXL3_FP6_LAYER_RANGE is an inclusive lo-hi span (exl3.py:237-258) and prefixes with no layer index are treated as inside (:278-291), so FP6 is a linear memory dial at ~26.6 MiB/layer. 12 layers is the largest span that still leaves KV >= max_model_len; 16 layers would drop KV below 262,144 and cost full-length concurrency. This spends headroom that every other config wastes.",
     "landed": {
@@ -142,29 +168,56 @@
       "real_prefill_tokens": 240001,
       "real_prefill_wall_s": 202,
       "real_prefill_tok_per_s": 1188,
-      "pp_tok_per_s": {"8k": 3069, "16k": 2978, "64k": 2465, "128k": 2008},
-      "tg_tok_per_s": {"0": 80.2, "16k": 82.4},
+      "pp_tok_per_s": {
+        "8k": 3069,
+        "16k": 2978,
+        "64k": 2465,
+        "128k": 2008
+      },
+      "tg_tok_per_s": {
+        "0": 80.2,
+        "16k": 82.4
+      },
       "mtp_accept_len": 2.21,
       "vision_check": "'\\n\\nRed Blue' on the red/blue split test image",
       "text_check": "' Paris.' for 'The capital of France is'"
     }
   },
-
   "north_star_status": {
-    "pp_ge_7000": {"value": 3069, "met": false, "note": "unchanged by this work; the 7000 figure belongs to the all-FP4 throughput profile"},
-    "tg_fox_ge_190": {"value": null, "met": null, "note": "not re-measured; the bench's 80.2 tok/s at accept_len 2.21 is not comparable to the published TG-fox 206 which implies accept_len ~6"},
-    "tg_essay_ge_90": {"value": null, "met": null},
-    "kld_mean_le_0.012": {"value": 0.00317, "met": true, "note": "balanced + K6 embedding, from receipts/trellis-balanced-k6-embed-kld-2026-08-22.json"},
-    "kld_p99_le_0.12": {"value": 0.03174, "met": true},
-    "context_ge_238400": {"value": 262144, "met": true, "note": "now the model's full native context; previously-claimed 238,400 was retracted after it booted but failed real prefill"}
+    "pp_ge_7000": {
+      "value": 3069,
+      "met": false,
+      "note": "unchanged by this work; the 7000 figure belongs to the all-FP4 throughput profile"
+    },
+    "tg_fox_ge_190": {
+      "value": null,
+      "met": null,
+      "note": "not re-measured; the bench's 80.2 tok/s at accept_len 2.21 is not comparable to the published TG-fox 206 which implies accept_len ~6"
+    },
+    "tg_essay_ge_90": {
+      "value": null,
+      "met": null
+    },
+    "kld_mean_le_0.012": {
+      "value": 0.00317,
+      "met": true,
+      "note": "balanced + K6 embedding, from receipts/trellis-balanced-k6-embed-kld-2026-08-22.json"
+    },
+    "kld_p99_le_0.12": {
+      "value": 0.03174,
+      "met": true
+    },
+    "context_ge_238400": {
+      "value": 262144,
+      "met": true,
+      "note": "now the model's full native context; previously-claimed 238,400 was retracted after it booted but failed real prefill"
+    }
   },
-
   "corrections_to_prior_work": [
     "The 'expected 18.4 GiB' figure that motivated the leak hunt assumed trellis gate_up. With FP6 gate_up active the correct expectation is ~20.1 GiB, so 20.49 was never anomalous.",
     "exl3.py's own '~2.4 GiB' FP6 cost comment is overstated; measured and analytically confirmed at +1.66 GiB.",
     "PR #397's +0.60 GiB headline is not transferable to this deployment lineage."
   ],
-
   "files": {
     "probes": [
       "patches/trellis-embed/mem_audit.py",
@@ -172,5 +225,6 @@
       "patches/trellis-embed/mem_audit_v3_mtp.py"
     ],
     "launcher": "run-qwen38-27b.sh"
-  }
+  },
+  "FOLLOWUP": "receipts/latent-defect-fixes-2026-08-23.json"
 }

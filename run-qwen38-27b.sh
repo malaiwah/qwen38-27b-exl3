@@ -25,7 +25,7 @@ SERVED_MODEL_NAME="${SERVED_MODEL_NAME:-Qwen3.8-27B}"
 # PR #314 is mounted over the pinned GG r34 base image. Refuse to start if the
 # installed overlay is absent or differs from the exact qualified source.
 EXL3_PATCH_HOST="${EXL3_PATCH_HOST:-/home/mbelleau/vllm-exl3-multiprecision.py}"
-EXL3_PATCH_SHA256="a164be425c484ebccc7a117e81210e52a394696e5d5e9bc519c34e2723e6df31"
+EXL3_PATCH_SHA256="1cb9e7b877fcd117e60e4ca03b2adc490990b1292b7d475ad1e5c503d5135631"
 EXL3_PATCH_CTR="/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py"
 [ -f "${EXL3_PATCH_HOST}" ] || {
   echo "EXL3 graph patch is missing: ${EXL3_PATCH_HOST}" >&2
@@ -84,6 +84,11 @@ case "${PROFILE}" in
   throughput)
     : "${VLLM_EXL3_FP4_LAYERS:=mlp.gate_up_proj,mlp.down_proj,linear_attn.,self_attn.}"
     : "${VLLM_EXL3_PREFILL_RECONSTRUCT_M:=1}"
+    # Pinned explicitly now that exl3.py defaults this OFF (it corrupts vLLM's
+    # memory profiling). Throughput is the only profile ever measured with the
+    # reconstruct cache armed, and its 249,600 ceiling was established that
+    # way, so keep it on here rather than silently re-tune a measured config.
+    : "${VLLM_EXL3_PREFILL_RECONSTRUCT_CACHE:=1}"
     : "${VLLM_EXL3_SKIP_TRELLIS_PREP:=0}"
     # 2026-08-19: 250,000 now fails boot deterministically -- "9.26 GiB KV
     # needed ... 9.25 GiB available; estimated maximum model length 249696".
@@ -140,7 +145,7 @@ case "${PROFILE}" in
     # than their trellis form, which is why the context ceiling is 199,104 rather
     # than 238,400 - that is the whole trade.
     : "${VLLM_EXL3_FP4_LAYERS:=,}"
-    : "${VLLM_EXL3_FP6_LAYERS:=mlp.gate_up_proj}"
+    : "${VLLM_EXL3_FP6_LAYERS:=mlp.gate_up_proj}"; : "${VLLM_EXL3_FP6_LAYER_RANGE:=0-11}"
     : "${VLLM_EXL3_PREFILL_RECONSTRUCT_M:=1}"
     : "${VLLM_EXL3_PREFILL_RECONSTRUCT_MAX_MB:=512}"
     : "${VLLM_EXL3_PREFILL_RECONSTRUCT_CACHE:=0}"
@@ -151,7 +156,7 @@ case "${PROFILE}" in
     : "${VLLM_EXL3_B12X_ANY_BITS:=1}"
     : "${VLLM_EXL3_SKIP_TRELLIS_PREP:=0}"
     : "${GPU_MEMORY_UTILIZATION:=0.96}"
-    : "${MAX_MODEL_LEN:=220000}"
+    : "${MAX_MODEL_LEN:=262144}"
     ;;
   *)
     echo "Unknown PROFILE='${PROFILE}' (expected: throughput | fidelity | balanced)" >&2
@@ -282,7 +287,7 @@ podman run "${RUN_ARGS[@]}" --replace \
   -e VLLM_EXL3_B12X_ANY_BITS="${VLLM_EXL3_B12X_ANY_BITS:-0}" \
   -e VLLM_EXL3_B12X_SELFTEST="${VLLM_EXL3_B12X_SELFTEST:-0}" \
   -e VLLM_EXL3_PREFILL_RECONSTRUCT_MAX_MB="${VLLM_EXL3_PREFILL_RECONSTRUCT_MAX_MB:-4096}" \
-  -e VLLM_EXL3_PREFILL_RECONSTRUCT_CACHE="${VLLM_EXL3_PREFILL_RECONSTRUCT_CACHE:-1}" \
+  -e VLLM_EXL3_PREFILL_RECONSTRUCT_CACHE="${VLLM_EXL3_PREFILL_RECONSTRUCT_CACHE:-0}" \
   -e VLLM_EXL3_B12X_MIN_M="${VLLM_EXL3_B12X_MIN_M:-0}" \
   -e VLLM_EXL3_FOLD_FP32_BUDGET_MB="${VLLM_EXL3_FOLD_FP32_BUDGET_MB:-96}" \
   -e VLLM_EXL3_B12X_N_RANGE="${VLLM_EXL3_B12X_N_RANGE:-5120-36864}" \

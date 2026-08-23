@@ -1,0 +1,103 @@
+{
+  "schema": "qwen38-production-change/1",
+  "title": "Fix three latent defects found by the memory audit (D1 embedding free, D2 MTP duplicate embedding, D3 reconstruct-cache default)",
+  "date": "2026-08-23",
+  "parent": "receipts/memory-forensics-native-context-2026-08-23.json",
+
+  "summary": "All three latent defects reported by the 2026-08-23 audit are fixed, verified on hardware, and in production. Two of the three behave exactly as intended and are proven by direct log evidence. The third fix's predicted benefit did NOT materialise and that prediction is retracted here: eliminating the MTP draft's duplicate embedding did not lower the load peak (23.544 -> 23.534 GiB, a 10 MiB difference), so the embedding transients were never the binding constraint on peak memory. All three remain worth having as correctness and hygiene fixes, but none buys capacity.",
+
+  "patch_pin": {
+    "before": "a164be425c484ebccc7a117e81210e52a394696e5d5e9bc519c34e2723e6df31",
+    "after": "1cb9e7b877fcd117e60e4ca03b2adc490990b1292b7d475ad1e5c503d5135631",
+    "note": "EXL3_PATCH_SHA256 in run-qwen38-27b.sh re-pinned; boot verified, so the launcher's checksum gate passes."
+  },
+
+  "D1_embedding_free_path": {
+    "file": "patches/vllm-exl3-multiprecision.py",
+    "symbol": "Exl3OnlineEmbeddingMethod.process_weights_after_loading",
+    "defect": "`del layer.weight` removes _parameters['weight'] but does not free the storage: the Parameter itself outlives the call whenever anything else still holds it (the loader's params_dict, or the weight_loader bound method attached by set_weight_attrs, whose __self__ is the layer). torch.cuda.empty_cache() cannot help; it only returns already-free blocks to the driver. The 2.37 GiB BF16 table therefore survived until the cyclic collector happened to run. Separately, _mem_before was sampled AFTER q_weight and scale_fp16 were already allocated, so the reported delta could never show the true net change.",
+    "fix": "Release the storage in place (param.data = torch.empty(0, hidden, ...)) before dropping references, then gc.collect(). This is the identical technique the MoE payload path in this same file already uses, whose in-code comment reads 'Clearing the dict is not enough: the Parameter still owns the loaded storage'. Instrumentation now samples a function-entry baseline and reports both the free delta and the honest net.",
+    "verification": {
+      "before": "EXL3 embed online K6 conversion complete for VocabParallelEmbedding 4.19→4.19 GiB (Δ0.00)",
+      "after": "EXL3 embed online K6 conversion complete for VocabParallelEmbedding: freed 4.21→1.81 GiB (Δ-2.41), net vs entry 3.33→1.81 GiB (Δ-1.52)",
+      "reading": "The free is now real and immediate: 2.41 GiB returned at the call site instead of Delta-0. The net of -1.52 GiB matches the predicted -1.481 GiB (BF16 2.369 out, packed int6 0.888 in) to within rounding.",
+      "significance": "The old Delta-0 was not merely uninformative, it was actively misleading -- it is what motivated a leak hunt for a leak that did not exist. Correct instrumentation is the durable value here."
+    }
+  },
+
+  "D2_mtp_duplicate_embedding": {
+    "files": ["patches/qwen3_5_mtp_patch.py", "patches/vllm-exl3-multiprecision.py"],
+    "defect": "The MTP module unconditionally built a second full VocabParallelEmbedding(248320, 5120), and remap_weight_names routed the checkpoint's single real embedding into it, so the draft read a private 2.368 GiB BF16 table from safetensors and encoded its own 0.888 GiB packed copy. All of it is then discarded, because llm_base_proposer.py's _maybe_share_embeddings takes the 'Detected MTP model' branch and rebinds the attribute to the target's module at :1589-1591.",
+    "fix": "Keep the module -- the proposer's width pre-check reads draft_embed.weight.shape[-1] at :1573-1577 -- but release its storage to a [0, hidden] stub at construction; stop routing embed_tokens in remap_weight_names; pass skip_substrs=['embed_tokens'] to AutoWeightsLoader to declare the omission (missing weights are only debug-logged at models/utils.py:373, never asserted). Added a 0-row early return in the EXL3 embedding method so the placeholder is not pointlessly encoded.",
+    "why_not_has_own_embed_tokens": "That class attribute (used by dspark.py) only skips the weight-equality comparison branch; the MTP else-branch already shares unconditionally, and the module must exist either way, so it would have changed nothing here.",
+    "verification": {
+      "before": "two real conversions: '4.19→4.19 GiB (Δ0.00)' and '23.60→23.60 GiB (Δ0.00)' -- the second is the draft's duplicate, encoded at 23.60 GiB occupancy",
+      "after": "one real conversion plus 'EXL3 embed online K6: VocabParallelEmbedding is a 0-row placeholder, skipping encode (module will be replaced by the target's table)'",
+      "mtp_still_correct": "accept_len 2.25 after vs 2.21 before (run-to-run noise); a broken draft embedding would have collapsed acceptance toward 1.0 or produced incoherent output",
+      "functional": "text ' Paris.', vision '\\n\\nRed Blue', 'first eight primes' -> '2, 3, 5, 7, 11, 13, 17, 19'"
+    },
+    "RETRACTED_PREDICTION": {
+      "claim": "The audit predicted this would cut ~3.26 GiB of load peak.",
+      "measured": "It did not. A/B with the pre-fix files mounted (KV capped at 2048 MiB so the KV pool does not dominate max_memory_allocated): BEFORE max_allocated 23.544 GiB, AFTER 23.534 GiB. Difference 0.010 GiB. transient_headroom (max minus final) is 0.083 GiB in both arms.",
+      "conclusion": "The load peak is set by something other than the embedding path -- the FP6 gate_up conversion and/or the B12X trellis prep are the candidates, not measured here. The embedding transients were never the binding constraint. This fix is therefore hygiene: it removes a 2.368 GiB safetensors read and a full wasted encode pass (load time 5.71s -> 5.65s), not capacity.",
+      "honesty_note": "Reported as a retraction rather than quietly dropped, because the 3.26 GiB figure appears in the parent receipt and in the prior session summary."
+    }
+  },
+
+  "D3_reconstruct_cache_default": {
+    "files": ["patches/vllm-exl3-multiprecision.py", "run-qwen38-27b.sh"],
+    "defect": "VLLM_EXL3_PREFILL_RECONSTRUCT_CACHE defaulted to '1' while its own in-code comment states the cache populates during vLLM's profiling forward, so the profiler both inflates its measured peak and cannot count the cached bytes as free -- silently shrinking the KV pool. The fidelity (launcher:107) and balanced (launcher:146) blocks both override it to 0, i.e. every profile that was ever tuned already treats 0 as correct. Only throughput inherited the armed cache, and any new profile would have inherited it too.",
+    "fix": "Default flipped to '0' (opt-in) in exl3.py; the launcher's container-level fallback flipped from :-1 to :-0; and the throughput block now pins ':= 1' explicitly.",
+    "behaviour_preservation": "Deliberate: throughput is the only profile ever measured with the cache armed, and its 249,600 ceiling was established that way. Pinning it explicitly means no measured configuration changes while the unsafe default becomes safe.",
+    "verification": "Balanced boots and serves identically (it already forced 0, so no behavioural delta was expected or observed)."
+  },
+
+  "steady_state_unchanged_as_designed": {
+    "model_loading_GiB": 19.02,
+    "kv_cache_tokens": 262144,
+    "max_concurrency_at_full_length": 1.0,
+    "note": "Identical to the pre-fix landed configuration. Expected: the audit proved steady state was already correct by data_ptr enumeration, so correctness fixes to transient behaviour cannot and did not change it."
+  },
+
+  "post_fix_performance": {
+    "pp_tok_per_s": {"8k": 3132, "16k": 2999, "64k": 2518, "128k": 2037},
+    "pp_tok_per_s_before_fixes": {"8k": 3069, "16k": 2978, "64k": 2465, "128k": 2008},
+    "tg_tok_per_s": {"0": 81.7, "16k": 80.7},
+    "mtp_accept_len": 2.25,
+    "reading": "Within run-to-run noise, marginally favourable. No regression."
+  },
+
+  "production_config": {
+    "profile": "balanced",
+    "gpu_memory_utilization": 0.96,
+    "max_model_len": 262144,
+    "kv_cache_dtype": "fp8_e4m3",
+    "fp6_layers": "mlp.gate_up_proj",
+    "fp6_layer_range": "0-11",
+    "vision_trellis_bits": 6,
+    "embed_online_bits": 6,
+    "service": "active, enabled, healthy"
+  },
+
+  "still_open": [
+    "PR #397's dropped safety mechanisms (capture-freeze, dedicated-per-geometry buffer fallback) remain absent from the deployed _RECON_ARENA hand-port. Latent, not live: the reconstruct branch needs m>=128 while FULL_DECODE_ONLY capture rows are 28.",
+    "The actual source of the 23.5 GiB load peak is unattributed. FP6 gate_up conversion transients and B12X trellis prep are the candidates; measuring it would need per-phase max_memory_allocated sampling inside the load."
+  ],
+
+  "files": {
+    "patches": [
+      "patches/vllm-exl3-multiprecision.py",
+      "patches/qwen3_5_mtp_patch.py"
+    ],
+    "launcher": "run-qwen38-27b.sh",
+    "probes": [
+      "patches/trellis-embed/load_peak.py",
+      "patches/trellis-embed/mem_audit_v3_mtp.py"
+    ],
+    "host_backups": [
+      "/home/mbelleau/vllm-exl3-multiprecision.py.pre-d123",
+      "/home/mbelleau/qwen3_5_mtp_patch.py.pre-d123",
+      "/home/mbelleau/run-qwen38-27b.sh.pre-d123"
+    ]
+  }
+}

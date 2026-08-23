@@ -80,10 +80,27 @@ class Qwen3_5MultiTokenPredictor(nn.Module):
         self.mtp_start_layer_idx = config.num_hidden_layers
         self.num_mtp_layers = getattr(config, "mtp_num_hidden_layers", 1)
 
+        # The proposer shares the target model's embedding table with the
+        # draft unconditionally on the MTP path: llm_base_proposer.py's
+        # _maybe_share_embeddings takes the "Detected MTP model" branch, then
+        # deletes this attribute and rebinds it to the target's module
+        # (:1589-1591). A full-size table here is therefore pure waste -- it
+        # costs 2.368 GiB of BF16, a 2.368 GiB safetensors read, and (with
+        # VLLM_EXL3_EMBED_ONLINE_BITS set) a 0.888 GiB online-quantised copy,
+        # all of it discarded moments later. Keep the module, because the
+        # proposer's width pre-check reads draft_embed.weight.shape[-1]
+        # (:1573-1577), but release the storage immediately. remap_weight_names
+        # below stops routing the checkpoint's embedding into it.
         self.embed_tokens = VocabParallelEmbedding(
             self.vocab_size,
             config.hidden_size,
         )
+        _embed_w = self.embed_tokens.weight
+        _embed_w.data = torch.empty(
+            0, config.hidden_size,
+            dtype=_embed_w.dtype, device=_embed_w.device,
+        )
+        del _embed_w
 
         # Workaround: mtp.fc is stored as BF16 in NVFP4 checkpoints but is
         # missing from hf_quant_config.json exclude_modules. Force unquantized.
@@ -312,14 +329,22 @@ class Qwen3_5MTP(LocalArgmaxMixin, nn.Module, SupportsMultiModal):
             for name, weight in weights:
                 if name.startswith("mtp."):
                     name = name.replace("mtp.", "model.")
-                elif any(key in name for key in ["embed_tokens", "lm_head"]):
-                    if "embed_tokens" in name:
-                        name = name.replace("language_model.", "")
+                elif "embed_tokens" in name:
+                    # Do not route the target's embedding into the draft: the
+                    # proposer shares the target module (see __init__), so
+                    # loading a private copy only inflates the load peak.
+                    continue
+                elif "lm_head" in name:
+                    pass
                 else:
                     continue
                 yield name, weight
 
-        loader = AutoWeightsLoader(self)
+        # embed_tokens is deliberately never loaded here (see __init__ and
+        # remap_weight_names). Missing weights are only debug-logged by
+        # AutoWeightsLoader, never asserted, but declare the skip explicitly so
+        # the omission reads as intentional.
+        loader = AutoWeightsLoader(self, skip_substrs=["embed_tokens"])
         return loader.load_weights(remap_weight_names(weights))
 
 
