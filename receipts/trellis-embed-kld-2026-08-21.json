@@ -1,6 +1,6 @@
 {
-  "AUDIT_STATUS": "CORRECTED - usable within the arm set only",
-  "AUDIT_NOTE": "The K4/K6/K8 means (0.002857 / 0.002667 / 0.002653) and their ordering stand: one harness, one checkpoint, one variable. They are NOT comparable to the int6/int8 comparators, which were measured on the strength-zero R30 checkpoint with a different replay tool. Sub-1-percent superiority claims are retracted: this repo's own frontier-2026-08-19.md shows a 0.94% spread on an identical checkpoint and profile from kernel routing alone. round_trip_cosine is invalid (fp32 norm under-accumulation over 1.27e9 elements). 'round_trip_mse: 0' is a %.8f print artifact and should read < 5e-09.",
+  "AUDIT_STATUS": "CORRECTED - control now exists; K6/K8 are fidelity-neutral, not better than BF16",
+  "AUDIT_NOTE": "The missing BF16-embedding control has been measured under byte-identical env with the canonical fidelity.py replay: 0.0026488 mean, 0.027320 p99, 0.978220 top1 (receipts/trellis-embed-bf16-control-2026-08-22.json). Against that control: K8 +0.17%, K6 +0.69% - both inside this repo's 0.94% kernel-routing noise band, so both are FIDELITY-NEUTRAL, not improvements. K4 is +7.87% mean / +10.14% p99, the only resolvable cost. The earlier claim that K6 (0.002667) beat BF16 embeddings (0.002700) is retracted: 0.002700 was an offline number from a different harness, and the true same-harness control is 0.0026488, which K6 is slightly WORSE than - as physics requires.",
   "AUDIT_SUPERSEDED_BY": "receipts/trellis-audit-corrections-2026-08-22.json",
   "AUDIT_RETRACTED_FIELDS": [
     "results.*.round_trip_cosine",
@@ -137,5 +137,6 @@
     "k4_report": "/home/mbelleau/worktrees/r30-capture-smoke/trellis-k6-capture/trellis-k4-replay-report.json (on aiboss)",
     "k6_report": "/home/mbelleau/worktrees/r30-capture-smoke/trellis-k6-capture/trellis-k6-replay-report.json (on aiboss)",
     "k8_report": "/home/mbelleau/worktrees/r30-capture-smoke/trellis-k6-capture/trellis-k8-replay-report.json (on aiboss)"
-  }
+  },
+  "AUDIT_CONTROL_ARM": "receipts/trellis-embed-bf16-control-2026-08-22.json"
 }

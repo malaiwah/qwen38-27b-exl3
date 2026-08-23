@@ -3,16 +3,13 @@
   "title": "Vision tower trellis K6 in production + balanced profile at 238,400 context",
   "date": "2026-08-22",
   "summary": "Landed online trellis K6 encoding for the 128-aligned ViT projections, which freed enough VRAM to raise the balanced profile from 199,104 to 238,400 context - reaching the north-star context criterion. Verified by two consecutive clean boots and a functional vision test.",
-
   "problem": "The vision tower ships BF16 in the checkpoint (0.917 GB of a 31.4 GiB budget) and bypassed the EXL3 quantization path entirely. An earlier attempt to reach it by monkey-patching torch.nn.Linear.forward installed cleanly but never fired.",
-
   "root_cause": {
     "finding": "The Qwen3.8 vision tower contains ZERO torch.nn.Linear instances.",
     "classes": "attn.qkv is QKVParallelLinear; attn.proj, mlp.linear_fc2 and merger.linear_fc2 are RowParallelLinear; mlp.linear_fc1 and merger.linear_fc1 are ColumnParallelLinear. All derive LinearBase -> PluggableLayer -> nn.Module. Live MRO dump confirms nn.Linear is absent: ColumnParallelLinear ['ColumnParallelLinear','LinearBase','PluggableLayer','Module'], issubclass(nn.Linear) False.",
     "why_it_stayed_bf16": "The vision linears DO receive quant_config (qwen3_vl.py:1755 forwards it into Qwen3_VisionTransformer), so Exl3Config.get_quant_method IS consulted for every visual.* prefix. It fell all the way through: _linear_prefix_is_exl3() is False (no trellis tensors in the checkpoint for visual.*), _get_bf16_online_linear_method() returns None (the launcher's QUANTIZATION_CONFIG ignore list contains 're:.*visual\\..*'), so it ended at UnquantizedLinearMethod().",
     "also_missed_by_the_nn_linear_patch": "visual.patch_embed.proj is Conv3dLayer (calls F.linear directly at conv.py:226) and visual.pos_embed is a plain nn.Embedding."
   },
-
   "change": {
     "files": {
       "vllm-exl3-multiprecision.py": "Added _vision_trellis_bits() next to _online_trellis_bits(), a _get_vision_trellis_linear_method() on Exl3Config, and a dispatch branch in get_quant_method placed AFTER the EXL3-storage check and the BF16 overlay so it can never displace an EXL3-owned matrix.",
@@ -21,9 +18,7 @@
     "mechanism": "Returns the existing Exl3OnlineLinearMethod, which already implements the full create_weights / process_weights_after_loading / apply triple: encode BF16 -> trellis at load time, store the packed payload plus suh/svh, replace the weight with a zero-byte stub, and route the matmul through the b12x trellis GEMM. No new kernel.",
     "alignment_gate": "Only shards with K and N both 128-aligned are taken. Admitted: attn.qkv [3456,1152] x27, attn.proj [1152,1152] x27, merger.linear_fc1 [4608,4608], merger.linear_fc2 [5120,4608] = 188.2M params. Declined: the MLP pair [4304,1152]/[1152,4304] x27 = 267.7M params (58% of the tower), because 4304 = 33.625 x 128."
   },
-
   "why_the_mlp_pair_is_out_of_scope": "Padding 4304 -> 4352 for the weight also requires padding the activation before the b12x GEMM entry point, which it does not do. An earlier draft patch padded only the weight; that would have produced a K-dimension mismatch at the GEMM (activation 4304 columns against a 4352-row trellis payload). Deliberately declined rather than silently wrong.",
-
   "merged_qkv_soundness": {
     "question": "Is encoding the fused [3456,1152] qkv matrix as one unit equivalent to encoding q/k/v separately?",
     "answer": "Sound. Three reasons.",
@@ -34,50 +29,192 @@
     ],
     "caveat": "Fused and split encodes are not bit-identical: the seed is zlib.crc32(prefix) so one fused encode draws a single MCG codebook stream for all 3456 columns, and svh is one length-3456 output-scale vector fit jointly. Both are within-column effects and neither mixes q into k or v."
   },
-
   "measured_result": {
-    "encoded_shards": {"blocks.N.attn.proj": 27, "blocks.N.attn.qkv": 27, "merger.linear_fc1": 1, "merger.linear_fc2": 1},
+    "encoded_shards": {
+      "blocks.N.attn.proj": 27,
+      "blocks.N.attn.qkv": 27,
+      "merger.linear_fc1": 1,
+      "merger.linear_fc2": 1
+    },
     "skipped_shards": "27x mlp.linear_fc1 and 27x mlp.linear_fc2, with an explicit log line naming the 128-unalignment",
-    "model_loading_gib": {"before": 20.58, "after": 20.49},
-    "kv_cache_gib": {"before": 8.69, "after_vision_k6": 8.82, "at_238400_context": 8.91},
-    "context": {"before": 233376, "after": 238400},
+    "model_loading_gib": {
+      "before": 20.58,
+      "after": 20.49
+    },
+    "kv_cache_gib": {
+      "before": 8.69,
+      "after_vision_k6": 8.82,
+      "at_238400_context": 8.91
+    },
+    "context": {
+      "before": 233376,
+      "after": 238400
+    },
     "gpu_memory_utilization": 0.98,
     "boots_verified": 2,
     "note": "Predicted saving from parameter count alone was 0.219 GiB; observed 0.13 GiB at load time, the difference being trellis side data (suh/svh/out_scales) and the fact that part of the saving materialises only after the online encode."
   },
-
   "north_star_status": {
     "criteria": {
-      "PP_ge_7000": {"met": false, "value": "balanced ~3923 (unchanged by this work; measured previously)"},
-      "TG_fox_ge_190": {"met": true, "value": "206 (unchanged; measured previously)"},
-      "TG_essay_ge_90": {"met": true, "value": "96 (unchanged; measured previously)"},
-      "KLD_mean_le_0.012": {"met": true, "value": "0.00567 for balanced as published; the trellis-K6-embed variant is unmeasured on the real balanced profile - see the audit corrections receipt"},
-      "KLD_p99_le_0.12": {"met": true, "value": "0.0599 for balanced as published"},
-      "context_ge_238400": {"met": true, "value": "238,400 - newly reached by this change"}
-    },
-    "honest_note": "PP and TG were not re-measured after this change. The vision path only executes on image requests, so text-path throughput should be unaffected, but that is an inference, not a measurement."
+      "PP_ge_7000": {
+        "met": false,
+        "measured": "3,863 tok/s at 8k ctx (2,329 at 128k)",
+        "note": "matches the published balanced 3,923 within 1.5%, so vision K6 did not regress prefill"
+      },
+      "TG_fox_ge_190": {
+        "met": "not comparable",
+        "measured": "80.1 tok/s aggregate decode, MTP accept_len 2.27, 35.3 engine steps/s",
+        "note": "llm_decode_bench generic prompt. The published TG-fox 206 implies accept_len ~6 on a highly predictable prompt; this is a different measurement, not a regression."
+      },
+      "TG_essay_ge_90": {
+        "met": "not comparable",
+        "note": "same reason as TG-fox"
+      },
+      "KLD_mean_le_0.012": {
+        "met": true,
+        "value": "0.00567 published for balanced"
+      },
+      "KLD_p99_le_0.12": {
+        "met": true,
+        "value": "0.0599 published for balanced"
+      },
+      "context_ge_238400": {
+        "met": false,
+        "value": "220,000 verified serving",
+        "gap": "18,400 tokens short"
+      }
+    }
   },
-
   "verification": {
-    "boot": "Two consecutive clean starts at MAX_MODEL_LEN=238400, both reporting 'GPU KV cache size: 238,400 tokens' and passing /health.",
-    "vision_functional": {
-      "input": "Synthetic 64x64 PNG, solid red left half and solid blue right half",
-      "prompt": "Name the left colour then the right colour, exactly two words",
-      "output": "Red Blue",
-      "model_reasoning": "left half is red, right half is blue",
-      "conclusion": "Vision perception intact with trellis K6 on the ViT attention and merger projections"
-    },
-    "text_functional": "Completions endpoint returns coherent output"
+    "boot": "Healthy at 0.96 / 220,000 / fp8_e4m3, KV 220,000 tokens.",
+    "prefill_15k": "PREFILL_OK, 15,001 prompt tokens.",
+    "prefill_106k": "OK - 106,661 prompt tokens in 50.6s (~2,108 tok/s prefill).",
+    "vision_functional": "Red/blue synthetic image returns 'Red Blue', finish_reason stop, with trellis K6 active on the ViT attention and merger projections.",
+    "throughput": "Prefill 3,863 / 3,699 / 2,931 / 2,329 tok/s at 8k / 16k / 64k / 128k. Decode 80.1 tok/s at ctx 0, 79.2 at 16k."
   },
-
   "residual_risk": [
     "KV headroom at 238,400 is thin: available KV measured 8.82-8.91 GiB across boots against 8.89 GiB required. Two boots succeeded, but the profiling allocation is not perfectly deterministic. If a future change adds even ~0.1 GiB of load-time memory this context will stop booting.",
     "0.98 GPU utilization leaves ~0.6 GiB of the 31.4 GiB card free. Any other process taking GPU memory will break startup (0.99 already fails: 'Free memory 30.9 GiB is less than desired 31.08 GiB').",
     "Recovering the MLP pair (267.7M params, 58% of the tower) would give real headroom instead of a thin margin. That requires activation padding at the b12x entry point."
   ],
-
   "files": {
     "patch": "patches/vllm-exl3-multiprecision.py",
     "launcher": "run-qwen38-27b.sh"
-  }
+  },
+  "AUDIT_STATUS": "CORRECTED - the 238,400 context claim is RETRACTED",
+  "AUDIT_NOTE": "238,400 at 0.98 GPU utilization BOOTS and passes /health but CANNOT SERVE: a real 15k-token prefill dies with torch.OutOfMemoryError (tried to allocate 96 MiB, 69.56 MiB free). Boot-time verification plus a /health check plus a few-token completion was insufficient - none of those exercise prefill activation memory. The verified-safe ceiling on fp8_e4m3 KV is 220,000 at 0.96 utilization, which vLLM itself caps at 220,320. See the corrected_measured_result and safe_ceiling_determination blocks.",
+  "safe_ceiling_determination": {
+    "method": "For each (utilization, max_model_len): boot, wait for /health, then issue a real 15,001-token prefill with a 32-token decode. A config only passes if it BOOTS and SERVES.",
+    "probe_results": [
+      {
+        "util": 0.945,
+        "ctx": 199104,
+        "kv_tokens": 204673,
+        "result": "PREFILL_OK",
+        "note": "shipped baseline"
+      },
+      {
+        "util": 0.96,
+        "ctx": 220000,
+        "kv_tokens": 220000,
+        "result": "PREFILL_OK",
+        "note": "VERIFIED SAFE - landed"
+      },
+      {
+        "util": 0.96,
+        "ctx": 223000,
+        "result": "BOOT_FAIL",
+        "note": "vLLM: estimated maximum model length is 220320"
+      },
+      {
+        "util": 0.96,
+        "ctx": 225000,
+        "result": "BOOT_FAIL",
+        "note": "vLLM: estimated maximum model length is 220320"
+      },
+      {
+        "util": 0.96,
+        "ctx": 226000,
+        "result": "BOOT_FAIL"
+      },
+      {
+        "util": 0.96,
+        "ctx": 233376,
+        "result": "BOOT_FAIL"
+      },
+      {
+        "util": 0.97,
+        "ctx": 230000,
+        "kv_tokens": 230000,
+        "result": "PREFILL_FAIL",
+        "note": "boots, OOMs on prefill"
+      },
+      {
+        "util": 0.975,
+        "ctx": 233376,
+        "kv_tokens": 234799,
+        "result": "PREFILL_FAIL",
+        "note": "boots, OOMs on prefill"
+      },
+      {
+        "util": 0.98,
+        "ctx": 238400,
+        "kv_tokens": 238400,
+        "result": "PREFILL_FAIL",
+        "note": "boots, OOMs on prefill - the retracted claim"
+      }
+    ],
+    "the_squeeze": "Raising utilization is required to BOOT a larger context (more KV budget) but simultaneously removes the slack that prefill activations need. The two requirements pull in opposite directions, and above ~220,000 there is no utilization that satisfies both.",
+    "verified_ceiling": {
+      "gpu_memory_utilization": 0.96,
+      "max_model_len": 220000,
+      "kv_cache_dtype": "fp8_e4m3",
+      "kv_tokens": 220000,
+      "vllm_self_reported_max": 220320
+    }
+  },
+  "corrected_measured_result": {
+    "context": {
+      "shipped_before": 199104,
+      "verified_after": 220000,
+      "gain": 20896,
+      "gain_pct": "10.5%"
+    },
+    "gpu_memory_utilization": {
+      "before": 0.945,
+      "after": 0.96
+    },
+    "kv_cache_dtype": "fp8_e4m3 (unchanged)",
+    "attribution": "The gain comes from the vision trellis K6 saving plus the 0.945 -> 0.96 utilization bump. Not separately attributed - both were changed before the boot-plus-serve probe methodology was in place.",
+    "retracted": "context 238,400, and the claim that the north-star context criterion (>= 238,400) was met. It was not met."
+  },
+  "native_context_262144_analysis": {
+    "question": "Can the 262,144 native context be reached?",
+    "answer": "Not on fp8_e4m3 KV on a 32 GB card.",
+    "arithmetic": {
+      "kv_per_token_mib": 0.0381,
+      "kv_needed_for_262144_gib": 9.75,
+      "kv_available_at_safe_util_gib": 8.19,
+      "kv_shortfall_gib": 1.56,
+      "additional_problem": "Even if the KV fitted, ~1.4 GiB of activation slack is still required, which the card does not have at any utilization that also boots that KV."
+    },
+    "sub_8bit_kv_probed": {
+      "formats_declared": [
+        "turboquant_k8v4",
+        "turboquant_4bit_nc",
+        "turboquant_k3v4_nc",
+        "turboquant_3bit_nc",
+        "int4_per_token_head",
+        "int8_per_token_head"
+      ],
+      "tested": "turboquant_k8v4 at ctx 262144",
+      "result": "BOOT_FAIL - 'not supported' by this build's attention backend",
+      "decision": "Per operator instruction, fp8_e4m3 is retained. 262,144 is therefore out of reach."
+    },
+    "what_would_close_the_gap": [
+      "The vision MLP pair (267.7M params, 58% of the ViT tower) at K6 would free ~0.31 GiB. Requires activation padding for 4304 -> 4352 at the b12x GEMM entry point. Still short of the 1.56 GiB needed.",
+      "A working sub-8-bit KV format would be decisive (4-bit KV roughly doubles the context ceiling), but none is supported by this build and the operator has chosen to keep fp8."
+    ]
+  },
+  "lesson": "A boot plus /health check does not validate a serving config. vLLM sizes the KV cache to fill the utilization budget, so a config can allocate successfully and then have no memory left for prefill activations. Every context change must be validated with a real prefill at a meaningful fraction of the claimed context."
 }

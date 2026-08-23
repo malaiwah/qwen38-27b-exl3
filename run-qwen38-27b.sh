@@ -150,8 +150,8 @@ case "${PROFILE}" in
     # (3250.6 -> 3923.0), fox 206.0 [acc 1.000], vision OK.
     : "${VLLM_EXL3_B12X_ANY_BITS:=1}"
     : "${VLLM_EXL3_SKIP_TRELLIS_PREP:=0}"
-    : "${GPU_MEMORY_UTILIZATION:=0.98}"
-    : "${MAX_MODEL_LEN:=238400}"
+    : "${GPU_MEMORY_UTILIZATION:=0.96}"
+    : "${MAX_MODEL_LEN:=220000}"
     ;;
   *)
     echo "Unknown PROFILE='${PROFILE}' (expected: throughput | fidelity | balanced)" >&2

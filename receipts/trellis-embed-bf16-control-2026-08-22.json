@@ -1,0 +1,54 @@
+{
+  "schema": "qwen38-fidelity-report/1",
+  "title": "BF16-embedding control arm (closes audit blocker D4)",
+  "date": "2026-08-22",
+  "purpose": "The audit found that no arm in the trellis embedding study had a same-harness, same-env BF16 control. Every comparison crossed a harness boundary, a checkpoint boundary, or both, and several claimed effects were smaller than this repo's own demonstrated 0.94% kernel-routing noise band. This receipt supplies the missing control.",
+
+  "method": "Constructed an identity pre-encoded embedding file (the unmodified BF16 embed_tokens weight with a bits=16 marker) so the injection step is a no-op copy. Everything else - capture env, kernel routing, KV dtype, eager mode, batching, and the canonical fidelity.py replay - is byte-identical to the K4/K6/K8 arms. The only variable across the four arms is the embedding itself.",
+  "model": "malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated (rev ab3a91a)",
+  "suite": "fp8kv-evidence/capture-suite-view, 512 contexts, 1,048,064 scored positions",
+  "kv_cache_dtype": "bfloat16",
+  "replay_tool": "canonical fidelity.py replay (same tool as the K4/K6/K8 arms)",
+
+  "results": {
+    "bf16_control": {
+      "token_mean_kld": 0.002648839768080408,
+      "context_macro_mean_kld": 0.002648839768080408,
+      "p95_kld": 0.008052590261913652,
+      "p99_kld": 0.027320211068325335,
+      "p999_kld": 0.1269273024901139,
+      "top1_agreement": 0.9782198415363947,
+      "scored_positions": 1048064,
+      "contexts": 512
+    }
+  },
+
+  "one_variable_comparison": {
+    "note": "All four arms: same harness, same checkpoint, same env, only the embedding differs.",
+    "arms": [
+      {"embedding": "BF16 (control)", "mean_kld": 0.0026488, "delta_vs_control": 0.0,        "delta_pct": 0.0,   "p99_kld": 0.02732, "top1": 0.97822},
+      {"embedding": "trellis K8",     "mean_kld": 0.0026534, "delta_vs_control": 0.0000046,  "delta_pct": 0.17,  "p99_kld": 0.02709, "top1": 0.97814},
+      {"embedding": "trellis K6",     "mean_kld": 0.0026671, "delta_vs_control": 0.0000182,  "delta_pct": 0.69,  "p99_kld": 0.02729, "top1": 0.97809},
+      {"embedding": "trellis K4",     "mean_kld": 0.0028572, "delta_vs_control": 0.0002084,  "delta_pct": 7.87,  "p99_kld": 0.03009, "top1": 0.97765}
+    ],
+    "noise_band": "0.94%, established by this repo's own frontier-2026-08-19.md: the identical checkpoint on the identical profile measured 0.003412 / 0.003407 / 0.003437 / 0.003405 as kernel routing changed, with no quantizer change."
+  },
+
+  "conclusions": [
+    "Trellis K8 embeddings are fidelity-neutral: +0.17% against the control, well inside the 0.94% noise band and therefore not a resolvable effect.",
+    "Trellis K6 embeddings are also fidelity-neutral: +0.69%, inside the noise band.",
+    "Trellis K4 is the only arm with a resolvable cost: +7.87% mean and +10.14% p99 against the control. This is 8x the noise band and is a real effect.",
+    "The correct claim for K6/K8 is 'fidelity-neutral', not 'better than BF16'. Both are slightly ABOVE the control, as physics requires - a lossy embedding cannot improve on an exact one.",
+    "The previously published claim that trellis K6 (0.002667) beat BF16 embeddings (0.002700) is now dead. That 0.002700 figure was an OFFLINE number from a different harness; the true same-harness BF16 control is 0.0026488, which is 1.89% below it. K6 is slightly worse than the real control, not better than it.",
+    "Every sub-1% superiority claim in the original embedding receipt is retracted: K8-vs-K6 (0.53%), K6-vs-BF16 (1.22% as previously computed), and the p99 orderings among K6/K8 and the control (spread 0.8%) are all inside the noise band."
+  ],
+
+  "what_this_does_not_settle": [
+    "The int6/int8 comparators remain uncontrolled: they were measured on the strength-zero R30 checkpoint with fidelity_gate.py, not on K5K6-hydrated with fidelity.py replay. This control does not make those comparable.",
+    "The trellis round-trip in these arms saves no memory - it dequantizes back to BF16. The production embedding path is per-row packed int6 (VLLM_EXL3_EMBED_ONLINE_BITS=6), which is a different scheme and is not measured here.",
+    "Whether the production packed-int6 embedding is fidelity-neutral against this control remains unmeasured."
+  ],
+
+  "closes": "Audit blocker D4 (no matched control) from receipts/trellis-audit-corrections-2026-08-22.json.",
+  "files": {"script": "patches/trellis-embed/trellis_embed_kld.py", "control_input": "identity pre-encoded embedding, bits=16 marker"}
+}

@@ -4,7 +4,6 @@
   "date": "2026-08-22",
   "scope": "Adversarial peer review of the five trellis receipts produced 2026-08-21/22, plus the two missing control experiments the review identified. Two independent reviewers (anthropic-reviewer x2) plus first-party verification.",
   "summary": "Three of five receipts had headline claims that do not survive. The central error is a scoring-dtype mismatch between two KL harnesses that made quantization appear to REDUCE KLD. A second error mislabeled an all-trellis run as the balanced profile. Neither error affects the production configuration, which was validated independently.",
-
   "confirmed_defects": {
     "D1_scoring_dtype_mismatch": {
       "severity": "blocker",
@@ -46,28 +45,46 @@
       "correct_values": "Parameter-weighted K8 MSE is 9.38e-09 against the reported per-tensor mean of 1.06e-08."
     }
   },
-
   "controls_run_to_close_the_audit": {
     "C1_bf16_head_identity_control": {
       "purpose": "Test whether combined_kld.py agrees with the canonical fidelity.py replay.",
       "method": "Constructed an identity pre-encoded head (unmodified BF16 weight, bits=16 marker) and scored the existing K4 embedding capture through combined_kld.py cmd_kld. If the harnesses agreed this must reproduce the canonical embed-only K4 value.",
-      "result": {"combined_kld_fp32_scored": 0.0024591712281107903, "canonical_fidelity_bf16_scored": 0.002857206570887965, "gap": 0.000398},
+      "result": {
+        "combined_kld_fp32_scored": 0.0024591712281107903,
+        "canonical_fidelity_bf16_scored": 0.002857206570887965,
+        "gap": 0.000398
+      },
       "conclusion": "Harnesses disagree by +3.98e-04, matching the reviewer's independently measured fp32-vs-bf16 scoring offset of +4.52e-04 to within 11.9%. D1 confirmed."
     },
     "C2_vision_output_fidelity": {
       "purpose": "The vision receipt claimed 'near-lossless' from weight-space error alone, which bounds nothing about output-space error through a 27-block ViT.",
       "method": "Served a synthetic 64x64 PNG (solid red left half, solid blue right half) to the production endpoint with trellis K6 active on the ViT attention and merger projections, asking for the left then right colour in exactly two words.",
-      "result": {"content": "Red Blue", "reasoning_excerpt": "left half is red, right half is blue", "finish_reason": "stop"},
+      "result": {
+        "content": "Red Blue",
+        "reasoning_excerpt": "left half is red, right half is blue",
+        "finish_reason": "stop"
+      },
       "conclusion": "Vision output is correct with trellis K6 on the 128-aligned ViT projections. This is a functional smoke test, not a fidelity metric."
     }
   },
-
   "corrected_claims": {
     "combined_arms_on_a_common_scale": {
       "note": "fp32-scored values plus the +4.6e-04 harness offset, making them comparable to the bf16-scored 0.002700 baseline.",
-      "combined_k8": {"as_published_fp32": 0.002286, "on_bf16_scale": 0.002746, "vs_baseline": "+0.000046 (a cost, not an improvement)"},
-      "combined_k6": {"as_published_fp32": 0.002585, "on_bf16_scale": 0.003045, "vs_baseline": "+0.000345"},
-      "combined_k4": {"as_published_fp32": 0.006763, "on_bf16_scale": 0.007223, "vs_baseline": "+0.004523"},
+      "combined_k8": {
+        "as_published_fp32": 0.002286,
+        "on_bf16_scale": 0.002746,
+        "vs_baseline": "+0.000046 (a cost, not an improvement)"
+      },
+      "combined_k6": {
+        "as_published_fp32": 0.002585,
+        "on_bf16_scale": 0.003045,
+        "vs_baseline": "+0.000345"
+      },
+      "combined_k4": {
+        "as_published_fp32": 0.006763,
+        "on_bf16_scale": 0.007223,
+        "vs_baseline": "+0.004523"
+      },
       "retracted": "The claim that combined K8/K6 fall below the BF16 baseline, and the 'Hadamard rotation decorrelates quantization error' explanation. Decorrelation drives the cross term to zero, which makes KL additive and predicts combined ABOVE embed-only, the opposite of what was reported. The receipt also invoked the contradictory 'errors partially cancel' mechanism elsewhere."
     },
     "lmhead_reframed": {
@@ -96,9 +113,7 @@
       "upgraded": "Output fidelity is now backed by a functional test (control C2) rather than weight-space error alone."
     }
   },
-
   "production_impact": "None of these defects touched the production configuration. The vision K6 landing was validated by a functional vision test and by boot-time memory/context measurement, both first-party. The published served-profile KLD numbers (throughput/fidelity/balanced in AGENTS.md) were produced by the canonical harness and are unaffected.",
-
   "remaining_work": [
     "Run the BF16-embedding control capture under byte-identical env (one arm of GPU time). Settles D4 and the embed-only baseline question.",
     "Re-score all combined/lm_head arms through fidelity.py replay, or pass --fp32 to fidelity.py for every arm, so one scale is used throughout. fidelity.py:837-845 already exposes a --candidate-head argument intended for exactly this head-attribution use.",
@@ -106,6 +121,33 @@
     "Recompute all cosine metrics in float64, or switch to the row-wise mean/p01 cosine already used by receipts/embedding-quant-error.json.",
     "Weight the vision aggregates by parameter count."
   ],
-
-  "reviewers": ["anthropic-reviewer (methodology)", "anthropic-reviewer (scripts)", "first-party verification of D1/D3 and controls C1/C2"]
+  "reviewers": [
+    "anthropic-reviewer (methodology)",
+    "anthropic-reviewer (scripts)",
+    "first-party verification of D1/D3 and controls C1/C2"
+  ],
+  "closed_since_publication": {
+    "D4_no_matched_control": {
+      "status": "CLOSED",
+      "how": "BF16-embedding control measured under byte-identical env with canonical fidelity.py replay.",
+      "receipt": "receipts/trellis-embed-bf16-control-2026-08-22.json",
+      "result": "Control = 0.0026488 mean. K8 +0.17%, K6 +0.69% (both inside the 0.94% noise band, hence fidelity-neutral); K4 +7.87% (resolvable). The 'K6 beats BF16' claim is dead."
+    }
+  },
+  "found_after_publication": {
+    "D7_boot_only_verification_insufficient": {
+      "severity": "blocker",
+      "what": "The 238,400-context claim in the vision receipt was validated by boot + /health + a few-token completion. None of those exercise prefill activation memory. A real 15k-token prefill dies with torch.OutOfMemoryError (96 MiB requested, 69.56 MiB free).",
+      "why": "vLLM sizes the KV cache to fill the gpu_memory_utilization budget, so a config can allocate KV successfully at boot and then have nothing left for prefill activations. Raising utilization is required to boot a larger context but removes exactly the slack prefill needs; above ~220,000 no utilization satisfies both.",
+      "corrected_ceiling": "0.96 utilization / 220,000 max_model_len / fp8_e4m3 KV. vLLM self-reports its own maximum as 220,320 at this utilization. Verified by boot, a 15,001-token prefill, and a 106,661-token prefill.",
+      "retracted": "context 238,400 and the claim that the >=238,400 north-star criterion was met.",
+      "process_fix": "Every context change must be validated with a real prefill at a meaningful fraction of the claimed context, not with /health."
+    }
+  },
+  "native_context_verdict": {
+    "target": 262144,
+    "reachable_on_fp8_e4m3": false,
+    "kv_shortfall_gib": 1.56,
+    "note": "Sub-8-bit KV formats are declared in the build (turboquant_k8v4 and others) but turboquant_k8v4 fails to boot as 'not supported' by this attention backend. Operator decision is to retain fp8_e4m3, so 262,144 is out of reach. Verified ceiling is 220,000."
+  }
 }
