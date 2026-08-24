@@ -1,5 +1,5 @@
 {
-  "schema": "qwen38.b12x-native-bf16.pr243-qualification.v3",
+  "schema": "qwen38.b12x-native-bf16.pr243-qualification.v4",
   "captured_on": "2026-08-24",
   "qualification_pass": true,
   "identity": {
@@ -41,16 +41,16 @@
     "b12x_full_receipt_sha256": "74372b9860ebf1854e17130aa923037063c45e3386ed38158288f90f78b4f1ff",
     "serving_raw": [
       {
-        "path": "receipts/b12x-pr243-hotpath-raw/no-mtp-baseline-a1.json",
-        "sha256": "232eb4abfd673d5351ff99dab3b09bbcef72368de876935b110a23fd668c6699"
+        "path": "receipts/b12x-pr243-hotpath-raw/no-mtp-cacheproof-baseline-a1.json",
+        "sha256": "da31d5b88fcbe465450f88213855cf4130a221b98ba1ac4591ff153c8bf8c8ff"
       },
       {
-        "path": "receipts/b12x-pr243-hotpath-raw/no-mtp-candidate-b1.json",
-        "sha256": "8b6082135927345275cb56dc0722af72000bb3ab39b7fd180f6e26517278e73d"
+        "path": "receipts/b12x-pr243-hotpath-raw/no-mtp-cacheproof-candidate-b1.json",
+        "sha256": "c93d70bfcc29519107353af01e04a0b53303b000f15fec79d32f02e6bb38eb0e"
       },
       {
-        "path": "receipts/b12x-pr243-hotpath-raw/no-mtp-baseline-a2.json",
-        "sha256": "aa3bc6135d97cf9f37ff12ba46f257cd3b0ae68f74134b7c75008a4cd97c2608"
+        "path": "receipts/b12x-pr243-hotpath-raw/no-mtp-cacheproof-baseline-a2.json",
+        "sha256": "637d2a7ccd233f075e7b51cfda3ef865a417c8d0464c59b22faceb98e1859226"
       },
       {
         "path": "receipts/b12x-pr243-hotpath-raw/mtp3-candidate-service.json.log.gz",
@@ -60,6 +60,11 @@
         "path": "receipts/b12x-pr243-hotpath-raw/mtp3-sanity.json",
         "sha256": "61e101da46f03200a6585f2fbbe385f32a1a110c1648e47d890255417246ae38"
       }
+    ],
+    "superseded_cached_prefill_raw": [
+      "receipts/b12x-pr243-hotpath-raw/no-mtp-baseline-a1.json",
+      "receipts/b12x-pr243-hotpath-raw/no-mtp-candidate-b1.json",
+      "receipts/b12x-pr243-hotpath-raw/no-mtp-baseline-a2.json"
     ]
   },
   "checkpoint_gate": {
@@ -179,63 +184,94 @@
   },
   "serving_benchmark": {
     "harness": "tools/b12x_native_bf16_e2e.py",
-    "harness_sha256": "04c0174d62573a479be00e1f8120a688c42ca5d58c84d81543a0983948de88dc",
+    "harness_sha256": "a3bdd8da1bd8c792da2177e9720718163aae2ce48a439cdd0919693af28d37f0",
     "arm_command_template": "python3 tools/b12x_native_bf16_e2e.py --label LABEL --output OUTPUT --concurrency 1,4 --tokens 256 --repetitions 5 --warmup-rounds 1 --prefill-repetitions 3 --settle-seconds 0.5",
     "order": ["baseline_a1", "candidate_b1", "baseline_a2"],
     "fixed_trajectory": true,
     "mtp_tokens": 0,
     "ratio_direction": "positive candidate_percent means native BF16 is faster",
-    "common_measured_gpu_state": {
+    "decode_measured_gpu_state": {
       "pstate": "P1",
       "memory_clock_mhz": 16365,
       "throttle_mask": "0x0000000000000000"
     },
+    "prefill_method": {
+      "logical_prompt_tokens": 2051,
+      "output_tokens": 1,
+      "headline": "logical prompt tokens divided by client wall time including one decode step",
+      "prompt_construction": "Five deterministic exact-length token-id prompts per arm. Each has a distinct first 16-token cache block; all five prompt hashes are identical by position across A1/B1/A2.",
+      "warmups": 2,
+      "timed_repetitions": 3,
+      "prefix_caching_enabled": true,
+      "mamba_cache_mode": "align",
+      "cache_proof": "Every warmup and timed request recorded 2051 prefix-cache queries, zero hits, 2051 local-compute prompt tokens, zero local/external cached tokens, 2051 newly computed prefill KV tokens, and one completed prefill request.",
+      "cache_proof_pass": true,
+      "prefill_arm_final_gpu_snapshots": {
+        "pstate": "P1",
+        "memory_clock_mhz": 16365,
+        "throttle_masks_observed": [
+          "0x0000000000000000",
+          "0x0000000000000004"
+        ],
+        "note": "The arm-final snapshots immediately after prefill observed the normal software-power-cap bit on both baseline arms and zero on the candidate arm; no positive prefill performance claim is made."
+      }
+    },
+    "correction": {
+      "supersedes_schema": "qwen38.b12x-native-bf16.pr243-qualification.v3",
+      "reason": "The earlier harness warmed and timed one identical prompt while prefix caching was enabled, then divided the full logical prompt length by cached-request wall time. Its approximately 17k tok/s rows and -2.82% delta were not uncached-prefill measurements and are withdrawn."
+    },
     "arms": {
       "baseline_a1": {
-        "started_at": "2026-08-24T20:17:39.339824+00:00",
+        "started_at": "2026-08-24T21:50:08.763463+00:00",
         "native_bf16": false,
-        "raw_artifact": "receipts/b12x-pr243-hotpath-raw/no-mtp-baseline-a1.json",
-        "c1_raw_tok_s": [55.58341325557008, 55.50659818189625, 55.51299075272056, 55.50623793797229, 55.48749308900047],
-        "c1_median_tok_s": 55.50659818189625,
-        "c4_raw_tok_s": [204.07871028889627, 204.00423253024692, 203.99941616455334, 206.9492286238013, 203.98333822318654],
-        "c4_median_tok_s": 204.00423253024692,
-        "prefill_raw_prompt_tok_s": [16892.14732237964, 17102.02251190935, 17087.861058305913],
-        "prefill_median_prompt_tok_s": 17087.861058305913,
+        "reachability_diagnostic": false,
+        "raw_artifact": "receipts/b12x-pr243-hotpath-raw/no-mtp-cacheproof-baseline-a1.json",
+        "c1_raw_tok_s": [55.58470292869982, 55.536509822884234, 55.5214529247979, 55.517880986445874, 55.506741243278476],
+        "c1_median_tok_s": 55.5214529247979,
+        "c4_raw_tok_s": [204.11259381166747, 204.04158310742983, 204.04764913776935, 204.00698388826325, 203.96013812449752],
+        "c4_median_tok_s": 204.04158310742983,
+        "prefill_raw_uncached_prompt_tok_s_including_one_decode_step": [5094.431067116553, 5092.530775214671, 5092.570479409647],
+        "prefill_median_uncached_prompt_tok_s_including_one_decode_step": 5092.570479409647,
+        "prefill_cache_proof_pass": true,
         "healthy": true
       },
       "candidate_b1": {
-        "started_at": "2026-08-24T20:19:49.068755+00:00",
+        "started_at": "2026-08-24T21:52:31.803307+00:00",
         "native_bf16": true,
-        "raw_artifact": "receipts/b12x-pr243-hotpath-raw/no-mtp-candidate-b1.json",
-        "c1_raw_tok_s": [58.730210804337034, 58.8909537076776, 58.84484767504259, 58.841460508546746, 58.84586981625679],
-        "c1_median_tok_s": 58.84484767504259,
-        "c4_raw_tok_s": [213.78571937033632, 217.71339482434718, 218.17251777237348, 213.45961274962266, 213.96459360846822],
-        "c4_median_tok_s": 213.96459360846822,
-        "prefill_raw_prompt_tok_s": [16627.687940201045, 16485.255839960613, 16764.461812328307],
-        "prefill_median_prompt_tok_s": 16627.687940201045,
+        "reachability_diagnostic": false,
+        "raw_artifact": "receipts/b12x-pr243-hotpath-raw/no-mtp-cacheproof-candidate-b1.json",
+        "c1_raw_tok_s": [58.940708307193646, 58.930544884682405, 58.91360619033466, 58.861654654557206, 58.8697239917663],
+        "c1_median_tok_s": 58.91360619033466,
+        "c4_raw_tok_s": [215.04099569758466, 215.19557206218244, 215.1798359761453, 218.28692697973867, 218.17954116447862],
+        "c4_median_tok_s": 215.19557206218244,
+        "prefill_raw_uncached_prompt_tok_s_including_one_decode_step": [5079.246284065005, 5073.180542604149, 5069.7387678902005],
+        "prefill_median_uncached_prompt_tok_s_including_one_decode_step": 5073.180542604149,
+        "prefill_cache_proof_pass": true,
         "healthy": true
       },
       "baseline_a2": {
-        "started_at": "2026-08-24T20:21:49.315180+00:00",
+        "started_at": "2026-08-24T21:54:48.371840+00:00",
         "native_bf16": false,
-        "raw_artifact": "receipts/b12x-pr243-hotpath-raw/no-mtp-baseline-a2.json",
-        "c1_raw_tok_s": [55.4371888323799, 55.43077288635408, 55.42253329694435, 55.4061919328252, 55.39179122743896],
-        "c1_median_tok_s": 55.42253329694435,
-        "c4_raw_tok_s": [206.55159232746, 203.6796824744606, 203.61908250244736, 203.51116400144466, 203.5252460400354],
-        "c4_median_tok_s": 203.61908250244736,
-        "prefill_raw_prompt_tok_s": [16971.665115817555, 17133.99677552262, 17185.825656266665],
-        "prefill_median_prompt_tok_s": 17133.99677552262,
+        "reachability_diagnostic": false,
+        "raw_artifact": "receipts/b12x-pr243-hotpath-raw/no-mtp-cacheproof-baseline-a2.json",
+        "c1_raw_tok_s": [55.48838790973097, 55.42223783168885, 55.39866492544837, 55.40438675450559, 55.41287629789859],
+        "c1_median_tok_s": 55.41287629789859,
+        "c4_raw_tok_s": [203.80806232905374, 206.744083254434, 203.77563727418402, 206.5483371995406, 203.652057706302],
+        "c4_median_tok_s": 203.80806232905374,
+        "prefill_raw_uncached_prompt_tok_s_including_one_decode_step": [5058.47357460686, 5052.390617905547, 5049.183938178983],
+        "prefill_median_uncached_prompt_tok_s_including_one_decode_step": 5052.390617905547,
+        "prefill_cache_proof_pass": true,
         "healthy": true
       }
     },
     "derived": {
-      "c1_baseline_bracket_mean_tok_s": 55.4645657394203,
-      "c1_candidate_percent": 6.094489140153536,
-      "c4_baseline_bracket_mean_tok_s": 203.81165751634714,
-      "c4_candidate_percent": 4.98152864063075,
-      "prefill_baseline_bracket_mean_prompt_tok_s": 17110.928916914265,
-      "prefill_candidate_percent": -2.8241656490988754,
-      "prefill_claim": "No positive prefill claim; this receipt preserves the observed candidate regression."
+      "c1_baseline_bracket_mean_tok_s": 55.467164611348245,
+      "c1_candidate_percent": 6.213480719873132,
+      "c4_baseline_bracket_mean_tok_s": 203.92482271824178,
+      "c4_candidate_percent": 5.526913886061435,
+      "prefill_baseline_bracket_mean_uncached_prompt_tok_s_including_one_decode_step": 5072.480548657597,
+      "prefill_candidate_percent": 0.013799835008487804,
+      "prefill_claim": "No positive prefill claim; the cache-proof +0.014% point estimate is treated as neutral. The native route targets M <= 16 decode and is not selected for this 2051-token prefill."
     }
   },
   "production_restore": {

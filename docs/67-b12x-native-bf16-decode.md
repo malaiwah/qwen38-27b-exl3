@@ -142,19 +142,26 @@ the qualified route. It is not presented as an MTP throughput comparison.
 ### End-to-end serving
 
 The primary serving result is a fixed-trajectory, no-MTP A-B-A bracket. Each
-decode cell is the median of five 256-token samples after one warmup; prefill is
-the median of three repetitions. Delta compares the candidate with the mean of
-the two baseline medians, so a positive delta means the candidate is faster.
+decode cell is the median of five 256-token samples after one warmup. Each
+prefill arm uses two untimed and three timed distinct 2,051-token token-ID
+prompts with one output token. Every prompt has a unique first cache block, and
+every request must record exactly 2,051 prefix-cache queries, zero hits, 2,051
+locally computed prompt and KV tokens, and one completed prefill request. Delta
+compares the candidate with the mean of the two baseline medians, so a positive
+delta means the candidate is faster.
 
 | Workload | Baseline A1 | Native BF16 B1 | Baseline A2 | Candidate delta |
 | --- | ---: | ---: | ---: | ---: |
-| C1 decode (tok/s) | 55.507 | 58.845 | 55.423 | +6.09% |
-| C4 decode (aggregate tok/s) | 204.004 | 213.965 | 203.619 | +4.98% |
-| Prefill (prompt tok/s) | 17,087.9 | 16,627.7 | 17,134.0 | -2.82% |
+| C1 decode (tok/s) | 55.521 | 58.914 | 55.413 | +6.21% |
+| C4 decode (aggregate tok/s) | 204.042 | 215.196 | 203.808 | +5.53% |
+| Uncached 2,051-token prefill (prompt tok/s, including one decode step) | 5,092.6 | 5,073.2 | 5,052.4 | +0.014% |
 
-The feature targets the small-row decode route. This bracket therefore makes
-no positive prefill claim; it records the observed -2.82% candidate arm rather
-than hiding it.
+The feature targets the small-row decode route and is not selected for this
+prefill shape. The +0.014% prefill point estimate is therefore treated as
+neutral, not as a positive claim. This table supersedes an earlier invalid
+approximately 17k tok/s row: that harness warmed and timed the same prompt with
+prefix caching enabled, so it divided the full logical prompt length by a
+cached-request wall time rather than measuring uncached prefill.
 
 The exact commands, identities, raw samples, derived ratios, service state, GPU
 state, checkpoint-gate summary, and artifact hashes are preserved in
