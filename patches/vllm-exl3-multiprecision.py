@@ -2057,7 +2057,7 @@ def _b12x_trellis_c_tmp_shared(device: torch.device) -> torch.Tensor:
 
 @torch.library.custom_op(
     "vllm::b12x_trellis_linear_out",
-    mutates_args=("output", "gemm_output", "c_tmp", "rotated_f16"),
+    mutates_args=("output", "gemm_output", "c_tmp", "rotated_compute"),
     device_types="cuda",
 )
 def _b12x_trellis_linear_out(
@@ -2068,7 +2068,7 @@ def _b12x_trellis_linear_out(
     output: torch.Tensor,
     gemm_output: torch.Tensor,
     c_tmp: torch.Tensor,
-    rotated_f16: torch.Tensor,
+    rotated_compute: torch.Tensor,
 ) -> None:
     """Execute dense Trellis into graph-owned output and scratch tensors."""
 
@@ -2080,7 +2080,7 @@ def _b12x_trellis_linear_out(
         output=output,
         gemm_output=gemm_output,
         c_tmp=c_tmp,
-        rotated_f16=rotated_f16,
+        rotated_compute=rotated_compute,
     )
 
 
@@ -2093,9 +2093,9 @@ def _b12x_trellis_linear_out_fake(
     output: torch.Tensor,
     gemm_output: torch.Tensor,
     c_tmp: torch.Tensor,
-    rotated_f16: torch.Tensor,
+    rotated_compute: torch.Tensor,
 ) -> None:
-    del x, trellis, suh, svh, output, gemm_output, c_tmp, rotated_f16
+    del x, trellis, suh, svh, output, gemm_output, c_tmp, rotated_compute
 
 
 def _b12x_trellis_linear(
@@ -2118,16 +2118,16 @@ def _b12x_trellis_linear(
             output = torch.empty(m, n, dtype=x.dtype, device=x.device)
             buf = (output, torch.empty_like(output), torch.empty_like(x))
             _b12x_trellis_linear._buf_cache[key] = buf  # type: ignore[attr-defined]
-        output, gemm_output, rotated_f16 = buf
+        output, gemm_output, rotated_compute = buf
     else:
         # Prefill: let the caching allocator recycle these.  Retaining one
         # m x n pair per distinct chunk shape is what exhausted the GPU.
         output = torch.empty(m, n, dtype=x.dtype, device=x.device)
         gemm_output = torch.empty_like(output)
-        rotated_f16 = torch.empty_like(x)
+        rotated_compute = torch.empty_like(x)
     _b12x_trellis_linear_out(
         x, trellis, suh, svh,
-        output, gemm_output, c_tmp, rotated_f16,
+        output, gemm_output, c_tmp, rotated_compute,
     )
     return output
 

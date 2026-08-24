@@ -6,9 +6,9 @@ ARG REPO_COMMIT=unknown
 ARG SP=/opt/venv/lib/python3.12/site-packages
 ARG B12X_REPO=https://github.com/local-inference-lab/b12x.git
 ARG B12X_REF=refs/pull/243/head
-ARG B12X_COMMIT=a850891255fb59cdfa49781fa94dc4f7f06629e9
+ARG B12X_COMMIT=f37324070604147dc9499dac956f96d6ea264290
 ARG CUTLASS_DSL_VERSION=4.6.2
-ARG EXL3_SHA256=f293edf48d05f3b953b5603d7eede2b7bfffc926ab242980bf949678bd0c13eb
+ARG EXL3_SHA256=49a80169aac1ca29a5272fe764253001875da34859bdf91f7d011a43a7aa5c6b
 
 # Fetch the reviewed PR ref, verify its immutable commit, and install the exact
 # B12X/CUTLASS pair used by the kernel qualification. Dependency resolution is
@@ -73,7 +73,7 @@ LABEL org.opencontainers.image.source="https://github.com/malaiwah/qwen38-27b-ex
       local-inference.b12x.commit="$B12X_COMMIT" \
       local-inference.b12x.integration.base_commit="9ae32e297c7d8d5258e0953c111a933adcb687f5" \
       local-inference.b12x.integration.prs="243@$B12X_COMMIT" \
-      local-inference.b12x.integration.tree="65f1d4afda61eeca762f6485fa8495f09bd23b07" \
+      local-inference.b12x.integration.tree="13aa1bff1d743945492090b366109673ed0a02de" \
       local-inference.b12x.runtime_version="1.2.6" \
       local-inference.cutlass_dsl.version="$CUTLASS_DSL_VERSION" \
-      local-inference.cache.fingerprint="qwen38-b12x-a850891-cutlass-4.6.2"
+      local-inference.cache.fingerprint="qwen38-b12x-f373240-cutlass-4.6.2"
