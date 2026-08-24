@@ -3,11 +3,11 @@
 This integration opts Qwen3.8-27B into the fused K6/MCG dense-decode path from
 [local-inference-lab/b12x#243](https://github.com/local-inference-lab/b12x/pull/243).
 The dedicated image pins pull-request head
-<code>41fc14bfbcea181ef96cd291868f850dd0fd2008</code> and fails its build if the
+<code>706ad0eb54014ed9156dc82a7e0acff691662a89</code> and fails its build if the
 PR ref does not resolve to that commit.
 
 The executable b12x source qualified on the GPU is its parent
-<code>f37324070604147dc9499dac956f96d6ea264290</code>; <code>41fc14b</code> adds
+<code>81595330adba568f6361b396088f91e18b8116f0</code>; <code>706ad0e</code> adds
 only the committed raw qualification receipt. The executable Python and kernel
 trees are therefore identical.
 
@@ -74,16 +74,18 @@ checkpoint or default serving profile changes are required.
 Qualification used:
 
 - b12x executable source
-  <code>f37324070604147dc9499dac956f96d6ea264290</code> (tree
-  <code>13aa1bff1d743945492090b366109673ed0a02de</code>)
-- b12x PR head <code>41fc14bfbcea181ef96cd291868f850dd0fd2008</code>
+  <code>81595330adba568f6361b396088f91e18b8116f0</code> (tree
+  <code>4e238da8d46f5091430741053a76b57881efb4a6</code>)
+- b12x PR head <code>706ad0eb54014ed9156dc82a7e0acff691662a89</code>
   (receipt-only descendant, tree
-  <code>6c36124fffa5f690b26629cf129056b23e39744d</code>)
+  <code>5e4c5566062306b76a6860d6a40c0f743aac0c89</code>)
+- Qwen build-context revision
+  <code>67c338876acc904418d60c6b469d9a62ce62e225</code>
 - Qwen runtime <code>0f6d68bcb4fc2b0c13fa6f7dd74a4cce617a6eeb</code>
 - overlay SHA-256
   <code>49a80169aac1ca29a5272fe764253001875da34859bdf91f7d011a43a7aa5c6b</code>
 - image ID
-  <code>sha256:6de72d088cdb1f70f60ff8ce9dc896dc97c020307b4dab548d1fe0348480f28c</code>
+  <code>sha256:cb7666cb44c214a7ffa3fcbbaf53ce8179017dd18e6b749f9bac2c0c633f5ef3</code>
 - b12x 1.2.6, CUTLASS DSL 4.6.2, Torch 2.12.0+cu132, CUDA 13.2, and
   <code>CUTE_DSL_ARCH=sm_120a</code>
 - NVIDIA RTX PRO 6000 Blackwell Workstation Edition, physical UUID
@@ -113,17 +115,17 @@ than the served ExLlamaV3 route.
 
 | Rows | Warm fused ms | Warm served ms | Warm served/fused | Cold fused ms | Cold served ms | Cold served/fused |
 | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1 | 0.032416 | 0.042624 | 1.314906 | 0.032416 | 0.041360 | 1.275913 |
-| 4 | 0.032528 | 0.042560 | 1.308411 | 0.032416 | 0.042288 | 1.304541 |
-| 8 | 0.033824 | 0.042656 | 1.261116 | 0.034448 | 0.042336 | 1.228983 |
+| 1 | 0.032416 | 0.042592 | 1.313919 | 0.032416 | 0.041360 | 1.275913 |
+| 4 | 0.032608 | 0.042560 | 1.305201 | 0.032416 | 0.041216 | 1.271471 |
+| 8 | 0.033440 | 0.042656 | 1.275598 | 0.034432 | 0.042336 | 1.229554 |
 | 16 | 0.034432 | 0.042656 | 1.238848 | 0.034432 | 0.042656 | 1.238848 |
 
 The b12x PR commits the full 1.09 MB result, all raw samples, GPU snapshots,
 allocator snapshots, package/toolchain identity, and the twelve exact CUDA
 graph DOT files under
-<code>validation/trellis_decode/evidence/qwen38_down_bf16_f373240/</code>. The
+<code>validation/trellis_decode/evidence/qwen38_down_bf16_8159533/</code>. The
 result SHA-256 is
-<code>2a37e0af9e81850fd6ac391ec3362dd5c40273060f9c4489cdf3f94b248b6201</code>.
+<code>74372b9860ebf1854e17130aa923037063c45e3386ed38158288f90f78b4f1ff</code>.
 
 ### Real-service reachability
 
@@ -146,15 +148,19 @@ the two baseline medians, so a positive delta means the candidate is faster.
 
 | Workload | Baseline A1 | Native BF16 B1 | Baseline A2 | Candidate delta |
 | --- | ---: | ---: | ---: | ---: |
-| C1 decode (tok/s) | 55.503 | 58.870 | 55.420 | +6.15% |
-| C4 decode (aggregate tok/s) | 204.006 | 213.839 | 203.939 | +4.84% |
-| Prefill (prompt tok/s) | 16,861.7 | 17,227.7 | 17,228.6 | +1.07% |
+| C1 decode (tok/s) | 55.507 | 58.845 | 55.423 | +6.09% |
+| C4 decode (aggregate tok/s) | 204.004 | 213.965 | 203.619 | +4.98% |
+| Prefill (prompt tok/s) | 17,087.9 | 16,627.7 | 17,134.0 | -2.82% |
+
+The feature targets the small-row decode route. This bracket therefore makes
+no positive prefill claim; it records the observed -2.82% candidate arm rather
+than hiding it.
 
 The exact commands, identities, raw samples, derived ratios, service state, GPU
 state, checkpoint-gate summary, and artifact hashes are preserved in
 [the compact qualification receipt](../receipts/b12x-native-bf16-pr243-2026-08-24.json).
 The three raw A-B-A JSON files and compressed MTP-3 service log are in
-[the raw receipt directory](../receipts/b12x-pr243-reviewfix-raw/). The
+[the raw receipt directory](../receipts/b12x-pr243-hotpath-raw/). The
 repeatable serving harness is
 [tools/b12x_native_bf16_e2e.py](../tools/b12x_native_bf16_e2e.py).
 
