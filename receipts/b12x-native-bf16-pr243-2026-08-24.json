@@ -1,96 +1,92 @@
 {
-  "schema": "qwen38.b12x-native-bf16.pr243-qualification.v1",
+  "schema": "qwen38.b12x-native-bf16.pr243-qualification.v2",
   "captured_on": "2026-08-24",
   "qualification_pass": true,
   "identity": {
     "b12x_pr": "https://github.com/local-inference-lab/b12x/pull/243",
-    "b12x_commit": "a850891255fb59cdfa49781fa94dc4f7f06629e9",
+    "b12x_pr_head": "41fc14bfbcea181ef96cd291868f850dd0fd2008",
+    "b12x_pr_head_tree": "6c36124fffa5f690b26629cf129056b23e39744d",
+    "b12x_qualified_executable_source": "f37324070604147dc9499dac956f96d6ea264290",
+    "b12x_qualified_executable_tree": "13aa1bff1d743945492090b366109673ed0a02de",
     "b12x_base_commit": "9ae32e297c7d8d5258e0953c111a933adcb687f5",
-    "qwen_runtime_commit": "fcc12fa80d24672c76158c742239a74a819a3a56",
-    "overlay_sha256": "f293edf48d05f3b953b5603d7eede2b7bfffc926ab242980bf949678bd0c13eb",
-    "image": "qwen38-27b-exl3:b12x-pr243-native-bf16-exact",
-    "image_id": "sha256:59dd704a768dcb447cd524379a28ad099abfbd503fecdb098ad1127f9fa2a208"
+    "pr_head_relationship": "41fc14b is the f373240 executable tree plus only the committed qualification receipt",
+    "qwen_qualified_runtime_commit": "0f6d68bcb4fc2b0c13fa6f7dd74a4cce617a6eeb",
+    "overlay_sha256": "49a80169aac1ca29a5272fe764253001875da34859bdf91f7d011a43a7aa5c6b",
+    "qualification_image": "qwen38-27b-exl3:b12x-pr243-reviewfix-exact",
+    "qualification_image_id": "sha256:6de72d088cdb1f70f60ff8ce9dc896dc97c020307b4dab548d1fe0348480f28c"
   },
   "build": {
-    "command": "docker build --progress plain -f docker/Containerfile.b12x-native-bf16 --build-arg REPO_COMMIT=fcc12fa80d24672c76158c742239a74a819a3a56 -t qwen38-27b-exl3:b12x-pr243-native-bf16-exact .",
     "b12x_version": "1.2.6",
     "cutlass_dsl_version": "4.6.2",
     "torch_version": "2.12.0+cu132",
     "torch_cuda_version": "13.2",
-    "cute_dsl_arch": "sm_120a"
+    "cute_dsl_arch": "sm_120a",
+    "current_container_pin": "41fc14bfbcea181ef96cd291868f850dd0fd2008",
+    "current_container_pin_note": "The current pin includes the receipt-only 41fc14b descendant; executable Python and kernel sources are identical to qualified source f373240."
   },
   "target": {
     "host": "cuda",
+    "checkpoint": "/home/jon/models/Qwen3.8-27B-EXL3-K5K6-hydrated",
     "gpu": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition",
     "gpu_uuid": "GPU-ca537fb1-a522-7429-e8c6-4795af22ab78",
     "compute_capability": "12.0",
     "memory_bytes": 102014189568,
     "multiprocessors": 188,
+    "compute_mode": "Default",
     "serving_graph_mode": "FULL_DECODE_ONLY"
   },
-  "reachability": {
-    "diagnostic_enabled_only_for_capture": true,
-    "records": 3479,
-    "phases": {
-      "plan": 652,
-      "runtime": 2827
-    },
-    "routes": {
-      "b12x_generic_trellis256": 244,
-      "b12x_generic_trellis256_planned": 1,
-      "b12x_k6_mcg_small_m_bf16": 1962,
-      "b12x_k6_mcg_small_m_bf16_planned": 243,
-      "b12x_k6_mcg_small_m_planned": 243,
-      "exllamav3": 621,
-      "exllamav3_only": 35,
-      "multiprecision_fp6": 130
-    },
-    "native_plans": {
-      "total": 243,
-      "target_and_shared": 240,
-      "mtp_or_draft": 3
-    },
-    "native_runtime_rows": [1, 2, 3, 4, 8, 12, 16],
-    "native_runtime_input_dtypes": ["bfloat16"],
-    "launch": {
-      "blocks_per_sm": 1,
-      "threads": 256,
-      "reported_workspace_shared_memory_bytes": 67840,
-      "observed_grids": [120, 160, 188]
-    },
-    "sanity_text": " Paris.\nThe capital of Germany is Berlin.\nThe capital of Italy is",
-    "container_healthy": true,
-    "restart_count": 0,
-    "oom_killed": false
+  "artifacts": {
+    "b12x_full_receipt": "validation/trellis_decode/evidence/qwen38_down_bf16_f373240/result.json in b12x PR 243",
+    "b12x_full_receipt_sha256": "2a37e0af9e81850fd6ac391ec3362dd5c40273060f9c4489cdf3f94b248b6201",
+    "serving_raw": [
+      {
+        "path": "receipts/b12x-pr243-reviewfix-raw/no-mtp-baseline-a1.json",
+        "sha256": "e8bdf105b9bf6a82be4a48e96f224d8d0bde56b386e6b86a957040323da6342e"
+      },
+      {
+        "path": "receipts/b12x-pr243-reviewfix-raw/no-mtp-candidate-b1.json",
+        "sha256": "895dbae611e0791d5af9cf44f1670c5789d06d618a82c74b5118b2bb881be3d5"
+      },
+      {
+        "path": "receipts/b12x-pr243-reviewfix-raw/no-mtp-baseline-a2.json",
+        "sha256": "ff70f8089a4fc40ae853e7ec67d043e12a03deeccffba602578d6a1b5647e041"
+      },
+      {
+        "path": "receipts/b12x-pr243-reviewfix-raw/mtp3-candidate-service.json.log.gz",
+        "sha256": "b1ad5d9a93a0f8cfb3809c54a1e5239e54d9251003c9037a760e85f3b06cf6d0"
+      }
+    ]
   },
   "checkpoint_gate": {
-    "command": "docker run --name b12x-pr243-down-qual --gpus all --ipc=none -e CUTE_DSL_ARCH=sm_120a -e XDG_CACHE_HOME=/tmp/receipt/cache -e B12X_CUTE_COMPILE_CACHE_DIR=/tmp/receipt/cache/b12x/cute -e B12X_COMPILE_CACHE_DIR=/tmp/receipt/cache/b12x/compile -v /home/jon/models/Qwen3.8-27B-EXL3-K5K6-hydrated:/model:ro -v /tmp/b12x-pr243-exact-qualify:/src:ro --entrypoint /opt/venv/bin/python qwen38-27b-exl3:b12x-pr243-native-bf16-exact /src/benchmarks/benchmark_trellis_k6_mcg_checkpoint.py --model-dir /model --tensor-prefix model.language_model.layers.0.mlp.down_proj --rows 1,4,8,16 --params-dtype bf16 --graph-dump-dir /tmp/receipt/graphs --output /tmp/receipt/result.json --verify-shard-sha --compile-warmups 3 --replay-checks 8 --cold-replays 12 --warmups 60 --iterations 240 --topk 8 --source-revision a850891255fb59cdfa49781fa94dc4f7f06629e9 --integration-tree f293edf48d05f3b953b5603d7eede2b7bfffc926ab242980bf949678bd0c13eb --image qwen38-27b-exl3:b12x-pr243-native-bf16-exact --image-id sha256:59dd704a768dcb447cd524379a28ad099abfbd503fecdb098ad1127f9fa2a208",
-    "started_at": "2026-08-24T18:31:25.943132+00:00",
-    "completed_at": "2026-08-24T18:31:32.627896+00:00",
-    "full_result_sha256": "6c2b368414988d60a91a578f72e1c66975c9519f6d5b0153919e1cce447b99f2",
+    "source_revision": "f37324070604147dc9499dac956f96d6ea264290",
+    "full_result_sha256": "2a37e0af9e81850fd6ac391ec3362dd5c40273060f9c4489cdf3f94b248b6201",
     "qualification_pass": true,
-    "checkpoint": {
-      "tensor_prefix": "model.language_model.layers.0.mlp.down_proj",
+    "tensor_prefix": "model.language_model.layers.0.mlp.down_proj",
+    "shape": {
       "k": 17408,
       "n": 5120,
-      "trellis_bits": 6,
-      "codebook": "mcg",
-      "shard": "model-00001-of-00003.safetensors",
-      "shard_sha256": "792b46b54a79871030a5a029a483b8938ff509912169a1c7627913d614365f0d",
-      "shard_sha256_verified": true
+      "rows": [1, 4, 8, 16]
     },
+    "checkpoint_shard": "model-00001-of-00003.safetensors",
+    "checkpoint_shard_bytes": 8351643585,
+    "checkpoint_shard_sha256": "792b46b54a79871030a5a029a483b8938ff509912169a1c7627913d614365f0d",
+    "checkpoint_shard_sha256_verified": true,
     "contract": {
       "source_dtype": "torch.bfloat16",
       "output_dtype": "torch.bfloat16",
       "activation_scale_math": false,
       "weight_layout": "trellis_t256",
-      "params_dtype": "torch.bfloat16",
-      "planner_override": null,
+      "trellis_bits": 6,
+      "codebook": "mcg",
       "caller_owned_stable_tensors": true,
       "source_immutable": true,
       "fused_output_fully_overwritten": true,
       "fused_output_finite": true,
-      "fused_output_nonzero": true
+      "fused_output_nonzero": true,
+      "graph_replays_per_row": 8,
+      "replay_allocator_delta_bytes": 0,
+      "fused_graph_kernel_count_per_row": 1,
+      "separate_rotation_kernel_count_per_row": 0
     },
     "oracle": {
       "reconstruction": "exllamav3_ext.reconstruct exact native payload",
@@ -102,175 +98,149 @@
       "top8_order_exact": true,
       "top8_set_exact": true
     },
-    "rows": [
-      {
-        "m": 1,
-        "pass": true,
-        "graph_kernel_count": 1,
-        "graph_native_kernel_count": 1,
-        "graph_separate_rotation_count": 0,
-        "cooperative": true,
-        "grid": 160,
-        "threads": 256,
-        "dynamic_shared_memory_bytes": 68608,
-        "graph_replays": 8,
-        "replay_allocator_delta_bytes": 0
-      },
-      {
-        "m": 4,
-        "pass": true,
-        "graph_kernel_count": 1,
-        "graph_native_kernel_count": 1,
-        "graph_separate_rotation_count": 0,
-        "cooperative": true,
-        "grid": 160,
-        "threads": 256,
-        "dynamic_shared_memory_bytes": 68608,
-        "graph_replays": 8,
-        "replay_allocator_delta_bytes": 0
-      },
-      {
-        "m": 8,
-        "pass": true,
-        "graph_kernel_count": 1,
-        "graph_native_kernel_count": 1,
-        "graph_separate_rotation_count": 0,
-        "cooperative": true,
-        "grid": 160,
-        "threads": 256,
-        "dynamic_shared_memory_bytes": 68608,
-        "graph_replays": 8,
-        "replay_allocator_delta_bytes": 0
-      },
-      {
-        "m": 16,
-        "pass": true,
-        "graph_kernel_count": 1,
-        "graph_native_kernel_count": 1,
-        "graph_separate_rotation_count": 0,
-        "cooperative": true,
-        "grid": 188,
-        "threads": 256,
-        "dynamic_shared_memory_bytes": 68608,
-        "graph_replays": 8,
-        "replay_allocator_delta_bytes": 0
-      }
-    ]
+    "timing": {
+      "method": "All six route orders cycled equally; each warm median has 240 CUDA-event samples after 60 warmups and each cold median has 12 samples.",
+      "ratio_direction": "served_over_fused greater than one means fused is lower latency",
+      "rows": [
+        {
+          "m": 1,
+          "warm_fused_ms": 0.032416,
+          "warm_served_ms": 0.042624,
+          "warm_served_over_fused": 1.314906,
+          "cold_fused_ms": 0.032416,
+          "cold_served_ms": 0.04136,
+          "cold_served_over_fused": 1.275913
+        },
+        {
+          "m": 4,
+          "warm_fused_ms": 0.032528,
+          "warm_served_ms": 0.04256,
+          "warm_served_over_fused": 1.308411,
+          "cold_fused_ms": 0.032416,
+          "cold_served_ms": 0.042288,
+          "cold_served_over_fused": 1.304541
+        },
+        {
+          "m": 8,
+          "warm_fused_ms": 0.033824,
+          "warm_served_ms": 0.042656,
+          "warm_served_over_fused": 1.261116,
+          "cold_fused_ms": 0.034448,
+          "cold_served_ms": 0.042336,
+          "cold_served_over_fused": 1.228983
+        },
+        {
+          "m": 16,
+          "warm_fused_ms": 0.034432,
+          "warm_served_ms": 0.042656,
+          "warm_served_over_fused": 1.238848,
+          "cold_fused_ms": 0.034432,
+          "cold_served_ms": 0.042656,
+          "cold_served_over_fused": 1.238848
+        }
+      ]
+    }
+  },
+  "reachability": {
+    "source_artifact": "receipts/b12x-pr243-reviewfix-raw/mtp3-candidate-service.json.log.gz",
+    "diagnostic_enabled_only_for_capture": true,
+    "records": 3757,
+    "phases": {
+      "plan": 652,
+      "runtime": 3105
+    },
+    "routes": {
+      "b12x_generic_trellis256": 244,
+      "b12x_generic_trellis256_planned": 1,
+      "b12x_k6_mcg_small_m_bf16": 2205,
+      "b12x_k6_mcg_small_m_bf16_planned": 243,
+      "b12x_k6_mcg_small_m_planned": 243,
+      "exllamav3": 656,
+      "exllamav3_only": 35,
+      "multiprecision_fp6": 130
+    },
+    "native_plans": {
+      "total": 243,
+      "target_and_shared": 240,
+      "mtp_or_draft": 3
+    },
+    "native_runtime_rows": [1, 2, 3, 4, 5, 8, 12, 16],
+    "native_runtime_input_dtypes": ["bfloat16"],
+    "observed_grids": [120, 160, 188],
+    "sanity_text": " Paris.\nThe capital of Germany is",
+    "container_healthy": true,
+    "restart_count": 0,
+    "oom_killed": false
   },
   "serving_benchmark": {
     "harness": "tools/b12x_native_bf16_e2e.py",
     "harness_sha256": "04c0174d62573a479be00e1f8120a688c42ca5d58c84d81543a0983948de88dc",
     "arm_command_template": "python3 tools/b12x_native_bf16_e2e.py --label LABEL --output OUTPUT --concurrency 1,4 --tokens 256 --repetitions 5 --warmup-rounds 1 --prefill-repetitions 3 --settle-seconds 0.5",
+    "order": ["baseline_a1", "candidate_b1", "baseline_a2"],
+    "fixed_trajectory": true,
+    "mtp_tokens": 0,
     "ratio_direction": "positive candidate_percent means native BF16 is faster",
-    "common_in_arm_gpu_state": {
+    "common_measured_gpu_state": {
       "pstate": "P1",
       "memory_clock_mhz": 16365,
       "throttle_mask": "0x0000000000000000"
     },
-    "no_mtp_primary": {
-      "order": ["baseline_a1", "candidate_b1", "baseline_a2"],
-      "fixed_trajectory": true,
+    "arms": {
       "baseline_a1": {
-        "started_at": "2026-08-24T18:22:12.994928+00:00",
-        "raw_artifact_sha256": "3c7ad75ec9f138adfe3d0ce8669dbdaa49cad7dc5c5930282d044f7c82dc58d5",
+        "started_at": "2026-08-24T19:53:45.555365+00:00",
         "native_bf16": false,
-        "c1_raw_tok_s": [55.488290910347224, 55.46956971719644, 55.41562163449933, 55.408238037080146, 55.39414261376608],
-        "c1_median_tok_s": 55.41562163449933,
-        "c4_raw_tok_s": [203.9192567027625, 203.94169623898932, 203.7976177891071, 203.59138175678135, 203.5440027053303],
-        "c4_median_tok_s": 203.7976177891071,
-        "prefill_raw_prompt_tok_s": [17395.456573293253, 17505.72760011554, 17322.615530046372],
-        "prefill_median_prompt_tok_s": 17395.456573293253,
+        "raw_artifact": "receipts/b12x-pr243-reviewfix-raw/no-mtp-baseline-a1.json",
+        "c1_raw_tok_s": [55.59125476814559, 55.51760219008393, 55.502861370201806, 55.491694478116386, 55.47951053208171],
+        "c1_median_tok_s": 55.502861370201806,
+        "c4_raw_tok_s": [204.12421311214024, 204.03526619174733, 203.9760966906774, 204.0061912241191, 203.9245300911194],
+        "c4_median_tok_s": 204.0061912241191,
+        "prefill_raw_prompt_tok_s": [16871.53086872289, 16861.66055051011, 16825.241352974692],
+        "prefill_median_prompt_tok_s": 16861.66055051011,
         "healthy": true
       },
       "candidate_b1": {
-        "started_at": "2026-08-24T18:24:23.019226+00:00",
-        "raw_artifact_sha256": "2359d83b89b9ac2743d7b085233a1ee0bccb6297d3479eeb283c9409dface2a1",
+        "started_at": "2026-08-24T19:56:18.504647+00:00",
         "native_bf16": true,
-        "c1_raw_tok_s": [58.80753696439711, 58.85998297355378, 58.85215951312598, 58.818636260767, 58.83182235996431],
-        "c1_median_tok_s": 58.83182235996431,
-        "c4_raw_tok_s": [214.9818852395111, 214.9393049652998, 214.87319301819355, 214.71333944536983, 214.7474358482578],
-        "c4_median_tok_s": 214.87319301819355,
-        "prefill_raw_prompt_tok_s": [17271.42535930023, 17257.23720256942, 17381.587048366924],
-        "prefill_median_prompt_tok_s": 17271.42535930023,
+        "raw_artifact": "receipts/b12x-pr243-reviewfix-raw/no-mtp-candidate-b1.json",
+        "c1_raw_tok_s": [58.77056738050921, 58.93970677887415, 58.86990920103067, 58.89161905723604, 58.86936653162671],
+        "c1_median_tok_s": 58.86990920103067,
+        "c4_raw_tok_s": [213.8263983427562, 214.43527641382823, 213.81041376534182, 213.83857025741173, 215.10159422693326],
+        "c4_median_tok_s": 213.83857025741173,
+        "prefill_raw_prompt_tok_s": [17098.995010180617, 17270.695997396797, 17227.726948496558],
+        "prefill_median_prompt_tok_s": 17227.726948496558,
         "healthy": true
       },
       "baseline_a2": {
-        "started_at": "2026-08-24T18:26:29.575170+00:00",
-        "raw_artifact_sha256": "ca05bcf7e1e6353fd13354873d5e1d3646614ed5a193953cd103d43e530e1d06",
+        "started_at": "2026-08-24T19:58:28.105978+00:00",
         "native_bf16": false,
-        "c1_raw_tok_s": [55.442585896363916, 55.42735846243227, 55.41961129701394, 55.40100199270272, 55.39181946475694],
-        "c1_median_tok_s": 55.41961129701394,
-        "c4_raw_tok_s": [203.6587660896275, 203.57505250913093, 203.49673677317043, 203.56546032955816, 203.48897943663727],
-        "c4_median_tok_s": 203.56546032955816,
-        "prefill_raw_prompt_tok_s": [17170.066336041662, 17148.510836827, 17333.412298245294],
-        "prefill_median_prompt_tok_s": 17170.066336041662,
+        "raw_artifact": "receipts/b12x-pr243-reviewfix-raw/no-mtp-baseline-a2.json",
+        "c1_raw_tok_s": [55.47812416696665, 55.42699143399998, 55.41998792220303, 55.41357529698827, 55.407020420068896],
+        "c1_median_tok_s": 55.41998792220303,
+        "c4_raw_tok_s": [204.04008896691198, 203.93863771358306, 203.68879111754012, 203.59411527126383, 206.46198666111124],
+        "c4_median_tok_s": 203.93863771358306,
+        "prefill_raw_prompt_tok_s": [17128.416539782178, 17370.03125984884, 17228.564263476823],
+        "prefill_median_prompt_tok_s": 17228.564263476823,
         "healthy": true
-      },
-      "derived": {
-        "c1_baseline_bracket_mean_tok_s": 55.41761646575664,
-        "c1_candidate_percent": 6.160867449644569,
-        "c1_baseline_recovery_percent": 0.007199526770484965,
-        "c4_baseline_bracket_mean_tok_s": 203.68153905933264,
-        "c4_candidate_percent": 5.49468253752774,
-        "c4_baseline_recovery_percent": -0.11391568854802747,
-        "prefill_baseline_bracket_mean_prompt_tok_s": 17282.76145466746,
-        "prefill_candidate_percent": -0.0655919217363854
       }
     },
-    "mtp3_secondary": {
-      "order": ["baseline_a1", "candidate_b1", "baseline_a2"],
-      "fixed_trajectory": false,
-      "baseline_a1": {
-        "raw_artifact_sha256": "f90ed6cfed790361bf2e9064b830e070307b50a28f92e749a27fe48622d859ce",
-        "native_bf16": false,
-        "c1_raw_tok_s": [122.70903154894286, 123.93836526445583, 125.15994830185498, 125.13965108494345, 125.1237327087284],
-        "c1_raw_acceptance": [0.6043956043956044, 0.6148148148148148, 0.6254681647940075, 0.6217228464419475, 0.6217228464419475],
-        "c1_median_tok_s": 125.1237327087284,
-        "c4_raw_tok_s": [385.5418339383037, 343.61365157170457, 373.99976292860276, 356.38001783367827, 361.0717158604438],
-        "c4_raw_acceptance": [0.5735815602836879, 0.4939467312348668, 0.6157407407407407, 0.5555555555555556, 0.5365646258503401],
-        "c4_median_tok_s": 361.0717158604438,
-        "prefill_raw_prompt_tok_s": [5199.651139069391, 5189.6840135524135, 5195.017539220864],
-        "prefill_median_prompt_tok_s": 5195.017539220864,
-        "healthy": true
-      },
-      "candidate_b1": {
-        "raw_artifact_sha256": "89ebf471388403819ceb1510650dbfd2d21de47d9bc002394b689fbf594b01e3",
-        "native_bf16": true,
-        "c1_raw_tok_s": [131.1525515221143, 132.63119009965553, 132.54844584629834, 132.42383738353635, 129.69079195370753],
-        "c1_raw_acceptance": [0.6217228464419475, 0.6439393939393939, 0.6325757575757576, 0.6401515151515151, 0.6222222222222222],
-        "c1_median_tok_s": 132.42383738353635,
-        "c4_raw_tok_s": [386.7851185225079, 366.260614827263, 372.92696179485057, 367.7727151154011, 371.3147068801824],
-        "c4_raw_acceptance": [0.5387894288150042, 0.5094650205761316, 0.5387894288150042, 0.5441302485004285, 0.5643044619422573],
-        "c4_median_tok_s": 371.3147068801824,
-        "prefill_raw_prompt_tok_s": [5184.342701676899, 5177.764913029142, 5176.768705622867],
-        "prefill_median_prompt_tok_s": 5177.764913029142,
-        "healthy": true
-      },
-      "baseline_a2": {
-        "raw_artifact_sha256": "8625b18dab5272bff83b9294d46b5c1d4e910958cca5cd5803ffe41e8e06abe9",
-        "native_bf16": false,
-        "c1_raw_tok_s": [122.53616209729907, 123.55639686208615, 125.1660984687537, 125.15818117855008, 125.0964723464721],
-        "c1_raw_acceptance": [0.6043956043956044, 0.6148148148148148, 0.6254681647940075, 0.6217228464419475, 0.6217228464419475],
-        "c1_median_tok_s": 125.0964723464721,
-        "c4_raw_tok_s": [367.2972260423371, 374.49183286874006, 375.8194865003055, 355.7788421089898, 362.98228914596973],
-        "c4_raw_acceptance": [0.5660542432195975, 0.5515151515151515, 0.6157407407407407, 0.5555555555555556, 0.5441302485004285],
-        "c4_median_tok_s": 367.2972260423371,
-        "prefill_raw_prompt_tok_s": [5167.334165464028, 5152.025923042815, 5157.095825036128],
-        "prefill_median_prompt_tok_s": 5157.095825036128,
-        "healthy": true
-      },
-      "derived": {
-        "c1_candidate_percent": 5.845838751768784,
-        "c1_baseline_recovery_percent": -0.02178672396208059,
-        "c4_candidate_percent": 1.9578638018707961,
-        "c4_baseline_recovery_percent": 1.724175533123029,
-        "prefill_candidate_percent": 0.03300255398177576
-      },
-      "interpretation": "C1 agrees with the fixed-trajectory result. C4 is secondary evidence because MTP acceptance and generation trajectories varied and the baseline bracket drifted 1.72%."
+    "derived": {
+      "c1_baseline_bracket_mean_tok_s": 55.46142464620242,
+      "c1_candidate_percent": 6.145685179512683,
+      "c4_baseline_bracket_mean_tok_s": 203.97241446885107,
+      "c4_candidate_percent": 4.837004951994306,
+      "prefill_baseline_bracket_mean_prompt_tok_s": 17045.112406993467,
+      "prefill_candidate_percent": 1.071360147957523
     }
   },
-  "scope": {
-    "performance_claim": "On this exact Qwen checkpoint and no-MTP serving path, enabling native BF16 improved median decode throughput by 6.16% at concurrency 1 and 5.49% at concurrency 4 versus the A1/A2 baseline mean; prefill was effectively unchanged at -0.07%.",
-    "not_claimed": "This receipt does not claim a universal speedup for every model, shape, bit width, MoE layout, prefill workload, or accelerator."
-  }
+  "production_restore": {
+    "restored_image_id": "sha256:921a46dfed1e4846f55c7507f8e1e4ea0278148ff54c926dd3b2246d72a0ed91",
+    "native_bf16": false,
+    "reachability": false,
+    "mtp_tokens": 3,
+    "healthy": true,
+    "restart_count": 0,
+    "oom_killed": false,
+    "sanity_text": " Paris.\nThe capital of Germany is"
+  },
+  "scope": "The performance claim applies to the qualified Qwen3.8-27B K6/MCG dense decode route and shapes. It is not a universal claim for all models, quantization formats, MoE paths, or prefill sizes."
 }
