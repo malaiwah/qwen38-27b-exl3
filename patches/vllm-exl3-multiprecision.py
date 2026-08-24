@@ -23,6 +23,7 @@ import ctypes
 import dataclasses
 import gc
 import importlib
+import json
 import os
 import re
 import sys
@@ -323,6 +324,23 @@ _B12X_TRELLIS_WARMED_DEVICES: set[tuple[int, int]] = set()
 # One-shot B12X-vs-exl3_gemm agreement check on real served tensors.
 _B12X_SELFTEST = os.environ.get("VLLM_EXL3_B12X_SELFTEST", "0") == "1"
 _B12X_SELFTEST_DONE: set[tuple] = set()
+# Opt-in, first-observation-only route accounting for model load, eager warmup,
+# and CUDA-graph capture. Graph replay bypasses Python, so exact replay launch
+# counts remain the responsibility of the accompanying CUDA trace.
+_B12X_REACHABILITY = (
+    os.environ.get("VLLM_EXL3_B12X_REACHABILITY", "0") == "1"
+)
+_B12X_REACHABILITY_SEEN: set[tuple[Any, ...]] = set()
+# Opt-in native BF16 decode for a prepared cooperative K6/MCG launch.  The
+# baseline remains the served BF16 -> FP16 -> EXL3 -> BF16 boundary unless
+# B12X itself bound an exact BF16 launch for the shard and accepts the runtime
+# input.  This is deliberately independent of VLLM_EXL3_B12X_MIN_M: the
+# integration supplies the model dtype and capture capacity while B12X owns
+# shape eligibility, grid selection, and workspace policy.
+_B12X_NATIVE_BF16 = (
+    os.environ.get("VLLM_EXL3_B12X_NATIVE_BF16", "0") == "1"
+)
+_B12X_NATIVE_BF16_WARMED_SHAPES: set[tuple[Any, ...]] = set()
 # One persistent fp16 reconstruct buffer per device (PR #397, minimal form).
 _RECON_ARENA: dict[int, torch.Tensor] = {}
 # Opt-out for the FP16 reconstruct cache on the prefill reconstruct+hgemm path.
@@ -1478,6 +1496,23 @@ def _graph_decode_capture_rows(vllm_config: Any) -> tuple[int, ...]:
     return tuple(sorted(rows))
 
 
+def _b12x_native_bf16_warm_rows() -> tuple[int, ...]:
+    """Return the bounded decode rows to materialize before graph capture.
+
+    The four qualification rows are always included so the serving image and
+    the exact-weight harness exercise identical BF16 specializations.  When a
+    vLLM config is available, include every enumerated capture row accepted by
+    the bound B12X launch.  The launch still makes the final eligibility
+    decision; the integration only supplies a finite serving-capacity set.
+    """
+
+    rows = {1, 4, 8, 16}
+    vllm_config = get_current_vllm_config_or_none()
+    if vllm_config is not None:
+        rows.update(_graph_decode_capture_rows(vllm_config))
+    return tuple(sorted(row for row in rows if 1 <= row <= 16))
+
+
 def _prime_exl3_gemm_rows(
     trellis: torch.Tensor,
     suh: torch.Tensor,
@@ -1580,6 +1615,149 @@ def _b12x_trellis_weight(
         )
         cache[key] = weight
     return weight
+
+
+def _b12x_cached_trellis_weight(
+    trellis: torch.Tensor,
+    suh: torch.Tensor,
+    svh: torch.Tensor,
+    dtype: torch.dtype,
+) -> Any | None:
+    """Return an already planned weight without changing runtime state."""
+
+    cache = getattr(trellis, "_vllm_b12x_prepared_weights", None)
+    if cache is None:
+        return None
+    return cache.get((id(suh), id(svh), dtype))
+
+
+def _dtype_label(dtype: torch.dtype | None) -> str | None:
+    if dtype is None:
+        return None
+    return str(dtype).removeprefix("torch.")
+
+
+def _b12x_trellis_role(prefix: str) -> str:
+    """Classify explicit MTP/draft module prefixes without guessing sharing."""
+
+    if re.search(r"(^|\.)(mtp|draft)(\.|$)", prefix.lower()):
+        return "mtp_or_draft"
+    return "target_or_shared"
+
+
+def _record_b12x_trellis_reachability(
+    *,
+    phase: str,
+    layer: torch.nn.Module,
+    shard_id: ShardId,
+    trellis: torch.Tensor,
+    has_mcg: bool,
+    has_mul1: bool,
+    route: str,
+    reason: str,
+    b12x_supported: bool,
+    prepared: Any | None = None,
+    x: torch.Tensor | None = None,
+    model_input_dtype: torch.dtype | None = None,
+    model_output_dtype: torch.dtype | None = None,
+) -> None:
+    """Emit one structured record per distinct load/warmup/capture decision.
+
+    This is deliberately disabled by default. When enabled, the key includes
+    projection, shard, row count, capture state, dtypes, and selected route, so
+    repeated eager calls and CUDA-graph replays do not produce hot-path logs.
+    Exact replay invocation counts come from the CUDA trace, since replay never
+    re-enters this Python dispatch.
+    """
+
+    if not _B12X_REACHABILITY:
+        return
+    prefix = str(getattr(layer, "prefix", layer.__class__.__name__))
+    capturing = bool(
+        x is not None
+        and x.is_cuda
+        and torch.cuda.is_current_stream_capturing()
+    )
+    rows = None if x is None else int(x.shape[0])
+    key = (
+        phase,
+        prefix,
+        repr(shard_id),
+        rows,
+        capturing,
+        route,
+        reason,
+        _dtype_label(model_input_dtype),
+        _dtype_label(None if x is None else x.dtype),
+    )
+    if key in _B12X_REACHABILITY_SEEN:
+        return
+    _B12X_REACHABILITY_SEEN.add(key)
+
+    launch = (
+        None
+        if prepared is None
+        else getattr(prepared, "k6_mcg_small_m_launch", None)
+    )
+    accepts_input = None
+    if launch is not None and x is not None:
+        accepts_input = bool(launch.accepts_input(x))
+    launch_record = None
+    if launch is not None:
+        launch_record = {
+            "class": type(launch).__name__,
+            "device_index": int(launch.device_index),
+            "gemm_grid_x": int(launch.grid_x),
+            "launch_grid_x": (
+                None if rows is None else int(launch.launch_grid_x(rows))
+            ),
+            "resident_ctas": int(launch.resident_ctas),
+            "blocks_per_sm": int(launch.blocks_per_sm),
+            "threads_per_cta": int(launch.cta_threads),
+            "shared_memory_bytes": int(launch.shared_memory_bytes),
+        }
+    codebook = "mcg" if has_mcg else "mul1" if has_mul1 else "unknown"
+    record = {
+        "schema": "b12x.trellis.reachability.v1",
+        "phase": phase,
+        "projection": prefix,
+        "shard": repr(shard_id),
+        "model_role": _b12x_trellis_role(prefix),
+        "m": rows,
+        "k": int(trellis.shape[0]) * 16,
+        "n": int(trellis.shape[1]) * 16,
+        "e": 1,
+        "trellis_bits": int(trellis.shape[2]) // 16,
+        "trellis_codebook": codebook,
+        "weight_layout": "trellis_t256",
+        "model_input_dtype": _dtype_label(model_input_dtype),
+        "kernel_input_dtype": _dtype_label(None if x is None else x.dtype),
+        "prepared_compute_dtype": _dtype_label(
+            None if prepared is None else getattr(prepared, "params_dtype", None)
+        ),
+        "route_output_dtype": _dtype_label(None if x is None else x.dtype),
+        "model_output_dtype": _dtype_label(model_output_dtype),
+        "b12x_supported": bool(b12x_supported),
+        "bound_k6_mcg_small_m_launch": launch is not None,
+        "bound_launch_accepts_input": accepts_input,
+        "selected_route": route,
+        "reason": reason,
+        "cuda_graph_capture": capturing,
+        "capture_size": rows if capturing else None,
+        "policy_min_m": int(_B12X_MIN_M),
+        "policy_lm_head_min_m": _B12X_LM_HEAD_MIN_M,
+        "policy_any_bits": os.environ.get("VLLM_EXL3_B12X_ANY_BITS", "0"),
+        "policy_n_range": os.environ.get(
+            "VLLM_EXL3_B12X_N_RANGE", "5120-32768"
+        ),
+        "launch": launch_record,
+        "observation_count": 1,
+        "count_scope": "first Python load/warmup/capture observation; trace replay separately",
+    }
+    logger.warning(
+        "B12X_TRELLIS_REACHABILITY %s",
+        json.dumps(record, sort_keys=True, separators=(",", ":")),
+    )
 
 
 
@@ -1699,6 +1877,81 @@ def _warm_b12x_trellis_device(
     _b12x_trellis_linear(source, trellis, suh, svh)
     torch.cuda.synchronize(trellis.device)
     _B12X_TRELLIS_WARMED_DEVICES.add(key)
+
+
+def _warm_b12x_native_bf16_shape(
+    trellis: torch.Tensor,
+    suh: torch.Tensor,
+    svh: torch.Tensor,
+    rows: tuple[int, ...],
+) -> None:
+    """Materialize every graph-owned BF16 buffer for one bound K6 shape."""
+
+    prepared = _b12x_cached_trellis_weight(
+        trellis, suh, svh, torch.bfloat16
+    )
+    launch = (
+        None
+        if prepared is None
+        else getattr(prepared, "k6_mcg_small_m_launch", None)
+    )
+    if launch is None:
+        raise RuntimeError("native BF16 warmup requires a bound B12X launch")
+
+    device_index = trellis.device.index
+    if device_index is None:
+        device_index = torch.cuda.current_device()
+    bits = int(trellis.shape[2]) // 16
+    k = int(trellis.shape[0]) * 16
+    n = int(trellis.shape[1]) * 16
+    signature = (device_index, bits, torch.bfloat16, k, n, rows)
+    if signature in _B12X_NATIVE_BF16_WARMED_SHAPES:
+        return
+
+    source = torch.zeros(
+        (max(rows), k), dtype=torch.bfloat16, device=trellis.device
+    )
+    warmed = 0
+    for row in rows:
+        view = source.narrow(0, 0, row)
+        if not launch.accepts_input(view):
+            continue
+        _b12x_trellis_linear(view, trellis, suh, svh)
+        warmed += 1
+    if warmed == 0:
+        raise RuntimeError(
+            "bound native BF16 launch rejected every configured decode row"
+        )
+    torch.cuda.synchronize(trellis.device)
+    _B12X_NATIVE_BF16_WARMED_SHAPES.add(signature)
+
+
+def _b12x_native_bf16_accepts(
+    layer: torch.nn.Module,
+    shard_id: ShardId,
+    x: torch.Tensor,
+) -> bool:
+    """Fail closed unless load-time preparation bound this exact BF16 input."""
+
+    if not _B12X_NATIVE_BF16 or x.dtype != torch.bfloat16:
+        return False
+    ready = getattr(layer, "_b12x_native_bf16_shards", ())
+    if shard_id not in ready:
+        return False
+    trellis = layer.trellis.exl3_tensors.get(shard_id)
+    suh = layer.suh.exl3_tensors.get(shard_id)
+    svh = layer.svh.exl3_tensors.get(shard_id)
+    if trellis is None or suh is None or svh is None:
+        return False
+    prepared = _b12x_cached_trellis_weight(
+        trellis, suh, svh, torch.bfloat16
+    )
+    launch = (
+        None
+        if prepared is None
+        else getattr(prepared, "k6_mcg_small_m_launch", None)
+    )
+    return bool(launch is not None and launch.accepts_input(x))
 
 
 def _b12x_trellis_c_tmp_elements(
@@ -1912,8 +2165,10 @@ class Exl3Config(QuantizationConfig):
         return "exl3"
 
     def get_supported_act_dtypes(self) -> list[torch.dtype]:
-        # The kernel boundary is always fp16.  BF16 model activations are cast
-        # in apply() and converted back after the fp16 bias addition.
+        # The baseline serialized boundary is FP16. An opt-in cooperative
+        # K6/MCG launch may retain BF16 end to end only after load-time B12X
+        # preparation and a runtime accepts_input check; every other shard
+        # keeps the FP16 boundary and converts back to the model dtype.
         return [torch.float16, torch.bfloat16]
 
     @classmethod
@@ -3182,6 +3437,12 @@ class Exl3LinearMethod(LinearMethodBase):
                     device=device, non_blocking=True
                 ).contiguous()
 
+        native_bf16_shards: set[ShardId] = set()
+        layer._b12x_native_bf16_shards = native_bf16_shards
+        native_bf16_rows = (
+            _b12x_native_bf16_warm_rows() if _B12X_NATIVE_BF16 else ()
+        )
+
         # Multi-precision FP4/FP6 path: convert trellis weights at load time.
         # MLP layers → FP4 (4x MMA), attention/GDN → FP6 (2x MMA, fidelity).
         if _MULTIPRECISION_ENABLED:
@@ -3238,6 +3499,25 @@ class Exl3LinearMethod(LinearMethodBase):
                                 weights = conv.convert_all_shards_to_fp4(layer, ext)
                                 layer.mp_weights = weights  # type: ignore[attr-defined]
                                 layer.mp_precision = "fp4"  # type: ignore[attr-defined]
+                                for shard_id in layer.exl3_shard_ids:
+                                    trellis = layer.trellis.exl3_tensors[shard_id]
+                                    has_mcg = shard_id in layer.mcg.exl3_tensors
+                                    has_mul1 = shard_id in layer.mul1.exl3_tensors
+                                    _record_b12x_trellis_reachability(
+                                        phase="plan",
+                                        layer=layer,
+                                        shard_id=shard_id,
+                                        trellis=trellis,
+                                        has_mcg=has_mcg,
+                                        has_mul1=has_mul1,
+                                        route="multiprecision_fp4",
+                                        reason="converted_at_model_load",
+                                        b12x_supported=_b12x_trellis_k6_supported(
+                                            trellis,
+                                            has_mcg=has_mcg,
+                                            has_mul1=has_mul1,
+                                        ),
+                                    )
                                 for attr in ("trellis", "suh", "svh", "mcg", "mul1"):
                                     getattr(layer, attr).exl3_tensors.clear()
                                 torch.cuda.empty_cache()
@@ -3250,6 +3530,25 @@ class Exl3LinearMethod(LinearMethodBase):
                                 weights = conv.convert_all_shards_to_fp6(layer, ext)
                                 layer.mp_weights = weights  # type: ignore[attr-defined]
                                 layer.mp_precision = "fp6"  # type: ignore[attr-defined]
+                                for shard_id in layer.exl3_shard_ids:
+                                    trellis = layer.trellis.exl3_tensors[shard_id]
+                                    has_mcg = shard_id in layer.mcg.exl3_tensors
+                                    has_mul1 = shard_id in layer.mul1.exl3_tensors
+                                    _record_b12x_trellis_reachability(
+                                        phase="plan",
+                                        layer=layer,
+                                        shard_id=shard_id,
+                                        trellis=trellis,
+                                        has_mcg=has_mcg,
+                                        has_mul1=has_mul1,
+                                        route="multiprecision_fp6",
+                                        reason="converted_at_model_load",
+                                        b12x_supported=_b12x_trellis_k6_supported(
+                                            trellis,
+                                            has_mcg=has_mcg,
+                                            has_mul1=has_mul1,
+                                        ),
+                                    )
                                 for attr in ("trellis", "suh", "svh", "mcg", "mul1"):
                                     getattr(layer, attr).exl3_tensors.clear()
                                 torch.cuda.empty_cache()
@@ -3273,21 +3572,131 @@ class Exl3LinearMethod(LinearMethodBase):
             return
         for shard_id in layer.exl3_shard_ids:
             trellis = layer.trellis.exl3_tensors[shard_id]
-            if not _b12x_trellis_k6_supported(
+            has_mcg = shard_id in layer.mcg.exl3_tensors
+            has_mul1 = shard_id in layer.mul1.exl3_tensors
+            b12x_supported = _b12x_trellis_k6_supported(
                 trellis,
-                has_mcg=shard_id in layer.mcg.exl3_tensors,
-                has_mul1=shard_id in layer.mul1.exl3_tensors,
-            ):
+                has_mcg=has_mcg,
+                has_mul1=has_mul1,
+            )
+            if not b12x_supported:
+                _record_b12x_trellis_reachability(
+                    phase="plan",
+                    layer=layer,
+                    shard_id=shard_id,
+                    trellis=trellis,
+                    has_mcg=has_mcg,
+                    has_mul1=has_mul1,
+                    route="exllamav3_only",
+                    reason="vllm_b12x_contract_or_n_range_rejected",
+                    b12x_supported=False,
+                )
                 continue
             suh = layer.suh.exl3_tensors[shard_id]
             svh = layer.svh.exl3_tensors[shard_id]
-            _b12x_trellis_weight(
+            prepared = _b12x_trellis_weight(
                 trellis,
                 suh,
                 svh,
                 torch.float16,
             )
+            bound_launch = getattr(
+                prepared, "k6_mcg_small_m_launch", None
+            )
+            _record_b12x_trellis_reachability(
+                phase="plan",
+                layer=layer,
+                shard_id=shard_id,
+                trellis=trellis,
+                has_mcg=has_mcg,
+                has_mul1=has_mul1,
+                route=(
+                    "b12x_k6_mcg_small_m_planned"
+                    if bound_launch is not None
+                    else "b12x_generic_trellis256_planned"
+                ),
+                reason=(
+                    "bound_cooperative_launch"
+                    if bound_launch is not None
+                    else "prepared_without_bound_cooperative_launch"
+                ),
+                b12x_supported=True,
+                prepared=prepared,
+            )
             _warm_b12x_trellis_device(trellis, suh, svh)
+
+            if _B12X_NATIVE_BF16 and bound_launch is not None:
+                prepared_bf16 = None
+                try:
+                    prepared_bf16 = _b12x_trellis_weight(
+                        trellis,
+                        suh,
+                        svh,
+                        torch.bfloat16,
+                    )
+                    bf16_launch = getattr(
+                        prepared_bf16, "k6_mcg_small_m_launch", None
+                    )
+                    if bf16_launch is None:
+                        _record_b12x_trellis_reachability(
+                            phase="plan",
+                            layer=layer,
+                            shard_id=shard_id,
+                            trellis=trellis,
+                            has_mcg=has_mcg,
+                            has_mul1=has_mul1,
+                            route="exllamav3_bf16_boundary_fallback",
+                            reason="bf16_prepared_without_bound_cooperative_launch",
+                            b12x_supported=True,
+                            prepared=prepared_bf16,
+                            model_input_dtype=torch.bfloat16,
+                            model_output_dtype=torch.bfloat16,
+                        )
+                    else:
+                        _warm_b12x_native_bf16_shape(
+                            trellis,
+                            suh,
+                            svh,
+                            native_bf16_rows,
+                        )
+                        native_bf16_shards.add(shard_id)
+                        _record_b12x_trellis_reachability(
+                            phase="plan",
+                            layer=layer,
+                            shard_id=shard_id,
+                            trellis=trellis,
+                            has_mcg=has_mcg,
+                            has_mul1=has_mul1,
+                            route="b12x_k6_mcg_small_m_bf16_planned",
+                            reason="bound_bf16_launch_warmed_for_capture_rows",
+                            b12x_supported=True,
+                            prepared=prepared_bf16,
+                            model_input_dtype=torch.bfloat16,
+                            model_output_dtype=torch.bfloat16,
+                        )
+                except Exception as exc:
+                    _record_b12x_trellis_reachability(
+                        phase="plan",
+                        layer=layer,
+                        shard_id=shard_id,
+                        trellis=trellis,
+                        has_mcg=has_mcg,
+                        has_mul1=has_mul1,
+                        route="exllamav3_bf16_boundary_fallback",
+                        reason="bf16_preparation_or_warmup_failed",
+                        b12x_supported=True,
+                        prepared=prepared_bf16,
+                        model_input_dtype=torch.bfloat16,
+                        model_output_dtype=torch.bfloat16,
+                    )
+                    logger.warning(
+                        "Native B12X BF16 disabled for %s[%r]: %s",
+                        getattr(layer, "prefix", layer.__class__.__name__),
+                        shard_id,
+                        exc,
+                    )
+
+        layer._b12x_native_bf16_shards = frozenset(native_bf16_shards)
 
         # Pre-reconstruct large gate_up weights at load time so the profiler
         # accounts for cached memory. Uses chunked fold to avoid FP32 OOM.
@@ -3373,12 +3782,68 @@ class Exl3LinearMethod(LinearMethodBase):
     ) -> torch.Tensor:
         original_shape = x.shape[:-1]
         original_dtype = x.dtype
+
+        # Preserve the baseline path byte-for-byte unless this BF16, bias-free
+        # invocation contains at least one load-time-qualified native shard.
+        # Packed layers can mix a native Q/Z projection with narrow K/V
+        # ExLlamaV3 fallbacks, so selection and boundary conversion are per
+        # shard.  A fallback output is rounded to the model dtype before cat,
+        # exactly where the baseline rounded the concatenated tensor.
+        model_x_2d = None
+        native_bf16: tuple[bool, ...] = ()
+        if (
+            _B12X_NATIVE_BF16
+            and original_dtype == torch.bfloat16
+            and bias is None
+        ):
+            model_x_2d = x.reshape(-1, x.shape[-1]).contiguous()
+            native_bf16 = tuple(
+                _b12x_native_bf16_accepts(layer, shard_id, model_x_2d)
+                for shard_id in layer.exl3_shard_ids
+            )
+        if any(native_bf16):
+            assert model_x_2d is not None
+            fp16_x: torch.Tensor | None = None
+            mp_weights = getattr(layer, "mp_weights", None)
+            outputs = []
+            for shard_id, use_native_bf16 in zip(
+                layer.exl3_shard_ids, native_bf16, strict=True
+            ):
+                if use_native_bf16 or (
+                    mp_weights is not None and shard_id in mp_weights
+                ):
+                    shard_x = model_x_2d
+                else:
+                    if fp16_x is None:
+                        fp16_x = model_x_2d.to(torch.float16).contiguous()
+                    shard_x = fp16_x
+                shard_output = self._apply_one(
+                    layer,
+                    shard_x,
+                    shard_id,
+                    model_dtype=original_dtype,
+                    native_bf16=use_native_bf16,
+                )
+                outputs.append(
+                    shard_output
+                    if shard_output.dtype == original_dtype
+                    else shard_output.to(original_dtype)
+                )
+            output = outputs[0] if len(outputs) == 1 else torch.cat(outputs, dim=-1)
+            return output.reshape(*original_shape, output.shape[-1])
+
         # FP6 path uses bf16 (the b12x quantizer expects bf16 input)
         has_mp = hasattr(layer, "mp_weights") and layer.mp_weights
         target_dtype = torch.bfloat16 if has_mp else torch.float16
         x_2d = x.reshape(-1, x.shape[-1]).to(target_dtype).contiguous()
         outputs = [
-            self._apply_one(layer, x_2d, shard_id) for shard_id in layer.exl3_shard_ids
+            self._apply_one(
+                layer,
+                x_2d,
+                shard_id,
+                model_dtype=original_dtype,
+            )
+            for shard_id in layer.exl3_shard_ids
         ]
         output = outputs[0] if len(outputs) == 1 else torch.cat(outputs, dim=-1)
         if bias is not None:
@@ -3611,7 +4076,12 @@ class Exl3LinearMethod(LinearMethodBase):
 
     @staticmethod
     def _apply_one(
-        layer: torch.nn.Module, x: torch.Tensor, shard_id: ShardId
+        layer: torch.nn.Module,
+        x: torch.Tensor,
+        shard_id: ShardId,
+        *,
+        model_dtype: torch.dtype | None = None,
+        native_bf16: bool = False,
     ) -> torch.Tensor:
         # Multi-precision dispatch: direct calls (same pattern as FP6-only patch)
         # b12x _STATE_LOCK is patched to nullcontext, so dynamo can trace
@@ -3736,11 +4206,15 @@ class Exl3LinearMethod(LinearMethodBase):
                     layer._mp_is_lm_head = is_lm_head
                 if is_lm_head:
                     eff_min_m = _B12X_LM_HEAD_MIN_M
-            use_b12x = _b12x_trellis_k6_supported(
+            b12x_supported = _b12x_trellis_k6_supported(
                 trellis,
                 has_mcg=has_mcg,
                 has_mul1=has_mul1,
-            ) and (eff_min_m == 0 or x.shape[0] >= eff_min_m)
+            )
+            use_b12x = native_bf16 or (
+                b12x_supported
+                and (eff_min_m == 0 or x.shape[0] >= eff_min_m)
+            )
             # NOTE (PR #318's warning applies): this is a Python-level branch.
             # Safe under shape-specialised CUDA graphs (m is fixed per captured
             # graph) and with compile=NONE; if torch.compile with dynamic shapes
@@ -3748,6 +4222,65 @@ class Exl3LinearMethod(LinearMethodBase):
             # will bake one branch into the traced graph.
             suh = layer.suh.exl3_tensors[shard_id]
             svh = layer.svh.exl3_tensors[shard_id]
+            prepared = (
+                _b12x_cached_trellis_weight(trellis, suh, svh, x.dtype)
+                if native_bf16
+                else (
+                    _b12x_trellis_weight(trellis, suh, svh, x.dtype)
+                    if use_b12x
+                    else _b12x_cached_trellis_weight(
+                        trellis, suh, svh, x.dtype
+                    )
+                )
+            )
+            bound_launch = (
+                None
+                if prepared is None
+                else getattr(prepared, "k6_mcg_small_m_launch", None)
+            )
+            bound_accepts = bool(
+                bound_launch is not None and bound_launch.accepts_input(x)
+            )
+            if native_bf16 and not bound_accepts:
+                raise RuntimeError(
+                    "load-time-qualified native BF16 B12X launch rejected its "
+                    "runtime input; refusing to enter a generic or EXL3 route "
+                    "with the wrong activation dtype"
+                )
+            if native_bf16:
+                selected_route = "b12x_k6_mcg_small_m_bf16"
+                route_reason = "bound_bf16_launch_accepts_input"
+            elif use_b12x and bound_accepts:
+                selected_route = "b12x_k6_mcg_small_m"
+                route_reason = "bound_cooperative_launch_accepts_input"
+            elif use_b12x:
+                selected_route = "b12x_generic_trellis256"
+                route_reason = (
+                    "prepared_without_bound_cooperative_launch"
+                    if bound_launch is None
+                    else "bound_cooperative_launch_rejected_input"
+                )
+            elif b12x_supported:
+                selected_route = "exllamav3"
+                route_reason = "vllm_min_m_policy"
+            else:
+                selected_route = "exllamav3"
+                route_reason = "vllm_b12x_contract_or_n_range_rejected"
+            _record_b12x_trellis_reachability(
+                phase="runtime",
+                layer=layer,
+                shard_id=shard_id,
+                trellis=trellis,
+                has_mcg=has_mcg,
+                has_mul1=has_mul1,
+                route=selected_route,
+                reason=route_reason,
+                b12x_supported=b12x_supported,
+                prepared=prepared,
+                x=x,
+                model_input_dtype=model_dtype,
+                model_output_dtype=model_dtype,
+            )
             if (
                 use_b12x
                 and _B12X_SELFTEST
@@ -3774,8 +4307,13 @@ class Exl3LinearMethod(LinearMethodBase):
                 if key not in _B12X_SELFTEST_DONE:
                     _B12X_SELFTEST_DONE.add(key)
                     got = _b12x_trellis_linear(x, trellis, suh, svh)
+                    ref_x = (
+                        x
+                        if x.dtype == torch.float16
+                        else x.to(torch.float16)
+                    )
                     ref = _exl3_gemm(
-                        x, trellis, suh, svh, has_mcg, has_mul1
+                        ref_x, trellis, suh, svh, has_mcg, has_mul1
                     )
                     a = got.float().flatten()
                     b = ref.float().flatten()
@@ -3794,7 +4332,9 @@ class Exl3LinearMethod(LinearMethodBase):
                         "OK" if (cos > 0.999 and rel < 0.05)
                         else "*** MISMATCH ***",
                     )
-                    output = ref  # serve the reference on the selftest call
+                    # Preserve the selected route's public dtype even when the
+                    # diagnostic reference required the served FP16 boundary.
+                    output = ref.to(x.dtype)
             if output is None:
                 output = (
                     _b12x_trellis_linear(x, trellis, suh, svh)
