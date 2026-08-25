@@ -25,7 +25,7 @@ SERVED_MODEL_NAME="${SERVED_MODEL_NAME:-Qwen3.8-27B}"
 # PR #314 is mounted over the pinned GG r34 base image. Refuse to start if the
 # installed overlay is absent or differs from the exact qualified source.
 EXL3_PATCH_HOST="${EXL3_PATCH_HOST:-/home/mbelleau/vllm-exl3-multiprecision.py}"
-EXL3_PATCH_SHA256="dcede1b494984b3ec29fae5187e8aa692557e4658a1601c7dc0fc337737cbaa8"
+EXL3_PATCH_SHA256="a164be425c484ebccc7a117e81210e52a394696e5d5e9bc519c34e2723e6df31"
 EXL3_PATCH_CTR="/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py"
 [ -f "${EXL3_PATCH_HOST}" ] || {
   echo "EXL3 graph patch is missing: ${EXL3_PATCH_HOST}" >&2
@@ -140,7 +140,7 @@ case "${PROFILE}" in
     # than their trellis form, which is why the context ceiling is 199,104 rather
     # than 238,400 - that is the whole trade.
     : "${VLLM_EXL3_FP4_LAYERS:=,}"
-    : "${VLLM_EXL3_FP6_LAYERS:=mlp.gate_up_proj}"
+    : "${VLLM_EXL3_FP6_LAYERS:=mlp.gate_up_proj}"; : "${VLLM_EXL3_FP6_LAYER_RANGE:=0-11}"
     : "${VLLM_EXL3_PREFILL_RECONSTRUCT_M:=1}"
     : "${VLLM_EXL3_PREFILL_RECONSTRUCT_MAX_MB:=512}"
     : "${VLLM_EXL3_PREFILL_RECONSTRUCT_CACHE:=0}"
@@ -150,8 +150,8 @@ case "${PROFILE}" in
     # (3250.6 -> 3923.0), fox 206.0 [acc 1.000], vision OK.
     : "${VLLM_EXL3_B12X_ANY_BITS:=1}"
     : "${VLLM_EXL3_SKIP_TRELLIS_PREP:=0}"
-    : "${GPU_MEMORY_UTILIZATION:=0.98}"
-    : "${MAX_MODEL_LEN:=233376}"
+    : "${GPU_MEMORY_UTILIZATION:=0.96}"
+    : "${MAX_MODEL_LEN:=262144}"
     ;;
   *)
     echo "Unknown PROFILE='${PROFILE}' (expected: throughput | fidelity | balanced)" >&2
@@ -259,6 +259,7 @@ podman run "${RUN_ARGS[@]}" --replace \
   -e VLLM_EXL3_FP4_TRITON_DECODE=0 \
   -e VLLM_EXL3_GRAPH_DECODE="${VLLM_EXL3_GRAPH_DECODE}" \
   -e VLLM_EXL3_EMBED_ONLINE_BITS=6 \
+  -e VLLM_EXL3_VISION_TRELLIS_BITS="${VLLM_EXL3_VISION_TRELLIS_BITS:-6}" \
   -e B12X_PACKED_B_MIN_N=1024 \
   -e VLLM_EXL3_FP4_PER_ROW_GS=0 \
   -e VLLM_EXL3_FP4_DRAFT_HEAD=0 \
