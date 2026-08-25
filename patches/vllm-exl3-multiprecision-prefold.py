@@ -1466,7 +1466,7 @@ def _exl3_gemm(
             _exl3_gemm._prefold_cache = {}
         _pf_cache = _exl3_gemm._prefold_cache
         pf_entry = _pf_cache.get(cache_key)
-        if pf_entry is None and _PREFOLD_LM_HEAD and (k, n) in _PREFOLD_SHAPES_LM_HEAD:
+        if pf_entry is None and _should_prefold(k, n):
             try:
                 # Extract W_full using the b12x API (which handles Hadamard + suh/svh)
                 api = _load_b12x_trellis_linear()
@@ -1709,7 +1709,7 @@ def _b12x_trellis_weight(
         N = weight.out_features
         if _should_prefold(K, N):
             try:
-                _USE_FP8 = _os.environ.get("VLLM_EXL3_PREFOLD_FP8", "0") == "1" and (K, N) == (5120, 248320)
+                _USE_FP8 = _os.environ.get("VLLM_EXL3_PREFOLD_FP8", "0") == "1"
                 if _USE_FP8:
                     W_bf16 = _extract_w_full(weight, api)
                     FP8_MAX = 448.0
