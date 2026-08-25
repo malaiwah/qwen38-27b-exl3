@@ -69,8 +69,106 @@ def _should_prefold(K: int, N: int) -> bool:
         return True
     return False
 
-# Cache for pre-folded weights: (id(trellis), id(suh), id(svh), dtype) → W_full
-_PREFOLD_CACHE: dict = {}
+# Disk cache for pre-folded weights (same pattern as exl3_online_cache).
+# Saves extracted FP8/BF16 weights to safetensors files keyed by a hash of
+# the trellis/suh/svh tensor data, so container restarts skip re-extraction.
+_PREFOLD_DISK_CACHE_DIR = _os.environ.get(
+    "VLLM_EXL3_PREFOLD_CACHE_DIR",
+    _os.environ.get("VLLM_EXL3_ONLINE_CACHE_DIR", "/cache/jit/exl3-prefold"),
+)
+_PREFOLD_DISK_SCHEMA = 1
+
+def _prefold_cache_digest(trellis: torch.Tensor, suh: torch.Tensor,
+                          svh: torch.Tensor, K: int, N: int,
+                          fmt: str) -> str:
+    """SHA256 digest identifying one pre-foldable weight shard."""
+    import hashlib
+    h = hashlib.sha256()
+    h.update(b"prefold_v%d" % _PREFOLD_DISK_SCHEMA)
+    h.update(b"|%d|%d|%s" % (K, N, fmt))
+    # Hash tensor data (CPU copy, deterministic)
+    for t in (trellis, suh, svh):
+        h.update(t.cpu().contiguous().numpy().tobytes())
+    return h.hexdigest()
+
+def _prefold_cache_path(digest: str) -> "Path":
+    from pathlib import Path
+    d = Path(_PREFOLD_DISK_CACHE_DIR)
+    return d / digest[:2] / f"{digest}.safetensors"
+
+def _prefold_disk_load(digest: str) -> "dict[str, torch.Tensor] | None":
+    """Load pre-folded weight from disk cache; None on miss."""
+    from pathlib import Path
+    from safetensors.torch import safe_open
+    path = _prefold_cache_path(digest)
+    if not path.is_file():
+        return None
+    try:
+        tensors = {}
+        with safe_open(str(path), framework="pt", device="cuda") as f:
+            for key in f.keys():
+                tensors[key] = f.get_tensor(key)
+        return tensors
+    except Exception:
+        return None
+
+def _prefold_disk_save(digest: str, tensors: "dict[str, torch.Tensor]") -> None:
+    """Save pre-folded weight to disk cache (best-effort)."""
+    from pathlib import Path
+    from safetensors.torch import save_file
+    path = _prefold_cache_path(digest)
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_suffix(".tmp")
+        save_file(tensors, str(tmp))
+        tmp.rename(path)
+    except Exception:
+        pass  # Cache write is optional
+
+def _prefold_load_or_extract(
+    trellis: torch.Tensor, suh: torch.Tensor, svh: torch.Tensor,
+    K: int, N: int, use_fp8: bool, weight, api,
+) -> "tuple | torch.Tensor":
+    """Load pre-folded weight from disk cache, or extract and cache it."""
+    fmt = "fp8" if use_fp8 else "bf16"
+    digest = _prefold_cache_digest(trellis, suh, svh, K, N, fmt)
+
+    # Try disk cache
+    cached = _prefold_disk_load(digest)
+    if cached is not None:
+        if use_fp8:
+            W_fp8 = cached["w_fp8"]
+            W_scale = cached["w_scale"]
+            scale_one = torch.tensor(1.0, device="cuda", dtype=torch.float32)
+            logger.info("Pre-folded %s (cached): (%d, %d) = %.1f MB",
+                        fmt.upper(), K, N, W_fp8.numel() / 1e6)
+            return (W_fp8, W_scale, scale_one)
+        else:
+            W_full = cached["w_bf16"]
+            logger.info("Pre-folded %s (cached): (%d, %d) = %.1f MB",
+                        fmt.upper(), K, N, W_full.numel() * 2 / 1e6)
+            return W_full
+
+    # Extract (slow path)
+    W_bf16 = _extract_w_full(weight, api)
+    if use_fp8:
+        FP8_MAX = 448.0
+        W_amax = W_bf16.abs().max().item()
+        W_scale = W_amax / FP8_MAX if W_amax > 0 else 1.0
+        W_fp8 = (W_bf16 / W_scale).to(torch.float8_e4m3fn)
+        W_scale_t = torch.tensor(W_scale, device="cuda", dtype=torch.float32)
+        scale_one = torch.tensor(1.0, device="cuda", dtype=torch.float32)
+        # Save to disk
+        _prefold_disk_save(digest, {"w_fp8": W_fp8, "w_scale": W_scale_t})
+        logger.info("Pre-folded %s: (%d, %d) = %.1f MB (scale=%.6f)",
+                    fmt.upper(), K, N, W_fp8.numel() / 1e6, W_scale)
+        del W_bf16
+        return (W_fp8, W_scale_t, scale_one)
+    else:
+        _prefold_disk_save(digest, {"w_bf16": W_bf16})
+        logger.info("Pre-folded %s: (%d, %d) = %.1f MB",
+                    fmt.upper(), K, N, W_bf16.numel() * 2 / 1e6)
+        return W_full if False else W_bf16
 
 def _extract_w_full(weight, api) -> torch.Tensor:
     """Extract full BF16 weight using M=1 identity extraction."""
@@ -1465,26 +1563,21 @@ def _exl3_gemm(
         if not hasattr(_exl3_gemm, '_prefold_cache'):
             _exl3_gemm._prefold_cache = {}
         _pf_cache = _exl3_gemm._prefold_cache
-        pf_entry = _pf_cache.get(cache_key)
         if pf_entry is None and _should_prefold(k, n):
             try:
-                # Extract W_full using the b12x API (which handles Hadamard + suh/svh)
                 api = _load_b12x_trellis_linear()
                 w = api.prepare_weight(trellis, suh, svh, codebook="mcg",
                                        params_dtype=torch.bfloat16)
-                W_bf16 = _extract_w_full(w, api)
                 _USE_FP8 = _os.environ.get("VLLM_EXL3_PREFOLD_FP8", "0") == "1"
+                result = _prefold_load_or_extract(
+                    trellis, suh, svh, k, n, _USE_FP8, w, api)
                 if _USE_FP8:
-                    FP8_MAX = 448.0
-                    W_amax = W_bf16.abs().max().item()
-                    W_scale = W_amax / FP8_MAX if W_amax > 0 else 1.0
-                    W_pf = (W_bf16 / W_scale).to(torch.float8_e4m3fn)
-                    W_scale_t = torch.tensor(W_scale, device="cuda", dtype=torch.float32)
-                    scale_one = torch.tensor(1.0, device="cuda", dtype=torch.float32)
-                    pf_entry = ("fp8", W_pf, W_scale_t, scale_one)
+                    W_fp8, W_scale, scale_one = result
+                    pf_entry = ("fp8", W_fp8, W_scale, scale_one)
                     logger.info("Pre-folded FP8 (exl3_gemm): (%d, %d) = %.1f MB",
-                                k, n, W_pf.numel() / 1e6)
+                                k, n, W_fp8.numel() / 1e6)
                 else:
+                    W_bf16 = result
                     pf_entry = ("bf16", W_bf16, None)
                     logger.info("Pre-folded BF16 (exl3_gemm): (%d, %d) = %.1f MB",
                                 k, n, W_bf16.numel() * 2 / 1e6)
@@ -1710,20 +1803,9 @@ def _b12x_trellis_weight(
         if _should_prefold(K, N):
             try:
                 _USE_FP8 = _os.environ.get("VLLM_EXL3_PREFOLD_FP8", "0") == "1"
-                if _USE_FP8:
-                    W_bf16 = _extract_w_full(weight, api)
-                    FP8_MAX = 448.0
-                    W_amax = W_bf16.abs().max().item()
-                    W_scale = W_amax / FP8_MAX if W_amax > 0 else 1.0
-                    W_fp8 = (W_bf16 / W_scale).to(torch.float8_e4m3fn)
-                    W_scale_t = torch.tensor(W_scale, device="cuda", dtype=torch.float32)
-                    scale_one = torch.tensor(1.0, device="cuda", dtype=torch.float32)
-                    object.__setattr__(weight, '_prefold_w_full', (W_fp8, W_scale_t, scale_one))
-                    logger.info("Pre-folded FP8: (%d, %d) = %.1f MB (scale=%.6f)", K, N, W_fp8.numel() / 1e6, W_scale)
-                else:
-                    W_full = _extract_w_full(weight, api)
-                    object.__setattr__(weight, '_prefold_w_full', W_full)
-                    logger.info("Pre-folded BF16: (%d, %d) = %.1f MB", K, N, K * N * 2 / 1e6)
+                result = _prefold_load_or_extract(
+                    trellis, suh, svh, K, N, _USE_FP8, weight, api)
+                object.__setattr__(weight, '_prefold_w_full', result)
             except Exception as e:
                 logger.warning("Pre-fold failed for (%d, %d): %s", K, N, e)
         cache[key] = weight
