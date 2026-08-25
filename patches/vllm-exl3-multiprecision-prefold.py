@@ -41,6 +41,15 @@ _PREFOLD_MLP = _PREFOLD_MASTER and _os.environ.get("VLLM_EXL3_PREFOLD_MLP", "0")
 _PREFOLD_SHAPES_QKV = {(5120, 1024), (5120, 12288)}
 _PREFOLD_SHAPES_DOWN = {(17408, 5120)}
 _PREFOLD_SHAPES_LM_HEAD = {(5120, 248320)}
+# Pre-allocated FP8 scale tensor (avoids CPU→CUDA copy during CUDA graph capture)
+# Allocated lazily on first use (after torch is imported and CUDA is initialized)
+_FP8_SCALE_ONE = None
+
+def _ensure_fp8_scale_one(device):
+    """Ensure _FP8_SCALE_ONE is allocated on the right device."""
+    global _FP8_SCALE_ONE
+    if _FP8_SCALE_ONE is None or _FP8_SCALE_ONE.device != device:
+        _FP8_SCALE_ONE = torch.tensor(1.0, device=device, dtype=torch.float32)
 _PREFOLD_SHAPES_GDN = {(5120, 10240), (5120, 6144), (6144, 5120)}
 _PREFOLD_SHAPES_MLP = {(5120, 17408)}
 
@@ -1450,6 +1459,49 @@ def _exl3_gemm(
         output = torch.empty(m, n, dtype=torch.float16, device=x.device)
         ext.hgemm(x, weight, output)
         return output
+    # Pre-folded BF16/FP8 fast path for large-N projections (e.g. lm_head)
+    if _PREFOLD_MASTER:
+        cache_key = (trellis.data_ptr(), id(suh), id(svh))
+        if not hasattr(_exl3_gemm, '_prefold_cache'):
+            _exl3_gemm._prefold_cache = {}
+        _pf_cache = _exl3_gemm._prefold_cache
+        pf_entry = _pf_cache.get(cache_key)
+        if pf_entry is None and _PREFOLD_LM_HEAD and (k, n) in _PREFOLD_SHAPES_LM_HEAD:
+            try:
+                # Extract W_full using the b12x API (which handles Hadamard + suh/svh)
+                api = _load_b12x_trellis_linear()
+                w = api.prepare_weight(trellis, suh, svh, codebook="mcg",
+                                       params_dtype=torch.bfloat16)
+                W_bf16 = _extract_w_full(w, api)
+                _USE_FP8 = _os.environ.get("VLLM_EXL3_PREFOLD_FP8", "0") == "1"
+                if _USE_FP8:
+                    FP8_MAX = 448.0
+                    W_amax = W_bf16.abs().max().item()
+                    W_scale = W_amax / FP8_MAX if W_amax > 0 else 1.0
+                    W_pf = (W_bf16 / W_scale).to(torch.float8_e4m3fn)
+                    W_scale_t = torch.tensor(W_scale, device="cuda", dtype=torch.float32)
+                    scale_one = torch.tensor(1.0, device="cuda", dtype=torch.float32)
+                    pf_entry = ("fp8", W_pf, W_scale_t, scale_one)
+                    logger.info("Pre-folded FP8 (exl3_gemm): (%d, %d) = %.1f MB",
+                                k, n, W_pf.numel() / 1e6)
+                else:
+                    pf_entry = ("bf16", W_bf16, None)
+                    logger.info("Pre-folded BF16 (exl3_gemm): (%d, %d) = %.1f MB",
+                                k, n, W_bf16.numel() * 2 / 1e6)
+                _pf_cache[cache_key] = pf_entry
+            except Exception as e:
+                logger.warning("Pre-fold failed for (%d, %d): %s", k, n, e)
+                _pf_cache[cache_key] = ("error",)
+                pf_entry = ("error",)
+        if pf_entry is not None and pf_entry[0] == "fp8":
+            _, W_fp8, W_scale, scale_one = pf_entry
+            x_fp8 = x.to(torch.float8_e4m3fn)
+            return torch._scaled_mm(x_fp8, W_fp8, scale_a=scale_one,
+                                    scale_b=W_scale, out_dtype=torch.float16)
+        elif pf_entry is not None and pf_entry[0] == "bf16":
+            _, W_bf16 = pf_entry[:2]
+            return torch.mm(x.to(torch.bfloat16), W_bf16).to(torch.float16)
+
     # Decode path: original trellis kernel
     output = torch.empty(
         (m, n),
@@ -1657,9 +1709,21 @@ def _b12x_trellis_weight(
         N = weight.out_features
         if _should_prefold(K, N):
             try:
-                W_full = _extract_w_full(weight, api)
-                object.__setattr__(weight, '_prefold_w_full', W_full)
-                logger.info("Pre-folded BF16: (%d, %d) = %.1f MB", K, N, K * N * 2 / 1e6)
+                _USE_FP8 = _os.environ.get("VLLM_EXL3_PREFOLD_FP8", "0") == "1" and (K, N) == (5120, 248320)
+                if _USE_FP8:
+                    W_bf16 = _extract_w_full(weight, api)
+                    FP8_MAX = 448.0
+                    W_amax = W_bf16.abs().max().item()
+                    W_scale = W_amax / FP8_MAX if W_amax > 0 else 1.0
+                    W_fp8 = (W_bf16 / W_scale).to(torch.float8_e4m3fn)
+                    W_scale_t = torch.tensor(W_scale, device="cuda", dtype=torch.float32)
+                    scale_one = torch.tensor(1.0, device="cuda", dtype=torch.float32)
+                    object.__setattr__(weight, '_prefold_w_full', (W_fp8, W_scale_t, scale_one))
+                    logger.info("Pre-folded FP8: (%d, %d) = %.1f MB (scale=%.6f)", K, N, W_fp8.numel() / 1e6, W_scale)
+                else:
+                    W_full = _extract_w_full(weight, api)
+                    object.__setattr__(weight, '_prefold_w_full', W_full)
+                    logger.info("Pre-folded BF16: (%d, %d) = %.1f MB", K, N, K * N * 2 / 1e6)
             except Exception as e:
                 logger.warning("Pre-fold failed for (%d, %d): %s", K, N, e)
         cache[key] = weight
@@ -1905,10 +1969,19 @@ def _b12x_trellis_linear_out(
 
     api = _load_b12x_trellis_linear()
     weight = _b12x_trellis_weight(trellis, suh, svh, x.dtype)
-    # Use pre-folded BF16 matmul if available
+    # Use pre-folded BF16 or FP8 matmul if available
     W_full = getattr(weight, '_prefold_w_full', None)
     if W_full is not None:
-        torch.mm(x, W_full, out=output)
+        if isinstance(W_full, tuple):
+            # FP8: (W_fp8, scale)
+            W_fp8, W_scale, scale_one = W_full
+            x_fp8 = x.to(torch.float8_e4m3fn)
+            result = torch._scaled_mm(x_fp8, W_fp8, scale_a=scale_one, scale_b=W_scale,
+                                      out_dtype=x.dtype)
+            output.copy_(result)
+        else:
+            # BF16
+            torch.mm(x, W_full, out=output)
         return
     api.run(
         x,
