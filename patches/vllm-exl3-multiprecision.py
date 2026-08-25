@@ -329,6 +329,14 @@ _RECON_ARENA: dict[int, torch.Tensor] = {}
 _PREFILL_RECONSTRUCT_CACHE = (
     os.environ.get("VLLM_EXL3_PREFILL_RECONSTRUCT_CACHE", "1") == "1"
 )
+
+# Fused Hadamard fold: 3.8-4.1x faster than einsum chunked fold.
+# Falls back to chunked if the fused module is not available.
+try:
+    from fused_hadamard_fold import hadamard_fold_weight_fused as _hadamard_fold_weight
+except ImportError:
+    from exl3_fp4_conversion import hadamard_fold_weight_chunked as _hadamard_fold_weight
+
 # Minimum row count for preferring B12X W4A16 over the fused exl3_gemm kernel.
 # 0 keeps B12X for every row count (previous behaviour).
 _B12X_MIN_M = int(os.environ.get("VLLM_EXL3_B12X_MIN_M", "0"))
@@ -1361,8 +1369,7 @@ def _exl3_gemm(
             trellis_k = int(trellis.shape[2]) // 16
             ext.reconstruct(weight, trellis, trellis_k, mcg, mul1)
             import sys; sys.path.insert(0, '/opt/fp4')
-            from exl3_fp4_conversion import hadamard_fold_weight_chunked
-            weight = hadamard_fold_weight_chunked(weight, suh, svh)
+            weight = _hadamard_fold_weight(weight, suh, svh)
             # Persistent cache: always cache large weights (no file flag needed).
             # Memory: 64 gate_up × 272 MB = 17.4 GB. With trellis weights
             # (~14 GB) and 16k KV cache (~0.7 GB), total ~32 GB. Use 16k
