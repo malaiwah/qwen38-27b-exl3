@@ -251,3 +251,36 @@ when VRAM is constrained and you need to eliminate the 200us trellis floor tax.
 Tested: FP6 on all 64 layers is 19% slower than balanced (57.2 vs 70.1 tok/s).
 The K5→FP6 conversion loses trellis compression advantage. FP6 should remain
 limited to layers 0-11 gate_up only, as in the balanced profile.
+
+## Upstream PR testing on RTX 6000
+
+### PR triage
+
+All open and closed PRs across `malaiwah/qwen38-27b-exl3` and `local-inference-lab/b12x` were reviewed. Of 50+ PRs, only one pair is directly relevant to our Qwen3.8-27B EXL3 K5K6 deployment:
+
+| PR | status | relevance | tested? |
+|---|---|---|---|
+| qwen38-27b-exl3 #1 + b12x #243 | open | **HIGH** — native BF16 K6 decode | ✅ tested |
+| b12x #236 (QSRT K5) | open | moderate — different checkpoint format, 2.18 tok/s | no |
+| b12x #221 (CuTe DSL K6) | open | low — FP16 only, MCG codebook, GLM-5.2 shapes | no |
+| b12x #222 (MXFP4 GEMM) | open | low — different quant format (MXFP4 vs NVFP4) | no |
+| b12x #241 (staged MXFP8) | open | low — MXFP8 linear, solves multi-slice problem we don't have | no |
+| b12x #244 (checkpoint exporter) | open | not relevant — MoE-only, K3/K4/K5 only | no |
+
+### Native BF16 K6 decode (PR #1 + b12x #243)
+
+**What it does**: Fuses input H128 rotation + W4A16 K6/MCG GEMM + split-K reduction + output H128 + sign-vector multiply into one cooperative GPU grid for M ≤ 16 (decode). Keeps BF16 activations end-to-end, eliminating two dtype conversions. Default-off (`VLLM_EXL3_B12X_NATIVE_BF16=1` to enable).
+
+**Image**: Built from `docker/Containerfile.b12x-native-bf16` (b12x 1.2.6 + CUTLASS DSL 4.6.2 + PR #243 on our base image).
+
+**A-B-A results on RTX 6000** (262K context, FP8 KV, MTP=6, FP6 layers 0-9):
+
+| phase | native BF16 | median tok/s | Paris | KV cache |
+|---|---|---:|---|---|
+| A1 (baseline) | OFF | 49.8 | ✅ | 1,780,274 |
+| B (native BF16) | ON | **56.8** | ✅ | 1,780,274 |
+| A2 (baseline-2) | OFF | 50.2 | ✅ | 1,780,274 |
+
+**+13.6% decode speedup** (56.8 vs avg 50.0 tok/s), cache-proof, zero quality cost (BF16 activations preserved), same KV cache capacity. Exceeds the PR's claimed +6.2% — likely because the RTX 6000's larger SM count benefits more from the cooperative fused kernel.
+
+Note: baseline is ~50 tok/s (not 70.1) because the PR1 image uses an older EXL3 patch without FP8 pre-fold, and FP6 range is 0-9 (not 0-11). The +13.6% is a relative improvement within the same image.
