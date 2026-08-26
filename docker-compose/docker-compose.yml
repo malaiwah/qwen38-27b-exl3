@@ -1,0 +1,340 @@
+# Qwen3.8-27B EXL3 K5K6-hydrated — docker-compose recipes
+#
+# Usage:
+#   docker compose --profile <profile> up -d
+#
+# Profiles:
+#   balanced       — RTX 5090 (32 GB), trellis + gate_up FP6, FP8 KV, MTP=6, 199K ctx
+#   fidelity       — RTX 5090 (32 GB), all-trellis, FP8 KV, MTP=6, 238K ctx
+#   throughput     — RTX 5090 (32 GB), all-FP4, FP8 KV, MTP=6, 250K ctx
+#   rtx6000        — RTX PRO 6000 (96 GB), all optimizations, FP8 KV, MTP=6, 262K ctx
+#   rtx6000-bf16kv — RTX PRO 6000, BF16 KV cache (higher fidelity, lower speed)
+#   official-fp8   — Official Qwen3.8-27B-FP8 (comparison baseline, no EXL3)
+#   bf16-reference — Full BF16 Qwen3.8-27B (KLD teacher reference)
+#
+# Prerequisites:
+#   1. Docker with NVIDIA Container Toolkit (nvidia runtime)
+#   2. Models downloaded: ./download-model.sh --all
+#   3. Patch files in ${PATCHES_DIR}
+#   4. Copy .env.example to .env and adjust paths
+
+x-env: &env
+  VLLM_SLEEP_WHEN_IDLE: "1"
+  HF_HUB_OFFLINE: "1"
+  OMP_NUM_THREADS: "8"
+  CUDA_DEVICE_MAX_CONNECTIONS: "32"
+  CUTE_DSL_ARCH: sm_120a
+  FLASHINFER_CUDA_ARCH_LIST: 12.0f
+  PYTORCH_CUDA_ALLOC_CONF: expandable_segments:True
+  SAFETENSORS_FAST_GPU: "1"
+  VLLM_WORKER_MULTIPROC_METHOD: spawn
+  PYTHONUNBUFFERED: "1"
+  PYTHONDONTWRITEBYTECODE: "1"
+  HF_HOME: /root/.cache/huggingface
+  XDG_CACHE_HOME: /cache/jit
+  CUDA_CACHE_PATH: /cache/jit
+  TRITON_CACHE_DIR: /cache/jit/triton
+  TORCHINDUCTOR_CACHE_DIR: /cache/jit/torchinductor
+  TORCH_EXTENSIONS_DIR: /cache/jit/torch_extensions
+  FLASHINFER_WORKSPACE_BASE: /cache/jit/flashinfer
+  VLLM_EXL3_MULTIPRECISION: "1"
+  QUANTIZATION_CONFIG: '{"linear":{"weight":"mxfp8"},"ignore":["re:.*visual\\..*","re:.*in_proj_a$","re:.*in_proj_b$","re:.*mtp\\..*","lm_head"]}'
+  MM_PROCESSOR_KWARGS: '{"truncation":false}'
+  VLLM_EXL3_ONLINE_TRELLIS_BITS: "6"
+  VLLM_EXL3_ONLINE_CACHE_DIR: /cache/jit/exl3-online
+  VLLM_EXL3_ONLINE_CACHE_MODE: readwrite
+  VLLM_EXL3_EXT_PATH: /opt/exllamav3
+  VLLM_EXL3_ENCODER_SOURCE: /opt/exllamav3-python/exllamav3
+  VLLM_EXL3_ENCODER_REVISION: 704aefd743b390af4bd0fb429d1906f9b964c7d8
+  VLLM_EXL3_EMBED_ONLINE_BITS: "6"
+  VLLM_EXL3_GRAPH_DECODE: "1"
+  VLLM_EXL3_FP4_TRITON_DECODE: "0"
+  VLLM_EXL3_FP4_PER_ROW_GS: "0"
+  VLLM_EXL3_FP4_DRAFT_HEAD: "0"
+  VLLM_EXL3_FP4_BANDED_SELFTEST: "0"
+  VLLM_EXL3_FP8DG_PREFILL_M: "0"
+  VLLM_EXL3_FP8DG_SELFTEST: "0"
+  VLLM_EXL3_FP8DG_CACHE: "0"
+  VLLM_USE_V2_MODEL_RUNNER: "1"
+  VLLM_NO_USAGE_STATS: "1"
+  DO_NOT_TRACK: "1"
+  VLLM_NVTX_SCOPES_FOR_PROFILING: "1"
+  B12X_PACKED_B_MIN_N: "1024"
+  VLLM_EXL3_PREFOLD_CACHE_DIR: /cache/jit/exl3-prefold
+
+x-volumes: &volumes
+  - ${PATCHES_DIR:-./patches}/entrypoint-exl3.sh:/opt/entrypoint-exl3.sh:ro
+  - ${HF_CACHE_DIR:-/home/ubuntu/.cache/huggingface/hub}:/root/.cache/huggingface:ro
+  - ${JIT_CACHE_DIR:-./cache/jit}:/cache/jit
+  - ${PATCHES_DIR:-./patches}/vllm-exl3-multiprecision.py:/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/quantization/exl3.py:ro
+  - ${PATCHES_DIR:-./patches}/scheduler_patch.py:/opt/venv/lib/python3.12/site-packages/vllm/v1/core/sched/scheduler.py:ro
+  - ${PATCHES_DIR:-./patches}/qwen_gdn_linear_attn_patch.py:/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py:ro
+  - ${PATCHES_DIR:-./patches}/spec_decode_utils_patch.py:/opt/venv/lib/python3.12/site-packages/vllm/v1/worker/gpu/spec_decode/utils.py:ro
+  - ${PATCHES_DIR:-./patches}/autoregressive_speculator_patch.py:/opt/venv/lib/python3.12/site-packages/vllm/v1/worker/gpu/spec_decode/autoregressive/speculator.py:ro
+  - ${PATCHES_DIR:-./patches}/qwen3_5_mtp_patch.py:/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_5_mtp.py:ro
+  - ${PATCHES_DIR:-./patches}/exl3_fp4_conversion.py:/opt/fp4/exl3_fp4_conversion.py:ro
+  - ${PATCHES_DIR:-./patches}/triton_fp4_quant.py:/opt/fp4/triton_fp4_quant.py:ro
+  - ${PATCHES_DIR:-./patches}/exl3_fp6_conversion.py:/opt/fp6/exl3_fp6_conversion.py:ro
+  - ${PATCHES_DIR:-./patches}/prefolded_bf16.py:/opt/prefold/prefolded_bf16.py:ro
+  - ${PATCHES_DIR:-./patches}/batched_paired_projections.py:/opt/prefold/batched_paired_projections.py:ro
+
+x-deploy: &deploy
+  resources:
+    reservations:
+      devices:
+        - driver: nvidia
+          count: all
+          capabilities: [gpu]
+
+x-health: &health
+  test: ["CMD-SHELL", "curl -sf http://localhost:8000/health || exit 1"]
+  interval: 30s
+  timeout: 10s
+  retries: 3
+  start_period: 45m
+
+services:
+
+  balanced:
+    image: docker.io/voipmonitor/vllm@sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b
+    container_name: qwen38-27b-balanced
+    profiles: [balanced]
+    network_mode: host
+    ipc: host
+    restart: unless-stopped
+    healthcheck: *health
+    deploy: *deploy
+    environment:
+      <<: *env
+      VLLM_EXL3_FP4_LAYERS: ","
+      VLLM_EXL3_FP6_LAYERS: mlp.gate_up_proj
+      VLLM_EXL3_FP6_LAYER_RANGE: "0-11"
+      VLLM_EXL3_PREFILL_RECONSTRUCT_M: "1"
+      VLLM_EXL3_PREFILL_RECONSTRUCT_MAX_MB: "512"
+      VLLM_EXL3_PREFILL_RECONSTRUCT_CACHE: "0"
+      VLLM_EXL3_FOLD_FP32_BUDGET_MB: "48"
+      VLLM_EXL3_B12X_MIN_M: "128"
+      VLLM_EXL3_B12X_ANY_BITS: "1"
+      VLLM_EXL3_SKIP_TRELLIS_PREP: "0"
+      VLLM_EXL3_B12X_N_RANGE: "5120-36864"
+      VLLM_EXL3_B12X_SELFTEST: "0"
+      MAX_MODEL_LEN: "199104"
+      GPU_MEMORY_UTILIZATION: "0.945"
+      MAX_NUM_SEQS: "4"
+      MAX_NUM_BATCHED_TOKENS: "3072"
+      KV_CACHE_DTYPE: fp8_e4m3
+      SPEC_CONFIG: '{"method":"mtp","num_speculative_tokens":6}'
+    volumes: *volumes
+    entrypoint: ["/bin/bash", "/opt/entrypoint-exl3.sh"]
+    command: []
+    # Mount the entrypoint script
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  fidelity:
+    image: docker.io/voipmonitor/vllm@sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b
+    container_name: qwen38-27b-fidelity
+    profiles: [fidelity]
+    network_mode: host
+    ipc: host
+    restart: unless-stopped
+    healthcheck: *health
+    deploy: *deploy
+    environment:
+      <<: *env
+      VLLM_EXL3_FP4_LAYERS: ","
+      VLLM_EXL3_PREFILL_RECONSTRUCT_M: "1"
+      VLLM_EXL3_PREFILL_RECONSTRUCT_MAX_MB: "512"
+      VLLM_EXL3_PREFILL_RECONSTRUCT_CACHE: "0"
+      VLLM_EXL3_FOLD_FP32_BUDGET_MB: "48"
+      VLLM_EXL3_B12X_MIN_M: "128"
+      VLLM_EXL3_B12X_ANY_BITS: "1"
+      VLLM_EXL3_SKIP_TRELLIS_PREP: "0"
+      VLLM_EXL3_B12X_N_RANGE: "5120-36864"
+      VLLM_EXL3_B12X_SELFTEST: "0"
+      MAX_MODEL_LEN: "238400"
+      GPU_MEMORY_UTILIZATION: "0.945"
+      MAX_NUM_SEQS: "4"
+      MAX_NUM_BATCHED_TOKENS: "3072"
+      KV_CACHE_DTYPE: fp8_e4m3
+      SPEC_CONFIG: '{"method":"mtp","num_speculative_tokens":6}'
+    volumes: *volumes
+    entrypoint: ["/bin/bash", "/opt/entrypoint-exl3.sh"]
+    command: []
+
+  throughput:
+    image: docker.io/voipmonitor/vllm@sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b
+    container_name: qwen38-27b-throughput
+    profiles: [throughput]
+    network_mode: host
+    ipc: host
+    restart: unless-stopped
+    healthcheck: *health
+    deploy: *deploy
+    environment:
+      <<: *env
+      VLLM_EXL3_FP4_LAYERS: mlp.gate_up_proj,mlp.down_proj,linear_attn.,self_attn.
+      VLLM_EXL3_PREFILL_RECONSTRUCT_M: "1"
+      VLLM_EXL3_SKIP_TRELLIS_PREP: "0"
+      VLLM_EXL3_B12X_SELFTEST: "0"
+      MAX_MODEL_LEN: "249600"
+      GPU_MEMORY_UTILIZATION: "0.93"
+      MAX_NUM_SEQS: "4"
+      MAX_NUM_BATCHED_TOKENS: "3072"
+      KV_CACHE_DTYPE: fp8_e4m3
+      SPEC_CONFIG: '{"method":"mtp","num_speculative_tokens":6}'
+    volumes: *volumes
+    entrypoint: ["/bin/bash", "/opt/entrypoint-exl3.sh"]
+    command: []
+
+  rtx6000:
+    image: docker.io/voipmonitor/vllm@sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b
+    container_name: qwen38-27b-rtx6000
+    profiles: [rtx6000]
+    network_mode: host
+    ipc: host
+    restart: unless-stopped
+    healthcheck: *health
+    deploy: *deploy
+    environment:
+      <<: *env
+      VLLM_EXL3_FP4_LAYERS: ","
+      VLLM_EXL3_FP6_LAYERS: mlp.gate_up_proj
+      VLLM_EXL3_FP6_LAYER_RANGE: "0-11"
+      VLLM_EXL3_PREFOLD_BF16: "1"
+      VLLM_EXL3_PREFOLD_QKV: "1"
+      VLLM_EXL3_PREFOLD_GDN: "1"
+      VLLM_EXL3_PREFOLD_MLP: "1"
+      VLLM_EXL3_PREFOLD_DOWN: "1"
+      VLLM_EXL3_PREFOLD_LM_HEAD: "1"
+      VLLM_EXL3_PREFOLD_FP8: "1"
+      B12X_DENSE_FUSED_QUANT: "1"
+      VLLM_EXL3_PREFILL_RECONSTRUCT_M: "1"
+      VLLM_EXL3_PREFILL_RECONSTRUCT_CACHE: "1"
+      VLLM_EXL3_PREFILL_RECONSTRUCT_MAX_MB: "512"
+      VLLM_EXL3_FOLD_FP32_BUDGET_MB: "256"
+      VLLM_EXL3_B12X_MIN_M: "128"
+      VLLM_EXL3_B12X_ANY_BITS: "1"
+      VLLM_EXL3_B12X_N_RANGE: "5120-36864"
+      VLLM_EXL3_SKIP_TRELLIS_PREP: "0"
+      VLLM_EXL3_B12X_SELFTEST: "0"
+      MAX_MODEL_LEN: "262144"
+      GPU_MEMORY_UTILIZATION: "0.92"
+      MAX_NUM_SEQS: "16"
+      MAX_NUM_BATCHED_TOKENS: "8192"
+      KV_CACHE_DTYPE: fp8_e4m3
+      SPEC_CONFIG: '{"method":"mtp","num_speculative_tokens":6}'
+    volumes: *volumes
+    entrypoint: ["/bin/bash", "/opt/entrypoint-exl3.sh"]
+    command: []
+
+  rtx6000-bf16kv:
+    image: docker.io/voipmonitor/vllm@sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b
+    container_name: qwen38-27b-rtx6000-bf16kv
+    profiles: [rtx6000-bf16kv]
+    network_mode: host
+    ipc: host
+    restart: unless-stopped
+    healthcheck: *health
+    deploy: *deploy
+    environment:
+      <<: *env
+      VLLM_EXL3_FP4_LAYERS: ","
+      VLLM_EXL3_FP6_LAYERS: mlp.gate_up_proj
+      VLLM_EXL3_FP6_LAYER_RANGE: "0-11"
+      VLLM_EXL3_PREFOLD_BF16: "1"
+      VLLM_EXL3_PREFOLD_QKV: "1"
+      VLLM_EXL3_PREFOLD_GDN: "1"
+      VLLM_EXL3_PREFOLD_MLP: "1"
+      VLLM_EXL3_PREFOLD_DOWN: "1"
+      VLLM_EXL3_PREFOLD_LM_HEAD: "1"
+      VLLM_EXL3_PREFOLD_FP8: "1"
+      B12X_DENSE_FUSED_QUANT: "1"
+      VLLM_EXL3_PREFILL_RECONSTRUCT_M: "1"
+      VLLM_EXL3_PREFILL_RECONSTRUCT_CACHE: "1"
+      VLLM_EXL3_PREFILL_RECONSTRUCT_MAX_MB: "512"
+      VLLM_EXL3_FOLD_FP32_BUDGET_MB: "256"
+      VLLM_EXL3_B12X_MIN_M: "128"
+      VLLM_EXL3_B12X_ANY_BITS: "1"
+      VLLM_EXL3_B12X_N_RANGE: "5120-36864"
+      VLLM_EXL3_SKIP_TRELLIS_PREP: "0"
+      VLLM_EXL3_B12X_SELFTEST: "0"
+      MAX_MODEL_LEN: "262144"
+      GPU_MEMORY_UTILIZATION: "0.92"
+      MAX_NUM_SEQS: "16"
+      MAX_NUM_BATCHED_TOKENS: "8192"
+      KV_CACHE_DTYPE: bfloat16
+      SPEC_CONFIG: '{"method":"mtp","num_speculative_tokens":6}'
+    volumes: *volumes
+    entrypoint: ["/bin/bash", "/opt/entrypoint-exl3.sh"]
+    command: []
+
+  # ─── Comparison baselines (no EXL3, no patches) ─────────────────────────
+
+  official-fp8:
+    image: docker.io/voipmonitor/vllm@sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b
+    container_name: qwen38-27b-official-fp8
+    profiles: [official-fp8]
+    network_mode: host
+    ipc: host
+    restart: unless-stopped
+    healthcheck: *health
+    deploy: *deploy
+    environment:
+      HF_HUB_OFFLINE: "1"
+      OMP_NUM_THREADS: "8"
+      CUDA_DEVICE_MAX_CONNECTIONS: "32"
+      PYTORCH_CUDA_ALLOC_CONF: expandable_segments:True
+      VLLM_WORKER_MULTIPROC_METHOD: spawn
+      PYTHONUNBUFFERED: "1"
+      HF_HOME: /root/.cache/huggingface
+      XDG_CACHE_HOME: /cache/jit
+      VLLM_NO_USAGE_STATS: "1"
+      DO_NOT_TRACK: "1"
+      MODEL_PATH: /root/.cache/huggingface/models--Qwen--Qwen3.8-27B-FP8
+      MAX_MODEL_LEN: "262144"
+      GPU_MEMORY_UTILIZATION: "0.92"
+      MAX_NUM_SEQS: "16"
+      MAX_NUM_BATCHED_TOKENS: "8192"
+      KV_CACHE_DTYPE: fp8_e4m3
+      QUANT_METHOD: auto
+    volumes:
+      - ${HF_CACHE_DIR:-/home/ubuntu/.cache/huggingface/hub}:/root/.cache/huggingface:ro
+      - ${JIT_CACHE_DIR:-./cache/jit}:/cache/jit
+      - ${PATCHES_DIR:-./patches}/entrypoint-exl3.sh:/opt/entrypoint-exl3.sh:ro
+    entrypoint: ["/bin/bash", "/opt/entrypoint-exl3.sh"]
+    command: []
+
+  bf16-reference:
+    image: docker.io/voipmonitor/vllm@sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b
+    container_name: qwen38-27b-bf16
+    profiles: [bf16-reference]
+    network_mode: host
+    ipc: host
+    restart: unless-stopped
+    healthcheck: *health
+    deploy: *deploy
+    environment:
+      HF_HUB_OFFLINE: "1"
+      OMP_NUM_THREADS: "8"
+      CUDA_DEVICE_MAX_CONNECTIONS: "32"
+      PYTORCH_CUDA_ALLOC_CONF: expandable_segments:True
+      VLLM_WORKER_MULTIPROC_METHOD: spawn
+      PYTHONUNBUFFERED: "1"
+      HF_HOME: /root/.cache/huggingface
+      XDG_CACHE_HOME: /cache/jit
+      VLLM_NO_USAGE_STATS: "1"
+      DO_NOT_TRACK: "1"
+      MODEL_PATH: /root/.cache/huggingface/models--Qwen--Qwen3.8-27B
+      MAX_MODEL_LEN: "262144"
+      GPU_MEMORY_UTILIZATION: "0.92"
+      MAX_NUM_SEQS: "16"
+      MAX_NUM_BATCHED_TOKENS: "8192"
+      KV_CACHE_DTYPE: bfloat16
+      QUANT_METHOD: auto
+    volumes:
+      - ${HF_CACHE_DIR:-/home/ubuntu/.cache/huggingface/hub}:/root/.cache/huggingface:ro
+      - ${JIT_CACHE_DIR:-./cache/jit}:/cache/jit
+      - ${PATCHES_DIR:-./patches}/entrypoint-exl3.sh:/opt/entrypoint-exl3.sh:ro
+    entrypoint: ["/bin/bash", "/opt/entrypoint-exl3.sh"]
+    command: []
