@@ -1,0 +1,79 @@
+# Opt-in native-BF16 serving image. This remains separate from Containerfile so
+# the existing published profiles and their B12X/CUTLASS stack do not change.
+FROM docker.io/voipmonitor/vllm@sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b
+
+ARG REPO_COMMIT=unknown
+ARG SP=/opt/venv/lib/python3.12/site-packages
+ARG B12X_REPO=https://github.com/local-inference-lab/b12x.git
+ARG B12X_REF=refs/pull/243/head
+ARG B12X_COMMIT=706ad0eb54014ed9156dc82a7e0acff691662a89
+ARG CUTLASS_DSL_VERSION=4.6.2
+ARG EXL3_SHA256=49a80169aac1ca29a5272fe764253001875da34859bdf91f7d011a43a7aa5c6b
+
+# Fetch the reviewed PR ref, verify its immutable commit, and install the exact
+# B12X/CUTLASS pair used by the kernel qualification. Dependency resolution is
+# intentionally disabled so the base image's Torch/CUDA stack stays pinned.
+RUN set -eux; \
+    /opt/venv/bin/python -m pip install --no-cache-dir --no-deps --force-reinstall \
+      "nvidia-cutlass-dsl==${CUTLASS_DSL_VERSION}" \
+      "nvidia-cutlass-dsl-libs-base==${CUTLASS_DSL_VERSION}" \
+      "nvidia-cutlass-dsl-libs-core==${CUTLASS_DSL_VERSION}" \
+      "nvidia-cutlass-dsl-libs-cu12==${CUTLASS_DSL_VERSION}" \
+      "nvidia-cutlass-dsl-libs-cu13==${CUTLASS_DSL_VERSION}"; \
+    git init /tmp/b12x; \
+    git -C /tmp/b12x remote add origin "${B12X_REPO}"; \
+    git -C /tmp/b12x fetch --depth=1 origin "${B12X_REF}"; \
+    git -C /tmp/b12x checkout --detach FETCH_HEAD; \
+    test "$(git -C /tmp/b12x rev-parse HEAD)" = "${B12X_COMMIT}"; \
+    /opt/venv/bin/python -m pip install --no-cache-dir --no-deps \
+      --no-build-isolation --force-reinstall /tmp/b12x; \
+    /opt/venv/bin/python -c \
+      "import b12x, importlib.metadata as m; assert m.version('b12x') == '1.2.6'; print(b12x.__file__)"; \
+    rm -rf /tmp/b12x
+
+# Keep this list identical to the regular baked image except for the EXL3
+# overlay below, which contains the default-off native-BF16 integration.
+COPY patches/vllm-exl3-multiprecision.py      $SP/vllm/model_executor/layers/quantization/exl3.py
+COPY patches/scheduler_patch.py               $SP/vllm/v1/core/sched/scheduler.py
+COPY patches/qwen3_5_mtp_patch.py             $SP/vllm/model_executor/models/qwen3_5_mtp.py
+COPY patches/vllm-exl3-linear-ba.py           $SP/vllm/model_executor/layers/linear.py
+COPY patches/autoregressive_speculator_patch.py $SP/vllm/v1/worker/gpu/spec_decode/autoregressive/speculator.py
+COPY patches/spec_decode_utils_patch.py       $SP/vllm/v1/worker/gpu/spec_decode/utils.py
+COPY patches/qwen_gdn_linear_attn_patch.py    $SP/vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py
+
+COPY patches/exl3_fp4_conversion.py  /opt/fp4/exl3_fp4_conversion.py
+COPY patches/triton_fp4_quant.py     /opt/fp4/triton_fp4_quant.py
+COPY patches/exl3_fp6_conversion.py  /opt/fp6/exl3_fp6_conversion.py
+
+RUN echo "${EXL3_SHA256}  ${SP}/vllm/model_executor/layers/quantization/exl3.py" \
+      | sha256sum -c - \
+ && /opt/venv/bin/python -m py_compile \
+      ${SP}/vllm/model_executor/layers/quantization/exl3.py \
+ && rm -f $SP/vllm/model_executor/layers/quantization/__pycache__/exl3*.pyc \
+          $SP/vllm/model_executor/layers/__pycache__/linear*.pyc \
+          $SP/vllm/v1/core/sched/__pycache__/scheduler*.pyc \
+          $SP/vllm/model_executor/models/__pycache__/qwen3_5_mtp*.pyc \
+          $SP/vllm/v1/worker/gpu/spec_decode/autoregressive/__pycache__/speculator*.pyc \
+          $SP/vllm/v1/worker/gpu/spec_decode/__pycache__/utils*.pyc \
+          $SP/vllm/model_executor/layers/mamba/gdn/__pycache__/qwen_gdn_linear_attn*.pyc \
+ && mkdir -p /usr/local/cuda-13.2/lib64 \
+ && { ln -sf /usr/local/cuda-13.2/targets/x86_64-linux/lib/* \
+        /usr/local/cuda-13.2/lib64/ 2>/dev/null || true; }
+
+LABEL org.opencontainers.image.source="https://github.com/malaiwah/qwen38-27b-exl3" \
+      org.opencontainers.image.revision="$REPO_COMMIT" \
+      org.opencontainers.image.description="Qwen3.8-27B EXL3 + opt-in native BF16 B12X K6/MCG decode" \
+      ai.malaiwah.base-digest="sha256:820181fbbc975cd5291c411cda9771d58fecee1636d916f508f47230df20592b" \
+      ai.malaiwah.b12x-pr="local-inference-lab/b12x#243" \
+      ai.malaiwah.b12x-commit="$B12X_COMMIT" \
+      ai.malaiwah.cutlass-dsl-version="$CUTLASS_DSL_VERSION" \
+      ai.malaiwah.vllm-exl3-sha256="$EXL3_SHA256" \
+      ai.malaiwah.b12x-native-bf16-default="off" \
+      local-inference.b12x.branch="$B12X_REF" \
+      local-inference.b12x.commit="$B12X_COMMIT" \
+      local-inference.b12x.integration.base_commit="9ae32e297c7d8d5258e0953c111a933adcb687f5" \
+      local-inference.b12x.integration.prs="243@$B12X_COMMIT" \
+      local-inference.b12x.integration.tree="5e4c5566062306b76a6860d6a40c0f743aac0c89" \
+      local-inference.b12x.runtime_version="1.2.6" \
+      local-inference.cutlass_dsl.version="$CUTLASS_DSL_VERSION" \
+      local-inference.cache.fingerprint="qwen38-b12x-706ad0e-cutlass-4.6.2"

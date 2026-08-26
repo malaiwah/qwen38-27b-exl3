@@ -1,0 +1,288 @@
+{
+  "schema": "qwen38.b12x-native-bf16.pr243-qualification.v4",
+  "captured_on": "2026-08-24",
+  "qualification_pass": true,
+  "identity": {
+    "b12x_pr": "https://github.com/local-inference-lab/b12x/pull/243",
+    "b12x_pr_head": "706ad0eb54014ed9156dc82a7e0acff691662a89",
+    "b12x_pr_head_tree": "5e4c5566062306b76a6860d6a40c0f743aac0c89",
+    "b12x_qualified_executable_source": "81595330adba568f6361b396088f91e18b8116f0",
+    "b12x_qualified_executable_tree": "4e238da8d46f5091430741053a76b57881efb4a6",
+    "b12x_base_commit": "9ae32e297c7d8d5258e0953c111a933adcb687f5",
+    "pr_head_relationship": "706ad0e is the 8159533 executable tree plus only the committed qualification receipt",
+    "qwen_qualified_runtime_commit": "0f6d68bcb4fc2b0c13fa6f7dd74a4cce617a6eeb",
+    "qwen_build_context_commit": "67c338876acc904418d60c6b469d9a62ce62e225",
+    "overlay_sha256": "49a80169aac1ca29a5272fe764253001875da34859bdf91f7d011a43a7aa5c6b",
+    "qualification_image": "qwen38-27b-exl3:b12x-pr243-hotpath-exact",
+    "qualification_image_id": "sha256:cb7666cb44c214a7ffa3fcbbaf53ce8179017dd18e6b749f9bac2c0c633f5ef3"
+  },
+  "build": {
+    "b12x_version": "1.2.6",
+    "cutlass_dsl_version": "4.6.2",
+    "torch_version": "2.12.0+cu132",
+    "torch_cuda_version": "13.2",
+    "cute_dsl_arch": "sm_120a",
+    "current_container_pin": "706ad0eb54014ed9156dc82a7e0acff691662a89",
+    "current_container_pin_note": "The current pin includes the receipt-only 706ad0e descendant; executable Python and kernel sources are identical to qualified source 8159533."
+  },
+  "target": {
+    "host": "cuda",
+    "checkpoint": "/home/jon/models/Qwen3.8-27B-EXL3-K5K6-hydrated",
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition",
+    "gpu_uuid": "GPU-ca537fb1-a522-7429-e8c6-4795af22ab78",
+    "compute_capability": "12.0",
+    "memory_bytes": 102014189568,
+    "multiprocessors": 188,
+    "compute_mode": "Default",
+    "serving_graph_mode": "FULL_DECODE_ONLY"
+  },
+  "artifacts": {
+    "b12x_full_receipt": "validation/trellis_decode/evidence/qwen38_down_bf16_8159533/result.json in b12x PR 243",
+    "b12x_full_receipt_sha256": "74372b9860ebf1854e17130aa923037063c45e3386ed38158288f90f78b4f1ff",
+    "serving_raw": [
+      {
+        "path": "receipts/b12x-pr243-hotpath-raw/no-mtp-cacheproof-baseline-a1.json",
+        "sha256": "da31d5b88fcbe465450f88213855cf4130a221b98ba1ac4591ff153c8bf8c8ff"
+      },
+      {
+        "path": "receipts/b12x-pr243-hotpath-raw/no-mtp-cacheproof-candidate-b1.json",
+        "sha256": "c93d70bfcc29519107353af01e04a0b53303b000f15fec79d32f02e6bb38eb0e"
+      },
+      {
+        "path": "receipts/b12x-pr243-hotpath-raw/no-mtp-cacheproof-baseline-a2.json",
+        "sha256": "637d2a7ccd233f075e7b51cfda3ef865a417c8d0464c59b22faceb98e1859226"
+      },
+      {
+        "path": "receipts/b12x-pr243-hotpath-raw/mtp3-candidate-service.json.log.gz",
+        "sha256": "1a309b39bbd729a71e1ccec332c887617d6ce523ca398acff145c8a6de44c799"
+      },
+      {
+        "path": "receipts/b12x-pr243-hotpath-raw/mtp3-sanity.json",
+        "sha256": "61e101da46f03200a6585f2fbbe385f32a1a110c1648e47d890255417246ae38"
+      }
+    ],
+    "superseded_cached_prefill_raw": [
+      "receipts/b12x-pr243-hotpath-raw/no-mtp-baseline-a1.json",
+      "receipts/b12x-pr243-hotpath-raw/no-mtp-candidate-b1.json",
+      "receipts/b12x-pr243-hotpath-raw/no-mtp-baseline-a2.json"
+    ]
+  },
+  "checkpoint_gate": {
+    "source_revision": "81595330adba568f6361b396088f91e18b8116f0",
+    "full_result_sha256": "74372b9860ebf1854e17130aa923037063c45e3386ed38158288f90f78b4f1ff",
+    "qualification_pass": true,
+    "tensor_prefix": "model.language_model.layers.0.mlp.down_proj",
+    "shape": {
+      "k": 17408,
+      "n": 5120,
+      "rows": [1, 4, 8, 16]
+    },
+    "checkpoint_shard": "model-00001-of-00003.safetensors",
+    "checkpoint_shard_bytes": 8351643585,
+    "checkpoint_shard_sha256": "792b46b54a79871030a5a029a483b8938ff509912169a1c7627913d614365f0d",
+    "checkpoint_shard_sha256_verified": true,
+    "contract": {
+      "source_dtype": "torch.bfloat16",
+      "output_dtype": "torch.bfloat16",
+      "activation_scale_math": false,
+      "weight_layout": "trellis_t256",
+      "trellis_bits": 6,
+      "codebook": "mcg",
+      "caller_owned_stable_tensors": true,
+      "source_immutable": true,
+      "fused_output_fully_overwritten": true,
+      "fused_output_finite": true,
+      "fused_output_nonzero": true,
+      "graph_replays_per_row": 8,
+      "replay_allocator_delta_bytes": 0,
+      "fused_graph_kernel_count_per_row": 1,
+      "separate_rotation_kernel_count_per_row": 0
+    },
+    "oracle": {
+      "reconstruction": "exllamav3_ext.reconstruct exact native payload",
+      "gemm": "Torch FP32 matmul with TF32 disabled; operands and rotation boundaries rounded to bfloat16",
+      "rotation": "independent mathematical normalized H128 in Torch FP32",
+      "minimum_cosine": 0.9999995827674866,
+      "maximum_relative_l2": 0.00039490121583997997,
+      "maximum_absolute_error": 0.00390625,
+      "top8_order_exact": true,
+      "top8_set_exact": true
+    },
+    "timing": {
+      "method": "All six route orders cycled equally; each warm median has 240 CUDA-event samples after 60 warmups and each cold median has 12 samples.",
+      "ratio_direction": "served_over_fused greater than one means fused is lower latency",
+      "rows": [
+        {
+          "m": 1,
+          "warm_fused_ms": 0.032416,
+          "warm_served_ms": 0.042592,
+          "warm_served_over_fused": 1.313919,
+          "cold_fused_ms": 0.032416,
+          "cold_served_ms": 0.04136,
+          "cold_served_over_fused": 1.275913
+        },
+        {
+          "m": 4,
+          "warm_fused_ms": 0.032608,
+          "warm_served_ms": 0.04256,
+          "warm_served_over_fused": 1.305201,
+          "cold_fused_ms": 0.032416,
+          "cold_served_ms": 0.041216,
+          "cold_served_over_fused": 1.271471
+        },
+        {
+          "m": 8,
+          "warm_fused_ms": 0.03344,
+          "warm_served_ms": 0.042656,
+          "warm_served_over_fused": 1.275598,
+          "cold_fused_ms": 0.034432,
+          "cold_served_ms": 0.042336,
+          "cold_served_over_fused": 1.229554
+        },
+        {
+          "m": 16,
+          "warm_fused_ms": 0.034432,
+          "warm_served_ms": 0.042656,
+          "warm_served_over_fused": 1.238848,
+          "cold_fused_ms": 0.034432,
+          "cold_served_ms": 0.042656,
+          "cold_served_over_fused": 1.238848
+        }
+      ]
+    }
+  },
+  "reachability": {
+    "source_artifact": "receipts/b12x-pr243-hotpath-raw/mtp3-candidate-service.json.log.gz",
+    "diagnostic_enabled_only_for_capture": true,
+    "records": 3757,
+    "phases": {
+      "plan": 652,
+      "runtime": 3105
+    },
+    "routes": {
+      "b12x_generic_trellis256": 244,
+      "b12x_generic_trellis256_planned": 1,
+      "b12x_k6_mcg_small_m_bf16": 2205,
+      "b12x_k6_mcg_small_m_bf16_planned": 243,
+      "b12x_k6_mcg_small_m_planned": 243,
+      "exllamav3": 656,
+      "exllamav3_only": 35,
+      "multiprecision_fp6": 130
+    },
+    "native_plans": {
+      "total": 243,
+      "target_and_shared": 240,
+      "mtp_or_draft": 3
+    },
+    "native_runtime_rows": [1, 2, 3, 4, 5, 8, 12, 16],
+    "native_runtime_input_dtypes": ["bfloat16"],
+    "observed_grids": [120, 160, 188],
+    "sanity_text": " Paris.\nThe capital of Germany is",
+    "container_healthy": true,
+    "restart_count": 0,
+    "oom_killed": false
+  },
+  "serving_benchmark": {
+    "harness": "tools/b12x_native_bf16_e2e.py",
+    "harness_sha256": "a3bdd8da1bd8c792da2177e9720718163aae2ce48a439cdd0919693af28d37f0",
+    "arm_command_template": "python3 tools/b12x_native_bf16_e2e.py --label LABEL --output OUTPUT --concurrency 1,4 --tokens 256 --repetitions 5 --warmup-rounds 1 --prefill-repetitions 3 --settle-seconds 0.5",
+    "order": ["baseline_a1", "candidate_b1", "baseline_a2"],
+    "fixed_trajectory": true,
+    "mtp_tokens": 0,
+    "ratio_direction": "positive candidate_percent means native BF16 is faster",
+    "decode_measured_gpu_state": {
+      "pstate": "P1",
+      "memory_clock_mhz": 16365,
+      "throttle_mask": "0x0000000000000000"
+    },
+    "prefill_method": {
+      "logical_prompt_tokens": 2051,
+      "output_tokens": 1,
+      "headline": "logical prompt tokens divided by client wall time including one decode step",
+      "prompt_construction": "Five deterministic exact-length token-id prompts per arm. Each has a distinct first 16-token cache block; all five prompt hashes are identical by position across A1/B1/A2.",
+      "warmups": 2,
+      "timed_repetitions": 3,
+      "prefix_caching_enabled": true,
+      "mamba_cache_mode": "align",
+      "cache_proof": "Every warmup and timed request recorded 2051 prefix-cache queries, zero hits, 2051 local-compute prompt tokens, zero local/external cached tokens, 2051 newly computed prefill KV tokens, and one completed prefill request.",
+      "cache_proof_pass": true,
+      "prefill_arm_final_gpu_snapshots": {
+        "pstate": "P1",
+        "memory_clock_mhz": 16365,
+        "throttle_masks_observed": [
+          "0x0000000000000000",
+          "0x0000000000000004"
+        ],
+        "note": "The arm-final snapshots immediately after prefill observed the normal software-power-cap bit on both baseline arms and zero on the candidate arm; no positive prefill performance claim is made."
+      }
+    },
+    "correction": {
+      "supersedes_schema": "qwen38.b12x-native-bf16.pr243-qualification.v3",
+      "reason": "The earlier harness warmed and timed one identical prompt while prefix caching was enabled, then divided the full logical prompt length by cached-request wall time. Its approximately 17k tok/s rows and -2.82% delta were not uncached-prefill measurements and are withdrawn."
+    },
+    "arms": {
+      "baseline_a1": {
+        "started_at": "2026-08-24T21:50:08.763463+00:00",
+        "native_bf16": false,
+        "reachability_diagnostic": false,
+        "raw_artifact": "receipts/b12x-pr243-hotpath-raw/no-mtp-cacheproof-baseline-a1.json",
+        "c1_raw_tok_s": [55.58470292869982, 55.536509822884234, 55.5214529247979, 55.517880986445874, 55.506741243278476],
+        "c1_median_tok_s": 55.5214529247979,
+        "c4_raw_tok_s": [204.11259381166747, 204.04158310742983, 204.04764913776935, 204.00698388826325, 203.96013812449752],
+        "c4_median_tok_s": 204.04158310742983,
+        "prefill_raw_uncached_prompt_tok_s_including_one_decode_step": [5094.431067116553, 5092.530775214671, 5092.570479409647],
+        "prefill_median_uncached_prompt_tok_s_including_one_decode_step": 5092.570479409647,
+        "prefill_cache_proof_pass": true,
+        "healthy": true
+      },
+      "candidate_b1": {
+        "started_at": "2026-08-24T21:52:31.803307+00:00",
+        "native_bf16": true,
+        "reachability_diagnostic": false,
+        "raw_artifact": "receipts/b12x-pr243-hotpath-raw/no-mtp-cacheproof-candidate-b1.json",
+        "c1_raw_tok_s": [58.940708307193646, 58.930544884682405, 58.91360619033466, 58.861654654557206, 58.8697239917663],
+        "c1_median_tok_s": 58.91360619033466,
+        "c4_raw_tok_s": [215.04099569758466, 215.19557206218244, 215.1798359761453, 218.28692697973867, 218.17954116447862],
+        "c4_median_tok_s": 215.19557206218244,
+        "prefill_raw_uncached_prompt_tok_s_including_one_decode_step": [5079.246284065005, 5073.180542604149, 5069.7387678902005],
+        "prefill_median_uncached_prompt_tok_s_including_one_decode_step": 5073.180542604149,
+        "prefill_cache_proof_pass": true,
+        "healthy": true
+      },
+      "baseline_a2": {
+        "started_at": "2026-08-24T21:54:48.371840+00:00",
+        "native_bf16": false,
+        "reachability_diagnostic": false,
+        "raw_artifact": "receipts/b12x-pr243-hotpath-raw/no-mtp-cacheproof-baseline-a2.json",
+        "c1_raw_tok_s": [55.48838790973097, 55.42223783168885, 55.39866492544837, 55.40438675450559, 55.41287629789859],
+        "c1_median_tok_s": 55.41287629789859,
+        "c4_raw_tok_s": [203.80806232905374, 206.744083254434, 203.77563727418402, 206.5483371995406, 203.652057706302],
+        "c4_median_tok_s": 203.80806232905374,
+        "prefill_raw_uncached_prompt_tok_s_including_one_decode_step": [5058.47357460686, 5052.390617905547, 5049.183938178983],
+        "prefill_median_uncached_prompt_tok_s_including_one_decode_step": 5052.390617905547,
+        "prefill_cache_proof_pass": true,
+        "healthy": true
+      }
+    },
+    "derived": {
+      "c1_baseline_bracket_mean_tok_s": 55.467164611348245,
+      "c1_candidate_percent": 6.213480719873132,
+      "c4_baseline_bracket_mean_tok_s": 203.92482271824178,
+      "c4_candidate_percent": 5.526913886061435,
+      "prefill_baseline_bracket_mean_uncached_prompt_tok_s_including_one_decode_step": 5072.480548657597,
+      "prefill_candidate_percent": 0.013799835008487804,
+      "prefill_claim": "No positive prefill claim; the cache-proof +0.014% point estimate is treated as neutral. The native route targets M <= 16 decode and is not selected for this 2051-token prefill."
+    }
+  },
+  "production_restore": {
+    "restored_image_id": "sha256:921a46dfed1e4846f55c7507f8e1e4ea0278148ff54c926dd3b2246d72a0ed91",
+    "native_bf16": true,
+    "reachability": false,
+    "mtp_tokens": 3,
+    "healthy": true,
+    "restart_count": 0,
+    "oom_killed": false,
+    "sanity_text": " Paris.\nThe capital of Germany is"
+  },
+  "scope": "The performance claim applies to the qualified Qwen3.8-27B K6/MCG dense decode route and shapes. It is not a universal claim for all models, quantization formats, MoE paths, or prefill sizes."
+}
