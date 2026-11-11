@@ -12,6 +12,45 @@ We implemented and tested orthogonal rotations and diagonal rescaling (the KronQ
 
 **IMPORTANT CAVEAT**: H_G in this experiment is an output-covariance proxy (Y^T Y / N), NOT the true gradient covariance (Fisher) H_G = E[g g^T] from KronQ. The true H_G requires a backward pass, which is unavailable in our CPU-only environment. The rotation invariance proof holds for ANY symmetric positive-definite H_G and H_X, including the true Fisher. All results should be interpreted as output-covariance-proxy-weighted error reductions, not true Hessian-weighted error.
 
+## Production Integration Context (from second independent review)
+
+### What EXL3 already provides
+EXL3 already implements: 16×16 trellis tiles, random input/output signs, blockwise Hadamard both dimensions, input/output channel scaling, global scale search, Hessian-aware block LDLQ, FP16 scale metadata. Our BiIP/Hadamard gains are vs NAIVE unrotated baseline, NOT vs stock EXL3.
+
+### Three levels of improvement
+1. **vs naive unrotated baseline** (our PoC): 55-87% per-column, 53-97% per-tile OC-proxy reduction. This is what our experiment measures.
+2. **vs stock EXL3** (R26 testing): EXL3 already has Hadamard+signs+scaling+LDLQ. The incremental gain is NARROWER — mainly from replacing RMS-derived scales with Hessian-balanced BiIP scales and incorporating output sensitivity (H_G).
+3. **Actual incremental contribution**: (a) BiIP scale formula S_X = diag(H_X_jj/||W_{:,j}||²)^{1/4} vs RMS scales, (b) output-side S_G using H_G (EXL3 has input-only scaling), (c) the 1/4 power balance between Hessian and weight magnitudes.
+
+### Zero-cost sidecar in production
+The 0.5 bits/elem sidecar was a 128×128 slice artifact. For real Qwen dimensions (5120×17408): scale vector cost = 0.004 bpw. EXL3 ALREADY stores FP16 suh/svh scale vectors — if BiIP just changes their VALUES (from RMS to Hessian-balanced), the incremental storage is approximately ZERO. The multi-precision alphabet becomes K5_stock vs K5_BiIP at the SAME rate, not K5+0.5.
+
+### Full-tensor Hadamard is not blocked
+Qwen dimensions are divisible by 128 (5120/128=40, 17408/128=136). EXL3 uses block-Hadamard(128) already. Full-tensor testing can use stock EXL3's existing block-Hadamard path.
+
+### Terminology (per reviewer)
+- MSE: raw weight mean squared error
+- OC-HWE: output-covariance Hessian-weighted error (our proxy)
+- Fisher-HWE: true gradient-covariance weighted error (requires backward)
+- Block output error: propagated through MLP/attention block
+- Served logit KLD: end-to-end model KLD (only this should be called "KLD")
+
+### Later validation and interpretation
+
+This section records the earlier reviewer context, not a demonstrated production improvement. R26 reports that, with GPTQ enabled, its BiIP arm reduced proxy error by 92.5% versus an unrotated baseline, compared with 93.4% for its EXL3-like baseline; those are proxy comparisons, not a stock-codec or end-to-end result. R32 subsequently tested actual stock EXL3 encoding on one full L55 gate tensor: direct BiIP magnitudes worsened both source-basis MSE and OC-HWE versus the matched control. Its zero-incremental-byte scale/path refit produced a small local gain, but had no eligible end-to-end KLD result. See `r26-harp-comparison-findings.md` and `r32-scale-refit-findings.md`.
+
+The zero-byte observation is conditional on reusing the existing FP16 scale buffers and preserving the codec contract; it is not evidence that substituting BiIP scales improves stock EXL3. Treat the priorities below as historical research suggestions, not a current deployment recommendation.
+
+### Next steps (priority order from reviewer)
+1. BiIP/learned scales in actual EXL3 (zero-byte, zero-runtime) — R26 testing
+2. Real Fisher diagonal (validates output sensitivity)
+3. Per-tensor K allocation from actual curves
+4. Validation-selected LDL truncation
+5. Whole-model served KLD
+6. HARP-like structured transforms
+7. Per-tile mixed K (high implementation risk)
+8. Dense rotations/PCA/nonuniform codebooks (defer)
+
 ## Methods Tested (7 rotation strategies, ≥4 required)
 
 1. **BiIP diagonal balancing** (KronQ Eq. 11): S_X = diag(H_X_jj / ||W_{:,j}||²)^{1/4}, S_G = diag(H_G_ii / ||W_{i,:}||²)^{1/4}
