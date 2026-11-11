@@ -105,6 +105,12 @@ byte budget (9 bytes under from K-metadata packing: 3 bits/tile vs 1 byte for un
    distortion curves would be needed for a fair test.
 7. Composition with rotation/permutation needs testing.
 
+## Deployment context and later evidence
+
+The reported 25.5% improvement is measured against uniform-K allocation in this experiment's simplified per-tile uniform quantizer and proxy error metric; it is not a measured improvement over the stock EXL3 codec. Variable per-tile K can require offset metadata and specialized execution paths, so the tile-level result does not by itself establish a deployable format or runtime benefit. A whole-module or other legal-unit allocation is a candidate for evaluation, not a demonstrated winner.
+
+A practical allocation comparison should measure complete candidate actions, including any correction or transform, using the actual encoder and serialized payload size. R30 describes an exact stock-EXL3 encoder harness and byte accounting; R37 defines allocation over complete legal actions, but reports zero eligible measured action rows and no numerical frontier. Thus those later notes do not establish an end-to-end benefit for R1's method. See `r30-exact-exl3-harness-findings.md` and `r37-slq-frontier-findings.md`.
+
 ## Artifacts
 
 | File | Description |
