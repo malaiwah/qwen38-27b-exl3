@@ -5,8 +5,8 @@
 This axis explores quantization optimization at the block level, exploiting architectural invariants that per-matrix methods miss. Three coupling invariants enable joint optimization:
 
 1. **Q/K coupled rotation** (attention): Common orthogonal R preserves QK^T. **CAVEAT: Not free under RoPE** — R must commute with the relative position transform. Highly restrictive in practice.
-2. **V/O inverse-pair rotation** (attention): V'=VR, O'=R^T O preserves VO. **This is the FREE invariant** — no RoPE interaction, no position dependence.
-3. **MLP coupled permutation**: Same P for gate/up, P^T for down preserves SiLU(gate)⊙up product. Only permutations are legal (rotations break SiLU commutativity).
+2. **V/O inverse-pair rotation** (attention): V'=VR, O'=R^T O preserves VO. **Free for monomial transforms (permutation+diagonal); arbitrary R requires runtime inverse before the per-head output gate** (production Qwen has a token-varying output gate before O, head dim 256, rotary dim 64, GQA 24Q/4KV).
+3. **MLP coupled permutation**: Same P for gate/up, P^T for down preserves SiLU(gate)⊙up product. Naive rotations break SiLU commutativity, BUT the QSRT activation-boundary transform (explicitly undo before SiLU) makes rotations legal — see §3 correction.
 
 All invariants verified to machine precision. With held-out validation (20 fresh Gaussian X draws), coupled rotation achieves **29-39% block error reduction** on attention, and MLP coupled permutation achieves **3-8% reduction** with per-tile quantization on held-out data.
 
@@ -27,7 +27,7 @@ Q'K'^T = (QR)(KR)^T = Q R R^T K^T = Q K^T  ∎
 
 **RoPE constraint (reviewer-flagged):** In real Qwen3.8-27B attention, RoPE is applied after Q/K projections. With row-vector convention, the score becomes q_i R T_i T_j^T R^T k_j^T (where T_i are position-dependent rotations). Equality with the original q_i T_i T_j^T k_j^T for all positions requires R to commute with every relative RoPE transform — a random/Hadamard/Givens O(d) matrix does not satisfy this. The Q/K rotation would require a runtime inverse rotation before RoPE or a much smaller RoPE-commuting search space.
 
-### 2. V/O Inverse-Pair Rotation Invariant (FREE)
+### 2. V/O Inverse-Pair Rotation Invariant
 
 **Theorem:** For any orthogonal R ∈ O(d_head), V'=VR and O'=R^T O preserves the VO product.
 
@@ -38,7 +38,14 @@ O' = R^T @ W_O
 V' O' = (V R)(R^T W_O) = V (R R^T) W_O = V W_O = VO  ∎
 ```
 
-This invariant has no RoPE interaction (V/O are not position-rotated). In GQA, the inverse rotation must be applied to every O slice corresponding to the same KV head. This is the **practically free** invariant for attention block optimization.
+**Production constraints (architecture audit):** The simple VO invariant holds in our POC's plain attention, but real Qwen3.8-27B full attention has additional structure:
+1. **Per-head output gate before O**: a token-varying diagonal gate is applied to V's output before W_O. Arbitrary R does not commute with this gate.
+2. **GQA geometry**: head dim 256, rotary dim 64, 24 Q heads / 4 KV heads (not d_head=128 as in our POC).
+3. **Q/K RMSNorm**: adds further constraints on the Q/K side.
+
+**Zero-runtime legal family:** Monomial transforms (permutation + diagonal/sign) with coordinated gates and inverse O are legal at zero runtime cost. Arbitrary orthogonal R requires either (a) an explicit inverse rotation before the output gate (analogous to QSRT activation-boundary pattern), or (b) a runtime boundary transform with GEMM epilogue fusion.
+
+**Narrowed conclusion:** The V/O rotation is invariant in principle (VO product preserved), but in production it is free only for monomial/permutation+diagonal transforms. Arbitrary rotations require runtime cost similar to the QSRT MLP transform. Our POC results (22.5% held-out improvement) use arbitrary R and would need this runtime cost in deployment.
 
 ### 3. MLP Coupled Permutation Invariant
 
@@ -58,7 +65,16 @@ h' = (SiLU(g) ⊙ u) @ P = h @ P
 Y' = h' @ (P^T @ W_down) = (h @ P) @ (P^T @ W_down) = h @ W_down = Y  ∎
 ```
 
-**Key distinction:** Permutations commute with SiLU (elementwise function on permuted elements = permuted elementwise function). General orthogonal rotations do NOT commute with SiLU, because R mixes coordinates before the elementwise application. Confirmed empirically: rotation gives ||Y - Y_rot||^2 = 2938.31 (massive violation).
+**Key distinction:** Permutations commute with SiLU (elementwise function on permuted elements = permuted elementwise function). General orthogonal rotations do NOT commute with SiLU, because R mixes coordinates before the elementwise application. Confirmed empirically: naive rotation gives ||Y - Y_rot||^2 = 2938.31 (massive violation).
+
+**IMPORTANT CORRECTION (QSRT activation-boundary transform):** While naive rotations that are NOT inverted before SiLU are indeed illegal, the QSRT pattern makes rotations LEGAL by explicitly undoing the transform before the nonlinearity. The QSRT coupled transform for SwiGLU MLP:
+1. Interleave gate/up weights: Q = interleave(W_gate.T, W_up.T) ∈ R^{2m×d}
+2. Store Q' = U_A^T @ Q @ U_R and Wd' = U_R^T @ Wd @ U_B
+3. Forward: x'=x@U_R → q'=x'@Q'^T → **RECOVER q=q'@U_A^T (before SiLU!)** → deinterleave → h=SiLU(g)⊙u (original basis) → h'=h@U_B → y'=h'@Wd'^T → y=y'@U_R^T = h@Wd^T
+
+The U_A transform is undone BEFORE SiLU, so SiLU always operates in the original basis. A separate U_B is applied AFTER activation. This is verified for dense SwiGLU (error 2.55e-15, Frobenius 3.73e-28). The cost: runtime transforms (U_A inverse on 2m fused output, U_B forward on m post-activation, U_R forward/inverse on d residual), needing fusion into GEMM epilogues for dense execution. For Qwen dimensions (5120/128=40, 17408/128=136), block Hadamard transforms of size 128/512 are applicable.
+
+**Narrowed conclusion:** "MLP rotations are illegal" applies only to NAIVE rotations that don't explicitly undo before SiLU. The QSRT activation-boundary pattern IS legal and could enable rotation-based quantization improvements for MLP weights.
 
 **Quantizer interaction:** Per-column quantization makes permutation a no-op (each column quantized independently, so reordering doesn't change error). Permutation only helps with per-tile quantization (grouping similar-scale channels reduces tile range). This is confirmed: 0% improvement with per-column, 3-8% held-out with per-tile.
 
@@ -103,10 +119,10 @@ For the MLP block (g = X@W_gate, u = X@W_up, h = SiLU(g)⊙u, Y = h@W_down):
 |--------|---------------|---------------------|---------------------|
 | Independent (per-column) | 0.9407 | 0.8191 ± 0.091 | — |
 | Q/K coupled rotation | 0.7625 | 0.7255 ± 0.103 | 11.4% |
-| V/O coupled rotation (FREE) | 0.6854 | 0.6349 ± 0.057 | 22.5% |
+| V/O coupled rotation (monomial free; arbitrary R needs runtime) | 0.6854 | 0.6349 ± 0.057 | 22.5% |
 | Full coupled (QK+VO) | 0.5320 | 0.5345 ± 0.066 | **34.7%** |
 
-The rotation search minimizes weight Frobenius error (||W - Q(W@R@R^T)||_F^2 for Q and K, or V and O), NOT block output error. The rotation makes weights easier to quantize by distributing outliers, and the block error improvement follows from lower per-matrix quantization error. The search does not use calibration X for candidate selection, so the search/eval gap (43.4% search X vs 34.7% held-out) is NOT overfitting — it reflects the baseline's different sensitivity on different X draws (independent baseline: 0.9407 on search X vs 0.8191 held-out). V/O rotation alone provides 22.5% held-out improvement and is the practically free invariant (no RoPE constraint).
+The rotation search minimizes weight Frobenius error (||W - Q(W@R@R^T)||_F^2 for Q and K, or V and O), NOT block output error. The rotation makes weights easier to quantize by distributing outliers, and the block error improvement follows from lower per-matrix quantization error. The search does not use calibration X for candidate selection, so the search/eval gap (43.4% search X vs 34.7% held-out) is NOT overfitting — it reflects the baseline's different sensitivity on different X draws (independent baseline: 0.9407 on search X vs 0.8191 held-out). V/O rotation provides 22.5% held-out improvement. In production, monomial V/O transforms (permutation+diagonal) are free; arbitrary R requires runtime inverse before the per-head output gate.
 
 ### Attention: Bit-Width Sweep (held-out)
 
@@ -202,7 +218,7 @@ Down gets more bits, consistent with the Jacobian trace sensitivity showing down
 | S_gate_gate | 167789 | 167789 | 0.999999 |
 | S_up_up | 156900 | 156900 | 1.000000 |
 | S_down_down | 161234 | 161234 | 1.000000 |
-| S_gate_up | -30.897 | -30.898 | 0.999964 |
+- **V/O rotation:** Invariant in principle (VO preserved), but production Qwen has a per-head output gate before O. Zero-runtime legal family is monomial (permutation+diagonal/sign). Arbitrary R requires runtime inverse before the gate (like QSRT). Head dim 256, rotary dim 64, GQA 24Q/4KV.
 
 All four analytic formulas match numerical finite differences to 5+ decimal places.
 
@@ -210,7 +226,7 @@ All four analytic formulas match numerical finite differences to 5+ decimal plac
 
 ### For R3-Rotations
 - **V/O rotation is the free attention invariant** (no RoPE constraint). Q/K rotation requires R commuting with RoPE — highly restrictive.
-- **MLP rotations are illegal** (SiLU non-commutativity, confirmed: 2938× error).
+- **MLP rotations:** NAIVE rotations are illegal (SiLU non-commutativity, confirmed: 2938× error). BUT the QSRT activation-boundary transform makes rotations legal by explicitly undoing U_A before SiLU. Verified for dense SwiGLU (error 2.55e-15). This is a NEW rotation arm to test alongside BiIP — it handles gate/up/down JOINTLY via interleaving. Cost: runtime transforms need GEMM epilogue fusion.
 - Our search uses random orthogonal + signed Hadamard + Givens refinement. Results are "best found," not optimal.
 
 ### For R4-Permutations
@@ -221,7 +237,7 @@ All four analytic formulas match numerical finite differences to 5+ decimal plac
 ### For R9-GroupOrbit
 - Rotation and GPTAQ are SYNERGISTIC (corrected R9 finding, after Cholesky fix). The correct stack is rotation + GPTAQ + allocation together.
 - The alternating optimizer's accept-if-improve pattern should accept GPTAQ after rotation when the Cholesky convention is correct (U^T U = H^{-1}).
-- For the coupled block case: V/O rotation (free invariant) can be combined with GPTAQ on the rotated V/O matrices for compound gains.
+- For the coupled block case: V/O rotation (monomial free, arbitrary R needs runtime inverse before output gate) can be combined with GPTAQ on the rotated V/O matrices for compound gains.
 
 ### For R1-RateDistortion
 - Block-level joint allocation should weight by the Jacobian trace diagonal, not individual matrix Hessians.
@@ -232,10 +248,10 @@ All four analytic formulas match numerical finite differences to 5+ decimal plac
 ## Limitations
 
 1. **Synthetic attention block:** Single-head, no GQA, no RoPE. Real GQA has K/V sharing across Q heads.
-2. **Q/K rotation not free under RoPE.** Only V/O rotation is practically applicable to real Qwen3.8-27B.
+2. **Q/K rotation not free under RoPE.** V/O rotation is free only for monomial transforms (permutation+diagonal) in production Qwen (per-head output gate before O, head dim 256, rotary dim 64, GQA 24Q/4KV). Arbitrary R requires runtime inverse before the gate. For MLP, the QSRT activation-boundary transform makes rotations legal with runtime fusion cost, but is not implemented in this POC.
 3. **Synthetic up_proj and calibration X.** Real weight experiments use only real gate+down, synthetic up, synthetic X.
 4. **Uniform quantizer, not EXL3 trellis.** Per-tile uniform is a proxy.
-5. **Small dimensions:** d_model=64, d_head=32. Real model has d_model=5120, d_head=128.
+5. **Small dimensions:** d_model=64, d_head=32. Real Qwen3.8-27B has d_model=5120, head dim 256, rotary dim 64, GQA 24Q/4KV heads.
 6. **MLP permutation overfits calibration.** Held-out improvement (3-8%) is much smaller than in-sample (30.6%). Multiple calibration sets and real activations needed for production-grade evidence.
 7. **Joint rate allocation equals best balanced baseline.** The greedy allocator finds the optimal allocation, but the best balanced allocation happens to be the same. The improvement is vs the MEAN/WORST balanced allocation, not the best.
 8. **"Block Hessian" is a trace summary.** The scalar matrix captures Jacobian Frobenius inner products, not the full cross-coupling structure. Error-direction cross terms provide a better measure.
