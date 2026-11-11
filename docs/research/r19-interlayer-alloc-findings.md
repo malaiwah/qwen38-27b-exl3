@@ -230,13 +230,88 @@ Extrapolating to 56 layers × 4 roles (224 tensors):
 10. **Sidecar precision mismatch**: Distortion uses FP64-exact tile min/max, while
     byte accounting charges two float16 sidecar values.
 
+## Critical production caveats (from QSRT review + second independent review)
+
+### Local HWE can INVERT end-to-end KLD
+QSRT's critical validation lesson: local OC-proxy HWE/SSE can INVERT end-to-end model KLD.
+A K4 promotion that reduced local expert error by 50% actually WORSENED model KLD.
+One-sided curvature reduced local error but worsened KLD. **Our allocation, based on
+OC-proxy HWE, must eventually be validated against served model KLD, not just proxy HWE.**
+The inter-layer DP machinery is sound, but the distortion curves D_l(K) must be measured
+against the production metric before deployment.
+
+### Per-tensor allocation is the right priority
+Per-tensor K allocation (R19) is already compatible with EXL3 — each tensor gets its own
+K value with no kernel changes. Per-tile mixed K (R1 within each tensor) has real
+deployment costs: variable offsets, kernel branching, reduced tensor-core regularity.
+R19's per-tensor allocation should come first; per-tile allocation is a later optimization.
+
+### Correction should be INSIDE the R-D arm
+R17 found allocation+GPTQ conflict. The fix: build D_l(K, corrected) curves that include
+the correction (e.g., D_l(K, stock_LDLQ), D_l(K, BiIP+LDLQ), D_l(K, BiIP+truncated_LDLQ)),
+and let the allocator choose among corrected states. Don't allocate on D_l(K) then apply
+correction separately — the correction changes the distortion landscape and should be
+part of the allocation decision.
+
+### BiIP scaling marginal/negative on top of EXL3 (R26/R27)
+R26 found stock-like EXL3+GPTQ achieves 93.4% vs BiIP+GPTQ 92.5% — BiIP scaling adds
+marginal/negative value on top of GPTQ. R27 found BiIP scaling HURTS per-tile
+quantization (1/36 win rate, 0/12 at K5). **Hadamard rotation is the main benefit**,
+not BiIP scaling. The inter-layer DP action space should use {K, K+Hadamard} not
+{K, K+BiIP}. Key allocation signal from R27: K4+Hadamard BEATS K5 on L55_down
+(outlier-heavy late-layer down tensor) — the DP should discover these cross-rate
+substitutions. EXL3 already implements Hadamard+LDLQ, so our "rotation" gain is
+largely rediscovering existing infrastructure. The novel contribution is the
+ALLOCATION of which tensors get rotation and at what K.
+
+### BiIP may cost ZERO additional bytes in production
+EXL3 already stores FP16 `suh` and `svh` scale vectors per tensor. If BiIP merely changes
+their VALUES (from RMS-derived to Hessian-balanced), the incremental storage is ~0. The
+0.5 bpw sidecar was a 128×128 slice artifact. For real Qwen dimensions (5120×17408):
+0.004 bpw — negligible. However, R26/R27 show the quality gain from BiIP scaling is
+marginal/negative on top of EXL3+GPTQ, so zero-byte storage is moot if quality doesn't improve.
+
+### Numerical role assignments not yet trustworthy
+The second reviewer confirms the multiple-choice knapsack machinery is directly useful,
+but the specific numerical K assignments per (layer, role) are NOT yet trustworthy due to:
+synthetic calibration, simplified architecture (56 not 64 layers), equal-size slices,
+and OC-proxy rather than Fisher Hessian. The DP structure and sensitivity ranking are
+valid; the exact K values need real-data validation.
+
+### Terminology
+- MSE: raw weight mean squared error
+- OC-HWE: output-covariance Hessian-weighted error (our proxy in this PoC)
+- Fisher-HWE: true gradient-covariance weighted error (requires GPU backward pass)
+- Block output error: propagated through MLP/attention block (R18)
+- Served logit KLD: end-to-end model KLD (only this should be called "KLD")
+
+### Priority order (updated with R26/R27 + arXiv horizon scan)
+1. Hadamard rotation (not BiIP scaling) in actual EXL3 — R26/R27 show Hadamard is the main benefit
+2. Per-tensor K allocation from actual D_l(K, Had) distortion curves (R19 with real data)
+3. DASH-Q diagonal shrinkage Hessian for distortion curves (arXiv:2604.13806)
+4. PiSO zero-byte scale optimization before allocation (arXiv:2606.10890)
+5. SLQ primal formulation: minimize bytes subject to KLD/p99 constraints (arXiv:2605.02404)
+6. WaterSIC as allocation oracle validation (arXiv:2603.04956, within 0.255 bit of R-D limit)
+7. Whole-model served KLD validation
+8. QSRT activation-boundary MLP rotation (R10-verified) as additional DP action
+9. Per-tile mixed K (high implementation risk)
+10. Dense rotations/PCA/nonuniform codebooks (defer)
+
+### High-Rate QMM II stopping rule (arXiv:2605.13768)
+Rotated GPTQ may already be within ~0.1 equivalent bit of optimal at K5/K6. If true,
+further local HWE optimization won't close KLD gap. This supports focusing on allocation
+(R19) and full-model KLD validation rather than perfecting local distortion curves.
+
 ## Composition with existing stack
 
 - **R1 (tile-level DP)**: R19 allocates K per layer/role; R1 allocates K per tile
   within each tensor. Hierarchical composition.
 - **R3 (rotation)**: R19 inter-layer DP gain persists post-rotation (+26.3%), unlike
   R13's tile-level allocation (+6.6% marginal). Rotation homogenizes within-layer
-  but not across-layer sensitivity.
+  but not across-layer sensitivity. **R26/R27 update**: Hadamard is the main benefit,
+  not BiIP scaling (BiIP marginal/negative on top of EXL3+GPTQ). The DP action space
+  should use {K, K+Hadamard}. The QSRT activation-boundary transform (R10-verified,
+  error 2.55e-15) enables legal MLP joint rotation as an additional action for MLP tensors.
 - **R16 (non-uniform codebook)**: DP allocation composes orthogonally with quantizer
   type. R19's inter-layer DP should similarly compose.
 - **R18 (block propagation)**: R18's block amplification factors could weight the
@@ -245,8 +320,14 @@ Extrapolating to 56 layers × 4 roles (224 tensors):
 - **R20 (info-theoretic)**: Channel capacity could serve as a prior for allocation
   when Hessian data is unavailable.
 
-**Recommended composition order:**
-1. BiIP + Hadamard rotation (R3)
-2. Inter-layer K allocation (R19) — determines K per (layer, role)
-3. Tile-level K allocation (R1) — determines K per tile within each tensor
-4. GPTQ correction (R7/R14) — gated behind accept-if-improve (R9/R15)
+**Recommended composition order (updated with QSRT + R26/R27):**
+1. Hadamard rotation (R3, R26/R27) — main benefit, not BiIP scaling; for attention tensors
+2. QSRT activation-boundary MLP rotation (R10-verified) — for MLP tensors (gate/up/down jointly)
+3. Inter-layer K allocation (R19) — on D_l(K, Had) curves, determines K per (layer, role)
+4. Tile-level K allocation (R1) — lower priority, deployment cost
+5. GPTQ correction (R7/R14) — gated behind accept-if-improve (R9/R15)
+
+**Note:** Steps 1-2 should be INSIDE the R-D arm (correction changes the distortion
+landscape). Build D_l(K, Had+LDLQ) and D_l(K, activation-boundary+LDLQ) curves and let
+the allocator choose among corrected states. R27 shows K4+Had can beat K5 on outlier-heavy
+tensors — the DP should discover these cross-rate substitutions.
