@@ -291,6 +291,12 @@ Deliberate caveats:
    path. A real promotion still requires the actual projector rerun already
    performed by `_validated_report`.
 
+### Capture and split reconciliation notes
+
+R29 describes its `activations-*` boundary captures as calibration captures with 63 presented tokens; their existence does not by itself establish a compatible v5 shard-0 fidelity replay. R32 reports that its one-tensor capture-launcher campaign produced no eligible replay row and that legacy captures were not accepted as substitutes for Wave-5 KLD in that lane. See `r29-data-fisher-findings.md` and `r32-scale-refit-findings.md`.
+
+The R29 findings describe six EXL3-standard calibration documents and place a disjoint UltraChat train-generation shard in validation, whereas the split summary above places source-disjoint UltraChat-train documents in calibration and describes validation as v5 shard 0. This discrepancy is unresolved here. Do not infer an authorized split change from either summary alone; reconcile the frozen manifests, selectors, and applicable evaluation contract before using those documents for fitting or selection.
+
 Under this lean scope, unresolved security/formal hardening is not a Phase-B
 blocker. No candidate result, untouched-test opening, runtime qualification, or
 promotion claim is made by R31 itself.
