@@ -1,0 +1,879 @@
+{
+  "L0_gate": {
+    "RTN": {
+      "hess_error": 2.6212305352924787e-07,
+      "weight_mse": 3.4795186112879524e-07,
+      "bytes": 10240.0
+    },
+    "Equilibrate": {
+      "hess_error": 0.001466980320182234,
+      "weight_mse": 0.00020999194339030677,
+      "bytes": 10240.0
+    },
+    "Partition": {
+      "hess_error": 8.967319025067088e-07,
+      "weight_mse": 3.400108748262329e-07,
+      "bytes": 10240.0
+    },
+    "Rotate": {
+      "hess_error": 8.283213159941314e-08,
+      "weight_mse": 2.8538444446006553e-07,
+      "bytes": 10240.0
+    },
+    "Allocate": {
+      "hess_error": 1.2731629381534627e-07,
+      "weight_mse": 6.31852220289112e-07,
+      "bytes": 10240.0
+    },
+    "GPTQ(a=0)": {
+      "hess_error": 2.1920559903759102e-07,
+      "weight_mse": 5.947543550680807e-07,
+      "bytes": 10240.0
+    },
+    "GPTAQ(a=.25)": {
+      "hess_error": 2.0047516539602543e-07,
+      "weight_mse": 6.02022991256789e-07,
+      "bytes": 10240.0
+    },
+    "2-step (eq+q)": {
+      "hess_error": 2.6212305352924787e-07,
+      "weight_mse": 3.4795186112879524e-07,
+      "bytes": 10240.0,
+      "convergence": [
+        {
+          "iteration": 0,
+          "step": "init",
+          "objective": 2.6212305352924787e-07,
+          "hess_error": 2.6212305352924787e-07,
+          "weight_mse": 3.4795186112879524e-07
+        },
+        {
+          "iteration": 1,
+          "step": "converged",
+          "objective": 2.6212305352924787e-07,
+          "hess_error": 2.6212305352924787e-07,
+          "weight_mse": 3.4795186112879524e-07
+        }
+      ],
+      "step_improvements": {},
+      "time_sec": 0.002885103225708008,
+      "monotone_verified": true
+    },
+    "3-step (+part)": {
+      "hess_error": 2.6212305352924787e-07,
+      "weight_mse": 3.4795186112879524e-07,
+      "bytes": 10240.0,
+      "convergence": [
+        {
+          "iteration": 0,
+          "step": "init",
+          "objective": 2.6212305352924787e-07,
+          "hess_error": 2.6212305352924787e-07,
+          "weight_mse": 3.4795186112879524e-07
+        },
+        {
+          "iteration": 1,
+          "step": "converged",
+          "objective": 2.6212305352924787e-07,
+          "hess_error": 2.6212305352924787e-07,
+          "weight_mse": 3.4795186112879524e-07
+        }
+      ],
+      "step_improvements": {},
+      "time_sec": 0.0035920143127441406,
+      "monotone_verified": true
+    },
+    "4-step (+rot)": {
+      "hess_error": 7.528542687969978e-08,
+      "weight_mse": 2.7399160544051466e-07,
+      "bytes": 141312.0,
+      "convergence": [
+        {
+          "iteration": 0,
+          "step": "init",
+          "objective": 2.6212305352924787e-07,
+          "hess_error": 2.6212305352924787e-07,
+          "weight_mse": 3.4795186112879524e-07
+        },
+        {
+          "iteration": 1,
+          "step": "rotate",
+          "objective": 8.283213159941441e-08,
+          "hess_error": 8.283213159941441e-08,
+          "weight_mse": 2.853844444600657e-07
+        },
+        {
+          "iteration": 2,
+          "step": "rotate",
+          "objective": 8.204208632603874e-08,
+          "hess_error": 8.204208632603874e-08,
+          "weight_mse": 2.847475335532952e-07
+        },
+        {
+          "iteration": 3,
+          "step": "rotate",
+          "objective": 7.847861211407797e-08,
+          "hess_error": 7.847861211407797e-08,
+          "weight_mse": 2.994170164363237e-07
+        },
+        {
+          "iteration": 4,
+          "step": "rotate",
+          "objective": 7.528542687969978e-08,
+          "hess_error": 7.528542687969978e-08,
+          "weight_mse": 2.7399160544051466e-07
+        },
+        {
+          "iteration": 5,
+          "step": "converged",
+          "objective": 7.528542687969978e-08,
+          "hess_error": 7.528542687969978e-08,
+          "weight_mse": 2.7399160544051466e-07
+        }
+      ],
+      "step_improvements": {
+        "rotate": 4
+      },
+      "time_sec": 1.0114340782165527,
+      "monotone_verified": true
+    },
+    "5-step (+alloc)": {
+      "hess_error": 7.528542687969978e-08,
+      "weight_mse": 2.7399160544051466e-07,
+      "bytes": 141312.0,
+      "convergence": [
+        {
+          "iteration": 0,
+          "step": "init",
+          "objective": 2.6212305352924787e-07,
+          "hess_error": 2.6212305352924787e-07,
+          "weight_mse": 3.4795186112879524e-07
+        },
+        {
+          "iteration": 1,
+          "step": "rotate",
+          "objective": 8.283213159941441e-08,
+          "hess_error": 8.283213159941441e-08,
+          "weight_mse": 2.853844444600657e-07
+        },
+        {
+          "iteration": 2,
+          "step": "rotate",
+          "objective": 8.204208632603874e-08,
+          "hess_error": 8.204208632603874e-08,
+          "weight_mse": 2.847475335532952e-07
+        },
+        {
+          "iteration": 3,
+          "step": "rotate",
+          "objective": 7.847861211407797e-08,
+          "hess_error": 7.847861211407797e-08,
+          "weight_mse": 2.994170164363237e-07
+        },
+        {
+          "iteration": 4,
+          "step": "rotate",
+          "objective": 7.528542687969978e-08,
+          "hess_error": 7.528542687969978e-08,
+          "weight_mse": 2.7399160544051466e-07
+        },
+        {
+          "iteration": 5,
+          "step": "converged",
+          "objective": 7.528542687969978e-08,
+          "hess_error": 7.528542687969978e-08,
+          "weight_mse": 2.7399160544051466e-07
+        }
+      ],
+      "step_improvements": {
+        "rotate": 4
+      },
+      "time_sec": 1.0715320110321045,
+      "monotone_verified": true
+    },
+    "6-step (+corr)": {
+      "hess_error": 5.963098864293233e-08,
+      "weight_mse": 3.7132856862303606e-07,
+      "bytes": 141312.0,
+      "convergence": [
+        {
+          "iteration": 0,
+          "step": "init",
+          "objective": 2.6212305352924787e-07,
+          "hess_error": 2.6212305352924787e-07,
+          "weight_mse": 3.4795186112879524e-07
+        },
+        {
+          "iteration": 1,
+          "step": "rotate",
+          "objective": 8.283213159941441e-08,
+          "hess_error": 8.283213159941441e-08,
+          "weight_mse": 2.853844444600657e-07
+        },
+        {
+          "iteration": 1,
+          "step": "correct",
+          "objective": 6.185958543075146e-08,
+          "hess_error": 6.185958543075146e-08,
+          "weight_mse": 3.543734598911962e-07
+        },
+        {
+          "iteration": 2,
+          "step": "allocate",
+          "objective": 5.963098864293233e-08,
+          "hess_error": 5.963098864293233e-08,
+          "weight_mse": 3.7132856862303606e-07
+        },
+        {
+          "iteration": 3,
+          "step": "converged",
+          "objective": 5.963098864293233e-08,
+          "hess_error": 5.963098864293233e-08,
+          "weight_mse": 3.7132856862303606e-07
+        }
+      ],
+      "step_improvements": {
+        "rotate": 1,
+        "correct": 1,
+        "allocate": 1
+      },
+      "time_sec": 0.6689858436584473,
+      "monotone_verified": true
+    },
+    "Rotate+GPTAQ (antagonism)": {
+      "hess_error": 6.185958543075141e-08,
+      "weight_mse": 3.5437345989119626e-07,
+      "bytes": 10240.0,
+      "note": "composition test"
+    }
+  },
+  "L0_down": {
+    "RTN": {
+      "hess_error": 2.2545131354581262e-07,
+      "weight_mse": 3.28115325799815e-07,
+      "bytes": 10240.0
+    },
+    "Equilibrate": {
+      "hess_error": 0.0009629290121057094,
+      "weight_mse": 0.00010548993735306263,
+      "bytes": 10240.0
+    },
+    "Partition": {
+      "hess_error": 3.3408610101856266e-07,
+      "weight_mse": 3.2119256733013895e-07,
+      "bytes": 10240.0
+    },
+    "Rotate": {
+      "hess_error": 9.621501151636331e-08,
+      "weight_mse": 3.155921381065073e-07,
+      "bytes": 10240.0
+    },
+    "Allocate": {
+      "hess_error": 1.4535064738748664e-07,
+      "weight_mse": 6.015732874019221e-07,
+      "bytes": 10240.0
+    },
+    "GPTQ(a=0)": {
+      "hess_error": 1.7516309717095346e-07,
+      "weight_mse": 5.449937286507426e-07,
+      "bytes": 10240.0
+    },
+    "GPTAQ(a=.25)": {
+      "hess_error": 1.951168058662679e-07,
+      "weight_mse": 5.546150886787777e-07,
+      "bytes": 10240.0
+    },
+    "2-step (eq+q)": {
+      "hess_error": 2.2545131354581262e-07,
+      "weight_mse": 3.28115325799815e-07,
+      "bytes": 10240.0,
+      "convergence": [
+        {
+          "iteration": 0,
+          "step": "init",
+          "objective": 2.2545131354581262e-07,
+          "hess_error": 2.2545131354581262e-07,
+          "weight_mse": 3.28115325799815e-07
+        },
+        {
+          "iteration": 1,
+          "step": "converged",
+          "objective": 2.2545131354581262e-07,
+          "hess_error": 2.2545131354581262e-07,
+          "weight_mse": 3.28115325799815e-07
+        }
+      ],
+      "step_improvements": {},
+      "time_sec": 0.0029120445251464844,
+      "monotone_verified": true
+    },
+    "3-step (+part)": {
+      "hess_error": 2.2545131354581262e-07,
+      "weight_mse": 3.28115325799815e-07,
+      "bytes": 10240.0,
+      "convergence": [
+        {
+          "iteration": 0,
+          "step": "init",
+          "objective": 2.2545131354581262e-07,
+          "hess_error": 2.2545131354581262e-07,
+          "weight_mse": 3.28115325799815e-07
+        },
+        {
+          "iteration": 1,
+          "step": "converged",
+          "objective": 2.2545131354581262e-07,
+          "hess_error": 2.2545131354581262e-07,
+          "weight_mse": 3.28115325799815e-07
+        }
+      ],
+      "step_improvements": {},
+      "time_sec": 0.0035581588745117188,
+      "monotone_verified": true
+    },
+    "4-step (+rot)": {
+      "hess_error": 9.621501151636445e-08,
+      "weight_mse": 3.155921381065072e-07,
+      "bytes": 141312.0,
+      "convergence": [
+        {
+          "iteration": 0,
+          "step": "init",
+          "objective": 2.2545131354581262e-07,
+          "hess_error": 2.2545131354581262e-07,
+          "weight_mse": 3.28115325799815e-07
+        },
+        {
+          "iteration": 1,
+          "step": "rotate",
+          "objective": 9.621501151636445e-08,
+          "hess_error": 9.621501151636445e-08,
+          "weight_mse": 3.155921381065072e-07
+        },
+        {
+          "iteration": 2,
+          "step": "converged",
+          "objective": 9.621501151636445e-08,
+          "hess_error": 9.621501151636445e-08,
+          "weight_mse": 3.155921381065072e-07
+        }
+      ],
+      "step_improvements": {
+        "rotate": 1
+      },
+      "time_sec": 0.40563392639160156,
+      "monotone_verified": true
+    },
+    "5-step (+alloc)": {
+      "hess_error": 9.621501151636445e-08,
+      "weight_mse": 3.155921381065072e-07,
+      "bytes": 141312.0,
+      "convergence": [
+        {
+          "iteration": 0,
+          "step": "init",
+          "objective": 2.2545131354581262e-07,
+          "hess_error": 2.2545131354581262e-07,
+          "weight_mse": 3.28115325799815e-07
+        },
+        {
+          "iteration": 1,
+          "step": "rotate",
+          "objective": 9.621501151636445e-08,
+          "hess_error": 9.621501151636445e-08,
+          "weight_mse": 3.155921381065072e-07
+        },
+        {
+          "iteration": 2,
+          "step": "converged",
+          "objective": 9.621501151636445e-08,
+          "hess_error": 9.621501151636445e-08,
+          "weight_mse": 3.155921381065072e-07
+        }
+      ],
+      "step_improvements": {
+        "rotate": 1
+      },
+      "time_sec": 0.43062400817871094,
+      "monotone_verified": true
+    },
+    "6-step (+corr)": {
+      "hess_error": 6.09793542123834e-08,
+      "weight_mse": 3.8643846960130214e-07,
+      "bytes": 141312.0,
+      "convergence": [
+        {
+          "iteration": 0,
+          "step": "init",
+          "objective": 2.2545131354581262e-07,
+          "hess_error": 2.2545131354581262e-07,
+          "weight_mse": 3.28115325799815e-07
+        },
+        {
+          "iteration": 1,
+          "step": "rotate",
+          "objective": 9.621501151636445e-08,
+          "hess_error": 9.621501151636445e-08,
+          "weight_mse": 3.155921381065072e-07
+        },
+        {
+          "iteration": 1,
+          "step": "correct",
+          "objective": 8.364774144074639e-08,
+          "hess_error": 8.364774144074639e-08,
+          "weight_mse": 3.941280116316755e-07
+        },
+        {
+          "iteration": 2,
+          "step": "partition",
+          "objective": 6.09793542123834e-08,
+          "hess_error": 6.09793542123834e-08,
+          "weight_mse": 3.8643846960130214e-07
+        },
+        {
+          "iteration": 3,
+          "step": "converged",
+          "objective": 6.09793542123834e-08,
+          "hess_error": 6.09793542123834e-08,
+          "weight_mse": 3.8643846960130214e-07
+        }
+      ],
+      "step_improvements": {
+        "rotate": 1,
+        "correct": 1,
+        "partition": 1
+      },
+      "time_sec": 0.6677350997924805,
+      "monotone_verified": true
+    },
+    "Rotate+GPTAQ (antagonism)": {
+      "hess_error": 8.364774144074607e-08,
+      "weight_mse": 3.941280116316755e-07,
+      "bytes": 10240.0,
+      "note": "composition test"
+    }
+  },
+  "L55_gate": {
+    "RTN": {
+      "hess_error": 3.648047719969218e-07,
+      "weight_mse": 4.592962386246453e-07,
+      "bytes": 10240.0
+    },
+    "Equilibrate": {
+      "hess_error": 0.0027915324987712485,
+      "weight_mse": 0.0003652160201518724,
+      "bytes": 10240.0
+    },
+    "Partition": {
+      "hess_error": 4.324194746749953e-07,
+      "weight_mse": 4.308992059011701e-07,
+      "bytes": 10240.0
+    },
+    "Rotate": {
+      "hess_error": 1.7267943100692943e-07,
+      "weight_mse": 4.0288958498497507e-07,
+      "bytes": 10240.0
+    },
+    "Allocate": {
+      "hess_error": 2.3219181694680677e-07,
+      "weight_mse": 8.828416691402661e-07,
+      "bytes": 10240.0
+    },
+    "GPTQ(a=0)": {
+      "hess_error": 4.300730028423285e-07,
+      "weight_mse": 7.479628300498684e-07,
+      "bytes": 10240.0
+    },
+    "GPTAQ(a=.25)": {
+      "hess_error": 3.4418354521370117e-07,
+      "weight_mse": 7.671282231299164e-07,
+      "bytes": 10240.0
+    },
+    "2-step (eq+q)": {
+      "hess_error": 3.648047719969218e-07,
+      "weight_mse": 4.592962386246453e-07,
+      "bytes": 10240.0,
+      "convergence": [
+        {
+          "iteration": 0,
+          "step": "init",
+          "objective": 3.648047719969218e-07,
+          "hess_error": 3.648047719969218e-07,
+          "weight_mse": 4.592962386246453e-07
+        },
+        {
+          "iteration": 1,
+          "step": "converged",
+          "objective": 3.648047719969218e-07,
+          "hess_error": 3.648047719969218e-07,
+          "weight_mse": 4.592962386246453e-07
+        }
+      ],
+      "step_improvements": {},
+      "time_sec": 0.002794981002807617,
+      "monotone_verified": true
+    },
+    "3-step (+part)": {
+      "hess_error": 3.648047719969218e-07,
+      "weight_mse": 4.592962386246453e-07,
+      "bytes": 10240.0,
+      "convergence": [
+        {
+          "iteration": 0,
+          "step": "init",
+          "objective": 3.648047719969218e-07,
+          "hess_error": 3.648047719969218e-07,
+          "weight_mse": 4.592962386246453e-07
+        },
+        {
+          "iteration": 1,
+          "step": "converged",
+          "objective": 3.648047719969218e-07,
+          "hess_error": 3.648047719969218e-07,
+          "weight_mse": 4.592962386246453e-07
+        }
+      ],
+      "step_improvements": {},
+      "time_sec": 0.0033981800079345703,
+      "monotone_verified": true
+    },
+    "4-step (+rot)": {
+      "hess_error": 1.477246636417501e-07,
+      "weight_mse": 3.7861110422897625e-07,
+      "bytes": 141312.0,
+      "convergence": [
+        {
+          "iteration": 0,
+          "step": "init",
+          "objective": 3.648047719969218e-07,
+          "hess_error": 3.648047719969218e-07,
+          "weight_mse": 4.592962386246453e-07
+        },
+        {
+          "iteration": 1,
+          "step": "rotate",
+          "objective": 1.7267943100693191e-07,
+          "hess_error": 1.7267943100693191e-07,
+          "weight_mse": 4.02889584984975e-07
+        },
+        {
+          "iteration": 2,
+          "step": "rotate",
+          "objective": 1.477246636417501e-07,
+          "hess_error": 1.477246636417501e-07,
+          "weight_mse": 3.7861110422897625e-07
+        },
+        {
+          "iteration": 3,
+          "step": "converged",
+          "objective": 1.477246636417501e-07,
+          "hess_error": 1.477246636417501e-07,
+          "weight_mse": 3.7861110422897625e-07
+        }
+      ],
+      "step_improvements": {
+        "rotate": 2
+      },
+      "time_sec": 0.6056201457977295,
+      "monotone_verified": true
+    },
+    "5-step (+alloc)": {
+      "hess_error": 1.477246636417501e-07,
+      "weight_mse": 3.7861110422897625e-07,
+      "bytes": 141312.0,
+      "convergence": [
+        {
+          "iteration": 0,
+          "step": "init",
+          "objective": 3.648047719969218e-07,
+          "hess_error": 3.648047719969218e-07,
+          "weight_mse": 4.592962386246453e-07
+        },
+        {
+          "iteration": 1,
+          "step": "rotate",
+          "objective": 1.7267943100693191e-07,
+          "hess_error": 1.7267943100693191e-07,
+          "weight_mse": 4.02889584984975e-07
+        },
+        {
+          "iteration": 2,
+          "step": "rotate",
+          "objective": 1.477246636417501e-07,
+          "hess_error": 1.477246636417501e-07,
+          "weight_mse": 3.7861110422897625e-07
+        },
+        {
+          "iteration": 3,
+          "step": "converged",
+          "objective": 1.477246636417501e-07,
+          "hess_error": 1.477246636417501e-07,
+          "weight_mse": 3.7861110422897625e-07
+        }
+      ],
+      "step_improvements": {
+        "rotate": 2
+      },
+      "time_sec": 0.6475181579589844,
+      "monotone_verified": true
+    },
+    "6-step (+corr)": {
+      "hess_error": 9.495710652316874e-08,
+      "weight_mse": 4.994895162118979e-07,
+      "bytes": 141312.0,
+      "convergence": [
+        {
+          "iteration": 0,
+          "step": "init",
+          "objective": 3.648047719969218e-07,
+          "hess_error": 3.648047719969218e-07,
+          "weight_mse": 4.592962386246453e-07
+        },
+        {
+          "iteration": 1,
+          "step": "rotate",
+          "objective": 1.7267943100693191e-07,
+          "hess_error": 1.7267943100693191e-07,
+          "weight_mse": 4.02889584984975e-07
+        },
+        {
+          "iteration": 1,
+          "step": "correct",
+          "objective": 9.495710652316874e-08,
+          "hess_error": 9.495710652316874e-08,
+          "weight_mse": 4.994895162118979e-07
+        },
+        {
+          "iteration": 2,
+          "step": "converged",
+          "objective": 9.495710652316874e-08,
+          "hess_error": 9.495710652316874e-08,
+          "weight_mse": 4.994895162118979e-07
+        }
+      ],
+      "step_improvements": {
+        "rotate": 1,
+        "correct": 1
+      },
+      "time_sec": 0.4446589946746826,
+      "monotone_verified": true
+    },
+    "Rotate+GPTAQ (antagonism)": {
+      "hess_error": 9.495710652316877e-08,
+      "weight_mse": 4.99489516211898e-07,
+      "bytes": 10240.0,
+      "note": "composition test"
+    }
+  },
+  "L55_down": {
+    "RTN": {
+      "hess_error": 9.653077074718963e-06,
+      "weight_mse": 2.7900167990416342e-06,
+      "bytes": 10240.0
+    },
+    "Equilibrate": {
+      "hess_error": 0.003945091138298322,
+      "weight_mse": 0.00022847189538848943,
+      "bytes": 10240.0
+    },
+    "Partition": {
+      "hess_error": 1.3019611294499068e-05,
+      "weight_mse": 1.1274964474596845e-06,
+      "bytes": 10240.0
+    },
+    "Rotate": {
+      "hess_error": 3.9976850543937803e-07,
+      "weight_mse": 7.643040638821139e-07,
+      "bytes": 10240.0
+    },
+    "Allocate": {
+      "hess_error": 7.649782318417932e-07,
+      "weight_mse": 1.116985977589875e-06,
+      "bytes": 10240.0
+    },
+    "GPTQ(a=0)": {
+      "hess_error": 6.624931751780663e-06,
+      "weight_mse": 4.525071838713452e-06,
+      "bytes": 10240.0
+    },
+    "GPTAQ(a=.25)": {
+      "hess_error": 6.704862582149031e-06,
+      "weight_mse": 4.4362733146407725e-06,
+      "bytes": 10240.0
+    },
+    "2-step (eq+q)": {
+      "hess_error": 9.653077074718963e-06,
+      "weight_mse": 2.7900167990416342e-06,
+      "bytes": 10240.0,
+      "convergence": [
+        {
+          "iteration": 0,
+          "step": "init",
+          "objective": 9.653077074718963e-06,
+          "hess_error": 9.653077074718963e-06,
+          "weight_mse": 2.7900167990416342e-06
+        },
+        {
+          "iteration": 1,
+          "step": "converged",
+          "objective": 9.653077074718963e-06,
+          "hess_error": 9.653077074718963e-06,
+          "weight_mse": 2.7900167990416342e-06
+        }
+      ],
+      "step_improvements": {},
+      "time_sec": 0.003336191177368164,
+      "monotone_verified": true
+    },
+    "3-step (+part)": {
+      "hess_error": 9.653077074718963e-06,
+      "weight_mse": 2.7900167990416342e-06,
+      "bytes": 10240.0,
+      "convergence": [
+        {
+          "iteration": 0,
+          "step": "init",
+          "objective": 9.653077074718963e-06,
+          "hess_error": 9.653077074718963e-06,
+          "weight_mse": 2.7900167990416342e-06
+        },
+        {
+          "iteration": 1,
+          "step": "converged",
+          "objective": 9.653077074718963e-06,
+          "hess_error": 9.653077074718963e-06,
+          "weight_mse": 2.7900167990416342e-06
+        }
+      ],
+      "step_improvements": {},
+      "time_sec": 0.003525257110595703,
+      "monotone_verified": true
+    },
+    "4-step (+rot)": {
+      "hess_error": 3.9454262024071285e-07,
+      "weight_mse": 7.595859032579064e-07,
+      "bytes": 141312.0,
+      "convergence": [
+        {
+          "iteration": 0,
+          "step": "init",
+          "objective": 9.653077074718963e-06,
+          "hess_error": 9.653077074718963e-06,
+          "weight_mse": 2.7900167990416342e-06
+        },
+        {
+          "iteration": 1,
+          "step": "rotate",
+          "objective": 3.9976850543936437e-07,
+          "hess_error": 3.9976850543936437e-07,
+          "weight_mse": 7.643040638821139e-07
+        },
+        {
+          "iteration": 2,
+          "step": "rotate",
+          "objective": 3.9454262024071285e-07,
+          "hess_error": 3.9454262024071285e-07,
+          "weight_mse": 7.595859032579064e-07
+        },
+        {
+          "iteration": 3,
+          "step": "converged",
+          "objective": 3.9454262024071285e-07,
+          "hess_error": 3.9454262024071285e-07,
+          "weight_mse": 7.595859032579064e-07
+        }
+      ],
+      "step_improvements": {
+        "rotate": 2
+      },
+      "time_sec": 0.6120848655700684,
+      "monotone_verified": true
+    },
+    "5-step (+alloc)": {
+      "hess_error": 3.9454262024071285e-07,
+      "weight_mse": 7.595859032579064e-07,
+      "bytes": 141312.0,
+      "convergence": [
+        {
+          "iteration": 0,
+          "step": "init",
+          "objective": 9.653077074718963e-06,
+          "hess_error": 9.653077074718963e-06,
+          "weight_mse": 2.7900167990416342e-06
+        },
+        {
+          "iteration": 1,
+          "step": "rotate",
+          "objective": 3.9976850543936437e-07,
+          "hess_error": 3.9976850543936437e-07,
+          "weight_mse": 7.643040638821139e-07
+        },
+        {
+          "iteration": 2,
+          "step": "rotate",
+          "objective": 3.9454262024071285e-07,
+          "hess_error": 3.9454262024071285e-07,
+          "weight_mse": 7.595859032579064e-07
+        },
+        {
+          "iteration": 3,
+          "step": "converged",
+          "objective": 3.9454262024071285e-07,
+          "hess_error": 3.9454262024071285e-07,
+          "weight_mse": 7.595859032579064e-07
+        }
+      ],
+      "step_improvements": {
+        "rotate": 2
+      },
+      "time_sec": 0.6431939601898193,
+      "monotone_verified": true
+    },
+    "6-step (+corr)": {
+      "hess_error": 3.9454262024071285e-07,
+      "weight_mse": 7.595859032579064e-07,
+      "bytes": 141312.0,
+      "convergence": [
+        {
+          "iteration": 0,
+          "step": "init",
+          "objective": 9.653077074718963e-06,
+          "hess_error": 9.653077074718963e-06,
+          "weight_mse": 2.7900167990416342e-06
+        },
+        {
+          "iteration": 1,
+          "step": "rotate",
+          "objective": 3.9976850543936437e-07,
+          "hess_error": 3.9976850543936437e-07,
+          "weight_mse": 7.643040638821139e-07
+        },
+        {
+          "iteration": 2,
+          "step": "rotate",
+          "objective": 3.9454262024071285e-07,
+          "hess_error": 3.9454262024071285e-07,
+          "weight_mse": 7.595859032579064e-07
+        },
+        {
+          "iteration": 3,
+          "step": "converged",
+          "objective": 3.9454262024071285e-07,
+          "hess_error": 3.9454262024071285e-07,
+          "weight_mse": 7.595859032579064e-07
+        }
+      ],
+      "step_improvements": {
+        "rotate": 2
+      },
+      "time_sec": 0.6481220722198486,
+      "monotone_verified": true
+    },
+    "Rotate+GPTAQ (antagonism)": {
+      "hess_error": 6.37913175826823e-07,
+      "weight_mse": 9.389826319204432e-07,
+      "bytes": 10240.0,
+      "note": "composition test"
+    }
+  }
+}

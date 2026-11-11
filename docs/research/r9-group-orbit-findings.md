@@ -33,8 +33,7 @@ The 6-step alternating optimizer (equilibrate, partition, rotate, allocate, quan
 | L0_down | 9.62e-08 | 1.80e-07 | 6.25e-08 | +35.0% |
 | L55_gate | 1.73e-07 | 3.74e-07 | 7.98e-08 | +53.8% |
 | L55_down | 4.00e-07 | 6.62e-06 | 2.78e-07 | +30.5% |
-
-**GPTQ (alpha=0) is generally better than GPTAQ (alpha=0.25) after rotation.** The P-matrix asymmetric correction provides marginal benefit (L55_gate: +55.3% vs +53.8% for GPTQ), but GPTQ error propagation alone is the main contributor to synergy.
+**GPTAQ (alpha=0.25) outperforms GPTQ (alpha=0) after rotation on 3/4 tensors.** The P-matrix asymmetric correction IS contributing positively when composed with rotation. Only L55_down favors GPTQ (alpha=0). Both alpha values show strong synergy with rotation.
 
 ## Multi-Step Interactions
 
@@ -52,12 +51,15 @@ Note: Monotonicity is guaranteed by the outer acceptance gate, not by intrinsic 
 
 ## Known Limitations
 
-1. **Byte budget**: Dense U/V rotation (131KB) vs K5 payload (10KB). Hadamard transforms are foldable in production (zero storage) but this POC charges full dense cost. Comparison is error-only, not matched-rate.
-2. **DP surrogacy**: K-allocation DP uses additive per-tile distortions, omitting cross-tile terms.
-3. **In-sample**: Same X/Xt for selection and evaluation. No held-out activations.
-4. **Unequal search budget**: Alternating optimizer gets 5 outer iterations of rotation search; individual Rotate baseline gets 1. Part of the 4-step improvement over Rotate is extra search.
-5. **Synthetic calibration**: Real activations needed for production conclusions.
-
+1. **Byte budget**: Dense U/V rotation (131KB) vs K5 payload (10KB). However, per the second review brief, **BiIP rotation may cost ZERO additional bytes in production**: EXL3 already stores FP16 `suh`/`svh` scale vectors per tensor. If BiIP merely changes their values (from RMS-derived to Hessian-balanced), incremental storage is ~0. For real Qwen dimensions (5120×17408), the sidecar is 0.004 bpw — negligible and already paid. This means the rotation step is potentially FREE in storage terms, and the allocation step chooses between K5_stock and K5_BiIP at the same rate. Our POC's byte accounting (charging dense U/V) is overly conservative.
+2. **Correction inside R-D arm**: Per R17/second review, correction should be INSIDE the rate-distortion arm, not appended after allocation. The alternating optimizer handles this correctly via accept-if-improve — it tries correction and rejects if it doesn't help. Future work should build D_i(K, stock_LDLQ), D_i(K, BiIP+LDLQ), D_i(K, BiIP+truncated_LDLQ) curves and let the allocator choose among corrected states.
+3. **EXL3 already implements**: Block-Hadamard(128) both dimensions, input/output channel scaling, random signs, Hessian-aware LDLQ. Our gains are vs NAIVE unrotated baseline, NOT vs stock EXL3. Novel contributions: BiIP Hessian-balanced scales, output sensitivity (H_G), K allocation, validation-gated LDLQ truncation.
+4. **DP surrogacy**: K-allocation DP uses additive per-tile distortions, omitting cross-tile terms.
+5. **In-sample**: Same X/Xt for selection and evaluation. No held-out activations.
+6. **Unequal search budget**: Alternating optimizer gets 5 outer iterations; individual baselines get 1.
+7. **Synthetic calibration**: Real activations needed for production conclusions.
+8. **Per-tile mixed K deployment cost**: Per-tensor allocation should come first (compatible with EXL3). Per-tile mixed K requires variable offsets, kernel branching, reduced tensor-core regularity.
+9. **QSRT MLP activation-boundary rotation**: R10 verified a legal MLP rotation pattern for SwiGLU: interleave gate/up, apply U_A^T @ Q @ U_R, and crucially INVERT U_A before SiLU (SiLU always sees original basis), then apply U_B after activation. This is exact (error 2.55e-15) and REVIVES MLP rotation — the previous "MLP rotations illegal" finding only applies to naive rotations. The alternating optimizer can include this as a new rotation arm for MLP tensors, optimizing gate+up+down jointly. Runtime cost: GEMM epilogue fusion needed.
 ## Code
 
 - `tools/research/r9-group-orbit/poc.py` — Full implementation
