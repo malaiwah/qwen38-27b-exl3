@@ -43,13 +43,14 @@ calibration `490a1596...a259`, validation `4c5cf19a...a5de`, and untouched test
 `4eaaa72d...bca`. Requiring different manifest-file hashes per label is a contract
 error; requiring different selector/projection hashes is correct.
 
-- **Calibration:** fresh, source-disjoint EXL3-standard and UltraChat-train
-  documents. Methods may fit covariance/Fisher, scales, transforms, targets,
-  paths, and callbacks here. Calibration cannot choose a reported arm.
-- **Validation/model selection:** v5 shard 0, using its retained BF16 capture.
-  It is the only split allowed to choose an action, K, alpha, seed, shrinkage,
-  stopping point, interaction, or byte-frontier point. The retained BF16 shard-0
-  reference is never recaptured.
+- **Calibration:** exactly the six pinned EXL3-standard calibration documents.
+  Methods may fit covariance/Fisher, scales, transforms, targets, paths, and
+  callbacks here. Calibration cannot choose a reported arm.
+- **Validation/model selection:** v5 shard 0 plus the disjoint UltraChat
+  train-generation shard, using the retained v5 shard-0 BF16 capture for primary
+  replay. It is the only split allowed to choose an action, K, alpha, seed,
+  shrinkage, stopping point, interaction, or byte-frontier point. The retained
+  BF16 shard-0 reference is never recaptured.
 - **Untouched confirmation:** the R29-frozen, hash-selected source-cluster-disjoint
   v5 contexts from shards 1–9. UltraChat test-gen documents in R29's broader split
   have no v5 context records and are mechanically excluded from the primary metric.
@@ -290,6 +291,13 @@ Deliberate caveats:
    runtime-pointer, CLI, and small-oracle helpers rather than every full production
    path. A real promotion still requires the actual projector rerun already
    performed by `_validated_report`.
+
+5. R31 validates and replays contract-compatible hidden-state captures but does
+   not provide the operational one-tensor candidate capture launcher. R29's
+   `/tmp/qwen38-wave5-r29/activations-*` artifacts are 63-token calibration
+   boundary captures, not v5 shard-0 fidelity replay roots; legacy
+   `/tmp/kld-data` captures are not promotable unless the required Wave 5
+   capture binding and execution receipts are produced.
 
 Under this lean scope, unresolved security/formal hardening is not a Phase-B
 blocker. No candidate result, untouched-test opening, runtime qualification, or
