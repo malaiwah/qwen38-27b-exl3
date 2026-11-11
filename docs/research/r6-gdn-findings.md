@@ -6,6 +6,12 @@ After three rounds of adversarial review and bug fixes, the honest conclusion is
 
 **GDN-specific quantization strategies provide no measurable improvement over standard GPTQ on real Qwen3.8-27B GDN weights with synthetic calibration.** The gate sensitivity is too uniform, the balanced realization transform worsens quantizability, and the recurrence structure doesn't create exploitable variation with synthetic data.
 
+## Scope limitation: simplified GDN simulation
+
+These negative results apply to the simplified simulation and synthetic calibration used here; they do not establish that the same strategies fail on the complete Qwen GDN dataflow. The local `tools/research/r6-gdn/poc.py` models a recurrence with supplied alpha and beta values and applies a raw SiLU output gate. It does not model the pre-recurrence causal convolution, Q/K L2 normalization, or gated RMS normalization found in the repository's `patches/qwen_gdn_linear_attn_patch.py`. That implementation derives the decay and write gates from projected inputs, with `A_log` and `dt_bias` in the decay path, rather than the simulation's supplied gate sequences.
+
+Consequently, the reported nearly uniform gate sensitivity and the negative gate-aware and balanced-realization results should not be generalized to the complete model. R34 likewise reports that its available GDN captures lack the internal state, convolution, and gated-normalization traces needed to infer GDN transforms. A full evaluation requires the complete dataflow and suitable real calibration or captured internal traces. See `r34-reconstructed-down-findings.md`.
+
 ## What Was Tested (6 strategies, all correct implementations)
 
 1. **Gate-aware GPTQ (z-only)**: Weight W_z's GPTQ Hessian by SiLU'(W_z@X)². Gate sensitivity std=0.005 (nearly uniform). Result: ±0.1% vs standard GPTQ.
