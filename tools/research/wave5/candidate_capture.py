@@ -763,8 +763,7 @@ def capture_candidate(args: argparse.Namespace, checkpoint: dict[str, Any], inpu
                "--env", "HF_HUB_OFFLINE=1", "--env", "TRANSFORMERS_OFFLINE=1",
                "--env", "VLLM_EXL3_MULTIPRECISION=0",
                "--env", "VLLM_EXL3_EMBED_ONLINE_BITS=6",
-               "--env", "VLLM_USE_V2_MODEL_RUNNER=1",
-               "--env", "VLLM_ALLOW_INSECURE_SERIALIZATION=1"]
+               "--env", "VLLM_USE_V2_MODEL_RUNNER=1"]
     command += mounts([(REPO_ROOT, False), (candidate, False),
                        (suite_view, False), (capture, True)])
     for environment in args.container_env:

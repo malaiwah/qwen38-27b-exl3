@@ -82,6 +82,29 @@ Callbacks are stage-specific and encode-only:
 5. **legal path** may return only finite candidate target tiles; the harness alone reruns
    pinned `quantize_tiles_multigpu` and creates reconstructed values and indices.
 
+The target recipe has two closed representations. Stock A0 uses exactly
+`{"basis":"source"}`. A candidate-conditioned action uses
+`basis="candidate_conditioned"` and must bind `target_tensor_sha256`,
+`fit_manifest_sha256`, `teacher_output_sha256`, `upstream_action_identity_sha256`,
+`target_dtype`, two-dimensional `target_shape`, nonnegative finite `ridge_lambda`, and
+`recompute_scope`. It is rejected unless an encode callback is present. Thus reconstructed-
+upstream and seam-reroll down targets are inside the complete action identity while the
+serialized result still uses the unchanged stock payload and decoder.
+The current additive Phase-B contract, including R31 file/content split-lineage mapping and
+the operational extension rebuild, is pinned by harness
+`d4dfd35cd7b85beab11d33de110eb240ca87162e4a01ec434cb19e5b6a82605d`
+and schema `275644ed86017f54953d7eecd2f843e6b6f6c14ae52df163ef5827179edf7af8`.
+Its qualified extension binary is
+`e2e26e0dcfa6eb637215c673a30522076c9d530140cd0d5c727ca549f2d8801e`,
+rebuilt from the same clean 5f3/tree ffc0 source and exact sm_120a build manifest. New
+campaigns must record fresh A0/strength-zero identity under this binary. The stock-control
+receipt remains the historical codec-exact run at its recorded 717d/896f/798 pins; it is not
+relabeled, and no encoder/payload/hot-route claim is transferred without a fresh control.
+Operationally, campaigns mount the qualified `.so` itself read-only at
+`/opt/r30-ext/exllamav3_ext.so` and prepend `/opt/r30-ext` to `PYTHONPATH`; they do not
+mount the shared JIT cache or set `TORCH_EXTENSIONS_DIR`. This bypasses relinking entirely.
+
+
 Each action binds callback identifier, version, parameters, exact expected interface,
 per-stage source/signature/default hashes, every callback-module file SHA256 and a content
 SHA256 over the complete identity. The harness recomputes it from the invoked callables
@@ -212,17 +235,20 @@ Full machine evidence is in
 
 ## Metric and split discipline
 
-One `split_manifest_sha256` binds the combined source-disjoint split manifest. Each of
-`calibration`, `validation`, and `untouched_test` then binds a pair of
+`split_manifest_sha256` binds the combined manifest file bytes and aligns directly with R31
+report lineage. `split_manifest_content_sha256` separately binds the canonical JSON content.
+Each of `calibration`, `validation`, and `untouched_test` then binds a pair of
 `selection_sha256` plus a structured selector in the frozen language
 `{field:"split",op:"eq",value:<split>}`. Selection hashes and selector values must both be
 pairwise distinct. A bound disjointness artifact must report all three pairwise overlap
 counts, source-document overlap and domain leakage as zero with `verified=true`; overlapping
 predicates, duplicated selection hashes, or leakage fail action validation.
 
-For real Phase B actions, R29's combined manifest content SHA256 is
-`db63446e1ce174e340ae53c039632c7291d74a8bb9f263852673f4a649e3115f`
-(the file SHA is transport integrity only). Its frozen selections are:
+For real Phase B actions, R29's canonical combined manifest content SHA256 is
+`151c41151142060619e6a7957f36daa4849e53276435df54b74bdfc223596a2e`;
+the transport file SHA256 is
+`a7eab6e2d8ee78e8d27655f8e9caf4c7813c43539ba24b31c4941d3d38ee09cc`.
+Its frozen selections are:
 
 - calibration `490a15969bf7b62b585f24cce644dae48f8021f534b0b2bc7553a46a989ea259`;
 - validation `4c5cf19acc18835ee6d36da91b2b93135c5d33655ca410c079d4d4be83c5a5de`;
@@ -271,3 +297,80 @@ The direct A0/identity actual-EXL3 codec result remains coherent: action IDs
 `264b8e11…d8cf1` and `3ccadf0d…fe9d1`, shared payload `c9341731…9ef`, shared reconstruction
 `ad4a11ab…8394`, and exact raw size 3,289,092 B. These facts do not override the gate:
 **Wave 5 foundation approval is not claimed and must not open from this receipt.**
+
+## Phase B one-tensor candidate capture extension
+
+`tools/research/wave5/candidate_capture.py` is the missing execution bridge between an R30
+full-tensor `EXL3Action` payload and R31 replay. It accepts exactly one tensor-granularity
+action, validates it with the explicitly pinned R30 harness, and requires the codec-exact
+`codec-exact/all-trellis-stock-exl3` route. For the current campaign the defaults are the
+versioned harness SHA256
+`d4dfd35cd7b85beab11d33de110eb240ca87162e4a01ec434cb19e5b6a82605d`
+and the read-only compiled extension SHA256
+`e2e26e0dcfa6eb637215c673a30522076c9d530140cd0d5c727ca549f2d8801e`.
+The historical 798/717d smoke remains historical and is not relabeled.
+
+Materialization is a byte operation, not a requantization shortcut. The launcher resolves
+the action's logical `.weight` key to its unique `suh`, `svh`, `trellis`, and optional
+`mcg`/`mul1` physical keys through `model.safetensors.index.json`; requires all keys to live
+in one shard; hardlinks or reflinks every other checkpoint component; and streams a new copy
+of only that shard. Replacement dtype, shape, and byte length must exactly equal the source
+physical buffers, so K/codebook/config drift is rejected. The original safetensors prefix
+and header bytes are copied verbatim, and buffers are written in original offset order.
+It preserves every non-target tensor buffer byte, rehashes the complete source and candidate
+checkpoint component sets, requires the index and config bytes to be identical, and records
+the exact checkpoint byte count. Cleanup retains the action, standalone
+payload, changed shard, capture, R31 rows/report, and their manifests before removing the
+temporary sibling checkpoint.
+
+The capture path refuses every path under legacy `/tmp/kld-data`. Its explicit inputs must
+resolve to pinned Hugging Face snapshot content:
+
+- v5 suite/reference repository `malaiwah/qwen38-27b-fidelity-suite-v5` revision
+  `7797fcce3ffed62b99871348887f4626dc9b2b3b`, using `suite/shard-0000`, the
+  parent `suite/tokens`, and `reference/hidden-bf16`;
+- v3 shared-head repository `malaiwah/qwen38-27b-fidelity-suite-v3` revision
+  `73252e77e96bbf5596484e29dd8041f9f38c95f1`, using
+  `lm-head/weight.safetensors` SHA256
+  `25a30fd5f826da0abc4efc4cc71def9f02bcb8085f7175eee284d221dee4cfff`.
+
+Before GPU launch it recomputes the final R29 split/data file and content pins, validation
+selector projection `4c5cf19acc18835ee6d36da91b2b93135c5d33655ca410c079d4d4be83c5a5de`,
+the v5 shard-0 manifest/token identity, the exact 512-context membership and token hashes,
+the canonical retained-reference manifest SHA256
+`01a2f676edcf5d1f958f0e0ffb9dfa1dd8cf5671e3d8c69b822cb806e13200ec`
+and all 512 hidden-file hashes, the R31 gate/contract/preregister/projector pins, and the
+shared head. It then invokes repository-head `tools/fidelity.py capture` in eager TP1,
+one-sequence, one 2048-token chunk, BF16 KV mode with `VLLM_EXL3_MULTIPRECISION=0`. The
+candidate capture binding and execution receipt carry the action/payload/shard/checkpoint,
+R29 selection, suite, head, image, command, GPU, and codec-route identities required by R31.
+R31 `replay --split validation --role candidate` consumes that binding; the BF16 reference
+is never recaptured.
+
+The fresh operational codec smoke under the e2e extension passed before candidate launch:
+the A0 and identity-callback actions produced byte-identical canonical tensor buffers with
+payload SHA256 `c934173131b84fdb599f40f75cc33718cfd97d03985f3037dfce3298071499ef`,
+both decoded finitely through the same hot schema/route, and the strength-zero reconstruction
+was finite. This is the required fresh encoder control, not a KLD result. Candidate
+checkpoint/capture/R31 acceptance and paired-zero status are recorded separately in the
+targeted Wave 5 receipt; no zero difference is inferred merely from a callback declaring
+strength zero.
+
+### Launcher acceptance status
+
+The launcher implementation and schema are **APPROVED_FOR_RESEARCH** by the requested
+independent reviewer. The actual RTX 5090 acceptance remains scientifically blocked rather
+than inferred. A fresh e2e K6 A0/strength-zero run for
+`model.language_model.layers.55.self_attn.k_proj.weight` produced byte-identical canonical
+buffers and finite decodes. The R29-bound strength-zero payload then materialized successfully
+over the served `ab3a91a…` checkpoint with byte-identical index/config and unchanged shards.
+
+No candidate hidden row or R31 metric was produced. The served snapshot loaded, including its
+online K6 embedding conversion, but the B12X warmup JIT link failed because the isolated
+capture container lacked the production JIT cache and CUDA runtime library path. The corrected
+production-cache command was staged but did not execute before the granted GPU window closed.
+Therefore R31 replay did not accept a capture and paired-zero is **not claimed**. Temporary
+candidate/shard/capture artifacts were removed, legacy and canonical artifacts were untouched,
+and throughput was restored healthy. The remaining blocker is one focused materialize/capture
+rerun with the recorded production JIT cache mount and `LD_LIBRARY_PATH`, immediately removing
+the sibling checkpoint after capture, followed by R31 replay/compare.

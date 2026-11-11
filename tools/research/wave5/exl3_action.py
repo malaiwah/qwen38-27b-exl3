@@ -51,7 +51,7 @@ STOCK_PYTHON_DEPENDENCY_SHA256 = {
 }
 STOCK_QUANTIZE_SHA256 = "4cd368dab28e007d649e25b97c65fc73a56ef2a1482ca2b9298a53d4b0876dbf"
 STOCK_TREE_SHA1 = "ffc0a1d31c25d4174b96adffef3727f12a7056c7"
-STOCK_EXTENSION_BINARY_SHA256 = "79815da8b7d39559c2dea17cffb966fe7d78beba5b67c2f49f7f41832c40b2bf"
+STOCK_EXTENSION_BINARY_SHA256 = "e2e26e0dcfa6eb637215c673a30522076c9d530140cd0d5c727ca549f2d8801e"
 STOCK_DECODER_SHA256 = "c010bd18aaf5363632db25c0a4f7c4be0938011656f0446f933505a59b8d6cc0"
 HADAMARD_BLOCK = 128
 LDL_BLOCK = 16
@@ -544,6 +544,7 @@ class EXL3Action:
     seed: int
     split_manifest_sha256: str
     split_selections: Mapping[str, Mapping[str, Any]]
+    split_manifest_content_sha256: str
     split_disjointness: SplitDisjointness
     source_tensor_sha256: str
     source_revision: str
@@ -595,6 +596,7 @@ class EXL3Action:
         ):
             raise ContractError("action does not name the pinned stock encoder repo/commit/tree/version")
         validate_sha256("split_manifest_sha256", self.split_manifest_sha256)
+        validate_sha256("split_manifest_content_sha256", self.split_manifest_content_sha256)
         if set(self.split_selections) != set(SPLIT_NAMES):
             raise ContractError("split selections must name calibration, validation, and untouched_test")
         selection_hashes: set[str] = set()
@@ -639,8 +641,40 @@ class EXL3Action:
             or sign.get("global_scale_search") != "stock_g_scale_gss"
         ):
             raise ContractError("sign/scale recipe does not bind the pinned stock semantics")
-        if self.target.parameters != {"basis": "source"}:
-            raise ContractError("target recipe must bind the source-basis stock target")
+        target = self.target.parameters
+        if target == {"basis": "source"}:
+            pass
+        elif set(target) == {
+            "basis", "target_tensor_sha256", "fit_manifest_sha256",
+            "teacher_output_sha256", "upstream_action_identity_sha256",
+            "target_dtype", "target_shape", "ridge_lambda", "recompute_scope",
+        }:
+            if not callback_enabled or target["basis"] != "candidate_conditioned":
+                raise ContractError("candidate-conditioned target requires an encode callback")
+            for name in (
+                "target_tensor_sha256", "fit_manifest_sha256",
+                "teacher_output_sha256", "upstream_action_identity_sha256",
+            ):
+                validate_sha256(f"target.{name}", target[name])
+            if target["target_dtype"] not in ("float32", "bfloat16", "float16"):
+                raise ContractError("candidate-conditioned target dtype is unsupported")
+            if (
+                not isinstance(target["target_shape"], list)
+                or len(target["target_shape"]) != 2
+                or any(not isinstance(v, int) or isinstance(v, bool) or v <= 0 for v in target["target_shape"])
+            ):
+                raise ContractError("candidate-conditioned target shape must be two positive integers")
+            if (
+                not isinstance(target["ridge_lambda"], (int, float))
+                or isinstance(target["ridge_lambda"], bool)
+                or not math.isfinite(float(target["ridge_lambda"]))
+                or target["ridge_lambda"] < 0
+            ):
+                raise ContractError("candidate-conditioned ridge_lambda must be finite and nonnegative")
+            if not isinstance(target["recompute_scope"], str) or not target["recompute_scope"]:
+                raise ContractError("candidate-conditioned recompute_scope is required")
+        else:
+            raise ContractError("target recipe is neither stock source nor complete candidate-conditioned target")
         curvature = self.curvature_correction.parameters
         if curvature != {"sigma_reg": 0.025, "block_ldl": LDL_BLOCK, "buf_size_k": 128}:
             raise ContractError("curvature recipe does not bind pinned damping/block-LDL parameters")
@@ -1246,8 +1280,10 @@ def make_stock_action(
     split_selections: Mapping[str, Mapping[str, Any]],
     split_disjointness: SplitDisjointness,
     evidence: Mapping[str, Any],
+    split_manifest_content_sha256: str,
     route_id: str = "codec-exact/all-trellis-stock-exl3",
     materialization_qualification: Mapping[str, Any] | None = None,
+    target_parameters: Mapping[str, Any] | None = None,
 ) -> EXL3Action:
     declared_callback = callback_contract(callbacks)
     callback_enabled = declared_callback.identifier != "none"
@@ -1271,9 +1307,9 @@ def make_stock_action(
             strength=0.0 if declared_callback.identifier == "identity/strength-zero" else None,
         ),
         target=Recipe(
-            "stock.source-target",
-            "source_basis_target",
-            {"basis": "source"},
+            "stock.source-target" if target_parameters is None else "callback.candidate-conditioned-target",
+            "source_basis_target" if target_parameters is None else "candidate_conditioned_target",
+            {"basis": "source"} if target_parameters is None else copy.deepcopy(dict(target_parameters)),
             implementation=implementation,
         ),
         curvature_correction=Recipe(
@@ -1303,6 +1339,7 @@ def make_stock_action(
         ),
         seed=seed,
         split_manifest_sha256=split_manifest_sha256,
+        split_manifest_content_sha256=split_manifest_content_sha256,
         split_selections=split_selections,
         split_disjointness=split_disjointness,
         source_tensor_sha256=source_sha256,
@@ -1382,10 +1419,14 @@ def smoke_split_contract() -> dict[str, Any]:
         "scope": "codec-smoke/no-fidelity-claim",
         "selections": split_selections,
     }
-    split_manifest_sha256 = sha256_bytes(canonical_json(split_manifest_body))
+    split_manifest_bytes = canonical_json(split_manifest_body)
+    split_manifest_content_sha256 = sha256_bytes(split_manifest_bytes)
+    # The synthetic smoke writes canonical bytes directly, so file/content hashes coincide.
+    split_manifest_sha256 = sha256_bytes(split_manifest_bytes)
     audit_body = {
         "schema": "wave5/split-disjointness/1",
         "split_manifest_sha256": split_manifest_sha256,
+        "split_manifest_content_sha256": split_manifest_content_sha256,
         "split_selections": split_selections,
         "pairwise_overlap_counts": {
             "calibration__validation": 0,
@@ -1398,6 +1439,7 @@ def smoke_split_contract() -> dict[str, Any]:
     }
     return {
         "split_manifest_sha256": split_manifest_sha256,
+        "split_manifest_content_sha256": split_manifest_content_sha256,
         "split_selections": split_selections,
         "split_disjointness": SplitDisjointness(
             artifact_sha256=sha256_bytes(canonical_json(audit_body)),
@@ -1601,6 +1643,7 @@ def run_smoke(args: argparse.Namespace) -> dict[str, Any]:
         },
         "split_control": {
             "split_manifest_sha256": smoke_manifest_args["split_manifest_sha256"],
+            "split_manifest_content_sha256": smoke_manifest_args["split_manifest_content_sha256"],
             "split_selections": smoke_manifest_args["split_selections"],
             "disjointness": dataclasses.asdict(smoke_manifest_args["split_disjointness"]),
             "claim_scope": "synthetic codec-smoke partitions; not promoted fidelity data",
@@ -1793,6 +1836,39 @@ def self_test() -> None:
     )
     verify_callback_contract(identity_action.callback, identity_callbacks)
     expect_contract_error(lambda: verify_callback_contract(identity_action.callback, None))
+    candidate_target = {
+        "basis": "candidate_conditioned",
+        "target_tensor_sha256": "a" * 64,
+        "fit_manifest_sha256": "b" * 64,
+        "teacher_output_sha256": "c" * 64,
+        "upstream_action_identity_sha256": "d" * 64,
+        "target_dtype": "float32",
+        "target_shape": [128, 128],
+        "ridge_lambda": 0.0,
+        "recompute_scope": "per-upstream-complete-action",
+    }
+    candidate_target_action = make_stock_action(
+        action_id="self-test.candidate-target",
+        unit=unit,
+        K=5,
+        codebook="mcg",
+        seed=1,
+        source_sha256="3" * 64,
+        source_revision="self-test-revision",
+        source_layout="out_in",
+        curvature=curvature,
+        callbacks=identity_callbacks,
+        target_parameters=candidate_target,
+        **split_args,
+    )
+    candidate_target_action.validate()
+    jsonschema.validate(candidate_target_action.to_dict(), schema)
+    incomplete_target = dict(candidate_target)
+    del incomplete_target["teacher_output_sha256"]
+    expect_contract_error(lambda: dataclasses.replace(
+        candidate_target_action,
+        target=dataclasses.replace(candidate_target_action.target, parameters=incomplete_target),
+    ).validate())
     expect_contract_error(lambda: dataclasses.replace(
         action,
         viterbi_refinement=dataclasses.replace(
